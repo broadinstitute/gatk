@@ -127,20 +127,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final String outputAssemblyAlignments,
             final Logger logger) {
 
-        Utils.validate(header.getSortOrder() == SAMFileHeader.SortOrder.coordinate,
-                "The reads must be coordinate sorted.");
-
         final SVReadFilter filter = new SVReadFilter(params);
-
-        final Set<Integer> crossContigsToIgnoreSet;
-        if ( params.crossContigsToIgnoreFile == null ) crossContigsToIgnoreSet = Collections.emptySet();
-        else crossContigsToIgnoreSet = readCrossContigsToIgnoreFile(params.crossContigsToIgnoreFile,
-                header.getSequenceDictionary());
-        final ReadMetadata readMetadata =
-                new ReadMetadata(crossContigsToIgnoreSet, header, params.maxTrackedFragmentLength, unfilteredReads, filter, logger);
-        if ( params.metadataFile != null ) {
-            ReadMetadata.writeMetadata(readMetadata, params.metadataFile);
-        }
+        final ReadMetadata readMetadata = buildMetadata(params, header, unfilteredReads, filter, logger);
         log("Metadata retrieved.", logger);
 
         // develop evidence, intervals, and, finally, a set of template names for each interval
@@ -215,6 +203,26 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         public List<EvidenceTargetLink> getEvidenceTargetLinks() {
             return evidenceTargetLinks;
         }
+    }
+
+    public static ReadMetadata buildMetadata( final FindBreakpointEvidenceSparkArgumentCollection params,
+                                              final SAMFileHeader header,
+                                              final JavaRDD<GATKRead> unfilteredReads,
+                                              final SVReadFilter filter,
+                                              final Logger logger ) {
+        Utils.validate(header.getSortOrder() == SAMFileHeader.SortOrder.coordinate,
+                "The reads must be coordinate sorted.");
+
+        final Set<Integer> crossContigsToIgnoreSet;
+        if ( params.crossContigsToIgnoreFile == null ) crossContigsToIgnoreSet = Collections.emptySet();
+        else crossContigsToIgnoreSet = readCrossContigsToIgnoreFile(params.crossContigsToIgnoreFile,
+                header.getSequenceDictionary());
+        final ReadMetadata readMetadata =
+                new ReadMetadata(crossContigsToIgnoreSet, header, params.maxTrackedFragmentLength, unfilteredReads, filter, logger);
+        if ( params.metadataFile != null ) {
+            ReadMetadata.writeMetadata(readMetadata, params.metadataFile);
+        }
+        return readMetadata;
     }
 
     /**
@@ -814,6 +822,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final int minEvidenceWeight = params.minEvidenceWeight;
         final int minCoherentEvidenceWeight = params.minCoherentEvidenceWeight;
         final int allowedOverhang = params.allowedShortFragmentOverhang;
+        final int minEvidenceMapQ = params.minEvidenceMapQ;
 
         // 1) identify well-mapped reads
         // 2) that look like they support a hypothesis of a breakpoint in the vicinity
@@ -830,15 +839,15 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         // record the evidence
         if ( params.unfilteredEvidenceDir != null ) {
-            evidenceRDD.map(e -> e.stringRep(broadcastMetadata.getValue(), filter.getMinEvidenceMapQ()))
+            evidenceRDD.map(e -> e.stringRep(broadcastMetadata.getValue(), minEvidenceMapQ))
                        .saveAsTextFile(params.unfilteredEvidenceDir);
         }
 
         final JavaRDD<EvidenceTargetLink> evidenceTargetLinkJavaRDD = evidenceRDD.mapPartitions(
                 itr -> {
                     final ReadMetadata readMetadata = broadcastMetadata.getValue();
-                    final EvidenceTargetLinkClusterer clusterer = new EvidenceTargetLinkClusterer(readMetadata,
-                            filter.getMinEvidenceMapQ());
+                    final EvidenceTargetLinkClusterer clusterer =
+                            new EvidenceTargetLinkClusterer(readMetadata, minEvidenceMapQ);
                     return clusterer.cluster(itr);
                 }).filter(link -> link.readPairs >= 2 || link.splitReads >= 1);
 
@@ -864,7 +873,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                                     FlatMapGluer.concatIterators(evidenceItrList.iterator());
                             return new BreakpointDensityFilter(evidenceItr,readMetadata,
                                     minEvidenceWeight,minCoherentEvidenceWeight,xChecker,
-                                    filter.getMinEvidenceMapQ());
+                                    minEvidenceMapQ);
                         }, true);
 
         filteredEvidenceRDD.cache();
@@ -897,7 +906,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final Iterator<BreakpointEvidence> evidenceIterator =
                 new BreakpointDensityFilter(collectedEvidence.iterator(),
                         broadcastMetadata.value(), minEvidenceWeight, minCoherentEvidenceWeight,
-                        new PartitionCrossingChecker(), filter.getMinEvidenceMapQ());
+                        new PartitionCrossingChecker(), minEvidenceMapQ);
         final List<BreakpointEvidence> allEvidence = new ArrayList<>(collectedEvidence.size());
         while ( evidenceIterator.hasNext() ) {
             allEvidence.add(evidenceIterator.next());
