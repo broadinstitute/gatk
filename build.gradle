@@ -68,7 +68,6 @@ final secondaryBaseJarName = 'hellbender'
 
 configurations.all {
     resolutionStrategy {
-        force 'com.google.http-client:google-http-client:1.21.0'
         // the snapshot folder contains a dev version of guava, we don't want to use that.
         force 'com.google.guava:guava:18.0'
         // force the htsjdk version so we don't get a different one transitively
@@ -178,7 +177,7 @@ dependencies {
 
     compile 'it.unimi.dsi:fastutil:7.0.6'
 
-    compile 'com.google.apis:google-api-services-genomics:v1-rev527-1.23.0'
+    compile 'com.google.apis:google-api-services-genomics:v1-rev527-1.22.0'
     compile 'com.google.cloud.genomics:google-genomics-utils:v1-0.10'
 
     compile 'com.github.wendykierp:JTransforms:3.1'
