@@ -43,6 +43,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     private static final double doubleEqualsEpsilon = 0.000001;
 
     private static final FeatureReader<GencodeGtfFeature> muc16FeatureReader;
+    private static final FeatureReader<GencodeGtfFeature> muc16NonBasicFeatureReader;
     private static final FeatureReader<GencodeGtfFeature> pik3caFeatureReader;
 
     private static final ReferenceDataSource refDataSourceHg19Ch19;
@@ -52,6 +53,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     // Initialization of static variables:
     static {
+        muc16NonBasicFeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
         muc16FeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
         pik3caFeatureReader = AbstractFeatureReader.getFeatureReader( FuncotatorTestConstants.PIK3CA_GENCODE_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
         refDataSourceHg19Ch19 = ReferenceDataSource.of( new File (FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME) );
@@ -265,9 +267,6 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
         // PIK3CA Other Indels:
         outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caInDelData2(), FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME, pik3caFeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.PIK3CA_GENCODE_TRANSCRIPT_FASTA_FILE ) );
-
-        // Non-basic funcotations:
-
 
         return outList.toArray(new Object[][]{{}});
     }
@@ -863,6 +862,11 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
             Assert.assertEquals(funcotation.getVariantClassification(), expectedVariantClassification);
             Assert.assertEquals(funcotation.getVariantType(), expectedVariantType);
         }
+    }
+
+    @Test
+    void createNonBasicFuncotations() {
+        throw new GATKException("NOT IMPLEMENTED!");
     }
 
     @Test (dataProvider = "provideDataForCreateFuncotations")
