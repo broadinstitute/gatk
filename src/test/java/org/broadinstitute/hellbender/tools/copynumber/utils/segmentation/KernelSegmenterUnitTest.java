@@ -106,8 +106,8 @@ public final class KernelSegmenterUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "dataKernelSegmenter")
     public void testKernelSegmenterExtremePenalty(final List<Double> data,
-                                    final BiFunction<Double, Double, Double> kernel,
-                                    final List<Integer> changepointsExpected) {
+                                                  final BiFunction<Double, Double, Double> kernel,
+                                                  final List<Integer> changepointsExpected) {
         final int maxNumChangepoints = 25;
         final int kernelApproximationDimension = 20;
         final List<Integer> windowSizes = Arrays.asList(8, 16, 32, 64);

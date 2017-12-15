@@ -36,10 +36,10 @@ public abstract class RecordCollection<RECORD> {
      * @param recordFromDataLineDecoder     lambda for decoding a record from a {@link DataLine} when reading from a TSV file
      * @param recordToDataLineEncoder       lambda for encoding a record to a {@link DataLine} when writing to a TSV file
      */
-    protected RecordCollection(final List<RECORD> records,
-                               final TableColumnCollection mandatoryColumns,
-                               final Function<DataLine, RECORD> recordFromDataLineDecoder,
-                               final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
+    RecordCollection(final List<RECORD> records,
+                     final TableColumnCollection mandatoryColumns,
+                     final Function<DataLine, RECORD> recordFromDataLineDecoder,
+                     final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         this.records = ImmutableList.copyOf(Utils.nonNull(records));
         this.mandatoryColumns = Utils.nonNull(mandatoryColumns);
         this.recordFromDataLineDecoder = Utils.nonNull(recordFromDataLineDecoder);
@@ -56,10 +56,10 @@ public abstract class RecordCollection<RECORD> {
      * @param recordFromDataLineDecoder     lambda for decoding a record from a {@link DataLine} when reading from a TSV file
      * @param recordToDataLineEncoder       lambda for encoding a record to a {@link DataLine} when writing to a TSV file
      */
-    protected RecordCollection(final File inputFile,
-                               final TableColumnCollection mandatoryColumns,
-                               final Function<DataLine, RECORD> recordFromDataLineDecoder,
-                               final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
+    RecordCollection(final File inputFile,
+                     final TableColumnCollection mandatoryColumns,
+                     final Function<DataLine, RECORD> recordFromDataLineDecoder,
+                     final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         IOUtils.canReadFile(inputFile);
         this.mandatoryColumns = Utils.nonNull(mandatoryColumns);
         this.recordFromDataLineDecoder = Utils.nonNull(recordFromDataLineDecoder);

@@ -35,11 +35,11 @@ public abstract class SampleLocatableCollection<RECORD extends Locatable> extend
     /**
      * Records are sorted using {@code LEXICOGRAPHICAL_ORDER_COMPARATOR}.
      */
-    protected SampleLocatableCollection(final SampleMetadata sampleMetadata,
-                                        final List<RECORD> records,
-                                        final TableColumnCollection mandatoryColumns,
-                                        final Function<DataLine, RECORD> recordFromDataLineDecoder,
-                                        final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
+    SampleLocatableCollection(final SampleMetadata sampleMetadata,
+                              final List<RECORD> records,
+                              final TableColumnCollection mandatoryColumns,
+                              final Function<DataLine, RECORD> recordFromDataLineDecoder,
+                              final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         super(
                 sampleMetadata,
                 Utils.nonNull(records).stream().sorted(LEXICOGRAPHICAL_ORDER_COMPARATOR).collect(Collectors.toList()),
@@ -52,10 +52,10 @@ public abstract class SampleLocatableCollection<RECORD extends Locatable> extend
     /**
      * @throws IllegalArgumentException if records are not sorted using {@code LEXICOGRAPHICAL_ORDER_COMPARATOR}
      */
-    protected SampleLocatableCollection(final File inputFile,
-                                        final TableColumnCollection mandatoryColumns,
-                                        final Function<DataLine, RECORD> recordFromDataLineDecoder,
-                                        final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
+    SampleLocatableCollection(final File inputFile,
+                              final TableColumnCollection mandatoryColumns,
+                              final Function<DataLine, RECORD> recordFromDataLineDecoder,
+                              final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         super(inputFile, mandatoryColumns, recordFromDataLineDecoder, recordToDataLineEncoder);
         validateIntervals(getSampleName(), getRecords());
     }

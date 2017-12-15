@@ -230,8 +230,21 @@ public final class ReferenceContextUnitTest extends GATKBaseTest {
 
     private void checkReferenceContextBasesFromInterval( final ReferenceContext refContext, final String expectedBases, final SimpleInterval interval ) {
 
+        // Do this once for the interval-based call:
         final byte[] contextBases = refContext.getBases(interval);
+        checkReferenceContextBasesFromIntervalHelper(expectedBases, contextBases);
 
+        // Do this again for the leading/trailing bounds-based call:
+        final byte[] contextBases2 = refContext.getBases(interval);
+
+        // First check that the two context bases are the same:
+        Assert.assertEquals(contextBases2, contextBases);
+
+        // Now check vs the expected values:
+        checkReferenceContextBasesFromIntervalHelper(expectedBases, contextBases2);
+    }
+
+    private void checkReferenceContextBasesFromIntervalHelper(final String expectedBases, final byte[] contextBases) {
         Assert.assertEquals(contextBases.length, expectedBases.length(), "Wrong number of bases from refContext.getBases()");
 
         final byte[] expectedBasesByteArray = expectedBases.getBytes();

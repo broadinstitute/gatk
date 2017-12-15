@@ -10,7 +10,7 @@ import java.util.List;
  */
 abstract public class DataProviderForSnpsOnMuc16 {
 
-    static List<Object[]> provideSnpDataForGetVariantClassification_1() {
+    static List<Object[]> provideSnpDataForGetVariantClassification_0() {
         return Arrays.asList(
                 new Object[] {19, 9073586, 9073586, GencodeFuncotation.VariantType.SNP, "G", "A", GencodeFuncotation.VariantClassification.SILENT},
                 new Object[] {19, 9073623, 9073623, GencodeFuncotation.VariantType.SNP, "G", "A", GencodeFuncotation.VariantClassification.MISSENSE},
@@ -29,7 +29,12 @@ abstract public class DataProviderForSnpsOnMuc16 {
                 new Object[] {19, 9074153, 9074153, GencodeFuncotation.VariantType.SNP, "G", "A", GencodeFuncotation.VariantClassification.SILENT},
                 new Object[] {19, 9074177, 9074177, GencodeFuncotation.VariantType.SNP, "A", "T", GencodeFuncotation.VariantClassification.MISSENSE},
                 new Object[] {19, 9074179, 9074179, GencodeFuncotation.VariantType.SNP, "A", "T", GencodeFuncotation.VariantClassification.MISSENSE},
-                new Object[] {19, 9074184, 9074184, GencodeFuncotation.VariantType.SNP, "G", "A", GencodeFuncotation.VariantClassification.MISSENSE},
+                new Object[] {19, 9074184, 9074184, GencodeFuncotation.VariantType.SNP, "G", "A", GencodeFuncotation.VariantClassification.MISSENSE}
+        );
+    }
+
+    static List<Object[]> provideSnpDataForGetVariantClassification_1() {
+        return Arrays.asList(
                 new Object[] {19, 9074217, 9074217, GencodeFuncotation.VariantType.SNP, "G", "A", GencodeFuncotation.VariantClassification.MISSENSE},
                 new Object[] {19, 9074222, 9074222, GencodeFuncotation.VariantType.SNP, "G", "A", GencodeFuncotation.VariantClassification.SILENT},
                 new Object[] {19, 9074244, 9074244, GencodeFuncotation.VariantType.SNP, "G", "A", GencodeFuncotation.VariantClassification.MISSENSE},
