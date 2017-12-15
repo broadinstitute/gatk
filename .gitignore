@@ -28,3 +28,5 @@ I_SHOULD_HAVE_BEEN_DELETED
 
 /scripts/cnv_wdl/somatic/cnv_common_tasks.wdl
 /scripts/cnv_wdl/germline/cnv_common_tasks.wdl
+/bin/
+.project
