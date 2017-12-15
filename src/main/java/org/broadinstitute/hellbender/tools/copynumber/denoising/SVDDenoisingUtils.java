@@ -10,8 +10,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.CreateReadCountPanelOfNormals;
+import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
 import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.MatrixSummaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -109,6 +109,9 @@ public final class SVDDenoisingUtils {
                                               final SimpleCountCollection readCounts,
                                               final int numEigensamples) {
         Utils.nonNull(panelOfNormals);
+        if (!CopyNumberArgumentValidationUtils.isSameDictionary(panelOfNormals.getSequenceDictionary(), readCounts.getMetadata().getSequenceDictionary())) {
+            logger.warn("Sequence dictionaries in panel and case sample do not match.");
+        }
         ParamUtils.isPositive(numEigensamples, "Number of eigensamples to use for denoising must be positive.");
         Utils.validateArg(numEigensamples <= panelOfNormals.getNumEigensamples(),
                 "Number of eigensamples to use for denoising is greater than the number available in the panel of normals.");
@@ -135,7 +138,7 @@ public final class SVDDenoisingUtils {
 
         //construct the result
         return new SVDDenoisedCopyRatioResult(
-                new SimpleSampleMetadata(readCounts.getSampleName()),
+                readCounts.getMetadata(),
                 panelOfNormals.getPanelIntervals(),
                 standardizedCopyRatioValues,
                 denoisedCopyRatioValues);

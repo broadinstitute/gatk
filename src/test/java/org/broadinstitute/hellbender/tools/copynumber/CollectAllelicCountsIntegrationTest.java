@@ -1,9 +1,12 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AllelicCountCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AllelicCount;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -20,20 +23,26 @@ import java.util.Arrays;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class CollectAllelicCountsIntegrationTest extends CommandLineProgramTest {
-
     private static final File TEST_SUB_DIR = new File(toolsTestDir, "copynumber");
     private static final File NORMAL_BAM_FILE = new File(TEST_SUB_DIR, "collect-allelic-counts-normal.bam");
     private static final File TUMOR_BAM_FILE = new File(TEST_SUB_DIR, "collect-allelic-counts-tumor.bam");
     private static final File SITES_FILE = new File(TEST_SUB_DIR, "collect-allelic-counts-sites.interval_list");
     private static final File REFERENCE_FILE = new File(hg19MiniReference);
+
     private static final String NORMAL_SAMPLE_NAME_EXPECTED = "20";
     private static final String TUMOR_SAMPLE_NAME_EXPECTED = "20";
+    private static final SAMSequenceDictionary SEQUENCE_DICTIONARY = ReferenceDataSource.of(REFERENCE_FILE).getSequenceDictionary();
+    private static final SampleLocatableMetadata NORMAL_METADATA_EXPECTED = new SimpleSampleLocatableMetadata(
+            NORMAL_SAMPLE_NAME_EXPECTED, SEQUENCE_DICTIONARY);
+
+    private static final SampleLocatableMetadata TUMOR_METADATA_EXPECTED = new SimpleSampleLocatableMetadata(
+            TUMOR_SAMPLE_NAME_EXPECTED, SEQUENCE_DICTIONARY);
 
     @DataProvider(name = "testData")
     public Object[][] testData() {
         //counts from IGV with minMQ = 30 and minBQ = 20
         final AllelicCountCollection normalCountsExpected = new AllelicCountCollection(
-                new SimpleSampleMetadata(NORMAL_SAMPLE_NAME_EXPECTED),
+                NORMAL_METADATA_EXPECTED,
                 Arrays.asList(
                         new AllelicCount(new SimpleInterval("1", 10736, 10736), 0, 0, Nucleotide.G, Nucleotide.N),
                         new AllelicCount(new SimpleInterval("1", 11522, 11522), 7, 4, Nucleotide.G, Nucleotide.A),
@@ -48,7 +57,7 @@ public final class CollectAllelicCountsIntegrationTest extends CommandLineProgra
                         new AllelicCount(new SimpleInterval("2", 15629, 15629), 5, 3, Nucleotide.T, Nucleotide.A)));
 
         final AllelicCountCollection tumorCountsExpected = new AllelicCountCollection(
-                new SimpleSampleMetadata(TUMOR_SAMPLE_NAME_EXPECTED),
+                TUMOR_METADATA_EXPECTED,
                 Arrays.asList(
                         new AllelicCount(new SimpleInterval("1", 10736, 10736), 0, 0, Nucleotide.G, Nucleotide.N),
                         new AllelicCount(new SimpleInterval("1", 11522, 11522), 7, 4, Nucleotide.G, Nucleotide.A),
@@ -64,7 +73,7 @@ public final class CollectAllelicCountsIntegrationTest extends CommandLineProgra
 
         //counts from IGV with minMQ = 30 and minBQ = 20, without nucleotides
         final AllelicCountCollection normalCountsExpectedWithoutNucleotides = new AllelicCountCollection(
-                new SimpleSampleMetadata(NORMAL_SAMPLE_NAME_EXPECTED),
+                NORMAL_METADATA_EXPECTED,
                 Arrays.asList(
                         new AllelicCount(new SimpleInterval("1", 10736, 10736), 0, 0),
                         new AllelicCount(new SimpleInterval("1", 11522, 11522), 7, 4),
@@ -79,7 +88,7 @@ public final class CollectAllelicCountsIntegrationTest extends CommandLineProgra
                         new AllelicCount(new SimpleInterval("2", 15629, 15629), 5, 3)));
 
         final AllelicCountCollection tumorCountsExpectedWithoutNucleotides = new AllelicCountCollection(
-                new SimpleSampleMetadata(TUMOR_SAMPLE_NAME_EXPECTED),
+                TUMOR_METADATA_EXPECTED,
                 Arrays.asList(
                         new AllelicCount(new SimpleInterval("1", 10736, 10736), 0, 0),
                         new AllelicCount(new SimpleInterval("1", 11522, 11522), 7, 4),

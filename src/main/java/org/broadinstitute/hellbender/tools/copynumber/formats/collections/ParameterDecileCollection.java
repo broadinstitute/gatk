@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 /**
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class ParameterDecileCollection<T extends Enum<T> & ParameterEnum> extends SampleRecordCollection<Map.Entry<T, DecileCollection>> {
+public final class ParameterDecileCollection<T extends Enum<T> & ParameterEnum> extends AbstractSampleRecordCollection<Map.Entry<T, DecileCollection>> {
     enum ParameterTableColumn {
         PARAMETER_NAME,
         POSTERIOR_10,
@@ -63,12 +63,12 @@ public final class ParameterDecileCollection<T extends Enum<T> & ParameterEnum> 
 
     private final Map<T, DecileCollection> parameterToDecileCollectionMap;
 
-    public ParameterDecileCollection(final SampleMetadata sampleMetadata,
+    public ParameterDecileCollection(final SampleMetadata metadata,
                                      final Map<T, DecileCollection> parameterToDecileCollectionMap,
                                      final Class<T> parameterClass,
                                      final String doubleFormat) {
         super(
-                Utils.nonNull(sampleMetadata),
+                Utils.nonNull(metadata),
                 new ArrayList<>(parameterToDecileCollectionMap.entrySet()),
                 ParameterTableColumn.COLUMNS,
                 dataLine -> {

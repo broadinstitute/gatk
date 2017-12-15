@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.copynumber.denoising;
 
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -21,11 +21,11 @@ public final class SVDDenoisedCopyRatioResult {
     private final CopyRatioCollection standardizedCopyRatios;
     private final CopyRatioCollection denoisedCopyRatios;
 
-    public SVDDenoisedCopyRatioResult(final SampleMetadata sampleMetadata,
+    public SVDDenoisedCopyRatioResult(final SampleLocatableMetadata metadata,
                                       final List<SimpleInterval> intervals,
                                       final RealMatrix standardizedCopyRatioValues,
                                       final RealMatrix denoisedCopyRatioValues) {
-        Utils.nonNull(sampleMetadata);
+        Utils.nonNull(metadata);
         Utils.nonEmpty(intervals);
         Utils.nonNull(standardizedCopyRatioValues);
         Utils.nonNull(denoisedCopyRatioValues);
@@ -38,12 +38,12 @@ public final class SVDDenoisedCopyRatioResult {
         Utils.validateArg(intervals.size() == denoisedCopyRatioValues.getColumnDimension(),
                 "Number of intervals and columns in denoised copy-ratio values must match.");
         this.standardizedCopyRatios = new CopyRatioCollection(
-                sampleMetadata,
+                metadata,
                 IntStream.range(0, intervals.size())
                         .mapToObj(i -> new CopyRatio(intervals.get(i), standardizedCopyRatioValues.getEntry(0, i)))
                         .collect(Collectors.toList()));
         this.denoisedCopyRatios = new CopyRatioCollection(
-                sampleMetadata,
+                metadata,
                 IntStream.range(0, intervals.size())
                         .mapToObj(i -> new CopyRatio(intervals.get(i), denoisedCopyRatioValues.getEntry(0, i)))
                         .collect(Collectors.toList()));

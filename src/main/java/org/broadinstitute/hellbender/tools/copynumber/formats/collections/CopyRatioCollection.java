@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
 import htsjdk.samtools.util.OverlapDetector;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
@@ -13,7 +13,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public final class CopyRatioCollection extends SampleLocatableCollection<CopyRatio> {
+public final class CopyRatioCollection extends AbstractSampleLocatableCollection<CopyRatio> {
     enum CopyRatioTableColumn {
         CONTIG,
         START,
@@ -42,9 +42,9 @@ public final class CopyRatioCollection extends SampleLocatableCollection<CopyRat
         super(inputFile, CopyRatioTableColumn.COLUMNS, COPY_RATIO_RECORD_FROM_DATA_LINE_DECODER, COPY_RATIO_RECORD_TO_DATA_LINE_ENCODER);
     }
 
-    public CopyRatioCollection(final SampleMetadata sampleMetadata,
+    public CopyRatioCollection(final SampleLocatableMetadata metadata,
                                final List<CopyRatio> copyRatios) {
-        super(sampleMetadata, copyRatios, CopyRatioTableColumn.COLUMNS, COPY_RATIO_RECORD_FROM_DATA_LINE_DECODER, COPY_RATIO_RECORD_TO_DATA_LINE_ENCODER);
+        super(metadata, copyRatios, CopyRatioTableColumn.COLUMNS, COPY_RATIO_RECORD_FROM_DATA_LINE_DECODER, COPY_RATIO_RECORD_TO_DATA_LINE_ENCODER);
     }
 
     public List<Double> getLog2CopyRatioValues() {

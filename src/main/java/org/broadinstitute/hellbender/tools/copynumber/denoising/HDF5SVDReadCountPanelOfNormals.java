@@ -1,5 +1,9 @@
 package org.broadinstitute.hellbender.tools.copynumber.denoising;
 
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMTextHeaderCodec;
+import htsjdk.samtools.util.BufferedLineReader;
 import htsjdk.samtools.util.Lazy;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
@@ -20,6 +24,7 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.spark.SparkConverter;
 
 import java.io.File;
+import java.io.StringWriter;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -49,6 +54,7 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
 
     private static final String VERSION_PATH = "/version/value";    //note that full path names must include a top-level group name ("version" here)
     private static final String COMMAND_LINE_PATH = "/command_line/value";
+    private static final String SEQUENCE_DICTIONARY_PATH = "/sequence_dictionary/value";
     private static final String ORIGINAL_DATA_GROUP_NAME = "/original_data";
     private static final String ORIGINAL_READ_COUNTS_PATH = ORIGINAL_DATA_GROUP_NAME + "/read_counts_samples_by_intervals";
     private static final String ORIGINAL_SAMPLE_FILENAMES_PATH = ORIGINAL_DATA_GROUP_NAME + "/sample_filenames";
@@ -64,6 +70,8 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
     private static final String PANEL_NUM_EIGENSAMPLES_PATH = PANEL_EIGENSAMPLE_VECTORS_PATH + HDF5Utils.NUMBER_OF_ROWS_SUB_PATH;
 
     private final HDF5File file;
+
+    private final Lazy<SAMSequenceDictionary> sequenceDictionary;
     private final Lazy<List<SimpleInterval>> originalIntervals;
     private final Lazy<List<SimpleInterval>> panelIntervals;
 
@@ -76,6 +84,12 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
         Utils.nonNull(file);
         IOUtils.canReadFile(file.getFile());
         this.file = file;
+        sequenceDictionary = new Lazy<>(() -> {
+            final String sequenceDictionaryString = file.readStringArray(SEQUENCE_DICTIONARY_PATH)[0];
+            return new SAMTextHeaderCodec()
+                    .decode(BufferedLineReader.fromString(sequenceDictionaryString), file.getFile().getAbsolutePath())
+                    .getSequenceDictionary();
+        });
         originalIntervals = new Lazy<>(() -> HDF5Utils.readIntervals(file, ORIGINAL_INTERVALS_PATH));
         panelIntervals = new Lazy<>(() -> HDF5Utils.readIntervals(file, PANEL_INTERVALS_PATH));
     }
@@ -93,6 +107,11 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
     @Override
     public int getNumEigensamples() {
         return (int) file.readDouble(PANEL_NUM_EIGENSAMPLES_PATH);
+    }
+
+    @Override
+    public SAMSequenceDictionary getSequenceDictionary() {
+        return sequenceDictionary.get();
     }
 
     @Override
@@ -158,6 +177,7 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
      */
     public static void create(final File outFile,
                               final String commandLine,
+                              final SAMSequenceDictionary sequenceDictionary,
                               final RealMatrix originalReadCounts,
                               final List<String> originalSampleFilenames,
                               final List<SimpleInterval> originalIntervals,
@@ -179,6 +199,9 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
 
             logger.info("Writing command line...");
             pon.writeCommandLine(commandLine);
+
+            logger.info("Writing sequence dictionary...");
+            pon.writeSequenceDictionary(sequenceDictionary);
 
             logger.info(String.format("Writing original read counts (%d x %d)...",
                     originalReadCounts.getColumnDimension(), originalReadCounts.getRowDimension()));
@@ -271,6 +294,12 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
 
     private void writeCommandLine(final String commandLine) {
         file.makeStringArray(COMMAND_LINE_PATH, commandLine);
+    }
+
+    private void writeSequenceDictionary(final SAMSequenceDictionary sequenceDictionary) {
+        final StringWriter stringWriter = new StringWriter();
+        new SAMTextHeaderCodec().encode(stringWriter, new SAMFileHeader(sequenceDictionary));
+        file.makeStringArray(SEQUENCE_DICTIONARY_PATH, stringWriter.toString());
     }
 
     private void writeOriginalReadCountsPath(final RealMatrix originalReadCounts) {

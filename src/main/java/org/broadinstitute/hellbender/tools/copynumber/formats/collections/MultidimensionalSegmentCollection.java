@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.MultidimensionalSegment;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
@@ -14,7 +14,7 @@ import java.util.function.Function;
 /**
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class MultidimensionalSegmentCollection extends SampleLocatableCollection<MultidimensionalSegment> {
+public final class MultidimensionalSegmentCollection extends AbstractSampleLocatableCollection<MultidimensionalSegment> {
     enum MultidimensionalSegmentTableColumn {
         CONTIG,
         START,
@@ -49,8 +49,8 @@ public final class MultidimensionalSegmentCollection extends SampleLocatableColl
         super(inputFile, MultidimensionalSegmentTableColumn.COLUMNS, MULTIDIMENSIONAL_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION, MULTIDIMENSIONAL_SEGMENT_RECORD_AND_DATA_LINE_BI_CONSUMER);
     }
 
-    public MultidimensionalSegmentCollection(final SampleMetadata sampleMetadata,
+    public MultidimensionalSegmentCollection(final SampleLocatableMetadata metadata,
                                              final List<MultidimensionalSegment> multidimensionalSegments) {
-        super(sampleMetadata, multidimensionalSegments, MultidimensionalSegmentTableColumn.COLUMNS, MULTIDIMENSIONAL_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION, MULTIDIMENSIONAL_SEGMENT_RECORD_AND_DATA_LINE_BI_CONSUMER);
+        super(metadata, multidimensionalSegments, MultidimensionalSegmentTableColumn.COLUMNS, MULTIDIMENSIONAL_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION, MULTIDIMENSIONAL_SEGMENT_RECORD_AND_DATA_LINE_BI_CONSUMER);
     }
 }

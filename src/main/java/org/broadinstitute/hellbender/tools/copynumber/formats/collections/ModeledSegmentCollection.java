@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.ModeledSegment;
 import org.broadinstitute.hellbender.tools.copynumber.models.MultidimensionalModeller;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -15,7 +15,7 @@ import java.util.function.Function;
 /**
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class ModeledSegmentCollection extends SampleLocatableCollection<ModeledSegment> {
+public final class ModeledSegmentCollection extends AbstractSampleLocatableCollection<ModeledSegment> {
     private static final String DOUBLE_FORMAT = MultidimensionalModeller.DOUBLE_FORMAT;
 
     enum ModeledSegmentTableColumn {
@@ -69,8 +69,8 @@ public final class ModeledSegmentCollection extends SampleLocatableCollection<Mo
         super(inputFile, ModeledSegmentTableColumn.COLUMNS, MODELED_SEGMENT_RECORD_FROM_DATA_LINE_DECODER, MODELED_SEGMENT_RECORD_TO_DATA_LINE_ENCODER);
     }
 
-    public ModeledSegmentCollection(final SampleMetadata sampleMetadata,
+    public ModeledSegmentCollection(final SampleLocatableMetadata metadata,
                                     final List<ModeledSegment> modeledSegments) {
-        super(sampleMetadata, modeledSegments, ModeledSegmentTableColumn.COLUMNS, MODELED_SEGMENT_RECORD_FROM_DATA_LINE_DECODER, MODELED_SEGMENT_RECORD_TO_DATA_LINE_ENCODER);
+        super(metadata, modeledSegments, ModeledSegmentTableColumn.COLUMNS, MODELED_SEGMENT_RECORD_FROM_DATA_LINE_DECODER, MODELED_SEGMENT_RECORD_TO_DATA_LINE_ENCODER);
     }
 }

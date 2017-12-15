@@ -1,9 +1,12 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AllelicCount;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -23,10 +26,15 @@ public final class AllelicCountCollectionUnitTest extends GATKBaseTest {
     private static final File TEST_SUB_DIR = new File(toolsTestDir + "copynumber/formats/collections");
     private static final File ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR, "allelic-count-collection-normal.tsv");
     private static final File ALLELIC_COUNTS_MISSING_NUCLEOTIDES_FILE = new File(TEST_SUB_DIR, "allelic-count-collection-normal-missing-nucleotides.tsv");
-    private static final String SAMPLE_NAME_EXPECTED = "test";
+
+    private static final SampleLocatableMetadata METADATA_EXPECTED = new SimpleSampleLocatableMetadata(
+            "test-sample",
+            new SAMSequenceDictionary(Arrays.asList(
+                    new SAMSequenceRecord("1", 20000),
+                    new SAMSequenceRecord("2", 20000))));
 
     private static final AllelicCountCollection ALLELIC_COUNTS_EXPECTED = new AllelicCountCollection(
-            new SimpleSampleMetadata(SAMPLE_NAME_EXPECTED),
+            METADATA_EXPECTED,
             Arrays.asList(
                     new AllelicCount(new SimpleInterval("1", 10736, 10736), 0, 0, Nucleotide.G, Nucleotide.A),
                     new AllelicCount(new SimpleInterval("1", 11522, 11522), 7, 4, Nucleotide.G, Nucleotide.C),
@@ -41,7 +49,7 @@ public final class AllelicCountCollectionUnitTest extends GATKBaseTest {
                     new AllelicCount(new SimpleInterval("2", 15629, 15629), 5, 3, Nucleotide.T, Nucleotide.C)));
 
     private static final AllelicCountCollection ALLELIC_COUNTS_MISSING_NUCLEOTIDES_EXPECTED = new AllelicCountCollection(
-            new SimpleSampleMetadata(SAMPLE_NAME_EXPECTED),
+            METADATA_EXPECTED,
             Arrays.asList(
                     new AllelicCount(new SimpleInterval("1", 10736, 10736), 0, 0),
                     new AllelicCount(new SimpleInterval("1", 11522, 11522), 7, 4),

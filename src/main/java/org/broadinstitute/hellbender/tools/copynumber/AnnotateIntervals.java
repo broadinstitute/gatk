@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGrou
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotatedInterval;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotationSet;
 import org.broadinstitute.hellbender.utils.Nucleotide;
@@ -60,6 +61,7 @@ public final class AnnotateIntervals extends GATKTool {
     }
 
     private List<SimpleInterval> intervals;
+    private SAMSequenceDictionary sequenceDictionary;
     private ReferenceDataSource reference;
     private final GCContentAnnotator gcContentAnnotator = new GCContentAnnotator();
     private AnnotatedIntervalCollection annotatedIntervals;
@@ -69,7 +71,7 @@ public final class AnnotateIntervals extends GATKTool {
         CopyNumberArgumentValidationUtils.validateIntervalArgumentCollection(intervalArgumentCollection);
 
         logger.info("Loading intervals for annotation...");
-        final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
+        sequenceDictionary = getBestAvailableSequenceDictionary();
         intervals = intervalArgumentCollection.getIntervals(sequenceDictionary);
         reference = ReferenceDataSource.of(referenceArguments.getReferenceFile());  //the GATKTool ReferenceDataSource is package-protected, so we cannot access it directly
         logger.info("Annotating intervals...");
@@ -85,7 +87,7 @@ public final class AnnotateIntervals extends GATKTool {
                             interval, null, new ReferenceContext(reference, interval), null))));
             progressMeter.update(interval);
         });
-        annotatedIntervals = new AnnotatedIntervalCollection(annotatedIntervalList);
+        annotatedIntervals = new AnnotatedIntervalCollection(new SimpleLocatableMetadata(sequenceDictionary), annotatedIntervalList);
     }
 
     @Override

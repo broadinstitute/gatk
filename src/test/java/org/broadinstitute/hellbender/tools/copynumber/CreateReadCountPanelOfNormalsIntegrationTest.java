@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.math3.linear.*;
 import org.apache.commons.math3.random.RandomDataGenerator;
@@ -13,7 +15,8 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberStandard
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotatedInterval;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotationSet;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.SimpleCount;
@@ -26,6 +29,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -69,7 +73,10 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
     private static final double DENOISED_LOG2CR_STANDARD_DEVIATION_THRESHOLD = 0.15;    //generating different test data may cause failures
 
     //a reasonable default GC bias curve (borrowed from GCBiasCorrectorUnitTest)
-    private static Function<Double, Double> QUADRATIC_GC_BIAS_CURVE = gc -> 0.5 + 2 * gc * (1 - gc);
+    private static final Function<Double, Double> QUADRATIC_GC_BIAS_CURVE = gc -> 0.5 + 2 * gc * (1 - gc);
+
+    private static final SAMSequenceDictionary SEQUENCE_DICTIONARY = new SAMSequenceDictionary(Collections.singletonList(
+            new SAMSequenceRecord("1", NUM_INTERVALS)));
 
     @DataProvider(name = "dataPanelOfNormals")
     public Object[][] dataPanelOfNormals() {
@@ -93,6 +100,7 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
                 .toArray();
         //write GC-content annotations to file
         final AnnotatedIntervalCollection annotatedIntervals = new AnnotatedIntervalCollection(
+                new SimpleLocatableMetadata(SEQUENCE_DICTIONARY),
                 IntStream.range(0, NUM_INTERVALS)
                         .mapToObj(i -> new AnnotatedInterval(intervals.get(i), new AnnotationSet(intervalGCContent[i])))
                         .collect(Collectors.toList()));
@@ -180,7 +188,9 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
                 final File inputHDF5File = createTempFile("sample-" + sampleIndex, ".hdf5");
                 final double[] sampleCounts = counts.getRow(sampleIndex);
                 final SimpleCountCollection scc = new SimpleCountCollection(
-                        new SimpleSampleMetadata("sample_" + sampleIndex),
+                        new SimpleSampleLocatableMetadata(
+                                "sample_" + sampleIndex,
+                                SEQUENCE_DICTIONARY),
                         IntStream.range(0, NUM_INTERVALS)
                                 .mapToObj(i -> new SimpleCount(intervals.get(i), (int) sampleCounts[i]))
                                 .collect(Collectors.toList()));
@@ -289,7 +299,7 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
 
             //denoise last sample (which is not a bad sample) in original counts using true number of eigenvalues
             final SimpleCountCollection sampleCounts = new SimpleCountCollection(
-                    new SimpleSampleMetadata("test-sample"),
+                    new SimpleSampleLocatableMetadata("test-sample", SEQUENCE_DICTIONARY),
                     IntStream.range(0, NUM_INTERVALS)
                             .mapToObj(i -> new SimpleCount(originalIntervals.get(i), (int) counts.getEntry(counts.getRowDimension() - 1, i)))
                             .collect(Collectors.toList()));
@@ -311,7 +321,7 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
 
             //denoise first sample (which is a bad sample) in original counts using true number of eigenvalues
             final SimpleCountCollection badSampleCounts = new SimpleCountCollection(
-                    new SimpleSampleMetadata("bad-test-sample"),
+                    new SimpleSampleLocatableMetadata("bad-test-sample", SEQUENCE_DICTIONARY),
                     IntStream.range(0, NUM_INTERVALS)
                             .mapToObj(i -> new SimpleCount(originalIntervals.get(i), (int) counts.getEntry(0, i)))
                             .collect(Collectors.toList()));

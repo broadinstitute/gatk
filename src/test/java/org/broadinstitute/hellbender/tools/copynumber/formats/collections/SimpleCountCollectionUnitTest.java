@@ -1,9 +1,13 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.SimpleCount;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
@@ -11,6 +15,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 
@@ -19,7 +24,11 @@ public final class SimpleCountCollectionUnitTest extends GATKBaseTest {
     private static final File INTEGER_COUNTS_FILE = new File(TEST_SUB_DIR,"simple-count-collection-integer-counts.tsv");
     private static final File DOUBLE_COUNTS_FILE = new File(TEST_SUB_DIR, "simple-count-collection-double-counts.tsv");
 
-    private static final String SAMPLE_NAME_EXPECTED = "test";
+    private static final SampleLocatableMetadata METADATA_EXPECTED = new SimpleSampleLocatableMetadata(
+            "test-sample",
+            new SAMSequenceDictionary(Collections.singletonList(
+                    new SAMSequenceRecord("20", 200000))));
+
     private static final List<SimpleInterval> INTERVALS_EXPECTED = Arrays.asList(
             new SimpleInterval("20", 1,10000),
             new SimpleInterval("20", 10001,20000),
@@ -43,11 +52,11 @@ public final class SimpleCountCollectionUnitTest extends GATKBaseTest {
     @Test
     public void testReadIntegerCounts() {
         final SimpleCountCollection scc = SimpleCountCollection.read(INTEGER_COUNTS_FILE);
-        final String sampleName = scc.getSampleName();
+        final SampleLocatableMetadata metadata = scc.getMetadata();
         final List<SimpleInterval> intervals = scc.getIntervals();
         final RealMatrix readCounts = new Array2DRowRealMatrix(new double[][]{scc.getRecords().stream().mapToDouble(SimpleCount::getCount).toArray()});
 
-        Assert.assertEquals(sampleName, SAMPLE_NAME_EXPECTED);
+        Assert.assertEquals(metadata, METADATA_EXPECTED);
         Assert.assertEquals(intervals, INTERVALS_EXPECTED);
         Assert.assertEquals(readCounts, READ_COUNTS_EXPECTED);
     }

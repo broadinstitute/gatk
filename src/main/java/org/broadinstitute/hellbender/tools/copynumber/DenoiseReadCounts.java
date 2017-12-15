@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.denoising.*;
 import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
@@ -131,7 +130,8 @@ public final class DenoiseReadCounts extends CommandLineProgram {
             }
         } else {    //standardize and perform optional GC-bias correction
             //get GC content (null if not provided)
-            final double[] intervalGCContent = GCBiasCorrector.validateIntervalGCContent(readCounts.getIntervals(), annotatedIntervalsFile);
+            final double[] intervalGCContent = GCBiasCorrector.validateIntervalGCContent(
+                    readCounts.getMetadata().getSequenceDictionary(), readCounts.getIntervals(), annotatedIntervalsFile);
 
             if (intervalGCContent == null) {
                 logger.warn("Neither a panel of normals nor GC-content annotations were provided, so only standardization will be performed...");
@@ -141,7 +141,7 @@ public final class DenoiseReadCounts extends CommandLineProgram {
 
             //construct a result with denoised profile identical to standardized profile
             final SVDDenoisedCopyRatioResult standardizedResult = new SVDDenoisedCopyRatioResult(
-                    new SimpleSampleMetadata(readCounts.getSampleName()),
+                    readCounts.getMetadata(),
                     readCounts.getIntervals(),
                     standardizedCopyRatioValues,
                     standardizedCopyRatioValues);

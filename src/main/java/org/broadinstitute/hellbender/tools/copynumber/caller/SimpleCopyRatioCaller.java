@@ -76,7 +76,7 @@ public final class SimpleCopyRatioCaller {
                 }
             }
         }
-        return new CalledCopyRatioSegmentCollection(copyRatioSegments.getSampleMetadata(), calledSegments);
+        return new CalledCopyRatioSegmentCollection(copyRatioSegments.getMetadata(), calledSegments);
     }
 
     private Statistics calculateCallingStatistics() {

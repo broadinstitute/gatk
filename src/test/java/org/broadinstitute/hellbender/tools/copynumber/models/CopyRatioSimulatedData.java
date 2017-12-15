@@ -4,8 +4,8 @@ import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.apache.commons.math3.distribution.UniformRealDistribution;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.LocatableCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
@@ -34,7 +34,7 @@ final class CopyRatioSimulatedData {
     private final CopyRatioSegmentedData data;
     private final CopyRatioState trueState;
 
-    CopyRatioSimulatedData(final SampleMetadata sampleMetadata,
+    CopyRatioSimulatedData(final SampleLocatableMetadata metadata,
                            final double variance,
                            final double outlierProbability,
                            final int numSegments,
@@ -51,10 +51,9 @@ final class CopyRatioSimulatedData {
         final UniformRealDistribution segmentMeanGenerator = new UniformRealDistribution(rng, SEGMENT_MEAN_MIN, SEGMENT_MEAN_MAX);
         final UniformRealDistribution outlierGenerator = new UniformRealDistribution(rng, LOG2_COPY_RATIO_MIN, LOG2_COPY_RATIO_MAX);
 
-        //put each segment on its own chromosome and sort by lexicographical order
+        //put each segment on its own chromosome and sort in sequence-dictionary order
         final List<String> chromosomes = IntStream.range(0, numSegments)
-                .mapToObj(Integer::toString)
-                .sorted((c1, c2) -> LocatableCollection.LEXICOGRAPHICAL_ORDER_COMPARATOR.compare(new SimpleInterval(c1, 1, 1), new SimpleInterval(c2, 1, 1)))
+                .mapToObj(i -> metadata.getSequenceDictionary().getSequence(i).getSequenceName())
                 .collect(Collectors.toList());
 
         for (final String chromosome : chromosomes) {
@@ -81,7 +80,9 @@ final class CopyRatioSimulatedData {
             }
         }
 
-        data = new CopyRatioSegmentedData(new CopyRatioCollection(sampleMetadata, copyRatios), segments);
+        data = new CopyRatioSegmentedData(
+                new CopyRatioCollection(metadata, copyRatios),
+                new SimpleIntervalCollection(metadata, segments));
         trueState = new CopyRatioState(variance, outlierProbability, new CopyRatioState.SegmentMeans(segmentMeans), new CopyRatioState.OutlierIndicators(outlierIndicators));
     }
 
