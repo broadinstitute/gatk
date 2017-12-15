@@ -5,6 +5,8 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.utils.Utils;
 
 /**
+ * Metadata associated with a collection of locatables associated with a single sample.
+ *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public class SimpleSampleLocatableMetadata implements SampleLocatableMetadata {

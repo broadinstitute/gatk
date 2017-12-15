@@ -1351,7 +1351,7 @@ public final class IntervalUtils {
      * The order of contigs/sequences in the dictionary is the order of the sorting here.
      *
      * @param dictionary dictionary to use for the sorting.  Intervals with sequences not in this dictionary will cause
-     *                   exceptions to be thrown.  Never {@ode null}.
+     *                   exceptions to be thrown.  Never {@code null}.
      * @return an instance of {@code Comapator<Locatable>} for use in sorting of Locatables.
      */
     public static Comparator<Locatable> getDictionaryOrderComparator(final SAMSequenceDictionary dictionary) {

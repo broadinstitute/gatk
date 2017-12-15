@@ -36,12 +36,7 @@ public abstract class AbstractLocatableCollection<METADATA extends LocatableMeta
                                 final TableColumnCollection mandatoryColumns,
                                 final Function<DataLine, RECORD> recordFromDataLineDecoder,
                                 final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
-        super(
-                metadata,
-                sortRecords(records, metadata.getSequenceDictionary()),
-                mandatoryColumns,
-                recordFromDataLineDecoder,
-                recordToDataLineEncoder);
+        super(metadata, sortRecords(records, metadata.getSequenceDictionary()), mandatoryColumns, recordFromDataLineDecoder, recordToDataLineEncoder);
         CopyNumberArgumentValidationUtils.validateIntervals(getRecords(), metadata.getSequenceDictionary());
     }
 

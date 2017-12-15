@@ -5,10 +5,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
-import org.broadinstitute.hellbender.utils.IntervalMergingRule;
-import org.broadinstitute.hellbender.utils.IntervalSetRule;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.*;
 
 import java.util.Iterator;
 import java.util.List;
@@ -36,12 +33,15 @@ public final class CopyNumberArgumentValidationUtils {
     }
 
     /**
-     * Validate that a list of locatables is sorted according to a sequence dictionary and contains no duplicates or overlaps.
+     * Validate that a list of locatables is valid and sorted according to a sequence dictionary and contains no duplicates or overlaps.
      */
     public static <T extends Locatable> void validateIntervals(final List<T> intervals,
                                                                final SAMSequenceDictionary sequenceDictionary) {
         Utils.nonNull(intervals);
         Utils.nonNull(sequenceDictionary);
+        final GenomeLocParser genomeLocParser = new GenomeLocParser(sequenceDictionary);
+        Utils.validateArg(intervals.stream().allMatch(i -> genomeLocParser.isValidGenomeLoc(i.getContig(), i.getStart(), i.getEnd())),
+                "Records contained at least one interval that did not validate against the sequence dictionary.");
         if (!Ordering.from(IntervalUtils.getDictionaryOrderComparator(sequenceDictionary)).isStrictlyOrdered(intervals)) {
             throw new IllegalArgumentException("Records were not strictly sorted in dictionary order.");
         }

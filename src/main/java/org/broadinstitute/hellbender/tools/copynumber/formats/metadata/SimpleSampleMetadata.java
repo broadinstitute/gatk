@@ -5,6 +5,8 @@ import htsjdk.samtools.SAMReadGroupRecord;
 import org.broadinstitute.hellbender.utils.Utils;
 
 /**
+ * Metadata associated with a single sample.
+ *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public class SimpleSampleMetadata implements SampleMetadata {

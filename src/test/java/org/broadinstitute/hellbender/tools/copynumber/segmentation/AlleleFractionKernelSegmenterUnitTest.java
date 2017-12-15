@@ -63,7 +63,7 @@ public final class AlleleFractionKernelSegmenterUnitTest extends BaseTest {
                 new SAMSequenceDictionary(intervals.stream()
                         .map(SimpleInterval::getContig)
                         .distinct()
-                        .map(c -> new SAMSequenceRecord(c, 1000))
+                        .map(c -> new SAMSequenceRecord(c, 10000))
                         .collect(Collectors.toList())));
 
         final int globalDepth = 100;

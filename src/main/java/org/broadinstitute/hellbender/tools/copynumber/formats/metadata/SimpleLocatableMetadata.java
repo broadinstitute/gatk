@@ -5,6 +5,8 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.utils.Utils;
 
 /**
+ * Metadata associated with a collection of locatables.
+ *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public class SimpleLocatableMetadata implements LocatableMetadata {

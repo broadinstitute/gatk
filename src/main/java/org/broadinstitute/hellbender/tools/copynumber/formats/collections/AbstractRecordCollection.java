@@ -19,7 +19,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Represents {@link METADATA} (which can be represented as a {@link SAMFileHeader},
+ * Represents {@link METADATA} (which can be represented as a {@link SAMFileHeader}),
  * an immutable collection of records,
  * a set of mandatory column headers given by a {@link TableColumnCollection},
  * and lambdas for reading and writing records.
@@ -28,7 +28,6 @@ import java.util.stream.Collectors;
  */
 public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD> {
     private final METADATA metadata;
-    private final SAMFileHeader header;
     private final ImmutableList<RECORD> records;
     private final TableColumnCollection mandatoryColumns;
     private final Function<DataLine, RECORD> recordFromDataLineDecoder;
@@ -50,7 +49,6 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
                              final Function<DataLine, RECORD> recordFromDataLineDecoder,
                              final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         this.metadata = Utils.nonNull(metadata);
-        header = metadata.toHeader();
         this.records = ImmutableList.copyOf(Utils.nonNull(records));
         this.mandatoryColumns = Utils.nonNull(mandatoryColumns);
         this.recordFromDataLineDecoder = Utils.nonNull(recordFromDataLineDecoder);
@@ -78,8 +76,7 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
         Utils.nonEmpty(mandatoryColumns.names());
 
         try (final RecordCollectionReader reader = new RecordCollectionReader(inputFile)) {
-            header = reader.getHeader();
-            metadata = MetadataUtils.fromHeader(header, getMetadataType());
+            metadata = MetadataUtils.fromHeader(reader.getHeader(), getMetadataType());
             TableUtils.checkMandatoryColumns(reader.columns(), mandatoryColumns, UserException.BadInput::new);
             records = reader.stream().collect(Collectors.collectingAndThen(Collectors.toList(), ImmutableList::copyOf));
         } catch (final IOException | UncheckedIOException e) {
@@ -112,11 +109,13 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
      * Writes the records to file.
      */
     public void write(final File outputFile) {
-        try (final FileWriter writer = new FileWriter(outputFile, true)) {
-            writer.write(header.getSAMString());
-            try (final RecordWriter recordWriter = new RecordWriter(writer)) {
-                recordWriter.writeAllRecords(records);
-            }
+        try (final FileWriter writer = new FileWriter(outputFile)) {
+            writer.write(metadata.toHeader().getSAMString());
+        } catch (final IOException e) {
+            throw new UserException.CouldNotCreateOutputFile(outputFile, e);
+        }
+        try (final RecordWriter recordWriter = new RecordWriter(new FileWriter(outputFile, true))) {
+            recordWriter.writeAllRecords(records);
         } catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile(outputFile, e);
         }
@@ -142,7 +141,7 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
 
     @Override
     public int hashCode() {
-        int result = header.hashCode();
+        int result = metadata.hashCode();
         result = 31 * result + records.hashCode();
         result = 31 * result + mandatoryColumns.hashCode();
         result = 31 * result + recordFromDataLineDecoder.hashCode();

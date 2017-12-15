@@ -75,7 +75,7 @@ final class AlleleFractionModeller {
         Utils.nonNull(allelicCounts);
         Utils.nonNull(segments);
         Utils.validateArg(allelicCounts.getMetadata().getSequenceDictionary().equals(segments.getMetadata().getSequenceDictionary()),
-                "Metadata do not match.");
+                "Metadata of the allelic counts and the segments do not match.");
         Utils.nonNull(prior);
 
         metadata = allelicCounts.getMetadata();

@@ -56,7 +56,7 @@ final class CopyRatioModeller {
         Utils.nonNull(copyRatios);
         Utils.nonNull(segments);
         Utils.validateArg(copyRatios.getMetadata().getSequenceDictionary().equals(segments.getMetadata().getSequenceDictionary()),
-                "Metadata do not match.");
+                "Metadata of the copy ratios and the segments do not match.");
         Utils.nonEmpty(segments.getRecords());
 
         metadata = copyRatios.getMetadata();

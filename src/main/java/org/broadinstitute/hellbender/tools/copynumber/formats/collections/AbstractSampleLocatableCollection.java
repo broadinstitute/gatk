@@ -31,12 +31,7 @@ public abstract class AbstractSampleLocatableCollection<RECORD extends Locatable
                                       final TableColumnCollection mandatoryColumns,
                                       final Function<DataLine, RECORD> recordFromDataLineDecoder,
                                       final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
-        super(
-                metadata,
-                records,
-                mandatoryColumns,
-                recordFromDataLineDecoder,
-                recordToDataLineEncoder);
+        super(metadata, records, mandatoryColumns, recordFromDataLineDecoder, recordToDataLineEncoder);
     }
 
     /**

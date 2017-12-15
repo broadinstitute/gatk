@@ -24,12 +24,7 @@ public abstract class AbstractSampleRecordCollection<RECORD> extends AbstractRec
                                    final TableColumnCollection mandatoryColumns,
                                    final Function<DataLine, RECORD> recordFromDataLineDecoder,
                                    final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
-        super(
-                metadata,
-                records,
-                mandatoryColumns,
-                recordFromDataLineDecoder,
-                recordToDataLineEncoder);
+        super(metadata, records, mandatoryColumns, recordFromDataLineDecoder, recordToDataLineEncoder);
     }
 
     AbstractSampleRecordCollection(final File inputFile,

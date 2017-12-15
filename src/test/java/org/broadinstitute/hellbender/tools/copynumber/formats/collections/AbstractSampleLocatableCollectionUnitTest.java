@@ -18,6 +18,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -169,6 +170,7 @@ public final class AbstractSampleLocatableCollectionUnitTest extends GATKBaseTes
     public void testWrite() throws IOException {
         final File tempFile = createTempFile("test", ".tsv");
         SIMPLE_LOCATABLE_COLLECTION_EXPECTED.write(tempFile);
+        SIMPLE_LOCATABLE_COLLECTION_EXPECTED.write(tempFile);   //test that file is overwritten
         Assert.assertTrue(FileUtils.contentEquals(tempFile, SIMPLE_LOCATABLE_COLLECTION_FILE));
     }
 
@@ -200,6 +202,13 @@ public final class AbstractSampleLocatableCollectionUnitTest extends GATKBaseTes
                 new SimpleLocatable(new SimpleInterval("1", 100, 200), 2),
                 new SimpleLocatable(new SimpleInterval("2", 1, 1), 1));
         new SimpleSampleLocatableCollection(METADATA_EXPECTED, intervalsWithOverlaps);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testIntervalOutsideSequenceDictionary() {
+        final List<SimpleLocatable> intervalOutsideSequenceDictionary = Collections.singletonList(
+                new SimpleLocatable(new SimpleInterval("X", 1, 100), 1));
+        new SimpleSampleLocatableCollection(METADATA_EXPECTED, intervalOutsideSequenceDictionary);
     }
 
     private static void assertSimpleLocatableCollectionEqualsExpected(final SimpleSampleLocatableCollection simpleLocatableCollection) {
