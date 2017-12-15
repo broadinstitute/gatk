@@ -25,6 +25,7 @@ import org.broadinstitute.hellbender.utils.spark.SparkConverter;
 
 import java.io.File;
 import java.io.StringWriter;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -261,7 +262,7 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
                     ctx, preprocessedStandardizedResult.preprocessedStandardizedValues.transpose(), NUM_SLICES_FOR_SPARK_MATRIX_CONVERSION)
                     .computeSVD(numEigensamples, true, EPSILON);
             final double[] singularValues = svd.s().toArray();    //should be in decreasing order (with corresponding matrices below)
-            if (singularValues.length == 0) {
+            if (singularValues.length == 0 || Arrays.stream(singularValues).noneMatch(s -> s > EPSILON)) {
                 throw new UserException("No non-zero singular values were found.  Stricter filtering criteria may be required.");
             }
             if (singularValues.length < numEigensamples) {

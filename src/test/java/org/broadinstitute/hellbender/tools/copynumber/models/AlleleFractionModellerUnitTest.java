@@ -4,13 +4,13 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.ParameterDecileCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.ModeledSegment;
 import org.broadinstitute.hellbender.utils.mcmc.Decile;
 import org.broadinstitute.hellbender.utils.mcmc.DecileCollection;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -25,7 +25,7 @@ import java.util.stream.IntStream;
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class AlleleFractionModellerUnitTest extends BaseTest {
+public final class AlleleFractionModellerUnitTest extends GATKBaseTest {
     private static final int RANDOM_SEED = 13;
 
     // note: the following tolerance could actually be made much smaller if we used more segments and/or

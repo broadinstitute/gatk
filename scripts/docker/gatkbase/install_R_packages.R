@@ -1,10 +1,4 @@
-source("http://bioconductor.org/biocLite.R")
-biocLite("DNAcopy")
 #Make sure to use http not https as this will give an "unsupported URL scheme" error
-getoptUrl="http://cran.r-project.org/src/contrib/getopt_1.20.0.tar.gz"
-if (!("getopt" %in% rownames(installed.packages()))) {
-  install.packages(getoptUrl, repos=NULL, type="source")
-}
 optparseUrl="http://cran.r-project.org/src/contrib/Archive/optparse/optparse_1.3.2.tar.gz"
 if (!("optparse" %in% rownames(installed.packages()))) {
   install.packages(optparseUrl, repos=NULL, type="source")
@@ -13,7 +7,7 @@ datatableUrl="http://cran.r-project.org/src/contrib/Archive/data.table/data.tabl
 if (!("data.table" %in% rownames(installed.packages()))) {
     install.packages(datatableUrl, repos=NULL, type="source")
 }
-dependencies = c("naturalsort","ggplot2","gplots","reshape","gsalib")
+dependencies = c("ggplot2","gplots","gsalib")
 repos <- c("http://cran.cnr.Berkeley.edu",
            "https://cran.mtu.edu",
            "http://lib.stat.cmu.edu/R/CRAN/")

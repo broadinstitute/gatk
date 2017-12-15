@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.contamination;
 
+import htsjdk.samtools.util.OverlapDetector;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.commons.math3.util.FastMath;
@@ -12,9 +13,6 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.tools.copynumber.utils.segmentation.KernelSegmenter;
-import org.broadinstitute.hellbender.tools.exome.HashedListTargetCollection;
-import org.broadinstitute.hellbender.tools.exome.TargetCollection;
-import org.broadinstitute.hellbender.tools.walkers.qc.Pileup;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.tools.walkers.mutect.FilterMutectCalls;
@@ -119,9 +117,8 @@ public class CalculateContamination extends CommandLineProgram {
     }
 
     private static List<PileupSummary> getCorrespondingHomAltSites(final List<PileupSummary> homAltsInMatchedNormal, final List<PileupSummary> allSites) {
-        // Target collection is useful for querying all sites for presence of each matched normal hom alt
-        final TargetCollection<PileupSummary> tc = new HashedListTargetCollection<>(allSites);
-        return homAltsInMatchedNormal.stream().map(tc::target).filter(Objects::nonNull).collect(Collectors.toList());
+        final OverlapDetector<PileupSummary> homAltsInMatchedNormalOverlapDetector = OverlapDetector.create(homAltsInMatchedNormal);
+        return allSites.stream().filter(homAltsInMatchedNormalOverlapDetector::overlapsAny).collect(Collectors.toList());
     }
 
     private static List<PileupSummary> findHomAltSites(List<PileupSummary> pileupSummaries) {
