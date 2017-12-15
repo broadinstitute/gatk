@@ -305,8 +305,7 @@ tasks.withType(Jar) {
 }
 
 test {
-    classpath =  files("${projectDir}") + project.sourceSets.test.runtimeClasspath
-    testClassesDir =
+    srcDir "/gatk"
 
     outputs.upToDateWhen { false }  //tests will never be "up to date" so you can always rerun them
     String TEST_VERBOSITY = "$System.env.TEST_VERBOSITY"
