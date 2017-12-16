@@ -241,8 +241,13 @@ workflow CNVSomaticPairWorkflow {
         File denoised_read_counts_tumor = DenoiseReadCountsTumor.denoised_copy_ratios
         File standardized_copy_ratios_tumor = DenoiseReadCountsTumor.standardized_copy_ratios
 
-        File oncotated_called_file = select_first([OncotateCalledCNVWorkflow.oncotated_called_file, "null"])
-        File oncotated_called_gene_list_file = select_first([OncotateCalledCNVWorkflow.oncotated_called_gene_list_file, "null"])
+        File modeled_segments_normal = ModelSegmentsNormal.modeled_segments
+        File called_copy_ratio_segments_normal = CallCopyRatioSegmentsNormal.called_copy_ratio_segments
+        File denoised_read_counts_normal = DenoiseReadCountsNormal.denoised_copy_ratios
+        File standardized_copy_ratios_normal = DenoiseReadCountsNormal.standardized_copy_ratios
+
+        File oncotated_called_file_tumor = select_first([OncotateCalledCNVWorkflow.oncotated_called_file, "null"])
+        File oncotated_called_gene_list_file_tumor = select_first([OncotateCalledCNVWorkflow.oncotated_called_gene_list_file, "null"])
     }
 }
 
