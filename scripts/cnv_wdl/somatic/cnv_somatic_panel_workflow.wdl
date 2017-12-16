@@ -54,7 +54,7 @@ workflow CNVSomaticPanelWorkflow {
         }
     }
 
-    scatter (i in range(normal_bams)) {
+    scatter (i in range(length(normal_bams))) {
         call CNVTasks.CollectCounts {
             input:
                 intervals = PreprocessIntervals.preprocessed_intervals,
