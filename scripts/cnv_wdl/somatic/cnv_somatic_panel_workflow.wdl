@@ -26,7 +26,8 @@ import "cnv_common_tasks.wdl" as CNVTasks
 workflow CNVSomaticPanelWorkflow {
     File intervals
     File normal_bams_list
-    Array[Array[String]]+ normal_bams = read_tsv(normal_bams_list)
+    Array[File] normal_bams
+    Array[File] normal_bais
     String pon_entity_id
     File ref_fasta_dict
     File ref_fasta_fai
@@ -59,12 +60,12 @@ workflow CNVSomaticPanelWorkflow {
         }
     }
 
-    scatter (normal_bam in normal_bams) {
+    scatter (i in range(normal_bams)) {
         call CNVTasks.CollectCounts {
             input:
                 intervals = PreprocessIntervals.preprocessed_intervals,
-                bam = normal_bam[0],
-                bam_idx = normal_bam[1],
+                bam = normal_bams[i],
+                bam_idx = normal_bais[i],
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker
         }

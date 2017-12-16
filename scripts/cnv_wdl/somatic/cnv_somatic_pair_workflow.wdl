@@ -219,6 +219,11 @@ workflow CNVSomaticPairWorkflow {
             gatk_docker = gatk_docker,
             disk_space_gb = plot_normal_disk
     }
+
+    output {
+        File modeled_segments_tumor = ModelSegmentsTumor.modeled_segments
+        File called_copy_ratio_segments_tumor = CallCopyRatioSegmentsTumor.called_copy_ratio_segments
+    }
 }
 
 task DenoiseReadCounts {
