@@ -53,7 +53,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     // Initialization of static variables:
     static {
-        muc16NonBasicFeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
+        muc16NonBasicFeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.MUC16_GENCODE_NON_BASIC_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
         muc16FeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
         pik3caFeatureReader = AbstractFeatureReader.getFeatureReader( FuncotatorTestConstants.PIK3CA_GENCODE_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
         refDataSourceHg19Ch19 = ReferenceDataSource.of( new File (FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME) );
@@ -245,6 +245,110 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         l.addAll( DataProviderForSnpsOnMuc16.provideSnpDataForGetVariantClassification_NotInCDS() );
 
         return l.toArray(new Object[][]{{}});
+    }
+
+    @DataProvider
+    Object[][] provideForCreateNonBasicFuncotations() {
+        return new Object[][] {
+                { 9002502, 9002502 },
+                { 9002154, 9002154 },
+                { 9001832, 9001832 },
+                { 9000443, 9000443 },
+                { 9000148, 9000148 },
+                { 8999393, 8999393 },
+                { 8999026, 8999026 },
+                { 8998699, 8998699 },
+                { 8997413, 8997413 },
+                { 8997119, 8997119 },
+                { 8996322, 8996322 },
+                { 8995955, 8995955 },
+                { 8995636, 8995636 },
+                { 8994418, 8994418 },
+                { 8994143, 8994143 },
+                { 8993374, 8993374 },
+                { 8993008, 8993008 },
+                { 8987211, 8987211 },
+                { 8987046, 8987046 },
+                { 8982158, 8982158 },
+                { 8973586, 8973586 },
+                { 9006643, 9006643 },
+                { 9006345, 9006345 },
+                { 9005560, 9005560 },
+                { 9005195, 9005195 },
+                { 9004870, 9004870 },
+                { 9003567, 9003567 },
+                { 9003294, 9003294 },
+                { 9002502, 9002502 },
+                { 9002154, 9002154 },
+                { 9001832, 9001832 },
+                { 9000443, 9000443 },
+                { 9000148, 9000148 },
+                { 8999393, 8999393 },
+                { 8999026, 8999026 },
+                { 8998699, 8998699 },
+                { 8997413, 8997413 },
+                { 8997119, 8997119 },
+                { 8996322, 8996322 },
+                { 8995955, 8995955 },
+                { 8994418, 8994418 },
+                { 8994143, 8994143 },
+                { 8993374, 8993374 },
+                { 8993008, 8993008 },
+                { 8987211, 8987211 },
+                { 8987046, 8987046 },
+                { 8982158, 8982158 },
+                { 8979218, 8979218 },
+                { 8977641, 8977641 },
+                { 8976740, 8976740 },
+                { 8976582, 8976582 },
+                { 8976261, 8976261 },
+                { 8973973, 8973973 },
+                { 8973550, 8973550 },
+                { 8971677, 8971677 },
+                { 8969263, 8969263 },
+                { 8968881, 8968881 },
+                { 8966750, 8966750 },
+                { 9006643, 9006643 },
+                { 9006345, 9006345 },
+                { 9005560, 9005560 },
+                { 9005195, 9005195 },
+                { 9004870, 9004870 },
+                { 9003567, 9003567 },
+                { 9003294, 9003294 },
+                { 9002502, 9002502 },
+                { 9002154, 9002154 },
+                { 9001832, 9001832 },
+                { 9000443, 9000443 },
+                { 9000148, 9000148 },
+                { 8999393, 8999393 },
+                { 8999026, 8999026 },
+                { 8998699, 8998699 },
+                { 8997413, 8997413 },
+                { 8997119, 8997119 },
+                { 8996322, 8996322 },
+                { 8995955, 8995955 },
+                { 8995636, 8995636 },
+                { 8994418, 8994418 },
+                { 8994143, 8994143 },
+                { 8993374, 8993374 },
+                { 8993008, 8993008 },
+                { 8987211, 8987211 },
+                { 8987046, 8987046 },
+                { 8982158, 8982158 },
+                { 8979218, 8979218 },
+                { 8976740, 8976740 },
+                { 8976582, 8976582 },
+                { 8976261, 8976261 },
+                { 8973973, 8973973 },
+                { 8973550, 8973550 },
+                { 8971677, 8971677 },
+                { 8969277, 8969277 },
+                { 8968881, 8968881 },
+                { 8966651, 8966651 },
+                { 8962355, 8962355 },
+                { 8961953, 8961953 },
+                { 8959612, 8959612 },
+        };
     }
 
     @DataProvider
@@ -864,9 +968,50 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         }
     }
 
-    @Test
-    void createNonBasicFuncotations() {
-        throw new GATKException("NOT IMPLEMENTED!");
+    @Test(dataProvider = "provideForCreateNonBasicFuncotations")
+    void createNonBasicFuncotations(final int start, final int end) {
+
+        final String contig = "chr19";
+
+        final SimpleInterval variantInterval = new SimpleInterval( contig, start, end );
+
+        final Allele refAllele = Allele.create("C", true);
+        final Allele altAllele = Allele.create("G", false);
+
+        final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(
+                FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME,
+                contig,
+                start,
+                end,
+                Arrays.asList(refAllele, altAllele)
+        );
+        final VariantContext variantContext = variantContextBuilder.make();
+
+        // Get our gene feature iterator:
+        final CloseableTribbleIterator<GencodeGtfFeature> gtfFeatureIterator;
+        try {
+            gtfFeatureIterator = muc16NonBasicFeatureReader.query(contig, start, end);
+        }
+        catch (final IOException ex) {
+            throw new GATKException("Could not finish the test!", ex);
+        }
+
+        // Get the gene.
+        // We know the first gene is the right one - the gene in question is the MUC16 gene:
+        final GencodeGtfGeneFeature gene = (GencodeGtfGeneFeature) gtfFeatureIterator.next();
+        final ReferenceContext referenceContext = new ReferenceContext(refDataSourceHg19Ch19, variantInterval );
+
+        // Create a factory for our funcotations:
+        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(new File(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE), "VERSION")) {
+
+            // Generate our funcotations:
+            final List<Feature> featureList = new ArrayList<>();
+            featureList.add( gene );
+            final List<Funcotation> funcotations = funcotationFactory.createFuncotations(variantContext, referenceContext, featureList);
+
+            // Make sure we get what we expected:
+            Assert.assertEquals(funcotations.size(), 0);
+        }
     }
 
     @Test (dataProvider = "provideDataForCreateFuncotations")

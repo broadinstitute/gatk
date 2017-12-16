@@ -456,7 +456,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             final boolean isBasic = transcript.getOptionalFields().stream()
                     .filter( f -> f.getName().equals("tag") )
                     .filter( f -> f.getValue() instanceof GencodeGtfFeature.FeatureTag )
-                    .filter( f -> f.equals(GencodeGtfFeature.FeatureTag.BASIC) )
+                    .filter( f -> f.getValue().equals(GencodeGtfFeature.FeatureTag.BASIC) )
                     .count() > 0;
 
             // Only annotate on the `basic` transcripts:
@@ -481,20 +481,22 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             }
         }
 
-        // Get our "Best Transcript" from our list:
-        sortFuncotationsByTranscriptForOutput( outputFuncotations );
-        final GencodeFuncotation bestFuncotation = outputFuncotations.remove(0);
+        if (outputFuncotations.size() > 0) {
+            // Get our "Best Transcript" from our list:
+            sortFuncotationsByTranscriptForOutput(outputFuncotations);
+            final GencodeFuncotation bestFuncotation = outputFuncotations.remove(0);
 
-        // Now convert the other transcripts into summary strings:
-        for ( final GencodeFuncotation funcotation : outputFuncotations ) {
-            otherTranscriptsCondensedAnnotations.add( condenseGencodeFuncotation(funcotation) );
+            // Now convert the other transcripts into summary strings:
+            for ( final GencodeFuncotation funcotation : outputFuncotations ) {
+                otherTranscriptsCondensedAnnotations.add(condenseGencodeFuncotation(funcotation));
+            }
+
+            // Set our `other transcripts` annotation in our best funcotation:
+            bestFuncotation.setOtherTranscripts(otherTranscriptsCondensedAnnotations);
+
+            // Add our best funcotation to the output:
+            outputFuncotations.add(bestFuncotation);
         }
-
-        // Set our `other transcripts` annotation in our best funcotation:
-        bestFuncotation.setOtherTranscripts( otherTranscriptsCondensedAnnotations );
-
-        // Add our best funcotation to the output:
-        outputFuncotations.add(bestFuncotation);
 
         return outputFuncotations;
     }
