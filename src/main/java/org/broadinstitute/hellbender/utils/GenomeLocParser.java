@@ -12,6 +12,9 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 /**
  * Factory class for creating GenomeLocs
  */
@@ -295,15 +298,16 @@ public final class GenomeLocParser {
      *
      */
     public GenomeLoc parseGenomeLoc(final String str) {
-        // 'chr2', 'chr2:1000000' or 'chr2:1,000,000-2,000,000'
-        //System.out.printf("Parsing location '%s'%n", str);
-
         try {
             if ( isUnmappedGenomeLocString(str) ) {
                 return GenomeLoc.UNMAPPED;
             }
 
-            final Locatable locatable = new SimpleInterval(str);
+            // Get a list of all possible valid intervals for this query by resolving the query against the sequence
+            // dictionary. Throw if there is an ambiguity, otherwise get the unique interval from the list.
+            final List<SimpleInterval> allResolvedIntervals = SimpleInterval.getResolvedIntervals(str, contigInfo.getDictionary());
+            final Locatable locatable = getUnambiguousInterval(str, allResolvedIntervals);
+
             final String contig = locatable.getContig();
             final int start = locatable.getStart();
             int stop = locatable.getEnd();
@@ -326,13 +330,42 @@ public final class GenomeLocParser {
     }
 
     /**
+     * Given a (possibly empty) list of valid intervals that have been resolved from a query interval against a
+     * sequence dictionary by {@link #parseGenomeLoc}, throw if there are 0, or more than 1, valid intervals in the
+     * list, otherwise return the single interval to be used.
+     * @param intervalQueryString may not be null
+     * @param allResolvedIntervals may not be null
+     * @return A single, valid, unambiguous interval
+     * @throws UserException.MalformedGenomeLoc if the interval cannot be resolved, or is ambiguous.
+     */
+    static SimpleInterval getUnambiguousInterval(
+            final String intervalQueryString,
+            final List<SimpleInterval> allResolvedIntervals)
+    {
+        Utils.nonNull(intervalQueryString);
+        Utils.nonNull(allResolvedIntervals);
+
+        if (allResolvedIntervals.isEmpty()) {
+            throw new UserException.MalformedGenomeLoc(
+                    String.format("Query interval \"%s\" is not valid for this input.", intervalQueryString));
+        } else if (allResolvedIntervals.size() > 1) {
+            throw new UserException.MalformedGenomeLoc(
+                    String.format(
+                            "Query interval is ambiguous and has multiple valid interpretations: %s. Please report this as a GATK issue.",
+                            allResolvedIntervals.stream().map(f -> f.toString()).collect(Collectors.joining(" and "))
+                    ));
+        } else {
+            return allResolvedIntervals.get(0);
+        }
+    }
+
+    /**
      * @param str String to check
      * @return true if str equals {@link #UNMAPPED_LOC_NAME} (ignoring case)
      */
     public static boolean isUnmappedGenomeLocString(final String str) {
         return str != null && str.trim().equalsIgnoreCase(UNMAPPED_LOC_NAME);
     }
-
 
     // --------------------------------------------------------------------------------------------------------------
     //

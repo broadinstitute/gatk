@@ -13,6 +13,7 @@ import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.SimpleFeature;
 import htsjdk.variant.utils.SAMSequenceDictionaryExtractor;
+import htsjdk.variant.vcf.VCFFileReader;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -437,6 +438,149 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(hg19ReferenceLocs.size(), 4);
         Assert.assertEquals(intervalStringsToGenomeLocs("1", "2", "3").size(), 3);
         Assert.assertEquals(intervalStringsToGenomeLocs("1:1-2", "1:4-5", "2:1-1", "3:2-2").size(), 4);
+    }
+
+    private SAMSequenceDictionary getAmbiguousSequenceDictionary() {
+        // The following strings represent a set of valid contig names, each of which can also be interpreted
+        // as a valid interval query against some *other* contig in the same list (except the last one). That
+        // is, each is comprised of a prefix that appears as another contig in the list, followed by a suffix
+        // that is a valid query against that prefix.
+        //
+        // Given a sequence dictionary containing all of these contigs, each contig name, when used as an
+        // interval query, should be rejected as ambiguous.
+        List<String> ambiguousContigNames = Arrays.asList(
+                "HLA-A*01:02:03:04",    // prefix: HLA-A*01:02:03       suffix: :04
+                "HLA-A*01:02:03:04+",   // prefix: HLA-A*01:02:03       suffix: :04+
+                "HLA-A*01:02:03:04:99", // prefix: HLA-A*01:02:03:04    suffix: :99
+                "HLA-A*01:02:03:04-99", // prefix: HLA-A*01:02:03       suffix: :04-99
+                "HLA-A*01:02:03",       // prefix: HLA-A*01:02          suffix: :03
+                "HLA-A*01:02",          // prefix: HLA-A*01             suffix: :02
+
+                "HLA-A*01"              // no valid prefix
+        );
+
+        final SAMSequenceDictionary ambiguousContigDictionary = new SAMSequenceDictionary();
+        ambiguousContigNames.forEach(s -> ambiguousContigDictionary.addSequence(new SAMSequenceRecord(s, 99)));
+        return ambiguousContigDictionary;
+    }
+
+    @DataProvider(name = "ambiguousIntervalQueries")
+    public Object[][] getAmbiguousIntervalQueries() {
+        return new Object[][]{
+                // query interval string, expected ambiguous intervals
+
+                // query intervals with more than one interpretation
+                { "HLA-A*01:02:03:04",
+                        Arrays.asList(
+                            new SimpleInterval("HLA-A*01:02:03:04", 1, 99),
+                            new SimpleInterval("HLA-A*01:02:03", 4, 4)) },
+                { "HLA-A*01:02:03:04+",
+                        Arrays.asList(
+                                new SimpleInterval("HLA-A*01:02:03:04+", 1, 99),
+                                new SimpleInterval("HLA-A*01:02:03", 4, 99)) },
+                { "HLA-A*01:02:03:04:99",
+                        Arrays.asList(
+                                new SimpleInterval("HLA-A*01:02:03:04:99", 1, 99),
+                                new SimpleInterval("HLA-A*01:02:03:04", 99, 99)) },
+                { "HLA-A*01:02:03:04-99",
+                        Arrays.asList(
+                                new SimpleInterval("HLA-A*01:02:03:04-99", 1, 99),
+                                new SimpleInterval("HLA-A*01:02:03", 4, 99)) },
+                { "HLA-A*01:02:03",
+                        Arrays.asList(
+                                new SimpleInterval("HLA-A*01:02:03", 1, 99),
+                                new SimpleInterval("HLA-A*01:02", 3, 3)) },
+                { "HLA-A*01:02",
+                        Arrays.asList(
+                                new SimpleInterval("HLA-A*01:02", 1, 99),
+                                new SimpleInterval("HLA-A*01", 2, 2)) },
+
+                { "HLA:02", Collections.EMPTY_LIST},  // embedded :, but no valid prefix
+                { "HLA-A*01",
+                        Arrays.asList(new SimpleInterval("HLA-A*01", 1, 99)) }
+        };
+    }
+
+    @Test(dataProvider = "ambiguousIntervalQueries")
+    public void testAmbiguousIntervalQueries(final String ambiguousQuery, final List<String> expectedAmbiguousContigs) {
+        final SAMSequenceDictionary sd = getAmbiguousSequenceDictionary();
+        Assert.assertEquals(new HashSet<>(SimpleInterval.getResolvedIntervals(ambiguousQuery, sd)), new HashSet<>(expectedAmbiguousContigs));
+    }
+
+    @Test(expectedExceptions = NumberFormatException.class)
+    public void testMalformedQueryFail() {
+        final SAMSequenceDictionary sd = getAmbiguousSequenceDictionary();
+        sd.addSequence(new SAMSequenceRecord("contig:1-10", 99));
+        sd.addSequence(new SAMSequenceRecord("contig", 99));
+        SimpleInterval.getResolvedIntervals("contig:abc-dce", sd);
+    }
+
+    @Test
+    public void testMalformedAmbiguousQuerySucceeds() {
+        final SAMSequenceDictionary sd = getAmbiguousSequenceDictionary();
+        final String queryString = "contig:abc-dce";
+
+        sd.addSequence(new SAMSequenceRecord("contig", 99));
+        sd.addSequence(new SAMSequenceRecord(queryString, 99));
+
+        // the query string matches as a full contig, but also has a prefix that matches the contig "contig". When
+        // viewed as the latter, however, the start-end positions fail to parse as numbers. This resolves as a query
+        // against the longer contig "contig:abc-dce", and logs a warning
+        HashSet<SimpleInterval> expectedIntervals = new HashSet<>();
+        expectedIntervals.add(new SimpleInterval(queryString, 1, 99));
+        Assert.assertEquals(
+                new HashSet<>(SimpleInterval.getResolvedIntervals(queryString, sd)),
+                new HashSet<>(expectedIntervals));
+    }
+
+    @Test
+    public void testUseAllHG38ContigsInIntervalQuery() {
+        SAMSequenceDictionary sd;
+
+        final File testFile = new File ("src/test/resources/org/broadinstitute/hellbender/engine/Homo_sapiens_assembly38.headerOnly.vcf.gz");
+        try (VCFFileReader vcfReader = new VCFFileReader(testFile, false)) {
+            sd = vcfReader.getFileHeader().getSequenceDictionary();
+        }
+
+        // Pull each contig from hg38 and validate that it can be used as a interval string without
+        // being rejected as ambiguous.
+        sd.getSequences().stream().forEach(
+                hg38Contig -> {
+                    // query using just the raw contig name
+                    List<SimpleInterval> ambiguousIntervals = SimpleInterval.getResolvedIntervals(hg38Contig.getSequenceName(), sd);
+                    Assert.assertNotNull(ambiguousIntervals);
+                    Assert.assertEquals(ambiguousIntervals.size(), 1);
+
+                    // query using an interval with the format "name:1-end"
+                    ambiguousIntervals = SimpleInterval.getResolvedIntervals(
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength()).toString(), sd);
+                    Assert.assertNotNull(ambiguousIntervals);
+                    Assert.assertEquals(ambiguousIntervals.size(), 1);
+
+                    // query using an interval with the format "name:1+"
+                    ambiguousIntervals = SimpleInterval.getResolvedIntervals(hg38Contig.getSequenceName() + ":1+", sd);
+                    Assert.assertNotNull(ambiguousIntervals);
+                    Assert.assertEquals(ambiguousIntervals.size(), 1);
+                }
+        );
+    }
+
+    @Test
+    public void testTerminatingPlusSign() {
+        // special case test for a query "prefix:+", where "prefix:" is a valid contig
+        final SAMSequenceDictionary sd = getAmbiguousSequenceDictionary();
+        final String contigPrefix = "prefix:";
+        sd.addSequence(new SAMSequenceRecord(contigPrefix, 99));
+        Assert.assertEquals(
+                new HashSet<>(SimpleInterval.getResolvedIntervals(contigPrefix + "+", sd)),
+                new HashSet<>());
+
+        sd.addSequence(new SAMSequenceRecord(contigPrefix + "+", 99));
+        HashSet<SimpleInterval> expectedIntervals = new HashSet<>();
+        expectedIntervals.add(new SimpleInterval("prefix:+", 1, 99));
+        Assert.assertEquals(
+                new HashSet<>(SimpleInterval.getResolvedIntervals(contigPrefix + "+", sd)),
+                expectedIntervals);
     }
 
     @Test

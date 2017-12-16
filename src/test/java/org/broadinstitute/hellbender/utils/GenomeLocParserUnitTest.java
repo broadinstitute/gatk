@@ -10,6 +10,7 @@ import htsjdk.tribble.SimpleFeature;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.vcf.VCFFileReader;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -502,6 +503,23 @@ public final class GenomeLocParserUnitTest extends GATKBaseTest {
         Assert.assertEquals(padded.getContig(), input.getContig());
         Assert.assertEquals(padded.getStart(), Math.max(input.getStart() - pad, 1));
         Assert.assertEquals(padded.getStop(), Math.min(input.getStop() + pad, contigLength));
+    }
+
+    @Test
+    public void testQueryAllHG38Intervals() {
+        SAMSequenceDictionary sd;
+        final File testFile = new File ("src/test/resources/org/broadinstitute/hellbender/engine/Homo_sapiens_assembly38.headerOnly.vcf.gz");
+
+        try (VCFFileReader vcfReader = new VCFFileReader(testFile, false)) {
+            sd = vcfReader.getFileHeader().getSequenceDictionary();
+        }
+
+        // Test that we can use any contig from hg38 as a query against a VCF with an hg38 sequence dictionary without
+        // having an ambiguity.
+        final GenomeLocParser localGenomeLocParser = new GenomeLocParser(sd);
+        sd.getSequences().stream().forEach(hg38Contig -> localGenomeLocParser.parseGenomeLoc(hg38Contig.getSequenceName()));
+        sd.getSequences().stream().forEach(hg38Contig -> localGenomeLocParser.parseGenomeLoc(hg38Contig.getSequenceName() + ":1-1"));
+        sd.getSequences().stream().forEach(hg38Contig -> localGenomeLocParser.parseGenomeLoc(hg38Contig.getSequenceName() + ":1+"));
     }
 
 }
