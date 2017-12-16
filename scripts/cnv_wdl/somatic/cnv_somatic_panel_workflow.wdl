@@ -20,7 +20,6 @@ import "cnv_common_tasks.wdl" as CNVTasks
 
 workflow CNVSomaticPanelWorkflow {
     File intervals
-    File normal_bams_list
     Array[File] normal_bams
     Array[File] normal_bais
     String pon_entity_id
