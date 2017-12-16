@@ -20,6 +20,7 @@
 #############
 
 import "cnv_common_tasks.wdl" as CNVTasks
+import "cnv_somatic_oncotate.wdl" as Oncotate
 
 workflow CNVSomaticPairWorkflow {
     File common_sites
@@ -34,6 +35,12 @@ workflow CNVSomaticPairWorkflow {
     File ref_fasta
     String gatk_docker
     File? gatk4_jar_override
+
+    # For running oncotator
+    Boolean is_run_oncotator = false
+
+    # Ignored if not running oncotator
+    String oncotator_docker="broadinstitute/oncotator:1.9.3.0-eval-gatk-protected"
 
     # Use as a last resort to increase the disk given to every task in case of ill behaving data
     Int? emergency_extra_disk
@@ -220,9 +227,22 @@ workflow CNVSomaticPairWorkflow {
             disk_space_gb = plot_normal_disk
     }
 
+    if (is_run_oncotator) {
+        call Oncotate.CNVOncotateCalledSegments as OncotateCalledCNVWorkflow {
+            input:
+                 called_file = CallCopyRatioSegmentsTumor.called_copy_ratio_segments,
+                 oncotator_docker = oncotator_docker
+        }
+    }
+
     output {
         File modeled_segments_tumor = ModelSegmentsTumor.modeled_segments
         File called_copy_ratio_segments_tumor = CallCopyRatioSegmentsTumor.called_copy_ratio_segments
+        File denoised_read_counts_tumor = DenoiseReadCountsTumor.denoised_copy_ratios
+        File standardized_copy_ratios_tumor = DenoiseReadCountsTumor.standardized_copy_ratios
+
+        File oncotated_called_file = select_first([OncotateCalledCNVWorkflow.oncotated_called_file, "null"])
+        File oncotated_called_gene_list_file = select_first([OncotateCalledCNVWorkflow.oncotated_called_gene_list_file, "null"])
     }
 }
 

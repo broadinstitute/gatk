@@ -2,11 +2,6 @@
 #
 # Notes:
 #
-# - Input file (normal_bams_list) must contain file paths to bam and bam index files separated by tabs in the following format:
-#    normal_bam_1    bam_idx_1
-#    normal_bam_2    bam_idx_2
-#    ...
-#
 # - The interval-list file is required for both WGS and WES workflows and should be a Picard or GATK-style interval list.
 #   These intervals will be padded on both sides by the amount specified by PreprocessIntervals.padding (default 250)
 #   and split into bins of length specified by PreprocessIntervals.bin_length (default 1000; specify 0 to skip binning,
