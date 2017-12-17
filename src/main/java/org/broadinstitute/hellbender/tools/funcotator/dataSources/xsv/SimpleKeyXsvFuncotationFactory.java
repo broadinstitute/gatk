@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.utils.nio.PathLineIterator;
 
@@ -15,7 +16,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Factory for creating {@link XSVFuncotation}s by handling `Separated Value` files with arbitrary delimiters
+ * Factory for creating {@link TableFuncotation}s by handling `Separated Value` files with arbitrary delimiters
  * (e.g. CSV/TSV files) which contain data that use a simple key (i.e. {@link XsvDataKeyType}).
  *
  * This is a high-level object that interfaces with the internals of {@link org.broadinstitute.hellbender.tools.funcotator.Funcotator}.
@@ -64,7 +65,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
     private final int numHeaderLinesToIgnore;
 
     /**
-     * The names of the columns containing values that will be added to the resulting {@link XSVFuncotation}.
+     * The names of the columns containing values that will be added to the resulting {@link TableFuncotation}.
      */
     private final List<String> annotationColumnNames;
 
@@ -147,8 +148,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
     /**
      * {@inheritDoc}
      * This method should never be called on a {@link SimpleKeyXsvFuncotationFactory} - knowledge of the applied
-     * {@link GencodeFuncotation}s is required to create an {@link XSVFuncotation} from here.
-     *
+     * {@link GencodeFuncotation}s is required to create an {@link TableFuncotation} from here.
      */
     public List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList) {
         throw new GATKException(this.getClass().getName() + " requires a set of GencodeFuncotations in order to createFuncotations!  This method should never be called on a " + this.getClass().getName());
@@ -159,7 +159,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
      * {@inheritDoc}
      * For each {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation}, the Transcript ID or Gene Name (Hugo Symbol)
      * is checked for a match against the key of any annotation in {@link SimpleKeyXsvFuncotationFactory#annotationMap}.
-     * If a match is found, an {@link XSVFuncotation} is added to the list to be returned.
+     * If a match is found, an {@link TableFuncotation} is added to the list to be returned.
      */
     public List<Funcotation> createFuncotations(final VariantContext variant,
                                                 final ReferenceContext referenceContext,
@@ -184,7 +184,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
             final List<String> annotations = annotationMap.get( key );
             if ( annotations != null ) {
                 // Add our annotations to the list:
-                outputFuncotations.add( new XSVFuncotation(annotationColumnNames, annotations) );
+                outputFuncotations.add( new TableFuncotation(annotationColumnNames, annotations) );
             }
         }
 

@@ -243,6 +243,9 @@ dependencies {
     compile 'org.broadinstitute:gatk-bwamem-jni:1.0.3'
     compile 'org.broadinstitute:gatk-fermilite-jni:1.0.0-rc6'
 
+    // Required for COSMIC Funcotator data source:
+    compile 'org.xerial:sqlite-jdbc:3.20.1'
+
     //needed for DataflowAssert
     testCompile 'org.hamcrest:hamcrest-all:1.3'
     testCompile 'junit:junit:4.12'

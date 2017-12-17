@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -11,7 +12,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * A Unit Test class for {@link XSVFuncotation}
+ * A Unit Test class for {@link TableFuncotation}
  * Created by jonn on 11/28/17.
  */
 public class XSVFuncotationUnitTest extends GATKBaseTest {
@@ -45,8 +46,8 @@ public class XSVFuncotationUnitTest extends GATKBaseTest {
     @DataProvider
     Object[][] provideDataForTestSetFieldSerializationOverrideValue() {
 
-        final XSVFuncotation funcotation =
-                new XSVFuncotation(
+        final TableFuncotation funcotation =
+                new TableFuncotation(
                     Arrays.asList("A", "B", "C"), Arrays.asList("1", "2", "3")
                 );
 
@@ -68,19 +69,19 @@ public class XSVFuncotationUnitTest extends GATKBaseTest {
     Object[][] provideForTestSerializeToVcfString() {
         return new Object[][] {
                 {
-                    new XSVFuncotation(Collections.emptyList(), Collections.emptyList()),
+                    new TableFuncotation(Collections.emptyList(), Collections.emptyList()),
                     ""
                 },
                 {
-                    new XSVFuncotation(Collections.singletonList("A"), Collections.singletonList(("1"))),
+                    new TableFuncotation(Collections.singletonList("A"), Collections.singletonList(("1"))),
                     "1"
                 },
                 {
-                    new XSVFuncotation(Arrays.asList("A", "B"), Arrays.asList("1", "2")),
+                    new TableFuncotation(Arrays.asList("A", "B"), Arrays.asList("1", "2")),
                     "1|2"
                 },
                 {
-                    new XSVFuncotation(Arrays.asList("A", "B", "C"), Arrays.asList("1", "2", "3")),
+                    new TableFuncotation(Arrays.asList("A", "B", "C"), Arrays.asList("1", "2", "3")),
                     "1|2|3"
                 },
         };
@@ -105,12 +106,12 @@ public class XSVFuncotationUnitTest extends GATKBaseTest {
 
         final String fieldName = "PLACEHOLDER";
 
-        final XSVFuncotation funcotation = new XSVFuncotation( Collections.singletonList(fieldName), Collections.singletonList(fieldValue) );
+        final TableFuncotation funcotation = new TableFuncotation( Collections.singletonList(fieldName), Collections.singletonList(fieldValue) );
         Assert.assertEquals( funcotation.get(fieldName), fieldValue );
     }
 
     @Test(dataProvider = "provideDataForTestSetFieldSerializationOverrideValue")
-    public void testSetFieldSerializationOverrideValue(final XSVFuncotation funcotation,
+    public void testSetFieldSerializationOverrideValue(final TableFuncotation funcotation,
                                                        final String fieldName,
                                                        String overrideValue) {
         if ( overrideValue == null ) {
@@ -123,20 +124,20 @@ public class XSVFuncotationUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider = "provideForTestSerializeToVcfString")
-    public void testSerializeToVcfString(final XSVFuncotation funcotation,
+    public void testSerializeToVcfString(final TableFuncotation funcotation,
                                          final String expected) {
         Assert.assertEquals( funcotation.serializeToVcfString(), expected );
     }
 
     @Test(dataProvider = "provideListOfStrings")
     public void testKeySet(final List<String> kvNames) {
-        final XSVFuncotation funcotation = new XSVFuncotation(kvNames, kvNames.stream().map(s -> s + "VVV").collect(Collectors.toList()));
+        final TableFuncotation funcotation = new TableFuncotation(kvNames, kvNames.stream().map(s -> s + "VVV").collect(Collectors.toList()));
         Assert.assertEquals( funcotation.keySet(), kvNames);
     }
 
     @Test(dataProvider = "provideListOfStrings")
     public void testValues(final List<String> kvNames) {
-        final XSVFuncotation funcotation = new XSVFuncotation(kvNames.stream().map(s -> s + "KEY").collect(Collectors.toList()), kvNames);
+        final TableFuncotation funcotation = new TableFuncotation(kvNames.stream().map(s -> s + "KEY").collect(Collectors.toList()), kvNames);
         Assert.assertEquals( funcotation.values(), kvNames);
     }
 
