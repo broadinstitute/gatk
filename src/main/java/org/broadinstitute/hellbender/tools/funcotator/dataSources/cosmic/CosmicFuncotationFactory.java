@@ -33,6 +33,8 @@ import java.util.regex.Pattern;
  */
 public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
 
+    // TODO: Create new class from this for a new datasource for DATABASES!
+
     //==================================================================================================================
     // Public Static Members:
 
