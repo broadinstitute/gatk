@@ -142,7 +142,7 @@ public class GetPileupSummaries extends MultiVariantWalker {
         if (sawVariantsWithoutAlleleFrequency && !sawVariantsWithAlleleFrequency) {
             throw new UserException.BadInput("No variants in population vcf had an allele frequency (AF) field.");
         }
-        PileupSummary.writePileupSummaries(pileupSummaries, outputTable);
+        PileupSummary.writeToFile(pileupSummaries, outputTable);
         return "SUCCESS";
     }
 
