@@ -40,7 +40,7 @@ task OncotateSegments {
     >>>
 
     runtime {
-        docker: select_first([oncotator_docker, "broadinstitute/oncotator:1.9.3.0-eval-gatk-protected"])
+        docker: select_first([oncotator_docker, "broadinstitute/oncotator:1.9.5.0-eval-gatk-protected"])
         memory: select_first([mem, 3]) + " GB"
         disks: "local-disk " + select_first([disk_space_gb, 50]) + " HDD"
         preemptible: select_first([preemptible_attempts, 2])

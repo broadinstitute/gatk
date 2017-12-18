@@ -40,7 +40,7 @@ workflow CNVSomaticPairWorkflow {
     Boolean is_run_oncotator = false
 
     # Ignored if not running oncotator
-    String oncotator_docker="broadinstitute/oncotator:1.9.3.0-eval-gatk-protected"
+    String oncotator_docker="broadinstitute/oncotator:1.9.5.0-eval-gatk-protected"
 
     # Use as a last resort to increase the disk given to every task in case of ill behaving data
     Int? emergency_extra_disk
