@@ -23,8 +23,10 @@ import java.util.regex.Pattern;
 
 
 /**
- * Factory for creating {@link Funcotation}s by handling a SQLite database containing information from COSMIC
- * (http://cancer.sanger.ac.uk/cosmic/download).
+ * Factory for creating {@link Funcotation}s by handling a SQLite database containing information from COSMIC.
+ * The raw datasource (http://cancer.sanger.ac.uk/cosmic/download - CosmicCompleteTargetedScreensMutantExport.tsv.gz)
+ * must be unzipped and preprocessed with the script `createSqliteCosmicDb.sh`.
+ *
  *
  * This is a high-level object that interfaces with the internals of {@link org.broadinstitute.hellbender.tools.funcotator.Funcotator}.
  * Created by jonn on 12/16/17.
