@@ -31,7 +31,6 @@ releases of the toolkit.
     * [Running GATK4 Spark tools on Google Cloud Dataproc](#dataproc)
     * [Note on 2bit Reference](#2bit)
     * [Using R to generate plots](#R)
-    * [Running the CNV workflows](#cnv_workflows)
     * [GATK Tab Completion for Bash](#tab_completion)
 * [For GATK Developers](#developers)
     * [General guidelines for GATK4 developers](#dev_guidelines)
@@ -284,10 +283,6 @@ sudo Rscript scripts/docker/gatkbase/install_R_packages.R
 R 
 source("scripts/docker/gatkbase/install_R_packages.R")
 ```
-
-#### <a name="cnv_workflows">Running the CNV workflows</a>
-
-* A walkthrough and examples for the CNV workflows can be found [here](http://gatkforums.broadinstitute.org/gatk/discussion/9143)
 
 #### <a name="tab_completion">Bash Command-line Tab Completion (BETA)</a>
 
