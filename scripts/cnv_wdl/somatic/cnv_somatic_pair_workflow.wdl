@@ -279,6 +279,19 @@ workflow CNVSomaticPairWorkflow {
         File delta_MAD_normal = PlotDenoisedCopyRatiosNormal.delta_MAD
         File scaled_delta_MAD_normal = PlotDenoisedCopyRatiosNormal.scaled_delta_MAD
 
+        File preprocessed_intervals = PreprocessIntervals.preprocessed_intervals
+        File read_counts_tumor = CollectCountsTumor.counts
+        File read_counts_entity_id_tumor = CollectCountsTumor.entity_id
+
+        File read_counts_normal = CollectCountsNormal.counts
+        File read_counts_entity_id_normal = CollectCountsNormal.entity_id
+
+        File allelic_counts_tumor = CollectAllelicCountsTumor.allelic_counts
+        File allelic_counts_entity_id_tumor = CollectAllelicCountsTumor.entity_id
+
+        File allelic_counts_normal = CollectAllelicCountsNormal.allelic_counts
+        File allelic_counts_entity_id_normal = CollectAllelicCountsNormal.entity_id
+
         File oncotated_called_file_tumor = select_first([OncotateCalledCNVWorkflow.oncotated_called_file, "null"])
         File oncotated_called_gene_list_file_tumor = select_first([OncotateCalledCNVWorkflow.oncotated_called_gene_list_file, "null"])
     }
