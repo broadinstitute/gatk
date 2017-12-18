@@ -40,7 +40,7 @@ workflow CNVSomaticPairWorkflow {
     Boolean is_run_oncotator = false
 
     # Ignored if not running oncotator
-    String oncotator_docker="broadinstitute/oncotator:1.9.5.0-eval-gatk-protected"
+    String oncotator_docker = "broadinstitute/oncotator:1.9.5.0-eval-gatk-protected"
 
     # Use as a last resort to increase the disk given to every task in case of ill behaving data
     Int? emergency_extra_disk
@@ -190,6 +190,7 @@ workflow CNVSomaticPairWorkflow {
             gatk_docker = gatk_docker,
             disk_space_gb = plot_tumor_disk
     }
+
     # The files from other tasks are small enough to just combine into one disk variable and pass to the normal plotting tasks
     Int plot_normal_disk = ref_size + ceil(size(DenoiseReadCountsNormal.standardized_copy_ratios, "GB")) + ceil(size(DenoiseReadCountsNormal.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsNormal.het_allelic_counts, "GB")) + ceil(size(ModelSegmentsNormal.modeled_segments, "GB")) + disk_pad
     call PlotDenoisedCopyRatios as PlotDenoisedCopyRatiosNormal {
@@ -238,13 +239,45 @@ workflow CNVSomaticPairWorkflow {
     output {
         File modeled_segments_tumor = ModelSegmentsTumor.modeled_segments
         File called_copy_ratio_segments_tumor = CallCopyRatioSegmentsTumor.called_copy_ratio_segments
-        File denoised_read_counts_tumor = DenoiseReadCountsTumor.denoised_copy_ratios
+        File denoised_copy_ratios_tumor = DenoiseReadCountsTumor.denoised_copy_ratios
         File standardized_copy_ratios_tumor = DenoiseReadCountsTumor.standardized_copy_ratios
+        File modeled_segments_plot_tumor = PlotModeledSegmentsTumor.modeled_segments_plot
+        File het_allelic_counts_tumor = ModelSegmentsTumor.het_allelic_counts
+        File normal_het_allelic_counts_tumor = ModelSegmentsTumor.normal_het_allelic_counts
+        File copy_ratio_only_segments_tumor = ModelSegmentsTumor.copy_ratio_only_segments
+        File modeled_segments_begin_tumor = ModelSegmentsTumor.modeled_segments_begin
+        File copy_ratio_parameters_begin_tumor = ModelSegmentsTumor.copy_ratio_parameters_begin
+        File allele_fraction_parameters_begin_tumor = ModelSegmentsTumor.allele_fraction_parameters_begin
+        File copy_ratio_parameters_tumor = ModelSegmentsTumor.copy_ratio_parameters
+        File allele_fraction_parameters_tumor = ModelSegmentsTumor.allele_fraction_parameters
+
+        File denoised_copy_ratios_plot_tumor = PlotDenoisedCopyRatiosTumor.denoised_copy_ratios_plot
+        File denoised_copy_ratios_lim_4_plot_tumor = PlotDenoisedCopyRatiosTumor.denoised_copy_ratios_lim_4_plot
+        File standardized_MAD_tumor = PlotDenoisedCopyRatiosTumor.standardized_MAD
+        File denoised_MAD_tumor = PlotDenoisedCopyRatiosTumor.denoised_MAD
+        File delta_MAD_tumor = PlotDenoisedCopyRatiosTumor.delta_MAD
+        File scaled_delta_MAD_tumor = PlotDenoisedCopyRatiosTumor.scaled_delta_MAD
 
         File modeled_segments_normal = ModelSegmentsNormal.modeled_segments
         File called_copy_ratio_segments_normal = CallCopyRatioSegmentsNormal.called_copy_ratio_segments
-        File denoised_read_counts_normal = DenoiseReadCountsNormal.denoised_copy_ratios
+        File denoised_copy_ratios_normal = DenoiseReadCountsNormal.denoised_copy_ratios
         File standardized_copy_ratios_normal = DenoiseReadCountsNormal.standardized_copy_ratios
+        File modeled_segments_plot_normal = PlotModeledSegmentsNormal.modeled_segments_plot
+        File het_allelic_counts_normal = ModelSegmentsNormal.het_allelic_counts
+        File normal_het_allelic_counts_normal = ModelSegmentsNormal.normal_het_allelic_counts
+        File copy_ratio_only_segments_normal = ModelSegmentsNormal.copy_ratio_only_segments
+        File modeled_segments_begin_normal = ModelSegmentsNormal.modeled_segments_begin
+        File copy_ratio_parameters_begin_normal = ModelSegmentsNormal.copy_ratio_parameters_begin
+        File allele_fraction_parameters_begin_normal = ModelSegmentsNormal.allele_fraction_parameters_begin
+        File copy_ratio_parameters_normal = ModelSegmentsNormal.copy_ratio_parameters
+        File allele_fraction_parameters_normal = ModelSegmentsNormal.allele_fraction_parameters
+
+        File denoised_copy_ratios_plot_normal = PlotDenoisedCopyRatiosNormal.denoised_copy_ratios_plot
+        File denoised_copy_ratios_lim_4_plot_normal = PlotDenoisedCopyRatiosNormal.denoised_copy_ratios_lim_4_plot
+        File standardized_MAD_normal = PlotDenoisedCopyRatiosNormal.standardized_MAD
+        File denoised_MAD_normal = PlotDenoisedCopyRatiosNormal.denoised_MAD
+        File delta_MAD_normal = PlotDenoisedCopyRatiosNormal.delta_MAD
+        File scaled_delta_MAD_normal = PlotDenoisedCopyRatiosNormal.scaled_delta_MAD
 
         File oncotated_called_file_tumor = select_first([OncotateCalledCNVWorkflow.oncotated_called_file, "null"])
         File oncotated_called_gene_list_file_tumor = select_first([OncotateCalledCNVWorkflow.oncotated_called_gene_list_file, "null"])

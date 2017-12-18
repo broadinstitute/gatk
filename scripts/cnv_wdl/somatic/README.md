@@ -17,8 +17,8 @@ The reference used must be the same between PoN and case samples.
 
 - ``CNVSomaticPanelWorkflow.gatk_docker`` -- GATK Docker image (e.g., ``broadinstitute/gatk:latest``).
 - ``CNVSomaticPanelWorkflow.intervals`` -- Picard or GATK-style interval list.  For WGS, this should typically only include the autosomal chromosomes.
-- ``CNVSomaticPanelWorkflow.normal_bams`` -- List of files consisting of bams.  This list must correspond to `normal_bais`.  For example, `["Sample1.bam", "Sample2.bam"]`
-- ``CNVSomaticPanelWorkflow.normal_bais`` -- List of files consisting of bais.  This list must correspond to `normal_bams`.  For example, `["Sample1.bai", "Sample2.bai"]`
+- ``CNVSomaticPanelWorkflow.normal_bams`` -- List of files consisting of bams.  This list must correspond to `normal_bais`.  For example, `["Sample1.bam", "Sample2.bam"]`.
+- ``CNVSomaticPanelWorkflow.normal_bais`` -- List of files consisting of bais.  This list must correspond to `normal_bams`.  For example, `["Sample1.bai", "Sample2.bai"]`.
 - ``CNVSomaticPanelWorkflow.pon_entity_id`` -- Name of the final PoN file.
 - ``CNVSomaticPanelWorkflow.ref_fasta_dict`` -- Path to reference dict file.
 - ``CNVSomaticPanelWorkflow.ref_fasta_fai`` -- Path to reference fasta fai file.
@@ -50,9 +50,9 @@ The reference (and bins, if specified) used must be the same between PoN and cas
 
 In additional, there are several task-level parameters that may be set by advanced users as above.
 
-To invoke oncotator on the called tumor copy ratio segments:
+To invoke Oncotator on the called tumor copy-ratio segments:
 
-- ``CNVSomaticPairWorkflow.is_run_oncotator`` -- (optional) If true, run oncotator on the called copy ratio segments.  This will generate both a simple tsv and a gene list.
+- ``CNVSomaticPairWorkflow.is_run_oncotator`` -- (optional) If true, run Oncotator on the called copy-ratio segments.  This will generate both a simple TSV and a gene list.
 
 
 Further explanation of these task-level parameters may be found by invoking the ``--help`` documentation available in the gatk.jar for each tool.
