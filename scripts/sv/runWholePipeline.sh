@@ -56,14 +56,15 @@ NUM_EXECUTORS=$((2 * ${NUM_WORKERS}))
     -I "${INPUT_BAM}" \
     -O "${PROJECT_OUTPUT_DIR}/variants/inv_del_ins.vcf" \
     -R "${REF_TWOBIT}" \
-    --alignerIndexImage "${REF_INDEX_IMAGE}" \
-    --exclusionIntervals "${INTERVAL_KILL_LIST}" \
-    --kmersToIgnore "${KMER_KILL_LIST}" \
-    --crossContigsToIgnore "${ALTS_KILL_LIST}" \
-    --breakpointIntervals "${PROJECT_OUTPUT_DIR}/intervals" \
-    --fastqDir "${PROJECT_OUTPUT_DIR}/fastq" \
-    --contigSAMFile "${PROJECT_OUTPUT_DIR}/assemblies.sam" \
-    --targetLinkFile ${PROJECT_OUTPUT_DIR}/target_links.bedpe \
+    --aligner-index-image "${REF_INDEX_IMAGE}" \
+    --exclusion-intervals "${INTERVAL_KILL_LIST}" \
+    --kmers-to-ignore "${KMER_KILL_LIST}" \
+    --cross-contigs-to-ignore "${ALTS_KILL_LIST}" \
+    --breakpoint-intervals "${PROJECT_OUTPUT_DIR}/intervals" \
+    --fastq-dir "${PROJECT_OUTPUT_DIR}/fastq" \
+    --contig-sam-file "${PROJECT_OUTPUT_DIR}/assemblies.sam" \
+    --target-link-file ${PROJECT_OUTPUT_DIR}/target_links.bedpe \
+    --exp-variants-out-dir "${PROJECT_OUTPUT_DIR}/experimentalVariantInterpretations" \
     ${SV_ARGS} \
     -- \
     --sparkRunner GCS \

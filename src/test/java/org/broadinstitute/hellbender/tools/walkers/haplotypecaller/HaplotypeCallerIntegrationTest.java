@@ -48,7 +48,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-pairHMM", "AVX_LOGLESS_CACHING",
-                "-addOutputVCFCommandLine", "false"
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
         };
 
         runCommandLine(args);
@@ -81,7 +81,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-G", "StandardHCAnnotation",
                 "-G", "AS_StandardAnnotation",
                 "-pairHMM", "AVX_LOGLESS_CACHING",
-                "-addOutputVCFCommandLine", "false"
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
         };
 
         runCommandLine(args);
@@ -175,7 +175,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-O", output.getAbsolutePath(),
                 "-ERC", "GVCF",
                 "-pairHMM", "AVX_LOGLESS_CACHING",
-                "-addOutputVCFCommandLine", "false"
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
         };
 
         runCommandLine(args);
@@ -206,7 +206,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-G", "AS_StandardAnnotation",
                 "-ERC", "GVCF",
                 "-pairHMM", "AVX_LOGLESS_CACHING",
-                "-addOutputVCFCommandLine", "false"
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
         };
 
         runCommandLine(args);
@@ -390,7 +390,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-O", output.getAbsolutePath(),
                 "-ploidy", "4",
                 "-maxGT", "15",
-                "-addOutputVCFCommandLine", "false"
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
         };
         runCommandLine(args);
 

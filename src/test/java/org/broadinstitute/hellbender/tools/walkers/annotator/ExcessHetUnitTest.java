@@ -10,6 +10,7 @@ import org.testng.annotations.Test;
 
 import java.util.*;
 
+import static org.mockito.ArgumentMatchers.refEq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -20,6 +21,12 @@ public final class ExcessHetUnitTest extends GATKBaseTest {
     private Allele C = Allele.create("C");
     private int[] hetPLs = {240, 0, 240};
     private int[] homRefPLs= {0, 60, 600};
+
+    @Override
+    public String getToolTestDataDir() {
+        return "src/test/resources/org/broadinstitute/hellbender/tools/walkers/annotator/";
+    }
+
 
     private Genotype makeG(String sample, Allele a1, Allele a2, int... pls) {
         return new GenotypeBuilder(sample, Arrays.asList(a1, a2)).PL(pls).make();
@@ -98,6 +105,41 @@ public final class ExcessHetUnitTest extends GATKBaseTest {
         Assert.assertEquals(Double.parseDouble((String)annots.values().iterator().next()), result, DELTA_PRECISION, "het");
     }
 
+    @Test
+    public void testFounderIDsAndPedigreeFile() {
+        //make sure that hets with different alternate alleles all get counted
+        VariantContext test2 = makeVC("2", Arrays.asList(Aref, T, C),
+                makeG("s1", Aref, C, 4878, 1623, 11297, 0, 7970, 8847),
+                makeG("s2", Aref, T, 2530, 0, 7099, 366, 3056, 14931),
+                makeG("s3", Aref, T, 3382, 0, 6364, 1817, 5867, 12246),
+                makeG("s4", Aref, T, 2488, 0, 9110, 3131, 9374, 12505),
+                makeG("s5", Aref, C, 4530, 2006, 18875, 0, 6847, 23949),
+                makeG("s6", Aref, T, 5325, 0, 18692, 389, 16014, 24570),
+                makeG("s7", Aref, T, 2936, 0, 29743, 499, 21979, 38630),
+                makeG("s8", Aref, T, 6902, 0, 8976, 45, 5844, 9061),
+                makeG("s9", Aref, T, 5732, 0, 10876, 6394, 11408, 17802),
+                makeG("s10", Aref, T, 2780, 0, 25045, 824, 23330, 30939));
+
+        Set<String> founderIDs = new HashSet<String>();
+        founderIDs.addAll(Arrays.asList("s1","s2","s3","s4","s5"));
+
+        final double result2 = ExcessHet.calculateEH(test2, test2.getGenotypes(founderIDs)).getValue();
+        final double result = 11.972;
+        Assert.assertEquals(result2, result, DELTA_PRECISION, "Pass");
+
+        //test the annotate method with FounderIDs
+        Map<String, Object> annots = new ExcessHet(founderIDs).annotate(null, test2, null);
+        Assert.assertEquals(annots.keySet(), Collections.singleton(GATKVCFConstants.EXCESS_HET_KEY), "annots");
+        Assert.assertEquals(annots.values().size(), 1, "size");
+        Assert.assertEquals(Double.parseDouble((String)annots.values().iterator().next()), result, DELTA_PRECISION, "het");
+
+        //test the annotate method with a Pedigree File
+        annots = new ExcessHet(getTestFile("testPedigree.ped")).annotate(null, test2, null);
+        Assert.assertEquals(annots.keySet(), Collections.singleton(GATKVCFConstants.EXCESS_HET_KEY), "annots");
+        Assert.assertEquals(annots.values().size(), 1, "size");
+        Assert.assertEquals(Double.parseDouble((String)annots.values().iterator().next()), result, DELTA_PRECISION, "het");
+    }
+    
     @Test
     public void testSingletonVsCommonAllele() {
 

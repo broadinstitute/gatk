@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.filters.ReadLengthReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadNameReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.PrintReadsIntegrationTest;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
@@ -318,70 +319,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         }
     }
 
-    @DataProvider(name="readFilterTestData")
-    public Object[][] testReadFilterData() {
-        return new Object[][]{
-                {"print_reads_one_malformed_read.sam", null, ".sam", Collections.emptyList(), 7},
-                {"print_reads_one_malformed_read.sam", null, ".sam", Arrays.asList("--disableToolDefaultReadFilters"), 8},
-                {"print_reads_one_malformed_read.sam", null, ".sam",
-                        Arrays.asList("--disableReadFilter", "WellformedReadFilter"), 8},
-                {"print_reads.sorted.sam", null, ".sam",
-                        Arrays.asList(
-                                "--readFilter", ReadNameReadFilter.class.getSimpleName(),
-                                "--readName", "both_reads_align_clip_adapter"),
-                        2},
-                {"print_reads.sorted.sam", null, ".sam",
-                        Arrays.asList(
-                                "--RF", ReadLengthReadFilter.class.getSimpleName(),
-                                "--minReadLength", "100",
-                                "--maxReadLength", "200"),
-                        8},
-                {"print_reads.sorted.sam", null, ".sam",
-                        Arrays.asList(
-                                "--RF", ReadLengthReadFilter.class.getSimpleName(),
-                                "--minReadLength", "1",
-                                "--maxReadLength", "10"),
-                        0},
-                {"print_reads.sorted.sam", null, ".sam",
-                        Arrays.asList(
-                                "--readFilter", ReadNameReadFilter.class.getSimpleName(),
-                                "--readName", "both_reads_align_clip_adapter",
-                                "--RF", ReadLengthReadFilter.class.getSimpleName(),
-                                "--minReadLength", "100",
-                                "--maxReadLength", "101"),
-                        2},
-                {"print_reads.sorted.bam", null, ".sam", Arrays.asList("--disableToolDefaultReadFilters"), 8},
-                {"print_reads.sorted.bam", null, ".sam",
-                        Arrays.asList(
-                                "--readFilter", ReadNameReadFilter.class.getSimpleName(),
-                                "--readName", "both_reads_align_clip_adapter"),
-                        2},
-                {"print_reads.sorted.bam", null, ".sam",
-                        Arrays.asList(
-                                "--RF", ReadLengthReadFilter.class.getSimpleName(),
-                                "--minReadLength", "100",
-                                "--maxReadLength", "101"),
-                        8},
-                {"print_reads.sorted.bam", null, ".sam",
-                        Arrays.asList(
-                                "--readFilter", ReadNameReadFilter.class.getSimpleName(),
-                                "--readName", "both_reads_align_clip_adapter",
-                                "--RF", ReadLengthReadFilter.class.getSimpleName(),
-                                "--minReadLength", "100",
-                                "--maxReadLength", "101"),
-                        2},
-                {"print_reads.sorted.cram", "print_reads.fasta", ".sam",
-                        Arrays.asList(
-                                "--readFilter", ReadNameReadFilter.class.getSimpleName(),
-                                "--readName", "both_reads_align_clip_adapter",
-                                "--RF", ReadLengthReadFilter.class.getSimpleName(),
-                                "--minReadLength", "100",
-                                "--maxReadLength", "101"),
-                        2},
-        };
-    }
-
-    @Test(dataProvider = "readFilterTestData", groups = "spark")
+    @Test(dataProviderClass = org.broadinstitute.hellbender.tools.PrintReadsIntegrationTest.class, dataProvider = "readFilterTestData", groups = "spark")
     public void testReadFilters(
             final String input,
             final String reference,

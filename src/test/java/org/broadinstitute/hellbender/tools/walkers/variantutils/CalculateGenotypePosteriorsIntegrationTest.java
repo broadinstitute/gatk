@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.annotations.Test;
@@ -29,7 +30,7 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
                         " -R " + b37_reference_20_21 +    //NOTE: we need a reference for -L
                         " -L 20:10,000,000-10,001,432" +
                         " -V " + largeDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf" +
-                        " -addOutputVCFCommandLine false",
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
                 Collections.singletonList(largeDir + "CalculateGenotypePosteriors/expectedCGP_testUsingDiscoveredAF.vcf")
         );
         spec.executeTest("testUsingDiscoveredAF", this);
@@ -45,7 +46,7 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
                         " -R " + b37_reference_20_21 +    //NOTE: we need a reference for -L
                         " -L 20:10,000,000-10,001,432" +
                         " -V " + largeDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf" +
-                        " -addOutputVCFCommandLine false",
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
                 Collections.singletonList(largeDir + "CalculateGenotypePosteriors/expectedCGP_testMissingPriors.vcf")
         );
         spec.executeTest("testMissingPriors", this);
@@ -60,7 +61,7 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
                         " -L 20:10,000,000-10,100,000" +
                         " -V " + dir + "NA12878.Jan2013.haplotypeCaller.subset.indels.vcf" +
                         " -supporting " + largeDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf" +
-                        " -addOutputVCFCommandLine false",
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
                 Collections.singletonList(dir + "expectedCGP_testInputINDELs.vcf")
         );
         spec.executeTest("testInputINDELs", this);
@@ -74,7 +75,7 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
                         " -ped " + CEUtrioFamilyFile +
                         " -V " + CEUtrioTest +
                         " -supporting " + CEUtrioPopPriorsTest +
-                        " -addOutputVCFCommandLine false",
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
                 Collections.singletonList(dir + "expectedCGP_testFamilyPriors_chr1.vcf")
         );
         spec.executeTest("testFamilyPriors", this);
@@ -87,7 +88,7 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
                         " -ped " + threeMemberNonTrioFamilyFile +
                         " -V " + getThreeMemberNonTrioTest +
                         " -skipPop" +
-                        " -addOutputVCFCommandLine false",
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
                 Collections.singletonList(dir + "expectedCGP_testSingleParentFamily_chr1.vcf")
         );
         spec.executeTest("testFamilyPriors", this);

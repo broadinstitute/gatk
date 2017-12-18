@@ -7,7 +7,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
+import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -16,7 +16,7 @@ import java.util.Arrays;
 
 public final class FeatureContextUnitTest extends GATKBaseTest {
 
-    @CommandLineProgramProperties(summary = "", oneLineSummary = "", programGroup = QCProgramGroup.class)
+    @CommandLineProgramProperties(summary = "", oneLineSummary = "", programGroup = TestProgramGroup.class)
     private static class ArtificialFeatureContainingCommandLineProgram extends CommandLineProgram {
         @Argument(fullName = "featureArgument", shortName = "f")
         FeatureInput<Feature> featureArgument;

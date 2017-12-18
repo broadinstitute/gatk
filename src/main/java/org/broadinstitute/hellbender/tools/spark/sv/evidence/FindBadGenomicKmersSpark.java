@@ -11,7 +11,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -30,13 +30,36 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * SparkTool to identify 63-mers in the reference that occur more than 3 times.
+ * Find high copy number kmers in a reference.
+ *
+ * <p>Search the reference for kmers that occur more than a specified number of times,
+ * and list them to an output file.</p>
+ *
+ * <h3>Inputs</h3>
+ * <ul>
+ *     <li>A reference.</li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ * <ul>
+ *     <li>A text file describing the ubiquitous kmers.</li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ *   gatk FindBadGenomicKmersSpark \
+ *     -R reference.fasta \
+ *     -O kmers_to_ignore.txt
+ * </pre>
  */
 @DocumentedFeature
-@CommandLineProgramProperties(summary="Find the set of high copy number kmers in a reference.",
-        oneLineSummary="find ref kmers with high copy number",
-        programGroup = StructuralVariationSparkProgramGroup.class)
 @BetaFeature
+@CommandLineProgramProperties(
+        oneLineSummary = "Find high copy number kmers in a reference.",
+        summary =
+        "Search the reference for kmers that occur more than a specified number of times,"+
+        " and list them to an output file.",
+        programGroup = StructuralVariantDiscoveryProgramGroup.class)
 public final class FindBadGenomicKmersSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
@@ -50,14 +73,14 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String outputFile;
 
-    @Argument(doc = "kmer size", fullName = "kSize", optional = true)
+    @Argument(doc = "kmer size", fullName = "k-size")
     private int kSize = StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection.KMER_SIZE;
 
-    @Argument(doc = "maximum kmer DUST score", fullName = "kmerMaxDUSTScore")
+    @Argument(doc = "maximum kmer DUST score", fullName = "kmer-max-dust-score")
     private int maxDUSTScore = StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection.MAX_DUST_SCORE;
 
     @Argument(doc = "additional high copy kmers (mitochondrion, e.g.) fasta file name",
-            fullName = "highCopyFasta", optional = true)
+            fullName = "high-copy-fasta", optional = true)
     private String highCopyFastaFilename;
 
     @Override

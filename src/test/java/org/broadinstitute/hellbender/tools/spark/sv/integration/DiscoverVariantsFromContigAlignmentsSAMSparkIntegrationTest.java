@@ -37,7 +37,7 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest extends
             return  " -R " + SVIntegrationTestDataProvider.reference_2bit +
                     " -I " + SVIntegrationTestDataProvider.TEST_CONTIG_SAM +
                     " -O " + outputDir + "/variants.vcf" +
-                    (cnvCallsLoc == null ? "" : " --cnvCalls " + cnvCallsLoc);
+                    (cnvCallsLoc == null ? "" : " --cnv-calls " + cnvCallsLoc);
         }
 
     }
@@ -59,7 +59,7 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest extends
         final List<String> args = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLineNoApiKey()).getArgsArray() );
         runCommandLine(args);
         StructuralVariationDiscoveryPipelineSparkIntegrationTest.svDiscoveryVCFEquivalenceTest(args.get(args.indexOf("-O")+1),
-                SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, annotationsToIgnoreWhenComparingVariants, false);
+                SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, null, annotationsToIgnoreWhenComparingVariants, false);
     }
 
     @Test(dataProvider = "discoverVariantsFromContigAlignmentsSparkIntegrationTest", groups = "sv")
@@ -92,7 +92,7 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest extends
 
             runCommandLine(argsToBeModified);
             StructuralVariationDiscoveryPipelineSparkIntegrationTest.svDiscoveryVCFEquivalenceTest(vcfOnHDFS,
-                    SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, annotationsToIgnoreWhenComparingVariants, true);
+                    SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, null, annotationsToIgnoreWhenComparingVariants, true);
         });
     }
 }

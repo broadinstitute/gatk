@@ -1,10 +1,7 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.intel.genomicsdb.ChromosomeInterval;
-import com.intel.genomicsdb.GenomicsDBCallsetsMapProto;
-import com.intel.genomicsdb.GenomicsDBImportConfiguration;
-import com.intel.genomicsdb.GenomicsDBImporter;
+import com.intel.genomicsdb.*;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.AbstractFeatureReader;
@@ -645,18 +642,26 @@ public final class GenomicsDBImport extends GATKTool {
 
         if (!workspaceDir.exists()) {
             final int ret = GenomicsDBImporter.createTileDBWorkspace(workspaceDir.getAbsolutePath());
-
             if (ret > 0) {
                 checkIfValidWorkspace(workspaceDir);
                 logger.info("Importing data to GenomicsDB workspace: " + workspaceDir);
             } else if (ret < 0) {
-                throw new UserException("Error creating GenomicsDB workspace: " + workspaceDir);
+                throw new UnableToCreateGenomicsDBWorkspace("Error creating GenomicsDB workspace: " + workspaceDir);
             }
+            return workspaceDir;
         } else {
-            // Check whether its a valid workspace
-            checkIfValidWorkspace(workspaceDir);
+            throw new UnableToCreateGenomicsDBWorkspace("The workspace you're trying to create already exists. ( " + workspaceDir.getAbsolutePath() + " ) " +
+                                                  "Writing into an existing workspace can cause data corruption. " +
+                                                  "Please choose an output path that doesn't already exist. ");
         }
-        return workspaceDir;
+    }
+
+    static class UnableToCreateGenomicsDBWorkspace extends UserException {
+        private static final long serialVersionUID = 1L;
+
+        UnableToCreateGenomicsDBWorkspace(final String message){
+            super(message);
+        }
     }
 
     private static void checkIfValidWorkspace(final File workspaceDir) {

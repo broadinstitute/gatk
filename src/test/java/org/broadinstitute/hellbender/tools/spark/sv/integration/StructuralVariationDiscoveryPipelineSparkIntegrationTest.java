@@ -6,10 +6,11 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFileReader;
 import org.apache.hadoop.fs.Path;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
@@ -30,6 +31,8 @@ import static org.broadinstitute.hellbender.tools.spark.sv.integration.DiscoverV
 public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends CommandLineProgramTest {
 
     private static final class StructuralVariationDiscoveryPipelineSparkIntegrationTestArgs {
+        private static final String EXPERIMENTAL_INTERPRETATION_OUTPUT_DIR_NAME = "experimentalVariantInterpretations";
+
         final String bamLoc;
         final String kmerIgnoreListLoc;
         final String alignerRefIndexImgLoc;
@@ -53,22 +56,28 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
             return  " -R " + SVIntegrationTestDataProvider.reference_2bit +
                     " -I " + bamLoc +
                     " -O " + outputDir        + "/variants.vcf" +
-                    " --alignerIndexImage " + alignerRefIndexImgLoc +
-                    " --kmersToIgnore " + kmerIgnoreListLoc +
-                    " --contigSAMFile "       + outputDir + "/assemblies.sam" +
-                    " --breakpointIntervals " + outputDir + "/intervals" +
-                    " --fastqDir "            + outputDir + "/fastq" +
-                    (cnvCallsLoc == null ? "" : " --cnvCalls " + cnvCallsLoc);
+            " --aligner-index-image " + alignerRefIndexImgLoc +
+                    " --kmers-to-ignore " + kmerIgnoreListLoc +
+                    " --contig-sam-file "       + outputDir + "/assemblies.sam" +
+                    " --breakpoint-intervals " + outputDir + "/intervals" +
+                    " --fastq-dir "            + outputDir + "/fastq" +
+                    (cnvCallsLoc == null ? "" : " --cnv-calls " + cnvCallsLoc) +
+                    " --exp-variants-out-dir " + getExperimentalInterpretationOutputDirName(outputDir + "/variants.vcf");
+        }
+
+        private static String getExperimentalInterpretationOutputDirName(final String vcfPath) {
+            return Paths.get(vcfPath).getParent().resolve(EXPERIMENTAL_INTERPRETATION_OUTPUT_DIR_NAME)
+                    .toAbsolutePath().toString();
         }
 
         @Override
         public String toString() {
             return "StructuralVariationDiscoveryPipelineSparkIntegrationTestArgs{" +
-                    "bamLoc='" + bamLoc + '\'' +
-                    ", kmerIgnoreListLoc='" + kmerIgnoreListLoc + '\'' +
-                    ", alignerRefIndexImgLoc='" + alignerRefIndexImgLoc + '\'' +
-                    ", cnvCallsLoc='" + cnvCallsLoc + '\'' +
-                    ", outputDir='" + outputDir + '\'' +
+                    "bam-loc='" + bamLoc + '\'' +
+                    ", kmer-ignore-list-loc='" + kmerIgnoreListLoc + '\'' +
+                    ", aligner-fef-index-img-loc='" + alignerRefIndexImgLoc + '\'' +
+                    ", cnv-calls-loc='" + cnvCallsLoc + '\'' +
+                    ", output-dir='" + outputDir + '\'' +
                     '}';
         }
     }
@@ -99,7 +108,9 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
         final List<String> args = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLineNoApiKey()).getArgsArray() );
         runCommandLine(args);
 
-        svDiscoveryVCFEquivalenceTest(args.get(args.indexOf("-O")+1), SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, annotationsToIgnoreWhenComparingVariants, false);
+        svDiscoveryVCFEquivalenceTest(args.get(args.indexOf("-O")+1), SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF,
+                args.get(args.indexOf("--exp-variants-out-dir")+1),
+                annotationsToIgnoreWhenComparingVariants, false);
     }
 
     @Test(dataProvider = "svDiscoverPipelineSparkIntegrationTest", groups = "sv")
@@ -125,8 +136,14 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
             cluster.getFileSystem().copyFromLocalFile(new Path(file.toURI()), path);
             argsToBeModified.set(idx+1, path.toUri().toString());
 
-            idx = argsToBeModified.indexOf("--kmersToIgnore");
+            idx = argsToBeModified.indexOf("--kmers-to-ignore");
             path = new Path(workingDirectory, "dummy.kill.kmers");
+            file = new File(argsToBeModified.get(idx+1));
+            cluster.getFileSystem().copyFromLocalFile(new Path(file.toURI()), path);
+            argsToBeModified.set(idx+1, path.toUri().toString());
+
+            idx = argsToBeModified.indexOf("--cnv-calls");
+            path = new Path(workingDirectory, "cnvVariants");
             file = new File(argsToBeModified.get(idx+1));
             cluster.getFileSystem().copyFromLocalFile(new Path(file.toURI()), path);
             argsToBeModified.set(idx+1, path.toUri().toString());
@@ -137,30 +154,66 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
             final String vcfOnHDFS = path.toUri().toString();
             argsToBeModified.set(idx+1, vcfOnHDFS);
 
-            idx = argsToBeModified.indexOf("--contigSAMFile");
+            idx = argsToBeModified.indexOf("--contig-sam-file");
             path = new Path(workingDirectory, "assemblies.sam");
             argsToBeModified.set(idx+1, path.toUri().toString());
 
-            idx = argsToBeModified.indexOf("--breakpointIntervals");
+            idx = argsToBeModified.indexOf("--breakpoint-intervals");
             path = new Path(workingDirectory, "intervals");
             argsToBeModified.set(idx+1, path.toUri().toString());
 
-            idx = argsToBeModified.indexOf("--fastqDir");
+            idx = argsToBeModified.indexOf("--fastq-dir");
             path = new Path(workingDirectory, "fastq");
             argsToBeModified.set(idx+1, path.toUri().toString());
 
+            idx = argsToBeModified.indexOf("--exp-variants-out-dir");
+            path = new Path(workingDirectory, "expVariantsOutDir");
+            final String expOutDirOnHDFS = path.toUri().toString();
+            argsToBeModified.set(idx+1, expOutDirOnHDFS);
+
             runCommandLine(argsToBeModified);
             svDiscoveryVCFEquivalenceTest(vcfOnHDFS, SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF,
-                    annotationsToIgnoreWhenComparingVariants, true);
+                    expOutDirOnHDFS, annotationsToIgnoreWhenComparingVariants, true);
         });
     }
 
     static void svDiscoveryVCFEquivalenceTest(final String generatedVCFPath, final String expectedVCFPath,
-                                              final List<String> attributesToIgnore, final boolean onHDFS) throws Exception{
+                                              final String experimentalOutputPath,
+                                              final List<String> attributesToIgnore, final boolean onHDFS) throws Exception {
 
-        VCFFileReader fileReader;
-        CloseableIterator<VariantContext> iterator;
-        final List<VariantContext> actualVcs;
+        final VCFFileReader fileReader = new VCFFileReader(new File(expectedVCFPath), false);
+        final CloseableIterator<VariantContext> iterator = fileReader.iterator();
+        final List<VariantContext> expectedVcs = Utils.stream(iterator).collect(Collectors.toList());
+        CloserUtil.close(iterator);
+        CloserUtil.close(fileReader);
+
+        List<VariantContext> actualVcs = extractActualVCs(generatedVCFPath, onHDFS);
+
+        GATKBaseTest.assertCondition(actualVcs, expectedVcs,
+                (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e, attributesToIgnore));
+
+        if ( experimentalOutputPath != null ) {
+            final String experimentalInsDelVcf;
+            if (onHDFS) {
+                experimentalInsDelVcf = IOUtils.getPath(experimentalOutputPath).resolve("InsDel.vcf").toUri().toString();
+            } else {
+                experimentalInsDelVcf = IOUtils.getPath(experimentalOutputPath).resolve("InsDel.vcf").toString();
+            }
+
+            actualVcs = extractActualVCs(experimentalInsDelVcf, onHDFS);
+
+            // TODO: 11/30/17 temporary solution to ignore these attributes before they can be brought back
+            final List<String> moreAttributesToIgnoreForNow = new ArrayList<>(attributesToIgnore);
+            moreAttributesToIgnoreForNow.addAll(Arrays.asList("HOMSEQ", "HOMLEN", "EXTERNAL_CNV_CALLS"));
+            GATKBaseTest.assertCondition(actualVcs, expectedVcs,
+                    (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e, moreAttributesToIgnoreForNow));
+        }
+    }
+
+    private static List<VariantContext> extractActualVCs(final String generatedVCFPath, final boolean onHDFS)
+            throws IOException {
+
+        final VCFFileReader fileReader;
         if (onHDFS) {
             final File tempLocalVCF = GATKBaseTest.createTempFile("variants", "vcf");
             tempLocalVCF.deleteOnExit();
@@ -169,17 +222,11 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
         } else {
             fileReader = new VCFFileReader(new File(generatedVCFPath), false);
         }
-        iterator = fileReader.iterator();
-        actualVcs = Utils.stream(iterator).collect(Collectors.toList());
+        final CloseableIterator<VariantContext> iterator = fileReader.iterator();
+        final List<VariantContext> actualVcs = Utils.stream(iterator).collect(Collectors.toList());
         CloserUtil.close(iterator);
         CloserUtil.close(fileReader);
 
-        fileReader = new VCFFileReader(new File(expectedVCFPath), false);
-        iterator = fileReader.iterator();
-        final List<VariantContext> expectedVcs = Utils.stream(iterator).collect(Collectors.toList());
-        CloserUtil.close(iterator);
-        CloserUtil.close(fileReader);
-
-        GATKBaseTest.assertCondition(actualVcs, expectedVcs, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e, attributesToIgnore));
+        return actualVcs;
     }
 }

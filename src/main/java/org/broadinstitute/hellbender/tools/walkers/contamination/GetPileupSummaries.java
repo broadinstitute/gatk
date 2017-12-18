@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
@@ -81,6 +82,9 @@ public class GetPileupSummaries extends MultiVariantWalker {
 
     private VariantContext lastVariant = null;
 
+    private boolean sawVariantsWithoutAlleleFrequency = false;
+    private boolean sawVariantsWithAlleleFrequency = false;
+
     @Override
     public boolean requiresReads() {
         return true;
@@ -111,6 +115,15 @@ public class GetPileupSummaries extends MultiVariantWalker {
     }
 
     @Override
+    public void onTraversalStart() {
+        final boolean alleleFrequencyInHeader = getHeaderForVariants().getInfoHeaderLines().stream()
+                .anyMatch(line -> line.getID().equals(VCFConstants.ALLELE_FREQUENCY_KEY));
+        if (!alleleFrequencyInHeader) {
+            throw new UserException.BadInput("Population vcf does not have an allele frequency (AF) info field in its header.");
+        }
+    }
+
+    @Override
     public void apply(final VariantContext vc, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
         // if we input multiple sources of variants, ignore repeats
         if (lastVariant != null && vc.getStart() == lastVariant.getStart()) {
@@ -124,14 +137,22 @@ public class GetPileupSummaries extends MultiVariantWalker {
 
     @Override
     public Object onTraversalSuccess() {
+        if (sawVariantsWithoutAlleleFrequency && !sawVariantsWithAlleleFrequency) {
+            throw new UserException.BadInput("No variants in population vcf had an allele frequency (AF) field.");
+        }
         PileupSummary.writePileupSummaries(pileupSummaries, outputTable);
         return "SUCCESS";
     }
 
     private boolean alleleFrequencyInRange(final VariantContext vc) {
         if (!vc.hasAttribute(VCFConstants.ALLELE_FREQUENCY_KEY)) {
+            if (!sawVariantsWithoutAlleleFrequency) {
+                logger.warn(String.format("Variant context at %s:%d lacks allele frequency (AF) field.", vc.getContig(), vc.getStart()));
+                sawVariantsWithoutAlleleFrequency = true;
+            }
             return false;
         } else {
+            sawVariantsWithAlleleFrequency = true;
             final double alleleFrequency = vc.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, -1.0);
             return minPopulationAlleleFrequency < alleleFrequency && alleleFrequency < maxPopulationAlleleFrequency;
         }

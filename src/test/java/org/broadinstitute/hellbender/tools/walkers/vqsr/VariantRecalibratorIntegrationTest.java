@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.Assert;
@@ -62,7 +63,7 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
                     "-an", "QD", "-an", "HaplotypeScore", "-an", "HRun",
                     "--trustAllPolymorphic", // for speed
                     "-mode", "SNP",
-                    "--addOutputVCFCommandLine", "false"
+                    "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
                 }
             },
         };
@@ -177,7 +178,7 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
                 " --trustAllPolymorphic" + // for speed
                 " --output %s" +
                 " -tranchesFile %s" +
-                " --addOutputVCFCommandLine false",
+                " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
                 Arrays.asList(
                         // the "expected" vcf is not in the expected dir because its used
                         // as input for the ApplyVQSR test
@@ -207,7 +208,7 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
                 " --output_model " + modelReportFilename +
                 " -mode SNP -mG 3" +  //reduce max gaussians so we have negative training data with the sampled input
                 " -sampleEvery 2" +
-                " --addOutputVCFCommandLine false",
+                " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
                 Arrays.asList(
                         modelReportRecal,
                         modelReportTranches));
@@ -231,7 +232,7 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
                         " --input_model " + modelReportFilename +
                         " -mode SNP -mG 3" +  //reduce max gaussians so we have negative training data with the sampled input
                         " -sampleEvery 2" +
-                        " --addOutputVCFCommandLine false",
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
                 Arrays.asList(
                         modelReportRecal,
                         modelReportTranches));
@@ -255,7 +256,7 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
                                 "-an", "QD", "-an", "HaplotypeScore", "-an", "HRun",
                                 "--trustAllPolymorphic", // for speed
                                 "-mode", "SNP",
-                                "--addOutputVCFCommandLine", "false",
+                                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
                                 "-scatterTranches",
                                 "--VQSLODtranche", "10.0",
                                 "--VQSLODtranche", "8.0",

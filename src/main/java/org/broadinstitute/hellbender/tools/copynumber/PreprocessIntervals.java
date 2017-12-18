@@ -26,11 +26,12 @@ import java.util.List;
  * to be a single interval (whole genome sequencing). </p>
  *
  * <p>Using the -P flag, the user can specify the amount of padding (in bp) added to each side of the intervals.
- * This padding is in addition to the padding added by the -ip (or --interval_padding) argument of
+ * This padding is in addition to the padding added by the -ip (or --interval-padding) argument of
  * IntervalArgumentCollection. However, we encourage using only the -P flag.
  *
  * <p>The user can also specify the length of the bins (in bp) using the -BL option. If this is not commensurate with
- * the length of the padded intervals, then the last bin will be of different length than the others. </p>
+ * the length of the padded intervals, then the last bin will be of different length than the others.  If zero is
+ * specified, then no binning will be performed.</p>
  *
  * <p> The -O argument specifies a filename for the output bins, stored as a Picard interval list. </p>
  *
@@ -66,11 +67,11 @@ public final class PreprocessIntervals extends GATKTool {
     public static final String PADDING_SHORT_NAME = "P";
 
     @Argument(
-            doc = "Length (in bp) of the bins.",
+            doc = "Length (in bp) of the bins.  If zero, no binning will be performed.",
             fullName = BIN_LENGTH_LONG_NAME,
             shortName = BIN_LENGTH_SHORT_NAME,
             optional = true,
-            minValue = 1
+            minValue = 0
     )
     private int binLength = 1000;
 
@@ -120,6 +121,9 @@ public final class PreprocessIntervals extends GATKTool {
     }
 
     private static IntervalList generateBins(final IntervalList preparedIntervalList, final int binLength, final SAMSequenceDictionary sequenceDictionary) {
+        if (binLength == 0) {
+            return IntervalList.copyOf(preparedIntervalList);
+        }
         final IntervalList bins = new IntervalList(sequenceDictionary);
         for (final Interval interval : preparedIntervalList) {
             for (int binStart = interval.getStart(); binStart <= interval.getEnd(); binStart += binLength) {

@@ -21,7 +21,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -39,28 +39,58 @@ import scala.Tuple2;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD;
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH;
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY;
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.*;
 
 /**
- * This tool takes a SAM file containing the alignments of assembled contigs or long reads to the reference
+ * Parse aligned contigs and call structural variants.
+ *
+ * <p>This tool takes a file containing the alignments of assembled contigs
  * and searches it for split alignments indicating the presence of structural variations. To do so the tool parses
  * primary and supplementary alignments; secondary alignments are ignored. To be considered valid evidence of an SV,
  * two alignments from the same contig must have mapping quality 60, and both alignments must have length greater than
- * or equal to minAlignmentLength.
+ * or equal to min-alignment-length. Imprecise variants with approximate locations are also called.</p>
+ * <p>The input file is typically the SAM file produced by FindBreakpointEvidenceSpark.</p>
+ *
+ * <h3>Inputs</h3>
+ * <ul>
+ *     <li>An input file of assembled contigs or long reads aligned to reference.</li>
+ *     <li>The reference to which the contigs have been aligned.</li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ * <ul>
+ *     <li>A vcf file describing the discovered structural variants.</li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ *   gatk DiscoverVariantsFromContigAlignmentsSAMSpark \
+ *     -I assemblies.sam \
+ *     -R reference.2bit \
+ *     -O structural_variants.vcf
+ * </pre>
+ *
+ * <h3>Notes</h3>
+ * <p>The reference is broadcast by Spark, and must therefore be a 2bit file due to current restrictions.</p>
  */
 @DocumentedFeature
-@CommandLineProgramProperties(summary="Parse a SAM file containing contigs or long reads aligned to the reference, and call SVs",
-        oneLineSummary="Parse a SAM file containing contigs or long reads aligned to the reference, and call SVs",
-        programGroup = StructuralVariationSparkProgramGroup.class)
 @BetaFeature
+@CommandLineProgramProperties(
+        oneLineSummary = "Parse aligned contigs and call structural variants.",
+        summary =
+        "This tool takes a file containing the alignments of assembled contigs" +
+        " and searches it for split alignments indicating the presence of structural variations. To do so the tool parses" +
+        " primary and supplementary alignments; secondary alignments are ignored. To be considered valid evidence of an SV," +
+        " two alignments from the same contig must have mapping quality 60, and both alignments must have length greater than" +
+        " or equal to min-alignment-length. Imprecise variants with approximate locations are also called.",
+        programGroup = StructuralVariantDiscoveryProgramGroup.class)
 public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
     private final Logger localLogger = LogManager.getLogger(DiscoverVariantsFromContigAlignmentsSAMSpark.class);
@@ -178,19 +208,23 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                     "assumption that primary alignment does not contain hard clipping is invalid for read: " + primaryAlignment.toString());
 
             final byte[] contigSequence = primaryAlignment.getReadBases().clone();
-            if (primaryAlignment.getReadNegativeStrandFlag()) {
-                SequenceUtil.reverseComplement(contigSequence);
-            }
-
-            final Stream<AlignmentInterval> unSplitAIList = Utils.stream(noSecondaryAlignments).map(AlignmentInterval::new);
             final List<AlignmentInterval> parsedAlignments;
-            if (splitGapped) {
-                final int unClippedContigLength = primaryAlignment.getReadLength();
-                parsedAlignments = unSplitAIList.map(ar ->
-                        GappedAlignmentSplitter.split(ar, gapSplitSensitivity, unClippedContigLength))
-                        .flatMap(Utils::stream).collect(Collectors.toList());
+            if ( primaryAlignment.getReadUnmappedFlag() ) { // the Cigar
+                parsedAlignments = Collections.emptyList();
             } else {
-                parsedAlignments = unSplitAIList.collect(Collectors.toList());
+                if (primaryAlignment.getReadNegativeStrandFlag()) {
+                    SequenceUtil.reverseComplement(contigSequence);
+                }
+
+                final Stream<AlignmentInterval> unSplitAIList = Utils.stream(noSecondaryAlignments).map(AlignmentInterval::new);
+                if (splitGapped) {
+                    final int unClippedContigLength = primaryAlignment.getReadLength();
+                    parsedAlignments = unSplitAIList.map(ar ->
+                            GappedAlignmentSplitter.split(ar, gapSplitSensitivity, unClippedContigLength))
+                            .flatMap(Utils::stream).collect(Collectors.toList());
+                } else {
+                    parsedAlignments = unSplitAIList.collect(Collectors.toList());
+                }
             }
             return new AlignedContig(primaryAlignment.getReadName(), contigSequence, parsedAlignments, false);
         }

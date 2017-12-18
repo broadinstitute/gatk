@@ -14,7 +14,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -41,20 +41,52 @@ import static org.broadinstitute.hellbender.tools.spark.sv.evidence.BreakpointEv
 import static org.broadinstitute.hellbender.tools.spark.sv.evidence.BreakpointEvidence.ReadEvidence;
 
 /**
- * Tool to discover reads that support a hypothesis of a genomic breakpoint.
- * Expected input is a BAM with around 30x coverage.  Coverage much lower than that probably won't work well.
- * Reads sharing kmers with reads aligned near putative breakpoints are pulled out
- *  for local assemblies of these breakpoint regions.
- * The local assemblies are done with FermiLite, and the assembled contigs are aligned to reference.
- * Final output is a SAM file of aligned contigs to be called for structural variants.
+ * Tool to discover genomic breakpoints associated with structural variants.
+ *
+ * <p>This tool prepares local assemblies of putative genomic breakpoints for structural variant discovery.
+ * Reads sharing kmers with reads aligned near putative breakpoints are pulled out for local assemblies of
+ * these breakpoint regions.</p>
+ * <p>The local assemblies are done with FermiLite, and the assembled contigs are aligned to reference.
+ * Output is a file of aligned contigs to be used in calling structural variants.</p>
+ *
+ * <h3>Inputs</h3>
+ * <ul>
+ *     <li>A file of paired-end, aligned and coordinate-sorted reads.</li>
+ *     <li>A BWA index image for the reference.</li>
+ *     <li>A list of ubiquitous kmers to ignore.</li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ * <ul>
+ *     <li>A file of aligned contigs.</li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ *   gatk FindBreakpointEvidenceSpark \
+ *     -I input_reads.bam \
+ *     --aligner-index-image reference.img \
+ *     --kmers-to-ignore ignored_kmers.txt \
+ *     -O assemblies.sam
+ * </pre>
+ *
+ * <h3>Notes</h3>
+ * <p>Expected input is a paired-end, coordinate-sorted BAM with around 30x coverage.
+ * Coverage much lower than that probably won't work well.</p>
+ * <p>You can use BwaMemIndexImageCreator to create the index image file, and FindBadGenomicGenomicKmersSpark
+ * to create the list of kmers to ignore.</p>
  */
 @DocumentedFeature
-@CommandLineProgramProperties(summary="Find reads that evidence breakpoints."+
-        "  Pull reads for local assemblies in breakpoint regions using shared kmers."+
-        "  Assemble breakpoint regions with FermiLite, and align assembled contigs to reference.",
-        oneLineSummary="Prepare local assemblies of putative genomic breakpoints for structural variant discovery.",
-        programGroup=StructuralVariationSparkProgramGroup.class)
 @BetaFeature
+@CommandLineProgramProperties(
+        oneLineSummary = "Tool to discover genomic breakpoints associated with structural variants.",
+        summary =
+        "This tool prepares local assemblies of putative genomic breakpoints for structural variant discovery." +
+        " Reads sharing kmers with reads aligned near putative breakpoints are pulled out for local assemblies of" +
+        " these breakpoint regions." +
+        " The local assemblies are done with FermiLite, and the assembled contigs are aligned to reference." +
+        " Output is a file of aligned contigs to be used in calling structural variants.",
+        programGroup = StructuralVariantDiscoveryProgramGroup.class)
 public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
@@ -95,20 +127,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final String outputAssemblyAlignments,
             final Logger logger) {
 
-        Utils.validate(header.getSortOrder() == SAMFileHeader.SortOrder.coordinate,
-                "The reads must be coordinate sorted.");
-
         final SVReadFilter filter = new SVReadFilter(params);
-
-        final Set<Integer> crossContigsToIgnoreSet;
-        if ( params.crossContigsToIgnoreFile == null ) crossContigsToIgnoreSet = Collections.emptySet();
-        else crossContigsToIgnoreSet = readCrossContigsToIgnoreFile(params.crossContigsToIgnoreFile,
-                header.getSequenceDictionary());
-        final ReadMetadata readMetadata =
-                new ReadMetadata(crossContigsToIgnoreSet, header, params.maxTrackedFragmentLength, unfilteredReads, filter, logger);
-        if ( params.metadataFile != null ) {
-            ReadMetadata.writeMetadata(readMetadata, params.metadataFile);
-        }
+        final ReadMetadata readMetadata = buildMetadata(params, header, unfilteredReads, filter, logger);
         log("Metadata retrieved.", logger);
 
         // develop evidence, intervals, and, finally, a set of template names for each interval
@@ -183,6 +203,26 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         public List<EvidenceTargetLink> getEvidenceTargetLinks() {
             return evidenceTargetLinks;
         }
+    }
+
+    public static ReadMetadata buildMetadata( final FindBreakpointEvidenceSparkArgumentCollection params,
+                                              final SAMFileHeader header,
+                                              final JavaRDD<GATKRead> unfilteredReads,
+                                              final SVReadFilter filter,
+                                              final Logger logger ) {
+        Utils.validate(header.getSortOrder() == SAMFileHeader.SortOrder.coordinate,
+                "The reads must be coordinate sorted.");
+
+        final Set<Integer> crossContigsToIgnoreSet;
+        if ( params.crossContigsToIgnoreFile == null ) crossContigsToIgnoreSet = Collections.emptySet();
+        else crossContigsToIgnoreSet = readCrossContigsToIgnoreFile(params.crossContigsToIgnoreFile,
+                header.getSequenceDictionary());
+        final ReadMetadata readMetadata =
+                new ReadMetadata(crossContigsToIgnoreSet, header, params.maxTrackedFragmentLength, unfilteredReads, filter, logger);
+        if ( params.metadataFile != null ) {
+            ReadMetadata.writeMetadata(readMetadata, params.metadataFile);
+        }
+        return readMetadata;
     }
 
     /**
@@ -782,6 +822,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final int minEvidenceWeight = params.minEvidenceWeight;
         final int minCoherentEvidenceWeight = params.minCoherentEvidenceWeight;
         final int allowedOverhang = params.allowedShortFragmentOverhang;
+        final int minEvidenceMapQ = params.minEvidenceMapQ;
 
         // 1) identify well-mapped reads
         // 2) that look like they support a hypothesis of a breakpoint in the vicinity
@@ -798,15 +839,15 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         // record the evidence
         if ( params.unfilteredEvidenceDir != null ) {
-            evidenceRDD.map(e -> e.stringRep(broadcastMetadata.getValue(), filter.getMinEvidenceMapQ()))
+            evidenceRDD.map(e -> e.stringRep(broadcastMetadata.getValue(), minEvidenceMapQ))
                        .saveAsTextFile(params.unfilteredEvidenceDir);
         }
 
         final JavaRDD<EvidenceTargetLink> evidenceTargetLinkJavaRDD = evidenceRDD.mapPartitions(
                 itr -> {
                     final ReadMetadata readMetadata = broadcastMetadata.getValue();
-                    final EvidenceTargetLinkClusterer clusterer = new EvidenceTargetLinkClusterer(readMetadata,
-                            filter.getMinEvidenceMapQ());
+                    final EvidenceTargetLinkClusterer clusterer =
+                            new EvidenceTargetLinkClusterer(readMetadata, minEvidenceMapQ);
                     return clusterer.cluster(itr);
                 }).filter(link -> link.readPairs >= 2 || link.splitReads >= 1);
 
@@ -832,7 +873,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                                     FlatMapGluer.concatIterators(evidenceItrList.iterator());
                             return new BreakpointDensityFilter(evidenceItr,readMetadata,
                                     minEvidenceWeight,minCoherentEvidenceWeight,xChecker,
-                                    filter.getMinEvidenceMapQ());
+                                    minEvidenceMapQ);
                         }, true);
 
         filteredEvidenceRDD.cache();
@@ -865,7 +906,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final Iterator<BreakpointEvidence> evidenceIterator =
                 new BreakpointDensityFilter(collectedEvidence.iterator(),
                         broadcastMetadata.value(), minEvidenceWeight, minCoherentEvidenceWeight,
-                        new PartitionCrossingChecker(), filter.getMinEvidenceMapQ());
+                        new PartitionCrossingChecker(), minEvidenceMapQ);
         final List<BreakpointEvidence> allEvidence = new ArrayList<>(collectedEvidence.size());
         while ( evidenceIterator.hasNext() ) {
             allEvidence.add(evidenceIterator.next());

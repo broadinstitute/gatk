@@ -56,10 +56,10 @@ repositories {
     mavenLocal()
 }
 
-final htsjdkVersion = System.getProperty('htsjdk.version','2.13.1')
-final picardVersion = System.getProperty('picard.version','2.14.0')
+final htsjdkVersion = System.getProperty('htsjdk.version','2.13.2')
+final picardVersion = System.getProperty('picard.version','2.16.0')
 final sparkVersion = System.getProperty('spark.version', '2.0.2')
-final hadoopBamVersion = System.getProperty('hadoopBam.version','7.9.0')
+final hadoopBamVersion = System.getProperty('hadoopBam.version','7.9.1')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','0.8.1-proto-3.0.0-beta-1')
 final testNGVersion = '6.11'
 
@@ -143,6 +143,9 @@ dependencies {
     testCompile(javadocJDKFiles)
 
     compile 'org.broadinstitute:barclay:1.2.2'
+    // Library for configuration:
+    compile 'org.aeonbits.owner:owner:1.0.9'
+
     compile 'com.github.broadinstitute:picard:' + picardVersion
     externalSourceConfiguration 'com.github.broadinstitute:picard:' + picardVersion + ':sources'
     compile ('com.intel:genomicsdb:' + genomicsdbVersion)  {
@@ -182,7 +185,10 @@ dependencies {
     compile 'org.nd4j:nd4j-kryo_2.11:0.5.0'
     compile 'org.broadinstitute:gatk-native-bindings:0.1.0-rc-1'
 
-    compile 'org.ojalgo:ojalgo:39.0'
+    compile 'org.ojalgo:ojalgo:44.0.0'
+    compile ('org.ojalgo:ojalgo-commons-math3:1.0.0') {
+        exclude group: 'org.apache.commons'
+    }
     compile ('org.apache.spark:spark-mllib_2.11:' + sparkVersion) {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
         exclude module: 'jul-to-slf4j'
@@ -240,6 +246,9 @@ dependencies {
     compile 'org.broadinstitute:gatk-bwamem-jni:1.0.3'
     compile 'org.broadinstitute:gatk-fermilite-jni:1.0.0-rc6'
 
+    // Required for COSMIC Funcotator data source:
+    compile 'org.xerial:sqlite-jdbc:3.20.1'
+
     //needed for DataflowAssert
     testCompile 'org.hamcrest:hamcrest-all:1.3'
     testCompile 'junit:junit:4.12'
@@ -254,9 +263,8 @@ processResources {
 }
 
 processTestResources {
-    //Don't waste time packaging our test data into the test jar
-    exclude "**/large/**"
-    exclude "**/org/broadinstitute/hellbender/**"
+    //Don't waste time packaging unnecessary test data into the test resources:
+    include "org/broadinstitute/hellbender/utils/config/*"
 }
 
 sourceCompatibility = 1.8
@@ -313,17 +321,19 @@ test {
             includeGroups 'cloud', 'bucket'
         } else if (TEST_TYPE == "integration"){
             include "**/*IntegrationTest.class"
-            excludeGroups "cloud", "bucket"
+            excludeGroups "cloud", "bucket", "python"
         } else if (TEST_TYPE == "unit") {
             exclude "**/*IntegrationTest.class"
-            excludeGroups "cloud", "bucket"
+            excludeGroups "cloud", "bucket", "python"
         } else if (TEST_TYPE == "spark") {
             includeGroups "spark"
-            excludeGroups "cloud", "bucket"
+            excludeGroups "cloud", "bucket", "python"
+        } else if (TEST_TYPE == "python") {
+            includeGroups "python"
         } else if (TEST_TYPE == "all"){
             //include everything
         } else {
-            excludeGroups "cloud", "bucket"
+            excludeGroups "cloud", "bucket", "python"
         }
     }
 

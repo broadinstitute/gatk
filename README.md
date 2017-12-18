@@ -31,7 +31,6 @@ releases of the toolkit.
     * [Running GATK4 Spark tools on Google Cloud Dataproc](#dataproc)
     * [Note on 2bit Reference](#2bit)
     * [Using R to generate plots](#R)
-    * [Running the CNV workflows](#cnv_workflows)
     * [GATK Tab Completion for Bash](#tab_completion)
 * [For GATK Developers](#developers)
     * [General guidelines for GATK4 developers](#dev_guidelines)
@@ -59,6 +58,16 @@ releases of the toolkit.
     * Gradle 3.1 or greater, needed for building the GATK. We recommend using the `./gradlew` script which will
       download and use an appropriate gradle version automatically (see examples below).
     * Python 2.6 or greater (needed for running the `gatk-launch` frontend script)
+    * Python 3.6.2, along with a set of additional Python packages, are required to run some tools and workflows.
+      GATK uses the [Conda](https://conda.io/docs/index.html) package manager to
+      establish and manage the environment and dependencies required by these tools. The GATK Docker image comes
+      with this environment pre-configured. In order to establish an environment suitable to run these tools
+      outside of the Docker image, the conda [gatkcondaenv.yml](https://github.com/broadinstitute/gatk/blob/master/scripts/gatkcondaenv.yml)
+      file is provided. To establish the conda environment locally, [Conda](https://conda.io/docs/index.html) must first
+      be installed. Then, create the gatk environment by running the command ```conda env -n gatk -f gatkcondaenv.yml```.
+      To activate the environment once it has been created, run the command ```source activate gatk```. See the
+      [Conda](https://conda.io/docs/user-guide/tasks/manage-environments.html) documentation for
+      additional information about using and managing Conda environments.
     * R 3.1.3 (needed for producing plots in certain tools, and for running the test suite)
     * [git-lfs](https://git-lfs.github.com/) 1.1.0 or greater (needed to download large files for the complete test suite).
       Run `git lfs install` after downloading, followed by `git lfs pull` from the root of your git clone to download the large files. The download is several hundred megabytes.
@@ -274,10 +283,6 @@ sudo Rscript scripts/docker/gatkbase/install_R_packages.R
 R 
 source("scripts/docker/gatkbase/install_R_packages.R")
 ```
-
-#### <a name="cnv_workflows">Running the CNV workflows</a>
-
-* A walkthrough and examples for the CNV workflows can be found [here](http://gatkforums.broadinstitute.org/gatk/discussion/9143)
 
 #### <a name="tab_completion">Bash Command-line Tab Completion (BETA)</a>
 

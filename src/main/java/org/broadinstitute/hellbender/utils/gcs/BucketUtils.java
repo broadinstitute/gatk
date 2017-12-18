@@ -1,5 +1,8 @@
 package org.broadinstitute.hellbender.utils.gcs;
 
+import com.google.cloud.http.HttpTransportOptions;
+import com.google.cloud.storage.StorageOptions;
+import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider;
 import com.google.common.io.ByteStreams;
@@ -7,7 +10,6 @@ import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
-import java.nio.file.Files;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -16,17 +18,16 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import shaded.cloud_nio.com.google.auth.oauth2.GoogleCredentials;
 import shaded.cloud_nio.com.google.api.gax.retrying.RetrySettings;
+import shaded.cloud_nio.com.google.auth.oauth2.GoogleCredentials;
 import shaded.cloud_nio.org.threeten.bp.Duration;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.UUID;
-import com.google.cloud.storage.StorageOptions;
-import com.google.cloud.http.HttpTransportOptions;
-import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
 
 /**
  * Utilities for dealing with google buckets.
@@ -37,10 +38,6 @@ public final class BucketUtils {
 
     // slashes omitted since hdfs paths seem to only have 1 slash which would be weirder to include than no slashes
     public static final String FILE_PREFIX = "file:";
-
-    // if the channel errors out, re-open up to this many times
-    public static final int DEFAULT_GCS_MAX_REOPENS = 20;
-
 
     public static final Logger logger = LogManager.getLogger("org.broadinstitute.hellbender.utils.gcs");
 
@@ -355,7 +352,7 @@ public final class BucketUtils {
      * These will apply even to library code that creates its own paths to access with NIO.
      */
     public static void setGlobalNIODefaultOptions() {
-        setGlobalNIODefaultOptions(DEFAULT_GCS_MAX_REOPENS);
+        setGlobalNIODefaultOptions(ConfigFactory.getInstance().getGATKConfig().gcsMaxRetries());
     }
     public static void setGlobalNIODefaultOptions(int maxReopens) {
         CloudStorageFileSystemProvider.setDefaultCloudStorageConfiguration(getCloudStorageConfiguration(maxReopens));

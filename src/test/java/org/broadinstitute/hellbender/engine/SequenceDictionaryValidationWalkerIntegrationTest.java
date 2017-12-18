@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.PrintReads;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -52,7 +53,7 @@ public class SequenceDictionaryValidationWalkerIntegrationTest extends CommandLi
                 "--input" , SEQDICTVAL_TEST_DIRECTORY + "test2.sorted.bam",
                 "-R", SEQDICTVAL_TEST_DIRECTORY + "test2.fasta",
                 "--output", outFile.getAbsolutePath(),
-                "--disableSequenceDictionaryValidation"
+                "--" + StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME
         };
         // Should run without producing an exception even though the dictionaries are incompatible,
         // since we've disabled sequence dictionary validation
