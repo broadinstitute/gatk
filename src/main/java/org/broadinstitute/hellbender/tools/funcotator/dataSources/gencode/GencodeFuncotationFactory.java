@@ -452,38 +452,51 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         final List<String> otherTranscriptsCondensedAnnotations = new ArrayList<>();
         for ( final GencodeGtfTranscriptFeature transcript : gtfFeature.getTranscripts() ) {
 
-            // Try to create the annotation:
-            try {
-                final GencodeFuncotation gencodeFuncotation = createGencodeFuncotationOnTranscript(variant, altAllele, gtfFeature, reference, transcript);
+            // Check if this transcript has the `basic` tag:
+            final boolean isBasic = transcript.getOptionalFields().stream()
+                    .filter( f -> f.getName().equals("tag") )
+                    .filter( f -> f.getValue() instanceof GencodeGtfFeature.FeatureTag )
+                    .filter( f -> f.getValue().equals(GencodeGtfFeature.FeatureTag.BASIC) )
+                    .count() > 0;
 
-                // Add it into our transcript:
-                outputFuncotations.add( gencodeFuncotation );
+            // Only annotate on the `basic` transcripts:
+            if ( isBasic ) {
+                // Try to create the annotation:
+                try {
+                    final GencodeFuncotation gencodeFuncotation = createGencodeFuncotationOnTranscript(variant, altAllele, gtfFeature, reference, transcript);
 
-            } catch (final FuncotatorUtils.TranscriptCodingSequenceException ex) {
-                //TODO: This should never happen, but needs to be here for some transcripts, such as HG19 MUC16 ENST00000599436.1, where the transcript sequence itself is of length not divisible by 3! (3992)
-                //      There may be other erroneous transcripts too.
-                otherTranscriptsCondensedAnnotations.add( "ERROR_ON_" + transcript.getTranscriptId() );
+                    // Add it into our transcript:
+                    outputFuncotations.add(gencodeFuncotation);
 
-                logger.warn("Unable to create a GencodeFuncotation on transcript " + transcript.getTranscriptId() + " for variant: " +
-                        variant.getContig() + ":" + variant.getStart() + "-" + variant.getEnd() + "(" + variant.getReference() + " -> " + altAllele + ")"
-                );
+                }
+                catch ( final FuncotatorUtils.TranscriptCodingSequenceException ex ) {
+                    //TODO: This should never happen, but needs to be here for some transcripts, such as HG19 MUC16 ENST00000599436.1, where the transcript sequence itself is of length not divisible by 3! (3992)
+                    //      There may be other erroneous transcripts too.
+                    otherTranscriptsCondensedAnnotations.add("ERROR_ON_" + transcript.getTranscriptId());
+
+                    logger.warn("Unable to create a GencodeFuncotation on transcript " + transcript.getTranscriptId() + " for variant: " +
+                            variant.getContig() + ":" + variant.getStart() + "-" + variant.getEnd() + "(" + variant.getReference() + " -> " + altAllele + ")"
+                    );
+                }
             }
         }
 
-        // Get our "Best Transcript" from our list:
-        sortFuncotationsByTranscriptForOutput( outputFuncotations );
-        final GencodeFuncotation bestFuncotation = outputFuncotations.remove(0);
+        if (outputFuncotations.size() > 0) {
+            // Get our "Best Transcript" from our list:
+            sortFuncotationsByTranscriptForOutput(outputFuncotations);
+            final GencodeFuncotation bestFuncotation = outputFuncotations.remove(0);
 
-        // Now convert the other transcripts into summary strings:
-        for ( final GencodeFuncotation funcotation : outputFuncotations ) {
-            otherTranscriptsCondensedAnnotations.add( condenseGencodeFuncotation(funcotation) );
+            // Now convert the other transcripts into summary strings:
+            for ( final GencodeFuncotation funcotation : outputFuncotations ) {
+                otherTranscriptsCondensedAnnotations.add(condenseGencodeFuncotation(funcotation));
+            }
+
+            // Set our `other transcripts` annotation in our best funcotation:
+            bestFuncotation.setOtherTranscripts(otherTranscriptsCondensedAnnotations);
+
+            // Add our best funcotation to the output:
+            outputFuncotations.add(bestFuncotation);
         }
-
-        // Set our `other transcripts` annotation in our best funcotation:
-        bestFuncotation.setOtherTranscripts( otherTranscriptsCondensedAnnotations );
-
-        // Add our best funcotation to the output:
-        outputFuncotations.add(bestFuncotation);
 
         return outputFuncotations;
     }
