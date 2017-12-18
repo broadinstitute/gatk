@@ -270,6 +270,7 @@ public final class GenomicsDBImport extends GATKTool {
             }
             mergedHeaderLines = VCFUtils.smartMergeHeaders(headers, true);
             mergedHeaderSequenceDictionary = new VCFHeader(mergedHeaderLines).getSequenceDictionary();
+
         } else {
             // --sampleNameMap was specified
 
@@ -279,7 +280,8 @@ public final class GenomicsDBImport extends GATKTool {
             sampleNameToVcfPath = loadSampleNameMapFileInSortedOrder(IOUtils.getPath(sampleNameMapFile));
             final Path firstHeaderPath = sampleNameToVcfPath.entrySet().iterator().next().getValue();
             final VCFHeader header = getHeaderFromPath(firstHeaderPath);
-            mergedHeaderLines = header.getMetaDataInInputOrder();
+	    //getMetaDataInInputOrder() returns an ImmutableSet - LinkedHashSet is mutable and preserves ordering
+            mergedHeaderLines = new LinkedHashSet<VCFHeaderLine>(header.getMetaDataInInputOrder());
             mergedHeaderSequenceDictionary = header.getSequenceDictionary();
         }
 
