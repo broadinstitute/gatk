@@ -23,8 +23,10 @@ import java.util.regex.Pattern;
 
 
 /**
- * Factory for creating {@link Funcotation}s by handling a SQLite database containing information from COSMIC
- * (http://cancer.sanger.ac.uk/cosmic/download).
+ * Factory for creating {@link Funcotation}s by handling a SQLite database containing information from COSMIC.
+ * The raw datasource (http://cancer.sanger.ac.uk/cosmic/download - CosmicCompleteTargetedScreensMutantExport.tsv.gz)
+ * must be unzipped and preprocessed with the script `createSqliteCosmicDb.sh`.
+ *
  *
  * This is a high-level object that interfaces with the internals of {@link org.broadinstitute.hellbender.tools.funcotator.Funcotator}.
  * Created by jonn on 12/16/17.
@@ -56,11 +58,6 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
      * Placeholder contig name for protein positions.
      */
     private static final String PROTEIN_CONTIG = "P";
-
-    /**
-     * Expected number of columns in the Cosmic table in the database.
-     */
-    private static final int EXPECTED_NUM_FIELDS = 35;
 
     /** Name of the Cosmic table in the DB. */
     private static final String TABLE_NAME = "Cosmic";
@@ -254,35 +251,6 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
     // Instance Methods:
 
     /**
-     * Create the {@link LinkedHashSet} of fields that will be added to annotations created by this {@link CosmicFuncotationFactory}.
-     * Will exclude the fields containing position information as specified by {@link CosmicFuncotationFactory#GENOME_POSITION_COLUMN_NAME} and {@link CosmicFuncotationFactory#PROTEIN_POSITION_COLUMN_NAME}.
-     * @return A {@link LinkedHashSet} containing the ordered fields in the database that will be used as annotations.
-     */
-    private final LinkedHashSet<String> populateSupportedFuncotationFields() {
-
-        final LinkedHashSet<String> fieldNames = new LinkedHashSet<>(EXPECTED_NUM_FIELDS);
-
-        try {
-            try (final Statement statement = dbConnection.createStatement() ) {
-                try ( final ResultSet resultSet = statement.executeQuery(FIELD_NAME_QUERY) ) {
-                    final ResultSetMetaData metaData = resultSet.getMetaData();
-
-                    for ( int i = 0 ; i < metaData.getColumnCount() ; ++i ) {
-                        if ( !IGNORE_FIELDS.contains(metaData.getCatalogName(i)) ) {
-                            fieldNames.add(metaData.getColumnName(i));
-                        }
-                    }
-                }
-            }
-        }
-        catch (final SQLException ex) {
-            throw new UserException("Unable to read the table schmea for table: " + TABLE_NAME + " on DB: " + pathToCosmicDb.toUri().toString(), ex);
-        }
-
-        return fieldNames;
-    }
-
-    /**
      * Get the genome position of the current record in the given {@link ResultSet}.
      * @param resultSet The results of a query on the database with a current row (must not be {@code null}).
      * @return A {@link SimpleInterval} represnting the genome position of the current record in the given {@link ResultSet}; or {@code null}.
@@ -353,32 +321,6 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
             }
         }
         return null;
-    }
-
-    /**
-     * Creates a {@link TableFuncotation} from the current record in the given {@link ResultSet}.
-     * @param resultSet The results of a query on the database with a current row (must not be {@code null}).
-     * @return A {@link TableFuncotation} representing the current record in the given {@link ResultSet}.
-     */
-    private final TableFuncotation createTableFuncotationFromResultSet(final ResultSet resultSet) {
-        Utils.nonNull(resultSet);
-
-        final List<String> values = new ArrayList<>(supportedFields.size());
-
-        int i = 0;
-        try {
-            final ResultSetMetaData metaData = resultSet.getMetaData();
-            for ( ; i < metaData.getColumnCount() ; ++i ) {
-                if ( !IGNORE_FIELDS.contains(metaData.getCatalogName(i)) ) {
-                    values.add(resultSet.getString(i));
-                }
-            }
-        }
-        catch (final SQLException ex) {
-            throw new GATKException("Cannot get data from column #: " + i, ex);
-        }
-
-        return new TableFuncotation( new ArrayList<>(supportedFields), values );
     }
 
     //==================================================================================================================
