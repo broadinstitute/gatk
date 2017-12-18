@@ -11,11 +11,6 @@ import java.io.Serializable;
 public abstract class SparkCommandLineProgram extends CommandLineProgram implements Serializable {
     private static final long serialVersionUID = 1L;
 
-
-    @Argument(doc = "API Key for google cloud authentication",
-            shortName = "apiKey", fullName = "apiKey", optional=true)
-    protected String apiKey = null;
-
     @Argument(
             doc = "Name of the program running",
             shortName = "N",

@@ -362,7 +362,6 @@ echo "source <PATH_TO>/gatk-completion.sh" >> ~/.bashrc
       to the cloud test data.  They also require setting several certain environment variables.
       * `HELLBENDER_JSON_SERVICE_ACCOUNT_KEY` : path to a local JSON file with [service account credentials](https://cloud.google.com/storage/docs/authentication#service_accounts) 
       * `HELLBENDER_TEST_PROJECT` : your google cloud project 
-      * `HELLBENDER_TEST_APIKEY` : your google cloud API key
       * `HELLBENDER_TEST_STAGING` : a gs:// path to a writable location
       * `HELLBENDER_TEST_INPUTS` : path to cloud test data, ex: gs://hellbender/test/resources/ 
     * Setting the environment variable `TEST_VERBOSITY=minimal` will produce much less output from the test suite 

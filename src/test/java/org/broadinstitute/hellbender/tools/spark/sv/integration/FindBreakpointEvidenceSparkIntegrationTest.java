@@ -38,7 +38,7 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
             this.outputDir = outputDir;
         }
 
-        String getCommandLineNoApiKey() {
+        String getCommandLine() {
             return  " -I " + bamLoc +
                     " -O "                    + "%s" +
                     " --aligner-index-image " + alignerRefIndexImgLoc +
@@ -79,7 +79,7 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
         final ArrayList<String> expectedFiles = new ArrayList<>();
         expectedFiles.add(SVIntegrationTestDataProvider.EXPECTED_ALIGNED_CONTIGS);
         new IntegrationTestSpec(
-                new ArgumentsBuilder().add(params.getCommandLineNoApiKey()).getString(),
+                new ArgumentsBuilder().add(params.getCommandLine()).getString(),
                 expectedFiles)
                 .executeTest("testFindBreakpointEvidenceSparkRunnableLocal-", this);
     }
@@ -89,7 +89,7 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
 
         MiniClusterUtils.runOnIsolatedMiniCluster(cluster -> {
 
-            final List<String> argsToBeModified = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLineNoApiKey()).getArgsArray() );
+            final List<String> argsToBeModified = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLine()).getArgsArray() );
             final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
 
             int idx = 0;

@@ -63,7 +63,6 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
 
     private Map<String, Reference> referenceMap;
     private Map<String, String> referenceNameToIdTable;
-    private String apiKey;
 
     public ReferenceAPISource( final String referenceURL ) {
         String referenceName = getReferenceSetID(referenceURL);
@@ -325,7 +324,6 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
             stream.writeUTF(jsonFactory.toString(e.getValue()));
         }
         stream.writeObject(referenceNameToIdTable);
-        stream.writeObject(apiKey);
     }
     
     private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
@@ -337,9 +335,7 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
         }
         @SuppressWarnings("unchecked")
         final Map<String, String> refTable = (Map<String, String>) stream.readObject();
-        final String apiKey = (String) stream.readObject();
         this.referenceMap = refs;
         this.referenceNameToIdTable = refTable;
-        this.apiKey = apiKey;
     }
 }

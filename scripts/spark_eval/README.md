@@ -5,7 +5,6 @@ This directory contains scripts for testing GATK pipelines on Spark - either on 
 ## TL;DR
 
 ```bash
-export API_KEY=...
 export GCS_CLUSTER=...
 
 # Sanity check on small data (a few mins)
@@ -59,10 +58,9 @@ The following shows how to run pipelines - from aligned reads to variants. The s
 
 So `small_reads-pipeline_gcs.sh` will run `ReadsPipelineSpark` on the `small` dataset in GCS (and writing output to GCS).
 
-To run on Dataproc, make sure you set `API_KEY` and `GCS_CLUSTER` environment variables:
+To run on Dataproc, make sure you set the `GCS_CLUSTER` environment variable:
 
 ```bash
-export API_KEY=...
 export GCS_CLUSTER=...
 ```
 
