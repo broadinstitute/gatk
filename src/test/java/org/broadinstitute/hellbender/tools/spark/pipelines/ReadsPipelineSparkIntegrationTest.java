@@ -37,17 +37,12 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
             this.expectedVcfFileName = expectedVcfFileName;
         }
 
-        public String getCommandLineNoApiKey() {
+        public String getCommandLine() {
             return  " -R " + referenceURL +
                     " -I " + bam +
                     " " + args +
                     (knownSites.isEmpty() ? "": " --knownSites " + knownSites) +
                     " -O %s";
-        }
-
-        public String getCommandLine() {
-            return  getCommandLineNoApiKey() +
-                    " --apiKey " + getGCPTestApiKey();
         }
 
         @Override

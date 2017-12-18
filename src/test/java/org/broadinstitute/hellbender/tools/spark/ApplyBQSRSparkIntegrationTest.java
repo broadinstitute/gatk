@@ -107,7 +107,6 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
     public void testPR_GCS(ABQSRTest params) throws IOException {
         String args =
                 " -I " + params.bam +
-                        " --apiKey " + getGCPTestApiKey() +
                         " --" + StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME + " " + resourceDir + "HiSeq.20mb.1RG.table.gz " +
                         params.args +
                         " -O %s";
@@ -122,7 +121,6 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
     public void testPR_Cloud(ABQSRTest params) throws IOException {
         String args =
                 " -I " + params.bam +
-                        " --apiKey " + getGCPTestApiKey() +
                         " --" + StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME + " " + getGCPTestInputPath() + THIS_TEST_FOLDER + "HiSeq.20mb.1RG.table.gz " +
                         params.args +
                         " -O %s";

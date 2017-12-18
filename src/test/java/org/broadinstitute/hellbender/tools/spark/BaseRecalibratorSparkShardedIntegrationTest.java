@@ -36,17 +36,12 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
             this.expectedFileName = expectedFileName;
         }
 
-        public String getCommandLineNoApiKey() {
+        public String getCommandLine() {
             return  " -R " + referenceURL +
                     " -I " + bam +
                     " " + args +
                     (knownSites.isEmpty() ? "": " -knownSites " + knownSites) +
                     " -O %s";
-        }
-
-        public String getCommandLine() {
-            return  getCommandLineNoApiKey() +
-                    " --apiKey " + getGCPTestApiKey();
         }
 
         @Override
@@ -140,15 +135,15 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
 
         final String tablePre = createTempFile("gatk4.pre.cols", ".table").getAbsolutePath();
         final String argPre = " -R " + ReferenceAPISource.URL_PREFIX + GRCh37Ref + "-indelBQSR -enableBAQ " +" -knownSites " + dbSNPb37 + " -I " + HiSeqBam
-                + " -O " + tablePre + " " + " --apiKey " + getGCPTestApiKey();
+                + " -O " + tablePre;
         new BaseRecalibratorSpark().instanceMain(Utils.escapeExpressions(argPre));
 
-        final String argApply = "-I " + HiSeqBam + " --bqsr_recal_file " + tablePre + " -O " + actualHiSeqBam_recalibrated.getAbsolutePath() + " --apiKey " + getGCPTestApiKey();
+        final String argApply = "-I " + HiSeqBam + " --bqsr_recal_file " + tablePre + " -O " + actualHiSeqBam_recalibrated.getAbsolutePath();
         new ApplyBQSRSpark().instanceMain(Utils.escapeExpressions(argApply));
 
         final File actualTablePost = createTempFile("gatk4.post.cols", ".table");
         final String argsPost = " -R " + ReferenceAPISource.URL_PREFIX + GRCh37Ref + "-indelBQSR -enableBAQ " +" -knownSites " + dbSNPb37 + " -I " + actualHiSeqBam_recalibrated.getAbsolutePath()
-                + " -O " + actualTablePost.getAbsolutePath() + " " + " --apiKey " + getGCPTestApiKey();
+                + " -O " + actualTablePost.getAbsolutePath();
         new BaseRecalibratorSpark().instanceMain(Utils.escapeExpressions(argsPost));
 
         final File expectedHiSeqBam_recalibrated = new File(resourceDir + "expected.NA12878.chr17_69k_70k.dictFix.recalibrated.DIQ.bam");
