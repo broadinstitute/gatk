@@ -25,3 +25,7 @@ servicekey.json
 
 #Test Generated File
 I_SHOULD_HAVE_BEEN_DELETED
+
+#Eclipse files
+/bin/
+.project
