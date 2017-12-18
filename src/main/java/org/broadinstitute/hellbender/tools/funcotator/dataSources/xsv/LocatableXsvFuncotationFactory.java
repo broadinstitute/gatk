@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvLocatableTableCodec;
 import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvTableFeature;
@@ -21,7 +22,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- *  Factory for creating {@link XSVFuncotation}s by handling `Separated Value` files with arbitrary delimiters
+ *  Factory for creating {@link TableFuncotation}s by handling `Separated Value` files with arbitrary delimiters
  * (e.g. CSV/TSV files) which contain data that are locatable (i.e. {@link org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvTableFeature}).
  *
  * This is a high-level object that interfaces with the internals of {@link org.broadinstitute.hellbender.tools.funcotator.Funcotator}.
@@ -89,7 +90,7 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
             for ( final Feature feature : featureList ) {
                 // Get the kind of feature we want here:
                 if ( (feature != null) && XsvTableFeature.class.isAssignableFrom(feature.getClass()) ) {
-                    outputFuncotations.add( new XSVFuncotation((XsvTableFeature) feature) );
+                    outputFuncotations.add( new TableFuncotation((XsvTableFeature) feature) );
                 }
             }
         }

@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -134,7 +135,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                                         new GencodeFuncotationBuilder().setHugoSymbol(dataTable.get(startingHeaderRow+1).get(keyColumn)).build()
                                 ),
                                 Collections.singletonList(
-                                        new XSVFuncotation(
+                                        new TableFuncotation(
                                                 removeHelper(headerRowTable.get(startingHeaderRow), keyColumn),
                                                 removeHelper(dataTable.get(startingHeaderRow+1), keyColumn)
                                         )
@@ -159,7 +160,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                                         new GencodeFuncotationBuilder().setAnnotationTranscript(dataTable.get(startingHeaderRow+1).get(keyColumn)).build()
                                 ),
                                 Collections.singletonList(
-                                        new XSVFuncotation(
+                                        new TableFuncotation(
                                                 removeHelper(headerRowTable.get(startingHeaderRow), keyColumn),
                                                 removeHelper(dataTable.get(startingHeaderRow+1), keyColumn)
                                         )
@@ -366,8 +367,8 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
 
         for (int i = 0; i < funcotations.size(); ++i) {
 
-            final XSVFuncotation computed = (XSVFuncotation)funcotations.get(i);
-            final XSVFuncotation expected = (XSVFuncotation)expectedFuncotationsList.get(i);
+            final TableFuncotation computed = (TableFuncotation)funcotations.get(i);
+            final TableFuncotation expected = (TableFuncotation)expectedFuncotationsList.get(i);
 
             Assert.assertEquals(computed.size(), expected.size(),
                     "Funcotations at index " + i + " do not have the same number of elements: computed " + computed.size() + " != " + expected.size() + " expected");

@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -184,7 +185,7 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                             xsvTableFeature1
                         ),
                         Collections.emptyList(),
-                        Collections.singletonList(new XSVFuncotation(xsvTableFeature1))
+                        Collections.singletonList(new TableFuncotation(xsvTableFeature1))
                 ),
                 // Two XsvTableFeatures in list
                 helpProvideForTestCreateFuncotations(
@@ -194,7 +195,7 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                                 xsvTableFeature1, xsvTableFeature2
                         ),
                         Collections.emptyList(),
-                        Arrays.asList(new XSVFuncotation(xsvTableFeature1), new XSVFuncotation(xsvTableFeature2))
+                        Arrays.asList(new TableFuncotation(xsvTableFeature1), new TableFuncotation(xsvTableFeature2))
                 ),
                 // Many XsvTableFeatures in list
                 helpProvideForTestCreateFuncotations(
@@ -204,7 +205,7 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                                 xsvTableFeature1, xsvTableFeature2, xsvTableFeature3
                         ),
                         Collections.emptyList(),
-                        Arrays.asList(new XSVFuncotation(xsvTableFeature1), new XSVFuncotation(xsvTableFeature2), new XSVFuncotation(xsvTableFeature3))
+                        Arrays.asList(new TableFuncotation(xsvTableFeature1), new TableFuncotation(xsvTableFeature2), new TableFuncotation(xsvTableFeature3))
                 ),
                 // Many XsvTableFeatures in list and non-empty GencodeFuncotations
                 helpProvideForTestCreateFuncotations(
@@ -216,7 +217,7 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                         Collections.singletonList(
                                 new GencodeFuncotationBuilder().setChromosome("chr3").setStart(178866314).setEnd(178866314).build()
                         ),
-                        Arrays.asList(new XSVFuncotation(xsvTableFeature1), new XSVFuncotation(xsvTableFeature2), new XSVFuncotation(xsvTableFeature3))
+                        Arrays.asList(new TableFuncotation(xsvTableFeature1), new TableFuncotation(xsvTableFeature2), new TableFuncotation(xsvTableFeature3))
                 ),
         };
     }
