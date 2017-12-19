@@ -35,7 +35,7 @@ sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" ${CNV_CROMWELL_T
 sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" ${CNV_CROMWELL_TEST_DIR}/cnv_somatic_pair_wgs_do-gc_workflow.json >cnv_somatic_pair_wgs_do-gc_workflow_mod.json
 
 echo "Running ========"
-CROMWELL_JAR="cromwell-0.28.jar"
+CROMWELL_JAR="cromwell-0.29.jar"
 
 # Panel WES
 java -jar ~/${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_panel_workflow.wdl cnv_somatic_panel_wes_no-gc_workflow_mod.json
