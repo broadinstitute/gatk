@@ -1365,4 +1365,21 @@ public final class IntervalUtils {
     public enum IntervalBreakpointType {
         START_BREAKPOINT, END_BREAKPOINT
     }
+
+    /**
+     * Returns a new segment specified by the outermost breakpoints of the two segments to be joined.
+     * Segments must be on the same chromosome, but do not need to be adjacent.  There are no other requirements for the
+     *  merge.
+     * @param segment1  first segment to be joined
+     * @param segment2  second segment to be joined
+     * @return          a new segment constructed by joining the two segments
+     */
+    public static SimpleInterval mergeSegments(final SimpleInterval segment1, final SimpleInterval segment2) {
+        Utils.validateArg(segment1.getContig().equals(segment2.getContig()),
+                () -> String.format("Cannot join segments %s and %s on different chromosomes.", segment1.toString(), segment2.toString()));
+        final int start = Math.min(segment1.getStart(), segment2.getStart());
+        final int end = Math.max(segment1.getEnd(), segment2.getEnd());
+
+        return new SimpleInterval(segment1.getContig(), start, end);
+    }
 }

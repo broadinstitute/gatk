@@ -7,7 +7,6 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.PeekableIterator;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.exome.SegmentMergeUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -215,7 +214,7 @@ final public class SimpleAnnotatedGenomicRegion implements Locatable {
      */
      private static SimpleAnnotatedGenomicRegion merge(final SimpleAnnotatedGenomicRegion region1, final SimpleAnnotatedGenomicRegion region2,
                                                       final String separator) {
-         final SimpleInterval interval = SegmentMergeUtils.mergeSegments(region1.getInterval(), region2.getInterval());
+         final SimpleInterval interval = IntervalUtils.mergeSegments(region1.getInterval(), region2.getInterval());
 
          final Set<Map.Entry<String, String>> allEntries = Sets.union(region1.getAnnotations().entrySet(),
                  region2.getAnnotations().entrySet());
