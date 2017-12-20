@@ -46,7 +46,7 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
     //
     // --------------------------------------------------------------------------------------------------------------
 
-    protected GenomeLoc( final String contig, final int contigIndex, final int start, final int stop ) {
+    public GenomeLoc( final String contig, final int contigIndex, final int start, final int stop ) {
         this.contigName = contig;
         this.contigIndex = contigIndex;
         this.start = start;

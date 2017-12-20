@@ -63,7 +63,7 @@ public final class HDF5SimpleCountCollection {
      * you must follow the pattern in the constructor (i.e. the Lazy loading pattern).
      * Otherwise, some operations will hang.
      */
-    HDF5SimpleCountCollection(final HDF5File file) {
+    public HDF5SimpleCountCollection(final HDF5File file) {
         Utils.nonNull(file, "The input file cannot be null.");
         this.file = file;
         sampleName = new Lazy<>(() -> file.readStringArray(SAMPLE_NAME_PATH)[0]);
@@ -81,14 +81,14 @@ public final class HDF5SimpleCountCollection {
         return new SimpleSampleLocatableMetadata(sampleName.get(), sequenceDictionary.get());
     }
 
-    List<SimpleInterval> getIntervals() {
+    public List<SimpleInterval> getIntervals() {
         return intervals.get();
     }
 
     /**
      * @return single-row matrix containing the counts
      */
-    RealMatrix getCounts() {
+    public RealMatrix getCounts() {
         return counts.get();
     }
 

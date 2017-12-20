@@ -344,6 +344,7 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
                 pon.writeSingularValues(singularValues);
 
                 logger.info(String.format("Writing eigensample vectors (transposed to %d x %d)...", eigensampleVectors[0].length, eigensampleVectors.length));
+
                 pon.writeEigensampleVectors(eigensampleVectors, maximumChunkSize);
             } else {
                 //if the panel only contains a single sample or zero eigensamples were requested,
