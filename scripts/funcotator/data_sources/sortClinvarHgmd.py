@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# This script sorts the Clinvar/HGMD dataset to be in ascending order by chromosome, position.
+
 ########################################################################
 # Imports:
 

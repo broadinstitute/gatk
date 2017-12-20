@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Creates a set of files that map records between GENCODE and HGNC.
+# Pulled directly from the ensemble database.
+# Currently not used by Funcotator.
+
 outFileBaseName="gencode_xhgnc"
 outExt=".tsv"
 

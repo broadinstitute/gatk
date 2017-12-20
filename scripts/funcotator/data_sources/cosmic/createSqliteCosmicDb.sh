@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+# Usage:
+# Creates a sqlite3 database file based on a COSMIC download file.
+# This resulting database file will only contain records that have either
+# genome positions or protein positions so they can be matched to variants
+# by Funcotator.
+# To change the input file, change the `COSMIC_FILE` variable.
+
 COSMIC_FILE=CosmicCompleteTargetedScreensMutantExport.tsv
 OUT_DB_FILE="Cosmic.db"
 

@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Creates a set of files that map records between many known databases of genes.
+# Pulled directly from the ensemble database.
+# Currently not used by Funcotator.
+
 outFileBaseName="all_TX_mappings"
 outExt=".tsv"
 

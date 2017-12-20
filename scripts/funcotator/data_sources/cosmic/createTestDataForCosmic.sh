@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Creates a set of test data for the Funcotator test suite based on
+# a COSMIC sqlite3 database file.
+
 LIMIT=500
 
 COSMIC_DB="Cosmic.db"

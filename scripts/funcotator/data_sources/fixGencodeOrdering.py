@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# Reorders a GENCODE GTF file to be in ascending order by chromosome, start, end.
+
 ########################################################################
 # Imports:
 

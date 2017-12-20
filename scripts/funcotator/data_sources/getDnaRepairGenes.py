@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# Downloads and formats the list of known DNA Repair Genes from the Wood laborotory website.
+# Relies on TableParser
 
 ########################################################################
 # Imports:

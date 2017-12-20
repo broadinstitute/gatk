@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# Downloads and formats data for the Oreganno data source directly from the Oreganno website.
+
 ########################################################################
 # Imports:
 
