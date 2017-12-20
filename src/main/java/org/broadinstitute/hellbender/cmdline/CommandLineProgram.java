@@ -9,24 +9,22 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.metrics.StringHeader;
 import htsjdk.samtools.util.BlockCompressedOutputStream;
 import htsjdk.samtools.util.BlockGunzipper;
-import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.CLPConfigurationArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.GATKDefaultCLPConfigurationArgumentCollection;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
-import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.text.DecimalFormat;
 import java.time.Duration;
 import java.time.ZonedDateTime;
@@ -36,6 +34,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -61,38 +63,12 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     // abstract, this is fine (as long as no logging has to happen statically in this class).
     protected final Logger logger = LogManager.getLogger(this.getClass());
 
-    @Argument(common=true, optional=true)
-    public List<File> TMP_DIR = new ArrayList<>();
-
     @ArgumentCollection(doc="Special Arguments that have meaning to the argument parsing system.  " +
             "It is unlikely these will ever need to be accessed by the command line program")
     public SpecialArgumentsCollection specialArgumentsCollection = new SpecialArgumentsCollection();
 
-    @Argument(fullName = StandardArgumentDefinitions.VERBOSITY_NAME, shortName = StandardArgumentDefinitions.VERBOSITY_NAME, doc = "Control verbosity of logging.", common = true, optional = true)
-    public Log.LogLevel VERBOSITY = Log.LogLevel.INFO;
-
-    @Argument(doc = "Whether to suppress job-summary info on System.err.", common=true)
-    public Boolean QUIET = false;
-
-    @Argument(fullName = "use-jdk-deflater", shortName = "jdk-deflater", doc = "Whether to use the JdkDeflater (as opposed to IntelDeflater)", common=true)
-    public boolean useJdkDeflater = false;
-
-    @Argument(fullName = "use-jdk-inflater", shortName = "jdk-inflater", doc = "Whether to use the JdkInflater (as opposed to IntelInflater)", common=true)
-    public boolean useJdkInflater = false;
-
-    @Argument(fullName = "gcs-max-retries", shortName = "gcs-retries", doc = "If the GCS bucket channel errors out, how many times it will attempt to re-initiate the connection", optional = true)
-    public int NIO_MAX_REOPENS = ConfigFactory.getInstance().getGATKConfig().gcsMaxRetries();
-
-    // This option is here for documentation completeness.
-    // This is actually parsed out in Main to initialize configuration files because
-    // we need to have the configuration completely set up before we create our CommandLinePrograms.
-    // (Some of the CommandLinePrograms have default values set to config values, and these are loaded
-    // at class load time as static initializers).
-    @Argument(fullName = StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION,
-              doc = "A configuration file to use with the GATK.",
-                common = true,
-                optional = true)
-    public String GATK_CONFIG_FILE = null;
+    @ArgumentCollection
+    public CLPConfigurationArgumentCollection configArgs = getClpConfigurationArgumentCollection();
 
     private CommandLineParser commandLineParser;
 
@@ -126,6 +102,13 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     protected void onShutdown() {}
 
     /**
+     * Argument collection for the configuration.
+     */
+    protected CLPConfigurationArgumentCollection getClpConfigurationArgumentCollection() {
+        return new GATKDefaultCLPConfigurationArgumentCollection();
+    }
+
+    /**
      * Template method that runs the startup hook, doWork and then the shutdown hook.
      */
     public final Object runTool(){
@@ -141,37 +124,51 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     }
 
     public Object instanceMainPostParseArgs() {
-        // Provide one temp directory if the caller didn't
-        if (this.TMP_DIR == null) this.TMP_DIR = new ArrayList<>();
-        if (this.TMP_DIR.isEmpty()) TMP_DIR.add(IOUtil.getDefaultTmpDir());
-
         // Build the default headers
         final ZonedDateTime startDateTime = ZonedDateTime.now();
         this.defaultHeaders.add(new StringHeader(commandLine));
         this.defaultHeaders.add(new StringHeader("Started on: " + Utils.getDateTimeForDisplay(startDateTime)));
 
-        LoggingUtils.setLoggingLevel(VERBOSITY);  // propagate the VERBOSITY level to logging frameworks
+        LoggingUtils.setLoggingLevel(configArgs.getVerbosity());  // propagate the VERBOSITY level to logging frameworks
 
-        for (final File f : TMP_DIR) {
+        for (final Path p : this.configArgs.getTmpDirectories()) {
             // Intentionally not checking the return values, because it may be that the program does not
             // need a tmp_dir. If this fails, the problem will be discovered downstream.
-            if (!f.exists()) f.mkdirs();
-            f.setReadable(true, false);
-            f.setWritable(true, false);
-            System.setProperty("java.io.tmpdir", f.getAbsolutePath()); // in loop so that last one takes effect
+            if (!Files.exists(p)) {
+                try {
+                    Files.createDirectories(p);
+                } catch (IOException e) {
+                    // intentionally ignoring
+                }
+            }
+            try {
+                // TODO - not sure if this will work as before, because using File.setReadable(true, false) and
+                // TODO - f.setWritable(true, false) was done in two steps, so if one failed the other was done
+                // TODO - I don't know if the setPosixFilePermissions try to set all and then throws an exception
+                // TODO - if any of them fails, or just has an early termination
+                // TODO - an option to avoid this problem is iterate over a list of the permissions and set them
+                // TODO - one by one, ignoring possible errors (this was done in the original commit/PR)
+                Files.setPosixFilePermissions(p, new HashSet<>(Arrays.asList(
+                        PosixFilePermission.OWNER_READ, PosixFilePermission.GROUP_READ, PosixFilePermission.OTHERS_READ,
+                        PosixFilePermission.OWNER_WRITE, PosixFilePermission.GROUP_WRITE, PosixFilePermission.OTHERS_WRITE)
+                ));
+            } catch (UnsupportedOperationException | IOException e) {
+                // intentionally ignoring
+            }
+            System.setProperty("java.io.tmpdir", p.toAbsolutePath().toUri().toString()); // in loop so that last one takes effect
         }
 
         //Set defaults (note: setting them here means they are not controllable by the user)
-        if (! useJdkDeflater) {
+        if (! configArgs.useJdkDeflater()) {
             BlockCompressedOutputStream.setDefaultDeflaterFactory(new IntelDeflaterFactory());
         }
-        if (! useJdkInflater) {
+        if (! configArgs.useJdkInflater()) {
             BlockGunzipper.setDefaultInflaterFactory(new IntelInflaterFactory());
         }
 
-        BucketUtils.setGlobalNIODefaultOptions(NIO_MAX_REOPENS);
+        BucketUtils.setGlobalNIODefaultOptions(configArgs.getNioMaxReopens());
 
-        if (!QUIET) {
+        if (!configArgs.isQuiet()) {
             printStartupMessage(startDateTime);
         }
 
@@ -179,7 +176,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
             return runTool();
         } finally {
             // Emit the time even if program throws
-            if (!QUIET) {
+            if (!configArgs.isQuiet()) {
                 final ZonedDateTime endDateTime = ZonedDateTime.now();
                 final double elapsedMinutes = (Duration.between(startDateTime, endDateTime).toMillis()) / (1000d * 60d);
                 final String elapsedString  = new DecimalFormat("#,##0.00").format(elapsedMinutes);
@@ -341,7 +338,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
      * May be overridden by subclasses to specify a different set of settings to output.
      */
     protected void printSettings() {
-        if ( VERBOSITY != Log.LogLevel.DEBUG ) {
+        if ( configArgs.getVerbosity() != Log.LogLevel.DEBUG ) {
             logger.info("HTSJDK Defaults.COMPRESSION_LEVEL : " + Defaults.COMPRESSION_LEVEL);
             logger.info("HTSJDK Defaults.USE_ASYNC_IO_READ_FOR_SAMTOOLS : " + Defaults.USE_ASYNC_IO_READ_FOR_SAMTOOLS);
             logger.info("HTSJDK Defaults.USE_ASYNC_IO_WRITE_FOR_SAMTOOLS : " + Defaults.USE_ASYNC_IO_WRITE_FOR_SAMTOOLS);
@@ -362,7 +359,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         final boolean usingIntelInflater = (BlockGunzipper.getDefaultInflaterFactory() instanceof IntelInflaterFactory && ((IntelInflaterFactory)BlockGunzipper.getDefaultInflaterFactory()).usingIntelInflater());
         logger.info("Inflater: " + (usingIntelInflater ? "IntelInflater": "JdkInflater"));
 
-        logger.info("GCS max retries/reopens: " + BucketUtils.getCloudStorageConfiguration(NIO_MAX_REOPENS).maxChannelReopens());
+        logger.info("GCS max retries/reopens: " + BucketUtils.getCloudStorageConfiguration(configArgs.getNioMaxReopens()).maxChannelReopens());
         logger.info("Using google-cloud-java patch 6d11bef1c81f885c26b2b56c8616b7a705171e4f from https://github.com/droazen/google-cloud-java/tree/dr_all_nio_fixes");
     }
 
