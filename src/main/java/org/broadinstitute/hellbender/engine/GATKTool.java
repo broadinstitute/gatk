@@ -141,7 +141,7 @@ public abstract class GATKTool extends CommandLineProgram {
     /**
      * Our source of Feature data (null if no source of Features was provided)
      */
-    FeatureManager features;
+    protected FeatureManager features;
 
     /**
      * Intervals to be used for traversal (null if no intervals were provided).

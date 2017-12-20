@@ -18,6 +18,7 @@ gradlew.bat
 tmp/
 src/main/java/local/
 out/
+*.pyc
 
 #Please don't commit me
 client_secret.json
@@ -25,6 +26,7 @@ servicekey.json
 
 #Test Generated File
 I_SHOULD_HAVE_BEEN_DELETED
+funcotator_tmp
 
 #Eclipse files
 /bin/

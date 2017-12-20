@@ -1,8 +1,9 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
-import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyXsvFuncotationFactory;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Class to store argument definitions specific to {@link Funcotator}.
@@ -15,59 +16,23 @@ public class FuncotatorArgumentDefinitions {
     // ------------------------------------------------------------
     // Definitions for required arguments:
 
-    public static final String GTF_FILE_ARG_LONG_NAME = "gtfFile";
-    public static final String GTF_FILE_ARG_SHORT_NAME = "gtf";
+    public static final String REFERENCE_VERSION_LONG_NAME = "refVersion";
 
-    public static final String GENCODE_FASTA_ARG_NAME = "fasta";
+    public static final String DATA_SOURCES_PATH_LONG_NAME = "dataSourcesPath";
 
     // ------------------------------------------------------------
     // Definitions for optional arguments:
 
-    public static final String LOCATABLE_XSV_IN_ARG_LONG_NAME = "xsv-locatable-input";
-    public static final String LOCATABLE_XSV_IN_ARG_SHORT_NAME = "xsv-loc-in";
-
-    public static final String XSV_INPUT_ARG_LONG_NAME = "xsv-input";
-    public static final String XSV_INPUT_ARG_SHORT_NAME = "xsv";
-    public static final List<String> XSV_INPUT_ARG_DEFAULT_VALUE = new ArrayList<>();
-
-    public static final String XSV_VERSION_ARG_LONG_NAME = "xsv-version";
-    public static final String XSV_VERSION_ARG_SHORT_NAME = "xsvv";
-    public static final List<String> XSV_VERSION_ARG_DEFAULT_VALUE = new ArrayList<>();
-
-    public static final String XSV_DELIMITER_ARG_LONG_NAME = "xsv-delimiter";
-    public static final String XSV_DELIMITER_ARG_SHORT_NAME = "xsvd";
-    public static final List<String> XSV_DELIMITER_ARG_DEFAULT_VALUE = new ArrayList<>();
-
-    public static final String XSV_KEY_COLUMN_ARG_LONG_NAME = "xsv-key-column";
-    public static final String XSV_KEY_COLUMN_ARG_SHORT_NAME = "xsv-key-col";
-    public static final List<Integer> XSV_KEY_COLUMN_ARG_DEFAULT_VALUE = new ArrayList<>();
-
-    public static final String XSV_FILE_TYPE_ARG_LONG_NAME = "xsv-file-type";
-    public static final String XSV_FILE_TYPE_ARG_SHORT_NAME = "xsv-type";
-    public static final List<SimpleKeyXsvFuncotationFactory.XsvDataKeyType> XSV_FILE_TYPE_ARG_DEFAULT_VALUE = new ArrayList<>();
-
-    public static final String XSV_NAME_ARG_LONG_NAME = "xsv-name";
-    public static final String XSV_NAME_ARG_SHORT_NAME = "xsv-name";
-    public static final List<String> XSV_NAME_ARG_DEFAULT_VALUE = new ArrayList<>();
-
-    public static final String XSV_PERMISSIVE_COLS_ARG_LONG_NAME = "xsv-permit-columns";
-    public static final String XSV_PERMISSIVE_COLS_ARG_SHORT_NAME = "xsvpc";
-    public static final List<Boolean> XSV_PERMISSIVE_COLS_ARG_DEFAULT_VALUE = new ArrayList<>();
-
-    public static final String TRANSCRIPT_SELECTION_MODE_LONG_NAME = "transcript-selection-mode";
-    public static final String TRANSCRIPT_SELECTION_MODE_SHORT_NAME = "tm";
+    public static final String TRANSCRIPT_SELECTION_MODE_LONG_NAME = "transcriptSelectionMode";
     public static final TranscriptSelectionMode TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE = TranscriptSelectionMode.CANONICAL;
 
     public static final String TRANSCRIPT_LIST_LONG_NAME = "transcript-list";
-    public static final String TRANSCRIPT_LIST_SHORT_NAME = "tl";
     public static final Set<String> TRANSCRIPT_LIST_DEFAULT_VALUE = new HashSet<>();
 
     public static final String ANNOTATION_DEFAULTS_LONG_NAME = "annotation-default";
-    public static final String ANNOTATION_DEFAULTS_SHORT_NAME = "d";
     public static final List<String> ANNOTATION_DEFAULTS_DEFAULT_VALUE = new ArrayList<>();
 
     public static final String ANNOTATION_OVERRIDES_LONG_NAME = "annotation-override";
-    public static final String ANNOTATION_OVERRIDES_SHORT_NAME = "a";
     public static final List<String> ANNOTATION_OVERRIDES_DEFAULT_VALUE = new ArrayList<>();
 
     // ------------------------------------------------------------
@@ -216,5 +181,37 @@ public class FuncotatorArgumentDefinitions {
          *      no appris tag present
          */
         CANONICAL
+    }
+
+    public enum DataSourceType {
+        SIMPLE_XSV("simpleXSV"),
+        LOCATABLE_XSV("locatableXSV"),
+        GENCODE("gencode"),
+        COSMIC("cosmic");
+
+        private final String serialized;
+
+        DataSourceType(final String serializedValue) {
+            serialized = serializedValue;
+        }
+
+        @Override
+        public String toString() {
+            return serialized;
+        }
+
+        public static DataSourceType getEnum(final String s) {
+            for( final DataSourceType val : values() ) {
+                if(val.serialized.equalsIgnoreCase(s)) {
+                    return val;
+                }
+            }
+            throw new IllegalArgumentException("Unexpected value: " + s);
+        }
+    }
+
+    public enum ReferenceVersionType {
+        hg19,
+        hg38
     }
 }

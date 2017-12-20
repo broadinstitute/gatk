@@ -212,12 +212,15 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
         }
 
         // We're at the header, so we need to initialize the header columns:
-        final List<String> annotationColumnNames = Arrays.stream(lineIterator.next().split(delimiter)).map(n -> getName() + "_" + n).collect(Collectors.toCollection(ArrayList::new));
+        final List<String> annotationColumnNames =
+                Arrays.stream(lineIterator.next().split(delimiter))
+                        .map(n -> getName() + "_" + n)
+                        .collect(Collectors.toCollection(ArrayList::new));
 
         // If the number of columns is < 2, we don't have any data (because we don't add in the column containing
         // the key).  This is an error:
         if ( annotationColumnNames.size() < 2 ) {
-            throw new UserException.MalformedFile("Data Source is badly formatted (" + xsvInputPath.toUri().toString() + ") - contains too few columns (" + annotationColumnNames.size() + ")!");
+            throw new UserException.MalformedFile("Data Source is badly formatted (" + xsvInputPath.toUri().toString() + ") - contains too few columns (" + annotationColumnNames.size() + ")!  Is the delimiter specified incorrectly?");
         }
 
         // Pull out the column containing the key so it doesn't appear in our data:
@@ -235,7 +238,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
      *                                or it will be truncated to match the number of columns in the header.
      */
     private void populateAnnotationMap(final Iterator<String> it,
-                                       boolean permissiveColumnNumbers) {
+                                       final boolean permissiveColumnNumbers) {
 
         boolean emptyLineFlag = false;
 

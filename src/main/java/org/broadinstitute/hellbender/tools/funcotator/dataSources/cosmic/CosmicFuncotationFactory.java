@@ -119,6 +119,11 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
     // Constructors:
 
     public CosmicFuncotationFactory(final Path pathToCosmicDb) {
+        this(pathToCosmicDb, new LinkedHashMap<>());
+    }
+
+    public CosmicFuncotationFactory(final Path pathToCosmicDb,
+                                    final LinkedHashMap<String, String> annotationOverridesMap) {
         this.pathToCosmicDb = pathToCosmicDb;
 
         // Connect to the DB:
@@ -138,6 +143,9 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
         // Get the supported fields:
         supportedFields = new LinkedHashSet<>(1);
         supportedFields.add(name + "_overlapping_mutations");
+
+        // Initialize our annotation overrides:
+        initializeAnnotationOverrides(annotationOverridesMap);
     }
 
     //==================================================================================================================

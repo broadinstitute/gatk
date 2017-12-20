@@ -197,7 +197,7 @@ public final class FeatureManager implements AutoCloseable {
      * Note: package-visible to enable access from the core walker classes
      * (but not actual tools, so it's not protected).
      */
-    void addToFeatureSources(final int featureQueryLookahead, final FeatureInput<? extends Feature> featureInput, final Class<? extends Feature> featureType, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference) {
+    protected void addToFeatureSources(final int featureQueryLookahead, final FeatureInput<? extends Feature> featureInput, final Class<? extends Feature> featureType, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference) {
         // Create a new FeatureDataSource for this file, and add it to our query pool
         featureSources.put(featureInput, new FeatureDataSource<>(featureInput, featureQueryLookahead, featureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, reference));
     }
