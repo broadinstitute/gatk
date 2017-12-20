@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.downsampling.PositionalDownsampler;
+import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.File;
@@ -279,6 +280,10 @@ public abstract class AssemblyRegionWalker extends GATKTool {
         return defaultFilters;
     }
 
+    protected ReadsDownsampler createDownsampler() {
+        return maxReadsPerAlignmentStart > 0 ? new PositionalDownsampler(maxReadsPerAlignmentStart, getHeaderForReads()) : null;
+    }
+
     @Override
     public final void traverse() {
 
@@ -293,7 +298,7 @@ public abstract class AssemblyRegionWalker extends GATKTool {
             // instead of filtering the reads directly here
             readShard.setPreReadFilterTransformer(makePreReadFilterTransformer());
             readShard.setReadFilter(countedFilter);
-            readShard.setDownsampler(maxReadsPerAlignmentStart > 0 ? new PositionalDownsampler(maxReadsPerAlignmentStart, getHeaderForReads()) : null);
+            readShard.setDownsampler(createDownsampler());
             readShard.setPostReadFilterTransformer(makePostReadFilterTransformer());
             currentReadShard = readShard;
 
