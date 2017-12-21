@@ -11,14 +11,16 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.tools.copynumber.utils.segmentation.KernelSegmenter;
+import org.broadinstitute.hellbender.tools.walkers.mutect.FilterMutectCalls;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.tools.walkers.mutect.FilterMutectCalls;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -30,27 +32,41 @@ import java.util.stream.IntStream;
  *     The resulting contamination table is used with {@link FilterMutectCalls}.
  * </p>
  *
- * <p>This tool and GetPileupSummaries together replace GATK3's ContEst.</p>
+ * <p>This tool and GetPileupSummaries together replace GATK3's ContEst.  Like ContEst, this tool estimates contamination based on the signal
+ * from ref reads at hom alt sites.  However, ContEst uses a probabilistic model that assumes a diploid genotype with no copy number
+ * variation and independent contaminating reads.  That is, ContEst assumes that each contaminating read is drawn randomly and
+ * independently from a different human.  This tool uses a simpler estimate of contamination that relaxes these assumptions.  In particular,
+ * it works in the presence of copy number variations and with an arbitrary number of contaminating samples.  In addition, this tool
+ * is designed to work well with no matched normal data.  However, one can run {@link GetPileupSummaries} on a matched normal bam file
+ * and input the result to this tool.</p>
  *
  * <p>
  *     The resulting table provides the fraction contamination, one line per sample, e.g. SampleID--TAB--Contamination.
  *     The file has no header.
  * </p>
  *
- * <h3>Example</h3>
+ * <h3>Example: tumor-only mode</h3>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" CalculateContamination \
+ * gatk CalculateContamination \
  *   -I pileups.table \
  *   -O contamination.table
  * </pre>
  *
- * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
+ * <h3>Example: matched normal mode</h3>
+ *
+ * <pre>
+ * gatk CalculateContamination \
+ *   -I tumor-pileups.table \
+ *   -matched normal-pileups.table \
+ *   -O contamination.table
+ * </pre>
+ *
  */
 @CommandLineProgramProperties(
         summary = "Calculate the fraction of reads coming from cross-sample contamination",
         oneLineSummary = "Calculate the fraction of reads coming from cross-sample contamination",
-        programGroup = VariantProgramGroup.class
+        programGroup = DiagnosticsAndQCProgramGroup.class
 )
 @DocumentedFeature
 public class CalculateContamination extends CommandLineProgram {
@@ -74,8 +90,10 @@ public class CalculateContamination extends CommandLineProgram {
             doc="The input table")
     private File inputPileupSummariesTable;
 
-    @Argument(fullName = "matchedNormal",
-            shortName = "matched",
+    public static final String MATCHED_NORMAL_LONG_NAME = "matched-normal";
+    public static final String MATCHED_NORMAL_SHORT_NAME = "matched";
+    @Argument(fullName = MATCHED_NORMAL_LONG_NAME,
+            shortName = MATCHED_NORMAL_SHORT_NAME,
             doc="The matched normal input table", optional = true)
     private File matchedPileupSummariesTable = null;
 
@@ -84,11 +102,13 @@ public class CalculateContamination extends CommandLineProgram {
             doc="The output table")
     private final File outputTable = null;
 
-    @Argument(fullName= "lowCoverageRatioThreshold",
+    public static final String LOW_COVERAGE_RATIO_THRESHOLD_NAME = "low-coverage-ratio-threshold";
+    @Argument(fullName = LOW_COVERAGE_RATIO_THRESHOLD_NAME,
             doc="The minimum coverage relative to the median.", optional = true)
     private final double lowCoverageRatioThreshold = DEFAULT_LOW_COVERAGE_RATIO_THRESHOLD;
 
-    @Argument(fullName= "highCoverageRatioThreshold",
+    public static final String HIGH_COVERAGE_RATIO_THRESHOLD_NAME = "high-coverage-ratio-threshold";
+    @Argument(fullName= HIGH_COVERAGE_RATIO_THRESHOLD_NAME,
             doc="The maximum coverage relative to the median.", optional = true)
     private final double highCoverageRatioThreshold = DEFAULT_HIGH_COVERAGE_RATIO_THRESHOLD;
     

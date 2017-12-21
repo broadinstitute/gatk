@@ -17,20 +17,14 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
-import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 /**
  * Create a panel of normals (PoN) containing germline and artifactual sites for use with Mutect2.
@@ -50,12 +44,11 @@ import java.util.stream.StreamSupport;
  *
  * <p>Step 1. Run Mutect2 in tumor-only mode for each normal sample.</p>
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" Mutect2 \
+ * gatk Mutect2 \
  *   -R ref_fasta.fa \
  *   -I normal1.bam \
  *   -tumor normal1_sample_name \
- *   --germline_resource af-only-gnomad.vcf.gz \
- *   -L intervals.list \
+ *   --germline-resource af-only-gnomad.vcf.gz \
  *   -O normal1_for_pon.vcf.gz
  * </pre>
  *
@@ -71,14 +64,14 @@ import java.util.stream.StreamSupport;
  * <p>Step 3. Combine the normal calls using CreateSomaticPanelOfNormals.</p>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" CreateSomaticPanelOfNormals \
+ * gatk CreateSomaticPanelOfNormals \
  *   -vcfs normals_for_pon_vcf.list \
  *   -O pon.vcf.gz
  * </pre>
  *
  * <p>Alternatively, provide each normal's VCF as separate arguments.</p>
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" CreateSomaticPanelOfNormals \
+ * gatk CreateSomaticPanelOfNormals \
  *   -vcfs normal1_for_pon_vcf.gz \
  *   -vcfs normal2_for_pon_vcf.gz \
  *   -vcfs normal3_for_pon_vcf.gz \
@@ -87,12 +80,13 @@ import java.util.stream.StreamSupport;
  *
  *  <p>The tool also accepts multiple .list files. Pass each in with the -vcfs option.</p>
  *
- * @author David Benjamin &lt;davidben@brgoadinstitute.org&gt;
+ *  <p>See {@link Mutect2} documentation for usage examples.</p>
+ *
  */
 @CommandLineProgramProperties(
         summary = "Make a panel of normals (PoN) for use with Mutect2",
         oneLineSummary = "Make a panel of normals for use with Mutect2",
-        programGroup = VariantProgramGroup.class
+        programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
 @BetaFeature

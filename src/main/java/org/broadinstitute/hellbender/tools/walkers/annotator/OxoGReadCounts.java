@@ -25,7 +25,6 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-
 /**
  *  Count of read pairs in the F1R2 and F2R1 configurations supporting the reference and alternate alleles
  *
@@ -35,8 +34,8 @@ import java.util.stream.Collectors;
  *
  *  <h3>References</h3>
  *  <p>For more details about the mechanism of oxoG artifact generation, see <a href='http://www.ncbi.nlm.nih.gov/pubmed/23303777' target='_blank'>
- *      "Discovery and characterization of artefactual mutations in deep coverage targeted capture sequencing data due to oxidative DNA damage during sample preparation."
- *  by Costello et al.</a></p>
+ *      <i></i>Discovery and characterization of artefactual mutations in deep coverage targeted capture sequencing data due to oxidative DNA damage during sample preparation.</i>
+ *  by Costello et al, doi: 10.1093/nar/gks1443</a></p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Count of read pairs in the F1R2 and F2R1 configurations supporting REF and ALT alleles (F1R2, F2R1)")
 public final class OxoGReadCounts extends GenotypeAnnotation implements StandardMutectAnnotation {

@@ -25,8 +25,7 @@ public class GetPileupSummariesIntegrationTest extends CommandLineProgramTest {
                 "-I", NA12878.getAbsolutePath(),
                 "-V", thousandGenomes.getAbsolutePath(),
                 "-O", output.getAbsolutePath(),
-                "-maxAF", "0.9"
-                //"-L 20:10000107-10000586"
+                "-" + GetPileupSummaries.MAX_SITE_AF_SHORT_NAME, "0.9"
         };
         runCommandLine(args);
 

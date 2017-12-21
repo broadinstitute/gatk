@@ -7,7 +7,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.MultiVariantWalker;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -17,7 +17,6 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 
@@ -35,30 +34,33 @@ import java.util.List;
  *     which limits sites the tool considers to those in the variants resource file that have allele frequencies (AF) of 0.2 or less.
  * </p>
  *
+ * <p>The full gnomAD is not necessary.  Rather, a much smaller eight-column sites-only vcf restricted to commonly-variant germline SNPs
+ * and containing no INFO field other than allele frequency (AF) gives identical results and runs faster.
+ * See the GATK Resource Bundle for an example human file.</p>
+ *
  * <h3>Example</h3>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" GetPileupSummaries \
+ * gatk GetPileupSummaries \
  *   -I tumor.bam \
  *   -L intervals.list \
  *   -V variants_for_contamination.vcf.gz \
  *   -O pileups.table
  * </pre>
  *
- * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
         summary = "Calculate pileup statistics for inferring contamination",
         oneLineSummary = "Calculate pileup statistics for inferring contamination",
-        programGroup = VariantProgramGroup.class)
+        programGroup = CoverageAnalysisProgramGroup.class)
 @BetaFeature
 @DocumentedFeature
 public class GetPileupSummaries extends MultiVariantWalker {
 
-    public final String MAX_SITE_AF_LONG_NAME = "maximumPopulationAlleleFrequency";
-    public final String MIN_SITE_AF_LONG_NAME = "minimumPopulationAlleleFrequency";
-    public final String MAX_SITE_AF_SHORT_NAME = "maxAF";
-    public final String MIN_SITE_AF_SHORT_NAME = "minAF";
+    public static final String MAX_SITE_AF_LONG_NAME = "maximum-population-allele-frequency";
+    public static final String MIN_SITE_AF_LONG_NAME = "minimum-population-allele-frequency";
+    public static final String MAX_SITE_AF_SHORT_NAME = "max-af";
+    public static final String MIN_SITE_AF_SHORT_NAME = "min-af";
 
     private static final double DEFAULT_MIN_POPULATION_AF = 0.01;
     private static final double DEFAULT_MAX_POPULATION_AF = 0.2;
