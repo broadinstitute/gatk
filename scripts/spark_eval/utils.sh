@@ -14,7 +14,6 @@ time_gatk() {
   if [ -n "$GCS_CLUSTER" ]; then
     SPARK_RUNNER_ARGS="--spark-runner GCS --cluster $GCS_CLUSTER"
   else
-
     SPARK_RUNNER_ARGS="--spark-runner SPARK --spark-master yarn-client --spark-submit-command spark2-submit"
   fi
   COMMAND=$(echo $GATK_ARGS | awk '{print $1}')

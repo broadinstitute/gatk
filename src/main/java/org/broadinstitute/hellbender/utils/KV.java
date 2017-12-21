@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.utils;
 
+import java.util.Objects;
+
 /**
- * replacement for dataflow Key-Value class
+ * replacement for dataflow Key-Value class, don't use this anywhere new
  */
 public class KV<K, V> {
 
@@ -24,5 +26,24 @@ public class KV<K, V> {
 
     public V getValue() {
         return value;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        KV<?, ?> kv = (KV<?, ?>) o;
+        return Objects.equals(key, kv.key) &&
+                Objects.equals(value, kv.value);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(key, value);
+    }
+
+    @Override
+    public String toString() {
+        return "(" + key + ", " + value + ")";
     }
 }
