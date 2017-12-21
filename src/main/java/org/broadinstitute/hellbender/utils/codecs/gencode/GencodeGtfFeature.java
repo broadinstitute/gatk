@@ -944,6 +944,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
         // Has transcripts that overlap the genomic span (i.e. exon or introns) of a protein-coding locus on the opposite strand.
         ANTISENSE("antisense"),
+        ANTISENSE_RNA("antisense_RNA"),
 
         KNOWN_NCRNA("known_ncrna"),
 

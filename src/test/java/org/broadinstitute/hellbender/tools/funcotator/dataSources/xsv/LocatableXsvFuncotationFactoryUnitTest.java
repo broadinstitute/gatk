@@ -227,16 +227,27 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
         return new Object[][] {
                 // Empty list of data files:
                 {Collections.emptyList(), new LinkedHashSet<>()},
-                // One Valid XSV Locatable Data File:
+                // One Valid XSV (csv) Locatable Data File:
                 {
-                    Collections.singletonList(Paths.get(FuncotatorTestConstants.XSV_LOCATABLE_TEST_FILE1_PATH)),
-                    new LinkedHashSet<>(Arrays.asList("XSV_LOCATABLE_TEST_NAME_Villain", "XSV_LOCATABLE_TEST_NAME_test_val", "XSV_LOCATABLE_TEST_NAME_Bond"))
+                        Collections.singletonList(Paths.get(FuncotatorTestConstants.XSV_LOCATABLE_TEST_FILE1_PATH)),
+                        new LinkedHashSet<>(Arrays.asList("XSV_LOCATABLE_TEST_NAME_Villain", "XSV_LOCATABLE_TEST_NAME_test_val", "XSV_LOCATABLE_TEST_NAME_Bond"))
+                },
+                // One Valid XSV (tsv) Locatable Data File:
+                {
+                        Collections.singletonList(Paths.get(FuncotatorTestConstants.XSV_LOCATABLE_TEST_FILE3_PATH)),
+                        new LinkedHashSet<>(Arrays.asList("XSV_LOCATABLE_TEST_NAME_Villain", "XSV_LOCATABLE_TEST_NAME_test_val", "XSV_LOCATABLE_TEST_NAME_Bond"))
                 },
                 // Two Valid XSV Locatable Data Files:
                 {
                     Arrays.asList(Paths.get(FuncotatorTestConstants.XSV_LOCATABLE_TEST_FILE1_PATH), Paths.get(FuncotatorTestConstants.XSV_LOCATABLE_TEST_FILE2_PATH)),
                     new LinkedHashSet<>(Arrays.asList("XSV_LOCATABLE_TEST_NAME_Villain", "XSV_LOCATABLE_TEST_NAME_test_val", "XSV_LOCATABLE_TEST_NAME_Bond",
                             "SECOND_XSV_NAME_Car_Maker", "SECOND_XSV_NAME_Tire_Maker", "SECOND_XSV_NAME_Parent_Company"))
+                },
+                // Three Valid XSV Locatable Data Files:
+                {
+                        Arrays.asList(Paths.get(FuncotatorTestConstants.XSV_LOCATABLE_TEST_FILE1_PATH), Paths.get(FuncotatorTestConstants.XSV_LOCATABLE_TEST_FILE2_PATH), Paths.get(FuncotatorTestConstants.XSV_LOCATABLE_TEST_FILE3_PATH)),
+                        new LinkedHashSet<>(Arrays.asList("XSV_LOCATABLE_TEST_NAME_Villain", "XSV_LOCATABLE_TEST_NAME_test_val", "XSV_LOCATABLE_TEST_NAME_Bond",
+                                "SECOND_XSV_NAME_Car_Maker", "SECOND_XSV_NAME_Tire_Maker", "SECOND_XSV_NAME_Parent_Company"))
                 },
         };
     }
