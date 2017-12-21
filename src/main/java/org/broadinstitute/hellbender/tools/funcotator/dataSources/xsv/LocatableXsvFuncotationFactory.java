@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotatorArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvLocatableTableCodec;
@@ -101,6 +102,11 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
     @Override
     public List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList, final List<GencodeFuncotation> gencodeFuncotations) {
         return createFuncotations(variant, referenceContext, featureList);
+    }
+
+    @Override
+    public FuncotatorArgumentDefinitions.DataSourceType getType() {
+        return FuncotatorArgumentDefinitions.DataSourceType.LOCATABLE_XSV;
     }
 
     //==================================================================================================================

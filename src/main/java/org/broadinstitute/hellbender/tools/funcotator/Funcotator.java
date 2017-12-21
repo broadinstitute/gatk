@@ -112,7 +112,7 @@ public class Funcotator extends VariantWalker {
 
     private OutputRenderer outputRenderer;
     private final List<DataSourceFuncotationFactory> dataSourceFactories = new ArrayList<>();
-    private GencodeFuncotationFactory gencodeFuncotationFactory;
+    private List<GencodeFuncotationFactory> gencodeFuncotationFactories = new ArrayList<>();
 
     private List<FeatureInput<? extends Feature>> manualFeatureInputs = new ArrayList<>();
 
@@ -223,19 +223,25 @@ public class Funcotator extends VariantWalker {
         final List<Funcotation> funcotations = new ArrayList<>();
 
         // Annotate with Gencode first:
-        final List<Funcotation> funcotationsFromGencodeFactory = gencodeFuncotationFactory.createFuncotations(variant, referenceContext, featureList);
-        funcotations.addAll( funcotationsFromGencodeFactory );
 
         // Create a list of GencodeFuncotation to use for other Data Sources:
-        final List<GencodeFuncotation> gencodeFuncotations =
-                funcotationsFromGencodeFactory.stream()
-                    .map(f -> (GencodeFuncotation) f).collect(Collectors.toList());
+        final List<GencodeFuncotation> gencodeFuncotations = new ArrayList<>();
+
+        for ( final GencodeFuncotationFactory factory : gencodeFuncotationFactories ) {
+            final List<Funcotation> funcotationsFromGencodeFactory = factory.createFuncotations(variant, referenceContext, featureList);
+            funcotations.addAll(funcotationsFromGencodeFactory);
+            gencodeFuncotations.addAll(
+                    funcotationsFromGencodeFactory.stream()
+                    .map(x -> (GencodeFuncotation)x)
+                    .collect(Collectors.toList())
+            );
+        }
 
         // Annotate with the rest of the data sources:
         for ( final DataSourceFuncotationFactory funcotationFactory : dataSourceFactories ) {
 
             // Make sure we don't double up on the Gencodes:
-            if ( funcotationFactory.equals(gencodeFuncotationFactory) ) {
+            if ( funcotationFactory.getType().equals(FuncotatorArgumentDefinitions.DataSourceType.GENCODE) ) {
                 continue;
             }
 
@@ -487,15 +493,16 @@ public class Funcotator extends VariantWalker {
         manualFeatureInputs.add(featureInput);
 
         // Create our gencode factory:
-        gencodeFuncotationFactory =
-                new GencodeFuncotationFactory(dataSourceFile.resolveSibling(fastaPath).toFile(),
-                        version,
+        final GencodeFuncotationFactory gencodeFuncotationFactory =
+            new GencodeFuncotationFactory(dataSourceFile.resolveSibling(fastaPath).toFile(),
+                    version,
                     transcriptSelectionMode,
                     transcriptList,
                     annotationOverridesMap
-                );
+            );
 
-        // Add our factory to our factory list:
+        // Add our factory to our factory lists:
+        gencodeFuncotationFactories.add( gencodeFuncotationFactory );
         dataSourceFactories.add( gencodeFuncotationFactory );
     }
 

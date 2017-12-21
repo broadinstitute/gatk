@@ -50,14 +50,25 @@ if __name__ == '__main__':
     print 'Writing outfile: ' + DNA_REPAIR_FILE + '...',
 
     with open(DNA_REPAIR_FILE, 'wb') as f:
-        writer = csv.writer(f)
+        writer = csv.writer(f, delimiter=',', lineterminator="\n")
+
+        isFirstRow = True
+
         for row in dna_repair_table:
+
+            strippedRow = map(lambda x: x.strip(), row)
+
+            # Need to fix the first header:
+            if isFirstRow:
+                strippedRow[0] = "Gene Name"
+                isFirstRow = False
+
             # Skip empty rows:
-            if len(filter(lambda x: x is not '', row)) == 0:
+            if len(filter(lambda x: x is not '', strippedRow)) == 0:
                 continue
             # Skip section header rows:
-            if len(filter(lambda x: x.strip().lower() == 'top of page', row)) >= 1:
+            if len(filter(lambda x: x.lower() == 'top of page', strippedRow)) >= 1:
                 continue
-            writer.writerow(row)
+            writer.writerow(strippedRow)
 
     print 'DONE!'

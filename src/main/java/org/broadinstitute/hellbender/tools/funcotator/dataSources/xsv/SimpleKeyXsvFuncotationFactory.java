@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotatorArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.utils.nio.PathLineIterator;
@@ -193,6 +194,11 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
         return outputFuncotations;
     }
 
+    @Override
+    public FuncotatorArgumentDefinitions.DataSourceType getType() {
+        return FuncotatorArgumentDefinitions.DataSourceType.SIMPLE_XSV;
+    }
+
     //==================================================================================================================
     // Static Methods:
 
@@ -211,10 +217,12 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
             lineIterator.next();
         }
 
-        // We're at the header, so we need to initialize the header columns:
+        // We're at the header, so we need to initialize the header columns,
+        // And fix the column headers to not contain any spaces:
         final List<String> annotationColumnNames =
                 Arrays.stream(lineIterator.next().split(delimiter))
-                        .map(n -> getName() + "_" + n)
+                        .map(n -> n.replaceAll("^\\s+", "").replaceAll("\\s+$", ""))
+                        .map(n -> getName() + "_" + n.replaceAll(" ", "_"))
                         .collect(Collectors.toCollection(ArrayList::new));
 
         // If the number of columns is < 2, we don't have any data (because we don't add in the column containing

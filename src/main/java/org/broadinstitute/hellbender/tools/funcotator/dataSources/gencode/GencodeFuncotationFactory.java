@@ -129,6 +129,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      */
     private final Set<String> userRequestedTranscripts;
 
+    /**
+     * The {@link File} from which we will read the sequences for the coding regions in given transcripts.
+     */
+    private final File gencodeTranscriptFastaFile;
+
     //==================================================================================================================
     // Constructors:
 
@@ -156,6 +161,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                      final FuncotatorArgumentDefinitions.TranscriptSelectionMode transcriptSelectionMode,
                                      final Set<String> userRequestedTranscripts,
                                      final LinkedHashMap<String, String> annotationOverrides) {
+
+        this.gencodeTranscriptFastaFile = gencodeTranscriptFastaFile;
+
         transcriptFastaReferenceDataSource = ReferenceDataSource.of(gencodeTranscriptFastaFile);
         transcriptIdMap = createTranscriptIdMap(transcriptFastaReferenceDataSource);
 
@@ -267,6 +275,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      */
     public List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList, final List<GencodeFuncotation> gencodeFuncotations) {
         throw new GATKException("This method should never be called on a "+ this.getClass().getName());
+    }
+
+    @Override
+    public FuncotatorArgumentDefinitions.DataSourceType getType() {
+        return FuncotatorArgumentDefinitions.DataSourceType.GENCODE;
     }
 
     //==================================================================================================================
@@ -461,6 +474,14 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
             // Only annotate on the `basic` transcripts:
             if ( isBasic ) {
+
+                // Make sure that we have the transcript in our list.
+                // If we don't, warn the user and do not add any funcotations:
+                if ( !transcriptIdMap.containsKey(transcript.getTranscriptId()) ) {
+                    logger.warn("Coding sequence for given transcript ID (" + transcript.getTranscriptId() + ") is missing in file(" + gencodeTranscriptFastaFile.toURI().toString() + "): Skipping.");
+                    continue;
+                }
+
                 // Try to create the annotation:
                 try {
                     final GencodeFuncotation gencodeFuncotation = createGencodeFuncotationOnTranscript(variant, altAllele, gtfFeature, reference, transcript);

@@ -15,16 +15,18 @@ public class FuncotatorTestConstants {
     public static final String HG19_CHR19_REFERENCE_FILE_NAME = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "GRCh37.p13.chr19.fasta";
     public static final String HG19_CHR3_REFERENCE_FILE_NAME = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "GRCh37.p13.chr3.fasta";
 
+    public static final String FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "funcotator_dataSources" + File.separator;
+
     public static final SimpleInterval MUC16_POSITION = new SimpleInterval("chr19", 8959520, 9092018);
-    public static final String MUC16_GENCODE_ANNOTATIONS_FILE_NAME = FUNCOTATOR_TEST_DIR + "gencode.v19.MUC16.gtf";
-    public static final String MUC16_GENCODE_TRANSCRIPT_FASTA_FILE = FUNCOTATOR_TEST_DIR + "gencode.v19.MUC16_transcript.fasta";
+    public static final String MUC16_GENCODE_ANNOTATIONS_FILE_NAME = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "gencode_muc16" + File.separator + "hg19" + File.separator + "gencode.v19.MUC16.gtf";
+    public static final String MUC16_GENCODE_TRANSCRIPT_FASTA_FILE = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "gencode_muc16" + File.separator + "hg19" + File.separator + "gencode.v19.MUC16_transcript.fasta";
     public static final String MUC16_TRANSCRIPT = "ENST00000397910.4";
     public static final String MUC16_PATHOLOGICAL_TRANSCRIPT = "ENST00000599436.1";
     public static final String MUC16_GENCODE_NON_BASIC_ANNOTATIONS_FILE_NAME = FUNCOTATOR_TEST_DIR + "gencode.v19.MUC16.non-basic.gtf";
 
     public static final SimpleInterval PIK3CA_POSITION = new SimpleInterval("chr3", 178866311, 178957881);
-    public static final String PIK3CA_GENCODE_ANNOTATIONS_FILE_NAME = FUNCOTATOR_TEST_DIR + "gencode.v19.PIK3CA.gtf";
-    public static final String PIK3CA_GENCODE_TRANSCRIPT_FASTA_FILE = FUNCOTATOR_TEST_DIR + "gencode.v19.PIK3CA_transcript.fasta";
+    public static final String PIK3CA_GENCODE_ANNOTATIONS_FILE_NAME = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "gencode_pik3ca" + File.separator + "hg19" + File.separator + "gencode.v19.PIK3CA.gtf";
+    public static final String PIK3CA_GENCODE_TRANSCRIPT_FASTA_FILE = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "gencode_pik3ca" + File.separator + "hg19" + File.separator + "gencode.v19.PIK3CA_transcript.fasta";
     public static final String PIK3CA_TRANSCRIPT = "ENST00000263967.3";
 
     public static final String GTF_CHR3_FILE_NAME = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "gencode.v19.chr_patch_hapl_scaff.chr3.gtf";
@@ -53,5 +55,5 @@ public class FuncotatorTestConstants {
     public static final String HGNC_HG19_TSV_PATH = DATA_SOURCES_FOLDER_PATH + "hgnc" + File.separator + "hg19" + File.separator + "hgnc_download_Nov302017.tsv";
     public static final String SIMPLE_UNIPROT_HG19_TSV_PATH = DATA_SOURCES_FOLDER_PATH + "simple_uniprot" + File.separator + "hg19" + File.separator + "simple_uniprot_Dec012014.tsv";
 
-    public static final String COSMIC_TEST_DB = DATA_SOURCES_FOLDER_PATH + File.separator + "CosmicTest.db";
+    public static final String COSMIC_TEST_DB = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "cosmic" + File.separator + "hg19" + File.separator + "CosmicTest.db";
 }

@@ -72,7 +72,6 @@ public abstract class VariantWalker extends VariantWalkerBase {
     protected FeatureInput<? extends Feature> injectFeatureDataSourcesAfterInitialization(final String filePath,
                                                                final String name,
                                                                final Class<? extends Feature> featureType) {
-
         //TODO: Find a better way to do this.
 
         final FeatureInput<? extends Feature> featureInput = new FeatureDataSourceWrapperClass(featureType).createFeatureInput(filePath, name);
@@ -94,8 +93,11 @@ public abstract class VariantWalker extends VariantWalkerBase {
     /**
      * Class to hold the templated type for the call in {@link VariantWalker#injectFeatureDataSourcesAfterInitialization(String, String, Class)}
      * so that a user can generically call that method with a type.
+     *
+     * This is required because of how Java handles templates and types with reflection.
+     * That is, you can't have a variable of type `Class<?>` and then use it to create a templated instance of a variable.
      */
-    final protected class FeatureDataSourceWrapperClass<T extends Feature> {
+    final private class FeatureDataSourceWrapperClass<T extends Feature> {
 
         private Class<T> featureClass;
 
@@ -106,11 +108,6 @@ public abstract class VariantWalker extends VariantWalkerBase {
         public FeatureInput<T> createFeatureInput(final String filePath, final String name)
         {
             return new FeatureInput<>(filePath, name);
-        }
-
-        public FeatureInput<T> createFeatureInput()
-        {
-            return new FeatureInput<>("", "");
         }
     }
 

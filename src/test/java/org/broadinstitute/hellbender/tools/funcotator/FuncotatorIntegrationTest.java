@@ -22,29 +22,29 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     //==================================================================================================================
 
     @DataProvider
-    Object[][] provideDataForBasicMarbleRoll() {
+    Object[][] provideForIntegrationTest() {
         return new Object[][] {
 //                {FuncotatorTestConstants.GTF_CHR3_FILE_NAME, FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME, FuncotatorTestConstants.GENCODE_TRANSCRIPT_FASTA_FILE_NAME, FuncotatorTestConstants.VARIANT_FILE_HG19_CHR3, FuncotatorTestConstants.PIK3CA_TRANSCRIPT, SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME, 0},
 //                {FuncotatorTestConstants.GTF_CHR3_FILE_NAME, FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME, FuncotatorTestConstants.GENCODE_TRANSCRIPT_FASTA_FILE_NAME, FuncotatorTestConstants.VARIANT_FILE_HG19_CHR3, FuncotatorTestConstants.PIK3CA_TRANSCRIPT, SimpleKeyXsvFuncotationFactory.XsvDataKeyType.TRANSCRIPT_ID, 1},
 //                {FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME, FuncotatorTestConstants.GENCODE_TRANSCRIPT_FASTA_FILE_NAME, FuncotatorTestConstants.VARIANT_FILE_HG19_CHR19, FuncotatorTestConstants.MUC16_TRANSCRIPT, SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME, 0},
 //                {FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME, FuncotatorTestConstants.GENCODE_TRANSCRIPT_FASTA_FILE_NAME, FuncotatorTestConstants.VARIANT_FILE_HG19_CHR19, FuncotatorTestConstants.MUC16_TRANSCRIPT, SimpleKeyXsvFuncotationFactory.XsvDataKeyType.TRANSCRIPT_ID, 1},
 //                {FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME, FuncotatorTestConstants.GENCODE_TRANSCRIPT_FASTA_FILE_NAME, FuncotatorTestConstants.VARIANT_FILE_HG19_CHR19, FuncotatorTestConstants.MUC16_PATHOLOGICAL_TRANSCRIPT, SimpleKeyXsvFuncotationFactory.XsvDataKeyType.TRANSCRIPT_ID, 1},
-                {FuncotatorTestConstants.DATA_SOURCES_PATH, FuncotatorArgumentDefinitions.ReferenceVersionType.hg19, FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME, FuncotatorTestConstants.VARIANT_FILE_HG19_CHR3, FuncotatorTestConstants.PIK3CA_TRANSCRIPT, SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME, 0}
+                {FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER, FuncotatorArgumentDefinitions.ReferenceVersionType.hg19, FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME, FuncotatorTestConstants.VARIANT_FILE_HG19_CHR3, FuncotatorTestConstants.PIK3CA_TRANSCRIPT, SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME},
+                {FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER, FuncotatorArgumentDefinitions.ReferenceVersionType.hg19, FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME, FuncotatorTestConstants.VARIANT_FILE_HG19_CHR3, FuncotatorTestConstants.PIK3CA_TRANSCRIPT, SimpleKeyXsvFuncotationFactory.XsvDataKeyType.TRANSCRIPT_ID},
+                {FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER, FuncotatorArgumentDefinitions.ReferenceVersionType.hg19, FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME, FuncotatorTestConstants.VARIANT_FILE_HG19_CHR19, FuncotatorTestConstants.MUC16_TRANSCRIPT, SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME},
+                {FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER, FuncotatorArgumentDefinitions.ReferenceVersionType.hg19, FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME, FuncotatorTestConstants.VARIANT_FILE_HG19_CHR19, FuncotatorTestConstants.MUC16_TRANSCRIPT, SimpleKeyXsvFuncotationFactory.XsvDataKeyType.TRANSCRIPT_ID}
         };
     }
 
     //==================================================================================================================
 
-    // TODO: REFACTOR ALL THIS - IT'S KIND OF GROSS:
-
-    @Test(dataProvider = "provideDataForBasicMarbleRoll")
+    @Test(dataProvider = "provideForIntegrationTest")
     public void basicMarbleRoll(final String dataSourcesPath,
                                 final FuncotatorArgumentDefinitions.ReferenceVersionType refVer,
                                 final String referenceFileName,
                                 final String variantFileName,
                                 final String transcriptName,
-                                final SimpleKeyXsvFuncotationFactory.XsvDataKeyType xsvMatchType,
-                                final int xsvMatchColumn) throws IOException {
+                                final SimpleKeyXsvFuncotationFactory.XsvDataKeyType xsvMatchType) throws IOException {
 
         final File outputFile = createTempFile("funcotator_tmp_out", ".vcf");
         final List<String> arguments = new ArrayList<>();
@@ -63,18 +63,18 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         runCommandLine(arguments);
     }
 
-    @Test(dataProvider = "provideDataForBasicMarbleRoll")
+    @Test(dataProvider = "provideForIntegrationTest")
     public void exhaustiveArgumentTest(final String dataSourcesPath,
                                        final FuncotatorArgumentDefinitions.ReferenceVersionType refVer,
                                        final String referenceFileName,
                                        final String variantFileName,
                                        final String transcriptName,
-                                       final SimpleKeyXsvFuncotationFactory.XsvDataKeyType xsvMatchType,
-                                       final int xsvMatchColumn) throws IOException {
+                                       final SimpleKeyXsvFuncotationFactory.XsvDataKeyType xsvMatchType) throws IOException {
 
-        final String outFileName = "funcotator_tmp_out_" + xsvMatchType.toString() + "_" + xsvMatchColumn + "_" + transcriptName + ".vcf";
+        final String outFileName = "funcotator_tmp_out_" + xsvMatchType.toString() + "_" + transcriptName + ".vcf";
 
         final File outputFile = createTempFile(outFileName.substring(0,outFileName.length()-4), outFileName.substring(outFileName.length()-4));
+//        final File outputFile = new File(outFileName);
 
         final List<String> arguments = new ArrayList<>();
 

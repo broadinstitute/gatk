@@ -71,6 +71,11 @@ public abstract class DataSourceFuncotationFactory implements AutoCloseable {
     public abstract String getName();
 
     /**
+     * @return The {@link org.broadinstitute.hellbender.tools.funcotator.FuncotatorArgumentDefinitions.DataSourceType} of this {@link DataSourceFuncotationFactory}.
+     */
+    public abstract FuncotatorArgumentDefinitions.DataSourceType getType();
+
+    /**
      * @return The version of the data source corresponding to this {@link DataSourceFuncotationFactory}.
      */
     public String getVersion() {

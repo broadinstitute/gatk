@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotatorArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -201,7 +202,13 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
 
             final SimpleInterval genomePosition = new SimpleInterval(variant.getContig(), variant.getStart(), variant.getEnd());
 
-            final SimpleInterval proteinPosition = parseProteinString(gencodeFuncotation.getProteinChange());
+            final SimpleInterval proteinPosition;
+            if ( gencodeFuncotation.getProteinChange() != null ) {
+                proteinPosition = parseProteinString(gencodeFuncotation.getProteinChange());
+            }
+            else {
+                proteinPosition = null;
+            }
 
             try {
                 try ( final Statement statement = dbConnection.createStatement() ) {
@@ -251,6 +258,10 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
         return outputFuncotations;
     }
 
+    @Override
+    public FuncotatorArgumentDefinitions.DataSourceType getType() {
+        return FuncotatorArgumentDefinitions.DataSourceType.COSMIC;
+    }
 
     //==================================================================================================================
     // Static Methods:
