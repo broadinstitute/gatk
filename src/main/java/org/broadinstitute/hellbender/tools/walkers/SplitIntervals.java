@@ -30,7 +30,7 @@ import java.util.stream.IntStream;
  * For example, for the -L argument, the tool accepts GATK-style intervals (.list or .intervals), BED files
  * and VCF files.</p>
  *
- * <h3>Example</h3>
+ * <h3>Usage example</h3>
  *
  * <pre>
  * gatk SplitIntervals \

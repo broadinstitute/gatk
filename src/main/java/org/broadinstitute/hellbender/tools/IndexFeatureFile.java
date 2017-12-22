@@ -26,19 +26,19 @@ import java.io.IOException;
 
 /**
  * This tool creates an index file for the various kinds of feature-containing files supported by GATK (such as VCF
- * and BED files). These files must have an index in order to be queried by interval.
+ * and BED files). An index allows querying features by a genomic interval.
  *
  * <h3>Usage example</h3>
  * <pre>
- *     gatk IndexFeatureFile \
- *     --feature-file feature_file.vcf \
- *     -O output_index_file.vcf
+ * gatk IndexFeatureFile \
+ *     -F cohort.vcf.gz
  * </pre>
+ * This produces the corresponding index, cohort.vcf.gz.tbi.
  */
 
 @CommandLineProgramProperties(
-        summary = "Creates indices for feature-containing files, such as VCF and BED files",
-        oneLineSummary = "Creates indices for feature-containing files (eg. VCF and BED files)",
+        summary = "Creates an index for a feature file, e.g. VCF or BED file.",
+        oneLineSummary = "Creates an index for a feature file, e.g. VCF or BED file.",
         programGroup = VariantProgramGroup.class
 )
 @DocumentedFeature

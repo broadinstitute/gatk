@@ -49,26 +49,43 @@ import java.util.stream.Collectors;
 
 
 /**
- * This tool gathers the output of a scatter operation, stored in multiple VCF files, and combines them into a single one.
+ * This tool combines together rows of variant calls from multiple VCFs, e.g. those produced by scattering calling
+ * across genomic intervals, into a single VCF. This tool enables scattering operations, e.g. in the cloud, and is
+ * preferred for such contexts over Picard MergeVcfs or Picard GatherVCfs. The tool also runs locally.
  *
  * <p>The input files need to have the same set of samples but completely different sets of loci.
  * These input files must be supplied in genomic order and must not have events at overlapping positions.</p>
  *
  * <h3>Input</h3>
  * <p>
- * A set of VCF files statisfying the above criteria.
+ * A set of VCF files, each specified in genomic order with the -I option, or a .list text file listing the set of VCFs
+ * to be merged, one file per line.
  * </p>
  *
  * <h3>Output</h3>
  * <p>
- * A new VCF file containing the combined result of the scatter operation.
+ * A single VCF file containing the variant call records from the multiple VCFs.
  * </p>
  *
- * <h3>Usage example</h3>
+ * <h3>Usage examples</h3>
+ * Specify each VCF file within the command.
  * <pre>
- *     gatk GatherVcfsCloud \
- *     -I input_files.vcf \
- *     -O output.vcf
+ * gatk GatherVcfsCloud \
+ *     -I cohortA_chr1.vcf.gz \
+ *     -I cohortA_chr2.vcf.gz \
+ *     -O cohortA_chr1chr2.vcf.gz
+ * </pre>
+ *
+ * Specify the VCF files using the following input.list:
+ * <pre>
+ *     cohortA_chr1.vcf.gz
+ *     cohortA_chr2.vcf.gz
+ * </pre>
+ *
+ * <pre>
+ * gatk GatherVcfsCloud \
+ *     -I input.list
+ *     -O cohortA_chr1chr2.vcf.gz
  * </pre>
  *
  * @author Tim Fennell

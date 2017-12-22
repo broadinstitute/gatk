@@ -26,7 +26,7 @@ import java.util.ArrayDeque;
  * non-indel variants.
  * </p>
  *
- * <h3>Example</h3>
+ * <h3>Usage example</h3>
  *
  * <pre>
  * gatk RemoveNearbyIndels \
