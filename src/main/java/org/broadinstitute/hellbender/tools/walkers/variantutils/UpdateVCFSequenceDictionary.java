@@ -22,34 +22,43 @@ import org.broadinstitute.hellbender.engine.VariantWalker;
 import java.io.File;
 
 /**
- * Updates the sequence dictionary in a variant file using the dictionary from a variant, alignment, reference,
- * or dictionary file.
+ * Updates the reference contigs in the header of the VCF format file, i.e. the reference dictionary, using the
+ * dictionary from a variant, alignment, reference, or dictionary file.
  *
  * <p>This tool is designed to update the sequence dictionary in a variant file using a dictionary from another variant,
  * alignment, dictionary, or reference file. The dictionary must be valid, i.e. must contain a sequence record, for all
- * variants in the target file.
+ * variants in the target file. The dictionary lines start with '##contig='.
  * </p>
  *
- * <h3>Example</h3>
+ * <h3>Usage example</h3>
  *
+ * <h4>Use the contig dictionary from a BAM (SQ lines) to replace an existing dictionary in the header of a VCF.</h4>
  * <pre>
  * gatk UpdateVCFSequenceDictionary \
- *   -O updated_sequence_dictionary.dict \
- *   -V variants.vcf \
- *   --source-dictionary input_dictionary.dict \
- *   --replace=true
+ *     -V cohort.vcf.gz \
+ *     --source-dictionary sample.bam \
+ *     --output cohort_replacedcontiglines.vcf.gz \
+ *     --replace=true
  * </pre>
  *
+ * <h4>Use a reference dictionary to add reference contig lines to a VCF without any.</h4>
  * <pre>
  * gatk UpdateVCFSequenceDictionary \
- *   -O updated_sequence_dictionary.dict \
- *   -R reference.fa \
- *   -V variants.vcf \
- *   --replace=true
+ *     -V resource.vcf.gz \
+ *     --source-dictionary reference.dict \
+ *     --output resource_newcontiglines.vcf.gz
+ * </pre>
+ *
+ * <h4>Use the reference set to add contig lines to a VCF without any.</h4>
+ * <pre>
+ * gatk UpdateVCFSequenceDictionary \
+ *     -V resource.vcf.gz \
+ *     -R reference.fasta \
+ *     --output resource_newcontiglines.vcf.gz
  * </pre>
  *
  * <p>
- *    The -O argument specifies the name of the updated directory file. The --source-dictionary argument specifies the
+ *    The -O argument specifies the name of the updated file. The --source-dictionary argument specifies the
  *    input sequence dictionary. The --replace argument is optional, and forces the replacement of the dictionary
  *    if the input file already has a dictionary.
  * </p>

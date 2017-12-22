@@ -27,9 +27,11 @@ import java.util.*;
 /**
  * Validate a VCF file with a strict set of criteria
  *
- * <p>This tool is designed to validate the correctness of the formatting of VCF files. Besides standard
- * adherence to the VCF specification, this tool performs additional strict validations to ensure that the information
- * contained within the file is correctly encoded. These include:
+ * <p> This tool is designed to validate the adherence of a file to VCF format. The tool will validate .g.vcf GVCF
+ * format files as well. For VCF specifications, see
+ * <a href='https://samtools.github.io/hts-specs/'>https://samtools.github.io/hts-specs/</a>.
+ * Besides standard adherence to the VCF specification, this tool performs additional strict validations to ensure
+ * that the information contained within the file is correctly encoded. These include:
  * </p>
  *
  * <ul>
@@ -53,9 +55,19 @@ import java.util.*;
  *
  * <h3>Usage examples</h3>
  *
+ * <h4>Minimally validate a file for adherence to VCF format:</h4>
+ * gatk ValidateVariants \
+ *     -V cohort.vcf.gz
+ *
+ * <h4>Validate a GVCF for adherence to VCF format, including REF allele match:</h4>
+ * gatk ValidateVariants \
+ *     -V sample.g.vcf.gz \
+ *     -R reference.fasta
+ *     -gvcf
+ *
  * <h4>To perform VCF format and all strict validations: </h4>
  * <pre>
- *   gatk ValidateVariants \
+ * gatk ValidateVariants \
  *   -R ref.fasta \
  *   -V input.vcf \
  *   --dbsnp dbsnp.vcf
@@ -63,7 +75,7 @@ import java.util.*;
  *
  * <h4>To perform only VCF format tests:</h4>
  * <pre>
- *   gatk ValidateVariants
+ * gatk ValidateVariants
  *   -R ref.fasta \
  *   -V input.vcf \
  *   --validation-type-to-exclude ALL
@@ -71,7 +83,7 @@ import java.util.*;
  *
  * <h4>To perform all validations except the strict `ALLELE` validation:</h4>
  * <pre>
- *   gatk ValidateVariants \
+ * gatk ValidateVariants \
  *   -R ref.fasta \
  *   -V input.vcf \
  *   --validation-type-to-exclude ALLELES \

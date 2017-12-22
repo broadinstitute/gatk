@@ -30,10 +30,10 @@ import java.io.IOException;
  *
  * <h3>Usage example</h3>
  * <pre>
- *     gatk PrintVariantsSpark \
- *     -I input.vcf \
- *     -O output.vcf \
- *     --variant variants.vcf
+ * gatk PrintVariantsSpark \
+ *    -V input.vcf.gz \
+ *    -L chr1 \
+ *    -O output.vcf.gz
  * </pre>
  *
  */
