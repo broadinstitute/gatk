@@ -35,17 +35,18 @@ import java.util.Set;
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.AssemblyContigAlignmentSignatureClassifier.RawTypes;
 
 /**
- * Parse aligned contigs and call structural variants.
+ * (Internal) Examines aligned contigs from local assemblies and calls complex structural variants
  *
+ * <p>This tool is used in development and should not be of interest to most researchers.  It is a prototype of
+ * complex structural variant calling, and has been superseded by other tools.</p>
  * <p>This tool takes a file containing the alignments of assembled contigs and searches for reads with
- * split alignments indicating the presence of SV breakpoints. The alignment signatures of the split alignments are
- * analyzed to determine the type of structural variation and written to a VCF file.</p>
- * <p>This is a prototyping/debugging tool and it is probably not generally useful to most users.</p>
- * <p>The input file is typically the SAM file produced by FindBreakpointEvidenceSpark.</p>
+ * split alignments indicating the presence of structural variation breakpoints. The alignment signatures of the
+ * split alignments are analyzed to determine the type of structural variation and written to a VCF file.</p>
+ * <p>The input file is typically the output file produced by FindBreakpointEvidenceSpark.</p>
  *
  * <h3>Inputs</h3>
  * <ul>
- *     <li>An input file of assembled contigs or long reads aligned to reference.</li>
+ *     <li>An input file of assembled contigs aligned to reference.</li>
  *     <li>The reference to which the contigs have been aligned.</li>
  * </ul>
  *
@@ -63,16 +64,19 @@ import static org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.A
  * </pre>
  *
  * <h3>Notes</h3>
- * <p>The reference is broadcast by Spark, and must therefore be a 2bit file due to current restrictions.</p>
+ * <p>The reference is broadcast by Spark, and must therefore be a .2bit file due to current restrictions.</p>
  */
 @DocumentedFeature
 @BetaFeature
 @CommandLineProgramProperties(
-        oneLineSummary = "Parse aligned contigs and call complex structural variants.",
+        oneLineSummary = "(Internal) Examines aligned contigs from local assemblies and calls complex structural variants",
         summary =
-        "This tool takes a file containing the alignments of assembled contigs and searches for reads with\n" +
-        " split alignments indicating the presence of SV breakpoints. The alignment signatures of the split alignments are" +
-        " analyzed to determine the type of structural variation and written to a VCF file.",
+        "This tool is used in development and should not be of interest to most researchers.  It is a prototype of" +
+        " complex structural variant calling, and has been superseded by other tools." +
+        " This tool takes a file containing the alignments of assembled contigs and searches for reads with" +
+        " split alignments indicating the presence of structural variation breakpoints. The alignment signatures of the" +
+        " split alignments are analyzed to determine the type of structural variation and written to a VCF file." +
+        " The input file is typically the output file produced by FindBreakpointEvidenceSpark.",
         programGroup = StructuralVariantDiscoveryProgramGroup.class)
 public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
