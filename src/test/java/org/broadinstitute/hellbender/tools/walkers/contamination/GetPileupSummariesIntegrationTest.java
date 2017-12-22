@@ -8,8 +8,6 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.List;
 
-import static org.testng.Assert.*;
-
 /**
  * Created by David Benjamin on 2/16/17.
  */
@@ -29,7 +27,7 @@ public class GetPileupSummariesIntegrationTest extends CommandLineProgramTest {
         };
         runCommandLine(args);
 
-        final List<PileupSummary> result = PileupSummary.readPileupSummaries(output);
+        final List<PileupSummary> result = PileupSummary.readFromFile(output);
 
         // compare to IGV manual inspection
         final PileupSummary ps1 = result.get(0);

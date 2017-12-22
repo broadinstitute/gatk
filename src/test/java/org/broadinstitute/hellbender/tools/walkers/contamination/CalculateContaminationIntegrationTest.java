@@ -25,7 +25,7 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
     public static final File NA12891_3_PCT_NA12892_97_PCT = new File(SPIKEIN_DATA_DIRECTORY, "NA12891_0.03_NA12892_0.97.table");
     public static final File NA12891_5_PCT_NA12892_95_PCT = new File(SPIKEIN_DATA_DIRECTORY, "NA12891_0.05_NA12892_0.95.table");
     public static final File NA12891_8_PCT_NA12892_92_PCT = new File(SPIKEIN_DATA_DIRECTORY, "NA12891_0.08_NA12892_0.92.table");
-    public static final double BASELINE_CONTAMINATION_OF_NA12892 = 0.01;
+    public static final double BASELINE_CONTAMINATION_OF_NA12892 = 0.001;
 
     @Test
     public void testArtificialData() {
@@ -75,7 +75,7 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
         }
 
         final File psTable = createTempFile("pileups", ".table");
-        PileupSummary.writePileupSummaries(ps, psTable);
+        PileupSummary.writeToFile(ps, psTable);
         final File contaminationTable = createTempFile("contamination", ".table");
 
         final String[] args = {
@@ -84,7 +84,7 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
         };
         runCommandLine(args);
 
-        final double calculatedContamination = ContaminationRecord.readContaminationTable(contaminationTable).get(0).getContamination();
+        final double calculatedContamination = ContaminationRecord.readFromFile(contaminationTable).get(0).getContamination();
         Assert.assertEquals(calculatedContamination, contamination, 0.01);
     }
 
@@ -101,8 +101,8 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
         };
         runCommandLine(args);
 
-        final double calculatedContamination = ContaminationRecord.readContaminationTable(contaminationTable).get(0).getContamination();
-        Assert.assertEquals(calculatedContamination, contamination, 0.01);
+        final double calculatedContamination = ContaminationRecord.readFromFile(contaminationTable).get(0).getContamination();
+        Assert.assertEquals(calculatedContamination, contamination, 0.015);
     }
 
     // pileup summary table, spikein fraction, baseline contamination before spike-in
@@ -133,8 +133,7 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
         };
         runCommandLine(args);
 
-        final double calculatedContamination = ContaminationRecord.readContaminationTable(contaminationTable).get(0).getContamination();
+        final double calculatedContamination = ContaminationRecord.readFromFile(contaminationTable).get(0).getContamination();
         Assert.assertEquals(calculatedContamination, contamination, 0.01);
     }
-
 }

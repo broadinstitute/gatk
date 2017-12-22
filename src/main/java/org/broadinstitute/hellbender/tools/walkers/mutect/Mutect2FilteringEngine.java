@@ -21,7 +21,7 @@ public class Mutect2FilteringEngine {
 
     public Mutect2FilteringEngine(final M2FiltersArgumentCollection MTFAC, final String tumorSample) {
         this.MTFAC = MTFAC;
-        contamination = MTFAC.contaminationTable == null ? 0.0 : ContaminationRecord.readContaminationTable(MTFAC.contaminationTable).get(0).getContamination();
+        contamination = MTFAC.contaminationTable == null ? 0.0 : ContaminationRecord.readFromFile(MTFAC.contaminationTable).get(0).getContamination();
         this.tumorSample = tumorSample;
     }
 
