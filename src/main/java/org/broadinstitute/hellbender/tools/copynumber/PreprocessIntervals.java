@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.copynumber;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
+import htsjdk.samtools.util.IntervalUtil;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -12,6 +13,8 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
+import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -19,62 +22,89 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
- * This tool takes in intervals via the standard arguments of {@link GATKTool}, prepares them for binning, and creates
- * bins that cover the processed intervals. The intervals are first padded, uniquified, then the overlapping
- * intervals are merged. The bins are then created.  Finally, bins that contain all Ns are filtered out.
+ * Prepare bins for coverage collection.
  *
- * <p>Standard GATK engine arguments include -L and -XL. For example, for the -L argument, the tool accepts GATK-style
- * intervals (.list or .intervals), BED files and VCF files. If no intervals are given, each contig will be assumed
- * to be a single interval (whole genome sequencing). </p>
+ * <p>
+ *     The input intervals are first checked for overlapping intervals, which are merged.
+ *     The resulting intervals are then padded.  The padded intervals are then split into bins.
+ *     Finally, bins that contain only Ns are filtered out.
+ * </p>
  *
- * <p>Using the -P flag, the user can specify the amount of padding (in bp) added to each side of the intervals.
- * This padding is in addition to the padding added by the -ip (or --interval-padding) argument of
- * IntervalArgumentCollection. However, we encourage using only the -P flag.
+ * <h3>Input</h3>
  *
- * <p>The user can also specify the length of the bins (in bp) using the -BL option. If this is not commensurate with
- * the length of the padded intervals, then the last bin will be of different length than the others.  If zero is
- * specified, then no binning will be performed.</p>
+ * <ul>
+ *     <li>
+ *         Reference file.
+ *     </li>
+ *     <li>
+ *         Intervals to be preprocessed.
+ *         The argument {@code interval-merging-rule} must be set to {@link IntervalMergingRule#OVERLAPPING_ONLY}
+ *         and all other common arguments for interval padding or merging must be set to their defaults.
+ *         If no intervals are specified, then each contig will be assumed to be a single interval and binned accordingly;
+ *         this produces bins appropriate for whole genome sequencing analyses.
+ *     </li>
+ *     <li>
+ *         Padding length (in bp).
+ *         Use {@code padding} to specify the size of each of the regions added to both ends of the intervals that result
+ *         after overlapping intervals have been merged.  Do not use the common {@code interval-padding} argument, which must
+ *         instead be set to zero.  Intervals that would overlap after padding by the specified amount are instead only
+ *         padded until they are adjacent.
+ *     </li>
+ *     <li>
+ *         Bin length (in bp).
+ *         If this length is not commensurate with the length of a padded interval, then the last bin will be of
+ *         different length than the others in that interval.  If zero is specified, then no binning will be performed;
+ *         this is generally appropriate for targeted analyses.
+ *     </li>
+ * </ul>
  *
- * <p> The -O argument specifies a filename for the output bins, stored as a Picard interval list. </p>
+ * <h3>Output</h3>
  *
- * <h3>Example</h3>
+ * <ul>
+ *     <li>
+ *         Preprocessed Picard interval-list file.
+ *     </li>
+ * </ul>
+ *
+ * <h3>Examples</h3>
+ *
  * <pre>
- * gatk --java-options "-Xmx4g" PreprocessIntervals \
- *   -R ref_fasta.fa \
- *   -L intervals.list \
- *   -BL 10000 \
- *   -P 500 \
- *   -O preprocessed-intervals.interval_list
+ *     gatk PreprocessIntervals \
+ *          -R reference.fa \
+ *          -L intervals.interval_list \
+ *          --bin-length 0 \
+ *          --padding 250 \
+ *          -O preprocessed_intervals.interval_list
+ * </pre>
+ *
+ * <pre>
+ *     gatk PreprocessIntervals \
+ *          -R reference.fa \
+ *          --bin-length 1000 \
+ *          --padding 0 \
+ *          -O preprocessed_intervals.interval_list
  * </pre>
  *
  * @author Marton Kanasz-Nagy &lt;mkanaszn@broadinstitute.org&gt;
+ * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Prepare intervals for binning, then create bins that cover them. "
-                + "The intervals are first padded, the overlapping ones are merged "
-                + "and bins are created that cover the intervals. "
-                + "If the bin length is incommensurate with the length of an interval, "
-                + "the last bin of that interval will be of a different length. "
-                + "The length of the padding regions at both sides of the intervals (-P) and "
-                + "the length of the bins (-BL) can be specified. ",
-        oneLineSummary = "Prepare intervals for binning then create bins that cover them.",
+        summary = "Prepare bins for coverage collection.",
+        oneLineSummary = "Prepare bins for coverage collection.",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
 @BetaFeature
 public final class PreprocessIntervals extends GATKTool {
-    public static final String BIN_LENGTH_LONG_NAME = "binLength";
-    public static final String BIN_LENGTH_SHORT_NAME = "BL";
-
+    public static final String BIN_LENGTH_LONG_NAME = "bin-length";
     public static final String PADDING_LONG_NAME = "padding";
-    public static final String PADDING_SHORT_NAME = "P";
 
     @Argument(
             doc = "Length (in bp) of the bins.  If zero, no binning will be performed.",
             fullName = BIN_LENGTH_LONG_NAME,
-            shortName = BIN_LENGTH_SHORT_NAME,
             optional = true,
             minValue = 0
     )
@@ -83,7 +113,6 @@ public final class PreprocessIntervals extends GATKTool {
     @Argument(
             doc = "Length (in bp) of the padding regions on each side of the intervals.",
             fullName = PADDING_LONG_NAME,
-            shortName = PADDING_SHORT_NAME,
             optional = true,
             minValue = 0
     )
@@ -105,15 +134,20 @@ public final class PreprocessIntervals extends GATKTool {
     public void onTraversalStart() {
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
 
-        // if the user didn't add any intervals, we assume that they wanted to do whole genome sequencing
-        final List<SimpleInterval> inputIntervals = hasIntervals() ? intervalArgumentCollection.getIntervals(sequenceDictionary)
-                : IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
+        final List<SimpleInterval> inputIntervals;
+        if (hasIntervals()) {
+            CopyNumberArgumentValidationUtils.validateIntervalArgumentCollection(intervalArgumentCollection);
+            inputIntervals = intervalArgumentCollection.getIntervals(sequenceDictionary);
+        } else {
+            // if the user didn't add any intervals, we assume that they wanted to do whole genome sequencing
+            inputIntervals = IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
+        }
 
-        logger.info("Padding and merging intervals...");
-        final IntervalList preparedIntervalList = padAndMergeIntervals(inputIntervals, padding, sequenceDictionary);
+        logger.info("Padding intervals...");
+        final IntervalList paddedIntervalList = padIntervals(inputIntervals, padding, sequenceDictionary);
 
         logger.info("Generating bins...");
-        final IntervalList unfilteredBins = generateBins(preparedIntervalList, binLength, sequenceDictionary);
+        final IntervalList unfilteredBins = generateBins(paddedIntervalList, binLength, sequenceDictionary);
 
         logger.info("Filtering bins containing only Ns...");
         final ReferenceDataSource reference = ReferenceDataSource.of(referenceArguments.getReferenceFile());
@@ -123,15 +157,33 @@ public final class PreprocessIntervals extends GATKTool {
         bins.write(outputFile);
     }
 
-    private static IntervalList padAndMergeIntervals(final List<SimpleInterval> inputIntervals, final int padding, final SAMSequenceDictionary sequenceDictionary) {
-        final IntervalList inputIntervalList = new IntervalList(sequenceDictionary);
-        inputIntervals.stream().map(si -> new Interval(si.getContig(), si.getStart(), si.getEnd())).forEach(inputIntervalList::add);
+    private static IntervalList padIntervals(final List<SimpleInterval> inputIntervals, final int padding, final SAMSequenceDictionary sequenceDictionary) {
+        final List<SimpleInterval> paddedIntervals = inputIntervals.stream()
+                .map(i -> new SimpleInterval(
+                        i.getContig(), 
+                        Math.max(1, i.getStart() - padding), 
+                        Math.min(i.getEnd() + padding, sequenceDictionary.getSequence(i.getContig()).getSequenceLength())))
+                .collect(Collectors.toList());
 
-        final IntervalList uniquedIntervalList = inputIntervalList.uniqued();
-        final IntervalList paddedIntervalList = uniquedIntervalList.padded(padding, padding);
-        final IntervalList mergedIntervalList = IntervalList.intersection(paddedIntervalList, paddedIntervalList);
+        // alter the padded intervals in place to eliminate overlaps
+        for (int i = 0; i < paddedIntervals.size() - 1; i++) {
+            final SimpleInterval thisInterval = paddedIntervals.get(i);
+            final SimpleInterval nextInterval = paddedIntervals.get(i + 1);
+            if (thisInterval.overlaps(nextInterval)) {
+                final int originalThisEnd = inputIntervals.get(i).getEnd();
+                final int originalNextStart = inputIntervals.get(i + 1).getStart();
 
-        return mergedIntervalList;
+                final int newThisEnd = (originalThisEnd + originalNextStart) / 2;
+                final int newNextStart = newThisEnd + 1;
+
+                paddedIntervals.set(i, new SimpleInterval(thisInterval.getContig(), thisInterval.getStart(), newThisEnd));
+                paddedIntervals.set(i + 1, new SimpleInterval(nextInterval.getContig(), newNextStart, nextInterval.getEnd()));
+            }
+        }
+
+        final IntervalList paddedIntervalList = new IntervalList(sequenceDictionary);
+        paddedIntervals.forEach(i -> paddedIntervalList.add(new Interval(i.getContig(), i.getStart(), i.getEnd())));
+        return paddedIntervalList;
     }
 
     private static IntervalList generateBins(final IntervalList preparedIntervalList, final int binLength, final SAMSequenceDictionary sequenceDictionary) {

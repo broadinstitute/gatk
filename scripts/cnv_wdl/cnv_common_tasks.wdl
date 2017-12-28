@@ -26,7 +26,7 @@ task PreprocessIntervals {
             --sequence-dictionary ${ref_fasta_dict} \
             --reference ${ref_fasta} \
             --padding ${default="250" padding} \
-            --binLength ${default="1000" bin_length} \
+            --bin-length ${default="1000" bin_length} \
             --interval-merging-rule OVERLAPPING_ONLY \
             --output ${base_filename}.preprocessed.interval_list
     >>>

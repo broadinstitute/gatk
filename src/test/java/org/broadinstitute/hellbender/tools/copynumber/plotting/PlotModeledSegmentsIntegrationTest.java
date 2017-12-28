@@ -113,7 +113,7 @@ public final class PlotModeledSegmentsIntegrationTest extends CommandLineProgram
     public void testNonExistentDenoisedCopyRatiosFile() {
         final File outputDir = createTempDir("testDir");
         final String[] arguments = {
-                "--" + CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME,  "Non-existent-file",
+                "--" + CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, "Non-existent-file",
                 "--" + CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, ALLELIC_COUNTS_FILE.getAbsolutePath(),
                 "--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME, MODELED_SEGMENTS_FILE.getAbsolutePath(),
                 "--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, SEQUENCE_DICTIONARY_FILE.getAbsolutePath(),
@@ -143,7 +143,7 @@ public final class PlotModeledSegmentsIntegrationTest extends CommandLineProgram
         final String[] arguments = {
                 "--" + CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, DENOISED_COPY_RATIOS_FILE.getAbsolutePath(),
                 "--" + CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, ALLELIC_COUNTS_FILE.getAbsolutePath(),
-                "--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME,  "Non-existent-file",
+                "--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME, "Non-existent-file",
                 "--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, SEQUENCE_DICTIONARY_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputDir.getAbsolutePath(),
                 "--" + CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, OUTPUT_PREFIX
@@ -158,7 +158,7 @@ public final class PlotModeledSegmentsIntegrationTest extends CommandLineProgram
                 "--" + CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, DENOISED_COPY_RATIOS_FILE.getAbsolutePath(),
                 "--" + CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, ALLELIC_COUNTS_FILE.getAbsolutePath(),
                 "--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME, MODELED_SEGMENTS_FILE.getAbsolutePath(),
-                "--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME,  "Non-existent-file",
+                "--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, "Non-existent-file",
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputDir.getAbsolutePath(),
                 "--" + CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, OUTPUT_PREFIX
         };
