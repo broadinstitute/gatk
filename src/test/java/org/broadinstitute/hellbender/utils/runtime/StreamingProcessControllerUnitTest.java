@@ -1,12 +1,12 @@
 package org.broadinstitute.hellbender.utils.runtime;
 
-import htsjdk.samtools.util.BufferedLineReader;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.FileInputStream;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.concurrent.TimeoutException;
 
@@ -30,7 +30,7 @@ public class StreamingProcessControllerUnitTest extends BaseTest {
         // start an interactive Python session with unbuffered IO
         final ProcessSettings processSettings = new ProcessSettings(new String[] {"python", "-i", "-u"});
 
-        final StreamingProcessController controller = new StreamingProcessController(processSettings, PYTHON_PROMPT);
+        final StreamingProcessController controller = new StreamingProcessController(processSettings, PYTHON_PROMPT, true);
         Assert.assertTrue(controller.start());
 
         // consume the Python startup banner debris, but don't try validate it
@@ -45,19 +45,27 @@ public class StreamingProcessControllerUnitTest extends BaseTest {
         StreamingPythonTestUtils.assertPythonPrompt(response, PYTHON_PROMPT);
 
         final File tempFile = createTempFile("testPythonStdoutSerial", "txt");
-        final String writeOutput = String.format("fd=open('%s', 'w')\nfd.write(str(x) + '\\n')\nfd.close()", tempFile.getAbsolutePath());
 
+        final String writeOutput = String.format("fd=open('%s', 'w')", tempFile.getAbsolutePath());
         controller.writeProcessInput(writeOutput + NL);
         response = controller.getProcessOutputByPrompt();
         StreamingPythonTestUtils.assertPythonPrompt(response, PYTHON_PROMPT);
 
-        try (final FileInputStream fis = new FileInputStream(tempFile);
-             final BufferedLineReader br = new BufferedLineReader(fis)) {
-            Assert.assertEquals(br.readLine(), "39");
-        }
+        controller.writeProcessInput("fd.write(str(x) + '\\n')" + NL);
+        response = controller.getProcessOutputByPrompt();
+        StreamingPythonTestUtils.assertPythonPrompt(response, PYTHON_PROMPT);
+
+        controller.writeProcessInput("fd.close()" + NL);
+        response = controller.getProcessOutputByPrompt();
+        StreamingPythonTestUtils.assertPythonPrompt(response, PYTHON_PROMPT);
 
         controller.terminate();
         Assert.assertFalse(controller.getProcess().isAlive());
+
+        try (final FileReader fr = new FileReader(tempFile);
+             final BufferedReader br = new BufferedReader(fr)) {
+            Assert.assertEquals(br.readLine(), "39");
+        }
     }
 
     @Test(timeOut = 10000)
@@ -103,8 +111,8 @@ public class StreamingProcessControllerUnitTest extends BaseTest {
         controller.terminate();
         Assert.assertFalse(controller.getProcess().isAlive());
 
-        try (final FileInputStream fis = new FileInputStream(tempFile);
-             final BufferedLineReader br = new BufferedLineReader(fis)) {
+        try (final FileReader fis = new FileReader(tempFile);
+             final BufferedReader br = new BufferedReader(fis)) {
             Assert.assertEquals(br.readLine(), "some output");
         }
     }
