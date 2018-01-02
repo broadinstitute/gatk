@@ -115,7 +115,7 @@ public class CreateSomaticPanelOfNormals extends CommandLineProgram {
     private Set<File> vcfs = new LinkedHashSet<>(0);
 
     /**
-     * How to handle duplicate samples: THROW_ERROR to fail, CHOOSE_FIRST to use the first vcf with each sampel name, ALLOW_ALL to use all samples regardless of duplicate sample names."
+     * How to handle duplicate samples: THROW_ERROR to fail, CHOOSE_FIRST to use the first vcf with each sample name, ALLOW_ALL to use all samples regardless of duplicate sample names."
      */
     @Argument(fullName = DUPLICATE_SAMPLE_STRATEGY_LONG_NAME,
             doc="How to handle duplicate samples: THROW_ERROR to fail, CHOOSE_FIRST to use the first vcf with each sample name, ALLOW_ALL to use all samples regardless of duplicate sample names.", optional = false)

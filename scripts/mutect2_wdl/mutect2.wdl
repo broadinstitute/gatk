@@ -20,8 +20,6 @@
 #   this logic *must* go into each task.  Therefore, there is a lot of duplicated code.  This allows users to specify a jar file
 #   independent of what is in the docker file.  See the README.md for more info.
 #
-
-
 workflow Mutect2 {
   # gatk4_jar needs to be a String input to the workflow in order to work in a Docker image
   String gatk4_jar
@@ -33,6 +31,7 @@ workflow Mutect2 {
   File tumor_bam_index
   File? normal_bam
   File? normal_bam_index
+  String output_vcf_name = basename(tumor_bam, ".bam") + ".vcf"
   File? pon
   File? pon_index
   Int scatter_count
@@ -106,7 +105,8 @@ workflow Mutect2 {
       input_vcfs = M2.output_vcf,
       gatk4_jar_override = gatk4_jar_override,
       preemptible_attempts = preemptible_attempts,
-      gatk_docker = gatk_docker
+      gatk_docker = gatk_docker,
+      output_vcf_name = output_vcf_name
   }
 
   if (is_bamOut) {
@@ -179,8 +179,6 @@ workflow Mutect2 {
         File filtered_vcf = Filter.filtered_vcf
         File filtered_vcf_index = Filter.filtered_vcf_index
         File contamination_table = Filter.contamination_table
-        String tumor_sample = M2.tumor_sample[0]
-        String? normal_sample = M2.normal_sample[0]
 
         # select_first() fails if nothing resolves to non-null, so putting in "null" for now.
         File? oncotated_m2_maf = select_first([oncotate_m2.oncotated_m2_maf, "null"])
@@ -222,8 +220,9 @@ task M2 {
       GATK_JAR=${gatk4_jar_override}
   fi
 
-   # We need to create a file regardless, even if it stays empty
+   # We need to create these files regardless, even if they stay empty
    touch bamout.bam
+   echo "" > normal_name.txt
 
    java -Xmx4g -jar $GATK_JAR GetSampleName -I ${tumor_bam} -O tumor_name.txt
    tumor_command_line="-I ${tumor_bam} -tumor `cat tumor_name.txt`"
@@ -231,12 +230,6 @@ task M2 {
    if [[ "_${normal_bam}" == *.bam ]]; then
          java -Xmx4g -jar $GATK_JAR GetSampleName -I ${normal_bam} -O normal_name.txt
          normal_command_line="-I ${normal_bam} -normal `cat normal_name.txt`"
-         echo `cat tumor_name.txt`-vs-`cat normal_name.txt`.vcf > vcf_name.txt
-   else
-         # Note that normal_name.txt is always created, it's just empty if no normal sample was given.
-         #     This is done to allow an output parameter of the normal sample.
-         touch normal_name.txt
-         echo `cat tumor_name.txt`-tumor-only.vcf > vcf_name.txt
    fi
 
   java -Xmx4g -jar $GATK_JAR Mutect2 \
@@ -246,7 +239,7 @@ task M2 {
     ${"--germline-resource " + gnomad} \
     ${"-pon " + pon} \
     ${"-L " + intervals} \
-    -O `cat vcf_name.txt` \
+    -O "output.vcf" \
     ${true='--bamOutput bamout.bam' false='' is_bamOut} \
     ${m2_extra_args}
   >>>
@@ -259,7 +252,7 @@ task M2 {
   }
 
   output {
-    File output_vcf = read_string("vcf_name.txt")
+    File output_vcf = "output.vcf"
     File output_bamOut = "bamout.bam"
     String tumor_sample = read_string("tumor_name.txt")
     String normal_sample = read_string("normal_name.txt")
@@ -269,10 +262,8 @@ task M2 {
 task MergeVCFs {
   String gatk4_jar
   Array[File] input_vcfs
-
-  #the scattered M2 task yields identical vcf names that have nothing to do with the scatter index, so we just pick the first
-  String output_vcf_name = basename(input_vcfs[0])
   File? gatk4_jar_override
+  String output_vcf_name
 
   # Runtime parameters
   Int? mem
