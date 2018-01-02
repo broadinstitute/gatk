@@ -5,6 +5,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.*;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFileUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
@@ -27,6 +28,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -139,7 +141,6 @@ public final class AlignedAssemblyOrExcuse {
         }
     }
 
-    public int getSecondsInAssembly() { return secondsInAssembly; }
 
     /**
      * write a SAM file containing records for each aligned contig
@@ -337,31 +338,6 @@ public final class AlignedAssemblyOrExcuse {
                 mateRefId, mateRefStart, templateLen);
     }
 
-    public int getAssemblyId() {
-        return assemblyId;
-    }
-
-    /**
-     * Either this is null, or the assembly and list of alignments is null.
-     */
-    public String getErrorMessage() {
-        return errorMessage;
-    }
-
-    public boolean isNotFailure() {
-        return errorMessage == null;
-    }
-
-    public FermiLiteAssembly getAssembly() {
-        return assembly;
-    }
-
-    /**
-     * List is equal in length to the number of contigs in the assembly.
-     */
-    public List<List<BwaMemAlignment>> getContigAlignments() {
-        return contigAlignments;
-    }
 
     private Stream<SAMRecord> toSAMStreamForAlignmentsOfThisAssembly(final SAMFileHeader header, final List<String> refNames, final String readGroup) {
         Utils.validate(isNotFailure(), "Can't stream SAM records from a failed assembly.");
@@ -432,59 +408,6 @@ public final class AlignedAssemblyOrExcuse {
                                 assembly.getContig(contigIdx).getSequence(), contigAlignments.get(contigIdx),
                                 header, refNames, contigAlignmentsReadGroup)
                         );
-    }
-
-    public static String formatContigName( final int assemblyId, final int contigIdx ) {
-        return formatAssemblyID(assemblyId) + ":" + formatContigID(contigIdx);
-    }
-
-    public static String formatAssemblyID( final int assemblyId ) {
-        return String.format("asm%06d", assemblyId);
-    }
-
-    private static String formatContigID( final int contigIdx ) {
-        return String.format("tig%05d", contigIdx);
-    }
-
-    /**
-     * write a file describing each interval
-     */
-    public static void writeIntervalFile( final String intervalFile,
-                                          final SAMFileHeader header,
-                                          final List<SVInterval> intervals,
-                                          final List<AlignedAssemblyOrExcuse> intervalDispositions ) {
-        Utils.validate(intervalFile != null && header != null && intervals != null && intervalDispositions != null,
-                "At least one of the arguments is null.");
-
-        final Map<Integer, AlignedAssemblyOrExcuse> resultsMap = new HashMap<>();
-        intervalDispositions.forEach(alignedAssemblyOrExcuse ->
-                resultsMap.put(alignedAssemblyOrExcuse.getAssemblyId(), alignedAssemblyOrExcuse));
-
-        try ( final OutputStreamWriter writer =
-                      new OutputStreamWriter(new BufferedOutputStream(BucketUtils.createFile(intervalFile))) ) {
-            final List<SAMSequenceRecord> contigs = header.getSequenceDictionary().getSequences();
-            final int nIntervals = intervals.size();
-            for ( int intervalIdx = 0; intervalIdx != nIntervals; ++intervalIdx ) {
-                final SVInterval interval = intervals.get(intervalIdx);
-                Utils.nonNull(interval, "interval is null for " + intervalIdx);
-                final String seqName = contigs.get(interval.getContig()).getSequenceName();
-                final AlignedAssemblyOrExcuse alignedAssemblyOrExcuse = resultsMap.get(intervalIdx);
-                final String disposition;
-                if ( alignedAssemblyOrExcuse == null ) {
-                    disposition = "unknown";
-                } else if ( alignedAssemblyOrExcuse.getErrorMessage() != null ) {
-                    disposition = alignedAssemblyOrExcuse.getErrorMessage();
-                } else {
-                    disposition = "produced " + alignedAssemblyOrExcuse.getAssembly().getNContigs() +
-                            " contigs in " + alignedAssemblyOrExcuse.getSecondsInAssembly() + " secs.";
-                }
-                writer.write(intervalIdx + "\t" +
-                        seqName + ":" + interval.getStart() + "-" + interval.getEnd() + "\t" +
-                        disposition + "\n");
-            }
-        } catch ( final IOException ioe ) {
-            throw new UserException.CouldNotCreateOutputFile("Can't write intervals file " + intervalFile, ioe);
-        }
     }
 
     /**

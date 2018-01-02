@@ -562,14 +562,18 @@ public final class CigarUtils {
         }
     }
 
-    public static int countAlignedBases(final Cigar cigar ) {
-        return Utils.nonNull(cigar).getCigarElements().stream()
-                .filter(cigarElement -> cigarElement.getOperator().isAlignment())
-                .mapToInt(CigarElement::getLength)
-                .sum();
-    }
-
-    public static Cigar reciprocal(Cigar cigar, final int leftClipping, final int rightClipping, final CigarOperator clippingOperator) {
+    /**
+     * Composes the {@link Cigar} that would result from reversing the reference and read roles in the alignment.
+     * <p>
+     *    The orientation is not inverted so the left of the original read is now the left of the reference and vice-versa.
+     * </p>
+     * @param cigar the original read alignment cigar along the reference.
+     * @param leftClipping left clipping to be added to the result cigar.
+     * @param rightClipping right clipping to be added to the result cigar.
+     * @param clippingOperator the clipping operator to use for left and right clipping.
+     * @return never {@code null}.
+     */
+    public static Cigar complement(final Cigar cigar, final int leftClipping, final int rightClipping, final CigarOperator clippingOperator) {
         Utils.nonNull(cigar);
         Utils.nonNull(clippingOperator);
         Utils.validateArg(clippingOperator.isClipping(), "the clipping operation provided is not in fact a clipping operator");
@@ -581,12 +585,10 @@ public final class CigarUtils {
         }
 
         final List<CigarElement> inputElements = cigar.getCigarElements();
-        final int numberOfInputElements = inputElements.size();
         boolean seenAlignment = false;
         int additionalLeftClipping = 0;
         int additionalRightClipping = 0;
-        for (int i = 0; i < numberOfInputElements; i++) {
-            final CigarElement element = inputElements.get(i);
+        for (final CigarElement element : inputElements) {
             final CigarOperator operator = element.getOperator();
             final int length = element.getLength();
             if (operator.isAlignment()) {
@@ -632,7 +634,6 @@ public final class CigarUtils {
                 resultElements.addLast(new CigarElement(totalRightClipping, clippingOperator));
             }
             return new Cigar(Arrays.asList(resultElements.toArray(new CigarElement[resultElements.size()])));
-
         }
     }
 

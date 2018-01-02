@@ -140,7 +140,7 @@ public class ArraySVHaplotype extends AbstractSVHaplotype {
                 final int queryLength = seqs.get(i).length;
                 final List<AlignmentInterval> intervals = alignments.get(i).stream()
                         .filter(bwa -> bwa.getRefId() >= 0)
-                        .filter(bwa -> SAMFlag.NOT_PRIMARY_ALIGNMENT.isUnset(bwa.getSamFlag()))
+                        .filter(bwa -> SAMFlag.SECONDARY_ALIGNMENT.isUnset(bwa.getSamFlag()))
                         .map(bma -> new AlignmentInterval(bma, refNames, queryLength))
                         .collect(Collectors.toList()); // ignore secondary alignments.
                 result.add(intervals);

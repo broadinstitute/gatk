@@ -659,7 +659,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                 final AlignedContig input = contigs.get(i);
                 final List<AlignmentInterval> intervals = bmas.stream()
                         .filter(bma -> bma.getRefId() >= 0)
-                        .filter(bwa -> SAMFlag.NOT_PRIMARY_ALIGNMENT.isUnset(bwa.getSamFlag())) // ignore secondary alignments.
+                        .filter(bwa -> SAMFlag.SECONDARY_ALIGNMENT.isUnset(bwa.getSamFlag())) // ignore secondary alignments.
                         .map(bma -> new AlignmentInterval(bma, haplotypeNameList, input.contigSequence.length))
                         .collect(Collectors.toList());
                 final AlignedContig allCombos = new AlignedContig(input.contigName, input.contigSequence, intervals, false);

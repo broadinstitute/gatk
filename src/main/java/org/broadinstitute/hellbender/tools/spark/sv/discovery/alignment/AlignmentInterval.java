@@ -894,7 +894,7 @@ public final class AlignmentInterval {
         final SimpleInterval newReferenceSpan = new SimpleInterval(contigName, startInAssembledContig, endInAssembledContig);
         final int newStartInAssembledContig = referenceSpan.getStart();
         final int newEndInAssembledContig = referenceSpan.getEnd();
-        final Cigar cigar = CigarUtils.reciprocal(cigarAlongReference(), referenceSpan.getStart() - 1,
+        final Cigar cigar = CigarUtils.complement(cigarAlongReference(), referenceSpan.getStart() - 1,
                 referenceLength - referenceSpan.getEnd(), CigarOperator.H);
         return new AlignmentInterval(newReferenceSpan, newStartInAssembledContig, newEndInAssembledContig, cigar, forwardStrand, mapQual, mismatches, alnScore, alnModType);
     }

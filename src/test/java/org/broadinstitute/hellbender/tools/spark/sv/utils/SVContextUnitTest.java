@@ -200,7 +200,7 @@ public class SVContextUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "outputVariantTestFilesData", dependsOnMethods = {"testCreate"}, groups = "sv")
     public void testTestOutputFileContent(final VariantContext vc, final ReferenceMultiSource reference, final String file) throws IOException {
-        testOf(vc, reference);
+        testCreate(vc, reference);
         testLength(vc, reference);
         testEnd(vc, reference);
         testType(vc, reference);
