@@ -304,6 +304,21 @@ tasks.withType(Jar) {
     }
 }
 
+testTwo {
+     //project.sourceSets.test.runtimeClasspath = files("/gatk/gatk.jar") + project.sourceSets.test.runtimeClasspath
+     classpath = files("/gatk/gatk.jar", "/usr") + classpath
+     //configurations.testRuntime.each { println it }
+     classpath.each {println it }
+     //println classpath
+     //configurations.testRuntime.each { println it }
+     workingDir = file("/gatksrc/")
+     //dependsOn test
+
+     doLast {
+         jacocoTestReport
+     }
+}
+
 test {
     srcDir "/gatk"
 
