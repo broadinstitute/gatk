@@ -63,6 +63,28 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         runCommandLine(arguments);
     }
 
+//    @Test()
+//    public void spotCheck() throws IOException {
+//
+//        final File outputFile = createTempFile("funcotator_tmp_out", ".vcf");
+//        final List<String> arguments = new ArrayList<>();
+//
+//        arguments.add("-" + StandardArgumentDefinitions.VARIANT_SHORT_NAME);
+//        arguments.add("/Users/jonn/Development/oncotator_testing/BENCHMARK_INPUT.funcotator.vcf");
+//
+//        arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
+//        arguments.add("/Users/jonn/Development/references/GRCh37.p13.genome.fasta");
+//
+//        arguments.add("--" + FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME);
+//        arguments.add(FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER);
+//        arguments.add("--" + FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME);
+//        arguments.add(FuncotatorArgumentDefinitions.ReferenceVersionType.hg19.toString());
+//        arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+//        arguments.add(outputFile.getAbsolutePath());
+//
+//        runCommandLine(arguments);
+//    }
+
     @Test(dataProvider = "provideForIntegrationTest")
     public void exhaustiveArgumentTest(final String dataSourcesPath,
                                        final FuncotatorArgumentDefinitions.ReferenceVersionType refVer,

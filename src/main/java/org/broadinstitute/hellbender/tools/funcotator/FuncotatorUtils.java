@@ -1571,6 +1571,7 @@ public final class FuncotatorUtils {
      * @param strand The {@link Strand} from which the exons are to be read.  Must not be {@code null}.  Must not be {@link Strand#NONE}.
      * @return A string of bases for the given {@code exonList} concatenated together.
      */
+    @Deprecated // Deprecated until fixed!
     public static String getCodingSequence(final ReferenceContext reference, final List<? extends Locatable> exonList, final Strand strand) {
 
         // TODO: Fix this - it's broken (and re-enable the tests).

@@ -16,14 +16,14 @@ public class FuncotatorArgumentDefinitions {
     // ------------------------------------------------------------
     // Definitions for required arguments:
 
-    public static final String REFERENCE_VERSION_LONG_NAME = "refVersion";
+    public static final String REFERENCE_VERSION_LONG_NAME = "ref-version";
 
-    public static final String DATA_SOURCES_PATH_LONG_NAME = "dataSourcesPath";
+    public static final String DATA_SOURCES_PATH_LONG_NAME = "data-sources-path";
 
     // ------------------------------------------------------------
     // Definitions for optional arguments:
 
-    public static final String TRANSCRIPT_SELECTION_MODE_LONG_NAME = "transcriptSelectionMode";
+    public static final String TRANSCRIPT_SELECTION_MODE_LONG_NAME = "transcript-selection-mode";
     public static final TranscriptSelectionMode TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE = TranscriptSelectionMode.CANONICAL;
 
     public static final String TRANSCRIPT_LIST_LONG_NAME = "transcript-list";
@@ -46,6 +46,9 @@ public class FuncotatorArgumentDefinitions {
 
         /**
          * BEST_EFFECT
+         *
+         * Select a transcript to be reported with details with priority on effect according to the folowing list of selection criteria:
+         *
          * Choose the transcript that is on the custom list specified by the user. If no list was specified, treat as if no transcripts were on the list (tie).
          * In case of tie, choose the transcript that yields the variant classification highest on the variant classification rank list (see below).
          * If still a tie, choose the transcript with highest level of curation. Note that this means lower number is better for level (see below).
@@ -115,6 +118,9 @@ public class FuncotatorArgumentDefinitions {
 
         /**
          * CANONICAL
+         *
+         * Select a transcript to be reported with details with priority on canonical order according to the folowing list of selection criteria:
+         *
          * Choose the transcript that is on the custom list specified by the user. If no list was specified, treat as if all transcripts were on the list (tie).
          * In case of tie, choose the transcript with highest level of curation. Note that this means lower number is better for level (see below).
          * If still a tie, choose the transcript that yields the variant classification highest on the variant classification rank list (see below).
