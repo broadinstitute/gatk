@@ -188,14 +188,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     private static void checkGenomicsDBAgainstExpected(final String workspace, final SimpleInterval interval, final String expectedCombinedVCF) throws IOException {
         final GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> genomicsDBFeatureReader =
-                new GenomicsDBFeatureReader<>(
-                        new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME).getAbsolutePath(),
-                        new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).getAbsolutePath(),
-                        workspace,
-                        GenomicsDBConstants.DEFAULT_ARRAY_NAME,
-                        b38_reference_20_21,
-			new File(workspace, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME).getAbsolutePath(),
-			new BCF2Codec());
+		getGenomicsDBFeatureReader(workspace, b38_reference_20_21);
 
         final AbstractFeatureReader<VariantContext, LineIterator> combinedVCFReader =
                 AbstractFeatureReader.getFeatureReader(expectedCombinedVCF, new VCFCodec(), true);
@@ -428,14 +421,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
         writeToGenomicsDB(vcfInputs, INTERVAL, workspace, 0, false, 0, 1);
         try(final GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> genomicsDBFeatureReader =
-                new GenomicsDBFeatureReader<>(
-                        new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME).getAbsolutePath(),
-                        new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).getAbsolutePath(),
-                        workspace,
-                        GenomicsDBConstants.DEFAULT_ARRAY_NAME,
-                        b38_reference_20_21,
-			new File(workspace, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME).getAbsolutePath(), 
-			new BCF2Codec()))
+	        getGenomicsDBFeatureReader(workspace, b38_reference_20_21))
         {
             final VCFHeader header = (VCFHeader) genomicsDBFeatureReader.getHeader();
             final Optional<VCFHeaderLine> commandLineHeaderLine = header.getMetaDataInSortedOrder().stream()
@@ -456,14 +442,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                           new SimpleInterval("chr20", 17959479, 17959479), workspace, 0, false, 0, 1);
 
         try ( final GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> genomicsDBFeatureReader =
-                new GenomicsDBFeatureReader<>(
-                        new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME).getAbsolutePath(),
-                        new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).getAbsolutePath(),
-                        workspace,
-                        GenomicsDBConstants.DEFAULT_ARRAY_NAME,
-                        b38_reference_20_21, 
-			new File(workspace, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME).getAbsolutePath(),
-			new BCF2Codec());
+	        getGenomicsDBFeatureReader(workspace, b38_reference_20_21);
 
              final AbstractFeatureReader<VariantContext, LineIterator> inputGVCFReader =
                       AbstractFeatureReader.getFeatureReader(GENOMICSDB_TEST_DIR + "testHeaderContigLineSorting1.g.vcf", new VCFCodec(), true);
@@ -483,14 +462,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                 workspace,
                 GenomicsDBConstants.DEFAULT_ARRAY_NAME,
                 reference,
-                null,
+                new File(workspace, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME).getAbsolutePath(),
                 new BCF2Codec());
-    }
-
-    @Test(expectedExceptions = GenomicsDBImport.UnableToCreateGenomicsDBWorkspace.class)
-    public void testYouCantWriteIntoAnExistingDirectory(){
-        // this actually creates the directory on disk, not just the file name.
-        final String workspace = createTempDir("workspace").getAbsolutePath();
-        writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
     }
 }
