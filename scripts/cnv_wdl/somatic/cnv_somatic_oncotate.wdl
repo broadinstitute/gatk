@@ -14,6 +14,7 @@ workflow CNVOncotateCalledSegments {
 
     output {
         File oncotated_called_file = OncotateSegments.oncotated_called_file
+        File oncotated_called_gene_list_file = OncotateSegments.oncotated_called_gene_list_file
     }
 }
 
