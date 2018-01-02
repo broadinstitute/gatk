@@ -14,19 +14,20 @@ import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.LocatableXsvFuncotationFactory;
-import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyXsvFuncotationFactory;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.cosmic.CosmicFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.LocatableXsvFuncotationFactory;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyXsvFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature;
 import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvTableFeature;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -49,9 +50,8 @@ import java.util.stream.Collectors;
 public class Funcotator extends VariantWalker {
     private static final Logger logger = LogManager.getLogger(Funcotator.class);
 
-    public static final String GTF_FILE_ARG_LONG_NAME = "gtfFile";
-    public static final String GTF_FILE_ARG_SHORT_NAME = "gtf";
-    public static final String GENCODE_FASTA_ARG_NAME = "gencodeFasta";
+    private static final PathMatcher configFileMatcher =
+            FileSystems.getDefault().getPathMatcher("glob:**/*.config");
 
     //==================================================================================================================
     // Arguments:
@@ -66,92 +66,21 @@ public class Funcotator extends VariantWalker {
     protected File outputFile;
 
     @Argument(
-            shortName = FuncotatorArgumentDefinitions.GENCODE_FASTA_ARG_NAME,
-            fullName  = FuncotatorArgumentDefinitions.GENCODE_FASTA_ARG_NAME,
-            doc = "GENCODE Transcript FASTA File.")
-    protected File gencodeTranscriptFastaFile;
+            fullName =  FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME,
+            doc = "The version of the Human Genome reference to use (hg19 or Hhg38)."
+    )
+    protected FuncotatorArgumentDefinitions.ReferenceVersionType referenceVersion;
 
     @Argument(
-            fullName =  FuncotatorArgumentDefinitions.GTF_FILE_ARG_LONG_NAME,
-            shortName = FuncotatorArgumentDefinitions.GTF_FILE_ARG_SHORT_NAME,
-            doc = "A GENCODE GTF file containing annotated genes."
+            fullName =  FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME,
+            doc = "The paths to any datasource directories for Funcotator."
     )
-    protected FeatureInput<GencodeGtfFeature> gtfVariants;
+    protected List<String> dataSourceDirectories;
 
     //-----------------------------------------------------
     // Optional args:
 
     @Argument(
-            fullName =  FuncotatorArgumentDefinitions.LOCATABLE_XSV_IN_ARG_LONG_NAME,
-            shortName = FuncotatorArgumentDefinitions.LOCATABLE_XSV_IN_ARG_SHORT_NAME,
-            optional = true,
-            doc = "Locatable XSV file input."
-    )
-    protected List<FeatureInput<XsvTableFeature>> xsvLocatableVariants;
-
-
-    @Argument(
-            shortName = FuncotatorArgumentDefinitions.XSV_INPUT_ARG_SHORT_NAME,
-            fullName  = FuncotatorArgumentDefinitions.XSV_INPUT_ARG_LONG_NAME,
-            optional = true,
-            doc = "Additional data source file (csv/tsv/<DELIMITER>separated value file).  " +
-                  "Delimiters for files are specified with the " + FuncotatorArgumentDefinitions.XSV_DELIMITER_ARG_SHORT_NAME + " argument.  " +
-                    "If no delimiters are specified, files are assumed to be in Comma Separated Value (CSV) format.  " +
-                    "If delimiters are specified, exactly one delimiter must be specified for each additional data source in the order of the data sources."
-    )
-    protected List<String> xsvInputPaths = FuncotatorArgumentDefinitions.XSV_INPUT_ARG_DEFAULT_VALUE;
-
-    @Argument(
-            shortName = FuncotatorArgumentDefinitions.XSV_VERSION_ARG_LONG_NAME,
-            fullName  = FuncotatorArgumentDefinitions.XSV_VERSION_ARG_SHORT_NAME,
-            optional = true,
-            doc = "Version number for each additional data source file."
-    )
-    protected List<String> xsvVersionNumbers = FuncotatorArgumentDefinitions.XSV_VERSION_ARG_DEFAULT_VALUE;
-
-    @Argument(
-            shortName = FuncotatorArgumentDefinitions.XSV_DELIMITER_ARG_LONG_NAME,
-            fullName  = FuncotatorArgumentDefinitions.XSV_DELIMITER_ARG_SHORT_NAME,
-            optional = true,
-            doc = "Delimiter for additional data source file (csv/tsv/<DELIMITER>separated value file)." +
-                    "If no delimiters are specified, files are assumed to be in Comma Separated Value (CSV) format."
-    )
-    protected List<String> xsvInputDelimiters = FuncotatorArgumentDefinitions.XSV_DELIMITER_ARG_DEFAULT_VALUE;
-
-    @Argument(
-            shortName = FuncotatorArgumentDefinitions.XSV_KEY_COLUMN_ARG_SHORT_NAME,
-            fullName  = FuncotatorArgumentDefinitions.XSV_KEY_COLUMN_ARG_LONG_NAME,
-            optional = true,
-            doc = "The column number (0-based) in the XSV file(s) to use as the matching field.  "
-    )
-    protected List<Integer> xsvKeyColumns = FuncotatorArgumentDefinitions.XSV_KEY_COLUMN_ARG_DEFAULT_VALUE;
-
-    @Argument(
-            shortName = FuncotatorArgumentDefinitions.XSV_FILE_TYPE_ARG_SHORT_NAME,
-            fullName  = FuncotatorArgumentDefinitions.XSV_FILE_TYPE_ARG_LONG_NAME,
-            optional = true,
-            doc = "The type of match to perform on each XSV file."
-    )
-    protected List<SimpleKeyXsvFuncotationFactory.XsvDataKeyType> xsvFileTypes = FuncotatorArgumentDefinitions.XSV_FILE_TYPE_ARG_DEFAULT_VALUE;
-
-    @Argument(
-            shortName = FuncotatorArgumentDefinitions.XSV_NAME_ARG_SHORT_NAME,
-            fullName  = FuncotatorArgumentDefinitions.XSV_NAME_ARG_LONG_NAME,
-            optional = true,
-            doc = "The name for each XSV Data Source."
-    )
-    protected List<String> xsvDataSourceNames = FuncotatorArgumentDefinitions.XSV_NAME_ARG_DEFAULT_VALUE;
-
-    @Argument(
-            shortName = FuncotatorArgumentDefinitions.XSV_PERMISSIVE_COLS_ARG_SHORT_NAME,
-            fullName  = FuncotatorArgumentDefinitions.XSV_PERMISSIVE_COLS_ARG_LONG_NAME,
-            optional = true,
-            doc = "Whether to permissively match the number of columns in the header and data rows."
-    )
-    protected List<Boolean> xsvPermissiveColumns = FuncotatorArgumentDefinitions.XSV_PERMISSIVE_COLS_ARG_DEFAULT_VALUE;
-
-    @Argument(
-            shortName = FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_SHORT_NAME,
             fullName  = FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME,
             optional = true,
             doc = "Method of detailed transcript selection."
@@ -159,7 +88,6 @@ public class Funcotator extends VariantWalker {
     protected FuncotatorArgumentDefinitions.TranscriptSelectionMode transcriptSelectionMode = FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE;
 
     @Argument(
-            shortName = FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_SHORT_NAME,
             fullName  = FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_LONG_NAME,
             optional = true,
             doc = "List of transcripts to use for annotation to override selected transcript."
@@ -167,7 +95,6 @@ public class Funcotator extends VariantWalker {
     protected Set<String> transcriptList = FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_DEFAULT_VALUE;
 
     @Argument(
-            shortName = FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_SHORT_NAME,
             fullName  = FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME,
             optional = true,
             doc = "Default values for annotations that are not added (in the format <ANNOTATION>:<VALUE>)"
@@ -175,7 +102,6 @@ public class Funcotator extends VariantWalker {
     protected List<String> annotationDefaults = FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_DEFAULT_VALUE;
 
     @Argument(
-            shortName = FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_SHORT_NAME,
             fullName  = FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_LONG_NAME,
             optional = true,
             doc = "Override values for annotations.  Replaces existing matchihng annotations with given values (in the format <ANNOTATION>:<VALUE>)"
@@ -186,7 +112,9 @@ public class Funcotator extends VariantWalker {
 
     private OutputRenderer outputRenderer;
     private final List<DataSourceFuncotationFactory> dataSourceFactories = new ArrayList<>();
-    private GencodeFuncotationFactory gencodeFuncotationFactory;
+    private List<GencodeFuncotationFactory> gencodeFuncotationFactories = new ArrayList<>();
+
+    private List<FeatureInput<? extends Feature>> manualFeatureInputs = new ArrayList<>();
 
     //==================================================================================================================
 
@@ -200,51 +128,11 @@ public class Funcotator extends VariantWalker {
         final LinkedHashMap<String, String> annotationDefaultsMap = splitAnnotationArgsIntoMap(annotationDefaults);
         final LinkedHashMap<String, String> annotationOverridesMap = splitAnnotationArgsIntoMap(annotationOverrides);
 
-        // TODO: Read Gencode Version info from files!
-
-        // Set up and add our gencode factory:
-        gencodeFuncotationFactory = new GencodeFuncotationFactory(gencodeTranscriptFastaFile,
-                                                                 "UNKNOWN_GENCODE_VERSION",
-                                                                 transcriptSelectionMode,
-                                                                 transcriptList,
-                                                                 annotationOverridesMap);
-        dataSourceFactories.add( gencodeFuncotationFactory );
+        // Initialize all of our data sources:
+        final Map<Path, Properties> configData = getAndValidateDataSourcesFromPaths(referenceVersion, dataSourceDirectories);
+        initializeDataSources(configData, annotationOverridesMap);
 
         // Set up our other data source factories:
-        // TODO: Set up ALL datasource factories based on config files / directory:
-        assertSimpleXsvInputsAreValid();
-
-        // Go through and set up each Simple XSV factory:
-        for ( int i = 0 ; i < xsvInputPaths.size() ; ++i ) {
-
-            // Create our SimpleKeyXsvFuncotationFactory:
-            final SimpleKeyXsvFuncotationFactory factory =
-                    //final String name, final Path filePath, final String delim, final int keyColumn, final XsvDataKeyType keyType
-                    new SimpleKeyXsvFuncotationFactory(
-                            xsvDataSourceNames.get(i),
-                            IOUtils.getPath(xsvInputPaths.get(i)),
-                            xsvVersionNumbers.get(i),
-                            xsvInputDelimiters.get(i),
-                            xsvKeyColumns.get(i),
-                            xsvFileTypes.get(i),
-                            annotationOverridesMap,
-                            0,
-                            xsvPermissiveColumns.get(i)
-                    );
-
-            // Add it to our sources:
-            dataSourceFactories.add( factory );
-        }
-
-        // Create a locatable XSV feature reader to handle XSV Locatable features:
-        final LocatableXsvFuncotationFactory locatableXsvFuncotationFactory = new LocatableXsvFuncotationFactory();
-        // Set the supported fields by the LocatableXsvFuncotationFactory:
-        locatableXsvFuncotationFactory.setSupportedFuncotationFields(
-                xsvLocatableVariants.stream()
-                        .map(x -> Paths.get(x.getFeaturePath()))
-                        .collect(Collectors.toCollection(ArrayList::new))
-        );
-        dataSourceFactories.add( locatableXsvFuncotationFactory );
 
         // Determine which annotations are accounted for (by the funcotation factories) and which are not.
         final LinkedHashMap<String, String> unaccountedForDefaultAnnotations = getUnaccountedForAnnotations( dataSourceFactories, annotationDefaultsMap );
@@ -290,43 +178,6 @@ public class Funcotator extends VariantWalker {
     //==================================================================================================================
 
     /**
-     * Verifies that the given inputs for XSV files are valid.
-     * If they are valid, this method does nothing.
-     * If they are invalid, this method throws a {@link UserException.BadInput}.
-     */
-    private void assertSimpleXsvInputsAreValid() {
-
-        if ( !(xsvInputPaths.isEmpty() && xsvInputDelimiters.isEmpty() && xsvVersionNumbers.isEmpty() && xsvDataSourceNames.isEmpty() && xsvFileTypes.isEmpty() && xsvKeyColumns.isEmpty() && xsvPermissiveColumns.isEmpty()) ) {
-            if ((xsvInputPaths.size() != xsvInputDelimiters.size() && (!xsvInputDelimiters.isEmpty()))) {
-                throw new UserException.BadInput("Must specify the same number of XSV input files and XSV delimiters (or no delimiters to assume CSV format).");
-            }
-            else if ( (xsvInputPaths.size() != xsvDataSourceNames.size()) || (xsvInputPaths.size() != xsvFileTypes.size()) || (xsvInputPaths.size() != xsvKeyColumns.size()) || (xsvInputPaths.size() != xsvPermissiveColumns.size()) || (xsvInputPaths.size() != xsvVersionNumbers.size()) ) {
-                throw new UserException.BadInput("Must specify the same number of XSV input arguments for all XSV specifications.");
-            }
-
-            // Quick existence checks here:
-            for ( final String inputPath : xsvInputPaths ) {
-                final Path filePath = IOUtils.getPath(inputPath);
-
-                if ( !Files.exists(filePath) ) {
-                    throw new UserException.BadInput("Specified XSV file does not exist: " + filePath.toUri().toString());
-                }
-
-                if ( !Files.isReadable(filePath) ) {
-                    throw new UserException.BadInput("Cannot read specified XSV file: " + filePath.toUri().toString());
-                }
-
-                if ( Files.isDirectory(filePath) ) {
-                    throw new UserException.BadInput("Given XSV file path is a directory, but should be a file: " + filePath.toUri().toString());
-                }
-            }
-        }
-        else if ( xsvInputPaths.isEmpty() && !(xsvInputDelimiters.isEmpty() && xsvVersionNumbers.isEmpty() && xsvDataSourceNames.isEmpty() && xsvFileTypes.isEmpty() && xsvKeyColumns.isEmpty() && xsvPermissiveColumns.isEmpty()) ) {
-            throw new UserException.BadInput("Must specify the same number of XSV input arguments for all XSV specifications.");
-        }
-    }
-
-    /**
      * Creates a {@link LinkedHashMap} of annotations in the given {@code annotationMap} that do not occur in the given {@code dataSourceFactories}.
      * @param dataSourceFactories {@link List} of {@link DataSourceFuncotationFactory} to check for whether each annotation in the {@code annotationMap} is handled.
      * @param annotationMap {@link Map} (of ANNOTATION_NAME : ANNOTATION_VALUE) to check
@@ -362,29 +213,35 @@ public class Funcotator extends VariantWalker {
      */
     private void enqueueAndHandleVariant(final VariantContext variant, final ReferenceContext referenceContext, final FeatureContext featureContext) {
 
+        // Get our feature inputs:
         final List<Feature> featureList = new ArrayList<>();
-
-        // TODO: Need to add all features here for any kind of Data Source:
-        featureList.addAll( featureContext.getValues(gtfVariants) );
-        featureList.addAll( featureContext.getValues(xsvLocatableVariants) );
+        for ( final FeatureInput<? extends Feature> featureInput : manualFeatureInputs ) {
+            featureList.addAll( featureContext.getValues(featureInput) );
+        }
 
         // Create a place to keep our funcotations:
         final List<Funcotation> funcotations = new ArrayList<>();
 
         // Annotate with Gencode first:
-        final List<Funcotation> funcotationsFromGencodeFactory = gencodeFuncotationFactory.createFuncotations(variant, referenceContext, featureList);
-        funcotations.addAll( funcotationsFromGencodeFactory );
 
         // Create a list of GencodeFuncotation to use for other Data Sources:
-        final List<GencodeFuncotation> gencodeFuncotations =
-                funcotationsFromGencodeFactory.stream()
-                    .map(f -> (GencodeFuncotation) f).collect(Collectors.toList());
+        final List<GencodeFuncotation> gencodeFuncotations = new ArrayList<>();
+
+        for ( final GencodeFuncotationFactory factory : gencodeFuncotationFactories ) {
+            final List<Funcotation> funcotationsFromGencodeFactory = factory.createFuncotations(variant, referenceContext, featureList);
+            funcotations.addAll(funcotationsFromGencodeFactory);
+            gencodeFuncotations.addAll(
+                    funcotationsFromGencodeFactory.stream()
+                    .map(x -> (GencodeFuncotation)x)
+                    .collect(Collectors.toList())
+            );
+        }
 
         // Annotate with the rest of the data sources:
         for ( final DataSourceFuncotationFactory funcotationFactory : dataSourceFactories ) {
 
             // Make sure we don't double up on the Gencodes:
-            if ( funcotationFactory.equals(gencodeFuncotationFactory) ) {
+            if ( funcotationFactory.getType().equals(FuncotatorArgumentDefinitions.DataSourceType.GENCODE) ) {
                 continue;
             }
 
@@ -414,5 +271,374 @@ public class Funcotator extends VariantWalker {
         }
 
         return annotationMap;
+    }
+
+    /** @return {@code true} if the given {@link Path} exists, is readable, and is a directory; {@code false} otherwise. */
+    private static boolean isValidDirectory(final Path p) {
+        return Files.exists(p) && Files.isReadable(p) && Files.isDirectory(p);
+    }
+
+    /**
+     * Gets the {@link Path} config file in the given directory.
+     * Will throw a {@link UserException}if no config file is found.
+     * @param directory The {@link Path} of the directory in which to search for a config file.
+     * @return The {@link Path} to the config file found in the given {@code directory}.
+     */
+    private static Path getConfigfile(final Path directory) {
+        final List<Path> configFileSet;
+
+        try {
+            configFileSet = Files.list(directory)
+                    .filter(x -> configFileMatcher.matches(x))
+                    .filter(Files::exists)
+                    .filter(Files::isReadable)
+                    .filter(Files::isRegularFile)
+                    .collect(Collectors.toList());
+
+            if (configFileSet.size() > 1) {
+                throw new UserException("ERROR: Directory contains more than one config file: " + directory.toUri().toString());
+            }
+            else if ( configFileSet.size() == 0 ) {
+                throw new UserException("ERROR: Directory does not contain a config file: " + directory.toUri().toString());
+            }
+
+            return configFileSet.get(0);
+        }
+        catch (final IOException ex) {
+            throw new GATKException("Unable to read contents of: " + directory.toUri().toString());
+        }
+    }
+
+    /**
+     * Initializes the data sources for {@link Funcotator}.
+     * @param refVersion The version of the reference we're using to create annotations.
+     * @param dataSourceDirectories A {@link List} of {@link Path} to the directories containing our data sources.
+     * @return The contents of the config files for each of the data sources found in the given {@code dataSourceDirectories}.
+     */
+    private Map<Path, Properties> getAndValidateDataSourcesFromPaths(final FuncotatorArgumentDefinitions.ReferenceVersionType refVersion,
+                                                                     final List<String> dataSourceDirectories) {
+        final Map<Path, Properties> metaData = new LinkedHashMap<>();
+
+        boolean hasGencodeDataSource = false;
+
+        // Go through our directories:
+        final Set<String> names = new HashSet<>();
+        for ( final String pathString : dataSourceDirectories ) {
+            final Path p = IOUtils.getPath(pathString);
+            if ( !isValidDirectory(p) ) {
+                logger.warn("WARNING: Given path is not a valid directory: " + p.toUri().toString());
+                continue;
+            }
+
+            // Now that we have a valid directory, we need to grab a list of sub-directories in it:
+            try {
+                for ( final Path dataSourceTopDir : Files.list(p).filter(Funcotator::isValidDirectory).collect(Collectors.toSet()) ) {
+
+                    // Get the path that corresponds to our reference version:
+                    final Path dataSourceDir = dataSourceTopDir.resolve(refVersion.toString());
+
+                    // Make sure that we have a good data source directory:
+                    if ( isValidDirectory(dataSourceDir) ) {
+
+                        // Get the config file path:
+                        final Path configFilePath = getConfigfile(dataSourceDir);
+
+                        // Read the config file into Properties:
+                        final Properties configFileProperties = readConfigFileProperties(configFilePath);
+
+                        // Validate the config file properties:
+                        assertConfigFilePropertiesAreValid(configFileProperties, configFilePath);
+
+                        // Make sure we only have 1 of this data source:
+                        if ( names.contains(configFileProperties.getProperty("name")) ) {
+                            throw new UserException.BadInput("Error: contains more than one dataset of name: "
+                                    + configFileProperties.getProperty("name") + " - one is: " + configFilePath.toUri().toString());
+                        }
+                        else {
+                            names.add( configFileProperties.getProperty("name") );
+
+                            if ( FuncotatorArgumentDefinitions.DataSourceType.getEnum(configFileProperties.getProperty("type")) ==
+                                    FuncotatorArgumentDefinitions.DataSourceType.GENCODE ) {
+                                hasGencodeDataSource = true;
+                            }
+
+                            // Add our config file to the properties list:
+                            metaData.put( configFilePath, configFileProperties );
+                        }
+                    }
+                }
+            }
+            catch (final IOException ex) {
+                throw new GATKException("Unable to read contents of: " + p.toUri().toString());
+            }
+        }
+
+        if ( !hasGencodeDataSource ) {
+            throw new UserException("ERROR: a Gencode datasource is required!");
+        }
+
+        return metaData;
+    }
+
+    private void initializeDataSources(final Map<Path, Properties> metaData,
+                                       final LinkedHashMap<String, String> annotationOverridesMap) {
+
+        // Now we know we have unique and valid data.
+        // Now we must instantiate our data sources:
+        for ( final Map.Entry<Path, Properties> entry : metaData.entrySet() ) {
+
+            logger.debug("Initializing " + entry.getValue().getProperty("name") + " ...");
+
+            // Note: we need no default case since we know these are valid:
+            final String stringType = entry.getValue().getProperty("type");
+            switch ( FuncotatorArgumentDefinitions.DataSourceType.getEnum(stringType) ) {
+                case LOCATABLE_XSV: createLocatableXsvDataSource(entry.getKey(), entry.getValue(), annotationOverridesMap); break;
+                case SIMPLE_XSV:    createSimpleXsvDataSource(entry.getKey(), entry.getValue(), annotationOverridesMap); break;
+                case COSMIC:        createCosmicDataSource(entry.getKey(), entry.getValue(), annotationOverridesMap); break;
+                case GENCODE:       createGencodeDataSource(entry.getKey(), entry.getValue(), annotationOverridesMap); break;
+            }
+        }
+
+        logger.debug("All Data Sources are Initialized.");
+    }
+
+    private void createLocatableXsvDataSource(final Path dataSourceFile,
+                                              final Properties dataSourceProperties,
+                                              final LinkedHashMap<String, String> annotationOverridesMap) {
+        final String name   = dataSourceProperties.getProperty("name");
+
+        // Inject our features into our list of feature data sources:
+        final FeatureInput<? extends Feature> featureInput = addFeatureInputsAfterInitialization(
+                dataSourceFile.resolveSibling(
+                    IOUtils.getPath( dataSourceProperties.getProperty("src_file") )
+                ).toUri().toString(),
+                name,
+                XsvTableFeature.class
+        );
+
+        // Add our feature input to our list of manual inputs:
+        manualFeatureInputs.add(featureInput);
+
+        // Create a locatable XSV feature reader to handle XSV Locatable features:
+        final LocatableXsvFuncotationFactory locatableXsvFuncotationFactory = new LocatableXsvFuncotationFactory();
+
+        // Set the supported fields by the LocatableXsvFuncotationFactory:
+        locatableXsvFuncotationFactory.setSupportedFuncotationFields(
+                new ArrayList<>(
+                        Collections.singletonList(
+                                dataSourceFile.resolveSibling(
+                                    IOUtils.getPath( dataSourceProperties.getProperty("src_file") )
+                                )
+                        )
+                )
+        );
+        dataSourceFactories.add( locatableXsvFuncotationFactory );
+    }
+
+    private void createSimpleXsvDataSource(final Path dataSourceFile,
+                                           final Properties dataSourceProperties,
+                                           final LinkedHashMap<String, String> annotationOverridesMap) {
+        // Create our SimpleKeyXsvFuncotationFactory:
+        final SimpleKeyXsvFuncotationFactory factory =
+                //final String name, final Path filePath, final String delim, final int keyColumn, final XsvDataKeyType keyType
+                new SimpleKeyXsvFuncotationFactory(
+                    dataSourceProperties.getProperty("name"),
+                    dataSourceFile.resolveSibling(IOUtils.getPath(dataSourceProperties.getProperty("src_file"))),
+                    dataSourceProperties.getProperty("version"),
+                    dataSourceProperties.getProperty("xsv_delimiter"),
+                    Integer.valueOf(dataSourceProperties.getProperty("xsv_key_column")),
+                    SimpleKeyXsvFuncotationFactory.XsvDataKeyType.valueOf(dataSourceProperties.getProperty("xsv_key")),
+                    annotationOverridesMap,
+                    0,
+                    Boolean.valueOf(dataSourceProperties.getProperty("xsv_permissive_cols"))
+                );
+
+        // Add it to our sources:
+        dataSourceFactories.add( factory );
+
+    }
+
+    private void createCosmicDataSource(final Path dataSourceFile,
+                                        final Properties dataSourceProperties,
+                                        final LinkedHashMap<String, String> annotationOverridesMap) {
+
+        final CosmicFuncotationFactory cosmicFuncotationFactory =
+                new CosmicFuncotationFactory(
+                  dataSourceFile.resolveSibling(IOUtils.getPath(dataSourceProperties.getProperty("src_file"))),
+                  annotationOverridesMap
+                );
+
+        // Add our factory to our factory list:
+        dataSourceFactories.add( cosmicFuncotationFactory );
+    }
+
+    private void createGencodeDataSource(final Path dataSourceFile,
+                                         final Properties dataSourceProperties,
+                                         final LinkedHashMap<String, String> annotationOverridesMap) {
+
+        // Get some metadata:
+        final String fastaPath = dataSourceProperties.getProperty("gencode_fasta_path");
+        final String version   = dataSourceProperties.getProperty("version");
+        final String name   = dataSourceProperties.getProperty("name");
+
+        // Inject our Gencode GTF features into our list of feature data sources:
+        final FeatureInput<? extends Feature> featureInput = addFeatureInputsAfterInitialization(
+                dataSourceFile.resolveSibling(
+                        IOUtils.getPath( dataSourceProperties.getProperty("src_file") )
+                ).toUri().toString(),
+                name,
+                GencodeGtfFeature.class
+        );
+
+        // Add our feature input to our list of manual inputs:
+        manualFeatureInputs.add(featureInput);
+
+        // Create our gencode factory:
+        final GencodeFuncotationFactory gencodeFuncotationFactory =
+            new GencodeFuncotationFactory(dataSourceFile.resolveSibling(fastaPath).toFile(),
+                    version,
+                    transcriptSelectionMode,
+                    transcriptList,
+                    annotationOverridesMap
+            );
+
+        // Add our factory to our factory lists:
+        gencodeFuncotationFactories.add( gencodeFuncotationFactory );
+        dataSourceFactories.add( gencodeFuncotationFactory );
+    }
+
+    // ========================================================================================================
+    // Config file static helper methods:
+    // ------------------------------------------------
+
+    private static Properties readConfigFileProperties(final Path configFilePath) {
+        final Properties configProperties = new Properties();
+        try ( final InputStream inputStream = Files.newInputStream(configFilePath, StandardOpenOption.READ) ) {
+            configProperties.load(inputStream);
+        }
+        catch (final Exception ex) {
+            throw new UserException.BadInput("Unable to read from data source config file: " + configFilePath.toUri().toString(), ex);
+        }
+
+        return configProperties;
+    }
+
+    private static void assertConfigFilePropertiesAreValid(final Properties configFileProperties, final Path configFilePath) {
+
+        // Universally required config properties:
+        assertConfigPropertiesContainsKey("name", configFileProperties, configFilePath);
+        assertConfigPropertiesContainsKey("version", configFileProperties, configFilePath);
+        assertConfigPropertiesContainsKey("src_file", configFileProperties, configFilePath);
+        assertConfigPropertiesContainsKey("origin_location", configFileProperties, configFilePath);
+        assertConfigPropertiesContainsKey("preprocessing_script", configFileProperties, configFilePath);
+        assertConfigPropertiesContainsKey("type", configFileProperties, configFilePath);
+
+        // Validate our source file:
+        assertPathFilePropertiesField( configFileProperties, "src_file", configFilePath);
+
+        // Validate our type:
+        final String stringType = configFileProperties.getProperty("type");
+        final FuncotatorArgumentDefinitions.DataSourceType type;
+        try {
+             type = FuncotatorArgumentDefinitions.DataSourceType.getEnum(stringType);
+        }
+        catch (final IllegalArgumentException ex) {
+            throw new UserException.BadInput("ERROR in config file: " + configFilePath.toUri().toString() +
+                    " - Invalid value in \"type\" field: " + stringType, ex);
+        }
+
+        // Validate remaining values based on type:
+        switch (type) {
+            case LOCATABLE_XSV: assertLocatableXsvConfigFilePropertiesAreValid(configFileProperties, configFilePath); break;
+            case SIMPLE_XSV:    assertSimpleXsvConfigFilePropertiesAreValid(configFileProperties, configFilePath); break;
+            case GENCODE:       assertGencodeConfigFilePropertiesAreValid(configFileProperties, configFilePath); break;
+            case COSMIC:        /* No special case for COSMIC needed here. */ break;
+            default:
+                //Note: this should never happen:
+                throw new UserException.BadInput("ERROR in config file: " + configFilePath.toUri().toString() +
+                        " - Invalid value in \"type\" field: " + stringType);
+        }
+    }
+
+    private static void assertConfigPropertiesContainsKey(final String key, final Properties configProperties, final Path configFilePath) {
+        if ( !configProperties.stringPropertyNames().contains(key) ) {
+            throw new UserException.BadInput("Config file for datasource (" + configFilePath.toUri().toString() + ") does not contain required key: " + key);
+        }
+    }
+
+    private static void assertLocatableXsvConfigFilePropertiesAreValid(final Properties configFileProperties, final Path configFilePath) {
+        assertConfigPropertiesContainsKey("xsv_delimiter", configFileProperties, configFilePath);
+        assertConfigPropertiesContainsKey("contig_column", configFileProperties, configFilePath);
+        assertConfigPropertiesContainsKey("start_column", configFileProperties, configFilePath);
+        assertConfigPropertiesContainsKey("end_column", configFileProperties, configFilePath);
+
+        // Ensure typed values:
+        assertNumericalPropertiesField(configFileProperties, "contig_column", configFilePath);
+        assertNumericalPropertiesField(configFileProperties, "start_column", configFilePath);
+        assertNumericalPropertiesField(configFileProperties, "end_column", configFilePath);
+    }
+
+    private static void assertSimpleXsvConfigFilePropertiesAreValid(final Properties configFileProperties, final Path configFilePath) {
+        assertConfigPropertiesContainsKey("xsv_delimiter", configFileProperties, configFilePath);
+        assertConfigPropertiesContainsKey("xsv_key", configFileProperties, configFilePath);
+        assertConfigPropertiesContainsKey("xsv_key_column", configFileProperties, configFilePath);
+        assertConfigPropertiesContainsKey("xsv_permissive_cols", configFileProperties, configFilePath);
+
+        // Ensure typed values:
+        assertNumericalPropertiesField(configFileProperties, "xsv_key_column", configFilePath);
+        assertBooleanPropertiesField(configFileProperties, "xsv_permissive_cols", configFilePath);
+
+        // Validate our xsv_key:
+        final String stringXsvKey = configFileProperties.getProperty("xsv_key");
+        try {
+            SimpleKeyXsvFuncotationFactory.XsvDataKeyType.valueOf(stringXsvKey);
+        }
+        catch (final IllegalArgumentException ex) {
+            throw new UserException.BadInput("ERROR in config file: " + configFilePath.toUri().toString() +
+                    " - Invalid value in \"xsv_key\" field: " + stringXsvKey, ex);
+        }
+    }
+
+    private static void assertGencodeConfigFilePropertiesAreValid(final Properties configFileProperties, final Path configFilePath){
+        assertConfigPropertiesContainsKey("gencode_fasta_path", configFileProperties, configFilePath);
+
+        // Assert that the path is good:
+        assertPathFilePropertiesField(configFileProperties, "gencode_fasta_path", configFilePath);
+    }
+
+    private static void assertNumericalPropertiesField(final Properties props, final String field, final Path filePath) {
+        try {
+            Integer.valueOf(props.getProperty(field));
+        }
+        catch (final NumberFormatException ex) {
+            throw new UserException.BadInput("ERROR in config file: " + filePath.toUri().toString() +
+                    " - Invalid value in \"" + field + "\" field: " + props.getProperty(field));
+        }
+    }
+
+    private static void assertBooleanPropertiesField(final Properties props, final String field, final Path filePath) {
+        try {
+            Boolean.valueOf(props.getProperty(field));
+        }
+        catch (final NumberFormatException ex) {
+            throw new UserException.BadInput("ERROR in config file: " + filePath.toUri().toString() +
+                    " - Invalid value in \"" + field + "\" field: " + props.getProperty(field));
+        }
+    }
+
+    private static void assertPathFilePropertiesField(final Properties props, final String field, final Path filePath) {
+        final Path sourceFilePath = filePath.resolveSibling(props.getProperty(field));
+        if ( !Files.exists(sourceFilePath) ) {
+            throw new UserException.BadInput("ERROR in config file: " + filePath.toUri().toString() +
+                    " - " + field + " does not exist: " + sourceFilePath);
+        }
+        else if ( !Files.isRegularFile(sourceFilePath) ) {
+            throw new UserException.BadInput("ERROR in config file: " + filePath.toUri().toString() +
+                    " -  " + field + " is not a regular file: " + sourceFilePath);
+        }
+        else if ( !Files.isReadable(sourceFilePath) ) {
+            throw new UserException.BadInput("ERROR in config file: " + filePath.toUri().toString() +
+                    " - " + field + " is not readable: " + sourceFilePath);
+        }
     }
 }
