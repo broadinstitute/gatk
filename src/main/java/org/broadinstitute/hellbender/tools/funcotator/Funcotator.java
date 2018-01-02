@@ -457,6 +457,7 @@ public class Funcotator extends VariantWalker {
         dataSourceFactories.add( factory );
 
     }
+
     private void createCosmicDataSource(final Path dataSourceFile,
                                         final Properties dataSourceProperties,
                                         final LinkedHashMap<String, String> annotationOverridesMap) {

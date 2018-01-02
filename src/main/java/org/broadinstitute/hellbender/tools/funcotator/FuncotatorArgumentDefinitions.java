@@ -183,10 +183,32 @@ public class FuncotatorArgumentDefinitions {
         CANONICAL
     }
 
+    /**
+     * An enum to handle the different types of input files for data sources.
+     */
     public enum DataSourceType {
+        /**
+         * This values indicates a simple arbitrary separated value (XSV) file that can be
+         * annotated on records via matching by gene name or transcript ID.
+         */
         SIMPLE_XSV("simpleXSV"),
+
+        /**
+         * This values indicates a simple arbitrary separated value (XSV) file that can be
+         * annotated on records via matching by gene location.
+         */
         LOCATABLE_XSV("locatableXSV"),
+
+        /**
+         * This values indicates a GENCODE GTF data file.
+         */
         GENCODE("gencode"),
+
+        /**
+         * This values indicates a pre-processed COSMIC database file.
+         * For more information on the pre-processing steps see {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.cosmic.CosmicFuncotationFactory}
+         * and the Funcotator Scripts directory.
+         */
         COSMIC("cosmic");
 
         private final String serialized;
@@ -210,6 +232,10 @@ public class FuncotatorArgumentDefinitions {
         }
     }
 
+    /**
+     * An indicator of the reference version of the data sources to be used for the Funcotator annotations.
+     * This is used to determine from which folder to pull the config file for each data source.
+     */
     public enum ReferenceVersionType {
         hg19,
         hg38
