@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 
@@ -178,7 +179,7 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
             }
 
         } else {
-            dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(dictionarySource));
+            dictionary = SAMSequenceDictionaryExtractor.extractDictionary(IOUtils.getPath(dictionarySource));
             if (dictionary == null || dictionary.getSequences().isEmpty()) {
                 throw new CommandLineException.BadArgumentValue(
                         String.format(

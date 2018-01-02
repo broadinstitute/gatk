@@ -1973,7 +1973,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
     @Test(dataProvider = "genomicSortingTests")
     public void testBasicGenomicSortOfLocatable(final List<Locatable> testList, final List<Locatable> gtList) throws IOException {
 
-        final SAMSequenceDictionary dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(FULL_HG19_DICT));
+        final SAMSequenceDictionary dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(FULL_HG19_DICT).toPath());
         testList.sort(IntervalUtils.getDictionaryOrderComparator(dictionary));
         Assert.assertEquals(testList, gtList);
     }
@@ -1996,7 +1996,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
                new SimpleInterval("GL1234.123NOT_IN_DICT", 3500, 4000)
         );
 
-        final SAMSequenceDictionary dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(FULL_HG19_DICT));
+        final SAMSequenceDictionary dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(FULL_HG19_DICT).toPath());
         testList.sort(IntervalUtils.getDictionaryOrderComparator(dictionary));
     }
 
