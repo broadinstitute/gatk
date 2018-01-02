@@ -141,7 +141,7 @@ public abstract class GATKTool extends CommandLineProgram {
     /**
      * Our source of Feature data (null if no source of Features was provided)
      */
-    protected FeatureManager features;
+    FeatureManager features;
 
     /**
      * Intervals to be used for traversal (null if no intervals were provided).
@@ -786,8 +786,33 @@ public abstract class GATKTool extends CommandLineProgram {
     protected String getToolkitName() { return "GATK"; }
 
     /**
+     * A method to allow a user to inject data sources after initialization that were not specified as command-line
+     * arguments.
+     * @return The {@link FeatureInput} used as the key for this data source.
+     */
+    protected FeatureInput<? extends Feature> addFeatureInputsAfterInitialization(final String filePath,
+                                                                                  final String name,
+                                                                                  final Class<? extends Feature> featureType) {
+
+        final FeatureInput<? extends Feature> featureInput = new FeatureInput<>(name + ":" + filePath);
+
+        //Add datasource to the feature manager too so that it can be queried. Setting lookahead to 0 to avoid caching.
+        //Note: we are disabling lookahead here because of windowed queries that need to "look behind" as well.
+        features.addToFeatureSources(
+                0,
+                featureInput,
+                featureType,
+                cloudPrefetchBuffer,
+                cloudIndexPrefetchBuffer,
+                referenceArguments.getReferencePath()
+        );
+
+        return featureInput;
+    }
+
+    /**
      * Returns the name of this tool.
-     * The default implementation returns the result of calling {@link# getToolkitName} followed by the simple
+     * The default implementation returns the result of calling {@link #getToolkitName} followed by the simple
      * name of the class. Subclasses may override.
      */
     public String getToolName() {

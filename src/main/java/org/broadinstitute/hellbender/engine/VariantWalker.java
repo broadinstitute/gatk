@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -61,54 +60,6 @@ public abstract class VariantWalker extends VariantWalkerBase {
                                      referenceArguments.getReferencePath());
 
         //Note: the intervals for the driving variants are set in onStartup
-    }
-
-    /**
-     * A method to allow a user to inject data sources after initialization that were not specified as command-line
-     * arguments.
-     * @return The {@link FeatureInput} used as the key for this data source.
-     */
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    protected FeatureInput<? extends Feature> injectFeatureDataSourcesAfterInitialization(final String filePath,
-                                                               final String name,
-                                                               final Class<? extends Feature> featureType) {
-        //TODO: Find a better way to do this.
-
-        final FeatureInput<? extends Feature> featureInput = new FeatureDataSourceWrapperClass(featureType).createFeatureInput(filePath, name);
-
-        //Add the driving datasource to the feature manager too so that it can be queried. Setting lookahead to 0 to avoid caching.
-        //Note: we are disabling lookahead here because of windowed queries that need to "look behind" as well.
-        features.addToFeatureSources(
-                0,
-                featureInput,
-                featureType,
-                cloudPrefetchBuffer,
-                cloudIndexPrefetchBuffer,
-                referenceArguments.getReferencePath()
-        );
-
-        return featureInput;
-    }
-
-    /**
-     * Class to hold the templated type for the call in {@link VariantWalker#injectFeatureDataSourcesAfterInitialization(String, String, Class)}
-     * so that a user can generically call that method with a type.
-     *
-     * This is required because of how Java handles templates and types with reflection.
-     * That is, you can't have a variable of type `Class<?>` and then use it to create a templated instance of a variable.
-     */
-    final private class FeatureDataSourceWrapperClass<T extends Feature> {
-
-        private Class<T> featureClass;
-
-        public FeatureDataSourceWrapperClass(final Class<T> c) {
-            featureClass = c;
-        }
-
-        public FeatureInput<T> createFeatureInput(final String filePath, final String name)
-        {
-            return new FeatureInput<>(filePath, name);
-        }
     }
 
     /**

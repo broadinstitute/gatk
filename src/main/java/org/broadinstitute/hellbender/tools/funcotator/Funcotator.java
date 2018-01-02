@@ -408,7 +408,7 @@ public class Funcotator extends VariantWalker {
         final String name   = dataSourceProperties.getProperty("name");
 
         // Inject our features into our list of feature data sources:
-        final FeatureInput<? extends Feature> featureInput = injectFeatureDataSourcesAfterInitialization(
+        final FeatureInput<? extends Feature> featureInput = addFeatureInputsAfterInitialization(
                 dataSourceFile.resolveSibling(
                     IOUtils.getPath( dataSourceProperties.getProperty("src_file") )
                 ).toUri().toString(),
@@ -482,7 +482,7 @@ public class Funcotator extends VariantWalker {
         final String name   = dataSourceProperties.getProperty("name");
 
         // Inject our Gencode GTF features into our list of feature data sources:
-        final FeatureInput<? extends Feature> featureInput = injectFeatureDataSourcesAfterInitialization(
+        final FeatureInput<? extends Feature> featureInput = addFeatureInputsAfterInitialization(
                 dataSourceFile.resolveSibling(
                         IOUtils.getPath( dataSourceProperties.getProperty("src_file") )
                 ).toUri().toString(),
