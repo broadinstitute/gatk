@@ -25,57 +25,67 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
         final int binLengthSeparateIntervalTest = 10_000;
         final int paddingLengthSeparateIntervalTest = 0;
         final List<Interval> inputIntervalsSeparateIntervalTest = Arrays.asList(
-                new Interval("20", 3_000, 20_000),
-                new Interval("20", 200, 1_900)
+                new Interval("20", 103_000, 120_000),
+                new Interval("20", 100_200, 101_900)
         );
         final List<Interval> expectedBinsSeparateIntervalTest = Arrays.asList(
-                new Interval("20", 200, 1_900),
-                new Interval("20", 3_000, 12_999),
-                new Interval("20", 13_000, 20_000)
+                new Interval("20", 100_200, 101_900),
+                new Interval("20", 103_000, 112_999),
+                new Interval("20", 113_000, 120_000)
         );
 
         // Test for no binning (specified by zero bin length)
         final int binLengthNoBinningTest = 0;
         final int paddingLengthNoBinningTest = 0;
         final List<Interval> inputIntervalsNoBinningTest = Arrays.asList(
-                new Interval("20", 3_000, 20_000),
-                new Interval("20", 200, 1_900)
+                new Interval("20", 103_000, 120_000),
+                new Interval("20", 100_200, 101_900)
         );
         final List<Interval> expectedBinsNoBinningTest = Arrays.asList(
-                new Interval("20", 200, 1_900),
-                new Interval("20", 3_000, 20_000)
+                new Interval("20", 100_200, 101_900),
+                new Interval("20", 103_000, 120_000)
         );
 
         // Test for overlapping intervals
         final int binLengthOverlappingIntervalTest = 10_000;
         final int paddingLengthOverlappingIntervalTest = 500;
         final List<Interval> inputIntervalsOverlappingIntervalTest = Arrays.asList(
-                new Interval("20", 3_000, 20_000),
-                new Interval("20", 200, 2_100)
+                new Interval("20", 103_001, 120_000),
+                new Interval("20", 100_201, 102_100)
         );
         final List<Interval> expectedBinsOverlappingIntervalTest = Arrays.asList(
-                new Interval("20", 1, 10_000),
-                new Interval("20", 10_001, 20_000),
-                new Interval("20", 20_001, 20_500)
+                new Interval("20", 99_701, 109_700),
+                new Interval("20", 109_701, 119_700),
+                new Interval("20", 119_701, 120_500)
         );
 
         // Test for intervals reaching the ends of the contigs
-        final int binLengthEdgeIntervalTest = 10_000;
-        final int paddingLengthEdgeIntervalTest = 500;
+        final int binLengthEdgeIntervalTest = 100_000;
+        final int paddingLengthEdgeIntervalTest = 5_000;
         final List<Interval> inputIntervalsEdgeIntervalTest = Arrays.asList(
-                new Interval("20", 3_000, 20_000),
-                new Interval("20", 63_025_220, 63_025_520)
+                new Interval("20", 3_000, 200_000),
+                new Interval("20", 62_935_000, 63_025_520)
         );
         final List<Interval> expectedBinsEdgeIntervalTest = Arrays.asList(
-                new Interval("20", 2_500, 12_499),
-                new Interval("20", 12_500, 20_500),
-                new Interval("20", 63_024_720, 63_025_520)
+                new Interval("20", 1, 100_000),
+                new Interval("20", 100_001, 200_000),
+                new Interval("20", 200_001, 205_000),
+                new Interval("20", 62_930_000, 63_025_520)
         );
+
+        // Test for dropping of intervals with all Ns (first 60_000 bases in test reference are Ns)
+        final int binLengthDropNsIntervalTest = 60_000;
+        final int paddingLengthDropNsIntervalTest = 0;
+        final List<Interval> inputIntervalsDropNsIntervalTest = Collections.singletonList(
+                new Interval("20", 1, 120_000));
+        final List<Interval> expectedBinsDropNsIntervalTest = Collections.singletonList(
+                new Interval("20", 60_001, 120_000));
 
         // Test for whole chromosome
         final int binLengthWholeChromosomeTest = 10_000_000;
         final int paddingLengthWholeChromosomeTest = 500;
-        final List<Interval> inputIntervalsWholeChromosomeTest = Collections.singletonList(new Interval("20", 1, 63_025_520));
+        final List<Interval> inputIntervalsWholeChromosomeTest = Collections.singletonList(
+                new Interval("20", 1, 63_025_520));
         final List<Interval> expectedBinsWholeChromosomeTest = Arrays.asList(
                 new Interval("20", 1, 10_000_000),
                 new Interval("20", 10_000_001, 20_000_000),
@@ -111,6 +121,7 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
                 {binLengthNoBinningTest, paddingLengthNoBinningTest, inputIntervalsNoBinningTest, expectedBinsNoBinningTest},
                 {binLengthOverlappingIntervalTest, paddingLengthOverlappingIntervalTest, inputIntervalsOverlappingIntervalTest, expectedBinsOverlappingIntervalTest},
                 {binLengthEdgeIntervalTest, paddingLengthEdgeIntervalTest, inputIntervalsEdgeIntervalTest, expectedBinsEdgeIntervalTest},
+                {binLengthDropNsIntervalTest, paddingLengthDropNsIntervalTest, inputIntervalsDropNsIntervalTest, expectedBinsDropNsIntervalTest},
                 {binLengthWholeChromosomeTest, paddingLengthWholeChromosomeTest, inputIntervalsWholeChromosomeTest, expectedBinsWholeChromosomeTest},
                 {binLengthWholeGenomeTest, paddingLengthWholeGenomeTest, inputIntervalsWholeGenomeTest, expectedBinsWholeGenomeTest}
         };
@@ -149,11 +160,9 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
         final IntervalList binsResult = IntervalList.fromFile(outputFile);
 
         final IntervalList binsExpected = new IntervalList(binsResult.getHeader().getSequenceDictionary());
-        binsExpected.add(new Interval("20", 1, 10_000));
-        binsExpected.add(new Interval("20", 10_001, 16_000));
-        binsExpected.add(new Interval("21", 1, 5_100));
-        binsExpected.add(new Interval("21", 15_000, 24_999));
-        binsExpected.add(new Interval("21", 25_000, 27_000));
+        binsExpected.add(new Interval("20", 95_001, 105_000));
+        binsExpected.add(new Interval("20", 105_001, 115_000));
+        binsExpected.add(new Interval("20", 115_001, 125_000));
 
         Assert.assertEquals(binsResult, binsExpected);
     }

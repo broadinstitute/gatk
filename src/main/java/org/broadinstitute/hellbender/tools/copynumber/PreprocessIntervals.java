@@ -11,8 +11,11 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.util.List;
@@ -20,7 +23,7 @@ import java.util.List;
 /**
  * This tool takes in intervals via the standard arguments of {@link GATKTool}, prepares them for binning, and creates
  * bins that cover the processed intervals. The intervals are first padded, uniquified, then the overlapping
- * intervals are merged. Finally, the bins are created.
+ * intervals are merged. The bins are then created.  Finally, bins that contain all Ns are filtered out.
  *
  * <p>Standard GATK engine arguments include -L and -XL. For example, for the -L argument, the tool accepts GATK-style
  * intervals (.list or .intervals), BED files and VCF files. If no intervals are given, each contig will be assumed
@@ -94,6 +97,11 @@ public final class PreprocessIntervals extends GATKTool {
     private File outputFile;
 
     @Override
+    public boolean requiresReference() {
+        return true;
+    }
+
+    @Override
     public void onTraversalStart() {
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
 
@@ -105,7 +113,11 @@ public final class PreprocessIntervals extends GATKTool {
         final IntervalList preparedIntervalList = padAndMergeIntervals(inputIntervals, padding, sequenceDictionary);
 
         logger.info("Generating bins...");
-        final IntervalList bins = generateBins(preparedIntervalList, binLength, sequenceDictionary);
+        final IntervalList unfilteredBins = generateBins(preparedIntervalList, binLength, sequenceDictionary);
+
+        logger.info("Filtering bins containing only Ns...");
+        final ReferenceDataSource reference = ReferenceDataSource.of(referenceArguments.getReferenceFile());
+        final IntervalList bins = filterBinsContainingOnlyNs(unfilteredBins, reference);
 
         logger.info(String.format("Writing bins to %s...", outputFile));
         bins.write(outputFile);
@@ -131,6 +143,16 @@ public final class PreprocessIntervals extends GATKTool {
             for (int binStart = interval.getStart(); binStart <= interval.getEnd(); binStart += binLength) {
                 final int binEnd = FastMath.min(binStart + binLength - 1, interval.getEnd());
                 bins.add(new Interval(interval.getContig(), binStart, binEnd));
+            }
+        }
+        return bins;
+    }
+
+    private static IntervalList filterBinsContainingOnlyNs(final IntervalList unfilteredBins, final ReferenceDataSource reference) {
+        final IntervalList bins = new IntervalList(reference.getSequenceDictionary());
+        for (final Interval unfilteredBin : unfilteredBins) {
+            if (!Utils.stream(reference.query(new SimpleInterval(unfilteredBin))).allMatch(b -> b == Nucleotide.N.toBase())) {
+                bins.add(unfilteredBin);
             }
         }
         return bins;
