@@ -11,6 +11,9 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 public class AsynchronousStreamWriterServiceUnitTest {
+    // Use a relatively long timeout when running tests to allow for variation in test environment run times
+    final static TimeUnit TIMEOUT_TIMEUNIT = TimeUnit.SECONDS;
+    final static int TIMEOUT_TIME = 10;
 
     @Test
     public void testAsyncWriteInBatches() throws IOException, InterruptedException, ExecutionException {
@@ -47,7 +50,7 @@ public class AsynchronousStreamWriterServiceUnitTest {
                 dispatchABatch(asyncWriteService, batchItems, batchCount, readCommandStrings, expectedReadCommandStrings);
             }
 
-            final Future<Integer> batchResult = asyncWriteService.waitForPreviousBatchCompletion(100, TimeUnit.MILLISECONDS);
+            final Future<Integer> batchResult = asyncWriteService.waitForPreviousBatchCompletion(TIMEOUT_TIME, TIMEOUT_TIMEUNIT);
             Assert.assertTrue(batchResult.get().equals(batchCount));
             Assert.assertTrue(asyncWriteService.terminate());
 
@@ -76,7 +79,7 @@ public class AsynchronousStreamWriterServiceUnitTest {
         final String commandString = "This would usually be a command to tell python to read %d items\n";
 
         // wait for the last batch to complete before we start a new one
-        final Future<Integer> batchResult = asyncWriteService.waitForPreviousBatchCompletion(100, TimeUnit.MILLISECONDS);
+        final Future<Integer> batchResult = asyncWriteService.waitForPreviousBatchCompletion(TIMEOUT_TIME, TIMEOUT_TIMEUNIT);
         readCommandStrings.add(String.format(commandString, batchSize));
         asyncWriteService.startAsynchronousBatchWrite(batchItems);
 
@@ -89,7 +92,6 @@ public class AsynchronousStreamWriterServiceUnitTest {
         final int BATCH_SIZE = 5;
         final List<String> batchItems = new ArrayList<>(BATCH_SIZE);
         for (int i = 0; i < BATCH_SIZE; i++) { batchItems.add(Integer.toString(i)); }
-        final String asyncCommand = "Wrote %d";
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         AsynchronousStreamWriterService<String> asyncWriteService = null;
@@ -113,8 +115,6 @@ public class AsynchronousStreamWriterServiceUnitTest {
        final int BATCH_SIZE = 5;
         final List<String> batchItems = new ArrayList<>(BATCH_SIZE);
         for (int i = 0; i < BATCH_SIZE; i++) { batchItems.add(Integer.toString(i)); }
-        final String asyncCommand = "Wrote %d";
-        final List<String> outputs = new ArrayList<>();
 
         AsynchronousStreamWriterService<String> asyncWriteService = null;
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
