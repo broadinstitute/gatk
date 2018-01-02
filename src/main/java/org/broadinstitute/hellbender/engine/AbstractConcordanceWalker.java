@@ -35,18 +35,17 @@ import java.util.stream.StreamSupport;
  */
 public abstract class AbstractConcordanceWalker extends GATKTool {
 
-    public static final String TRUTH_VARIANTS_SHORT_NAME = "truth";
     public static final String TRUTH_VARIANTS_LONG_NAME = "truth";
     public static final String EVAL_VARIANTS_SHORT_NAME = "eval";
     public static final String EVAL_VARIANTS_LONG_NAME = "evaluation";
 
     public static final String CONFIDENCE_REGION_LONG_NAME = "confidence";
     public static final String CONFIDENCE_REGION_SHORT_NAME = "C";
-
+    
     // The distance in bases to look ahead and cache when querying feature sources.
     public static final int CACHE_LOOKAHEAD = 100_000;
 
-    @Argument(shortName = TRUTH_VARIANTS_SHORT_NAME, fullName = TRUTH_VARIANTS_LONG_NAME,
+    @Argument(shortName = TRUTH_VARIANTS_LONG_NAME, fullName = TRUTH_VARIANTS_LONG_NAME,
             doc = "A VCF containing truth variants", optional = false)
     public String truthVariantsFile;
 

@@ -44,22 +44,51 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 
 import java.util.List;
 
-
-@CommandLineProgramProperties(
-        summary = "Takes unaligned or aligned reads and runs BWA (if specified), MarkDuplicates, BQSR, and HaplotypeCaller. The final result is analysis-ready variants.",
-        oneLineSummary = "Takes unaligned or aligned reads and runs BWA (if specified), MarkDuplicates, BQSR, and HaplotypeCaller. The final result is analysis-ready variants.",
-        usageExample = "ReadsPipelineSpark -I single.bam -R referenceURL -knownSites variants.vcf -O file:///tmp/output.vcf",
-        programGroup = ShortVariantDiscoveryProgramGroup.class
-)
-
 /**
  * ReadsPipelineSpark is our standard pipeline that takes unaligned or aligned reads and runs BWA (if specified), MarkDuplicates,
  * BQSR, and HaplotypeCaller. The final result is analysis-ready variants.
+ *
+ *
+ * <h3>Examples</h3>
+ * <pre>
+ * gatk ReadsPipelineSpark \
+ *   -I gs://my-gcs-bucket/aligned_reads.bam \
+ *   -R gs://my-gcs-bucket/reference.fasta \
+ *   --known-sites gs://my-gcs-bucket/sites_of_variation.vcf \
+ *   -O gs://my-gcs-bucket/output.vcf \
+ *   -- \
+ *   --sparkRunner GCS \
+ *   --cluster my-dataproc-cluster
+ * </pre>
+ * <p>
+ * To additionally align reads with BWA-MEM:
+ * </p>
+ * <pre>
+ * gatk ReadsPipelineSpark \
+ *   -I gs://my-gcs-bucket/unaligned_reads.bam \
+ *   -R gs://my-gcs-bucket/reference.fasta \
+ *   --known-sites gs://my-gcs-bucket/sites_of_variation.vcf \
+ *   -align
+ *   -O gs://my-gcs-bucket/output.vcf \
+ *   -- \
+ *   --sparkRunner GCS \
+ *   --cluster my-dataproc-cluster
+ * </pre>
  */
+
+@CommandLineProgramProperties(
+        summary = ReadsPipelineSpark.USAGE_SUMMARY,
+        oneLineSummary = ReadsPipelineSpark.USAGE_ONE_LINE_SUMMARY,
+        programGroup = ShortVariantDiscoveryProgramGroup.class
+)
+
 @DocumentedFeature
 @BetaFeature
 public class ReadsPipelineSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
+
+    static final String USAGE_ONE_LINE_SUMMARY = "Takes unaligned or aligned reads and runs BWA (if specified), MarkDuplicates, BQSR, and HaplotypeCaller to generate a VCF file of variants";
+    static final String USAGE_SUMMARY = "Takes unaligned or aligned reads and runs BWA (if specified), MarkDuplicates, BQSR, and HaplotypeCaller. The final result is analysis-ready variants.";
 
     @Override
     public boolean requiresReads() { return true; }
@@ -67,10 +96,10 @@ public class ReadsPipelineSpark extends GATKSparkTool {
     @Override
     public boolean requiresReference() { return true; }
 
-    @Argument(doc = "whether to perform alignment using BWA-MEM", shortName = "align", fullName = "align", optional = true)
+    @Argument(doc = "whether to perform alignment using BWA-MEM", fullName = "align", optional = true)
     private boolean align;
 
-    @Argument(doc = "the known variants", fullName = "known-sites", optional = false)
+    @Argument(doc = "the known variants", fullName = BaseRecalibrator.KNOWN_SITES_ARG_FULL_NAME, optional = false)
     protected List<String> baseRecalibrationKnownVariants;
 
     @Argument(doc = "the output vcf", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,

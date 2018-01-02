@@ -33,60 +33,60 @@ public final class RecalibrationArgumentCollection implements Serializable {
     /**
      * The context covariate will use a context of this size to calculate its covariate value for base mismatches. Must be between 1 and 13 (inclusive). Note that higher values will increase runtime and required java heap size.
      */
-    @Argument(fullName = "mismatches_context_size", shortName = "mcs", doc = "Size of the k-mer context to be used for base mismatches", optional = true)
+    @Argument(fullName = "mismatches-context-size", shortName = "mcs", doc = "Size of the k-mer context to be used for base mismatches", optional = true)
     public int MISMATCHES_CONTEXT_SIZE = 2;
 
     /**
      * The context covariate will use a context of this size to calculate its covariate value for base insertions and deletions. Must be between 1 and 13 (inclusive). Note that higher values will increase runtime and required java heap size.
      */
-    @Argument(fullName = "indels_context_size", shortName = "ics", doc = "Size of the k-mer context to be used for base insertions and deletions", optional = true)
+    @Argument(fullName = "indels-context-size", shortName = "ics", doc = "Size of the k-mer context to be used for base insertions and deletions", optional = true)
     public int INDELS_CONTEXT_SIZE = 3;
 
     /**
      * The cycle covariate will generate an error if it encounters a cycle greater than this value.
      * This argument is ignored if the Cycle covariate is not used.
      */
-    @Argument(fullName = "maximum_cycle_value", shortName = "maxCycle", doc = "The maximum cycle value permitted for the Cycle covariate", optional = true)
+    @Argument(fullName = "maximum-cycle-value", shortName = "max-cycle", doc = "The maximum cycle value permitted for the Cycle covariate", optional = true)
     public int MAXIMUM_CYCLE_VALUE = 500;
 
     /**
      * A default base qualities to use as a prior (reported quality) in the mismatch covariate model. This value will replace all base qualities in the read for this default value. Negative value turns it off. [default is off]
      */
-    @Argument(fullName = "mismatches_default_quality", shortName = "mdq", doc = "default quality for the base mismatches covariate", optional = true)
+    @Argument(fullName = "mismatches-default-quality", doc = "default quality for the base mismatches covariate", optional = true)
     public byte MISMATCHES_DEFAULT_QUALITY = -1;
 
     /**
      * A default base qualities to use as a prior (reported quality) in the insertion covariate model. This parameter is used for all reads without insertion quality scores for each base. [default is on]
      */
-    @Argument(fullName = "insertions_default_quality", shortName = "idq", doc = "default quality for the base insertions covariate", optional = true)
+    @Argument(fullName = "insertions-default-quality", doc = "default quality for the base insertions covariate", optional = true)
     public byte INSERTIONS_DEFAULT_QUALITY = 45;
 
     /**
      * A default base qualities to use as a prior (reported quality) in the mismatch covariate model. This value will replace all base qualities in the read for this default value. Negative value turns it off. [default is on]
      */
-    @Argument(fullName = "deletions_default_quality", shortName = "ddq", doc = "default quality for the base deletions covariate", optional = true)
+    @Argument(fullName = "deletions-default-quality", doc = "default quality for the base deletions covariate", optional = true)
     public byte DELETIONS_DEFAULT_QUALITY = 45;
 
     /**
      * Reads with low quality bases on either tail (beginning or end) will not be considered in the context. This parameter defines the quality below which (inclusive) a tail is considered low quality
      */
-    @Argument(fullName = "low_quality_tail", shortName = "lqt", doc = "minimum quality for the bases in the tail of the reads to be considered", optional = true)
+    @Argument(fullName = "low-quality-tail", doc = "minimum quality for the bases in the tail of the reads to be considered", optional = true)
     public byte LOW_QUAL_TAIL = 2;
 
     /**
      * BQSR generates a quantization table for quick quantization later by subsequent tools. BQSR does not quantize the base qualities, this is done by the engine with the -qq or -bqsr options.
      * This parameter tells BQSR the number of levels of quantization to use to build the quantization table.
      */
-    @Argument(fullName = "quantizing_levels", shortName = "ql", optional = true, doc = "number of distinct quality scores in the quantized output")
+    @Argument(fullName = "quantizing-levels", optional = true, doc = "number of distinct quality scores in the quantized output")
     public int QUANTIZING_LEVELS = 16;
 
     /**
      * The tag name for the binary tag covariate (if using it)
      */
-    @Argument(fullName = "binary_tag_name", shortName = "bintag", optional = true, doc = "the binary tag covariate name if using it")
+    @Argument(fullName = "binary-tag-name", optional = true, doc = "the binary tag covariate name if using it")
     public String BINARY_TAG_NAME = null;
 
-    @Argument(fullName = "bqsrBAQGapOpenPenalty", shortName="bqsrBAQGOP", doc="BQSR BAQ gap open penalty (Phred Scaled).  Default value is 40.  30 is perhaps better for whole genome call sets", optional = true)
+    @Argument(fullName = "bqsr-baq-gap-open-penalty", doc="BQSR BAQ gap open penalty (Phred Scaled).  Default value is 40.  30 is perhaps better for whole genome call sets", optional = true)
     public double BAQGOP = BAQ.DEFAULT_GOP;
 
     /**
@@ -96,15 +96,15 @@ public final class RecalibrationArgumentCollection implements Serializable {
      * but when you select a subset of these reads based on their ability to align to the reference and their dinucleotide effect,
      * your Q2 bin can be elevated to Q8 or Q10, leading to issues downstream.
      */
-    @Argument(fullName = "preserve_qscores_less_than", shortName = "preserveQ", doc = "Don't recalibrate bases with quality scores less than this threshold (with -" + StandardArgumentDefinitions.BQSR_TABLE_SHORT_NAME + ")", optional = true)
+    @Argument(fullName = "preserve-qscores-less-than", doc = "Don't recalibrate bases with quality scores less than this threshold (with -" + StandardArgumentDefinitions.BQSR_TABLE_SHORT_NAME + ")", optional = true)
     public int PRESERVE_QSCORES_LESS_THAN = QualityUtils.MIN_USABLE_Q_SCORE;
 
     @Hidden
-    @Argument(fullName = "enableBAQ", shortName = "enableBAQ", doc = "do BAQ correction")
+    @Argument(fullName = "enable-baq", doc = "do BAQ correction")
     public boolean enableBAQ = false;
 
     @Hidden
-    @Argument(fullName = "computeIndelBQSRTables", shortName = "indelBQSR", doc = "compute indel BQSR tables")
+    @Argument(fullName = "compute-indel-bqsr-tables", shortName = "indels", doc = "compute indel BQSR tables")
     public boolean computeIndelBQSRTables = false;
 
 
@@ -119,7 +119,7 @@ public final class RecalibrationArgumentCollection implements Serializable {
      * are stored in the OQ tag, if they are present, rather than use the post-recalibration quality scores. If no OQ
      * tag is present for a read, the standard qual score will be used.
      */
-    @Argument(fullName="useOriginalQualities", shortName = "OQ", doc = "Use the base quality scores from the OQ tag", optional = true)
+    @Argument(fullName="use-original-qualities", shortName = "OQ", doc = "Use the base quality scores from the OQ tag", optional = true)
     public Boolean useOriginalBaseQualities = false;
 
     /**
@@ -127,7 +127,7 @@ public final class RecalibrationArgumentCollection implements Serializable {
      * By default this is set to -1 to disable default base quality assignment.
      */
     //TODO: minValue = 0, maxValue = Byte.MAX_VALUE)
-    @Argument(fullName="defaultBaseQualities", shortName = "DBQ", doc = "Assign a default base quality", optional = true)
+    @Argument(fullName="default-base-qualities", doc = "Assign a default base quality", optional = true)
     public byte defaultBaseQualities = -1;
 
 
@@ -136,11 +136,11 @@ public final class RecalibrationArgumentCollection implements Serializable {
     /////////////////////////////
 
     @Hidden
-    @Argument(fullName = "default_platform", shortName = "dP", optional = true, doc = "If a read has no platform then default to the provided String. Valid options are illumina, 454, and solid.")
+    @Argument(fullName = "default-platform", optional = true, doc = "If a read has no platform then default to the provided String. Valid options are illumina, 454, and solid.")
     public String DEFAULT_PLATFORM = null;
 
     @Hidden
-    @Argument(fullName = "force_platform", shortName = "fP", optional = true, doc = "If provided, the platform of EVERY read will be forced to be the provided String. Valid options are illumina, 454, and solid.")
+    @Argument(fullName = "force-platform", optional = true, doc = "If provided, the platform of EVERY read will be forced to be the provided String. Valid options are illumina, 454, and solid.")
     public String FORCE_PLATFORM = null;
 
     public File existingRecalibrationReport = null;

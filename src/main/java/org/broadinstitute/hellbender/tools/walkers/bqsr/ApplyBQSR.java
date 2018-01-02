@@ -7,7 +7,6 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -17,6 +16,7 @@ import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
 import java.io.File;
 
@@ -48,7 +48,7 @@ import java.io.File;
  * gatk ApplyBQSR \
  *   -R reference.fasta \
  *   -I input.bam \
- *   -BQSR recalibration.table \
+ *   --bqsr-recal-file recalibration.table \
  *   -O output.bam
  * </pre>
  *
@@ -58,17 +58,19 @@ import java.io.File;
  * in earlier versions of GATK (2.x and 3.x).</li>
  *     <li>You should only run ApplyBQSR with the covariates table created from the input BAM or CRAM file(s).</li>
  *     <li>Original qualities can be retained in the output file under the "OQ" tag if desired. See the
- *     `--emit_original_quals` argument for details.</li>
+ *     `--emit-original-quals` argument for details.</li>
  * </ul>
  *
  */
 @CommandLineProgramProperties(
-        summary = "Apply base quality score recalibration",
-        oneLineSummary = "Apply base quality score recalibration",
-        programGroup = ReadProgramGroup.class
+        summary = ApplyBQSR.USAGE_SUMMARY,
+        oneLineSummary = ApplyBQSR.USAGE_ONE_LINE_SUMMARY,
+        programGroup = ReadDataManipulationProgramGroup.class
 )
 @DocumentedFeature
 public final class ApplyBQSR extends ReadWalker{
+    static final String USAGE_ONE_LINE_SUMMARY = "Apply base quality score recalibration";
+    static final String USAGE_SUMMARY = "Apply a linear base quality recalibration model trained with the BaseRecalibrator tool.";
 
     private static final Logger logger = LogManager.getLogger(ApplyBQSR.class);
 

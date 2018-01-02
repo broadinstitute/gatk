@@ -9,21 +9,59 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.transforms.ApplyBQSRSparkFn;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
-@CommandLineProgramProperties(summary="Apply Base Quality Recalibration to a SAM/BAM/CRAM file using Spark",
-        oneLineSummary="ApplyBQSR on Spark",
-        programGroup = SparkProgramGroup.class)
+/**
+ * Apply base quality score recalibration with Spark.
+ * <p>
+ * <p>This tool performs the second pass in a two-stage process called Base Quality Score Recalibration (BQSR).
+ * Specifically, it recalibrates the base qualities of the input reads based on the recalibration table produced by
+ * the BaseRecalibrator tool, and outputs a recalibrated BAM or CRAM file.</p>
+ * <p>See <a href ="https://software.broadinstitute.org/gatk/documentation/article?id=10060">Tutorial#10060</a>
+ * for an example of how to set up and run a Spark tool on a cloud Spark cluster.
+ * </p>
+ * <h3>Usage examples</h3>
+ * <pre>
+ * gatk ApplyBQSRSpark \
+ * -I gs://my-gcs-bucket/input.bam \
+ * -bqsr gs://my-gcs-bucket/recalibration.table \
+ * -O gs://my-gcs-bucket/output.bam \
+ * -- \
+ * --sparkRunner GCS \
+ * --cluster my-dataproc-cluster
+ * </pre>
+ * <p>
+ * To additionally bin base qualities:
+ * <pre>
+ * gatk ApplyBQSRSpark \
+ * -I gs://my-gcs-bucket/input.bam \
+ * -bqsr gs://my-gcs-bucket/recalibration.table \
+ * -SQQ 10 -SQQ 20 -SQQ 30 -SQQ 40 \
+ * -O gs://my-gcs-bucket/output.bam \
+ * -- \
+ * --sparkRunner GCS \
+ * --cluster my-dataproc-cluster
+ * </pre>
+ */
+
+@CommandLineProgramProperties(
+        summary=ApplyBQSRSpark.USAGE_SUMMARY,
+        oneLineSummary=ApplyBQSRSpark.USAGE_ONE_LINE_SUMMARY,
+        programGroup = ReadDataManipulationProgramGroup.class
+)
+
 @DocumentedFeature
 @BetaFeature
 public final class ApplyBQSRSpark extends GATKSparkTool {
     private static final long serialVersionUID = 0l;
+    static final String USAGE_ONE_LINE_SUMMARY = "Apply base quality score recalibration on Spark";
+    static final String USAGE_SUMMARY = "Apply a linear base quality recalibration model trained with the BaseRecalibrator tool on Spark.";
 
     @Override
     public boolean requiresReads() { return true; }
