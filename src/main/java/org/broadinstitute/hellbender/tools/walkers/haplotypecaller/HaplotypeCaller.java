@@ -139,8 +139,6 @@ import java.util.List;
 @BetaFeature
 public final class HaplotypeCaller extends AssemblyRegionWalker {
 
-    public static final int DEFAULT_READSHARD_SIZE = NO_INTERVAL_SHARDING;
-    public static final int DEFAULT_READSHARD_PADDING = 100;
     public static final int DEFAULT_MIN_ASSEMBLY_REGION_SIZE = 50;
     public static final int DEFAULT_MAX_ASSEMBLY_REGION_SIZE = 300;
     public static final int DEFAULT_ASSEMBLY_REGION_PADDING = 100;
@@ -159,13 +157,7 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     private VariantContextWriter vcfWriter;
 
     private HaplotypeCallerEngine hcEngine;
-
-    @Override
-    protected int defaultReadShardSize() { return DEFAULT_READSHARD_SIZE; }
-
-    @Override
-    protected int defaultReadShardPadding() { return DEFAULT_READSHARD_PADDING; }
-
+    
     @Override
     protected int defaultMinAssemblyRegionSize() { return DEFAULT_MIN_ASSEMBLY_REGION_SIZE; }
 

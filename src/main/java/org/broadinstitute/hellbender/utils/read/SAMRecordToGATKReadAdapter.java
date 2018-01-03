@@ -28,6 +28,18 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     private final SAMRecord samRecord;
 
+    private transient Integer cachedSoftStart = null;
+    private transient Integer cachedSoftEnd = null;
+    private transient Integer cachedAdaptorBoundary = null;
+    private transient Integer cachedCigarLength = null;
+
+    private void clearCachedValues() {
+        cachedSoftStart = null;
+        cachedSoftEnd = null;
+        cachedAdaptorBoundary = null;
+        cachedCigarLength = null;
+    }
+
     public SAMRecordToGATKReadAdapter( final SAMRecord samRecord ) {
         this.samRecord = samRecord;
     }
@@ -53,6 +65,7 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public void setName( final String name ) {
+        clearCachedValues();
         samRecord.setReadName(name);
     }
 
@@ -93,6 +106,7 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
                     + ", and start must be >= 1 \ncontig = " + contig + "\nstart = " + start);
         }
 
+        clearCachedValues();
         samRecord.setReferenceName(contig);
         samRecord.setAlignmentStart(start);
         samRecord.setReadUnmappedFlag(false);
@@ -136,6 +150,32 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     }
 
     @Override
+    public int getSoftStart() {
+        if ( cachedSoftStart == null ) {
+            cachedSoftStart = ReadUtils.getSoftStart(this);
+        }
+
+        return cachedSoftStart;
+    }
+
+    @Override
+    public int getSoftEnd() {
+        if ( cachedSoftEnd == null ) {
+            cachedSoftEnd = ReadUtils.getSoftEnd(this);
+        }
+
+        return cachedSoftEnd;
+    }
+
+    @Override
+    public int getAdaptorBoundary() {
+        if ( cachedAdaptorBoundary == null ) {
+            cachedAdaptorBoundary = ReadUtils.getAdaptorBoundary(this);
+        }
+        return cachedAdaptorBoundary;
+    }
+
+    @Override
     public String getMateContig() {
         if ( mateIsUnmapped() ) {
             return null;
@@ -159,6 +199,8 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
             throw new IllegalArgumentException("contig must be non-null and not equal to " + SAMRecord.NO_ALIGNMENT_REFERENCE_NAME + ", and start must be >= 1");
         }
 
+        clearCachedValues();
+
         // Calling this method has the additional effect of marking the read as paired
         setIsPaired(true);
 
@@ -181,6 +223,8 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public void setFragmentLength( final int fragmentLength ) {
+        clearCachedValues();
+
         // May be negative if mate maps to lower position than read
         samRecord.setInferredInsertSize(fragmentLength);
     }
@@ -196,6 +240,7 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
             throw new IllegalArgumentException("mapping quality must be >= 0 and <= 255");
         }
 
+        clearCachedValues();
         samRecord.setMappingQuality(mappingQuality);
     }
 
@@ -207,14 +252,17 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
         return bases != null ? Arrays.copyOf(bases, bases.length) : new byte[0];
     }
 
+    @Override
+    public byte[] getBasesNoCopy() {
+        final byte[] bases = samRecord.getReadBases();
+        return bases != null ? bases : new byte[0];
+    }
+
     //Overridden default method to avoid a call to getBases which makes a copy of data
+    //Bounds checking is the caller's responsibility, as it's too expensive in this hotspot method
     @Override
     public byte getBase(final int i){
         final byte[] bases = samRecord.getReadBases();
-        if (bases == null){
-            throw new IllegalArgumentException("Invalid call - there are no bases");
-        }
-        Utils.validIndex(i, bases.length);
         return bases[i];
     }
 
@@ -226,6 +274,7 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public void setBases( final byte[] bases ) {
+        clearCachedValues();
         samRecord.setReadBases(bases);
     }
 
@@ -238,19 +287,22 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     }
 
     @Override
+    public byte[] getBaseQualitiesNoCopy() {
+        final byte[] baseQualities = samRecord.getBaseQualities();
+        return baseQualities != null ? baseQualities : new byte[0];
+    }
+
+    @Override
     public int getBaseQualityCount(){
         final byte[] baseQualities = samRecord.getBaseQualities();
         return baseQualities == null ? 0 : baseQualities.length;
     }
 
     //Overridden default method to avoid a call to getBaseQualities which makes a copy of data
+    //Bounds checking is the caller's responsibility, as it's too expensive in this hotspot method
     @Override
     public byte getBaseQuality(final int i){
         final byte[] baseQualities = samRecord.getBaseQualities();
-        if (baseQualities == null){
-            throw new IllegalArgumentException("Invalid call - there are no baseQualities");
-        }
-        Utils.validIndex(i, baseQualities.length);
         return baseQualities[i];
     }
 
@@ -264,6 +316,7 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
             }
         }
 
+        clearCachedValues();
         samRecord.setBaseQualities(baseQualities);
     }
 
@@ -288,13 +341,11 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     /**
      * This implementation avoids the creation of the unmodifiable view of the underlying list of CigarElements
      * and simply retrieves the element that is requested.
+     *
+     * Bounds checking is the caller's responsibility, as it's too expensive in this hotspot method.
      */
     @Override
     public CigarElement getCigarElement(final int index) {
-        //we can't blow up with NPE, we promised in the contract
-        if (samRecord.getCigar() == null){
-            throw new IndexOutOfBoundsException("Index: "+index);
-        }
         return samRecord.getCigar().getCigarElement(index);
     }
 
@@ -303,17 +354,24 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
      * elements but returns the length of the list directly (or 0 if there's no cigar).
      */
     @Override
-    public int numCigarElements(){
-        return samRecord.getCigar() == null ? 0 : samRecord.getCigarLength();
+    public int numCigarElements() {
+        // It's surprising and bizarre, but profiling reveals that caching the cigar length
+        // actually helps performance in some cases (eg., the HaplotypeCaller)
+        if ( cachedCigarLength == null ) {
+            cachedCigarLength = samRecord.getCigar() == null ? 0 : samRecord.getCigarLength();
+        }
+        return cachedCigarLength;
     }
 
     @Override
     public void setCigar( final Cigar cigar ) {
+        clearCachedValues();
         samRecord.setCigar(cigar);
     }
 
     @Override
     public void setCigar( final String cigarString ) {
+        clearCachedValues();
         samRecord.setCigarString(cigarString);
     }
 
@@ -325,6 +383,7 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public void setReadGroup( final String readGroupID ) {
+        clearCachedValues();
         samRecord.setAttribute(SAMTag.RG.name(), readGroupID);
     }
 
@@ -335,6 +394,8 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public void setIsPaired( final boolean isPaired ) {
+        clearCachedValues();
+
         samRecord.setReadPairedFlag(isPaired);
         if ( ! isPaired ) {
             samRecord.setProperPairFlag(false);
@@ -348,6 +409,8 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public void setIsProperlyPaired( final boolean isProperlyPaired ) {
+        clearCachedValues();
+
         if ( isProperlyPaired ) {
             setIsPaired(true);
         }
@@ -364,6 +427,8 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public void setIsUnmapped() {
+        clearCachedValues();
+
         samRecord.setReadUnmappedFlag(true);
     }
 
@@ -378,6 +443,8 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public void setMateIsUnmapped() {
+        clearCachedValues();
+
         // Calling this method has the side effect of marking the read as paired.
         setIsPaired(true);
 
@@ -391,6 +458,8 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public void setIsReverseStrand( final boolean isReverseStrand ) {
+        clearCachedValues();
+
         samRecord.setReadNegativeStrandFlag(isReverseStrand);
     }
 
@@ -403,6 +472,8 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public void setMateIsReverseStrand( final boolean mateIsReverseStrand ) {
+        clearCachedValues();
+
         // Calling this method has the side effect of marking the read as paired.
         setIsPaired(true);
 
@@ -416,6 +487,8 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public void setIsFirstOfPair() {
+        clearCachedValues();
+
         // Calling this method has the side effect of marking the read as paired.
         setIsPaired(true);
 
@@ -430,6 +503,8 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public void setIsSecondOfPair() {
+        clearCachedValues();
+
         // Calling this method has the side effect of marking the read as paired.
         setIsPaired(true);
 
@@ -444,6 +519,8 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public void setIsSecondaryAlignment( final boolean isSecondaryAlignment ) {
+        clearCachedValues();
+
         samRecord.setSecondaryAlignment(isSecondaryAlignment);
     }
 
@@ -454,6 +531,8 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public void setIsSupplementaryAlignment( final boolean isSupplementaryAlignment ) {
+        clearCachedValues();
+
         samRecord.setSupplementaryAlignmentFlag(isSupplementaryAlignment);
     }
 
@@ -464,6 +543,8 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public void setFailsVendorQualityCheck( final boolean failsVendorQualityCheck ) {
+        clearCachedValues();
+
         samRecord.setReadFailsVendorQualityCheckFlag(failsVendorQualityCheck);
     }
 
@@ -474,6 +555,8 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public void setIsDuplicate( final boolean isDuplicate ) {
+        clearCachedValues();
+
         samRecord.setDuplicateReadFlag(isDuplicate);
     }
 
@@ -543,29 +626,39 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     @Override
     public void setAttribute( final String attributeName, final Integer attributeValue ) {
         ReadUtils.assertAttributeNameIsLegal(attributeName);
+
+        clearCachedValues();
         samRecord.setAttribute(attributeName, attributeValue);
     }
 
     @Override
     public void setAttribute( final String attributeName, final String attributeValue ) {
         ReadUtils.assertAttributeNameIsLegal(attributeName);
+
+        clearCachedValues();
         samRecord.setAttribute(attributeName, attributeValue);
     }
 
     @Override
     public void setAttribute( final String attributeName, final byte[] attributeValue ) {
         ReadUtils.assertAttributeNameIsLegal(attributeName);
+
+        clearCachedValues();
         samRecord.setAttribute(attributeName, attributeValue);
     }
 
     @Override
     public void clearAttribute( final String attributeName ) {
         ReadUtils.assertAttributeNameIsLegal(attributeName);
+
+        clearCachedValues();
         samRecord.setAttribute(attributeName, null);
     }
 
     @Override
     public void clearAttributes() {
+        clearCachedValues();
+
         samRecord.clearAttributes();
     }
 
@@ -628,6 +721,8 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     }
 
     public void setHeader(SAMFileHeader header) {
+        clearCachedValues();
+
         samRecord.setHeaderStrict(header);
     }
 }

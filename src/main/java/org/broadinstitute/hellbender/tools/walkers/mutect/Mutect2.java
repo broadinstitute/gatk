@@ -169,13 +169,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
     private VariantContextWriter vcfWriter;
 
     private Mutect2Engine m2Engine;
-
-    @Override
-    protected int defaultReadShardSize() { return NO_INTERVAL_SHARDING; }
-
-    @Override
-    protected int defaultReadShardPadding() { return 100; }
-
+    
     @Override
     protected int defaultMinAssemblyRegionSize() { return 50; }
 
