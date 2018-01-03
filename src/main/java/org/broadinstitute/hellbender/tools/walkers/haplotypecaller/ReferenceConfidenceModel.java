@@ -122,11 +122,7 @@ public final class ReferenceConfidenceModel {
             ParamUtils.isPositiveOrZero(likelihoodCapacity, "likelihood capacity is negative");
             genotypeLikelihoods = new double[likelihoodCapacity];
         }
-
-        double[] getGenotypeLikelihoods() {
-            return genotypeLikelihoods;
-        }
-
+        
         /**
          * @return Get the DP (sum of AD values)
          */

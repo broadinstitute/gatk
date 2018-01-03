@@ -176,21 +176,6 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
     }
 
     @Override
-    public int getSoftStart() {
-        return ReadUtils.getSoftStart(this);
-    }
-
-    @Override
-    public int getSoftEnd() {
-        return ReadUtils.getSoftEnd(this);
-    }
-
-    @Override
-    public int getAdaptorBoundary() {
-        return ReadUtils.getAdaptorBoundary(this);
-    }
-
-    @Override
     public String getMateContig() {
         if ( mateIsUnmapped() ) {
             return null;
@@ -272,13 +257,7 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
 
         return StringUtil.stringToBytes(basesString);
     }
-
-    @Override
-    public byte[] getBasesNoCopy() {
-        // Not possible to have a no-copy implementation for Google reads
-        return getBases();
-    }
-
+    
     @Override
     public int getLength() {
         final String basesString = genomicsRead.getAlignedSequence();
@@ -310,12 +289,6 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
         }
 
         return convertedBaseQualities;
-    }
-
-    @Override
-    public byte[] getBaseQualitiesNoCopy() {
-        // Not possible to have a no-copy implementation for Google reads
-        return getBaseQualities();
     }
 
     @Override

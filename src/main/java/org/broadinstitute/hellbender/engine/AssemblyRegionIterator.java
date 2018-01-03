@@ -21,7 +21,7 @@ import java.util.*;
 
 /**
  * Given a {@link MultiIntervalShard} of {@link GATKRead}, iterates over each {@link AssemblyRegion} within
- * that shard, using theprovided {@link AssemblyRegionEvaluator} to determine the boundaries between assembly
+ * that shard, using the provided {@link AssemblyRegionEvaluator} to determine the boundaries between assembly
  * regions.
  *
  * Loads the reads from the shard as lazily as possible to minimize memory usage.

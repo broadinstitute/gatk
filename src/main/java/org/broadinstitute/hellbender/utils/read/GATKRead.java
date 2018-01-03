@@ -131,7 +131,9 @@ public interface GATKRead extends Locatable {
      *
      * @return the unclipped start of the read taking soft clips (but not hard clips) into account
      */
-    int getSoftStart();
+    default int getSoftStart() {
+        return ReadUtils.getSoftStart(this);
+    }
 
     /**
      * Calculates the reference coordinate for the end of the read taking into account soft clips but not hard clips.
@@ -140,7 +142,9 @@ public interface GATKRead extends Locatable {
      *
      * @return the unclipped end of the read taking soft clips (but not hard clips) into account
      */
-    int getSoftEnd();
+    default int getSoftEnd() {
+        return ReadUtils.getSoftEnd(this);
+    }
 
     /**
      * Finds the adaptor boundary around the read and returns the first base inside the adaptor that is closest to
@@ -167,7 +171,9 @@ public interface GATKRead extends Locatable {
      * @return the reference coordinate for the adaptor boundary (effectively the first base IN the adaptor, closest to the read).
      * CANNOT_COMPUTE_ADAPTOR_BOUNDARY if the read is unmapped or the mate is mapped to another contig.
      */
-    int getAdaptorBoundary();
+    default int getAdaptorBoundary() {
+        return ReadUtils.getAdaptorBoundary(this);
+    }
 
     /**
      * @return The contig that this read's mate is mapped to, or {@code null} if the mate is unmapped
@@ -255,10 +261,17 @@ public interface GATKRead extends Locatable {
     /**
      * @return The read sequence as ASCII bytes ACGTN=, or an empty byte[] if no sequence is present.
      *
-     * This method DOES NOT make a defensive copy of the bases array before returning it, so modifying the
-     * returned array WILL alter the bases in the read. CALLER BEWARE!
+     * This method differs from {@link #getBases} in that implementations are free to avoid making a
+     * defensive copy, if it's possible to avoid a copy.
+     *
+     * WARNING: This method MAY NOT make a defensive copy of the bases array before returning it, so modifying the
+     * returned array MAY alter the bases in the actual read. CALLER BEWARE!
      */
-    byte[] getBasesNoCopy();
+    default byte[] getBasesNoCopy() {
+        // By default we delegate to the copying version. If implementations are able to avoid a copy,
+        // they can override with a no-copy implementation.
+        return getBases();
+    }
 
     /**
      * @return The base at index i.
@@ -299,10 +312,17 @@ public interface GATKRead extends Locatable {
     /**
      * @return Base qualities as binary phred scores (not ASCII), or an empty byte[] if base qualities are not present.
      *
-     * This method DOES NOT make a defensive copy of the base qualities array before returning it, so modifying the
-     * returned array WILL alter the base qualities in the read. CALLER BEWARE!
+     * This method differs from {@link #getBaseQualities} in that implementations are free to avoid making a
+     * defensive copy, if it's possible to avoid a copy.
+     *
+     * WARNING: This method MAY NOT make a defensive copy of the base qualities array before returning it, so modifying
+     * the returned array MAY alter the base qualities in the read. CALLER BEWARE!
      */
-    byte[] getBaseQualitiesNoCopy();
+    default byte[] getBaseQualitiesNoCopy() {
+        // By default we delegate to the copying version. If implementations are able to avoid a copy,
+        // they can override with a no-copy implementation.
+        return getBaseQualities();
+    }
 
     /**
      * @return The number of base qualities in the read sequence.
