@@ -466,6 +466,23 @@ task bundle(type: Zip) {
     }
 }
 
+task createPythonPackageArchive(type: Zip) {
+
+    doFirst {
+        assert file("src/main/python/org/broadinstitute/hellbender/").exists()
+    }
+
+    logger.lifecycle("Creating GATK Python package archive...")
+    destinationDir file("$buildDir")
+    archiveName "gatkPythonPackageArchive" + ".zip"
+    from("src/main/python/org/broadinstitute/hellbender/")
+    into("/")
+
+    doLast {
+        logger.lifecycle("Created GATK Python package archive in ${destinationDir}/${archiveName}")
+    }
+}
+
 task javadocJar(type: Jar, dependsOn: javadoc) {
     classifier = 'javadoc'
     from 'build/docs/javadoc'
