@@ -36,7 +36,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Model segmented copy ratio from denoised read counts and segmented minor-allele fraction from allelic counts.
+ * Models segmented copy ratios from denoised read counts and segmented minor-allele fractions from allelic counts.
  *
  * <p>
  *     Possible inputs are: 1) denoised copy ratios for the case sample, 2) allelic counts for the case sample,
@@ -74,24 +74,24 @@ import java.util.stream.Collectors;
  *     are performed until convergence, at which point a final round of MCMC is performed.
  * </p>
  *
- * <h3>Input</h3>
+ * <h3>Inputs</h3>
  *
  * <ul>
  *     <li>
- *         (Optional) Denoised-copy-ratios file (output of {@link DenoiseReadCounts}.
+ *         (Optional) Denoised-copy-ratios file from {@link DenoiseReadCounts}.
  *         If allelic counts are not provided, then this is required.
  *     </li>
  *     <li>
- *         (Optional) Allelic-counts file (output of {@link CollectAllelicCounts}.
+ *         (Optional) Allelic-counts file from {@link CollectAllelicCounts}.
  *         If denoised copy ratios are not provided, then this is required.
  *     </li>
  *     <li>
- *         (Optional) Matched-normal allelic-counts file (output of {@link CollectAllelicCounts}.
+ *         (Optional) Matched-normal allelic-counts file from {@link CollectAllelicCounts}.
  *         This can only be provided if allelic counts for the case sample are also provided.
  *     </li>
  *     <li>
  *         Output prefix.
- *         This is used as a prefix for output filenames.
+ *         This is used as a basename for resulting filenames.
  *     </li>
  *     <li>
  *         Output directory.
@@ -99,12 +99,12 @@ import java.util.stream.Collectors;
  *     </li>
  * </ul>
  *
- * <h3>Output</h3>
+ * <h3>Outputs</h3>
  *
  * <ul>
  *     <li>
- *         Modeled-segments files (.modelBegin.seg and .modelFinal.seg).
- *         These are TSVs with a SAM-style header containing a read-group sample name, a sequence dictionary,
+ *         Modeled-segments .modelBegin.seg and .modelFinal.seg files.
+ *         These are TSVs with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link ModeledSegmentCollection.ModeledSegmentTableColumn},
  *         and the corresponding entry rows.
  *         The initial result before segmentation smoothing is output to the .modelBegin.seg file
@@ -112,7 +112,7 @@ import java.util.stream.Collectors;
  *     </li>
  *     <li>
  *         Allele-fraction-model global-parameter files (.modelBegin.af.param and .modelFinal.af.param).
- *         These are TSVs with a SAM-style header containing a read-group sample name,
+ *         These are TSVs with a SAM-style header containing a read group sample name,
  *         a row specifying the column headers contained in {@link ParameterDecileCollection.ParameterTableColumn},
  *         and the corresponding entry rows.
  *         The initial result before segmentation smoothing is output to the .modelBegin.af.param file
@@ -120,7 +120,7 @@ import java.util.stream.Collectors;
  *     </li>
  *     <li>
  *         Copy-ratio-model global-parameter files (.modelBegin.cr.param and .modelFinal.cr.param).
- *         These are TSVs with a SAM-style header containing a read-group sample name,
+ *         These are TSVs with a SAM-style header containing a read group sample name,
  *         a row specifying the column headers contained in {@link ParameterDecileCollection.ParameterTableColumn},
  *         and the corresponding entry rows.
  *         The initial result before segmentation smoothing is output to the .modelBegin.cr.param file
@@ -128,28 +128,28 @@ import java.util.stream.Collectors;
  *     </li>
  *     <li>
  *         Copy-ratio segment file (.cr.param).
- *         This is a TSV with a SAM-style header containing a read-group sample name, a sequence dictionary,
+ *         This is a TSV with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link CopyRatioSegmentCollection.CopyRatioSegmentTableColumn},
  *         and the corresponding entry rows.
  *         It contains the segments from the .modelFinal.seg file converted to a format suitable for input to {@link CallCopyRatioSegments}.
  *     </li>
  *     <li>
  *         (Optional) Allelic-counts file containing the counts at sites genotyped as heterozygous in the case sample (.hets.tsv).
- *         This is a TSV with a SAM-style header containing a read-group sample name, a sequence dictionary,
+ *         This is a TSV with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link AllelicCountCollection.AllelicCountTableColumn},
  *         and the corresponding entry rows.
  *         This is only output if normal allelic counts are provided as input.
  *     </li>
  *     <li>
  *         (Optional) Allelic-counts file containing the counts at sites genotyped as heterozygous in the matched-normal sample (.hets.normal.tsv).
- *         This is a TSV with a SAM-style header containing a read-group sample name, a sequence dictionary,
+ *         This is a TSV with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link AllelicCountCollection.AllelicCountTableColumn},
  *         and the corresponding entry rows.
  *         This is only output if matched-normal allelic counts are provided as input.
  *     </li>
  * </ul>
  *
- * <h3>Examples</h3>
+ * <h3>Usage examples</h3>
  *
  * <pre>
  *     gatk ModelSegments \
@@ -186,8 +186,8 @@ import java.util.stream.Collectors;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Model segmented copy ratio from denoised read counts and segmented minor-allele fraction from allelic counts.",
-        oneLineSummary = "Model segmented copy ratio from denoised read counts and segmented minor-allele fraction from allelic counts.",
+        summary = "Models segmented copy ratios from denoised read counts and segmented minor-allele fractions from allelic counts",
+        oneLineSummary = "Models segmented copy ratios from denoised read counts and segmented minor-allele fractions from allelic counts",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature

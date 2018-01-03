@@ -31,7 +31,7 @@ import java.util.ListIterator;
 import java.util.stream.Collectors;
 
 /**
- * Create a panel of normals (PoN) for read-count denoising given the read counts for samples in the panel.
+ * Creates a panel of normals (PoN) for read-count denoising given the read counts for samples in the panel.
  * The resulting PoN can be used with {@link DenoiseReadCounts} to denoise other samples.
  *
  * <p>
@@ -53,14 +53,14 @@ import java.util.stream.Collectors;
  *     implicitly performed by the SVD denoising process (i.e., some of the principal components arise from GC bias).
  * </p>
  *
- * <h3>Input</h3>
+ * <h3>Inputs</h3>
  *
  * <ul>
  *     <li>
  *         Counts files (TSV or HDF5 output of {@link CollectFragmentCounts}).
  *     </li>
  *     <li>
- *         (Optional) GC-content annotated-intervals file (output of {@link AnnotateIntervals}).
+ *         (Optional) GC-content annotated-intervals file from {@link AnnotateIntervals}.
  *         Explicit GC-bias correction will be performed on the panel samples and identically for subsequent case samples.
  *     </li>
  * </ul>
@@ -76,28 +76,30 @@ import java.util.stream.Collectors;
  *     </li>
  * </ul>
  *
- * <h3>Examples</h3>
+ * <h3>Usage examples</h3>
  *
  * <pre>
  *     gatk CreateReadCountPanelOfNormals \
  *          -I sample_1.counts.hdf5 \
- *          -I sample_2.counts.tsv \
- *          -O panel_of_normals.pon.hdf5
+ *          -I sample_2.counts.hdf5 \
+ *          ... \
+ *          -O cnv.pon.hdf5
  * </pre>
  *
  * <pre>
  *     gatk CreateReadCountPanelOfNormals \
  *          -I sample_1.counts.hdf5 \
  *          -I sample_2.counts.tsv \
+ *          ... \
  *          --annotated-intervals annotated_intervals.tsv \
- *          -O panel_of_normals.pon.hdf5
+ *          -O cnv.pon.hdf5
  * </pre>
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Create a panel of normals for read-count denoising given the read counts for samples in the panel.",
-        oneLineSummary = "Create a panel of normals for read-count denoising.",
+        summary = "Creates a panel of normals for read-count denoising given the read counts for samples in the panel",
+        oneLineSummary = "Creates a panel of normals for read-count denoising",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature

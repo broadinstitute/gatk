@@ -13,7 +13,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -42,16 +42,16 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Collect fragment counts at specified intervals.  The count for each interval is calculated by counting
+ * Collects fragment counts at specified intervals.  The count for each interval is calculated by counting
  * the number of fragment centers that lie in interval.  The start and end positions of fragments are
  * inferred from read information; only properly paired, first-of-pair reads that pass the specified read filters are
  * used.
  *
- * <h3>Input</h3>
+ * <h3>Inputs</h3>
  *
  * <ul>
  *     <li>
- *         BAM file.
+ *         SAM format read data
  *     </li>
  *     <li>
  *         Intervals at which counts will be collected.
@@ -68,18 +68,18 @@ import java.util.stream.Collectors;
  * <ul>
  *     <li>
  *         Counts file.
- *         Depending on the output format selected, this is either 1) a TSV with a SAM-style header containing
- *         a read-group sample name, a sequence dictionary, a row specifying the column headers contained in
- *         {@link SimpleCountCollection.SimpleCountTableColumn}, and the corresponding entry rows, or
- *         2) an HDF5 file containing the same information in the paths defined in {@link HDF5SimpleCountCollection}.
- *         Using HDF5 files with {@link CreateReadCountPanelOfNormals} can decrease runtime resulting from file input/output,
- *         so this is the default output format.  HDF5 files may be viewed using
+ *         By default, the tool produces HDF5 format results. This can be changed with the --format option
+ *         to TSV format. Using HDF5 files with {@link CreateReadCountPanelOfNormals}
+ *         can decrease runtime, by reducing time spent on IO, so this is the default output format.
+ *         The HDF5 format contains information in the paths defined in {@link HDF5SimpleCountCollection}. HDF5 files may be viewed using
  *         <a href="https://support.hdfgroup.org/products/java/hdfview/">hdfview</a> or loaded in python using
  *         <a href="http://www.pytables.org/">PyTables</a> or <a href="http://www.h5py.org/">h5py</a>.
+ *         The TSV format has a SAM-style header containing a read-group sample name, a sequence dictionary, a row specifying the column headers contained in
+ *         {@link SimpleCountCollection.SimpleCountTableColumn}, and the corresponding entry rows.
  *     </li>
  * </ul>
  *
- * <h3>Examples</h3>
+ * <h3>Usage example</h3>
  *
  * <pre>
  *     gatk CollectFragmentCounts \
@@ -93,9 +93,9 @@ import java.util.stream.Collectors;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Collect fragment counts at specified intervals.",
-        oneLineSummary = "Collect fragment counts at specified intervals.",
-        programGroup = CopyNumberProgramGroup.class
+        summary = "Collects fragment counts at specified intervals",
+        oneLineSummary = "Collects fragment counts at specified intervals",
+        programGroup = CoverageAnalysisProgramGroup.class
 )
 @DocumentedFeature
 @BetaFeature

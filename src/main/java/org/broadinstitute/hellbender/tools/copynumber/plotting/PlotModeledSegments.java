@@ -33,9 +33,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Create plots of denoised and segmented copy-ratio and minor-allele-fraction estimates.
+ * Creates plots of denoised and segmented copy-ratios and minor-allele-fraction estimates.
  *
- * <h3>Input</h3>
+ * <h3>Inputs</h3>
  *
  * <ul>
  *     <li>
@@ -55,7 +55,7 @@ import java.util.stream.Collectors;
  *     </li>
  *     <li>
  *         Output prefix.
- *         This is used as a prefix for output filenames.
+ *         This is used as a basename for output filenames.
  *     </li>
  *     <li>
  *         Output directory.
@@ -73,7 +73,7 @@ import java.util.stream.Collectors;
  *     </li>
  * </ul>
  *
- * <h3>Examples</h3>
+ * <h3>Usage examples</h3>
  *
  * <pre>
  *     gatk PlotModeledSegments \
@@ -106,8 +106,8 @@ import java.util.stream.Collectors;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Create plots of denoised and segmented copy-ratio and minor-allele-fraction estimates.",
-        oneLineSummary = "Create plots of denoised and segmented copy-ratio and minor-allele-fraction estimates.",
+        summary = "Creates plots of denoised and segmented copy-ratios and minor-allele-fraction estimates",
+        oneLineSummary = "Creates plots of denoised and segmented copy-ratios and minor-allele-fraction estimates",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature

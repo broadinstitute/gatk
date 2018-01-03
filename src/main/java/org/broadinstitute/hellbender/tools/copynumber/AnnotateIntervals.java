@@ -23,18 +23,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Annotate intervals with GC content.  The output may optionally be used as input to
+ * Annotates intervals with GC content.  The output may optionally be used as input to
  * {@link CreateReadCountPanelOfNormals} or {@link DenoiseReadCounts}.  In the former case,
  * using the resulting panel as input to {@link DenoiseReadCounts} will perform explicit GC-bias correction.
  *
- * <h3>Input</h3>
+ * <h3>Inputs</h3>
  *
  * <ul>
  *     <li>
- *         Reference file.
+ *         Reference FASTA file.
  *     </li>
  *     <li>
- *         Intervals to be annotated.
+ *         Intervals to be annotated. Supported formats are described in
+ *         <a href ="https://software.broadinstitute.org/gatk/documentation/article?id=1319">Article#1319</a>.
  *         The argument {@code interval-merging-rule} must be set to {@link IntervalMergingRule#OVERLAPPING_ONLY}
  *         and all other common arguments for interval padding or merging must be set to their defaults.
  *     </li>
@@ -44,14 +45,14 @@ import java.util.List;
  *
  * <ul>
  *     <li>
- *         GC-content annotated-intervals file.
- *         This is a TSV with a SAM-style header containing a sequence dictionary,
- *         a row specifying the column headers contained in {@link AnnotatedIntervalCollection.AnnotatedIntervalTableColumn},
+ *         GC-content annotated-intervals file in TSV format.
+ *         This is a text-based file with tab-separated column values, a SAM-style header containing a sequence dictionary,
+ *         a row specifying the column headers, e.g. CONTIG, START, END, GC_CONTENT,
  *         and the corresponding entry rows.
  *     </li>
  * </ul>
  *
- * <h3>Examples</h3>
+ * <h3>Usage example</h3>
  *
  * <pre>
  *     gatk AnnotateIntervals \
@@ -65,8 +66,8 @@ import java.util.List;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Annotate intervals with GC content.",
-        oneLineSummary = "Annotate intervals with GC content.",
+        summary = "Annotates intervals with GC content",
+        oneLineSummary = "Annotates intervals with GC content",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature

@@ -8,7 +8,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.LocusWalker;
@@ -28,22 +28,22 @@ import java.io.File;
 import java.util.List;
 
 /**
- * Collect reference and alternate allele counts at specified sites.  The alt count is defined as the
+ * Collects reference and alternate allele counts at specified sites. The alt count is defined as the
  * total count minus the ref count, and the alt nucleotide is defined as the non-ref base with the highest count,
- * with ties broken by the order of the bases in {@link AllelicCountCollector#BASES}.  Only reads that pass the
+ * with ties broken by the order of the bases in {@link AllelicCountCollector#BASES}. Only reads that pass the
  * specified read filters and bases that exceed the specified {@code minimum-base-quality} will be counted.
  *
- * <h3>Input</h3>
+ * <h3>Inputs</h3>
  *
  * <ul>
  *     <li>
- *         BAM file.
+ *         SAM format read data
  *     </li>
  *     <li>
- *         Reference file.
+ *         Reference FASTA file
  *     </li>
  *     <li>
- *         Sites at which allelic counts will be collected.
+ *         Sites at which allelic counts will be collected, e.g. sites of common germline variation
  *     </li>
  * </ul>
  *
@@ -53,13 +53,13 @@ import java.util.List;
  * <ul>
  *     <li>
  *         Allelic-counts file.
- *         This is a TSV with a SAM-style header containing a read-group sample name, a sequence dictionary,
+ *         This is a text-based file with tab-separated values (TSV) with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link AllelicCountCollection.AllelicCountTableColumn},
  *         and the corresponding entry rows.
  *     </li>
  * </ul>
  *
- * <h3>Examples</h3>
+ * <h3>Usage example</h3>
  *
  * <pre>
  *     gatk CollectAllelicCounts \
@@ -73,9 +73,9 @@ import java.util.List;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Collect reference and alternate allele counts at specified sites.",
-        oneLineSummary = "Collect reference and alternate allele counts at specified sites.",
-        programGroup = CopyNumberProgramGroup.class
+        summary = "Collects reference and alternate allele counts at specified sites",
+        oneLineSummary = "Collects reference and alternate allele counts at specified sites",
+        programGroup = CoverageAnalysisProgramGroup.class
 )
 @DocumentedFeature
 @BetaFeature

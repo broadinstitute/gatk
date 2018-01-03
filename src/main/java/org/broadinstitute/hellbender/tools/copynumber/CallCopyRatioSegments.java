@@ -14,30 +14,27 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRa
 import java.io.File;
 
 /**
- * Call copy-ratio segments as amplified, deleted, or copy-number neutral.
+ * Calls copy-ratio segments as amplified, deleted, or copy-number neutral.
  *
  * <p>
  *     This is a relatively naive caller that takes the modeled-segments output of {@link ModelSegments} and
  *     performs a simple statistical test on the segmented log2 copy ratios to call amplifications and deletions,
  *     given a specified range for determining copy-number neutral segments.  This caller is
- *     intended to mimic that from the
- *     <a href="https://gatkforums.broadinstitute.org/gatk/discussion/5640/recapseg-overview">ReCapSeg</a> pipeline.
+ *     based on the calling functionality of
+ *     <a href="https://gatkforums.broadinstitute.org/gatk/discussion/5640/recapseg-overview">ReCapSeg</a>.
  * </p>
  *
  * <p>
- *     Although {@link ModelSegments} uses allele-fraction data, if available, to improve the segmentation
- *     of the modeled segments used as input for this caller, the statistical test performed here does not further
- *     use the modeled minor-allele fractions to make calls.  Future updates to this caller are planned to
- *     implement a more sophisticated statistical test, which will indeed make use of both log2 copy ratios
- *     and minor-allele fractions.
- * </p>
+ *     If provided {@link ModelSegments} results that incorporate allele-fraction data, i.e. data with presumably improved segmentation,
+ *     the statistical test performed by CallCopyRatioSegments ignores the modeled minor-allele fractions when making calls.
+  * </p>
  *
  * <h3>Input</h3>
  *
  * <ul>
  *     <li>
- *         Copy-ratio-segments file (.cr.seg output of {@link ModelSegments}).
- *         This is a TSV with a SAM-style header containing a read-group sample name, a sequence dictionary,
+ *         Copy-ratio-segments .cr.seg file from {@link ModelSegments}.
+ *         This is a TSV with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link CopyRatioSegmentCollection.CopyRatioSegmentTableColumn},
  *         and the corresponding entry rows.
  *     </li>
@@ -48,13 +45,13 @@ import java.io.File;
  * <ul>
  *     <li>
  *         Called copy-ratio-segments file.
- *         This is a TSV with a SAM-style header containing a read-group sample name, a sequence dictionary,
+ *         This is a TSV with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link CalledCopyRatioSegmentCollection.CalledCopyRatioSegmentTableColumn},
  *         and the corresponding entry rows.
  *     </li>
  * </ul>
  *
- * <h3>Examples</h3>
+ * <h3>Usage example</h3>
  *
  * <pre>
  *     gatk CallCopyRatioSegments \
@@ -66,8 +63,8 @@ import java.io.File;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Call copy-ratio segments as amplified, deleted, or copy-number neutral.",
-        oneLineSummary = "Call copy-ratio segments as amplified, deleted, or copy-number neutral.",
+        summary = "Calls copy-ratio segments as amplified, deleted, or copy-number neutral",
+        oneLineSummary = "Calls copy-ratio segments as amplified, deleted, or copy-number neutral",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature

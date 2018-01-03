@@ -25,24 +25,23 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Create plots of denoised copy ratios.  Various metrics for denoising are also output.
+ * Creates plots of denoised copy ratios.  The tool also generates various denoising metrics.
  *
- * <h3>Input</h3>
+ * <h3>Inputs</h3>
  *
  * <ul>
  *     <li>
- *         Standardized-copy-ratios file (output of {@link DenoiseReadCounts}.
+ *         Standardized-copy-ratios from {@link DenoiseReadCounts}.
  *     </li>
  *     <li>
- *         Denoised-copy-ratios file (output of {@link DenoiseReadCounts}.
+ *         Denoised-copy-ratios from {@link DenoiseReadCounts}.
  *     </li>
  *     <li>
  *         Sequence-dictionary file.
  *         This determines the order and representation of contigs in the plot.
  *     </li>
  *     <li>
- *         Output prefix.
- *         This is used as a prefix for output filenames.
+ *         Output prefix for use as the basename for resulting files.
  *     </li>
  *     <li>
  *         Output directory.
@@ -50,7 +49,7 @@ import java.util.stream.Collectors;
  *     </li>
  * </ul>
  *
- * <h3>Output</h3>
+ * <h3>Outputs</h3>
  *
  * <ul>
  *     <li>
@@ -66,7 +65,7 @@ import java.util.stream.Collectors;
  *     </li>
  * </ul>
  *
- * <h3>Examples</h3>
+ * <h3>Usage example</h3>
  *
  * <pre>
  *     gatk PlotDenoisedCopyRatios \
@@ -80,8 +79,8 @@ import java.util.stream.Collectors;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Create plots of denoised copy ratios.",
-        oneLineSummary = "Create plots of denoised copy ratios.",
+        summary = "Creates plots of denoised copy ratios",
+        oneLineSummary = "Creates plots of denoised copy ratios",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature

@@ -21,7 +21,7 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import java.io.File;
 
 /**
- * Denoise read counts to produce denoised copy ratios.
+ * Denoises read counts to produce denoised copy ratios.
  *
  * <p>
  *     Typically, a panel of normals produced by {@link CreateReadCountPanelOfNormals} is provided as input.
@@ -49,41 +49,41 @@ import java.io.File;
  *     thus be used to control the amount of denoising, which will ultimately affect the sensitivity of the analysis.
  * </p>
  *
- * <h3>Input</h3>
+ * <h3>Inputs</h3>
  *
  * <ul>
  *     <li>
- *         Counts file (TSV or HDF5 output of {@link CollectFragmentCounts}).
+ *         Counts TSV or HDF5 read counts from {@link CollectFragmentCounts}.
  *     </li>
  *     <li>
- *         (Optional) Panel-of-normals file (output of {@link CreateReadCountPanelOfNormals}).
+ *         (Optional) Panel-of-normals from {@link CreateReadCountPanelOfNormals}.
  *         If provided, it will be used to standardize and denoise the input counts.  This may include
  *         explicit GC-bias correction if annotated intervals were used to create the panel.
  *     </li>
  *     <li>
- *         (Optional) GC-content annotated-intervals file (output of {@link AnnotateIntervals}).
+ *         (Optional) GC-content annotated-intervals from {@link AnnotateIntervals}.
  *         This can be provided in place of a panel of normals to perform explicit GC-bias correction.
  *     </li>
  * </ul>
  *
- * <h3>Output</h3>
+ * <h3>Outputs</h3>
  *
  * <ul>
  *     <li>
  *         Standardized-copy-ratios file.
- *         This is a TSV with a SAM-style header containing a read-group sample name, a sequence dictionary,
+ *         This is a TSV with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link CopyRatioCollection.CopyRatioTableColumn},
  *         and the corresponding entry rows.
  *     </li>
  *     <li>
  *         Denoised-copy-ratios file.
- *         This is a TSV with a SAM-style header containing a read-group sample name, a sequence dictionary,
+ *         This is a TSV with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link CopyRatioCollection.CopyRatioTableColumn},
  *         and the corresponding entry rows.
  *     </li>
  * </ul>
  *
- * <h3>Examples</h3>
+ * <h3>Usage examples</h3>
  *
  * <pre>
  *     gatk DenoiseReadCounts \
@@ -111,8 +111,8 @@ import java.io.File;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Denoise read counts to produce denoised copy ratios.",
-        oneLineSummary = "Denoise read counts to produce denoised copy ratios.",
+        summary = "Denoises read counts to produce denoised copy ratios",
+        oneLineSummary = "Denoises read counts to produce denoised copy ratios",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
