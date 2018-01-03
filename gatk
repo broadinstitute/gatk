@@ -79,28 +79,28 @@ def main(args):
     try:
         if len(args) is 0 or (len(args) is 1 and (args[0] == "--help" or args[0] == "-h")):
             print("")
-            print(" Usage template for all tools (uses --sparkRunner LOCAL when used with a Spark tool)")
-            print("    ./gatk-launch AnyTool toolArgs")
+            print(" Usage template for all tools (uses --spark-runner LOCAL when used with a Spark tool)")
+            print("    gatk AnyTool toolArgs")
             print("")
             print(" Usage template for Spark tools (will NOT work on non-Spark tools)")
-            print("    ./gatk-launch SparkTool toolArgs  [ -- --sparkRunner <LOCAL | SPARK | GCS> sparkArgs ]")
+            print("    gatk SparkTool toolArgs  [ -- --spark-runner <LOCAL | SPARK | GCS> sparkArgs ]")
             print("")
             print(" Getting help")
-            print("    ./gatk-launch --list       Print the list of available tools" )
+            print("    gatk --list       Print the list of available tools" )
             print("")
-            print("    ./gatk-launch Tool --help  Print help on a particular tool" )
+            print("    gatk Tool --help  Print help on a particular tool" )
             print("")
             print(" Configuration File Specification")
             print("     --gatk-config-file                PATH/TO/GATK/PROPERTIES/FILE")
             print("")
-            print(" gatk-launch forwards commands to GATK and adds some sugar for submitting spark jobs")
+            print(" gatk forwards commands to GATK and adds some sugar for submitting spark jobs")
             print("")
-            print("   --sparkRunner <target>    controls how spark tools are run")
+            print("   --spark-runner <target>    controls how spark tools are run")
             print("     valid targets are:")
             print("     LOCAL:      run using the in-memory spark runner")
             print("     SPARK:      run using spark-submit on an existing cluster ")
-            print("                 --sparkMaster must be specified")
-            print("                 --sparkSubmitCommand may be specified to control the Spark submit command")
+            print("                 --spark-master must be specified")
+            print("                 --spark-submit-command may be specified to control the Spark submit command")
             print("                 arguments to spark-submit may optionally be specified after -- ")
             print("     GCS:        run using Google cloud dataproc")
             print("                 commands after the -- will be passed to dataproc")
@@ -108,8 +108,8 @@ def main(args):
             print("                 spark properties and some common spark-submit parameters will be translated ")
             print("                 to dataproc equivalents")
             print("")
-            print("   --dryRun      may be specified to output the generated command line without running it")
-            print("   --javaOptions 'OPTION1[ OPTION2=Y ... ]'   optional - pass the given string of options to the ")
+            print("   --dry-run      may be specified to output the generated command line without running it")
+            print("   --java-options 'OPTION1[ OPTION2=Y ... ]'   optional - pass the given string of options to the ")
             print("                 java JVM at runtime.  ")
             print("                 Java options MUST be passed inside a single string with space-separated values.")
             sys.exit(0)
@@ -117,37 +117,37 @@ def main(args):
         if len(args) is 1 and args[0] == "--list":
             args[0] = "--help"  # if we're invoked with --list, invoke the GATK with --help
 
-        dryRun = "--dryRun" in args
+        dryRun = "--dry-run" in args
         if dryRun:
             dryRun = True
-            args.remove("--dryRun")
+            args.remove("--dry-run")
 
-        javaOptions = getValueForArgument(args, "--javaOptions")
+        javaOptions = getValueForArgument(args, "--java-options")
         if javaOptions is not None:
-            i = args.index("--javaOptions")
+            i = args.index("--java-options")
             del args[i] #remove javaOptions
             del args[i] #and its parameter
 
-        sparkRunner = getValueForArgument(args, "--sparkRunner")
+        sparkRunner = getValueForArgument(args, "--spark-runner")
         if sparkRunner is not None:
-            i = args.index("--sparkRunner")
+            i = args.index("--spark-runner")
             del args[i] #remove spark target
             del args[i] #and its parameter
 
-        sparkSubmitCommand = getValueForArgument(args, "--sparkSubmitCommand")
+        sparkSubmitCommand = getValueForArgument(args, "--spark-submit-command")
         if sparkSubmitCommand is not None:
-            i = args.index("--sparkSubmitCommand")
+            i = args.index("--spark-submit-command")
             del args[i] #remove sparkSubmitCommand target
             del args[i] #and its parameter
 
         (gatkArgs, sparkArgs) = getSplitArgs(args)
 
-        sparkMaster = getValueForArgument(sparkArgs, "--sparkMaster")
+        sparkMaster = getValueForArgument(sparkArgs, "--spark-master")
         if sparkMaster is not None:
-            i = sparkArgs.index("--sparkMaster")
+            i = sparkArgs.index("--spark-master")
             del sparkArgs[i] #remove spark target
             del sparkArgs[i] #and its parameter
-            gatkArgs += ["--sparkMaster", sparkMaster]
+            gatkArgs += ["--spark-master", sparkMaster]
 
         runGATK(sparkRunner, sparkSubmitCommand, dryRun, gatkArgs, sparkArgs, javaOptions)
 
@@ -350,13 +350,13 @@ def runGATK(sparkRunner, suppliedSparkSubmitCommand, dryrun, gatkArgs, sparkArgs
         cmd = [ gcloudCmd, "dataproc", "jobs", "submit", "spark"] \
               + dataprocargs \
               + ["--jar", jarPath] \
-              + ["--"] + gatkArgs + ["--sparkMaster", "yarn"]
+              + ["--"] + gatkArgs + ["--spark-master", "yarn"]
         try:
             runCommand(cmd, dryrun)
         except OSError:
             raise GATKLaunchException("Tried to run gcloud but failed.\nMake sure gcloud is available in your path and you are properly authenticated")
     else:
-        raise GATKLaunchException("Value: " + sparkRunner + " is not a valid value for --sparkRunner.  Choose one of LOCAL, SPARK, GCS")
+        raise GATKLaunchException("Value: " + sparkRunner + " is not a valid value for --spark-runner.  Choose one of LOCAL, SPARK, GCS")
 
 def runCommand(cmd, dryrun):
     if dryrun:
@@ -393,7 +393,7 @@ def getSplitArgs(args):
 
 
 def isDryRun(args):
-    return "--dryRun" in args
+    return "--dry-run" in args
 
 
 def getValueForArgument(args, argument):
@@ -406,9 +406,9 @@ def getValueForArgument(args, argument):
 
 
 def getSparkMasterSpecified(args):
-    value = getValueForArgument(args, "--sparkMaster")
+    value = getValueForArgument(args, "--spark-master")
     if value is None:
-        raise GATKLaunchException("The argument --sparkMaster <master url> must be specified")
+        raise GATKLaunchException("The argument --spark-master <master url> must be specified")
     else:
         return value
 

@@ -35,7 +35,7 @@ import java.io.File;
  *
  * <h3>Usage example</h3>
  * <pre>
- * ./gatk-launch LeftAlignIndels \
+ * gatk LeftAlignIndels \
  *   -R reference.fasta \
  *   -I input.bam \
  *   -O output.bam

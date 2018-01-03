@@ -46,7 +46,7 @@ import java.util.Set;
  * <h3>Usage examples</h3>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" Concordance \
+ * gatk --java-options "-Xmx4g" Concordance \
  *   -R reference.fasta \
  *   -eval eval.vcf \
  *   --truth truth.vcf \

@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
  * <h3>Examples</h3>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" PlotDenoisedCopyRatios \
+ * gatk --java-options "-Xmx4g" PlotDenoisedCopyRatios \
  *   --standardizedCopyRatios tumor.standardizedCR.tsv \
  *   --denoisedCopyRatios tumor.denoisedCR.tsv \
  *   -SD ref_fasta.dict \

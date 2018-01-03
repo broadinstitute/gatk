@@ -27,7 +27,7 @@ import java.util.List;
  * <h3>Examples</h3>
 
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" AnnotateIntervals \
+ * gatk --java-options "-Xmx4g" AnnotateIntervals \
  *   -L intervals.interval_list \
  *   --reference ref_fasta.fa \
  *   --output annotated_intervals.tsv

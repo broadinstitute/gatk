@@ -37,7 +37,7 @@ import java.util.Set;
  * <h3>Example</h3>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" AnnotateVcfWithBamDepth \
+ * gatk --java-options "-Xmx4g" AnnotateVcfWithBamDepth \
  *   -V input.vcf \
  *   -I reads.bam \
  *   -O output.vcf

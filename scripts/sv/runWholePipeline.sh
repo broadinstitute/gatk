@@ -52,7 +52,7 @@ if [ -z "${NUM_WORKERS}" ]; then
 fi
 NUM_EXECUTORS=$((2 * ${NUM_WORKERS}))
 
-"${GATK_DIR}/gatk-launch" StructuralVariationDiscoveryPipelineSpark \
+"${GATK_DIR}/gatk" StructuralVariationDiscoveryPipelineSpark \
     -I "${INPUT_BAM}" \
     -O "${PROJECT_OUTPUT_DIR}/variants/inv_del_ins.vcf" \
     -R "${REF_TWOBIT}" \
@@ -67,7 +67,7 @@ NUM_EXECUTORS=$((2 * ${NUM_WORKERS}))
     --exp-variants-out-dir "${PROJECT_OUTPUT_DIR}/experimentalVariantInterpretations" \
     ${SV_ARGS} \
     -- \
-    --sparkRunner GCS \
+    --spark-runner GCS \
     --cluster "${CLUSTER_NAME}" \
     --num-executors ${NUM_EXECUTORS} \
     --driver-memory 30G \

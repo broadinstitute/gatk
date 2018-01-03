@@ -33,7 +33,7 @@ import java.util.List;
  * <h3>Example</h3>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" CollectAllelicCounts \
+ * gatk --java-options "-Xmx4g" CollectAllelicCounts \
  *   --input sample.bam \
  *   --reference ref_fasta.fa \
  *   -L sites.interval_list \

@@ -78,7 +78,7 @@ import java.util.regex.Pattern;
  *
  * <h4>Applying rcelibration/filtering to SNPs</h4>
  * <pre>
- * ./gatk-launch ApplyVQSR \
+ * gatk ApplyVQSR \
  *   -R reference.fasta \
  *   -V input.vcf \
  *   -O output.vcf \
@@ -90,7 +90,7 @@ import java.util.regex.Pattern;
  *
  * <h4>Allele-specific version of the SNP filtering (beta)</h4>
  * <pre>
- * ./gatk-launch ApplyVQSR \
+ * gatk ApplyVQSR \
  *   -R reference.fasta \
  *   -V input.vcf \
  *   -O output.vcf \

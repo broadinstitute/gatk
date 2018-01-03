@@ -50,7 +50,7 @@ import java.util.*;
  *
  * <h3>Usage example</h3>
  * <pre>
- * ./gatk-launch \
+ * gatk \
  *   CombineGVCFs \
  *   -R reference.fasta \
  *   --variant sample1.g.vcf \
