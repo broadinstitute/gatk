@@ -1,13 +1,9 @@
 package org.broadinstitute.hellbender;
 
-import org.broadinstitute.barclay.argparser.ClassFinder;
+import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgramExecutor;
 import com.google.cloud.storage.StorageException;
 import htsjdk.samtools.util.StringUtil;
-import org.broadinstitute.barclay.argparser.BetaFeature;
-import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -407,27 +403,45 @@ public class Main {
             Collections.sort(sortedClasses, new SimpleNameComparator());
 
             for (final Class<?> clazz : sortedClasses) {
-                final CommandLineProgramProperties property = programsToProperty.get(clazz);
-                if (null == property) {
+                final CommandLineProgramProperties clpProperties = programsToProperty.get(clazz);
+                if (null == clpProperties) {
                     throw new RuntimeException(String.format("Unexpected error: did not find the CommandLineProgramProperties annotation for '%s'", clazz.getSimpleName()));
                 }
-
-                final BetaFeature betaFeature = clazz.getAnnotation(BetaFeature.class);
-                final String summaryLine =
-                        betaFeature == null ?
-                                String.format("%s%s", CYAN, property.oneLineSummary()) :
-                                String.format("%s%s %s%s", RED, "(BETA Tool)", CYAN, property.oneLineSummary());
-                final String annotatedToolName = getDisplayNameForToolClass(clazz);
-                if (clazz.getSimpleName().length() >= 45) {
-                    builder.append(String.format("%s    %s    %s%s\n", GREEN, annotatedToolName, summaryLine, KNRM));
-                } else {
-                    builder.append(String.format("%s    %-45s%s%s\n", GREEN, annotatedToolName, summaryLine, KNRM));
-                }
+                builder.append(getDisplaySummaryForTool(clazz, clpProperties));
             }
             builder.append(String.format("\n"));
         }
         builder.append(WHITE + "--------------------------------------------------------------------------------------\n" + KNRM);
         destinationStream.println(builder.toString());
+    }
+
+    /**
+     * Return a summary string for a command line tool suitable for display.
+     * @param toolClass tool class
+     * @param clpProperties {@CommandLineProgramProperties} for the tool
+     * @return
+     */
+    protected String getDisplaySummaryForTool(final Class<?> toolClass, final CommandLineProgramProperties clpProperties) {
+        final BetaFeature betaFeature = toolClass.getAnnotation(BetaFeature.class);
+        final ExperimentalFeature experimentalFeature = toolClass.getAnnotation(ExperimentalFeature.class);
+
+        final StringBuilder builder = new StringBuilder();
+        final String summaryLine;
+
+        if (experimentalFeature != null) {
+            summaryLine = String.format("%s%s %s%s", RED, "(EXPERIMENTAL Tool)", CYAN, clpProperties.oneLineSummary());
+        } else if (betaFeature != null) {
+            summaryLine = String.format("%s%s %s%s", RED, "(BETA Tool)", CYAN, clpProperties.oneLineSummary());
+        } else {
+            summaryLine = String.format("%s%s", CYAN, clpProperties.oneLineSummary());
+        }
+        final String annotatedToolName = getDisplayNameForToolClass(toolClass);
+        if (toolClass.getSimpleName().length() >= 45) {
+            builder.append(String.format("%s    %s    %s%s\n", GREEN, annotatedToolName, summaryLine, KNRM));
+        } else {
+            builder.append(String.format("%s    %-45s%s%s\n", GREEN, annotatedToolName, summaryLine, KNRM));
+        }
+        return builder.toString();
     }
 
     /**
