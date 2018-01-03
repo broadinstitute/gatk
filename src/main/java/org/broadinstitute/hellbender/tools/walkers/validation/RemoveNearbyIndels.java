@@ -41,7 +41,7 @@ import java.util.ArrayDeque;
         summary = "Remove indels that are close to each other from a vcf. For any pair of indels that are within" +
                   "some minimum allowed distance, both indels are removed, regardless of any intervening non-indel variants.",
         oneLineSummary = "(Internal) Remove indels from the VCF file that are close to each other.",
-        programGroup = VariantProgramGroup.class
+        programGroup = VCFManipulationProgramGroup.class
 )
 @DocumentedFeature
 public class RemoveNearbyIndels extends VariantWalker {
