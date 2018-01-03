@@ -32,7 +32,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.VCFManipulationProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -96,7 +96,7 @@ import java.util.stream.Collectors;
         summary = "Gathers multiple VCF files from a scatter operation into a single VCF file. Input files " +
                   "must be supplied in genomic order and must not have events at overlapping positions.",
         oneLineSummary = "Gathers multiple VCF files from a scatter operation into a single VCF file",
-        programGroup = VariantProgramGroup.class
+        programGroup = VCFManipulationProgramGroup.class
 )
 @BetaFeature
 public final class GatherVcfsCloud extends CommandLineProgram {

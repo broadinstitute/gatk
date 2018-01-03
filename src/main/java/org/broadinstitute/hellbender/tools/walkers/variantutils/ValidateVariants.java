@@ -12,7 +12,7 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.VariantEvaluationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -94,7 +94,7 @@ import java.util.*;
 @CommandLineProgramProperties(
         summary = "Validates a VCF file with an extra strict set of criteria.",
         oneLineSummary = "Validate VCF",
-        programGroup = VariantProgramGroup.class
+        programGroup = VariantEvaluationProgramGroup.class
 )
 @DocumentedFeature
 public final class ValidateVariants extends VariantWalker {

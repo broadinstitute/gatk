@@ -14,7 +14,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.VCFManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -39,7 +39,7 @@ import java.io.IOException;
 @CommandLineProgramProperties(
         summary = "Creates an index for a feature file, e.g. VCF or BED file.",
         oneLineSummary = "Creates an index for a feature file, e.g. VCF or BED file.",
-        programGroup = VariantProgramGroup.class
+        programGroup = VCFManipulationProgramGroup.class
 )
 @DocumentedFeature
 public final class IndexFeatureFile extends CommandLineProgram {
