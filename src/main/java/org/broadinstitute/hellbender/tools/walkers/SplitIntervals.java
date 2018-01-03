@@ -41,10 +41,12 @@ import java.util.stream.IntStream;
  * </pre>
  *
  * <p>
- *    The -O argument specifies the name of the directory where the scatter intervals files will be saved.
- *    Each file name will contain a number, e.g 0000-scattered.intervals, 0001-scattered.intervals,
- *    0002-scattered.intervals and so on. The default --scatter-count is 1 and so this value should be
- *    changed to utilize the tool's functionality.
+ *    The -O argument specifies a directory name for the scatter intervals files. Each file will be named,
+ *    0000-scattered.intervals, 0001-scattered.intervals, 0002-scattered.intervals and so on.
+ *    The default --scatter_count is 1 and so this value should be changed to utilize the tool's functionality.
+ *    Specify --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION to avoid splitting input intervals -- that is,
+ *    the set of input intervals is split, but individual intervals are left intact.  This may affect results when
+ *    using assembly-based callers downstream.
  * </p>
  *
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
