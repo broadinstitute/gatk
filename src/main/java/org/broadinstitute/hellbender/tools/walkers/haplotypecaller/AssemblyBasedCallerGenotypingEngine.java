@@ -95,9 +95,21 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
                                                                       final byte[] ref,
                                                                       final SimpleInterval refLoc,
                                                                       final List<VariantContext> activeAllelesToGenotype) {
-        return activeAllelesToGenotype.isEmpty() ? EventMap.buildEventMapsForHaplotypes(haplotypes, ref, refLoc, configuration.debug) :
-                activeAllelesToGenotype.stream().map(vc -> new Integer(vc.getStart())).collect(Collectors.toCollection(TreeSet<Integer>::new));
+        final boolean inGGAMode = ! activeAllelesToGenotype.isEmpty();
 
+        // Using the cigar from each called haplotype figure out what events need to be written out in a VCF file
+        // IMPORTANT NOTE: This needs to be done even in GGA mode, as this method call has the side effect of setting the
+        // event maps in the Haplotype objects!
+        final TreeSet<Integer> startPosKeySet = EventMap.buildEventMapsForHaplotypes(haplotypes, ref, refLoc, configuration.debug);
+
+        if ( inGGAMode ) {
+            startPosKeySet.clear();
+            for( final VariantContext compVC : activeAllelesToGenotype ) {
+                startPosKeySet.add(compVC.getStart());
+            }
+        }
+
+        return startPosKeySet;
     }
 
     protected static List<VariantContext> getVCsAtThisLocation(final List<Haplotype> haplotypes,
