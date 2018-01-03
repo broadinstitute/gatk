@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import htsjdk.samtools.SamFiles;
 import htsjdk.tribble.Tribble;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
@@ -277,6 +278,52 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
         final double concordance = calculateConcordance(output, gatk3Output);
         Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.8 in AS GVCF mode is < 99% (" +  concordance + ")");
+    }
+
+    @Test
+    public void testGenotypeGivenAllelesMode() throws IOException {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testGenotypeGivenAllelesMode", ".vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.testGenotypeGivenAllelesMode.gatk4.vcf");
+
+        final String[] args = {
+                "-I", NA12878_20_21_WGS_bam,
+                "-R", b37_reference_20_21,
+                "-L", "20:10000000-10010000",
+                "-O", output.getAbsolutePath(),
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
+                "--genotyping_mode", "GENOTYPE_GIVEN_ALLELES",
+                "--alleles", new File(TEST_FILES_DIR, "testGenotypeGivenAllelesMode_givenAlleles.vcf").getAbsolutePath()
+        };
+
+        runCommandLine(args);
+
+        // Test for an exact match against past results
+        IntegrationTestSpec.assertEqualTextFiles(output, expected);
+    }
+
+    @Test(expectedExceptions = CommandLineException.BadArgumentValue.class)
+    public void testGenotypeGivenAllelesModeNotAllowedInGVCFMode() throws IOException {
+        Utils.resetRandomGenerator();
+        
+        final File output = createTempFile("testGenotypeGivenAllelesModeNotAllowedInGVCFMode", ".g.vcf");
+
+        final String[] args = {
+                "-I", NA12878_20_21_WGS_bam,
+                "-R", b37_reference_20_21,
+                "-L", "20:10000000-10010000",
+                "-O", output.getAbsolutePath(),
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
+                "--genotyping_mode", "GENOTYPE_GIVEN_ALLELES",
+                "--alleles", new File(TEST_FILES_DIR, "testGenotypeGivenAllelesMode_givenAlleles.vcf").getAbsolutePath(),
+                "-ERC", "GVCF"
+        };
+
+        // Should throw, since -ERC GVCF is incompatible with GENOTYPE_GIVEN_ALLELES mode
+        runCommandLine(args);
     }
 
     @Test
