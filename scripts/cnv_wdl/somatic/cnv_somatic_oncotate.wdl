@@ -31,12 +31,20 @@ task OncotateSegments {
 
     command <<<
         set -e
-        /root/oncotator_venv/bin/oncotator --db-dir /root/onco_dbdir/ -c /root/tx_exact_uniprot_matches.AKT1_CRLF2_FGFR1.txt \
-          -u file:///root/onco_cache/ -r -v ${called_file} ${basename_called_file}.per_segment.oncotated.txt hg19 \
-          -i SEG_FILE -o SIMPLE_TSV ${default="" additional_args}
+
+        # Get rid of the sequence dictionary at the top of the file
+        egrep -v "^\@" ${called_file} > ${basename_called_file}.seq_dict_removed.seg
+
+        echo "Starting the simple_tsv..."
 
         /root/oncotator_venv/bin/oncotator --db-dir /root/onco_dbdir/ -c /root/tx_exact_uniprot_matches.AKT1_CRLF2_FGFR1.txt \
-          -u file:///root/onco_cache/ -r -v ${called_file} ${basename_called_file}.gene_list.txt hg19 \
+          -u file:///root/onco_cache/ -r -v ${basename_called_file}.seq_dict_removed.seg ${basename_called_file}.per_segment.oncotated.txt hg19 \
+          -i SEG_FILE -o SIMPLE_TSV ${default="" additional_args}
+
+        echo "Starting the gene list..."
+
+        /root/oncotator_venv/bin/oncotator --db-dir /root/onco_dbdir/ -c /root/tx_exact_uniprot_matches.AKT1_CRLF2_FGFR1.txt \
+          -u file:///root/onco_cache/ -r -v ${basename_called_file}.seq_dict_removed.seg ${basename_called_file}.gene_list.txt hg19 \
           -i SEG_FILE -o GENE_LIST ${default="" additional_args}
     >>>
 
