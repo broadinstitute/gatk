@@ -13,7 +13,7 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.VCFManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -69,7 +69,7 @@ import java.io.File;
                   "alignment, dictionary, or reference file. The dictionary must be valid for all variants in the " +
                   "target file.",
         oneLineSummary = "Updates the sequence dictionary in a variant file.",
-        programGroup = VariantProgramGroup.class
+        programGroup = VCFManipulationProgramGroup.class
 )
 @DocumentedFeature
 public final class UpdateVCFSequenceDictionary extends VariantWalker {
