@@ -82,5 +82,4 @@ public class CreateSomaticPanelOfNormalsIntegrationTest extends CommandLineProgr
         Assert.assertEquals(vc5.getNAlleles(), 2);
         Assert.assertTrue(vc5.getAlternateAllele(0).basesMatch("C"));
     }
-    
 }
