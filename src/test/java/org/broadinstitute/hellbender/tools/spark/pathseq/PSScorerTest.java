@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.ojalgo.netio.BufferedInputStreamReader;
 import org.testng.Assert;
 import org.testng.TestException;
 import org.testng.annotations.BeforeMethod;
@@ -136,7 +135,7 @@ public class PSScorerTest extends CommandLineProgramTest {
         header.addSequence(new SAMSequenceRecord("seq3", 1000));
         PSScorer.writeMissingReferenceAccessions(file.getAbsolutePath(), header, taxDB, logger);
         try {
-            final BufferedReader inputStream = new BufferedInputStreamReader(new FileInputStream(file));
+            final BufferedReader inputStream = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
             Assert.assertNull(inputStream.readLine());
         } catch (IOException e) {
             throw new TestException("Could not open temporary file", e);
@@ -146,7 +145,7 @@ public class PSScorerTest extends CommandLineProgramTest {
         header.addSequence(new SAMSequenceRecord("seq4", 1000));
         PSScorer.writeMissingReferenceAccessions(file.getAbsolutePath(), header, taxDB, logger);
         try {
-            final BufferedReader inputStream = new BufferedInputStreamReader(new FileInputStream(file));
+            final BufferedReader inputStream = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
             Assert.assertNotNull(inputStream.readLine());
         } catch (IOException e) {
             throw new TestException("Could not open temporary file", e);

@@ -84,7 +84,7 @@ import java.util.Optional;
  *
  * <h4>Plot a single recalibration table</h4>
  * <pre>
- *      ./gatk-launch AnalyzeCovariates \
+ *      gatk AnalyzeCovariates \
  *      -R reference.fasta \
  *      -bqsr recal1.table \
  *      -plots AnalyzeCovariates.pdf
@@ -92,7 +92,7 @@ import java.util.Optional;
  *
  * <h4>Plot "before" (first pass) and "after" (second pass) recalibration tables to compare them</h4>
  * <pre>
- *      ./gatk-launch AnalyzeCovariates \
+ *      gatk AnalyzeCovariates \
  *      -R reference.fasta \
  *      -before recal1.table \
  *      -after recal2.table \
@@ -101,7 +101,7 @@ import java.util.Optional;
  *
  * <h4>Plot up to three recalibration tables for comparison</h4>
  * <pre>
- *      ./gatk-launch AnalyzeCovariates \
+ *      gatk AnalyzeCovariates \
  *      -R reference.fasta \
  *      -ignoreLMT \
  *      -bqsr recal1.table \
@@ -113,7 +113,7 @@ import java.util.Optional;
  * <h4>Full BQSR quality assessment pipeline</h4>
  * <p>Generate the first pass recalibration table file</p>
  * <pre>
- *      ./gatk-launch BaseRecalibrator \
+ *      gatk BaseRecalibrator \
  *      -R reference.fasta \
  *      -I input.bam \
  *      -knownSites my-trusted-snps.vcf \
@@ -123,7 +123,7 @@ import java.util.Optional;
  *
  * <p>Generate the second pass recalibration table file</p>
  * <pre>
- *      ./gatk-launch BaseRecalibrator \
+ *      gatk BaseRecalibrator \
  *      -R reference.fasta \
  *      -I input.bam \
  *      -bqsr recal1.table \
@@ -134,7 +134,7 @@ import java.util.Optional;
  *
  * <p>Finally, generate the plots and also keep a copy of the csv (optional)</p>
  * <pre>
- *      ./gatk-launch AnalyzeCovariates \
+ *      gatk AnalyzeCovariates \
  *      -R reference.fasta \
  *      -before recal1.table \
  *      -after recal2.table \

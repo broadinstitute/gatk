@@ -1,10 +1,7 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.intel.genomicsdb.ChromosomeInterval;
-import com.intel.genomicsdb.GenomicsDBCallsetsMapProto;
-import com.intel.genomicsdb.GenomicsDBImportConfiguration;
-import com.intel.genomicsdb.GenomicsDBImporter;
+import com.intel.genomicsdb.*;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.AbstractFeatureReader;
@@ -219,6 +216,9 @@ public final class GenomicsDBImport extends GATKTool {
     // Path to callsetmap file to be written by GenomicsDBImporter
     private File callsetMapJSONFile;
 
+    // Path to combined VCF header file to be written by GenomicsDBImporter
+    private File vcfHeaderFile;
+
     // GenomicsDB callset map protobuf structure containing all callset names
     // used to write the callset json file on traversal success
     private GenomicsDBCallsetsMapProto.CallsetMappingPB callsetMappingPB;
@@ -267,6 +267,7 @@ public final class GenomicsDBImport extends GATKTool {
             }
             mergedHeaderLines = VCFUtils.smartMergeHeaders(headers, true);
             mergedHeaderSequenceDictionary = new VCFHeader(mergedHeaderLines).getSequenceDictionary();
+
         } else {
             // --sampleNameMap was specified
 
@@ -276,9 +277,12 @@ public final class GenomicsDBImport extends GATKTool {
             sampleNameToVcfPath = loadSampleNameMapFileInSortedOrder(IOUtils.getPath(sampleNameMapFile));
             final Path firstHeaderPath = sampleNameToVcfPath.entrySet().iterator().next().getValue();
             final VCFHeader header = getHeaderFromPath(firstHeaderPath);
-            mergedHeaderLines = header.getMetaDataInInputOrder();
+	    //getMetaDataInInputOrder() returns an ImmutableSet - LinkedHashSet is mutable and preserves ordering
+            mergedHeaderLines = new LinkedHashSet<VCFHeaderLine>(header.getMetaDataInInputOrder());
             mergedHeaderSequenceDictionary = header.getSequenceDictionary();
         }
+
+	mergedHeaderLines.addAll(getDefaultToolVCFHeaderLines());
 
         if ( mergedHeaderSequenceDictionary == null) {
             throw new UserException("The merged vcf header has no sequence dictionary. Please provide a header that contains a sequence dictionary.");
@@ -382,10 +386,12 @@ public final class GenomicsDBImport extends GATKTool {
         final File workspaceDir = overwriteOrCreateWorkspace();
 
         vidMapJSONFile = new File(workspaceDir + "/" + GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
-        callsetMapJSONFile = new File (workspaceDir + "/" + GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
+        callsetMapJSONFile = new File(workspaceDir + "/" + GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
+	vcfHeaderFile = new File(workspaceDir + "/" + GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
 
         logger.info("Vid Map JSON file will be written to " + vidMapJSONFile);
         logger.info("Callset Map JSON file will be written to " + callsetMapJSONFile);
+	logger.info("Complete VCF Header will be written to " + vcfHeaderFile);
         logger.info("Importing to array - " + workspace + "/" + GenomicsDBConstants.DEFAULT_ARRAY_NAME);
 
         //Pass in true here to use the given ordering, since sampleNameToVcfPath is already sorted
@@ -431,7 +437,7 @@ public final class GenomicsDBImport extends GATKTool {
             final long variantContextBufferSize = vcfBufferSizePerSample * sampleToReaderMap.size();
             final GenomicsDBImportConfiguration.ImportConfiguration importConfiguration =
                     createImportConfiguration(workspace, GenomicsDBConstants.DEFAULT_ARRAY_NAME,
-                            variantContextBufferSize, segmentSize,
+                            GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME,variantContextBufferSize, segmentSize,
                             i, (i+updatedBatchSize-1));
 
             try {
@@ -471,6 +477,12 @@ public final class GenomicsDBImport extends GATKTool {
         } catch (final FileNotFoundException fe) {
             throw new UserException("Unable to write callset map JSON file " + callsetMapJSONFile.getAbsolutePath(), fe);
         }
+	try {
+            GenomicsDBImporter.writeVcfHeaderFile(vcfHeaderFile.getAbsolutePath(), mergedHeaderLines);
+        } catch (final FileNotFoundException fe) {
+            throw new UserException("Unable to write VCF Header file " + vcfHeaderFile.getAbsolutePath(), fe);
+        }
+
 
         if (doConsolidation) {
             logger.info("GenomicsDB consolidation started");
@@ -561,6 +573,7 @@ public final class GenomicsDBImport extends GATKTool {
     private static GenomicsDBImportConfiguration.ImportConfiguration createImportConfiguration(
         final String workspace,
         final String arrayName,
+	final String vcfHeaderName,
         final long variantContextBufferSize,
         final long segmentSize,
         final long lbSampleIndex,
@@ -629,18 +642,26 @@ public final class GenomicsDBImport extends GATKTool {
 
         if (!workspaceDir.exists()) {
             final int ret = GenomicsDBImporter.createTileDBWorkspace(workspaceDir.getAbsolutePath());
-
             if (ret > 0) {
                 checkIfValidWorkspace(workspaceDir);
                 logger.info("Importing data to GenomicsDB workspace: " + workspaceDir);
             } else if (ret < 0) {
-                throw new UserException("Error creating GenomicsDB workspace: " + workspaceDir);
+                throw new UnableToCreateGenomicsDBWorkspace("Error creating GenomicsDB workspace: " + workspaceDir);
             }
+            return workspaceDir;
         } else {
-            // Check whether its a valid workspace
-            checkIfValidWorkspace(workspaceDir);
+            throw new UnableToCreateGenomicsDBWorkspace("The workspace you're trying to create already exists. ( " + workspaceDir.getAbsolutePath() + " ) " +
+                                                  "Writing into an existing workspace can cause data corruption. " +
+                                                  "Please choose an output path that doesn't already exist. ");
         }
-        return workspaceDir;
+    }
+
+    static class UnableToCreateGenomicsDBWorkspace extends UserException {
+        private static final long serialVersionUID = 1L;
+
+        UnableToCreateGenomicsDBWorkspace(final String message){
+            super(message);
+        }
     }
 
     private static void checkIfValidWorkspace(final File workspaceDir) {

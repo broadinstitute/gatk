@@ -93,7 +93,7 @@ import java.util.*;
  *
  * <h4>Recalibrating SNPs in exome data</h4>
  * <pre>
- * ./gatk-launch VariantRecalibrator \
+ * gatk VariantRecalibrator \
  *   -R reference.fasta \
  *   -V input.vcf \
  *   --resource hapmap,known=false,training=true,truth=true,prior=15.0 hapmap_3.3.b37.sites.vcf \
@@ -109,7 +109,7 @@ import java.util.*;
  *
  * <h4>Allele-specific version of the SNP recalibration (beta)</h4>
  * <pre>
- * ./gatk-launch VariantRecalibrator \
+ * gatk VariantRecalibrator \
  *   -R reference.fasta \
  *   -V input.vcf \
  *   -AS \

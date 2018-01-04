@@ -956,6 +956,51 @@ public final class IntervalUtils {
         return sortAndMergeIntervals(parser, expanded, IntervalMergingRule.ALL).toList();
     }
 
+    /**
+     * Pads the provided intervals by the specified amount, sorts the resulting intervals, and merges intervals
+     * that are adjacent/overlapping after padding.
+     *
+     * @param intervals intervals to pad
+     * @param basePairs number of bases of padding to add to each side of each interval
+     * @param dictionary sequence dictionary used to restrict padded intervals to the bounds of their contig
+     * @return the provided intervals padded by the specified amount, sorted, with adjacent/overlapping intervals merged
+     */
+    public static List<SimpleInterval> getIntervalsWithFlanks(final List<SimpleInterval> intervals, final int basePairs, final SAMSequenceDictionary dictionary) {
+        final GenomeLocParser parser = new GenomeLocParser(dictionary);
+        final List<GenomeLoc> intervalsAsGenomeLocs = genomeLocsFromLocatables(parser, intervals);
+        final List<GenomeLoc> paddedGenomeLocs = getIntervalsWithFlanks(parser, intervalsAsGenomeLocs, basePairs);
+        return convertGenomeLocsToSimpleIntervals(paddedGenomeLocs);
+    }
+
+    /**
+     * Accepts a sorted List of intervals, and returns a List of Lists of intervals grouped by contig,
+     * one List per contig.
+     *
+     * @param sortedIntervals sorted List of intervals to group by contig
+     * @return A List of Lists of intervals, one List per contig
+     */
+    public static List<List<SimpleInterval>> groupIntervalsByContig(final List<SimpleInterval> sortedIntervals) {
+        final List<List<SimpleInterval>> intervalGroups = new ArrayList<>();
+        List<SimpleInterval> currentGroup = new ArrayList<>();
+        String currentContig = null;
+
+        for ( final SimpleInterval currentInterval : sortedIntervals ) {
+            if ( currentContig != null && ! currentContig.equals(currentInterval.getContig()) ) {
+                intervalGroups.add(currentGroup);
+                currentGroup = new ArrayList<>();
+            }
+
+            currentContig = currentInterval.getContig();
+            currentGroup.add(currentInterval);
+        }
+
+        if ( ! currentGroup.isEmpty() ) {
+            intervalGroups.add(currentGroup);
+        }
+
+        return intervalGroups;
+    }
+
     private static ReferenceSequenceFile createReference(final File fastaFile) {
             return CachingIndexedFastaSequenceFile.checkAndCreate(fastaFile);
     }
@@ -1351,7 +1396,7 @@ public final class IntervalUtils {
      * The order of contigs/sequences in the dictionary is the order of the sorting here.
      *
      * @param dictionary dictionary to use for the sorting.  Intervals with sequences not in this dictionary will cause
-     *                   exceptions to be thrown.  Never {@ode null}.
+     *                   exceptions to be thrown.  Never {@code null}.
      * @return an instance of {@code Comapator<Locatable>} for use in sorting of Locatables.
      */
     public static Comparator<Locatable> getDictionaryOrderComparator(final SAMSequenceDictionary dictionary) {

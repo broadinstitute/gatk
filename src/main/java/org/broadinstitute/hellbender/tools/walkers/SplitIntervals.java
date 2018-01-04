@@ -8,13 +8,13 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
-import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
-import picard.util.IntervalListScatterer;
+import org.broadinstitute.hellbender.cmdline.programgroups.IntervalsProgramGroup;
+import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
+import picard.util.IntervalListScatterer;
 
 import java.io.File;
 import java.text.DecimalFormat;
@@ -28,7 +28,7 @@ import java.util.stream.IntStream;
  *
  * <p>Standard GATK engine arguments include -L and -XL, interval padding, and interval set rule etc.
  * For example, for the -L argument, the tool accepts GATK-style intervals (.list or .intervals), BED files
- * and VCF files.</p>
+ * and VCF files.  See --subdivision-mode parameter for more options.</p>
  *
  * <h3>Usage example</h3>
  *
@@ -52,7 +52,7 @@ import java.util.stream.IntStream;
 @CommandLineProgramProperties(
         summary = "Split intervals into sub-interval files.",
         oneLineSummary = "Split intervals into sub-interval files.",
-        programGroup = VariantProgramGroup.class
+        programGroup = IntervalsProgramGroup.class
 )
 @DocumentedFeature
 public class SplitIntervals extends GATKTool {

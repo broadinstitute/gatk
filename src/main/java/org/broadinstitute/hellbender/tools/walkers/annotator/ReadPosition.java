@@ -14,9 +14,17 @@ import java.util.List;
 import java.util.OptionalInt;
 
 /**
- * Median distance of variant starts from ends of reads supporting each allele.
+ * Median distance of variant starts from ends of reads supporting each alt allele.
  *
- * Created by David Benjamin on 3/20/17.
+ * </p>The output is an array containing, for each alt allele, the median distance of the variant start from the closest read end over all reads that best match that allele.</p>
+ * </p>For example, for variant context with ref allele A and alt allele C the read position for alt-supporting read GGGGCTT is 2 because the A to C
+ * substitution is 2 bases from the right end of the read, which is less than its distance from the left end.
+ * For variant context with ref allele AG and alt allele A (deletion) the read position of alt-supporting read ATTTTT is 0.
+ * For variant context with ref allele A and alt allele AG (insertion) the read position of alt-supporting read TTTTAG is 1.</p>
+ * <p>The annotation considers only the read's bases themselves and not the position they map to with respect to the reference.  For example,
+ * suppose a substitution is preceded by 80 matching bases and followed by 10 matching bases, a 10-base deletion, and 10 more matching bases.  Its distance from the end of the read
+ * is 20 bases, not 30 bases, because the deleted bases belong to the reference, not the read.  Similarly soft-clipped bases are counted in the distance.</p>
+ * <p>This annotation is useful for filtering alignment artifacts.</p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Median distance of variant starts from ends of reads supporting each allele (MPOS)")
 public class ReadPosition extends PerAlleleAnnotation implements StandardMutectAnnotation {
@@ -36,7 +44,7 @@ public class ReadPosition extends PerAlleleAnnotation implements StandardMutectA
     @Override
     protected OptionalInt getValueForRead(final GATKRead read, final VariantContext vc) {
         Utils.nonNull(read);
-        final int offset = ReadUtils.getReadCoordinateForReferenceCoordinate(ReadUtils.getSoftStart(read), read.getCigar(), vc.getStart(), ReadUtils.ClippingTail.RIGHT_TAIL, true);
+        final int offset = ReadUtils.getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), vc.getStart(), ReadUtils.ClippingTail.RIGHT_TAIL, true);
         if ( offset == ReadUtils.CLIPPING_GOAL_NOT_REACHED || AlignmentUtils.isInsideDeletion(read.getCigar(), offset)) {
             return OptionalInt.empty();
         }

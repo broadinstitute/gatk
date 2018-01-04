@@ -125,17 +125,16 @@ public final class ProcessControllerUnitTest extends GATKBaseTest {
 
     @Test
     public void testWriteStdOut() {
-        ProcessSettings job = new ProcessSettings(new String[] {"echo", "Testing to stdout"});
-        // Not going to call the System.setOut() for now. Just running a basic visual test.
+        final String testInput = "Testing to stdout";
+        final ProcessSettings job = new ProcessSettings(new String[] {"echo", testInput});
         job.getStdoutSettings().printStandard(true);
+        job.getStdoutSettings().setBufferSize(-1);
         job.setRedirectErrorStream(true);
 
-//        System.out.println("testWriteStdOut: Writing two lines to std out...");
-        ProcessController controller = new ProcessController();
-        controller.exec(job);
-        job.setCommand(new String[]{"cat", "non_existent_file"});
-        controller.exec(job);
-//        System.out.println("testWriteStdOut: ...two lines should have been printed to std out");
+        final ProcessController controller = new ProcessController();
+        ProcessOutput processOutput = controller.exec(job);
+        Assert.assertEquals(processOutput.getExitValue(), 0);
+        Assert.assertEquals(processOutput.getStdout().getBufferString(), testInput + NL);
     }
 
     @Test

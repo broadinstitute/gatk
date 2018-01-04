@@ -56,11 +56,11 @@ repositories {
     mavenLocal()
 }
 
-final htsjdkVersion = System.getProperty('htsjdk.version','2.13.1')
-final picardVersion = System.getProperty('picard.version','2.14.0')
+final htsjdkVersion = System.getProperty('htsjdk.version','2.13.2')
+final picardVersion = System.getProperty('picard.version','2.16.0')
 final sparkVersion = System.getProperty('spark.version', '2.0.2')
-final hadoopBamVersion = System.getProperty('hadoopBam.version','7.9.0')
-final genomicsdbVersion = System.getProperty('genomicsdb.version','0.7.0-proto-3.0.0-beta-1')
+final hadoopBamVersion = System.getProperty('hadoopBam.version','7.9.1')
+final genomicsdbVersion = System.getProperty('genomicsdb.version','0.8.1-proto-3.0.0-beta-1')
 final testNGVersion = '6.11'
 
 final baseJarName = 'gatk'
@@ -185,7 +185,10 @@ dependencies {
     compile 'org.nd4j:nd4j-kryo_2.11:0.5.0'
     compile 'org.broadinstitute:gatk-native-bindings:0.1.0-rc-1'
 
-    compile 'org.ojalgo:ojalgo:39.0'
+    compile 'org.ojalgo:ojalgo:44.0.0'
+    compile ('org.ojalgo:ojalgo-commons-math3:1.0.0') {
+        exclude group: 'org.apache.commons'
+    }
     compile ('org.apache.spark:spark-mllib_2.11:' + sparkVersion) {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
         exclude module: 'jul-to-slf4j'
@@ -243,6 +246,9 @@ dependencies {
     compile 'org.broadinstitute:gatk-bwamem-jni:1.0.3'
     compile 'org.broadinstitute:gatk-fermilite-jni:1.0.0-rc6'
 
+    // Required for COSMIC Funcotator data source:
+    compile 'org.xerial:sqlite-jdbc:3.20.1'
+
     //needed for DataflowAssert
     testCompile 'org.hamcrest:hamcrest-all:1.3'
     testCompile 'junit:junit:4.12'
@@ -251,9 +257,9 @@ dependencies {
     testCompile "com.google.jimfs:jimfs:1.1"
 }
 
-//add gatk-launch to the jar as a resource
+//add gatk launcher script to the jar as a resource
 processResources {
-    from("gatk-launch")
+    from("gatk")
 }
 
 processTestResources {
@@ -438,9 +444,9 @@ task bundle(type: Zip) {
     dependsOn shadowJar, sparkJar, 'gatkTabComplete'
 
     doFirst {
-        assert file("gatk-launch").exists()
+        assert file("gatk").exists()
         assert file("README.md").exists()
-        assert file("build/docs/tabCompletion/gatk-launch-completion.sh").exists()
+        assert file("build/docs/tabCompletion/gatk-completion.sh").exists()
     }
 
     baseName = project.name + "-" + project.version
@@ -449,14 +455,31 @@ task bundle(type: Zip) {
 
     from(shadowJar.archivePath)
     from(sparkJar.archivePath)
-    from("gatk-launch")
+    from("gatk")
     from("README.md")
-    from("build/docs/tabCompletion/gatk-launch-completion.sh")
+    from("build/docs/tabCompletion/gatk-completion.sh")
 
     into(baseName)
 
     doLast {
         logger.lifecycle("Created GATK distribution in ${destinationDir}/${archiveName}")
+    }
+}
+
+task createPythonPackageArchive(type: Zip) {
+
+    doFirst {
+        assert file("src/main/python/org/broadinstitute/hellbender/").exists()
+    }
+
+    logger.lifecycle("Creating GATK Python package archive...")
+    destinationDir file("$buildDir")
+    archiveName "gatkPythonPackageArchive" + ".zip"
+    from("src/main/python/org/broadinstitute/hellbender/")
+    into("/")
+
+    doLast {
+        logger.lifecycle("Created GATK Python package archive in ${destinationDir}/${archiveName}")
     }
 }
 
@@ -558,16 +581,16 @@ task gatkTabComplete(type: Javadoc, dependsOn: classes) {
     options.addStringOption("absolute-version", getVersion())
     options.addStringOption("build-timestamp", new Date().format("dd-mm-yyyy hh:mm:ss"))
 
-    options.addStringOption("caller-script-name", "gatk-launch")
+    options.addStringOption("caller-script-name", "gatk")
 
-    options.addStringOption("caller-pre-legal-args", "--help --list --dryRun --javaOptions")
+    options.addStringOption("caller-pre-legal-args", "--help --list --dry-run --java-options")
     options.addStringOption("caller-pre-arg-val-types", "null null null String")
-    options.addStringOption("caller-pre-mutex-args", "--help;list,dryRun,javaOptions --list;help,dryRun,javaOptions")
+    options.addStringOption("caller-pre-mutex-args", "--help;list,dry-run,java-options --list;help,dry-run,java-options")
     options.addStringOption("caller-pre-alias-args", "--help;-h")
     options.addStringOption("caller-pre-arg-min-occurs", "0 0 0 0")
     options.addStringOption("caller-pre-arg-max-occurs", "1 1 1 1")
 
-    options.addStringOption("caller-post-legal-args", "--sparkRunner --spark-master --cluster --dryRun --javaOptions --conf --driver-memory --driver-cores --executor-memory --executor-cores --num-executors")
+    options.addStringOption("caller-post-legal-args", "--spark-runner --spark-master --cluster --dry-run --java-options --conf --driver-memory --driver-cores --executor-memory --executor-cores --num-executors")
     options.addStringOption("caller-post-arg-val-types", "String String String null String file int int int int int")
     options.addStringOption("caller-post-mutex-args", "")
     options.addStringOption("caller-post-alias-args", "")

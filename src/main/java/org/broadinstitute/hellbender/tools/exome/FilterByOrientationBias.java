@@ -9,7 +9,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -18,7 +18,9 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasFilterer;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.PreAdapterOrientationScorer;
+import org.broadinstitute.hellbender.tools.walkers.mutect.FilterMutectCalls;
 import org.broadinstitute.hellbender.utils.artifacts.Transition;
+import picard.analysis.artifacts.CollectSequencingArtifactMetrics;
 import picard.analysis.artifacts.SequencingArtifactMetrics;
 
 import java.io.File;
@@ -28,18 +30,19 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Additionally filter Mutect2 somatic variant calls for sequence-context dependent artifacts.
+ * Additionally filter Mutect2 somatic variant calls for sequence context-dependent artifacts.
  *
  * <p>
- *     This tool is complementary to {@link org.broadinstitute.hellbender.tools.walkers.mutect.FilterMutectCalls}.
- *     The tool requires the pre-adapter detailed metrics calculated by Picard CollectSequencingArtifactMetrics.
+ *     This tool is complementary to {@link FilterMutectCalls}.
+ *     The tool requires the pre-adapter detailed metrics calculated by Picard {@link CollectSequencingArtifactMetrics}.
  *     Specify the base substitution to consider for orientation bias. For a given base substitution specified with
- *     the --artifactModes argument, the tool considers both the forward and reverse complement for filtering.
+ *     the --artifact-modes argument, the tool considers both the forward and reverse complement for filtering.  That is, specifying
+ *     {@code --artifact-modes 'G/T'} means the tool considers G to T <i>and</i> A to C artifacts for filtering.
  * </p>
  *
  * <p>
- *     The metrics from CollectSequencingArtifactMetrics provide a global view across a sample's genome that empowers
- *     decision making in ways site-specific analyses cannot. CollectSequencingArtifactMetrics should be run for both
+ *     The metrics from {@link CollectSequencingArtifactMetrics} give a global view across a sample's genome that empowers
+ *     decision making in ways site-specific analyses cannot. {@link CollectSequencingArtifactMetrics} should be run for both
  *     the normal sample and the tumor sample, if the matched normal is available. The detailed metrics measure orientation
  *     bias for all 3-base contexts and help determine whether variant filtering for a sequence context is necessary.
  * </p>
@@ -52,14 +55,32 @@ import java.util.stream.Collectors;
  * </p>
  *
  * <h3>Example</h3>
+ * <h4>Step 1A: invoke Picard CollectSequencingArtifactMetrics using the GATK4 launch script</h4>
+ * <pre>
+ * gatk CollectSequencingArtifactMetrics \
+ *   -I tumor.bam \
+ *   -R ref.fasta \
+ *   -O tumor_artifact \
+ *   --FILE_EXTENSION ".txt"
+ * </pre>
  *
+ * <h4>Step 1 B: run Picard CollectSequencingArtifactMetrics from a Picard jar</h4>
+ * <pre>
+ * java -jar picard.jar CollectSequencingArtifactMetrics \
+ *   I=tumor.bam \
+ *   R=ref.fasta \
+ *   O="tumor_artifact" \
+ *   VALIDATION_STRINGENCY=LENIENT
+ *</pre>
+ *
+ * <h4>Step 2: run FilterByOrientationBias</h4>
  * For OxoG artifacts, specify G to T artifacts.
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" FilterByOrientationBias \
- *   --artifactModes 'G/T' \
- *   -V tumor_unfiltered.vcf.gz \
+ * gatk FilterByOrientationBias \
+ *   --artifact-modes 'G/T' \
+ *   -V mutect_calls.vcf.gz \
  *   -P tumor.pre_adapter_detail_metrics \
- *   --output oxog_filtered.vcf.gz
+ *   -O oxog_filtered.vcf.gz
  * </pre>
  *
  */
@@ -81,16 +102,16 @@ import java.util.stream.Collectors;
                 " - This filter should be applied last in any M2 toolchain.\n" +
                 " - Common artifacts:\n G/T (OxoG)\n C/T (deamination) ",
         oneLineSummary = "(Experimental) Filter Mutect2 somatic variant calls using orientation bias",
-        programGroup = VariantProgramGroup.class
+        programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
 @BetaFeature
 public class FilterByOrientationBias extends VariantWalker {
 
     public static final String PRE_ADAPTER_METRICS_DETAIL_FILE_SHORT_NAME = "P";
-    public static final String PRE_ADAPTER_METRICS_DETAIL_FILE_FULL_NAME = "preAdapterDetailFile";
+    public static final String PRE_ADAPTER_METRICS_DETAIL_FILE_FULL_NAME = "pre-adapter-detail-file";
     public static final String ARTIFACT_MODES_SHORT_NAME = "AM";
-    public static final String ARTIFACT_MODES_FULL_NAME = "artifactModes";
+    public static final String ARTIFACT_MODES_FULL_NAME = "artifact-modes";
 
     public static final String DEFAULT_ARTIFACT_MODE = "G/T";
     public static final String SUMMARY_FILE_SUFFIX = ".summary";

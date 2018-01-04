@@ -242,7 +242,7 @@ public class Main {
             e.printStackTrace();
         } else {
             System.err.println(String.format(
-                    "Set the system property %s (--javaOptions '-D%s=true') to print the stack trace.",
+                    "Set the system property %s (--java-options '-D%s=true') to print the stack trace.",
                     STACK_TRACE_ON_USER_EXCEPTION_PROPERTY,
                     STACK_TRACE_ON_USER_EXCEPTION_PROPERTY));
         }

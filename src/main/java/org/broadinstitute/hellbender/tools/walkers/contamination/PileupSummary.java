@@ -91,7 +91,7 @@ public class PileupSummary implements Locatable {
 
 
     //----- The following two public static methods read and write pileup summary files
-    public static void writePileupSummaries(final List<PileupSummary> records, final File outputTable) {
+    public static void writeToFile(final List<PileupSummary> records, final File outputTable) {
         try ( PileupSummaryTableWriter writer = new PileupSummaryTableWriter(outputTable) ) {
             writer.writeAllRecords(records);
         } catch (IOException e){
@@ -99,7 +99,7 @@ public class PileupSummary implements Locatable {
         }
     }
 
-    public static List<PileupSummary> readPileupSummaries(final File tableFile) {
+    public static List<PileupSummary> readFromFile(final File tableFile) {
         try( PileupSummaryTableReader reader = new PileupSummaryTableReader(tableFile) ) {
             return reader.toList();
         } catch (IOException e){

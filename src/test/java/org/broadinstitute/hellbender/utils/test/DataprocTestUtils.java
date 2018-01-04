@@ -82,7 +82,7 @@ public final class DataprocTestUtils {
     /**
      * run a gatk spark tool on a dataproc cluster and throw if it fails
      *
-     * this makes use of the gatk-launch script and gcloud and will not work if those are not available
+     * this makes use of the gatk script and gcloud and will not work if those are not available
      * projects depending on GATK as a library will probably have to implement an equivalent method instead of using this one
      *
      * @param tool name of the tool
@@ -96,11 +96,11 @@ public final class DataprocTestUtils {
         env.put("GATK_GCS_STAGING", gcpTestStaging);
 
         final List<String> command = new ArrayList<>();
-        command.add("./gatk-launch");
+        command.add("./gatk");
         command.add(tool);
         command.addAll(args);
         command.add("--");
-        command.add("--sparkRunner"); command.add("GCS");
+        command.add("--spark-runner"); command.add("GCS");
         command.add("--cluster"); command.add(clusterName);
         final String[] commandArray = command.toArray(new String[command.size()]);
         BaseTest.runProcess(ProcessController.getThreadLocal(), commandArray, env, "gatk run on dataproc failed");

@@ -15,13 +15,14 @@ import java.util.List;
 import java.util.Set;
 
 public class SimpleAnnotatedGenomicRegionUnitTest extends GATKBaseTest {
-    private static final String TEST_FILE = publicTestDir + "org/broadinstitute/hellbender/tools/copynumber/utils/combine-segment-breakpoints-with-legacy-header-learning-combined-copy-number.tsv";
+    private static final File TEST_FILE = new File(toolsTestDir,
+            "copynumber/utils/combine-segment-breakpoints-with-legacy-header-learning-combined-copy-number.tsv");
 
     @Test
     public void basicTest() throws IOException {
         final Set<String> headersOfInterest = Sets.newHashSet(Arrays.asList("name", "learning_SAMPLE_0"));
         final List<SimpleAnnotatedGenomicRegion> simpleAnnotatedGenomicRegions =
-                SimpleAnnotatedGenomicRegion.readAnnotatedRegions(new File(TEST_FILE), headersOfInterest);
+                SimpleAnnotatedGenomicRegion.readAnnotatedRegions(TEST_FILE, headersOfInterest);
 
         Assert.assertEquals(simpleAnnotatedGenomicRegions.size(), 15);
         Assert.assertTrue(simpleAnnotatedGenomicRegions.stream()

@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 
-import org.broadinstitute.hellbender.utils.codecs.GENCODE.*;
+import org.broadinstitute.hellbender.utils.codecs.gencode.*;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 
 /**

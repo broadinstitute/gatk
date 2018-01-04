@@ -10,10 +10,11 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public final class PreprocessIntervalsIntegrationTest extends CommandLineProgramTest {
-    private static final String TEST_SUB_DIR = toolsTestDir + "copynumber/";
+    private static final File TEST_SUB_DIR = new File(toolsTestDir, "copynumber");
     private static final File INTERVAL_LIST_FILE = new File(TEST_SUB_DIR, "preprocess-intervals-test.interval_list");
     private static final File REFERENCE_FILE = new File(b37_reference_20_21);
 
@@ -30,6 +31,18 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
                 new Interval("20", 200, 1_900),
                 new Interval("20", 3_000, 12_999),
                 new Interval("20", 13_000, 20_000)
+        );
+
+        // Test for no binning (specified by zero bin length)
+        final int binLengthNoBinningTest = 0;
+        final int paddingLengthNoBinningTest = 0;
+        final List<Interval> inputIntervalsNoBinningTest = Arrays.asList(
+                new Interval("20", 3_000, 20_000),
+                new Interval("20", 200, 1_900)
+        );
+        final List<Interval> expectedBinsNoBinningTest = Arrays.asList(
+                new Interval("20", 200, 1_900),
+                new Interval("20", 3_000, 20_000)
         );
 
         // Test for overlapping intervals
@@ -61,7 +74,7 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
         // Test for whole chromosome
         final int binLengthWholeChromosomeTest = 10_000_000;
         final int paddingLengthWholeChromosomeTest = 500;
-        final List<Interval> inputIntervalsWholeChromosomeTest = Arrays.asList(new Interval("20", 1, 63_025_520));
+        final List<Interval> inputIntervalsWholeChromosomeTest = Collections.singletonList(new Interval("20", 1, 63_025_520));
         final List<Interval> expectedBinsWholeChromosomeTest = Arrays.asList(
                 new Interval("20", 1, 10_000_000),
                 new Interval("20", 10_000_001, 20_000_000),
@@ -75,7 +88,7 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
         // Test for whole genome -- when we don't give any intervals, then the tool assumes that the user wants to sequence the whole genome
         final int binLengthWholeGenomeTest = 10_000_000;
         final int paddingLengthWholeGenomeTest = 500;
-        final List<Interval> inputIntervalsWholeGenomeTest = Arrays.asList();
+        final List<Interval> inputIntervalsWholeGenomeTest = Collections.emptyList();
         final List<Interval> expectedBinsWholeGenomeTest = Arrays.asList(
                 new Interval("20", 1, 10_000_000),
                 new Interval("20", 10_000_001, 20_000_000),
@@ -94,6 +107,7 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
         // Return all test data
         return new Object[][]{
                 {binLengthSeparateIntervalTest, paddingLengthSeparateIntervalTest, inputIntervalsSeparateIntervalTest, expectedBinsSeparateIntervalTest},
+                {binLengthNoBinningTest, paddingLengthNoBinningTest, inputIntervalsNoBinningTest, expectedBinsNoBinningTest},
                 {binLengthOverlappingIntervalTest, paddingLengthOverlappingIntervalTest, inputIntervalsOverlappingIntervalTest, expectedBinsOverlappingIntervalTest},
                 {binLengthEdgeIntervalTest, paddingLengthEdgeIntervalTest, inputIntervalsEdgeIntervalTest, expectedBinsEdgeIntervalTest},
                 {binLengthWholeChromosomeTest, paddingLengthWholeChromosomeTest, inputIntervalsWholeChromosomeTest, expectedBinsWholeChromosomeTest},

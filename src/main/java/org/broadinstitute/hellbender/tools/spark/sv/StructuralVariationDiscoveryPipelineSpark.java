@@ -47,16 +47,22 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
 
 /**
- * Tool to run the entire structural variation discovery pipeline for a single sample.
+ * Runs the structural variation discovery workflow on a single sample
  *
- * <p>Runs {@link FindBreakpointEvidenceSpark} and {@link DiscoverVariantsFromContigAlignmentsSAMSpark}.</p>
+ * <p>This tool packages the algorithms described in {@link FindBreakpointEvidenceSpark} and
+ * {@link DiscoverVariantsFromContigAlignmentsSAMSpark} as an integrated workflow.  Please consult the
+ * descriptions of those tools for more details about the algorithms employed.  In brief, input reads are examined
+ * for evidence of structural variation in a genomic region, regions so identified are locally assembled, and
+ * the local assemblies are called for structural variation.</p>
  *
  * <h3>Inputs</h3>
  * <ul>
  *     <li>An input file of aligned reads.</li>
  *     <li>The reference to which the reads have been aligned.</li>
- *     <li>A BWA index image for the reference.</li>
- *     <li>A list of ubiquitous kmers to ignore.</li>
+ *     <li>A BWA index image for the reference.
+ *         You can use BwaMemIndexImageCreator to create the index image file.</li>
+ *     <li>A list of ubiquitous kmers to ignore.
+ *         You can use FindBadGenomicGenomicKmersSpark to create the list of kmers to ignore.</li>
  * </ul>
  *
  * <h3>Output</h3>
@@ -73,19 +79,26 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
  *     --kmers-to-ignore ignored_kmers.txt \
  *     -O structural_variants.vcf
  * </pre>
+ * <p>This tool can be run without explicitly specifying Spark options. That is to say, the given example command
+ * without Spark options will run locally. See
+ * <a href ="https://software.broadinstitute.org/gatk/documentation/article?id=10060">Tutorial#10060</a>
+ * for an example of how to set up and run a Spark tool on a cloud Spark cluster.</p>
  *
- * <h3>Notes</h3>
+ * <h3>Caveats</h3>
  * <p>Expected input is a paired-end, coordinate-sorted BAM with around 30x coverage.
  * Coverage much lower than that probably won't work well.</p>
- * <p>You can use {@link BwaMemIndexImageCreator} to create the index image file, and {@link FindBadGenomicKmersSpark}
- * to create the list of kmers to ignore.</p>
- * <p>The reference is broadcast by Spark, and must therefore be a 2bit file due to current restrictions.</p>
+ * <p>The reference is broadcast by Spark, and must therefore be a .2bit file due to current restrictions.</p>
  */
 @DocumentedFeature
 @BetaFeature
 @CommandLineProgramProperties(
-        oneLineSummary = "Tool to run the entire structural variation discovery pipeline for a single sample.",
-        summary = "Runs FindBreakpointEvidenceSpark and DiscoverVariantsFromContigAlignmentsSAMSpark.",
+        oneLineSummary = "Runs the structural variation discovery workflow on a single sample",
+        summary =
+        "This tool packages the algorithms described in FindBreakpointEvidenceSpark and" +
+        " DiscoverVariantsFromContigAlignmentsSAMSpark as an integrated workflow.  Please consult the" +
+        " descriptions of those tools for more details about the algorithms employed.  In brief, input reads are examined" +
+        " for evidence of structural variation in a genomic region, regions so identified are locally assembled, and" +
+        " the local assemblies are called for structural variation.",
         programGroup = StructuralVariantDiscoveryProgramGroup.class)
 public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;

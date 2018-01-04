@@ -10,14 +10,9 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.copynumber.annotation.GCBiasCorrector;
-import org.broadinstitute.hellbender.tools.copynumber.coverage.denoising.svd.HDF5SVDReadCountPanelOfNormals;
-import org.broadinstitute.hellbender.tools.copynumber.coverage.denoising.svd.SVDDenoisedCopyRatioResult;
-import org.broadinstitute.hellbender.tools.copynumber.coverage.denoising.svd.SVDDenoisingUtils;
-import org.broadinstitute.hellbender.tools.copynumber.coverage.denoising.svd.SVDReadCountPanelOfNormals;
-import org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.SimpleCountCollection;
+import org.broadinstitute.hellbender.tools.copynumber.denoising.*;
 import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberStandardArgument;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
@@ -30,7 +25,7 @@ import java.io.File;
  * <h3>Examples</h3>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" DenoiseReadCounts \
+ * gatk --java-options "-Xmx4g" DenoiseReadCounts \
  *   --input tumor.readCounts.tsv \
  *   --readCountPanelOfNormals panel_of_normals.hdf5 \
  *   --standardizedCopyRatios tumor.standardizedCR.tsv \
@@ -135,7 +130,8 @@ public final class DenoiseReadCounts extends CommandLineProgram {
             }
         } else {    //standardize and perform optional GC-bias correction
             //get GC content (null if not provided)
-            final double[] intervalGCContent = GCBiasCorrector.validateIntervalGCContent(readCounts.getIntervals(), annotatedIntervalsFile);
+            final double[] intervalGCContent = GCBiasCorrector.validateIntervalGCContent(
+                    readCounts.getMetadata().getSequenceDictionary(), readCounts.getIntervals(), annotatedIntervalsFile);
 
             if (intervalGCContent == null) {
                 logger.warn("Neither a panel of normals nor GC-content annotations were provided, so only standardization will be performed...");
@@ -145,7 +141,7 @@ public final class DenoiseReadCounts extends CommandLineProgram {
 
             //construct a result with denoised profile identical to standardized profile
             final SVDDenoisedCopyRatioResult standardizedResult = new SVDDenoisedCopyRatioResult(
-                    new SimpleSampleMetadata(readCounts.getSampleName()),
+                    readCounts.getMetadata(),
                     readCounts.getIntervals(),
                     standardizedCopyRatioValues,
                     standardizedCopyRatioValues);

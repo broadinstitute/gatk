@@ -11,7 +11,7 @@ import org.testng.annotations.Test;
 // changes every time we change the gatkcondaenv.yml file.
 //
 public class PythonEnvironmentIntegrationTest {
-    private final static String NL = String.format("%n");
+    private final static String NL = System.lineSeparator();
 
     @DataProvider(name="supportedPythonPackages")
     public Object[][] getSupportedPythonPackages() {
@@ -25,6 +25,7 @@ public class PythonEnvironmentIntegrationTest {
                 { "keras" },
                 { "pymc3" },
                 { "argparse" },
+                { "gatkpython" }, // termporary test of the install-from-archive option
         };
     }
 

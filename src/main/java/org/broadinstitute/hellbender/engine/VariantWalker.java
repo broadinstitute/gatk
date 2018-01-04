@@ -7,7 +7,6 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
-import java.nio.file.Path;
 import java.util.Spliterator;
 
 /**

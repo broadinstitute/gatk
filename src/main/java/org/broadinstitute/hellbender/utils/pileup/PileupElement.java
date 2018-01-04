@@ -49,11 +49,10 @@ public final class PileupElement {
                          final CigarElement currentElement,
                          final int currentCigarOffset,
                          final int offsetInCurrentCigar) {
-        Utils.nonNull(read, "read is null");
-        Utils.nonNull(currentElement, "currentElement is null");
-        Utils.validIndex(baseOffset, read.getLength());
-        Utils.validIndex(currentCigarOffset, read.numCigarElements());
-        Utils.validIndex(offsetInCurrentCigar, currentElement.getLength());
+        // Note: bounds checking on the indices proved quite expensive and affected the performance of
+        // the HaplotypeCaller, as this class is a major hotspot -- therefore we are living a little
+        // dangerously by going without runtime bounds checks here.
+        
         this.read = read;
         this.offset = baseOffset;
         this.currentCigarElement = currentElement;
@@ -79,9 +78,6 @@ public final class PileupElement {
      * @return a valid PileupElement with read and at offset
      */
     public static PileupElement createPileupForReadAndOffset(final GATKRead read, final int offset) {
-        Utils.nonNull(read, "read is null");
-        Utils.validIndex(offset, read.getLength());
-
         final AlignmentStateMachine stateMachine = new AlignmentStateMachine(read);
 
         while ( stateMachine.stepForwardOnGenome() != null ) {
@@ -466,7 +462,6 @@ public final class PileupElement {
      */
     @VisibleForTesting
     boolean isImmediatelyAfter(final CigarOperator op) {
-        Utils.nonNull(op);
         return atStartOfCurrentCigar() && getAdjacentOperator(Direction.PREV) == op;
     }
 
@@ -475,7 +470,6 @@ public final class PileupElement {
      */
     @VisibleForTesting
     boolean isImmediatelyBefore(final CigarOperator op) {
-        Utils.nonNull(op);
         return atEndOfCurrentCigar() && getAdjacentOperator(Direction.NEXT) == op;
     }
 

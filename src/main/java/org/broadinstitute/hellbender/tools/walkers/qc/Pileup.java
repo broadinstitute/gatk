@@ -47,7 +47,7 @@ import java.util.stream.Collectors;
  *
  * <h3>Usage example</h3>
  * <pre>
- * ./gatk-launch Pileup \
+ * gatk Pileup \
  *   -R reference.fasta \
  *   -I input.bam \
  *   -L chr1:257-267 \
