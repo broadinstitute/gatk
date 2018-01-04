@@ -19,6 +19,10 @@ import java.util.stream.Collectors;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class ParameterDecileCollection<T extends Enum<T> & ParameterEnum> extends AbstractSampleRecordCollection<Map.Entry<T, DecileCollection>> {
+    //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
+    /**
+     * PARAMETER_NAME, POSTERIOR_10, POSTERIOR_20, POSTERIOR_30, POSTERIOR_40, POSTERIOR_50, POSTERIOR_60, POSTERIOR_70, POSTERIOR_80, POSTERIOR_90
+     */
     enum ParameterTableColumn {
         PARAMETER_NAME,
         POSTERIOR_10,

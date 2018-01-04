@@ -20,6 +20,10 @@ import java.util.function.Function;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
 public final class AllelicCountCollection extends AbstractSampleLocatableCollection<AllelicCount> {
+    //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
+    /**
+     * CONTIG, POSITION, REF_COUNT, ALT_COUNT, REF_NUCLEOTIDE, ALT_NUCLEOTIDE
+     */
     enum AllelicCountTableColumn {
         CONTIG,
         POSITION,

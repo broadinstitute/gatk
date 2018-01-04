@@ -21,10 +21,32 @@ import java.util.List;
 
 /**
  * Helper class for {@link SimpleCountCollection} used to read/write HDF5.
+ * Class is only visible so that it can be referenced in documentation.
+ *
+ * <p>
+ *     Data is stored in the following HDF5 paths:
+ * </p>
+ * <ul>
+ *     <li>
+ *         sample name: /sample_metadata/sample_name
+ *     </li>
+ *     <li>
+ *         sequence dictionary: /locatable_metadata/sequence_dictionary
+ *     </li>
+ *     <li>
+ *         intervals: /intervals
+ *     </li>
+ *     <li>
+ *         counts: /counts/values
+ *     </li>
+ * </ul>
+ * <p>
+ *     See {@link HDF5Utils#writeIntervals} for details on the representation of intervals.
+ * </p>
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-final class HDF5SimpleCountCollection {
+public final class HDF5SimpleCountCollection {
     private static final String SAMPLE_NAME_PATH = "/sample_metadata/sample_name";
     private static final String SEQUENCE_DICTIONARY_PATH = "/locatable_metadata/sequence_dictionary";
     private static final String INTERVALS_GROUP_NAME = "/intervals";
@@ -55,7 +77,7 @@ final class HDF5SimpleCountCollection {
         counts = new Lazy<>(() -> new Array2DRowRealMatrix(file.readDoubleMatrix(COUNTS_PATH)));
     }
 
-    public SampleLocatableMetadata getMetadata() {
+    SampleLocatableMetadata getMetadata() {
         return new SimpleSampleLocatableMetadata(sampleName.get(), sequenceDictionary.get());
     }
 

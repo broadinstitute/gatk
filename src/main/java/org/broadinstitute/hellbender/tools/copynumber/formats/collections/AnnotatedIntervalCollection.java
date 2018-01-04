@@ -16,6 +16,10 @@ import java.util.function.Function;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class AnnotatedIntervalCollection extends AbstractLocatableCollection<LocatableMetadata, AnnotatedInterval> {
+    //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
+    /**
+     * CONTIG, START, END, GC_CONTENT
+     */
     enum AnnotatedIntervalTableColumn {
         CONTIG,
         START,

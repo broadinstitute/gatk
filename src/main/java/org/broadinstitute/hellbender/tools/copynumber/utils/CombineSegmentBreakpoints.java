@@ -41,7 +41,6 @@ public class CombineSegmentBreakpoints extends GATKTool {
     @Argument(
             doc = "Input segment files -- must be specified twice, but order does not matter.",
             fullName = CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME,
-            shortName = CopyNumberStandardArgument.SEGMENTS_FILE_SHORT_NAME,
             maxElements = 2,
             minElements = 2
     )

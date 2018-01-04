@@ -11,7 +11,14 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
+/**
+ * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
+ */
 public final class CopyRatioSegmentCollection extends AbstractSampleLocatableCollection<CopyRatioSegment> {
+    //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
+    /**
+     * CONTIG, START, END, NUM_POINTS_COPY_RATIO, MEAN_LOG2_COPY_RATIO
+     */
     enum CopyRatioSegmentTableColumn {
         CONTIG,
         START,
@@ -21,6 +28,7 @@ public final class CopyRatioSegmentCollection extends AbstractSampleLocatableCol
 
         static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
     }
+
     private static final Function<DataLine, CopyRatioSegment> COPY_RATIO_SEGMENT_RECORD_FROM_DATA_LINE_DECODER = dataLine -> {
         final String contig = dataLine.get(CopyRatioSegmentTableColumn.CONTIG);
         final int start = dataLine.getInt(CopyRatioSegmentTableColumn.START);

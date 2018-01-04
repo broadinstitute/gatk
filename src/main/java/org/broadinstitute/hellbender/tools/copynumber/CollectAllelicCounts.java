@@ -4,10 +4,11 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.LocusWalker;
@@ -17,6 +18,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.tools.copynumber.datacollection.AllelicCountCollector;
 import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberArgumentValidationUtils;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AllelicCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.Metadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.MetadataUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
@@ -26,88 +28,74 @@ import java.io.File;
 import java.util.List;
 
 /**
- * Collects reference/alternate allele counts at sites.  The alt count is defined as the total count minus the ref count,
- * and the alt nucleotide is defined as the non-ref base with the highest count, with ties broken by the order of the
- * bases in {@link AllelicCountCollector#BASES}.
+ * Collects reference and alternate allele counts at specified sites. The alt count is defined as the
+ * total count minus the ref count, and the alt nucleotide is defined as the non-ref base with the highest count,
+ * with ties broken by the order of the bases in {@link AllelicCountCollector#BASES}. Only reads that pass the
+ * specified read filters and bases that exceed the specified {@code minimum-base-quality} will be counted.
  *
- * <h3>Example</h3>
+ * <h3>Inputs</h3>
  *
- * <pre>
- * gatk --java-options "-Xmx4g" CollectAllelicCounts \
- *   --input sample.bam \
- *   --reference ref_fasta.fa \
- *   -L sites.interval_list \
- *   --output allelic_counts.tsv
- * </pre>
+ * <ul>
+ *     <li>
+ *         SAM format read data
+ *     </li>
+ *     <li>
+ *         Reference FASTA file
+ *     </li>
+ *     <li>
+ *         Sites at which allelic counts will be collected
+ *     </li>
+ * </ul>
  *
- * <p>
- *     Use -L as usual to specify intervals for the sites of interest.  For example,
- *     a Picard interval list can be used:
- * </p>
  *
- * <pre>
- *     {@literal @}HD	VN:1.4	SO:unsorted
- *     {@literal @}SQ	SN:1	LN:16000	M5:8c0c38e352d8f3309eabe4845456f274
- *     {@literal @}SQ	SN:2	LN:16000	M5:5f8388fe3fb34aa38375ae6cf5e45b89
- *      1	10736	10736	+	normal
- *      1	11522	11522	+	normal
- *      1	12098	12098	+	normal
- *      1	12444	12444	+	normal
- *      1	13059	13059	+	normal
- *      1	14630	14630	+	normal
- *      1	15204	15204	+	normal
- *      2	14689	14689	+	normal
- *      2	14982	14982	+	normal
- *      2	15110	15110	+	normal
- *      2	15629	15629	+	normal
- * </pre>
+ * <h3>Output</h3>
  *
- * <p>
- *     The resulting table counts the reference versus alternate allele and indicates the alleles. For example:
- * </p>
+ * <ul>
+ *     <li>
+ *         Allelic-counts file.
+ *         This is a tab-separated values (TSV) file with a SAM-style header containing a read group sample name, a sequence dictionary,
+ *         a row specifying the column headers contained in {@link AllelicCountCollection.AllelicCountTableColumn},
+ *         and the corresponding entry rows.
+ *     </li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
  *
  * <pre>
- *     CONTIG	POSITION	REF_COUNT	ALT_COUNT	REF_NUCLEOTIDE	ALT_NUCLEOTIDE
- *     1	10736	0	0	G	A
- *     1	11522	7	4	G	C
- *     1	12098	8	6	G	A
- *     1	12444	0	18	T	A
- *     1	13059	0	8	C	G
- *     1	14630	9	8	T	A
- *     1	15204	4	4	C	G
- *     2	14689	6	9	T	A
- *     2	14982	6	5	G	A
- *     2	15110	6	0	G	A
- *     2	15629	5	3	T	C
+ *     gatk CollectAllelicCounts \
+ *          -I sample.bam \
+ *          -R reference.fa \
+ *          -L sites.interval_list \
+ *          -O sample.allelicCounts.tsv
  * </pre>
  *
+ * @author Lee Lichtenstein &lt;lichtens@broadinstitute.org&gt;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Collect ref/alt counts at sites.",
-        oneLineSummary = "Collect ref/alt counts at sites.",
-        programGroup = CopyNumberProgramGroup.class
+        summary = "Collects reference and alternate allele counts at specified sites",
+        oneLineSummary = "Collects reference and alternate allele counts at specified sites",
+        programGroup = CoverageAnalysisProgramGroup.class
 )
 @DocumentedFeature
+@BetaFeature
 public final class CollectAllelicCounts extends LocusWalker {
     private static final Logger logger = LogManager.getLogger(CollectAllelicCounts.class);
 
     private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 30;
 
-    public static final String MINIMUM_BASE_QUALITY_LONG_NAME = "minimumBaseQuality";
-    public static final String MINIMUM_BASE_QUALITY_SHORT_NAME = "minBQ";
+    public static final String MINIMUM_BASE_QUALITY_LONG_NAME = "minimum-base-quality";
 
     @Argument(
-            doc = "Output allelic-counts file.",
+            doc = "Output file for allelic counts.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
     private File outputAllelicCountsFile;
 
     @Argument(
-            doc = "Minimum base quality; base calls with lower quality will be filtered out of pileups.",
+            doc = "Minimum base quality.  Base calls with lower quality will be filtered out of pileups.",
             fullName = MINIMUM_BASE_QUALITY_LONG_NAME,
-            shortName = MINIMUM_BASE_QUALITY_SHORT_NAME,
             minValue = 0,
             optional = true
     )

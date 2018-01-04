@@ -21,35 +21,39 @@ import java.util.stream.IntStream;
  * Given segments and counts of alt and ref reads over a list of het sites,
  * infers the minor-allele fraction of each segment.  For example, a segment
  * with (alt,ref) counts (10,90), (11,93), (88,12), (90,10) probably has a minor-allele fraction
- * somewhere around 0.1.  The model takes into account allelic bias due to mapping etc. by learning
+ * somewhere around 0.1.  The model takes into account allelic reference bias due to mapping etc. by learning
  * a global gamma distribution on allelic bias ratios.
- *<p>
- * We define the bias ratio of each het locus to be the expected ratio of
- * mapped ref reads to mapped alt reads given equal amounts of DNA (that is, given
- * a germline het).  The model learns a common gamma distribution:
- *      bias ratio ~ Gamma(alpha = mu^2 / sigma^2, beta = mu / sigma^2)
- * where mu and sigma^2 are the global mean and variance of bias ratios, and
- * alpha, beta are the natural parameters of the gamma distribution.
- *</p>
+ *
  * <p>
- * Each segment has a minor-allele fraction f, and for each het within the locus
- * the number of alt reads is drawn from a binomial distribution with total count
- * n = #alt reads + #ref reads and alt probability f / (f + (1 - f) * bias ratio) if the
- * locus is alt minor and (1 - f) / (1 - f + f * bias ratio) if the locus is ref minor.
- *</p>
+ *     We define the bias ratio of each het locus to be the expected ratio of
+ *     mapped ref reads to mapped alt reads given equal amounts of DNA (that is, given
+ *     a germline het).  The model learns a common gamma distribution:
+ *     bias ratio ~ Gamma(alpha = mu^2 / sigma^2, beta = mu / sigma^2)
+ *     where mu and sigma^2 are the global mean and variance of bias ratios, and
+ *     alpha, beta are the natural parameters of the gamma distribution.
+ * </p>
  * <p>
- * Conceptually, the model contains latent variables corresponding to the bias ratio
- * and indicators for alt minor/ref minor at each het locus.  However, we integrate them
- * out and the MCMC model below only contains the minor-allele fractions and
- * the three hyperparameters of the model: the two parameters of the gamma distribution
- * along with the global outlier probability.
- *</p>
+ *     Each segment has a minor-allele fraction f, and for each het within the locus
+ *     the number of alt reads is drawn from a binomial distribution with total count
+ *     n = #alt reads + #ref reads and alt probability f / (f + (1 - f) * bias ratio) if the
+ *     locus is alt minor and (1 - f) / (1 - f + f * bias ratio) if the locus is ref minor.
+ *     We also allow a prior on minor-allele fraction to be specified by the alpha parameter of the 4-parameter
+ *     beta distribution Beta(alpha, 1, 0, 1/2).
+ * </p>
+ * <p>
+ *     Conceptually, the model contains latent variables corresponding to the bias ratio
+ *     and indicators for alt minor/ref minor at each het locus.  However, we integrate them
+ *     out and the MCMC model below only contains the minor-allele fractions and
+ *     the three hyperparameters of the model: the two parameters of the gamma distribution
+ *     along with the global outlier probability.
+ * </p>
+ *
  * See docs/CNVs/CNV-methods.pdf for a thorough description of the model.
  *
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-final class AlleleFractionModeller {
+public final class AlleleFractionModeller {
     private static final String DOUBLE_FORMAT = MultidimensionalModeller.DOUBLE_FORMAT;
 
     private static final double MAX_REASONABLE_MEAN_BIAS = AlleleFractionInitializer.MAX_REASONABLE_MEAN_BIAS;

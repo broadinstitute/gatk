@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools.copynumber;
 
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.IntervalSetRule;
@@ -40,9 +42,9 @@ public class CollectFragmentCountsIntegrationTest extends CommandLineProgramTest
         final File resultOutputFile = createTempFile("collect-fragment-counts-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addInput(NA12878_BAM)
-                .addArgument("L", INTERVALS_FILE.getAbsolutePath())
-                .addArgument("isr", IntervalSetRule.INTERSECTION.toString())
-                .addArgument(CollectFragmentCounts.OUTPUT_FORMAT_SHORT_NAME, CollectFragmentCounts.OutputFormat.TSV.toString())
+                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .addArgument(IntervalArgumentCollection.INTERVAL_SET_RULE_LONG_NAME, IntervalSetRule.INTERSECTION.toString())
+                .addArgument(CollectFragmentCounts.FORMAT_LONG_NAME, CollectFragmentCounts.Format.TSV.toString())
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
     }
@@ -52,9 +54,9 @@ public class CollectFragmentCountsIntegrationTest extends CommandLineProgramTest
         final File resultOutputFile = createTempFile("collect-fragment-counts-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addInput(NA12878_BAM)
-                .addArgument("L", INTERVALS_FILE.getAbsolutePath())
-                .addArgument("ixp", "1")
-                .addArgument(CollectFragmentCounts.OUTPUT_FORMAT_SHORT_NAME, CollectFragmentCounts.OutputFormat.TSV.toString())
+                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .addArgument(IntervalArgumentCollection.INTERVAL_EXCLUSION_PADDING_LONG_NAME, "1")
+                .addArgument(CollectFragmentCounts.FORMAT_LONG_NAME, CollectFragmentCounts.Format.TSV.toString())
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
     }
@@ -64,9 +66,9 @@ public class CollectFragmentCountsIntegrationTest extends CommandLineProgramTest
         final File resultOutputFile = createTempFile("collect-fragment-counts-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addInput(NA12878_BAM)
-                .addArgument("L", INTERVALS_FILE.getAbsolutePath())
-                .addArgument("ip", "1")
-                .addArgument(CollectFragmentCounts.OUTPUT_FORMAT_SHORT_NAME, CollectFragmentCounts.OutputFormat.TSV.toString())
+                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .addArgument(IntervalArgumentCollection.INTERVAL_PADDING_LONG_NAME, "1")
+                .addArgument(CollectFragmentCounts.FORMAT_LONG_NAME, CollectFragmentCounts.Format.TSV.toString())
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
     }
@@ -76,9 +78,9 @@ public class CollectFragmentCountsIntegrationTest extends CommandLineProgramTest
         final File resultOutputFile = createTempFile("collect-fragment-counts-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addInput(NA12878_BAM)
-                .addArgument("L", INTERVALS_FILE.getAbsolutePath())
-                .addArgument("imr", IntervalMergingRule.ALL.toString())
-                .addArgument(CollectFragmentCounts.OUTPUT_FORMAT_SHORT_NAME, CollectFragmentCounts.OutputFormat.TSV.toString())
+                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.ALL.toString())
+                .addArgument(CollectFragmentCounts.FORMAT_LONG_NAME, CollectFragmentCounts.Format.TSV.toString())
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
     }
@@ -88,9 +90,9 @@ public class CollectFragmentCountsIntegrationTest extends CommandLineProgramTest
         final File resultOutputFile = createTempFile("collect-fragment-counts-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addInput(inputBAMFile)
-                .addArgument("L", INTERVALS_FILE.getAbsolutePath())
-                .addArgument("imr", IntervalMergingRule.OVERLAPPING_ONLY.toString())
-                .addArgument(CollectFragmentCounts.OUTPUT_FORMAT_SHORT_NAME, CollectFragmentCounts.OutputFormat.TSV.toString())
+                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
+                .addArgument(CollectFragmentCounts.FORMAT_LONG_NAME, CollectFragmentCounts.Format.TSV.toString())
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
         final SimpleCountCollection expectedCounts = SimpleCountCollection.read(expectedOutputFile);
@@ -103,9 +105,9 @@ public class CollectFragmentCountsIntegrationTest extends CommandLineProgramTest
         final File resultOutputFile = createTempFile("collect-fragment-counts-test", ".hdf5");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addInput(inputBAMFile)
-                .addArgument("L", INTERVALS_FILE.getAbsolutePath())
-                .addArgument("imr", IntervalMergingRule.OVERLAPPING_ONLY.toString())
-                .addArgument(CollectFragmentCounts.OUTPUT_FORMAT_SHORT_NAME, CollectFragmentCounts.OutputFormat.HDF5.toString())
+                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
+                .addArgument(CollectFragmentCounts.FORMAT_LONG_NAME, CollectFragmentCounts.Format.HDF5.toString())
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
         final SimpleCountCollection expectedCounts = SimpleCountCollection.read(expectedOutputFile);

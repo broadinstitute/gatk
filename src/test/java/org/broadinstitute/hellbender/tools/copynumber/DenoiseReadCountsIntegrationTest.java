@@ -39,13 +39,13 @@ public final class DenoiseReadCountsIntegrationTest extends CommandLineProgramTe
                         final ArgumentsBuilder arguments = new ArgumentsBuilder()
                                 .addFileArgument(StandardArgumentDefinitions.INPUT_SHORT_NAME, inputReadCountsFile);
                         if (annotatedIntervalsFile != null) {
-                            arguments.addFileArgument(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_SHORT_NAME, annotatedIntervalsFile);
+                            arguments.addFileArgument(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME, annotatedIntervalsFile);
                         }
                         if (ponFile != null) {
-                            arguments.addFileArgument(CopyNumberStandardArgument.READ_COUNT_PANEL_OF_NORMALS_FILE_SHORT_NAME, ponFile);
+                            arguments.addFileArgument(CopyNumberStandardArgument.COUNT_PANEL_OF_NORMALS_FILE_LONG_NAME, ponFile);
                         }
                         if (numberOfEigenvalues != null) {
-                            arguments.addArgument(CopyNumberStandardArgument.NUMBER_OF_EIGENSAMPLES_SHORT_NAME, numberOfEigenvalues.toString());
+                            arguments.addArgument(CopyNumberStandardArgument.NUMBER_OF_EIGENSAMPLES_LONG_NAME, numberOfEigenvalues.toString());
                         }
                         data.add(Arrays.asList(arguments, ponFile == null));    //set isStandardizedEqualsDenoised = true if no PoN
                     }
@@ -65,8 +65,8 @@ public final class DenoiseReadCountsIntegrationTest extends CommandLineProgramTe
         final File standardizedCRFile = createTempFile("test", ".standardizedCR.tsv");
         final File denoisedCRFile = createTempFile("test", ".denoisedCR.tsv");
         final String[] arguments = argumentsBuilder
-                .addFileArgument(CopyNumberStandardArgument.STANDARDIZED_COPY_RATIOS_FILE_SHORT_NAME, standardizedCRFile)
-                .addFileArgument(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_SHORT_NAME, denoisedCRFile)
+                .addFileArgument(CopyNumberStandardArgument.STANDARDIZED_COPY_RATIOS_FILE_LONG_NAME, standardizedCRFile)
+                .addFileArgument(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, denoisedCRFile)
                 .addArgument(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO")
                 .getArgsArray();
         runCommandLine(arguments);

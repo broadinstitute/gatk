@@ -29,9 +29,9 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         final File outputFile = File.createTempFile("combineseg_", ".tsv");
         final Set<String> columnSet = Sets.newHashSet("MEAN_LOG2_COPY_RATIO", "CALL", "Segment_Mean", "Segment_Call");
         final List<String> arguments = new ArrayList<>();
-        arguments.add("-" + CopyNumberStandardArgument.SEGMENTS_FILE_SHORT_NAME);
+        arguments.add("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
         arguments.add(INPUT_SEGMENTS_FILE);
-        arguments.add("-" + CopyNumberStandardArgument.SEGMENTS_FILE_SHORT_NAME);
+        arguments.add("-" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
         arguments.add(INPUT_SEGMENTS_FILE_WITH_DIFFERENT_HEADERS);
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
         arguments.add(REFERENCE_FILE);
@@ -61,9 +61,9 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
         arguments.add(REFERENCE_FILE);
-        arguments.add("-" + CopyNumberStandardArgument.SEGMENTS_FILE_SHORT_NAME);
+        arguments.add("-" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
         arguments.add(INPUT_SEGMENTS_FILE);
-        arguments.add("-" + CopyNumberStandardArgument.SEGMENTS_FILE_SHORT_NAME);
+        arguments.add("-" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
         arguments.add(INPUT_SEGMENTS_FILE);
         arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
         arguments.add("MEAN_LOG2_COPY_RATIO");
@@ -92,9 +92,9 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
         arguments.add(REFERENCE_FILE);
-        arguments.add("-" + CopyNumberStandardArgument.SEGMENTS_FILE_SHORT_NAME);
+        arguments.add("-" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
         arguments.add(INPUT_SEGMENTS_FILE_WITH_DIFFERENT_HEADERS);
-        arguments.add("-" + CopyNumberStandardArgument.SEGMENTS_FILE_SHORT_NAME);
+        arguments.add("-" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
         arguments.add(GROUND_TRUTH_SEGMENTS_FILE);
         arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
         arguments.add("Segment_Mean");
@@ -155,9 +155,9 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
         arguments.add(REFERENCE_FILE);
-        arguments.add("-" + CopyNumberStandardArgument.SEGMENTS_FILE_SHORT_NAME);
+        arguments.add("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
         arguments.add(INPUT_SEGMENTS_FILE_WITH_DIFFERENT_HEADERS);
-        arguments.add("-" + CopyNumberStandardArgument.SEGMENTS_FILE_SHORT_NAME);
+        arguments.add("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
         arguments.add(GROUND_TRUTH_SEGMENTS_FILE);
         arguments.add("-" + CombineSegmentBreakpoints.LABELS_SHORT_NAME);
         arguments.add(TEST);

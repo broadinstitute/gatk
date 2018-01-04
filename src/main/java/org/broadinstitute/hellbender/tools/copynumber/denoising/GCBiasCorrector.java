@@ -21,9 +21,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Learn multiplicative correction factors as a function of GC content.  Basically, learn a
- * regression curve of coverage vs. GC, and divide by that curve to get GC-bias-corrected coverage.
- *
+ * Learn multiplicative correction factors as a function of GC content using a simple regression.
  * Our regression curve is obtained by filling GC-content bins of width 0.01 with the coverages of
  * genomic intervals corresponding to each GC and taking the median to get a robust estimate of the curve.  
  * In order to smooth out bins with few data (i.e. extreme GC values that occur rarely) 

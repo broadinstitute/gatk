@@ -18,6 +18,12 @@ import java.util.function.Function;
 public final class ModeledSegmentCollection extends AbstractSampleLocatableCollection<ModeledSegment> {
     private static final String DOUBLE_FORMAT = MultidimensionalModeller.DOUBLE_FORMAT;
 
+    //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
+    /**
+     * CONTIG, START, END, NUM_POINTS_COPY_RATIO, NUM_POINTS_ALLELE_FRACTION,
+     * LOG2_COPY_RATIO_POSTERIOR_10, LOG2_COPY_RATIO_POSTERIOR_50, LOG2_COPY_RATIO_POSTERIOR_90,
+     * MINOR_ALLELE_FRACTION_POSTERIOR_10, MINOR_ALLELE_FRACTION_POSTERIOR_50, MINOR_ALLELE_FRACTION_POSTERIOR_90
+     */
     enum ModeledSegmentTableColumn {
         CONTIG, 
         START, 

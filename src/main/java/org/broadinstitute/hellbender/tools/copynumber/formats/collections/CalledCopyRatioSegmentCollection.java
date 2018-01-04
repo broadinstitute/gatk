@@ -14,7 +14,14 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
+/**
+ * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
+ */
 public final class CalledCopyRatioSegmentCollection extends AbstractSampleLocatableCollection<CalledCopyRatioSegment> {
+    //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
+    /**
+     * CONTIG, START, END, NUM_POINTS_COPY_RATIO, MEAN_LOG2_COPY_RATIO, CALL
+     */
     enum CalledCopyRatioSegmentTableColumn {
         CONTIG,
         START,

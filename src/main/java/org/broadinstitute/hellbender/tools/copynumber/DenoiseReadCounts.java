@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.copynumber;
 
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hdf5.HDF5File;
@@ -12,6 +13,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGrou
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.denoising.*;
 import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberStandardArgument;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -19,32 +21,105 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import java.io.File;
 
 /**
- * Denoises read counts given the panel of normals (PoN) created by {@link CreateReadCountPanelOfNormals} to produce
- * a copy-ratio profile.  Both HDF5 and TSV read-count file input are supported.
+ * Denoises read counts to produce denoised copy ratios.
  *
- * <h3>Examples</h3>
+ * <p>
+ *     Typically, a panel of normals produced by {@link CreateReadCountPanelOfNormals} is provided as input.
+ *     The input counts are then standardized by 1) transforming to fractional coverage,
+ *     2) performing optional explicit GC-bias correction (if the panel contains GC-content annotated intervals),
+ *     3) filtering intervals to those contained in the panel, 4) dividing by interval medians contained in the panel,
+ *     5) dividing by the sample median, and 6) transforming to log2 copy ratio.  The result is then denoised by
+ *     subtracting the projection onto the specified number of principal components from the panel.
+ * </p>
+ *
+ * <p>
+ *     If no panel is provided, then the input counts are instead standardized by 1) transforming to fractional coverage,
+ *     2) performing optional explicit GC-bias correction (if GC-content annotated intervals are provided),
+ *     3) dividing by the sample median, and 4) transforming to log2 copy ratio.  No denoising is performed,
+ *     so the denoised result is simply taken to be identical to the standardized result.
+ * </p>
+ *
+ * <p>
+ *     If performed, explicit GC-bias correction is done by {@link GCBiasCorrector}.
+ * </p>
+ *
+ * <p>
+ *     Note that {@code number-of-eigensamples} principal components from the input panel will be used for
+ *     denoising; if only fewer are available in the panel, then they will all be used.  This parameter can
+ *     thus be used to control the amount of denoising, which will ultimately affect the sensitivity of the analysis.
+ * </p>
+ *
+ * <h3>Inputs</h3>
+ *
+ * <ul>
+ *     <li>
+ *         Counts TSV or HDF5 file from {@link CollectFragmentCounts}.
+ *     </li>
+ *     <li>
+ *         (Optional) Panel-of-normals from {@link CreateReadCountPanelOfNormals}.
+ *         If provided, it will be used to standardize and denoise the input counts.  This may include
+ *         explicit GC-bias correction if annotated intervals were used to create the panel.
+ *     </li>
+ *     <li>
+ *         (Optional) GC-content annotated-intervals from {@link AnnotateIntervals}.
+ *         This can be provided in place of a panel of normals to perform explicit GC-bias correction.
+ *     </li>
+ * </ul>
+ *
+ * <h3>Outputs</h3>
+ *
+ * <ul>
+ *     <li>
+ *         Standardized-copy-ratios file.
+ *         This is a tab-separated values (TSV) file with a SAM-style header containing a read group sample name, a sequence dictionary,
+ *         a row specifying the column headers contained in {@link CopyRatioCollection.CopyRatioTableColumn},
+ *         and the corresponding entry rows.
+ *     </li>
+ *     <li>
+ *         Denoised-copy-ratios file.
+ *         This is a tab-separated values (TSV) file with a SAM-style header containing a read group sample name, a sequence dictionary,
+ *         a row specifying the column headers contained in {@link CopyRatioCollection.CopyRatioTableColumn},
+ *         and the corresponding entry rows.
+ *     </li>
+ * </ul>
+ *
+ * <h3>Usage examples</h3>
  *
  * <pre>
- * gatk --java-options "-Xmx4g" DenoiseReadCounts \
- *   --input tumor.readCounts.tsv \
- *   --readCountPanelOfNormals panel_of_normals.hdf5 \
- *   --standardizedCopyRatios tumor.standardizedCR.tsv \
- *   --denoisedCopyRatios tumor.denoisedCR.tsv
+ *     gatk DenoiseReadCounts \
+ *          -I sample.counts.hdf5 \
+ *          --count-panel-of-normals panel_of_normals.pon.hdf5 \
+ *          --standardized-copy-ratios sample.standardizedCR.tsv \
+ *          --denoised-copy-ratios sample.denoisedCR.tsv
  * </pre>
  *
- * The resulting copy-ratio profile is log2 transformed.
+ * <pre>
+ *     gatk DenoiseReadCounts \
+ *          -I sample.counts.hdf5 \
+ *          --annotated-intervals annotated_intervals.tsv \
+ *          --standardized-copy-ratios sample.standardizedCR.tsv \
+ *          --denoised-copy-ratios sample.denoisedCR.tsv
+ * </pre>
+ *
+ * <pre>
+ *     gatk DenoiseReadCounts \
+ *          -I sample.counts.hdf5 \
+ *          --standardized-copy-ratios sample.standardizedCR.tsv \
+ *          --denoised-copy-ratios sample.denoisedCR.tsv
+ * </pre>
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Denoise read counts using a panel of normals.",
-        oneLineSummary = "Denoise read counts using a panel of normals.",
+        summary = "Denoises read counts to produce denoised copy ratios",
+        oneLineSummary = "Denoises read counts to produce denoised copy ratios",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
+@BetaFeature
 public final class DenoiseReadCounts extends CommandLineProgram {
     @Argument(
-            doc = "Input TSV or HDF5 read-count file containing integer read counts in genomic intervals for a single case sample.",
+            doc = "Input TSV or HDF5 file containing integer read counts in genomic intervals for a single case sample (output of CollectFragmentCounts).",
             fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME
     )
@@ -52,42 +127,37 @@ public final class DenoiseReadCounts extends CommandLineProgram {
 
     @Argument(
             doc = "Input HDF5 file containing the panel of normals (output of CreateReadCountPanelOfNormals).",
-            fullName = CopyNumberStandardArgument.READ_COUNT_PANEL_OF_NORMALS_FILE_LONG_NAME,
-            shortName = CopyNumberStandardArgument.READ_COUNT_PANEL_OF_NORMALS_FILE_SHORT_NAME,
+            fullName = CopyNumberStandardArgument.COUNT_PANEL_OF_NORMALS_FILE_LONG_NAME,
             optional = true
     )
     private File inputPanelOfNormalsFile = null;
 
     @Argument(
-            doc = "Input annotated-interval file containing annotations for GC content in genomic intervals (output of AnnotateIntervals).  " +
-                    "Intervals must be identical to and in the same order as those in the input read-count file.  " +
+            doc = "Input file containing annotations for GC content in genomic intervals (output of AnnotateIntervals).  " +
+                    "Intervals must be identical to and in the same order as those in the input read-counts file.  " +
                     "If a panel of normals is provided, this input will be ignored.",
             fullName = CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME,
-            shortName = CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_SHORT_NAME,
             optional = true
     )
-    private File annotatedIntervalsFile = null;
+    private File inputAnnotatedIntervalsFile = null;
 
     @Argument(
-            doc = "Output file for standardized copy-ratio profile.  GC-bias correction will be performed if annotations for GC content are provided.",
-            fullName = CopyNumberStandardArgument.STANDARDIZED_COPY_RATIOS_FILE_LONG_NAME,
-            shortName = CopyNumberStandardArgument.STANDARDIZED_COPY_RATIOS_FILE_SHORT_NAME
+            doc = "Output file for standardized copy ratios.  GC-bias correction will be performed if annotations for GC content are provided.",
+            fullName = CopyNumberStandardArgument.STANDARDIZED_COPY_RATIOS_FILE_LONG_NAME
     )
-    private File standardizedCopyRatiosFile;
+    private File outputStandardizedCopyRatiosFile;
 
     @Argument(
-            doc = "Output file for denoised copy-ratio profile.",
-            fullName = CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME,
-            shortName = CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_SHORT_NAME
+            doc = "Output file for denoised copy ratios.",
+            fullName = CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME
     )
-    private File denoisedCopyRatiosFile;
+    private File outputDenoisedCopyRatiosFile;
 
     @Argument(
             doc = "Number of eigensamples to use for denoising.  " +
                     "If not specified or if the number of eigensamples available in the panel of normals " +
                     "is smaller than this, all eigensamples will be used.",
             fullName = CopyNumberStandardArgument.NUMBER_OF_EIGENSAMPLES_LONG_NAME,
-            shortName = CopyNumberStandardArgument.NUMBER_OF_EIGENSAMPLES_SHORT_NAME,
             optional = true
     )
     private Integer numEigensamplesRequested = null;
@@ -102,7 +172,7 @@ public final class DenoiseReadCounts extends CommandLineProgram {
                 "Number of eigensamples to use for denoising must be non-negative.");
 
         IOUtils.canReadFile(inputReadCountFile);
-        logger.info(String.format("Reading read-count file (%s)...", inputReadCountFile));
+        logger.info(String.format("Reading read-counts file (%s)...", inputReadCountFile));
         final SimpleCountCollection readCounts = SimpleCountCollection.read(inputReadCountFile);
 
         if (inputPanelOfNormalsFile != null) {  //denoise using panel of normals
@@ -110,7 +180,7 @@ public final class DenoiseReadCounts extends CommandLineProgram {
             try (final HDF5File hdf5PanelOfNormalsFile = new HDF5File(inputPanelOfNormalsFile)) {  //HDF5File implements AutoCloseable
                 final SVDReadCountPanelOfNormals panelOfNormals = HDF5SVDReadCountPanelOfNormals.read(hdf5PanelOfNormalsFile);
 
-                if (annotatedIntervalsFile != null) {
+                if (inputAnnotatedIntervalsFile != null) {
                     logger.warn("Panel of normals was provided; ignoring input GC-content annotations...");
                 }
 
@@ -125,13 +195,13 @@ public final class DenoiseReadCounts extends CommandLineProgram {
                 }
                 final SVDDenoisedCopyRatioResult denoisedCopyRatioResult = panelOfNormals.denoise(readCounts, numEigensamples);
 
-                logger.info("Writing standardized and denoised copy-ratio profiles...");
-                denoisedCopyRatioResult.write(standardizedCopyRatiosFile, denoisedCopyRatiosFile);
+                logger.info("Writing standardized and denoised copy ratios...");
+                denoisedCopyRatioResult.write(outputStandardizedCopyRatiosFile, outputDenoisedCopyRatiosFile);
             }
         } else {    //standardize and perform optional GC-bias correction
             //get GC content (null if not provided)
             final double[] intervalGCContent = GCBiasCorrector.validateIntervalGCContent(
-                    readCounts.getMetadata().getSequenceDictionary(), readCounts.getIntervals(), annotatedIntervalsFile);
+                    readCounts.getMetadata().getSequenceDictionary(), readCounts.getIntervals(), inputAnnotatedIntervalsFile);
 
             if (intervalGCContent == null) {
                 logger.warn("Neither a panel of normals nor GC-content annotations were provided, so only standardization will be performed...");
@@ -139,13 +209,13 @@ public final class DenoiseReadCounts extends CommandLineProgram {
 
             final RealMatrix standardizedCopyRatioValues = SVDDenoisingUtils.preprocessAndStandardizeSample(readCounts.getCounts(), intervalGCContent);
 
-            //construct a result with denoised profile identical to standardized profile
+            //construct a result with denoised result identical to standardized result
             final SVDDenoisedCopyRatioResult standardizedResult = new SVDDenoisedCopyRatioResult(
                     readCounts.getMetadata(),
                     readCounts.getIntervals(),
                     standardizedCopyRatioValues,
                     standardizedCopyRatioValues);
-            standardizedResult.write(standardizedCopyRatiosFile, denoisedCopyRatiosFile);
+            standardizedResult.write(outputStandardizedCopyRatiosFile, outputDenoisedCopyRatiosFile);
         }
 
         logger.info("Read counts successfully denoised.");

@@ -33,8 +33,55 @@ import java.util.stream.IntStream;
 /**
  * Represents the SVD panel of normals to be created by {@link CreateReadCountPanelOfNormals}.
  *
- * Most attributes are stored as wide matrices (i.e., more columns than rows) when possible.
- * This dodges a very slow write time in HDF5, since HDF5 writes wide matrices much faster than tall matrices.
+ * <p>
+ *     Data is stored in the following HDF5 paths:
+ * </p>
+ * <ul>
+ *     <li>
+ *         version: /version/value
+ *     </li>
+ *     <li>
+ *         command line: /command_line/value
+ *     </li>
+ *     <li>
+ *         sequence dictionary: /sequence_dictionary/value
+ *     </li>
+ *     <li>
+ *         original read counts: /original_data/read_counts_samples_by_intervals
+ *     </li>
+ *     <li>
+ *         original sample filenames: /original_data/sample_filenames
+ *     </li>
+ *     <li>
+ *         original intervals: /original_data/intervals
+ *     </li>
+ *     <li>
+ *         interval GC content (optional): /original_data/interval_gc_content
+ *     </li>
+ *     <li>
+ *         panel sample filenames (after filtering): /panel/sample_filenames
+ *     </li>
+ *     <li>
+ *         panel intervals (after filtering): /panel/intervals
+ *     </li>
+ *     <li>
+ *         panel interval fractional medians: /panel/interval_fractional_medians
+ *     </li>
+ *     <li>
+ *         panel singular values: /panel/singular_values
+ *     </li>
+ *     <li>
+ *         panel interval fractional medians: /panel/interval_fractional_medians
+ *     </li>
+ *     <li>
+ *         panel eigensamples: /panel/transposed_eigensamples_samples_by_intervals
+ *     </li>
+ * </ul>
+ * <p>
+ *     Most attributes are stored as wide matrices (i.e., more columns than rows) when possible.
+ *     This avoids a very slow write time in HDF5, since HDF5 writes wide matrices much faster than tall matrices.
+ *     See {@link HDF5Utils#writeIntervals} for details on the representation of intervals.
+ * </p>
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
@@ -263,7 +310,8 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
                     .computeSVD(numEigensamples, true, EPSILON);
             final double[] singularValues = svd.s().toArray();    //should be in decreasing order (with corresponding matrices below)
             if (singularValues.length == 0 || Arrays.stream(singularValues).noneMatch(s -> s > EPSILON)) {
-                throw new UserException("No non-zero singular values were found.  Stricter filtering criteria may be required.");
+                throw new UserException(String.format("No non-zero singular values were found.  It may be necessary to use stricter parameters for filtering.  " +
+                        "For example, use a larger value of %s.", CreateReadCountPanelOfNormals.MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME));
             }
             if (singularValues.length < numEigensamples) {
                 logger.warn(String.format("Attempted to truncate at %d eigensamples, but only %d non-zero singular values were found...",
@@ -281,7 +329,8 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
             logger.warn(String.format("Exception encountered during creation of panel of normals.  Attempting to delete partial output in %s...",
                     outFile.getAbsolutePath()));
             IOUtils.tryDelete(outFile);
-            throw new GATKException("Could not create panel of normals.  It may be necessary to use stricter parameters for filtering.",  e);
+            throw new GATKException(String.format("Could not create panel of normals.  It may be necessary to use stricter parameters for filtering.  " +
+                    "For example, use a larger value of %s.", CreateReadCountPanelOfNormals.MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME),  e);
         }
         logger.info(String.format("Read-count panel of normals written to %s.", outFile));
     }

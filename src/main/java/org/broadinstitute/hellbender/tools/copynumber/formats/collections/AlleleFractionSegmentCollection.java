@@ -17,6 +17,10 @@ import java.util.function.Function;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class AlleleFractionSegmentCollection extends AbstractSampleLocatableCollection<AlleleFractionSegment> {
+    //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
+    /**
+     * CONTIG, START, END, NUM_POINTS_ALLELE_FRACTION
+     */
     enum AlleleFractionSegmentTableColumn {
         CONTIG,
         START,

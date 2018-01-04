@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.copynumber.plotting;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -24,45 +25,79 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Plots the results of {@link DenoiseReadCounts}.
+ * Creates plots of denoised copy ratios.  The tool also generates various denoising metrics.
  *
- * <p>The order and representation of contigs in plots follows the contig ordering within the required reference sequence dictionary. </p>
+ * <h3>Inputs</h3>
  *
- * <h3>Examples</h3>
+ * <ul>
+ *     <li>
+ *         Standardized-copy-ratios from {@link DenoiseReadCounts}.
+ *     </li>
+ *     <li>
+ *         Denoised-copy-ratios from {@link DenoiseReadCounts}.
+ *     </li>
+ *     <li>
+ *         Sequence-dictionary file.
+ *         This determines the order and representation of contigs in the plot.
+ *     </li>
+ *     <li>
+ *         Output prefix.
+ *         This is used as the basename for output files.
+ *     </li>
+ *     <li>
+ *         Output directory.
+ *         This must be a pre-existing directory.
+ *     </li>
+ * </ul>
+ *
+ * <h3>Outputs</h3>
+ *
+ * <ul>
+ *     <li>
+ *         Denoised-plot files.
+ *         Two versions of a plot showing both the standardized and denoised copy ratios are output;
+ *         the first covers the entire range of the copy ratios, while the second is limited to copy ratios within [0, 4].
+ *     </li>
+ *      <li>
+ *         Median-absolute-deviation files.
+ *         These files contain the median absolute deviation (MAD) for both the standardized (.standardizedMAD.txt)
+ *         and denoised (.denoisedMAD.txt) copy ratios, the change between the two (.deltaMAD.txt),
+ *         and the change between the two scaled by the standardized MAD (.deltaScaledMAD.txt).
+ *     </li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
  *
  * <pre>
- * gatk --java-options "-Xmx4g" PlotDenoisedCopyRatios \
- *   --standardizedCopyRatios tumor.standardizedCR.tsv \
- *   --denoisedCopyRatios tumor.denoisedCR.tsv \
- *   -SD ref_fasta.dict \
- *   --output output_dir \
- *   --outputPrefix tumor
+ *     gatk PlotDenoisedCopyRatios \
+ *          --standardized-copy-ratios tumor.standardizedCR.tsv \
+ *          --denoised-copy-ratios tumor.denoisedCR.tsv \
+ *          --sequence-dictionary contigs_to_plot.dict \
+ *          --output-prefix tumor \
+ *          -O output_dir
  * </pre>
- *
- * <p>The --output parameter specifies a pre-existing directory.</p>
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Create plots of denoised copy ratios.",
-        oneLineSummary = "Create plots of denoised copy ratios.",
+        summary = "Creates plots of denoised copy ratios",
+        oneLineSummary = "Creates plots of denoised copy ratios",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
+@BetaFeature
 public final class PlotDenoisedCopyRatios extends CommandLineProgram {
     private static final String PLOT_DENOISED_COPY_RATIOS_R_SCRIPT = "PlotDenoisedCopyRatios.R";
 
     @Argument(
-            doc = "Input file containing standardized copy-ratio profile (output of DenoiseReadCounts).",
-            fullName = CopyNumberStandardArgument.STANDARDIZED_COPY_RATIOS_FILE_LONG_NAME,
-            shortName = CopyNumberStandardArgument.STANDARDIZED_COPY_RATIOS_FILE_SHORT_NAME
+            doc = "Input file containing standardized copy ratios (output of DenoiseReadCounts).",
+            fullName = CopyNumberStandardArgument.STANDARDIZED_COPY_RATIOS_FILE_LONG_NAME
     )
     private File inputStandardizedCopyRatiosFile;
 
     @Argument(
-            doc = "Input file containing denoised copy-ratio profile (output of DenoiseReadCounts).",
-            fullName = CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME,
-            shortName = CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_SHORT_NAME
+            doc = "Input file containing denoised copy ratios (output of DenoiseReadCounts).",
+            fullName = CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME
     )
     private File inputDenoisedCopyRatiosFile;
 
@@ -71,20 +106,18 @@ public final class PlotDenoisedCopyRatios extends CommandLineProgram {
             fullName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME,
             shortName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME
     )
-    private File sequenceDictionaryFile;
+    private File inputSequenceDictionaryFile;
 
     @Argument(
             doc = PlottingUtils.MINIMUM_CONTIG_LENGTH_DOC_STRING,
             fullName =  PlottingUtils.MINIMUM_CONTIG_LENGTH_LONG_NAME,
-            shortName = PlottingUtils.MINIMUM_CONTIG_LENGTH_SHORT_NAME,
             optional = true
     )
     private int minContigLength = PlottingUtils.DEFAULT_MINIMUM_CONTIG_LENGTH;
 
     @Argument(
             doc = "Prefix for output filenames.",
-            fullName =  CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME,
-            shortName = CopyNumberStandardArgument.OUTPUT_PREFIX_SHORT_NAME
+            fullName =  CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME
     )
     private String outputPrefix;
 
@@ -110,7 +143,7 @@ public final class PlotDenoisedCopyRatios extends CommandLineProgram {
 
         //validate sequence dictionaries and load contig names and lengths into a LinkedHashMap
         final SAMSequenceDictionary sequenceDictionary = standardizedCopyRatios.getMetadata().getSequenceDictionary();
-        final SAMSequenceDictionary sequenceDictionaryToPlot = ReferenceUtils.loadFastaDictionary(sequenceDictionaryFile);
+        final SAMSequenceDictionary sequenceDictionaryToPlot = ReferenceUtils.loadFastaDictionary(inputSequenceDictionaryFile);
         PlottingUtils.validateSequenceDictionarySubset(sequenceDictionary, sequenceDictionaryToPlot);
         final Map<String, Integer> contigLengthMap = PlottingUtils.getContigLengthMap(sequenceDictionaryToPlot, minContigLength, logger);
 
@@ -130,7 +163,7 @@ public final class PlotDenoisedCopyRatios extends CommandLineProgram {
         Utils.nonNull(outputPrefix);
         IOUtils.canReadFile(inputStandardizedCopyRatiosFile);
         IOUtils.canReadFile(inputDenoisedCopyRatiosFile);
-        IOUtils.canReadFile(sequenceDictionaryFile);
+        IOUtils.canReadFile(inputSequenceDictionaryFile);
         if (!new File(outputDir).exists()) {
             throw new UserException(String.format("Output directory %s does not exist.", outputDir));
         }
