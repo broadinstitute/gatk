@@ -312,7 +312,7 @@ public final class ModelSegments extends CommandLineProgram {
             minValue = 0.,
             optional = true
     )
-    private double kernelVarianceAlleleFraction = 0.01;
+    private double kernelVarianceAlleleFraction = 0.025;
 
     @Argument(
             doc = "Relative scaling S of the kernel K_AF for allele-fraction segmentation to the kernel K_CR for copy-ratio segmentation.  " +
@@ -407,7 +407,7 @@ public final class ModelSegments extends CommandLineProgram {
             optional = true,
             minValue = 0.
     )
-    private double smoothingCredibleIntervalThresholdCopyRatio = 2.;
+    private double smoothingCredibleIntervalThresholdCopyRatio = 5.;
 
     @Argument(
             doc = "Number of 10% equal-tailed credible-interval widths to use for allele-fraction segmentation smoothing.",
@@ -415,7 +415,7 @@ public final class ModelSegments extends CommandLineProgram {
             optional = true,
             minValue = 0.
     )
-    private double smoothingCredibleIntervalThresholdAlleleFraction = 2.;
+    private double smoothingCredibleIntervalThresholdAlleleFraction = 5.;
 
     @Argument(
             doc = "Maximum number of iterations allowed for segmentation smoothing.",
