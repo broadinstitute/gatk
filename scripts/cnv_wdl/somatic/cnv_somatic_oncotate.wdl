@@ -53,6 +53,7 @@ task OncotateSegments {
         memory: select_first([mem, 3]) + " GB"
         disks: "local-disk " + select_first([disk_space_gb, 50]) + " HDD"
         preemptible: select_first([preemptible_attempts, 2])
+        bootDiskSizeGb: 50
     }
 
     output {
