@@ -41,7 +41,8 @@ import java.util.stream.Collectors;
  *         This determines the order and representation of contigs in the plot.
  *     </li>
  *     <li>
- *         Output prefix for use as the basename for resulting files.
+ *         Output prefix.
+ *         This is used as the basename for output files.
  *     </li>
  *     <li>
  *         Output directory.

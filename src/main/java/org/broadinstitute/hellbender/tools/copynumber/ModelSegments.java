@@ -91,7 +91,7 @@ import java.util.stream.Collectors;
  *     </li>
  *     <li>
  *         Output prefix.
- *         This is used as a basename for resulting filenames.
+ *         This is used as the basename for output files.
  *     </li>
  *     <li>
  *         Output directory.
@@ -104,7 +104,7 @@ import java.util.stream.Collectors;
  * <ul>
  *     <li>
  *         Modeled-segments .modelBegin.seg and .modelFinal.seg files.
- *         These are TSVs with a SAM-style header containing a read group sample name, a sequence dictionary,
+ *         These are tab-separated values (TSV) files with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link ModeledSegmentCollection.ModeledSegmentTableColumn},
  *         and the corresponding entry rows.
  *         The initial result before segmentation smoothing is output to the .modelBegin.seg file
@@ -112,7 +112,7 @@ import java.util.stream.Collectors;
  *     </li>
  *     <li>
  *         Allele-fraction-model global-parameter files (.modelBegin.af.param and .modelFinal.af.param).
- *         These are TSVs with a SAM-style header containing a read group sample name,
+ *         These are tab-separated values (TSV) files with a SAM-style header containing a read group sample name,
  *         a row specifying the column headers contained in {@link ParameterDecileCollection.ParameterTableColumn},
  *         and the corresponding entry rows.
  *         The initial result before segmentation smoothing is output to the .modelBegin.af.param file
@@ -120,7 +120,7 @@ import java.util.stream.Collectors;
  *     </li>
  *     <li>
  *         Copy-ratio-model global-parameter files (.modelBegin.cr.param and .modelFinal.cr.param).
- *         These are TSVs with a SAM-style header containing a read group sample name,
+ *         These are tab-separated values (TSV) files with a SAM-style header containing a read group sample name,
  *         a row specifying the column headers contained in {@link ParameterDecileCollection.ParameterTableColumn},
  *         and the corresponding entry rows.
  *         The initial result before segmentation smoothing is output to the .modelBegin.cr.param file
@@ -128,21 +128,21 @@ import java.util.stream.Collectors;
  *     </li>
  *     <li>
  *         Copy-ratio segment file (.cr.param).
- *         This is a TSV with a SAM-style header containing a read group sample name, a sequence dictionary,
+ *         This is a tab-separated values (TSV) file with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link CopyRatioSegmentCollection.CopyRatioSegmentTableColumn},
  *         and the corresponding entry rows.
  *         It contains the segments from the .modelFinal.seg file converted to a format suitable for input to {@link CallCopyRatioSegments}.
  *     </li>
  *     <li>
  *         (Optional) Allelic-counts file containing the counts at sites genotyped as heterozygous in the case sample (.hets.tsv).
- *         This is a TSV with a SAM-style header containing a read group sample name, a sequence dictionary,
+ *         This is a tab-separated values (TSV) file with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link AllelicCountCollection.AllelicCountTableColumn},
  *         and the corresponding entry rows.
  *         This is only output if normal allelic counts are provided as input.
  *     </li>
  *     <li>
  *         (Optional) Allelic-counts file containing the counts at sites genotyped as heterozygous in the matched-normal sample (.hets.normal.tsv).
- *         This is a TSV with a SAM-style header containing a read group sample name, a sequence dictionary,
+ *         This is a tab-separated values (TSV) file with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link AllelicCountCollection.AllelicCountTableColumn},
  *         and the corresponding entry rows.
  *         This is only output if matched-normal allelic counts are provided as input.

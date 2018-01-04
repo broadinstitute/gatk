@@ -53,7 +53,7 @@ import java.io.File;
  *
  * <ul>
  *     <li>
- *         Counts TSV or HDF5 read counts from {@link CollectFragmentCounts}.
+ *         Counts TSV or HDF5 file from {@link CollectFragmentCounts}.
  *     </li>
  *     <li>
  *         (Optional) Panel-of-normals from {@link CreateReadCountPanelOfNormals}.
@@ -71,13 +71,13 @@ import java.io.File;
  * <ul>
  *     <li>
  *         Standardized-copy-ratios file.
- *         This is a TSV with a SAM-style header containing a read group sample name, a sequence dictionary,
+ *         This is a tab-separated values (TSV) file with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link CopyRatioCollection.CopyRatioTableColumn},
  *         and the corresponding entry rows.
  *     </li>
  *     <li>
  *         Denoised-copy-ratios file.
- *         This is a TSV with a SAM-style header containing a read group sample name, a sequence dictionary,
+ *         This is a tab-separated values (TSV) file with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link CopyRatioCollection.CopyRatioTableColumn},
  *         and the corresponding entry rows.
  *     </li>

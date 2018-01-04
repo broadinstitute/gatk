@@ -9,7 +9,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.IntervalsProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -26,34 +26,24 @@ import java.util.List;
  * intervals (.list or .intervals), BED files and VCF files. If no intervals are given, each contig will be assumed
  * to be a single interval (whole genome sequencing). </p>
  *
- * <p>By default, 250 bases of padding are added to either end of each interval.
- * Using the -P flag, the user can specify the amount of padding (in bp) added to each side of the intervals.
+ * <p>Using the -P flag, the user can specify the amount of padding (in bp) added to each side of the intervals.
  * This padding is in addition to the padding added by the -ip (or --interval-padding) argument of
  * IntervalArgumentCollection. However, we encourage using only the -P flag.
  *
- * <p>By default, the tool uses bins of 1000 bases. To turn off binning, specify -BL 0.
- * The user can also specify the length of the bins (in bp) using the -BL option. If this is not commensurate with
+ * <p>The user can also specify the length of the bins (in bp) using the -BL option. If this is not commensurate with
  * the length of the padded intervals, then the last bin will be of different length than the others.  If zero is
  * specified, then no binning will be performed.</p>
  *
- * <p> The -O argument specifies a filename for the output bins, stored as a Picard-style interval list. </p>
+ * <p> The -O argument specifies a filename for the output bins, stored as a Picard interval list. </p>
  *
- * <h3>Usage examples</h3>
- * To pad intervals by the default 250 bases and to turn off binning:
+ * <h3>Example</h3>
  * <pre>
- * gatk PreprocessIntervals \
+ * gatk --java-options "-Xmx4g" PreprocessIntervals \
  *   -R ref_fasta.fa \
- *   -BL 0 \
  *   -L intervals.list \
- *   -O preprocessed.interval_list
- * </pre>
- *
- * To generate consecutive bins of 20K bases from the reference:
- * <pre>
- * gatk PreprocessIntervals \
- *   -R ref_fasta.fa \
- *   -BL 20000 \
- *   -O preprocessed.interval_list
+ *   -BL 10000 \
+ *   -P 500 \
+ *   -O preprocessed-intervals.interval_list
  * </pre>
  *
  * @author Marton Kanasz-Nagy &lt;mkanaszn@broadinstitute.org&gt;
@@ -66,8 +56,8 @@ import java.util.List;
                 + "the last bin of that interval will be of a different length. "
                 + "The length of the padding regions at both sides of the intervals (-P) and "
                 + "the length of the bins (-BL) can be specified. ",
-        oneLineSummary = "Prepares intervals for binning then creates bins that cover them",
-        programGroup = IntervalsProgramGroup.class
+        oneLineSummary = "Prepare intervals for binning then create bins that cover them.",
+        programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
 @BetaFeature

@@ -45,9 +45,9 @@ import java.util.List;
  *
  * <ul>
  *     <li>
- *         GC-content annotated-intervals file in TSV format.
- *         This is a text-based file with tab-separated column values, a SAM-style header containing a sequence dictionary,
- *         a row specifying the column headers, e.g. CONTIG, START, END, GC_CONTENT,
+ *         GC-content annotated-intervals file.
+ *         This is a tab-separated values (TSV) file with a SAM-style header containing a sequence dictionary,
+ *         a row specifying the column headers contained in {@link AnnotatedIntervalCollection.AnnotatedIntervalTableColumn},
  *         and the corresponding entry rows.
  *     </li>
  * </ul>

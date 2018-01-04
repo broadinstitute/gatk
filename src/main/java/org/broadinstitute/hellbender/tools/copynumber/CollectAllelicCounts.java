@@ -43,7 +43,7 @@ import java.util.List;
  *         Reference FASTA file
  *     </li>
  *     <li>
- *         Sites at which allelic counts will be collected, e.g. sites of common germline variation
+ *         Sites at which allelic counts will be collected
  *     </li>
  * </ul>
  *
@@ -53,7 +53,7 @@ import java.util.List;
  * <ul>
  *     <li>
  *         Allelic-counts file.
- *         This is a text-based file with tab-separated values (TSV) with a SAM-style header containing a read group sample name, a sequence dictionary,
+ *         This is a tab-separated values (TSV) file with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link AllelicCountCollection.AllelicCountTableColumn},
  *         and the corresponding entry rows.
  *     </li>

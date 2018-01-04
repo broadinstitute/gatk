@@ -34,7 +34,7 @@ import java.io.File;
  * <ul>
  *     <li>
  *         Copy-ratio-segments .cr.seg file from {@link ModelSegments}.
- *         This is a TSV with a SAM-style header containing a read group sample name, a sequence dictionary,
+ *         This is a tab-separated values (TSV) file with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link CopyRatioSegmentCollection.CopyRatioSegmentTableColumn},
  *         and the corresponding entry rows.
  *     </li>
@@ -45,7 +45,7 @@ import java.io.File;
  * <ul>
  *     <li>
  *         Called copy-ratio-segments file.
- *         This is a TSV with a SAM-style header containing a read group sample name, a sequence dictionary,
+ *         This is a tab-separated values (TSV) file with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link CalledCopyRatioSegmentCollection.CalledCopyRatioSegmentTableColumn},
  *         and the corresponding entry rows.
  *     </li>
