@@ -1,7 +1,13 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMFileHeader;
+import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.engine.spark.ShardToMultiIntervalShardAdapter;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
@@ -387,94 +393,5 @@ public final class AssemblyRegionUnitTest extends GATKBaseTest {
         final AssemblyRegion trimmed = region.trim(desiredSpan);
         Assert.assertEquals(trimmed.getSpan(), expectedAssemblyRegion, "Incorrect region");
         Assert.assertEquals(trimmed.getExtension(), expectedExtension, "Incorrect region");
-    }
-
-    @Test
-    public void testCreateFromReadShard() {
-        final Path testBam = IOUtils.getPath(NA12878_20_21_WGS_bam);
-        final Path reference = IOUtils.getPath(b37_reference_20_21);
-        final SimpleInterval shardInterval = new SimpleInterval("20", 10000000, 10001000);
-        final SimpleInterval paddedShardInterval = new SimpleInterval(shardInterval.getContig(), shardInterval.getStart() - 100, shardInterval.getEnd() + 100);
-
-        // Traversal settings to match the GATK 3/4 HaplotypeCaller settings when the expected output was generated:
-        final int minRegionSize = 50;
-        final int maxRegionSize = 300;
-        final int regionPadding = 100;
-        final double activeProbThreshold = 0.002;
-        final int maxProbPropagationDistance = 50;
-
-        // This mock evaluator returns exactly the values that the GATK 4 HaplotypeCallerEngine's isActive()
-        // method returns for this region. We don't have direct access to the HaplotypeCallerEngine since
-        // we're in public, so we need to use a mock.
-        final AssemblyRegionEvaluator mockEvaluator = new AssemblyRegionEvaluator() {
-            private final List<SimpleInterval> activeSites = Arrays.asList(
-                    new SimpleInterval("20", 9999996, 9999996),
-                    new SimpleInterval("20", 9999997, 9999997),
-                    new SimpleInterval("20", 10000117, 10000117),
-                    new SimpleInterval("20", 10000211, 10000211),
-                    new SimpleInterval("20", 10000439, 10000439),
-                    new SimpleInterval("20", 10000598, 10000598),
-                    new SimpleInterval("20", 10000694, 10000694),
-                    new SimpleInterval("20", 10000758, 10000758),
-                    new SimpleInterval("20", 10001019, 10001019)
-            );
-
-            @Override
-            public ActivityProfileState isActive( AlignmentContext locusPileup, ReferenceContext referenceContext, FeatureContext featureContext ) {
-                final SimpleInterval pileupInterval = new SimpleInterval(locusPileup);
-                return activeSites.contains(pileupInterval) ? new ActivityProfileState(pileupInterval, 1.0) : new ActivityProfileState(pileupInterval, 0.0);
-            }
-        };
-
-        final List<Pair<SimpleInterval, Boolean>> expectedResults = Arrays.asList(
-                // Expected assembly region bounds + flag indicating whether the region is active or not.
-                //
-                // All but the first and last values EXACTLY match GATK 3.4 ActiveRegion traversal over the same
-                // bam file (the first and last values are different because we're artificially cropping the input
-                // shard for the purposes of the test, but although they're cropped they are also consistent with
-                // GATK 3.4's results).
-                Pair.of(new SimpleInterval("20", 9999902, 9999953), false),
-                Pair.of(new SimpleInterval("20", 9999954, 10000039), true),
-                Pair.of(new SimpleInterval("20", 10000040, 10000079), false),
-                Pair.of(new SimpleInterval("20", 10000080, 10000154), true),
-                Pair.of(new SimpleInterval("20", 10000155, 10000173), false),
-                Pair.of(new SimpleInterval("20", 10000174, 10000248), true),
-                Pair.of(new SimpleInterval("20", 10000249, 10000401), false),
-                Pair.of(new SimpleInterval("20", 10000402, 10000476), true),
-                Pair.of(new SimpleInterval("20", 10000477, 10000560), false),
-                Pair.of(new SimpleInterval("20", 10000561, 10000635), true),
-                Pair.of(new SimpleInterval("20", 10000636, 10000656), false),
-                Pair.of(new SimpleInterval("20", 10000657, 10000795), true),
-                Pair.of(new SimpleInterval("20", 10000796, 10000981), false),
-                Pair.of(new SimpleInterval("20", 10000982, 10001056), true),
-                Pair.of(new SimpleInterval("20", 10001057, 10001100), false)
-        );
-
-
-        try ( final ReadsDataSource readsSource = new ReadsDataSource(testBam);
-              final ReferenceDataSource refSource = new ReferenceFileSource(reference) ) {
-
-            // Set the shard's read filter to match the GATK 3/4 HaplotypeCaller settings when the expected output was generated:
-            final LocalReadShard shard = new LocalReadShard(shardInterval, paddedShardInterval, readsSource);
-            shard.setReadFilter(new CountingReadFilter(new MappingQualityReadFilter(20))
-                    .and(new CountingReadFilter(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE))
-                    .and(new CountingReadFilter(ReadFilterLibrary.MAPPED))
-                    .and(new CountingReadFilter(ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT))
-                    .and(new CountingReadFilter(ReadFilterLibrary.NOT_DUPLICATE))
-                    .and(new CountingReadFilter(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK))
-                    .and(new CountingReadFilter(ReadFilterLibrary.GOOD_CIGAR))
-                    .and(new CountingReadFilter(new WellformedReadFilter(readsSource.getHeader()))));
-
-            final Iterable<AssemblyRegion> assemblyRegions = AssemblyRegion.createFromReadShard(shard, readsSource.getHeader(), new ReferenceContext(refSource, paddedShardInterval), new FeatureContext(null, paddedShardInterval), mockEvaluator, minRegionSize, maxRegionSize, regionPadding, activeProbThreshold, maxProbPropagationDistance);
-            int regionCount = 0;
-            for ( final AssemblyRegion region : assemblyRegions ) {
-                Assert.assertTrue(regionCount < expectedResults.size(), "Too many regions returned from AssemblyRegion.createFromReadShard()");
-                Assert.assertEquals(region.getSpan(), expectedResults.get(regionCount).getLeft(), "Wrong interval for region");
-                Assert.assertEquals(region.isActive(), expectedResults.get(regionCount).getRight().booleanValue(), "Region incorrectly marked as active/inactive");
-                ++regionCount;
-            }
-
-            Assert.assertEquals(regionCount, expectedResults.size(), "Too few regions returned from AssemblyRegion.createFromReadShard()");
-        }
     }
 }

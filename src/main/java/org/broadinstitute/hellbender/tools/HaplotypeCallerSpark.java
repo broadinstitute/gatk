@@ -22,6 +22,7 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.engine.spark.ShardToMultiIntervalShardAdapter;
 import org.broadinstitute.hellbender.engine.spark.SparkSharder;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -47,7 +48,6 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 /**
  * ********************************************************************************
@@ -252,13 +252,8 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             final ReferenceMultiSource referenceMultiSource = referenceBroadcast.value();
             final ReferenceMultiSourceAdapter referenceSource = new ReferenceMultiSourceAdapter(referenceMultiSource);
             final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), false, false, header, referenceSource, annotatorEngineBroadcast.getValue());
-            return iteratorToStream(regionAndIntervals).flatMap(regionToVariants(hcEngine)).iterator();
+            return Utils.stream(regionAndIntervals).flatMap(regionToVariants(hcEngine)).iterator();
         };
-    }
-
-    private static <T> Stream<T> iteratorToStream(Iterator<T> iterator) {
-        Iterable<T> regionsIterable = () -> iterator;
-        return StreamSupport.stream(regionsIterable.spliterator(), false);
     }
 
     private static Function<Tuple2<AssemblyRegion, SimpleInterval>, Stream<? extends VariantContext>> regionToVariants(HaplotypeCallerEngine hcEngine) {
@@ -298,13 +293,14 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
 
             final ReadsDownsampler readsDownsampler = assemblyArgs.maxReadsPerAlignmentStart > 0 ?
                 new PositionalDownsampler(assemblyArgs.maxReadsPerAlignmentStart, header) : null;
-            return iteratorToStream(shards)
-                .map(shard -> new DownsampleableSparkReadShard(new ShardBoundary(shard.getInterval(), shard.getPaddedInterval()), shard, readsDownsampler))
+            return Utils.stream(shards)
+                .map(shard -> new ShardToMultiIntervalShardAdapter<>(
+                        new DownsampleableSparkReadShard(new ShardBoundary(shard.getInterval(), shard.getPaddedInterval()), shard, readsDownsampler)))
                 .flatMap(shardToRegion(assemblyArgs, header, referenceSource, hcEngine)).iterator();
         };
     }
 
-    private static Function<Shard<GATKRead>, Stream<? extends Tuple2<AssemblyRegion, SimpleInterval>>> shardToRegion(
+    private static Function<ShardToMultiIntervalShardAdapter<GATKRead>, Stream<? extends Tuple2<AssemblyRegion, SimpleInterval>>> shardToRegion(
             ShardingArgumentCollection assemblyArgs,
             SAMFileHeader header,
             ReferenceMultiSourceAdapter referenceSource,
@@ -313,9 +309,9 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             //TODO load features as a side input
             final FeatureManager featureManager = null;
 
-            final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, header, referenceSource, featureManager, evaluator, assemblyArgs.minAssemblyRegionSize, assemblyArgs.maxAssemblyRegionSize, assemblyArgs.assemblyRegionPadding, assemblyArgs.activeProbThreshold, assemblyArgs.maxProbPropagationDistance);
+            final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, header, referenceSource, featureManager, evaluator, assemblyArgs.minAssemblyRegionSize, assemblyArgs.maxAssemblyRegionSize, assemblyArgs.assemblyRegionPadding, assemblyArgs.activeProbThreshold, assemblyArgs.maxProbPropagationDistance, true);
 
-            return iteratorToStream(assemblyRegionIter)
+            return Utils.stream(assemblyRegionIter)
                     .map(a -> new Tuple2<>(a, shard.getInterval()));
         };
     }
