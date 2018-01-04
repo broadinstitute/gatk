@@ -31,7 +31,7 @@ import java.util.List;
  *
  * <ul>
  *     <li>
- *         Reference FASTA file.
+ *         Reference FASTA file
  *     </li>
  *     <li>
  *         Intervals to be annotated. Supported formats are described in

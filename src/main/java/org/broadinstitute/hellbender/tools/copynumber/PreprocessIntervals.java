@@ -3,14 +3,13 @@ package org.broadinstitute.hellbender.tools.copynumber;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
-import htsjdk.samtools.util.IntervalUtil;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.IntervalsProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
@@ -25,7 +24,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Prepare bins for coverage collection.
+ * Prepares bins for coverage collection.
  *
  * <p>
  *     The input intervals are first checked for overlapping intervals, which are merged.
@@ -33,11 +32,11 @@ import java.util.stream.Collectors;
  *     Finally, bins that contain only Ns are filtered out.
  * </p>
  *
- * <h3>Input</h3>
+ * <h3>Inputs</h3>
  *
  * <ul>
  *     <li>
- *         Reference file.
+ *         Reference FASTA file
  *     </li>
  *     <li>
  *         Intervals to be preprocessed.
@@ -49,8 +48,8 @@ import java.util.stream.Collectors;
  *     <li>
  *         Padding length (in bp).
  *         Use {@code padding} to specify the size of each of the regions added to both ends of the intervals that result
- *         after overlapping intervals have been merged.  Do not use the common {@code interval-padding} argument, which must
- *         instead be set to zero.  Intervals that would overlap after padding by the specified amount are instead only
+ *         after overlapping intervals have been merged.  Do not use the common {@code interval-padding} argument.
+ *         Intervals that would overlap after padding by the specified amount are instead only
  *         padded until they are adjacent.
  *     </li>
  *     <li>
@@ -69,7 +68,9 @@ import java.util.stream.Collectors;
  *     </li>
  * </ul>
  *
- * <h3>Examples</h3>
+ * <h3>Usage examples</h3>
+ *
+ * To pad intervals by 250 bases and disable binning (e.g., for targeted analyses):
  *
  * <pre>
  *     gatk PreprocessIntervals \
@@ -79,6 +80,8 @@ import java.util.stream.Collectors;
  *          --padding 250 \
  *          -O preprocessed_intervals.interval_list
  * </pre>
+ *
+ * To generate consecutive bins of 1000 bases from the reference (e.g., for whole genome sequencing analyses):
  *
  * <pre>
  *     gatk PreprocessIntervals \
@@ -92,9 +95,9 @@ import java.util.stream.Collectors;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Prepare bins for coverage collection.",
-        oneLineSummary = "Prepare bins for coverage collection.",
-        programGroup = CopyNumberProgramGroup.class
+        summary = "Prepares bins for coverage collection",
+        oneLineSummary = "Prepares bins for coverage collection",
+        programGroup = IntervalsProgramGroup.class
 )
 @DocumentedFeature
 @BetaFeature
