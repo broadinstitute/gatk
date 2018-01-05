@@ -16,7 +16,6 @@ dependencies:
 - readline=6.2=2
 - setuptools=36.4.0=py36_1
 - sqlite=3.13.0=0
-- tqdm=4.15.0
 - tk=8.5.18=0
 - wheel=0.29.0=py36_0
 - xz=5.2.3=0
@@ -47,4 +46,3 @@ dependencies:
   - tqdm==4.19.4
   - werkzeug==0.12.2
   - build/gatkPythonPackageArchive.zip
-  - "--editable=/gatk/src/main/python/org/broadinstitute/hellbender/tools/gcnv/"
