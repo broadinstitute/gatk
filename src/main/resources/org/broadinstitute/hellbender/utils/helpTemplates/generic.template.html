@@ -112,7 +112,11 @@
 			<h1>${name}</h1>
 		</#if>
 
-		<p class="lead">${summary}</p>
+		<#if picardsummary??>
+			<p>${picardsummary}</p>
+		<#else>
+			<p>${summary}</p>
+		</#if>
 
 		<#if group?? >
 			<h3>Category
