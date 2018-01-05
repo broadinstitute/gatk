@@ -98,14 +98,6 @@ public abstract class BaseTest {
     }
 
     /**
-     * API key for HELLBENDER_TEST_PROJECT
-     * @return HELLBENDER_TEST_APIKEY env. var if defined, throws otherwise.
-     */
-    public static String getGCPTestApiKey() {
-        return getNonNullEnvironmentVariable("HELLBENDER_TEST_APIKEY");
-    }
-
-    /**
      * A writable GCS path where java files can be cached and temporary test files can be written,
      * of the form gs://bucket/, or gs://bucket/path/.
      * @return HELLBENDER_TEST_STAGING env. var if defined, throws otherwise.

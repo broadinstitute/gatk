@@ -167,7 +167,7 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
             SimpleInterval assemblyRegionPaddedInterval = paddedInterval.expandWithinContig(assemblyRegionPadding, sequenceDictionary);
 
             ReferenceDataSource reference = bReferenceSource == null ? null :
-                    new ReferenceMemorySource(bReferenceSource.getValue().getReferenceBases(null, assemblyRegionPaddedInterval), sequenceDictionary);
+                    new ReferenceMemorySource(bReferenceSource.getValue().getReferenceBases(assemblyRegionPaddedInterval), sequenceDictionary);
             FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
             ReferenceContext referenceContext = new ReferenceContext(reference, paddedInterval);
             FeatureContext featureContext = new FeatureContext(features, paddedInterval);

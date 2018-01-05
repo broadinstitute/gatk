@@ -111,7 +111,7 @@ public class SVContextUnitTest extends GATKBaseTest {
         Assert.assertTrue(refHaplotype.isReference());
         final SimpleInterval expectedInterval = new SimpleInterval(vc.getContig(), vc.getStart() + 1 - paddingSize, vc.getEnd() + paddingSize);
         Assert.assertEquals(new SimpleInterval(refHaplotype.getGenomeLocation()), expectedInterval, svc.getContig() + ":" + svc.getStart() + " " + svc.getStructuralVariantType() + " " + svc.getStructuralVariantLength());
-        Assert.assertEquals(refHaplotype.getBases(), reference.getReferenceBases(null, expectedInterval).getBases());
+        Assert.assertEquals(refHaplotype.getBases(), reference.getReferenceBases(expectedInterval).getBases());
         Assert.assertEquals(refHaplotype.getCigar(), new Cigar(Collections.singletonList(new CigarElement(expectedInterval.size(), CigarOperator.M))));
     }
 
@@ -135,13 +135,16 @@ public class SVContextUnitTest extends GATKBaseTest {
         final byte[] expectedBases;
         final Cigar expectedCigar;
         if (svc.getStructuralVariantType() == StructuralVariantType.INS) {
-            expectedBases = Utils.concat(reference.getReferenceBases((null), new SimpleInterval(vc.getContig(), vc.getStart() + 1 - paddingSize, vc.getStart())).getBases(),
+            expectedBases = Utils.concat(reference.getReferenceBases(
+                    new SimpleInterval(vc.getContig(), vc.getStart() + 1 - paddingSize, vc.getStart())).getBases(),
                     svc.getInsertedSequence(),
-                    reference.getReferenceBases(null, new SimpleInterval(vc.getContig(), vc.getStart() + 1, vc.getStart() + paddingSize)).getBases());
+                    reference.getReferenceBases(new SimpleInterval(vc.getContig(), vc.getStart() + 1, vc.getStart() + paddingSize)).getBases());
             expectedCigar = new Cigar(Arrays.asList(new CigarElement(paddingSize, CigarOperator.M), new CigarElement(svc.getStructuralVariantLength(), CigarOperator.I), new CigarElement(paddingSize, CigarOperator.M)));
         } else { // must be DEL.
-            expectedBases = Utils.concat(reference.getReferenceBases(null, new SimpleInterval(vc.getContig(), vc.getStart() + 1 - paddingSize, vc.getStart())).getBases(),
-                    reference.getReferenceBases(null, new SimpleInterval(vc.getContig(), vc.getStart() + svc.getStructuralVariantLength() + 1, vc.getStart() + svc.getStructuralVariantLength() + paddingSize)).getBases());
+            expectedBases = Utils.concat(reference.getReferenceBases(
+                    new SimpleInterval(vc.getContig(), vc.getStart() + 1 - paddingSize, vc.getStart())).getBases(),
+                    reference.getReferenceBases(
+                            new SimpleInterval(vc.getContig(), vc.getStart() + svc.getStructuralVariantLength() + 1, vc.getStart() + svc.getStructuralVariantLength() + paddingSize)).getBases());
             expectedCigar = new Cigar(Arrays.asList(new CigarElement(paddingSize, CigarOperator.M), new CigarElement(svc.getStructuralVariantLength(), CigarOperator.D), new CigarElement(paddingSize, CigarOperator.M)));
         }
         Assert.assertEquals(altHaplotype.getCigar(), expectedCigar);
@@ -243,7 +246,7 @@ public class SVContextUnitTest extends GATKBaseTest {
     }
 
     private static ReferenceMultiSource referenceMultiSource(final String fastaFileName) {
-        return new ReferenceMultiSource((com.google.cloud.dataflow.sdk.options.PipelineOptions) null, fastaFileName,
-                (r) -> new SimpleInterval(r.getContig(), r.getAssignedStart(), r.getEnd()));
+        return new ReferenceMultiSource(fastaFileName,
+                                        (r) -> new SimpleInterval(r.getContig(), r.getAssignedStart(), r.getEnd()));
     }
 }

@@ -1,13 +1,13 @@
 package org.broadinstitute.hellbender.engine.spark;
 
 import com.google.api.services.genomics.model.Read;
-import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMRecord;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hellbender.utils.KV;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;

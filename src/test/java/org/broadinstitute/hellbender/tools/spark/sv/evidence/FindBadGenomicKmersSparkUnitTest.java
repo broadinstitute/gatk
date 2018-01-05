@@ -57,7 +57,7 @@ public class FindBadGenomicKmersSparkUnitTest extends GATKBaseTest {
     @Test(groups = "sv")
     public void miniRefTest() throws IOException {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        final ReferenceMultiSource ref = new ReferenceMultiSource((com.google.cloud.dataflow.sdk.options.PipelineOptions)null,
+        final ReferenceMultiSource ref = new ReferenceMultiSource(
                 REFERENCE_FILE_NAME, ReferenceWindowFunctions.IDENTITY_FUNCTION);
         final SAMSequenceDictionary dict = ref.getReferenceSequenceDictionary(null);
         if ( dict == null ) throw new GATKException("No reference dictionary available.");
@@ -65,7 +65,7 @@ public class FindBadGenomicKmersSparkUnitTest extends GATKBaseTest {
         final Map<SVKmer, Long> kmerMap = new LinkedHashMap<>();
         for ( final SAMSequenceRecord rec : dict.getSequences() ) {
             final SimpleInterval interval = new SimpleInterval(rec.getSequenceName(), 1, rec.getSequenceLength());
-            final byte[] bases = ref.getReferenceBases(null, interval).getBases();
+            final byte[] bases = ref.getReferenceBases(interval).getBases();
             SVKmerizer.canonicalStream(bases, KMER_SIZE, new SVKmerLong())
                     .forEach(kmer -> kmerMap.put(kmer, kmerMap.getOrDefault(kmer, 0L) + 1));
         }

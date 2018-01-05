@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.engine.spark;
 
-import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.spark.api.java.JavaRDD;
@@ -414,10 +413,9 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * Initializes our reference source. Does nothing if no reference was specified.
      */
     private void initializeReference() {
-        final GCSOptions gcsOptions = getAuthenticatedGCSOptions(); // null if we have no api key
         final String referenceURL = referenceArguments.getReferenceFileName();
         if ( referenceURL != null ) {
-            referenceSource = new ReferenceMultiSource(gcsOptions, referenceURL, getReferenceWindowFunction());
+            referenceSource = new ReferenceMultiSource(referenceURL, getReferenceWindowFunction());
             referenceDictionary = referenceSource.getReferenceSequenceDictionary(readsHeader != null ? readsHeader.getSequenceDictionary() : null);
             if (referenceDictionary == null) {
                 throw new UserException.MissingReferenceDictFile(referenceURL);

@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.common.base.Stopwatch;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -15,7 +14,6 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
-import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.engine.ContextShard;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.VariantsSource;
@@ -77,9 +75,6 @@ public class BaseRecalibratorSparkSharded extends SparkCommandLineProgram {
               shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
     private String outputTablesPath = null;
 
-
-    private AuthHolder auth;
-
     @Override
     protected void runPipeline( JavaSparkContext ctx ) {
         if ( readArguments.getReadFilesNames().size() != 1 ) {
@@ -88,9 +83,7 @@ public class BaseRecalibratorSparkSharded extends SparkCommandLineProgram {
         final String bam = readArguments.getReadFilesNames().get(0);
         final String referenceURL = referenceArguments.getReferenceFileName();
 
-        auth = getAuthHolder();
-
-        final ReferenceMultiSource rds = new ReferenceMultiSource(auth, referenceURL, BaseRecalibrationEngine.BQSR_REFERENCE_WINDOW_FUNCTION);
+        final ReferenceMultiSource rds = new ReferenceMultiSource(referenceURL, BaseRecalibrationEngine.BQSR_REFERENCE_WINDOW_FUNCTION);
 
         SAMFileHeader readsHeader = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency()).getHeader(bam, referenceURL);
         final SAMSequenceDictionary readsDictionary = readsHeader.getSequenceDictionary();
@@ -126,7 +119,7 @@ public class BaseRecalibratorSparkSharded extends SparkCommandLineProgram {
         BaseRecalibrationEngine.finalizeRecalibrationTables(table);
 
         try {
-            BaseRecalibratorEngineSparkWrapper.saveTextualReport(outputTablesPath, readsHeader, table, bqsrArgs, auth);
+            BaseRecalibratorEngineSparkWrapper.saveTextualReport(outputTablesPath, readsHeader, table, bqsrArgs);
         } catch (IOException e) {
             throw new UserException.CouldNotCreateOutputFile(new File(outputTablesPath), e);
         }
@@ -146,7 +139,6 @@ public class BaseRecalibratorSparkSharded extends SparkCommandLineProgram {
                     copied=true;
                 }
                 // this only works with the API_KEY, but then again it's a hack so there's no point in polishing it. Please don't make me.
-                PipelineOptions popts = auth.asPipelineOptionsDeprecated();
                 String d = IOUtils.createTempFile("knownVariants-"+i,".vcf").getAbsolutePath();
                 try {
                     BucketUtils.copyFile(v, d);

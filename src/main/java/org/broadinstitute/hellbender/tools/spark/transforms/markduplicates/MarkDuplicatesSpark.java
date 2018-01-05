@@ -78,7 +78,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         if (metricsFile != null) {
             final JavaPairRDD<String, DuplicationMetrics> metricsByLibrary = MarkDuplicatesSparkUtils.generateMetrics(getHeaderForReads(), finalReadsForMetrics);
             final MetricsFile<DuplicationMetrics, Double> resultMetrics = getMetricsFile();
-            MarkDuplicatesSparkUtils.saveMetricsRDD(resultMetrics, getHeaderForReads(), metricsByLibrary, metricsFile, getAuthHolder());
+            MarkDuplicatesSparkUtils.saveMetricsRDD(resultMetrics, getHeaderForReads(), metricsByLibrary, metricsFile);
         }
 
         final JavaRDD<GATKRead> finalReads = cleanupTemporaryAttributes(finalReadsForMetrics);

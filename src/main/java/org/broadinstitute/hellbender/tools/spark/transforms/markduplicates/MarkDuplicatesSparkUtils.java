@@ -5,7 +5,6 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
-import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.metrics.MetricsUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -324,7 +323,7 @@ public class MarkDuplicatesSparkUtils {
      * Note: the SamFileHeader is needed in order to include libraries that didn't have any duplicates.
      * @param result metrics object, potentially pre-initialized with headers,
      */
-    public static void saveMetricsRDD(final MetricsFile<DuplicationMetrics, Double> result, final SAMFileHeader header, final JavaPairRDD<String, DuplicationMetrics> metricsRDD, final String metricsOutputPath, AuthHolder authHolder) {
+    public static void saveMetricsRDD(final MetricsFile<DuplicationMetrics, Double> result, final SAMFileHeader header, final JavaPairRDD<String, DuplicationMetrics> metricsRDD, final String metricsOutputPath) {
         final LibraryIdGenerator libraryIdGenerator = new LibraryIdGenerator(header);
 
         final Map<String, DuplicationMetrics> nonEmptyMetricsByLibrary = metricsRDD.collectAsMap();           //Unknown Library

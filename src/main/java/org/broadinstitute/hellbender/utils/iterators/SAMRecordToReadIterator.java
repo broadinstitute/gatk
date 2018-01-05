@@ -1,10 +1,8 @@
 package org.broadinstitute.hellbender.utils.iterators;
 
-import com.google.api.services.genomics.model.Read;
-import com.google.cloud.genomics.utils.ReadUtils;
+
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.GoogleGenomicsReadToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 
 import java.util.Iterator;

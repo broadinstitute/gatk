@@ -36,17 +36,12 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
             this.expectedFileName = expectedFileName;
         }
 
-        public String getCommandLineNoApiKey() {
+        public String getCommandLine() {
             return  " -R " + referenceURL +
                     " -I " + bam +
                     " " + args +
                     (knownSites.isEmpty() ? "": " -knownSites " + knownSites) +
                     " -O %s";
-        }
-
-        public String getCommandLine() {
-            return  getCommandLineNoApiKey() +
-                    " --apiKey " + getGCPTestApiKey();
         }
 
         @Override
@@ -141,7 +136,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
 
     @Test(dataProvider = "BQSRTest", groups = "spark")
     public void testBQSRSpark(BQSRTest params) throws IOException {
-        ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLineNoApiKey());
+        ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLine());
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 ab.getString(),
                 Arrays.asList(params.expectedFileName));
@@ -203,7 +198,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
 
         BQSRTest params = new BQSRTest(b37_reference_20_21, hiSeqBam_chr20, dbSNPb37_chr20, "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL);
 
-        ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLineNoApiKey());
+        ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLine());
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 ab.getString(),
                 1,
@@ -251,15 +246,15 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
 
         final String tablePre = createTempFile("gatk4.pre.cols", ".table").getAbsolutePath();
         final String argPre = " -R " + ReferenceAPISource.URL_PREFIX + chr2021Reference2bit + "-indelBQSR -enableBAQ " +" -knownSites " + dbSNPb37_chr2021 + " -I " + HiSeqBam_chr20
-                + " -O " + tablePre + " " + " --apiKey " + getGCPTestApiKey();
+                + " -O " + tablePre;
         new BaseRecalibratorSpark().instanceMain(Utils.escapeExpressions(argPre));
 
-        final String argApply = "-I " + HiSeqBam_chr20 + " --bqsr_recal_file " + tablePre + " -O " + actualHiSeqBam_recalibrated.getAbsolutePath() + " --apiKey " + getGCPTestApiKey();
+        final String argApply = "-I " + HiSeqBam_chr20 + " --bqsr_recal_file " + tablePre + " -O " + actualHiSeqBam_recalibrated.getAbsolutePath();
         new ApplyBQSRSpark().instanceMain(Utils.escapeExpressions(argApply));
 
         final File actualTablePost = createTempFile("gatk4.post.cols", ".table");
         final String argsPost = " -R " + ReferenceAPISource.URL_PREFIX + chr2021Reference2bit + "-indelBQSR -enableBAQ " +" -knownSites " + dbSNPb37_chr2021 + " -I " + actualHiSeqBam_recalibrated.getAbsolutePath()
-                + " -O " + actualTablePost.getAbsolutePath() + " " + " --apiKey " + getGCPTestApiKey();
+                + " -O " + actualTablePost.getAbsolutePath();
         new BaseRecalibratorSpark().instanceMain(Utils.escapeExpressions(argsPost));
 
         final File expectedHiSeqBam_recalibrated = new File(resourceDir + "expected.NA12878.chr17_69k_70k.dictFix.recalibrated.DIQ.bam");

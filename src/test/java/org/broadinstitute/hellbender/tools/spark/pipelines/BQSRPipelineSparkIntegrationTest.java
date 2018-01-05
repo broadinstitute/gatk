@@ -36,17 +36,12 @@ public class BQSRPipelineSparkIntegrationTest extends CommandLineProgramTest {
             this.expectedFileName = expectedFileName;
         }
 
-        public String getCommandLineNoApiKey() {
+        public String getCommandLine() {
             return  " -R " + referenceURL +
                     " -I " + bam +
                     " " + args +
                     (knownSites.isEmpty() ? "": " --knownSites " + knownSites) +
                     " -O %s";
-        }
-
-        public String getCommandLine() {
-            return  getCommandLineNoApiKey() +
-                    " --apiKey " + getGCPTestApiKey();
         }
 
         @Override
@@ -127,7 +122,7 @@ public class BQSRPipelineSparkIntegrationTest extends CommandLineProgramTest {
 
         BQSRTest params = new BQSRTest(b37_reference_20_21, hiSeqBam_chr20, dbSNPb37_chr20, ".bam", "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL);
 
-        ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLineNoApiKey());
+        ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLine());
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 ab.getString(),
                 1,
