@@ -1,9 +1,9 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
-setup(name='gatkpython',
+setup(name='gatkpythonpackages',
       version='0.1',
-      description='Testing install from archive',
+      description='GATK python packages',
       author='GATK Team',
-      packages=['gatkpython'],
+      packages=find_packages(),
       zip_safe=False)
 

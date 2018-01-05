@@ -12,5 +12,7 @@
   "CNVGermlineCohortWorkflow.gcnv_disable_annealing": true,
   "CNVGermlineCohortWorkflow.gcnv_min_training_epochs": 1,
   "CNVGermlineCohortWorkflow.gcnv_max_training_epochs": 1,
-  "CNVGermlineCohortWorkflow.gcnv_num_thermal_epochs": 1
+  "CNVGermlineCohortWorkflow.gcnv_num_thermal_epochs": 1,
+  "CNVGermlineCohortWorkflow.cpu_for_determine_germline_contig_ploidy": 1,
+  "CNVGermlineCohortWorkflow.cpu_for_germline_cnv_caller": 1
 }

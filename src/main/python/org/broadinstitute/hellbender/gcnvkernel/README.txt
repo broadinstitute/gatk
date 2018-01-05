@@ -39,5 +39,6 @@ Even though `gcnvkernel` can be used as a standalone tool, its intended use case
 privately called by GATK CLI tools. As such, the outputs of `gcnvkernel` are considered
 _intermediate_ and to be further processed and properly formatted by GATK. Advanced users
 may choose to use all or parts of `gcnvkernel` methods directly, either using the python CLI
-scripts provided in `bin`, or in interactive python environments for exploratory analyses.
+scripts provided in `src/main/resources/org/broadinstitute/hellbender/tools/copynumber`, 
+or in interactive python environments for exploratory analyses.
 
