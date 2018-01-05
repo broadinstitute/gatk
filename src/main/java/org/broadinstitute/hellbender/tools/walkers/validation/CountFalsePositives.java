@@ -30,7 +30,7 @@ import java.util.List;
  * <h3>Example</h3>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" CountFalsePositives \
+ * gatk --java-options "-Xmx4g" CountFalsePositives \
  *   -V filtered.vcf.gz \
  *   -R ref_fasta.fa \
  *   -O false-positives.txt

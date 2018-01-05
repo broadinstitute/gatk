@@ -32,7 +32,7 @@ public abstract class SparkToggleCommandLineProgram extends SparkCommandLineProg
         if (!isDisableSpark) {
             ctx = SparkContextFactory.getSparkContext(getProgramName(), sparkArgs.getSparkProperties(), sparkArgs.getSparkMaster());
         } else {
-            logger.info("Spark disabled.  sparkMaster option (" + sparkArgs.getSparkMaster() + ") ignored.");
+            logger.info("Spark disabled.  spark-master option (" + sparkArgs.getSparkMaster() + ") ignored.");
         }
 
         try {

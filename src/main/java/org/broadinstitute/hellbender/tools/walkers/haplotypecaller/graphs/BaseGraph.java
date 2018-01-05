@@ -586,7 +586,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
      * @return a edge
      */
     private E getSingletonEdge(final Collection<E> edges) {
-        Utils.validateArg(edges.size() <= 1, "Cannot get a single incoming edge for a vertex with multiple incoming edges " + edges);
+        Utils.validateArg(edges.size() <= 1, () -> "Cannot get a single incoming edge for a vertex with multiple incoming edges " + edges);
         return edges.isEmpty() ? null : edges.iterator().next();
     }
 

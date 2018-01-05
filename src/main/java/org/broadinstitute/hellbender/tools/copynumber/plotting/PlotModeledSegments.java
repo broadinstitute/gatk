@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
  * <h3>Example</h3>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" PlotModeledSegments \
+ * gatk --java-options "-Xmx4g" PlotModeledSegments \
  *   --allelicCounts tumor.hets.tsv \
  *   --denoisedCopyRatios tumor.denoisedCR.tsv \
  *   --segments tumor.modelFinal.seg \

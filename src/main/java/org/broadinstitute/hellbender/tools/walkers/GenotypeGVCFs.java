@@ -50,7 +50,7 @@ import java.util.*;
  *
  * <h4>Perform joint genotyping on a set of GVCFs enumerated in the command line</h4>
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" GenotypeGVCFs \
+ * gatk --java-options "-Xmx4g" GenotypeGVCFs \
  *   -R reference.fasta \
  *   -V input1.g.vcf \
  *   -V input2.g.vcf \
@@ -60,7 +60,7 @@ import java.util.*;
  *
  * <h4>Perform joint genotyping on a set of GVCFs listed in a text file, one per line</h4>
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" GenotypeGVCFs \
+ * gatk --java-options "-Xmx4g" GenotypeGVCFs \
  *   -R reference.fasta \
  *   -V input_gvcfs.list \
  *   -O output.vcf

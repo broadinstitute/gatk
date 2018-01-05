@@ -25,6 +25,7 @@ public class PythonEnvironmentIntegrationTest {
                 { "keras" },
                 { "pymc3" },
                 { "argparse" },
+                { "gatkpython" }, // termporary test of the install-from-archive option
         };
     }
 

@@ -74,7 +74,7 @@ public final class FragmentUtils {
         final GATKRead firstRead = overlappingPair.get(0);
         final GATKRead secondRead = overlappingPair.get(1);
 
-        if ( ReadUtils.getSoftStart(secondRead) < ReadUtils.getSoftStart(firstRead) ) {
+        if ( secondRead.getSoftStart() < firstRead.getSoftStart() ) {
             adjustQualsOfOverlappingPairedFragments(secondRead, firstRead);
         }
         else {
