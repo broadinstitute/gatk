@@ -4,6 +4,9 @@ import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
+import org.broadinstitute.hellbender.utils.IntervalMergingRule;
+import org.broadinstitute.hellbender.utils.IntervalSetRule;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -54,9 +57,9 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
                 new Interval("20", 100_201, 102_100)
         );
         final List<Interval> expectedBinsOverlappingIntervalTest = Arrays.asList(
-                new Interval("20", 99_701, 109_700),
-                new Interval("20", 109_701, 119_700),
-                new Interval("20", 119_701, 120_500)
+                new Interval("20", 99_701, 102_550),
+                new Interval("20", 102_551, 112_550),
+                new Interval("20", 112_551, 120_500)
         );
 
         // Test for intervals reaching the ends of the contigs
@@ -134,8 +137,9 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
         final File outputFile = createTempFile(outputFileName[0], outputFileName[1]);
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addArgument(PreprocessIntervals.BIN_LENGTH_SHORT_NAME, Integer.toString(binLength))
-                .addArgument(PreprocessIntervals.PADDING_SHORT_NAME, Integer.toString(paddingLength))
+                .addArgument(PreprocessIntervals.BIN_LENGTH_LONG_NAME, Integer.toString(binLength))
+                .addArgument(PreprocessIntervals.PADDING_LONG_NAME, Integer.toString(paddingLength))
+                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
                 .addOutput(outputFile);
         inputIntervals.forEach(i -> argsBuilder.addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, i.getContig() + ":" + i.getStart() + "-" + i.getEnd()));
         runCommandLine(argsBuilder);
@@ -152,9 +156,10 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
         final File outputFile = createTempFile("preprocess-intervals-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addArgument(PreprocessIntervals.BIN_LENGTH_SHORT_NAME, Integer.toString(binLength))
-                .addArgument(PreprocessIntervals.PADDING_SHORT_NAME, Integer.toString(paddingLength))
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME,  INTERVAL_LIST_FILE.getAbsolutePath())
+                .addArgument(PreprocessIntervals.BIN_LENGTH_LONG_NAME, Integer.toString(binLength))
+                .addArgument(PreprocessIntervals.PADDING_LONG_NAME, Integer.toString(paddingLength))
+                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVAL_LIST_FILE.getAbsolutePath())
+                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
         final IntervalList binsResult = IntervalList.fromFile(outputFile);
@@ -165,5 +170,49 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
         binsExpected.add(new Interval("20", 115_001, 125_000));
 
         Assert.assertEquals(binsResult, binsExpected);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testIntervalSetRule() {
+        final File resultOutputFile = createTempFile("preprocess-intervals-test", ".tsv");
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
+                .addReference(REFERENCE_FILE)
+                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVAL_LIST_FILE.getAbsolutePath())
+                .addArgument(IntervalArgumentCollection.INTERVAL_SET_RULE_LONG_NAME, IntervalSetRule.INTERSECTION.toString())
+                .addOutput(resultOutputFile);
+        runCommandLine(argsBuilder);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testIntervalExclusionPadding() {
+        final File resultOutputFile = createTempFile("preprocess-intervals-test", ".tsv");
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
+                .addReference(REFERENCE_FILE)
+                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVAL_LIST_FILE.getAbsolutePath())
+                .addArgument(IntervalArgumentCollection.INTERVAL_EXCLUSION_PADDING_LONG_NAME,"1")
+                .addOutput(resultOutputFile);
+        runCommandLine(argsBuilder);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testIntervalPadding() {
+        final File resultOutputFile = createTempFile("preprocess-intervals-test", ".tsv");
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
+                .addReference(REFERENCE_FILE)
+                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVAL_LIST_FILE.getAbsolutePath())
+                .addArgument(IntervalArgumentCollection.INTERVAL_PADDING_LONG_NAME,"1")
+                .addOutput(resultOutputFile);
+        runCommandLine(argsBuilder);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testIntervalMergingRule() {
+        final File resultOutputFile = createTempFile("preprocess-intervals-test", ".tsv");
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
+                .addReference(REFERENCE_FILE)
+                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVAL_LIST_FILE.getAbsolutePath())
+                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.ALL.toString())
+                .addOutput(resultOutputFile);
+        runCommandLine(argsBuilder);
     }
 }

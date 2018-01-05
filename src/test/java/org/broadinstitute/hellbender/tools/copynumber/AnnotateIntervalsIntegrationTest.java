@@ -42,7 +42,7 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
         final File outputFile = createTempFile("annotate-intervals-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME,  INTERVALS_FILE.getAbsolutePath())
+                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
                 .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
                 .addOutput(outputFile);
         runCommandLine(argsBuilder);
@@ -78,7 +78,7 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
                 .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
-                .addArgument(IntervalArgumentCollection.INTERVAL_EXCLUSION_PADDING_LONG_NAME, "1")
+                .addArgument(IntervalArgumentCollection.INTERVAL_EXCLUSION_PADDING_LONG_NAME,"1")
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
     }
@@ -89,7 +89,7 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
                 .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
-                .addArgument(IntervalArgumentCollection.INTERVAL_PADDING_LONG_NAME, "1")
+                .addArgument(IntervalArgumentCollection.INTERVAL_PADDING_LONG_NAME,"1")
                 .addOutput(resultOutputFile);
         runCommandLine(argsBuilder);
     }
