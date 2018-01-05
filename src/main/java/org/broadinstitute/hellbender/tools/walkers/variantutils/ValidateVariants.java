@@ -12,7 +12,7 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.VariantEvaluationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -27,9 +27,11 @@ import java.util.*;
 /**
  * Validate a VCF file with a strict set of criteria
  *
- * <p>This tool is designed to validate the correctness of the formatting of VCF files. In addition to standard
- * adherence to the VCF specification, this tool performs extra strict validations to ensure that the information
- * contained within the file is correctly encoded. These include:
+ * <p> This tool is designed to validate the adherence of a file to VCF format. The tool will validate .g.vcf GVCF
+ * format files as well. For VCF specifications, see
+ * <a href='https://samtools.github.io/hts-specs/'>https://samtools.github.io/hts-specs/</a>.
+ * Besides standard adherence to the VCF specification, this tool performs additional strict validations to ensure
+ * that the information contained within the file is correctly encoded. These include:
  * </p>
  *
  * <ul>
@@ -40,10 +42,10 @@ import java.util.*;
  * </ul>
  *
  * <p>
- *     By default the tool applies all the strict validations unless you indicate which one you want you want to
- *     exclude using `--validationTypeToExclude`. You can exclude as many types as you want. You can exclude all strict
- *     validations with the special code `ALL`. In this case the tool will only test for adherence to the VCF
- *     specification.
+ *     By default the tool applies all the strict validations unless you indicate which one should be
+ *     excluded using `--validation-type-to-exclude`. You can exclude as many types as you want. Furthermore, you
+ *     can exclude all strict validations with the special code `ALL`. In this case the tool will only test for
+ *     adherence to the VCF specification.
  * </p>
  *
  * <h3>Input</h3>
@@ -53,9 +55,19 @@ import java.util.*;
  *
  * <h3>Usage examples</h3>
  *
+ * <h4>Minimally validate a file for adherence to VCF format:</h4>
+ * gatk ValidateVariants \
+ *     -V cohort.vcf.gz
+ *
+ * <h4>Validate a GVCF for adherence to VCF format, including REF allele match:</h4>
+ * gatk ValidateVariants \
+ *     -V sample.g.vcf.gz \
+ *     -R reference.fasta
+ *     -gvcf
+ *
  * <h4>To perform VCF format and all strict validations: </h4>
  * <pre>
- *   gatk ValidateVariants \
+ * gatk ValidateVariants \
  *   -R ref.fasta \
  *   -V input.vcf \
  *   --dbsnp dbsnp.vcf
@@ -63,18 +75,18 @@ import java.util.*;
  *
  * <h4>To perform only VCF format tests:</h4>
  * <pre>
- *   gatk ValidateVariants
+ * gatk ValidateVariants
  *   -R ref.fasta \
  *   -V input.vcf \
- *   --validationTypeToExclude ALL
+ *   --validation-type-to-exclude ALL
  * </pre>
  *
  * <h4>To perform all validations except the strict `ALLELE` validation:</h4>
  * <pre>
- *   gatk ValidateVariants \
+ * gatk ValidateVariants \
  *   -R ref.fasta \
  *   -V input.vcf \
- *   --validationTypeToExclude ALLELES \
+ *   --validation-type-to-exclude ALLELES \
  *   --dbsnp dbsnp.vcf
  * </pre>
  *
@@ -82,14 +94,14 @@ import java.util.*;
 @CommandLineProgramProperties(
         summary = "Validates a VCF file with an extra strict set of criteria.",
         oneLineSummary = "Validate VCF",
-        programGroup = VariantProgramGroup.class
+        programGroup = VariantEvaluationProgramGroup.class
 )
 @DocumentedFeature
 public final class ValidateVariants extends VariantWalker {
     static final Logger logger = LogManager.getLogger(ValidateVariants.class);
 
-    public static final String GVCF_VALIDATE = "validateGVCF";
-    public static final String DO_NOT_VALIDATE_FILTERED_RECORDS = "doNotValidateFilteredRecords";
+    public static final String GVCF_VALIDATE = "validate-GVCF";
+    public static final String DO_NOT_VALIDATE_FILTERED_RECORDS = "do-not-validate-filtered-records";
 
     public enum ValidationType {
 
@@ -140,16 +152,26 @@ public final class ValidateVariants extends VariantWalker {
     @ArgumentCollection
     DbsnpArgumentCollection dbsnp = new DbsnpArgumentCollection();
 
-    @Argument(fullName = "validationTypeToExclude", shortName = "Xtype", doc = "which validation type to exclude from a full strict validation", optional = true)
+    @Argument(fullName = "validation-type-to-exclude",
+            shortName = "Xtype",
+            doc = "which validation type to exclude from a full strict validation",
+            optional = true)
     List<ValidationType> excludeTypes = new ArrayList<>();
 
     /**
      * By default, even filtered records are validated.
      */
-    @Argument(fullName = DO_NOT_VALIDATE_FILTERED_RECORDS, shortName = "doNotValidateFilteredRecords", doc = "skip validation on filtered records", optional = true, mutex = GVCF_VALIDATE)
+    @Argument(fullName = DO_NOT_VALIDATE_FILTERED_RECORDS,
+            shortName = "do-not-validate-filtered-records",
+            doc = "skip validation on filtered records",
+            optional = true,
+            mutex = GVCF_VALIDATE)
     Boolean DO_NOT_VALIDATE_FILTERED = false;
 
-    @Argument(fullName = "warnOnErrors", shortName = "warnOnErrors", doc = "just emit warnings on errors instead of terminating the run at the first instance", optional = true)
+    @Argument(fullName = "warn-on-errors",
+            shortName = "warn-on-errors",
+            doc = "just emit warnings on errors instead of terminating the run at the first instance",
+            optional = true)
     Boolean WARN_ON_ERROR = false;
 
     /**
@@ -158,7 +180,11 @@ public final class ValidateVariants extends VariantWalker {
      *  If you specifed intervals (using -L or -XL) to restrict analysis to a subset of genomic regions,
      *  those intervals will need to be covered in a valid gvcf.
      */
-    @Argument(fullName = GVCF_VALIDATE, shortName = "gvcf", doc = "Validate this file as a GVCF", optional = true, mutex = DO_NOT_VALIDATE_FILTERED_RECORDS)
+    @Argument(fullName = GVCF_VALIDATE,
+            shortName = "gvcf",
+            doc = "Validate this file as a GVCF",
+            optional = true,
+            mutex = DO_NOT_VALIDATE_FILTERED_RECORDS)
     Boolean VALIDATE_GVCF = false;
 
     /**
@@ -278,11 +304,11 @@ public final class ValidateVariants extends VariantWalker {
         }
         final Set<ValidationType> excludeTypeSet = new LinkedHashSet<>(excludeTypes);
         if (excludeTypes.size() != excludeTypeSet.size()) {
-            logger.warn("found repeat redundant validation types listed using the --validationTypeToExclude argument");
+            logger.warn("found repeat redundant validation types listed using the --validation-type-to-exclude argument");
         }
         if (excludeTypeSet.contains(ValidationType.ALL)) {
             if (excludeTypeSet.size() > 1) {
-                logger.warn("found ALL in the --validationTypeToExclude list together with other concrete type exclusions that are redundant");
+                logger.warn("found ALL in the --validation-type-to-exclude list together with other concrete type exclusions that are redundant");
             }
             return Collections.emptyList();
         } else {

@@ -21,7 +21,7 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
 
     public String baseTestString(boolean sharedFile, String file, boolean exclude, ValidateVariants.ValidationType type, String region, String reference) {
         final String filePath = sharedFile ? file: getToolTestDataDir() + file;
-        final String typeArgString = exclude ? " --validationTypeToExclude " + type.name() : excludeValidationTypesButString(type);
+        final String typeArgString = exclude ? " --validation-type-to-exclude " + type.name() : excludeValidationTypesButString(type);
         final String intervals = region == null ? "" : " -L " + region;
         final String referenceString = reference == null ? "" : " -R " + reference;
 
@@ -30,7 +30,7 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
 
     public String baseTestStringWithoutReference(boolean sharedFile, String file, boolean exclude, ValidateVariants.ValidationType type) {
         final String filePath = sharedFile ? file: getToolTestDataDir() + file;
-        final String typeArgString = exclude ? " --validationTypeToExclude " + type.name() : excludeValidationTypesButString(type);
+        final String typeArgString = exclude ? " --validation-type-to-exclude " + type.name() : excludeValidationTypesButString(type);
         return " --variant " + filePath + typeArgString;
     }
 
@@ -41,7 +41,7 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
         final StringBuilder sbuilder = new StringBuilder();
         for (final ValidateVariants.ValidationType t : CONCRETE_TYPES) {
             if (t != type) {
-                sbuilder.append(" --validationTypeToExclude ").append(t.toString());
+                sbuilder.append(" --validation-type-to-exclude ").append(t.toString());
             }
         }
         return sbuilder.toString();
