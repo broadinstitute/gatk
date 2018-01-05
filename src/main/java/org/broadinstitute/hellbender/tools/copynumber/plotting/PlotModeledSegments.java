@@ -137,6 +137,7 @@ public final class PlotModeledSegments extends CommandLineProgram {
 
     @Argument(
             doc = PlottingUtils.SEQUENCE_DICTIONARY_DOC_STRING,
+            fullName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME,
             shortName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME
     )
     private File inputSequenceDictionaryFile;
