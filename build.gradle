@@ -183,7 +183,7 @@ dependencies {
     compile 'org.broadinstitute:hdf5-java-bindings:1.1.0-hdf5_2.11.0'
     compile 'org.nd4j:nd4j-native-platform:0.5.0'
     compile 'org.nd4j:nd4j-kryo_2.11:0.5.0'
-    compile 'org.broadinstitute:gatk-native-bindings:0.1.0-rc-1'
+    compile 'org.broadinstitute:gatk-native-bindings:1.0.0'
 
     compile 'org.ojalgo:ojalgo:44.0.0'
     compile ('org.ojalgo:ojalgo-commons-math3:1.0.0') {
@@ -243,8 +243,8 @@ dependencies {
         exclude module: 'htsjdk'
     }
 
-    compile 'org.broadinstitute:gatk-bwamem-jni:1.0.3'
-    compile 'org.broadinstitute:gatk-fermilite-jni:1.0.0-rc6'
+    compile 'org.broadinstitute:gatk-bwamem-jni:1.0.4'
+    compile 'org.broadinstitute:gatk-fermilite-jni:1.1.0'
 
     // Required for COSMIC Funcotator data source:
     compile 'org.xerial:sqlite-jdbc:3.20.1'
