@@ -91,7 +91,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
             doc="The combined GVCF output file", optional=false)
     private File outputFile;
 
-    @Argument(fullName="convertToBasePairResolution", shortName="bpResolution", doc = "If specified, convert banded gVCFs to all-sites gVCFs", optional=true)
+    @Argument(fullName="convert-to-base-pair-resolution", shortName="bp-resolution", doc = "If specified, convert banded gVCFs to all-sites gVCFs", optional=true)
     protected boolean useBpResolution = false;
 
     /**
@@ -101,7 +101,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
      *
      * Note that the --convertToBasePairResolution argument is just a special case of this argument with a value of 1.
      */
-    @Argument(fullName="breakBandsAtMultiplesOf", shortName="breakBandsAtMultiplesOf", doc = "If > 0, reference bands will be broken up at genomic positions that are multiples of this number", optional=true)
+    @Argument(fullName="break-bands-at-multiples-of", doc = "If > 0, reference bands will be broken up at genomic positions that are multiples of this number", optional=true)
     protected int multipleAtWhichToBreakBands = 0;
 
     /**
