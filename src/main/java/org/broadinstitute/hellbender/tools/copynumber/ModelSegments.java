@@ -407,7 +407,7 @@ public final class ModelSegments extends CommandLineProgram {
             optional = true,
             minValue = 0.
     )
-    private double smoothingCredibleIntervalThresholdCopyRatio = 5.;
+    private double smoothingCredibleIntervalThresholdCopyRatio = 2.;
 
     @Argument(
             doc = "Number of 10% equal-tailed credible-interval widths to use for allele-fraction segmentation smoothing.",
@@ -415,7 +415,7 @@ public final class ModelSegments extends CommandLineProgram {
             optional = true,
             minValue = 0.
     )
-    private double smoothingCredibleIntervalThresholdAlleleFraction = 5.;
+    private double smoothingCredibleIntervalThresholdAlleleFraction = 2.;
 
     @Argument(
             doc = "Maximum number of iterations allowed for segmentation smoothing.",

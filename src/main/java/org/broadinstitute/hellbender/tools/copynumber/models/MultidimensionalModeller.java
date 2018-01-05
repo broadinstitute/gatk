@@ -259,7 +259,7 @@ public final class MultidimensionalModeller {
                 return true;
             }
             final double absoluteDifference = Math.abs(summary1.getDecile50() - summary2.getDecile50());
-            return absoluteDifference < intervalThreshold * (summary1.getDecile90() - summary1.getDecile10()) &&
+            return absoluteDifference < intervalThreshold * (summary1.getDecile90() - summary1.getDecile10()) ||
                     absoluteDifference < intervalThreshold * (summary2.getDecile90() - summary2.getDecile10());
         }
 
