@@ -391,9 +391,9 @@ task ModelSegments {
             --minimum-total-allele-count ${default="30" min_total_allele_count} \
             --genotyping-homozygous-log-ratio-threshold ${default="-10.0" genotyping_homozygous_log_ratio_threshold} \
             --genotyping-base-error-rate ${default="0.05" genotyping_base_error_rate} \
-            --maximum-number-of-segments-per-chromosome ${default="500" max_num_segments_per_chromosome} \
+            --maximum-number-of-segments-per-chromosome ${default="1000" max_num_segments_per_chromosome} \
             --kernel-variance-copy-ratio ${default="0.0" kernel_variance_copy_ratio} \
-            --kernel-variance-allele-fraction ${default="0.01" kernel_variance_allele_fraction} \
+            --kernel-variance-allele-fraction ${default="0.025" kernel_variance_allele_fraction} \
             --kernel-scaling-allele-fraction ${default="1.0" kernel_scaling_allele_fraction} \
             --kernel-approximation-dimension ${default="100" kernel_approximation_dimension} \
             --window-size ${sep= " --window-size " window_sizes} \

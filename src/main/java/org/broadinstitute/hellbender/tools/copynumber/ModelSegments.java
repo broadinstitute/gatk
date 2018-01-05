@@ -312,7 +312,7 @@ public final class ModelSegments extends CommandLineProgram {
             minValue = 0.,
             optional = true
     )
-    private double kernelVarianceAlleleFraction = 0.01;
+    private double kernelVarianceAlleleFraction = 0.025;
 
     @Argument(
             doc = "Relative scaling S of the kernel K_AF for allele-fraction segmentation to the kernel K_CR for copy-ratio segmentation.  " +
