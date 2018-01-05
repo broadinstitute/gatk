@@ -365,4 +365,34 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(third.getGenotypes().size(), 2);
     }
 
+    @Test
+    public void testStartChromosome() throws Exception {
+        final File output = createTempFile("genotypegvcf", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(b37_reference_20_21))
+                .addOutput(output);
+        args.addVCF(getTestFile("gvcfExample1.fullchrom.2021.vcf"));
+        args.addVCF(getTestFile("gvcfExample2.vcf"));
+        args.add("--" + CombineGVCFs.IGNORE_VARIANTS_THAT_START_OUTSIDE_INTERVAL );
+
+        runCommandLine(args);
+
+        final List<VariantContext> allVCs = getVariantContexts(output);
+
+        final VariantContext first = allVCs.get(0);
+        Assert.assertEquals(first.getStart(), 1);
+        Assert.assertEquals(first.getEnd(), 69490);
+        Assert.assertEquals(first.getContig(), "20");
+        Assert.assertEquals(first.getNAlleles(), 2);
+        Assert.assertEquals(first.getGenotypes().size(), 2);
+
+        final VariantContext nextchrom = allVCs.get(19);
+        Assert.assertEquals(nextchrom.getStart(), 1);
+        Assert.assertEquals(nextchrom.getEnd(), 69490);
+        Assert.assertEquals(nextchrom.getContig(), "21");
+        Assert.assertEquals(nextchrom.getNAlleles(), 2);
+        Assert.assertEquals(nextchrom.getGenotypes().size(), 2);
+    }
+
 }

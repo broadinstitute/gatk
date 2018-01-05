@@ -121,7 +121,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
     public void apply(List<VariantContext> variantContexts, ReferenceContext referenceContext) {
         // If we need to stop at an intermediate site since the last apply, do so (caused by gvcfBlocks, contexts ending, etc...)
         if (!variantContextsOverlappingCurrentMerge.isEmpty()) {
-            Locatable last = prevPos==null ? variantContextsOverlappingCurrentMerge.get(0) : prevPos;
+            Locatable last = prevPos!=null && prevPos.getContig().equals(variantContextsOverlappingCurrentMerge.get(0).getContig()) ?  prevPos : variantContextsOverlappingCurrentMerge.get(0);
             // If on a different contig, close out all the queued states on the current contig
             int end = last.getContig().equals(referenceContext.getWindow().getContig())
                     ? referenceContext.getInterval().getStart() - 1
@@ -255,10 +255,12 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
         if ( !variantContexts.isEmpty() ) {
             if ( ! okayToSkipThisSite(variantContexts, referenceContext) ) {
                 SimpleInterval loc = referenceContext.getInterval();
-                endPreviousStates( new SimpleInterval(loc.getContig(),loc.getStart()-1,loc.getStart()-1),
-                        Arrays.copyOfRange(referenceContext.getBases(), 1, referenceContext.getWindow().getLengthOnReference()),
-                        variantContexts,
-                        false);
+                if (loc.getStart()-1 > 0) {
+                    endPreviousStates(new SimpleInterval(loc.getContig(), loc.getStart() - 1, loc.getStart() - 1),
+                            Arrays.copyOfRange(referenceContext.getBases(), 1, referenceContext.getWindow().getLengthOnReference()),
+                            variantContexts,
+                            false);
+                }
             }
             variantContextsOverlappingCurrentMerge.addAll(variantContexts);
             for(final VariantContext vc : variantContextsOverlappingCurrentMerge){
