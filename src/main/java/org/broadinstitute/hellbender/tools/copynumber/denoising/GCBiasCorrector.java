@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.copynumber.denoising;
 
-import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
@@ -8,13 +7,9 @@ import org.apache.commons.math3.linear.RealVector;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberArgumentValidationUtils;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -109,30 +104,6 @@ public final class GCBiasCorrector {
                 return coverage * sampleNormalizationFactors[row];
             }
         });
-    }
-
-    /**
-     * Checks equality of sequence dictionary and intervals against those contained in an
-     * {@link AnnotatedIntervalCollection} represented by {@code inputFile}.
-     * If the latter is {@code null}, then {@code null} is returned; otherwise,
-     * a double array of the GC content in the intervals is returned if the intervals are equal,
-     * and an exception is thrown if they are not.
-     */
-    public static double[] validateIntervalGCContent(final SAMSequenceDictionary sequenceDictionary,
-                                                     final List<SimpleInterval> intervals,
-                                                     final File inputFile) {
-        if (inputFile == null) {
-            logger.info("No GC-content annotations for intervals found; GC-bias correction will not be performed...");
-            return null;
-        }
-        logger.info("Reading and validating GC-content annotations for intervals...");
-        final AnnotatedIntervalCollection annotatedIntervals = new AnnotatedIntervalCollection(inputFile);
-        if (!CopyNumberArgumentValidationUtils.isSameDictionary(annotatedIntervals.getMetadata().getSequenceDictionary(), sequenceDictionary)) {
-            logger.warn("Annotated-intervals file contains incorrect sequence dictionary.");
-        }
-        Utils.validateArg(annotatedIntervals.getIntervals().equals(intervals),
-                "Annotated intervals do not match provided intervals.");
-        return annotatedIntervals.getRecords().stream().mapToDouble(i -> i.getAnnotationSet().getGCContent()).toArray();
     }
 
     /**

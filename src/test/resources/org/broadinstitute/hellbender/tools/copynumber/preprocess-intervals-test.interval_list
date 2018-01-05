@@ -1,8 +1,5 @@
 @HD	VN:1.5
 @SQ	SN:20	LN:63025520
-@SQ	SN:21	LN:48129895
-20	100	200	+	interval-541
-20	400	600	+	interval-542
-20	10000	11000	+	interval-543
-21	20000	22000	+	interval-573
-21	1	100	+	interval-574
+20	10001	20000	+	interval-541
+20	100001	120000	+	interval-542
+20	100001	110000	+	interval-543

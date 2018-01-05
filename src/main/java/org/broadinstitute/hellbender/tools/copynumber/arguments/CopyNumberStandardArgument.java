@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.copynumber.formats;
+package org.broadinstitute.hellbender.tools.copynumber.arguments;
 
 public final class CopyNumberStandardArgument {
     public static final String ANNOTATED_INTERVALS_FILE_LONG_NAME = "annotated-intervals";
@@ -18,4 +18,6 @@ public final class CopyNumberStandardArgument {
     public static final String SEGMENTS_FILE_LONG_NAME = "segments";
 
     public static final String OUTPUT_PREFIX_LONG_NAME = "output-prefix";
+
+    public static final String MODEL_LONG_NAME = "model";
 }

@@ -1,15 +1,24 @@
-package org.broadinstitute.hellbender.tools.copynumber.formats;
+package org.broadinstitute.hellbender.tools.copynumber.arguments;
 
 import com.google.common.collect.Ordering;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.utils.*;
 
 import java.util.Iterator;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AbstractLocatableCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+
+import java.io.File;
+import java.util.HashSet;
 import java.util.List;
 import java.util.OptionalInt;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -39,8 +48,7 @@ public final class CopyNumberArgumentValidationUtils {
                                                                final SAMSequenceDictionary sequenceDictionary) {
         Utils.nonNull(intervals);
         Utils.nonNull(sequenceDictionary);
-        final GenomeLocParser genomeLocParser = new GenomeLocParser(sequenceDictionary);
-        Utils.validateArg(intervals.stream().allMatch(i -> genomeLocParser.isValidGenomeLoc(i.getContig(), i.getStart(), i.getEnd())),
+        Utils.validateArg(intervals.stream().allMatch(i -> IntervalUtils.intervalIsOnDictionaryContig(new SimpleInterval(i), sequenceDictionary)),
                 "Records contained at least one interval that did not validate against the sequence dictionary.");
         if (!Ordering.from(IntervalUtils.getDictionaryOrderComparator(sequenceDictionary)).isStrictlyOrdered(intervals)) {
             throw new IllegalArgumentException("Records were not strictly sorted in dictionary order.");
@@ -91,5 +99,61 @@ public final class CopyNumberArgumentValidationUtils {
                         !(sequence1.getSequenceLength() != SAMSequenceRecord.UNKNOWN_SEQUENCE_LENGTH &&
                                 sequence2.getSequenceLength() != SAMSequenceRecord.UNKNOWN_SEQUENCE_LENGTH &&
                                 sequence1.getSequenceLength() != sequence2.getSequenceLength());
+    }
+
+    /**
+     * Checks equality of the sequence dictionary and intervals contained in an {@code locatableCollection}
+     * against those contained in an {@link AnnotatedIntervalCollection} represented by {@code annotatedIntervalsFile}.
+     * If the latter is {@code null}, then {@code null} is returned; otherwise,
+     * the {@link AnnotatedIntervalCollection} represented by {@code inputAnnotatedIntervalsFile} is returned
+     * if the intervals are equal, and an exception is thrown if they are not.
+     */
+    public static AnnotatedIntervalCollection validateAnnotatedIntervals(final File annotatedIntervalsFile,
+                                                                         final AbstractLocatableCollection<?, ?> locatableCollection,
+                                                                         final Logger logger) {
+        Utils.nonNull(locatableCollection);
+        Utils.nonNull(logger);
+        if (annotatedIntervalsFile == null) {
+            logger.info("No GC-content annotations for intervals found; explicit GC-bias correction will not be performed...");
+            return null;
+        }
+        logger.info("Reading and validating GC-content annotations for intervals...");
+        final AnnotatedIntervalCollection annotatedIntervals = new AnnotatedIntervalCollection(annotatedIntervalsFile);
+        final SAMSequenceDictionary sequenceDictionary = locatableCollection.getMetadata().getSequenceDictionary();
+        Utils.validateArg(annotatedIntervals.getMetadata().getSequenceDictionary().isSameDictionary(sequenceDictionary),
+                "Annotated-intervals file contains incorrect sequence dictionary.");
+        Utils.validateArg(annotatedIntervals.getIntervals().equals(locatableCollection.getIntervals()),
+                "Annotated intervals do not match provided intervals.");
+        return annotatedIntervals;
+    }
+
+    /**
+     * Same as {@link #validateAnnotatedIntervals}, except we only require that {@code annotatedIntervalsFile}
+     * contains as a subset all the intervals contained in {@code locatableCollection} along with equality of the sequence dictionaries.
+     * The corresponding subset of annotated intervals is returned if appropriate.
+     */
+    public static AnnotatedIntervalCollection validateAnnotatedIntervalsSubset(final File annotatedIntervalsFile,
+                                                                               final AbstractLocatableCollection<?, ?> locatableCollection,
+                                                                               final Logger logger) {
+        Utils.nonNull(locatableCollection);
+        Utils.nonNull(logger);
+        if (annotatedIntervalsFile == null) {
+            logger.info("No GC-content annotations for intervals found; explicit GC-bias correction will not be performed...");
+            return null;
+        }
+        logger.info("Reading and validating GC-content annotations for intervals...");
+        IOUtils.canReadFile(annotatedIntervalsFile);
+        final AnnotatedIntervalCollection annotatedIntervals = new AnnotatedIntervalCollection(annotatedIntervalsFile);
+        final SAMSequenceDictionary sequenceDictionary = locatableCollection.getMetadata().getSequenceDictionary();
+        Utils.validateArg(annotatedIntervals.getMetadata().getSequenceDictionary().isSameDictionary(sequenceDictionary),
+                "Annotated-intervals file contains incorrect sequence dictionary.");
+        final Set<SimpleInterval> intervalsSubset = new HashSet<>(locatableCollection.getIntervals());
+        Utils.validateArg(annotatedIntervals.getIntervals().containsAll(intervalsSubset),
+                "Annotated intervals do not contain all specified intervals.");
+        return new AnnotatedIntervalCollection(
+                locatableCollection.getMetadata(),
+                annotatedIntervals.getRecords().stream()
+                        .filter(i -> intervalsSubset.contains(i.getInterval()))
+                        .collect(Collectors.toList()));
     }
 }

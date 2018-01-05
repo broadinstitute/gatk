@@ -13,6 +13,7 @@ env:
   - TEST_TYPE=integration TEST_DOCKER=true TEST_VERBOSITY=minimal
   - TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
   - TEST_TYPE=python TEST_DOCKER=true TEST_VERBOSITY=minimal
+  - RUN_CNV_GERMLINE_WDL=true
   - RUN_CNV_SOMATIC_WDL=true
   - RUN_M2_WDL=true
   global:
@@ -23,7 +24,7 @@ env:
   #google cloud stuff
   - CLOUDSDK_CORE_DISABLE_PROMPTS=1
   - GCLOUD_HOME=$HOME/gcloud/google-cloud-sdk/bin
-  - CLOUDSDK_PYTHON_SITEPACKAGES=1 
+  - CLOUDSDK_PYTHON_SITEPACKAGES=1
   - GOOGLE_APPLICATION_CREDENTIALS=$TRAVIS_BUILD_DIR/servicekey.json
   #hellbender specific variables
   - HELLBENDER_TEST_INPUTS=gs://hellbender/test/resources/
@@ -72,7 +73,7 @@ before_install:
     chmod 600 ~/.ssh/id_rsa;
     echo "Testing github authentication:";
     ssh -T git@github.com;
-    echo "Done testing github authentication";  
+    echo "Done testing github authentication";
   fi
 #install R
 - if [[ $TEST_DOCKER != true ]]; then
@@ -122,6 +123,9 @@ script:
     echo "Not running any tests for nightly builds";
   elif [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
     echo "Can't run cloud tests without keys so don't run tests";
+  elif [[ $RUN_CNV_GERMLINE_WDL == true ]]; then
+      echo "Running CNV germline workflows";
+      bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh;
   elif [[ $RUN_CNV_SOMATIC_WDL == true ]]; then
     echo "Running CNV somatic workflows";
     bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;
