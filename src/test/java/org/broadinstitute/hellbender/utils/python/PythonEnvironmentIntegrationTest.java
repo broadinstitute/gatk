@@ -25,7 +25,7 @@ public class PythonEnvironmentIntegrationTest {
                 { "keras" },
                 { "pymc3" },
                 { "argparse" },
-                { "gatkpythonpackages" }
+                { "gcnvkernel" }
         };
     }
 
