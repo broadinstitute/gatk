@@ -366,6 +366,8 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    // This test asserts that the behavior is rational in the case of whole genome gvcfs which have variants starting at
+    // the first and ending on the last base of each contig.
     public void testStartChromosome() throws Exception {
         final File output = createTempFile("genotypegvcf", ".vcf");
 
@@ -374,7 +376,6 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addOutput(output);
         args.addVCF(getTestFile("gvcfExample1.fullchrom.2021.vcf"));
         args.addVCF(getTestFile("gvcfExample2.vcf"));
-        args.add("--" + CombineGVCFs.IGNORE_VARIANTS_THAT_START_OUTSIDE_INTERVAL );
 
         runCommandLine(args);
 
@@ -387,12 +388,26 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(first.getNAlleles(), 2);
         Assert.assertEquals(first.getGenotypes().size(), 2);
 
-        final VariantContext nextchrom = allVCs.get(19);
+        final VariantContext last = allVCs.get(19);
+        Assert.assertEquals(last.getStart(), 69792);
+        Assert.assertEquals(last.getEnd(), 63025520);
+        Assert.assertEquals(last.getContig(), "20");
+        Assert.assertEquals(last.getNAlleles(), 2);
+        Assert.assertEquals(last.getGenotypes().size(), 2);
+
+        final VariantContext nextchrom = allVCs.get(20);
         Assert.assertEquals(nextchrom.getStart(), 1);
         Assert.assertEquals(nextchrom.getEnd(), 69490);
         Assert.assertEquals(nextchrom.getContig(), "21");
         Assert.assertEquals(nextchrom.getNAlleles(), 2);
         Assert.assertEquals(nextchrom.getGenotypes().size(), 2);
+
+        final VariantContext nextcromlast = allVCs.get(allVCs.size()-1);
+        Assert.assertEquals(nextcromlast.getStart(), 69784);
+        Assert.assertEquals(nextcromlast.getEnd(), 48129895);
+        Assert.assertEquals(nextcromlast.getContig(), "21");
+        Assert.assertEquals(nextcromlast.getNAlleles(), 2);
+        Assert.assertEquals(nextcromlast.getGenotypes().size(), 2);
     }
 
 }
