@@ -57,7 +57,7 @@ repositories {
 }
 
 final htsjdkVersion = System.getProperty('htsjdk.version','2.13.2')
-final picardVersion = System.getProperty('picard.version','2.16.0')
+final picardVersion = System.getProperty('picard.version','2.17.2')
 final sparkVersion = System.getProperty('spark.version', '2.0.2')
 final hadoopBamVersion = System.getProperty('hadoopBam.version','7.9.1')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','0.8.1-proto-3.0.0-beta-1+uuid-static')
@@ -141,7 +141,7 @@ dependencies {
     compileOnly(javadocJDKFiles)
     testCompile(javadocJDKFiles)
 
-    compile 'org.broadinstitute:barclay:1.2.2'
+    compile 'org.broadinstitute:barclay:2.0.0'
     // Library for configuration:
     compile 'org.aeonbits.owner:owner:1.0.9'
 
