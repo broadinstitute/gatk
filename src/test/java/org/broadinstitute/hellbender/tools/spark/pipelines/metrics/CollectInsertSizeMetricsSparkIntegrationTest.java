@@ -12,6 +12,9 @@ import org.testng.annotations.Test;
 
 import java.io.*;
 
+/**
+ * Integration tests for {@link CollectInsertSizeMetricsSpark}.
+ */
 public final class CollectInsertSizeMetricsSparkIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(
             "src/test/resources/org/broadinstitute/hellbender/metrics/analysis/CollectInsertSizeMetrics");
@@ -63,8 +66,8 @@ public final class CollectInsertSizeMetricsSparkIntegrationTest extends CommandL
         args.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         args.add(textOut.getAbsolutePath());
 
-        args.add("--producePlot");
-        args.add("-" + "histogramPlotFile");
+        args.add("--produce-plot");
+        args.add("-" + "histogram-plot-file");
         args.add(pdfOut.getAbsolutePath());
 
         if (null != referenceName) {

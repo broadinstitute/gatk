@@ -22,38 +22,32 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Print read alignments in Pileup-style format
+ * Prints read alignments in {@code samtools} pileup format.
  *
- * <p>This tool emulates the 'samtools pileup' command. It prints the alignment in a format that is very similar to the
- * Samtools pileup format; see the <a href="http://samtools.sourceforge.net/pileup.shtml">Pileup format
- * documentation</a> for more details about the original format. There is one line per genomic position, listing the
- * chromosome name, coordinate, reference base, read bases, and read qualities. In addition to these default fields,
- * additional information can be added to the output as extra columns; see options detailed below.</p>
+ * <p>This tool emulates the functionality of {@code samtools pileup}. It prints the alignments in a format that is very similar
+ * to the {@code samtools} pileup format. For more details about the original format,
+ * see the <a href="http://samtools.sourceforge.net/pileup.shtml">Samtools Pileup format
+ * documentation</a>. The output comprises one line per genomic position, listing the
+ * chromosome name, coordinate, reference base, bases from reads, and and corresponding  base qualities from reads.
+ * In addition to these default fields,
+ * additional information can be added to the output as extra columns.</p>
  *
- * <h4>Emulated command:</h4>
- * <pre>
- *  samtools pileup -f reference.fasta -l intervals.site_list input.bam
- * </pre>
- *
- * <h3>Inputs</h3>
- * <ul>
- *     <li>A BAM or CRAM file containing input read data</li>
- *     <li>The interval(s) of interest</li>
- * </ul>
- *
- * <h3>Output</h3>
- * <p> Alignment of bases formatted in the Pileup style</p>
+ * Note that if the reference is omitted from the command, reference bases in the output will be <i>N</i>s.
  *
  * <h3>Usage example</h3>
  * <pre>
  * gatk Pileup \
  *   -R reference.fasta \
  *   -I input.bam \
- *   -L chr1:257-267 \
  *   -O output.txt
  * </pre>
  *
- * <h4>Expected output</h4>
+ * <h4>Emulated command:</h4>
+ * <pre>
+ *  samtools pileup -f reference.fasta input.bam
+ * </pre>
+ *
+ * <h4>Typical output format</h4>
  * <pre>
  *     chr1 257 A CAA '&=
  *     chr1 258 C TCC A:=
@@ -71,19 +65,21 @@ import java.util.stream.Collectors;
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
 @CommandLineProgramProperties(
-    summary = "This tool emulates the 'samtools pileup' command. It prints the alignment in a format that is very "
-        + "similar to the Samtools pileup format; see the documentation in http://samtools.sourceforge.net/pileup.shtml"
-        + "for more details about the original format. There is one line per genomic position, listing the chromosome "
-        + "name, coordinate, reference base, read bases, and read qualities. In addition to these default fields, "
-        + "additional information can be added to the output as extra columns; see options detailed below.",
-    oneLineSummary = "Print read alignments in Pileup-style format",
+    summary = "Prints read alignments in samtools pileup format. The output comprises one line per genomic position, " +
+            "listing the chromosome name, coordinate, reference base, read bases, and read qualities. In addition to " +
+            "these default fields, additional information can be added to the output as extra columns.",
+    oneLineSummary = "Prints read alignments in samtools pileup format",
     programGroup = CoverageAnalysisProgramGroup.class)
 @DocumentedFeature
 public final class Pileup extends LocusWalker {
 
     private static final String VERBOSE_DELIMITER = "@"; // it's ugly to use "@" but it's literally the only usable character not allowed in read names
 
-    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "An output file created by the walker. Will overwrite contents if file exists")
+    @Argument(
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            doc = "An output file created to be created by the walker. Will overwrite the contents if the file exists."
+    )
     public File outFile;
 
     /**
@@ -91,22 +87,41 @@ public final class Pileup extends LocusWalker {
      * spanning deletions, and for each read in the pileup it has the read name, offset in the base string, read length,
      * and read mapping quality.  These per read items are delimited with an '@' character.
      */
-    @Argument(fullName = "showVerbose", shortName = "verbose", doc = "Add an extra verbose section to the pileup output", optional = true)
+    @Argument(
+            fullName = "show-verbose",
+            shortName = "verbose",
+            doc = "Add extra informative columns to the pileup output. The verbose output contains the number of " +
+                    "spanning deletions, and for each read in the pileup it has the read name, offset in the base " +
+                    "string, read length, and read mapping quality.  These per read items are delimited with an '@' " +
+                    "character.",
+            optional = true
+    )
     public boolean showVerbose = false;
 
     /**
-     * This enables annotating the pileup to show overlaps with metadata from a Feature file(s). For example, if you provide a
-     * VCF and there is a SNP at a given location covered by the pileup, the pileup output at that position will be
-     * annotated with the corresponding source Feature identifier.
+     * This enables annotating the pileup to show overlaps with metadata from a Feature file(s). For example, if the
+     * user provide a VCF and there is a SNP at a given location covered by the pileup, the pileup output at that
+     * position will be annotated with the corresponding source Feature identifier.
      */
-    @Argument(fullName = "metadata", shortName = "metadata", doc = "Features file(s) containing metadata", optional = true)
+    @Argument(
+            fullName = "metadata",
+            shortName = "metadata",
+            doc = "Features file(s) containing metadata. The overlapping sites will be annotated with the corresponding" +
+                    " source Feature identifier.",
+            optional = true
+    )
     public List<FeatureInput<Feature>> metadata = new ArrayList<>();
 
     /**
      * Adds the length of the insert each base comes from to the output pileup. Here, "insert" refers to the DNA insert
      * produced during library generation before sequencing.
      */
-    @Argument(fullName = "outputInsertLength", shortName = "outputInsertLength", doc = "Output insert length", optional = true)
+    @Argument(
+            fullName = "output-insert-length",
+            shortName = "output-insert-length",
+            doc = "If enabled, inserts lengths will be added to the output pileup.",
+            optional = true
+    )
     public boolean outputInsertLength = false;
 
     private PrintStream out;
