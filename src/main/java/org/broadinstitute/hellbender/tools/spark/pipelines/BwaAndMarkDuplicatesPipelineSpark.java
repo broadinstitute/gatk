@@ -8,7 +8,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkPipelineProgramGroup;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
@@ -30,7 +30,7 @@ import java.io.IOException;
         summary = "Takes name-sorted file and runs BWA and MarkDuplicates.",
         oneLineSummary = "Takes name-sorted file and runs BWA and MarkDuplicates.",
         usageExample = "BwaAndMarkDuplicatesPipelineSpark -I single.bam -R referenceURL -O file:///tmp/output.bam",
-        programGroup = SparkPipelineProgramGroup.class
+        programGroup = ReadDataManipulationProgramGroup.class
 )
 @DocumentedFeature
 @BetaFeature

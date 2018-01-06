@@ -9,7 +9,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.IntervalsProgramGroup;
+import picard.cmdline.programgroups.IntervalsManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
@@ -97,7 +97,7 @@ import java.util.stream.Collectors;
 @CommandLineProgramProperties(
         summary = "Prepares bins for coverage collection",
         oneLineSummary = "Prepares bins for coverage collection",
-        programGroup = IntervalsProgramGroup.class
+        programGroup = IntervalsManipulationProgramGroup.class
 )
 @DocumentedFeature
 @BetaFeature

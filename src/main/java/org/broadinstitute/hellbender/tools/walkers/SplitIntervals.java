@@ -9,7 +9,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.programgroups.IntervalsProgramGroup;
+import picard.cmdline.programgroups.IntervalsManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -52,7 +52,7 @@ import java.util.stream.IntStream;
 @CommandLineProgramProperties(
         summary = "Split intervals into sub-interval files.",
         oneLineSummary = "Split intervals into sub-interval files.",
-        programGroup = IntervalsProgramGroup.class
+        programGroup = IntervalsManipulationProgramGroup.class
 )
 @DocumentedFeature
 public class SplitIntervals extends GATKTool {

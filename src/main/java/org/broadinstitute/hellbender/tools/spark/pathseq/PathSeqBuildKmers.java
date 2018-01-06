@@ -6,7 +6,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.MetagenomicsProgramGroup;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceFileSource;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerShort;
 import org.broadinstitute.hellbender.tools.spark.utils.LargeLongHopscotchSet;
@@ -24,7 +24,7 @@ import java.util.Collection;
         "faster than hash sets, but cause some non-host reads to be incorrectly filtered. For --bloomFalsePositiveProbability " +
         "<= 0.001, the fraction of lost non-host reads is typically < 1% using the default filter tool settings.",
         oneLineSummary = "Builds a hash set or Bloom filter of host reference k-mers",
-        programGroup = PathSeqProgramGroup.class)
+        programGroup = MetagenomicsProgramGroup.class)
 @BetaFeature
 public final class PathSeqBuildKmers extends CommandLineProgram {
 

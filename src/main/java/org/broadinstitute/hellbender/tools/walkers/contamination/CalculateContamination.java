@@ -15,7 +15,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.tools.copynumber.utils.segmentation.KernelSegmenter;
 import org.broadinstitute.hellbender.tools.walkers.mutect.FilterMutectCalls;
 import org.broadinstitute.hellbender.utils.MathUtils;

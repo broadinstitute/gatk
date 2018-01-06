@@ -8,7 +8,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
@@ -154,7 +154,7 @@ import java.util.Optional;
 @CommandLineProgramProperties(
         summary = "Evaluate and compare base quality score recalibration (BQSR) tables",
         oneLineSummary = "Evaluate and compare base quality score recalibration (BQSR) tables",
-        programGroup = QCProgramGroup.class
+        programGroup = DiagnosticsAndQCProgramGroup.class
 )
 @DocumentedFeature
 public final class AnalyzeCovariates extends CommandLineProgram {

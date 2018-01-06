@@ -9,15 +9,13 @@ import htsjdk.tribble.util.TabixUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VCFManipulationProgramGroup;
+import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.codecs.ProgressReportingDelegatingCodec;
 
@@ -39,7 +37,7 @@ import java.io.IOException;
 @CommandLineProgramProperties(
         summary = "Creates an index for a feature file, e.g. VCF or BED file.",
         oneLineSummary = "Creates an index for a feature file, e.g. VCF or BED file.",
-        programGroup = VCFManipulationProgramGroup.class
+        programGroup = VariantManipulationProgramGroup.class
 )
 @DocumentedFeature
 public final class IndexFeatureFile extends CommandLineProgram {

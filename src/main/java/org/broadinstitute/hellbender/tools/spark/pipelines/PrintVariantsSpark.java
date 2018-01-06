@@ -7,7 +7,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VCFManipulationProgramGroup;
+import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.VariantWalkerContext;
 import org.broadinstitute.hellbender.engine.spark.VariantWalkerSpark;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSink;
@@ -41,7 +41,7 @@ import java.io.IOException;
 @CommandLineProgramProperties(
         summary = "Prints out variants from the input VCF file.",
         oneLineSummary = "Prints out variants from the input VCF.",
-        programGroup = VCFManipulationProgramGroup.class)
+        programGroup = VariantManipulationProgramGroup.class)
 @DocumentedFeature
 @BetaFeature
 public final class PrintVariantsSpark extends VariantWalkerSpark {
