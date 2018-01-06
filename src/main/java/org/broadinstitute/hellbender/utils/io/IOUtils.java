@@ -18,6 +18,8 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.*;
 import java.net.URI;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -117,7 +119,7 @@ public final class IOUtils {
     public static File writeTempFile(String content, String prefix, String suffix, File directory) {
         try {
             File tempFile = absolute(File.createTempFile(prefix, suffix, directory));
-            FileUtils.writeStringToFile(tempFile, content);
+            FileUtils.writeStringToFile(tempFile, content, StandardCharsets.UTF_8);
             return tempFile;
         } catch (IOException e) {
             throw new UserException.BadTmpDir(e.getMessage());

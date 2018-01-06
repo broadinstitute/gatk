@@ -11,6 +11,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 
 public class PathSeqPipelineSparkIntegrationTest extends CommandLineProgramTest {
 
@@ -76,8 +77,8 @@ public class PathSeqPipelineSparkIntegrationTest extends CommandLineProgramTest 
 
         SamAssertionUtils.assertEqualBamFiles(outputBamFile, expectedBamFile, true, ValidationStringency.STRICT);
 
-        String expectedScoreString = FileUtils.readFileToString(expectedScoresFile);
-        String actualScoresString = FileUtils.readFileToString(outputScoresFile);
+        String expectedScoreString = FileUtils.readFileToString(expectedScoresFile, StandardCharsets.UTF_8);
+        String actualScoresString = FileUtils.readFileToString(outputScoresFile, StandardCharsets.UTF_8);
         PathSeqScoreIntegrationTest.compareScoreTables(expectedScoreString, actualScoresString);
 
         Assert.assertTrue(MetricsFile.areMetricsEqual(outputFilterMetricsFile, expectedFilterMetricsFile));

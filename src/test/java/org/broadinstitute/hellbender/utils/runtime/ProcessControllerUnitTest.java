@@ -12,6 +12,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -159,7 +160,7 @@ public final class ProcessControllerUnitTest extends GATKBaseTest {
 
             String fileString, bufferString;
 
-            fileString = FileUtils.readFileToString(outFile);
+            fileString = FileUtils.readFileToString(outFile, StandardCharsets.UTF_8);
             Assert.assertTrue(fileString.length() > 0, "Out file was length 0");
 
             bufferString = result.getStdout().getBufferString();
@@ -168,7 +169,7 @@ public final class ProcessControllerUnitTest extends GATKBaseTest {
             Assert.assertFalse(result.getStdout().isBufferTruncated(), "Out buffer was truncated");
             Assert.assertEquals(bufferString.length(), fileString.length(), "Out buffer length did not match file length");
 
-            fileString = FileUtils.readFileToString(errFile);
+            fileString = FileUtils.readFileToString(errFile, StandardCharsets.UTF_8);
             Assert.assertEquals(fileString, "", "Unexpected output to err file");
 
             bufferString = result.getStderr().getBufferString();
@@ -201,7 +202,7 @@ public final class ProcessControllerUnitTest extends GATKBaseTest {
 
             String fileString, bufferString;
 
-            fileString = FileUtils.readFileToString(errFile);
+            fileString = FileUtils.readFileToString(errFile, StandardCharsets.UTF_8);
             Assert.assertTrue(fileString.length() > 0, "Err file was length 0");
 
             bufferString = result.getStderr().getBufferString();
@@ -210,7 +211,7 @@ public final class ProcessControllerUnitTest extends GATKBaseTest {
             Assert.assertFalse(result.getStderr().isBufferTruncated(), "Err buffer was truncated");
             Assert.assertEquals(bufferString.length(), fileString.length(), "Err buffer length did not match file length");
 
-            fileString = FileUtils.readFileToString(outFile);
+            fileString = FileUtils.readFileToString(outFile, StandardCharsets.UTF_8);
             Assert.assertEquals(fileString, "", "Unexpected output to out file");
 
             bufferString = result.getStdout().getBufferString();
@@ -310,7 +311,7 @@ public final class ProcessControllerUnitTest extends GATKBaseTest {
 
             if (script.output != null) {
 
-                String fileString = FileUtils.readFileToString(outputFile);
+                String fileString = FileUtils.readFileToString(outputFile, StandardCharsets.UTF_8);
                 Assert.assertEquals(fileString, script.output,
                         String.format("Output file didn't match (%d vs %d): %s",
                                 fileString.length(), script.output.length(), script));
@@ -378,7 +379,7 @@ public final class ProcessControllerUnitTest extends GATKBaseTest {
 
             if (script.output != null) {
 
-                String fileString = FileUtils.readFileToString(outputFile);
+                String fileString = FileUtils.readFileToString(outputFile, StandardCharsets.UTF_8);
                 Assert.assertEquals(fileString, script.output,
                         String.format("Output file didn't match (%d vs %d): %s",
                                 fileString.length(), script.output.length(), script));
@@ -411,7 +412,7 @@ public final class ProcessControllerUnitTest extends GATKBaseTest {
     private static File writeScript(String contents) {
         try {
             File file = GATKBaseTest.createTempFile("temp", "");
-            FileUtils.writeStringToFile(file, contents);
+            FileUtils.writeStringToFile(file, contents, StandardCharsets.UTF_8);
             return file;
         } catch (IOException e) {
             throw new UserException.BadTmpDir(e.getMessage());

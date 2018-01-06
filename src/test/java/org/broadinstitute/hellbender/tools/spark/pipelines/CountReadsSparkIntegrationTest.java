@@ -10,6 +10,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 
 public final class CountReadsSparkIntegrationTest extends CommandLineProgramTest {
 
@@ -44,7 +45,7 @@ public final class CountReadsSparkIntegrationTest extends CommandLineProgramTest
             args.addReference(REF);
         }
         this.runCommandLine(args.getArgsArray());
-        final String readIn = FileUtils.readFileToString(outputTxt.getAbsoluteFile());
+        final String readIn = FileUtils.readFileToString(outputTxt.getAbsoluteFile(), StandardCharsets.UTF_8);
         Assert.assertEquals((long)Long.valueOf(readIn), expectedCount);
     }
 
@@ -57,7 +58,7 @@ public final class CountReadsSparkIntegrationTest extends CommandLineProgramTest
         args.addOutput(outputTxt);
         this.runCommandLine(args.getArgsArray());
 
-        final String readIn = FileUtils.readFileToString(outputTxt.getAbsoluteFile());
+        final String readIn = FileUtils.readFileToString(outputTxt.getAbsoluteFile(), StandardCharsets.UTF_8);
         Assert.assertEquals((int)Integer.valueOf(readIn), 8);
     }
 

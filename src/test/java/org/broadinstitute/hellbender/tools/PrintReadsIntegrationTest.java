@@ -21,6 +21,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
@@ -68,7 +69,7 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
         }
         Assert.assertTrue(md5File.exists(), md5File + " does not exist");
         final String expectedMD5 = Utils.calculateFileMD5(outFile);
-        final String actualMD5 = FileUtils.readFileToString(md5File);
+        final String actualMD5 = FileUtils.readFileToString(md5File, StandardCharsets.UTF_8);
         Assert.assertEquals(actualMD5, expectedMD5);
     }
 
