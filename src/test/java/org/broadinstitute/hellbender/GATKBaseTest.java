@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.BeforeClass;
 
@@ -96,7 +97,7 @@ public abstract class GATKBaseTest extends BaseTest {
 
     @BeforeClass
     public void initGenomeLocParser() throws FileNotFoundException {
-        hg19ReferenceReader = new CachingIndexedFastaSequenceFile(new File(hg19MiniReference));
+        hg19ReferenceReader = new CachingIndexedFastaSequenceFile(IOUtils.getPath(hg19MiniReference));
         hg19Header = new SAMFileHeader();
         hg19Header.setSequenceDictionary(hg19ReferenceReader.getSequenceDictionary());
         hg19GenomeLocParser = new GenomeLocParser(hg19ReferenceReader);

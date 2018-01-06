@@ -40,6 +40,7 @@ import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.RandomDNA;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -226,7 +227,7 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
     @Test
     public void testReadWithNsRefIndexInDeletion() throws FileNotFoundException {
 
-        final IndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(new File(exampleReference));
+        final IndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleReference));
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
         final int readLength = 76;
 
@@ -242,7 +243,7 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
     @Test
     public void testReadWithNsRefAfterDeletion() throws FileNotFoundException {
 
-        final IndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(new File(exampleReference));
+        final IndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleReference));
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
         final int readLength = 76;
 

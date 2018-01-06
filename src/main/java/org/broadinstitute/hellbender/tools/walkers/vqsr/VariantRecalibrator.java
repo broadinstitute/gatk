@@ -473,7 +473,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
         if (hasReference()) {
             hInfo = VcfUtils.updateHeaderContigLines(
-                    hInfo, referenceArguments.getReferenceFile(), sequenceDictionary, true);
+                    hInfo, referenceArguments.getReferencePath(), sequenceDictionary, true);
         }
         else if (null != sequenceDictionary) {
             hInfo = VcfUtils.updateHeaderContigLines(hInfo, null, sequenceDictionary, true);

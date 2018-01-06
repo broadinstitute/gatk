@@ -112,13 +112,13 @@ public final class SplitNCigarReads extends TwoPassReadWalker {
         header = getHeaderForSAMWriter();
         rnaReadTransform = REFACTOR_NDN_CIGAR_READS ? new NDNCigarReadTransformer() : ReadTransformer.identity();
         try {
-            referenceReader = new CachingIndexedFastaSequenceFile(referenceArguments.getReferenceFile());
+            referenceReader = new CachingIndexedFastaSequenceFile(referenceArguments.getReferencePath());
             GenomeLocParser genomeLocParser = new GenomeLocParser(getBestAvailableSequenceDictionary());
             outputWriter = createSAMWriter(OUTPUT, false);
             overhangManager = new OverhangFixingManager(header, outputWriter, genomeLocParser, referenceReader, MAX_RECORDS_IN_MEMORY, MAX_MISMATCHES_IN_OVERHANG, MAX_BASES_TO_CLIP, doNotFixOverhangs, processSecondaryAlignments);
 
         } catch (FileNotFoundException ex) {
-            throw new UserException.CouldNotReadInputFile(referenceArguments.getReferenceFile(), ex);
+            throw new UserException.CouldNotReadInputFile(referenceArguments.getReferencePath(), ex);
         }
     }
 

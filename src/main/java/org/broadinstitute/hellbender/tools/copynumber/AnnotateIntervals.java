@@ -103,7 +103,7 @@ public final class AnnotateIntervals extends GATKTool {
         logger.info("Loading intervals for annotation...");
         sequenceDictionary = getBestAvailableSequenceDictionary();
         intervals = intervalArgumentCollection.getIntervals(sequenceDictionary);
-        reference = ReferenceDataSource.of(referenceArguments.getReferenceFile());  //the GATKTool ReferenceDataSource is package-protected, so we cannot access it directly
+        reference = ReferenceDataSource.of(referenceArguments.getReferencePath());  //the GATKTool ReferenceDataSource is package-protected, so we cannot access it directly
         logger.info("Annotating intervals...");
     }
 

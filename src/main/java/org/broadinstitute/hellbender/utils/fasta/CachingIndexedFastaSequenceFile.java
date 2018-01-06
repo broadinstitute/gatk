@@ -5,8 +5,13 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.FastaSequenceIndex;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequence;
+import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.StringUtil;
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -17,6 +22,7 @@ import org.broadinstitute.hellbender.utils.BaseUtils;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Arrays;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 /**
  * A caching version of the IndexedFastaSequenceFile that avoids going to disk as often as the raw indexer.
@@ -73,7 +79,7 @@ public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceF
      * @param preserveCase If true, we will keep the case of the underlying bases in the FASTA, otherwise everything is converted to upper case
      * @param preserveIUPAC If true, we will keep the IUPAC bases in the FASTA, otherwise they are converted to Ns
      */
-    public CachingIndexedFastaSequenceFile(final File fasta, final FastaSequenceIndex index, final long cacheSize, final boolean preserveCase, final boolean preserveIUPAC) {
+    public CachingIndexedFastaSequenceFile(final Path fasta, final FastaSequenceIndex index, final long cacheSize, final boolean preserveCase, final boolean preserveIUPAC) {
         super(fasta, index);
         if ( cacheSize < 0 ) throw new IllegalArgumentException("cacheSize must be > 0");
         this.cacheSize = cacheSize;
@@ -92,7 +98,7 @@ public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceF
      * @param cacheSize the size of the cache to use in this CachingIndexedFastaReader, must be >= 0
      * @param preserveCase If true, we will keep the case of the underlying bases in the FASTA, otherwise everything is converted to upper case
      */
-    public CachingIndexedFastaSequenceFile(final File fasta, final long cacheSize, final boolean preserveCase, final boolean  preserveIUPAC) throws FileNotFoundException {
+    public CachingIndexedFastaSequenceFile(final Path fasta, final long cacheSize, final boolean preserveCase, final boolean  preserveIUPAC) throws FileNotFoundException {
         super(fasta);
         if ( cacheSize < 0 ) throw new IllegalArgumentException("cacheSize must be > 0");
         this.cacheSize = cacheSize;
@@ -110,7 +116,7 @@ public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceF
      * @param index the index of the fasta file, used for efficient random access
      * @param cacheSize the size in bp of the cache we will use for this reader
      */
-    public CachingIndexedFastaSequenceFile(final File fasta, final FastaSequenceIndex index, final long cacheSize) {
+    public CachingIndexedFastaSequenceFile(final Path fasta, final FastaSequenceIndex index, final long cacheSize) {
         this(fasta, index, cacheSize, false, false);
     }
 
@@ -122,7 +128,7 @@ public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceF
      *
      * @param fasta The file to open.
      */
-    public CachingIndexedFastaSequenceFile(final File fasta) throws FileNotFoundException {
+    public CachingIndexedFastaSequenceFile(final Path fasta) throws FileNotFoundException {
         this(fasta, false);
     }
 
@@ -134,7 +140,7 @@ public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceF
      * @param fasta The file to open.
      * @param preserveCase If true, we will keep the case of the underlying bases in the FASTA, otherwise everything is converted to upper case
      */
-    public CachingIndexedFastaSequenceFile(final File fasta, final boolean preserveCase) throws FileNotFoundException {
+    public CachingIndexedFastaSequenceFile(final Path fasta, final boolean preserveCase) throws FileNotFoundException {
         this(fasta, DEFAULT_CACHE_SIZE, preserveCase, false);
     }
 
@@ -142,45 +148,43 @@ public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceF
      * Create reference data source from fasta file, after performing several preliminary checks on the file.
      * This static utility was refactored from the constructor of ReferenceDataSource.
      * Possibly may be better as an overloaded constructor.
-     * @param fastaFile Fasta file to be used as reference
+     * @param fastaPath Fasta file to be used as reference
      * @return A new instance of a CachingIndexedFastaSequenceFile.
      */
-    public static CachingIndexedFastaSequenceFile checkAndCreate(final File fastaFile) {
+    public static CachingIndexedFastaSequenceFile checkAndCreate(final Path fastaPath) {
         // does the fasta file exist? check that first...
-        if (!fastaFile.exists()) {
-            throw new UserException.MissingReference("The specified fasta file (" + fastaFile.getAbsolutePath() + ") does not exist.");
+        if (!Files.exists(fastaPath)) {
+            throw new UserException.MissingReference("The specified fasta file (" + fastaPath.toUri() + ") does not exist.");
         }
 
-        final boolean isGzipped = fastaFile.getAbsolutePath().endsWith(".gz");
+        final boolean isGzipped = fastaPath.toString().endsWith(".gz");
         if ( isGzipped ) {
             throw new UserException.CannotHandleGzippedRef();
         }
 
-        final File indexFile = new File(fastaFile.getAbsolutePath() + ".fai");
+        final Path indexPath = IOUtil.addExtension(fastaPath, ".fai");
 
         // determine the name for the dict file
-        // TODO: use the htsjdk method implemented in https://github.com/samtools/htsjdk/pull/774
-        final String fastaExt = fastaFile.getAbsolutePath().endsWith("fa") ? "\\.fa$" : "\\.fasta$";
-        final File dictFile = new File(fastaFile.getAbsolutePath().replaceAll(fastaExt, IOUtil.DICT_FILE_EXTENSION));
+        final Path dictPath = ReferenceSequenceFileFactory.getDefaultDictionaryForReferenceSequence(fastaPath);
 
         // It's an error if either the fai or dict file does not exist. The user is now responsible
         // for creating these files.
-        if (!indexFile.exists()) {
-            throw new UserException.MissingReferenceFaiFile(indexFile, fastaFile);
+        if (!Files.exists(indexPath)) {
+            throw new UserException.MissingReferenceFaiFile(indexPath, fastaPath);
         }
-        if (!dictFile.exists()) {
-            throw new UserException.MissingReferenceDictFile(dictFile, fastaFile);
+        if (!Files.exists(dictPath)) {
+            throw new UserException.MissingReferenceDictFile(dictPath, fastaPath);
         }
 
         // Read reference data by creating an IndexedFastaSequenceFile.
         try {
-            return new CachingIndexedFastaSequenceFile(fastaFile);
+            return new CachingIndexedFastaSequenceFile(fastaPath);
         }
         catch (IllegalArgumentException e) {
-            throw new UserException.CouldNotReadInputFile(fastaFile, "Could not read reference sequence.  The FASTA must have either a .fasta or .fa extension", e);
+            throw new UserException.CouldNotReadInputFile(fastaPath, "Could not read reference sequence.  The FASTA must have either a .fasta or .fa extension", e);
         }
         catch (Exception e) {
-            throw new UserException.CouldNotReadInputFile(fastaFile, e);
+            throw new UserException.CouldNotReadInputFile(fastaPath, e);
         }
     }
 
@@ -193,7 +197,7 @@ public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceF
      * @param fasta The file to open.
      * @param cacheSize the size of the cache to use in this CachingIndexedFastaReader, must be >= 0
      */
-    public CachingIndexedFastaSequenceFile(final File fasta, final long cacheSize ) throws FileNotFoundException {
+    public CachingIndexedFastaSequenceFile(final Path fasta, final long cacheSize ) throws FileNotFoundException {
         this(fasta, cacheSize, false, false);
     }
 

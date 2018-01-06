@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
 import org.broadinstitute.hellbender.tools.funcotator.SequenceComparison;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.gencode.*;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -56,12 +57,12 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         muc16NonBasicFeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.MUC16_GENCODE_NON_BASIC_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
         muc16FeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
         pik3caFeatureReader = AbstractFeatureReader.getFeatureReader( FuncotatorTestConstants.PIK3CA_GENCODE_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
-        refDataSourceHg19Ch19 = ReferenceDataSource.of( new File (FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME) );
-        refDataSourceHg19Ch3 = ReferenceDataSource.of( new File (FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME) );
+        refDataSourceHg19Ch19 = ReferenceDataSource.of( IOUtils.getPath(FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME) );
+        refDataSourceHg19Ch3 = ReferenceDataSource.of( IOUtils.getPath(FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME) );
 
         // Gets cleaned up in `cleanupAfterTests()`
         // NOTE: This is initialized here to save time in testing.
-        testMuc16SnpCreateFuncotationsFuncotationFactory = new GencodeFuncotationFactory(new File(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE), "VERSION");
+        testMuc16SnpCreateFuncotationsFuncotationFactory = new GencodeFuncotationFactory(IOUtils.getPath(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE), "VERSION");
     }
 
     //==================================================================================================================
@@ -885,7 +886,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
         final List<? extends Locatable> exonPositionList = GencodeFuncotationFactory.getSortedExonAndStartStopPositions(transcript);
 
-        final ReferenceDataSource muc16TranscriptDataSource = ReferenceDataSource.of(new File(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE));
+        final ReferenceDataSource muc16TranscriptDataSource = ReferenceDataSource.of(new File(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE).toPath());
         final Map<String, GencodeFuncotationFactory.MappedTranscriptIdInfo> muc16TranscriptIdMap = GencodeFuncotationFactory. createTranscriptIdMap(muc16TranscriptDataSource);
 
         final SequenceComparison seqComp =
@@ -951,7 +952,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final Set<String> requestedTranscriptIds = getValidTranscriptsForGene("MUC16");
 
         // Create a factory for our funcotations:
-        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(new File(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE), "VERSION", requestedTranscriptIds)) {
+        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(new File(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE).toPath(), "VERSION", requestedTranscriptIds)) {
 
             // Generate our funcotations:
             final List<Feature> featureList = new ArrayList<>();
@@ -1002,7 +1003,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final ReferenceContext referenceContext = new ReferenceContext(refDataSourceHg19Ch19, variantInterval );
 
         // Create a factory for our funcotations:
-        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(new File(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE), "VERSION")) {
+        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(new File(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE).toPath(), "VERSION")) {
 
             // Generate our funcotations:
             final List<Feature> featureList = new ArrayList<>();
@@ -1066,7 +1067,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final Set<String> requestedTranscriptIds = getValidTranscriptsForGene(expectedGeneName);
 
         // Create a factory for our funcotations:
-        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(new File(transcriptFastaFile), "VERSION", requestedTranscriptIds)) {
+        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(IOUtils.getPath(transcriptFastaFile), "VERSION", requestedTranscriptIds)) {
 
             final List<Feature> featureList = new ArrayList<>();
             featureList.add( gene );

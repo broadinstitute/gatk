@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import java.nio.file.Path;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -20,6 +21,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.List;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 
 /**
@@ -202,7 +204,7 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
 
     private static CachingIndexedFastaSequenceFile getReferenceReader(ReferenceInputArgumentCollection referenceArguments) {
         final CachingIndexedFastaSequenceFile referenceReader;
-        final File reference = new File(referenceArguments.getReferenceFileName());
+        final Path reference = IOUtils.getPath(referenceArguments.getReferenceFileName());
         try {
             referenceReader = new CachingIndexedFastaSequenceFile(reference);
         } catch (FileNotFoundException e) {

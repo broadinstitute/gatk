@@ -31,7 +31,7 @@ public final class CollectAllelicCountsIntegrationTest extends CommandLineProgra
 
     private static final String NORMAL_SAMPLE_NAME_EXPECTED = "20";
     private static final String TUMOR_SAMPLE_NAME_EXPECTED = "20";
-    private static final SAMSequenceDictionary SEQUENCE_DICTIONARY = ReferenceDataSource.of(REFERENCE_FILE).getSequenceDictionary();
+    private static final SAMSequenceDictionary SEQUENCE_DICTIONARY = ReferenceDataSource.of(REFERENCE_FILE.toPath()).getSequenceDictionary();
     private static final SampleLocatableMetadata NORMAL_METADATA_EXPECTED = new SimpleSampleLocatableMetadata(
             NORMAL_SAMPLE_NAME_EXPECTED, SEQUENCE_DICTIONARY);
 

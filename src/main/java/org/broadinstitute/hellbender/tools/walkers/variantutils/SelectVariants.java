@@ -16,6 +16,7 @@ import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import htsjdk.variant.vcf.VCFUtils;
 
+import java.nio.file.Path;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.Hidden;
@@ -485,9 +486,9 @@ public final class SelectVariants extends VariantWalker {
         Set<VCFHeaderLine> actualLines = null;
         SAMSequenceDictionary sequenceDictionary = null;
         if (hasReference()) {
-            File refFile = referenceArguments.getReferenceFile();
+            Path refPath = referenceArguments.getReferencePath();
             sequenceDictionary= this.getReferenceDictionary();
-            actualLines = VcfUtils.updateHeaderContigLines(headerLines, refFile, sequenceDictionary, suppressReferencePath);
+            actualLines = VcfUtils.updateHeaderContigLines(headerLines, refPath, sequenceDictionary, suppressReferencePath);
         }
         else {
             sequenceDictionary = getHeaderForVariants().getSequenceDictionary();

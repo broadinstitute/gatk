@@ -46,7 +46,7 @@ public class CosmicFuncotationFactoryUnitTest extends GATKBaseTest {
     private static final VariantContext defaultVariantContext;
     private static final ReferenceContext defaultReferenceContext;
 
-    private static final ReferenceDataSource PIK3CA_REF_DATA_SOURCE = ReferenceDataSource.of( new File(FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME) );
+    private static final ReferenceDataSource PIK3CA_REF_DATA_SOURCE = ReferenceDataSource.of( new File(FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME).toPath() );
 
     static {
         final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(

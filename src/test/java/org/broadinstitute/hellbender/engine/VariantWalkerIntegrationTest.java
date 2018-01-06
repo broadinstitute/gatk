@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadNameReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.examples.ExampleVariantWalker;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
@@ -105,7 +106,7 @@ public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
         final SAMSequenceDictionary toolDict = tool.getBestAvailableSequenceDictionary();
         Assert.assertFalse(toolDict.getSequences().stream().allMatch(seqRec -> seqRec.getSequenceLength() == 0));
 
-        SAMSequenceDictionary refDict = new ReferenceFileSource(new File(hg19MiniReference)).getSequenceDictionary();
+        SAMSequenceDictionary refDict = new ReferenceFileSource(IOUtils.getPath(hg19MiniReference)).getSequenceDictionary();
         toolDict.assertSameDictionary(refDict);
         refDict.assertSameDictionary(toolDict);
         Assert.assertEquals(toolDict, refDict);

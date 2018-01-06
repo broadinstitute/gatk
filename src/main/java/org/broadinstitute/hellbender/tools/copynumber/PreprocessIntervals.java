@@ -153,7 +153,7 @@ public final class PreprocessIntervals extends GATKTool {
         final IntervalList unfilteredBins = generateBins(paddedIntervalList, binLength, sequenceDictionary);
 
         logger.info("Filtering bins containing only Ns...");
-        final ReferenceDataSource reference = ReferenceDataSource.of(referenceArguments.getReferenceFile());
+        final ReferenceDataSource reference = ReferenceDataSource.of(referenceArguments.getReferencePath());
         final IntervalList bins = filterBinsContainingOnlyNs(unfilteredBins, reference);
 
         logger.info(String.format("Writing bins to %s...", outputFile));
