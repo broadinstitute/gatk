@@ -10,6 +10,8 @@ import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.tribble.Feature;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -21,10 +23,10 @@ import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.text.XReadLines;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.nio.PathLineIterator;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -332,7 +334,7 @@ public final class IntervalUtils {
         Utils.nonNull(glParser, "glParser is null");
         Utils.nonNull(fileName, "file name is null");
 
-        final File inputFile = new File(fileName);
+        final Path inputPath = IOUtils.getPath(fileName);
         final List<GenomeLoc> ret = new ArrayList<>();
 
         /**
@@ -342,7 +344,7 @@ public final class IntervalUtils {
         boolean isPicardInterval = false;
         try {
             // Note: Picard will skip over intervals with contigs not in the sequence dictionary
-            final IntervalList il = IntervalList.fromFile(inputFile);
+            final IntervalList il = IntervalList.fromPath(inputPath);
             isPicardInterval = true;
 
             for (final Interval interval : il.getIntervals()) {
@@ -356,7 +358,7 @@ public final class IntervalUtils {
                 else if ( glParser.isValidGenomeLoc(interval.getContig(), interval.getStart(), interval.getEnd(), true)) {
                     ret.add(glParser.createGenomeLoc(interval.getContig(), interval.getStart(), interval.getEnd(), true));
                 } else {
-                    throw new UserException(inputFile.getAbsolutePath() +  " has an invalid interval : " + interval) ;
+                    throw new UserException(inputPath.toUri() +  " has an invalid interval : " + interval) ;
                 }
             }
         }
@@ -364,23 +366,20 @@ public final class IntervalUtils {
         catch (final Exception e) {
             if ( isPicardInterval ) // definitely a picard file, but we failed to parse
             {
-                throw new UserException.CouldNotReadInputFile(inputFile, e);
+                throw new UserException.CouldNotReadInputFile(inputPath, e);
             } else {
-                try (XReadLines reader = new XReadLines(new File(fileName))) {
+                try (PathLineIterator reader = new PathLineIterator(inputPath)) {
                     for (final String line : reader) {
                         if (!line.trim().isEmpty()) {
                             ret.add(glParser.parseGenomeLoc(line));
                         }
                     }
                 }
-                catch (final IOException e2) {
-                    throw new UserException.CouldNotReadInputFile(inputFile, e2);
-                }
             }
         }
 
         if ( ret.isEmpty() ) {
-            throw new UserException.MalformedFile(new File(fileName), "It contains no intervals.");
+            throw new UserException.MalformedFile(inputPath, "It contains no intervals.");
         }
 
         return ret;
@@ -527,7 +526,7 @@ public final class IntervalUtils {
      */
     public static boolean isIntervalFile(final String str, final boolean checkExists) {
         Utils.nonNull(str);
-        final File file = new File(str);
+        final Path path = IOUtils.getPath(str);
 
         boolean hasIntervalFileExtension = false;
         for ( final String extension : INTERVAL_FILE_EXTENSIONS ) {
@@ -537,10 +536,10 @@ public final class IntervalUtils {
         }
 
         if ( hasIntervalFileExtension ) {
-            if ( ! checkExists || file.exists() ) {
+            if ( ! checkExists || Files.exists(path) ) {
                 return true;
             } else {
-                throw new UserException.CouldNotReadInputFile(file, "The interval file does not exist.");
+                throw new UserException.CouldNotReadInputFile(path, "The interval file does not exist.");
             }
         }
         else {
