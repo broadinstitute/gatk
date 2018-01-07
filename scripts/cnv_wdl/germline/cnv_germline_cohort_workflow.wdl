@@ -257,11 +257,11 @@ task DetermineGermlineContigPloidyCohortMode {
     command <<<
         set -e
         mkdir ${output_dir_}
-        GATK_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
         export MKL_NUM_THREADS=${default=8 cpu}
         export OMP_NUM_THREADS=${default=8 cpu}
 
-        java -Xmx${machine_mem}g -jar $GATK_JAR DetermineGermlineContigPloidy \
+        gatk --java-options "-Xmx${machine_mem}g"  DetermineGermlineContigPloidy \
             --input ${sep=" --input " read_count_files} \
             --contig-ploidy-priors ${contig_ploidy_priors} \
             --output ${output_dir_} \
@@ -358,14 +358,14 @@ task GermlineCNVCallerCohortMode {
     command <<<
         set -e
         mkdir ${output_dir_}
-        GATK_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
         export MKL_NUM_THREADS=${default=8 cpu}
         export OMP_NUM_THREADS=${default=8 cpu}
 
         mkdir contig-ploidy-calls-dir
         tar xzf ${contig_ploidy_calls_tar} -C contig-ploidy-calls-dir
 
-        java -Xmx${machine_mem}g -jar $GATK_JAR GermlineCNVCaller \
+        gatk --java-options "-Xmx${machine_mem}g"  GermlineCNVCaller \
             --run-mode COHORT \
             -L ${intervals} \
             --input ${sep=" --input " read_count_files} \

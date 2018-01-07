@@ -19,9 +19,9 @@ task PreprocessIntervals {
 
     command <<<
         set -e
-        GATK_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
-        java -Xmx${default="2" mem}g -jar $GATK_JAR PreprocessIntervals \
+        gatk --java-options "-Xmx${default="2" mem}g" PreprocessIntervals \
             ${"-L " + intervals} \
             --sequence-dictionary ${ref_fasta_dict} \
             --reference ${ref_fasta} \
@@ -58,9 +58,9 @@ task AnnotateIntervals {
 
     command <<<
         set -e
-        GATK_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
-        java -Xmx${default="4" mem}g -jar $GATK_JAR AnnotateIntervals \
+        gatk --java-options "-Xmx${default="4" mem}g" AnnotateIntervals \
             -L ${intervals} \
             --reference ${ref_fasta} \
             --interval-merging-rule OVERLAPPING_ONLY \
@@ -98,9 +98,9 @@ task CollectCounts {
 
     command <<<
         set -e
-        GATK_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
-        java -Xmx${default="8" mem}g -jar $GATK_JAR CollectFragmentCounts \
+        gatk --java-options "-Xmx${default="8" mem}g" CollectFragmentCounts \
             --input ${bam} \
             -L ${intervals} \
             --format ${default="HDF5" format} \
@@ -148,9 +148,9 @@ task CollectAllelicCounts {
 
     command <<<
         set -e
-        GATK_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
-        java -Xmx${command_mem}m -jar $GATK_JAR CollectAllelicCounts \
+        gatk --java-options "-Xmx${command_mem}m" CollectAllelicCounts \
             -L ${common_sites} \
             --input ${bam} \
             --reference ${ref_fasta} \

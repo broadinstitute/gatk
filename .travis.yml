@@ -122,8 +122,8 @@ script:
   elif [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
     echo "Can't run cloud tests without keys so don't run tests";
   elif [[ $RUN_CNV_GERMLINE_WDL == true ]]; then
-      echo "Running CNV germline workflows";
-      bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh;
+    echo "Running CNV germline workflows";
+    bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh;
   elif [[ $RUN_CNV_SOMATIC_WDL == true ]]; then
     echo "Running CNV somatic workflows";
     bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;

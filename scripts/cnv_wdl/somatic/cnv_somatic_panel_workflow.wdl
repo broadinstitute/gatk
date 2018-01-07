@@ -110,9 +110,9 @@ task CreateReadCountPanelOfNormals {
 
     command <<<
         set -e
-        GATK_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
-        java -Xmx${machine_mem}g -jar $GATK_JAR CreateReadCountPanelOfNormals \
+        gatk --java-options "-Xmx${machine_mem}g" CreateReadCountPanelOfNormals \
             --input ${sep=" --input " read_count_files} \
             --minimum-interval-median-percentile ${default="10.0" minimum_interval_median_percentile} \
             --maximum-zeros-in-sample-percentage ${default="5.0" maximum_zeros_in_sample_percentage} \
