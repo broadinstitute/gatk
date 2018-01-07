@@ -216,6 +216,14 @@ workflow CNVGermlineCohortWorkflow {
                 preemptible_attempts = preemptible_attempts
         }
     }
+
+    output {
+        File contig_ploidy_model_tar = DetermineGermlineContigPloidyCohortMode.contig_ploidy_model_tar
+        File contig_ploidy_calls_tar = DetermineGermlineContigPloidyCohortMode.contig_ploidy_calls_tar
+
+        Array[File] gcnv_model_tars = GermlineCNVCallerCohortMode.gcnv_model_tar
+        Array[File] gcnv_calls_tars = GermlineCNVCallerCohortMode.gcnv_calls_tar
+    }
 }
 
 task DetermineGermlineContigPloidyCohortMode {

@@ -173,6 +173,14 @@ workflow CNVGermlineCaseWorkflow {
                 preemptible_attempts = preemptible_attempts
         }
     }
+
+    output {
+        File preprocessed_intervals = PreprocessIntervals.preprocessed_intervals
+        File read_counts = CollectCounts.counts
+        File read_counts_entity_id = CollectCounts.entity_id
+        File contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar
+        Array[File] gcnv_calls_tars = GermlineCNVCallerCaseMode.gcnv_calls_tar
+    }
 }
 
 task DetermineGermlineContigPloidyCaseMode {
