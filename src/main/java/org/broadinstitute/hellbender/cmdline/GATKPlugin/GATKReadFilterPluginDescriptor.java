@@ -163,7 +163,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
     }
 
     /**
-     * @return an ordered list ReadFilter instances that result from resolving all command line
+     * @return an ordered list of ReadFilter instances that result from resolving all command line
      * arguments with any default plugins that have been provided to this descriptor. This list
      * represents the ReadFilters that will actually be used by the consumer.
      *
@@ -399,14 +399,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
         Utils.nonNull(samHeader);
         Utils.nonNull(aggregateFunction);
 
-        final List<ReadFilter> finalFilters = new ArrayList<>();
-        final List<ReadFilter> clFilters = getResolvedInstances();
-        if (clFilters != null) {
-            clFilters.stream()
-                    .filter(f -> !finalFilters.contains(f)) // remove redundant filters
-                    .forEach(f -> finalFilters.add(f));
-        }
-
+        final List<ReadFilter> finalFilters = getResolvedInstances();
         return aggregateFunction.apply(finalFilters, samHeader);
     }
 
