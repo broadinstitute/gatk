@@ -93,14 +93,13 @@ task CreatePanel {
       Int? preemptible_attempts
       String gatk_docker
 
+      String gatk_local_jar = select_first([gatk4_jar_override, gatk4_jar])
+
       command {
             # Use GATK Jar override if specified
-            GATK_JAR=${gatk4_jar}
-            if [[ "${gatk4_jar_override}" == *.jar ]]; then
-                GATK_JAR=${gatk4_jar_override}
-            fi
+            export GATK_LOCAL_JAR=${gatk_local_jar}
 
-            java -Xmx2g -jar $GATK_JAR CreateSomaticPanelOfNormals -vcfs ${sep=' -vcfs ' input_vcfs} ${"-duplicate-sample-strategy " + duplicate_sample_strategy} -O ${output_vcf_name}.vcf
+            gatk --java-options "-Xmx2g"  CreateSomaticPanelOfNormals -vcfs ${sep=' -vcfs ' input_vcfs} ${"-duplicate-sample-strategy " + duplicate_sample_strategy} -O ${output_vcf_name}.vcf
       }
 
       runtime {
