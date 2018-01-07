@@ -11,7 +11,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.MetagenomicsProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
@@ -67,7 +67,7 @@ import java.io.IOException;
         "unambiguous hits, and genome length of each taxon. Optionally, a BAM is also produced that attaches a " +
         PSScorer.HITS_TAG + " tag to each read listing its hit taxonomic IDs.",
         oneLineSummary = "Step 3: Classifies pathogen-aligned reads and generates abundance scores",
-        programGroup = PathSeqProgramGroup.class)
+        programGroup = MetagenomicsProgramGroup.class)
 @BetaFeature
 public class PathSeqScoreSpark extends GATKSparkTool {
 

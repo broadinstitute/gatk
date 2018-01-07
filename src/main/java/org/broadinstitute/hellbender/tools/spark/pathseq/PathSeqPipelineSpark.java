@@ -12,7 +12,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.MetagenomicsProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -31,7 +31,7 @@ import java.util.List;
 @CommandLineProgramProperties(summary = "Combined tool that performs all steps: read filtering, pathogen alignment, and abundance " +
         "scoring. Note that reducing reads per partition increases parallelism of pathogen alignment on Spark.",
         oneLineSummary = "Combined tool that performs all steps: read filtering, pathogen alignment, and abundance scoring",
-        programGroup = PathSeqProgramGroup.class)
+        programGroup = MetagenomicsProgramGroup.class)
 @BetaFeature
 public class PathSeqPipelineSpark extends GATKSparkTool {
 

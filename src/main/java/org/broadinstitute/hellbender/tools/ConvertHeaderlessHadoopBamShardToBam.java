@@ -6,7 +6,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.programgroups.TestSparkProgramGroup;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
@@ -27,7 +27,7 @@ import java.io.*;
 @CommandLineProgramProperties(
         summary = "Convert a headerless hadoop bam shard into a readable bam",
         oneLineSummary = "Convert a headerless hadoop bam shard into a readable bam",
-        programGroup = TestSparkProgramGroup.class
+        programGroup = ReadDataManipulationProgramGroup.class
 )
 @BetaFeature
 public final class ConvertHeaderlessHadoopBamShardToBam extends CommandLineProgram {

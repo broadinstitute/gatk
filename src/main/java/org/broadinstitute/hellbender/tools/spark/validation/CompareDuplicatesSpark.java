@@ -13,7 +13,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.programgroups.TestSparkProgramGroup;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
@@ -35,7 +35,7 @@ import java.util.Set;
  */
 @DocumentedFeature
 @CommandLineProgramProperties(summary = "Compares two BAMs for duplicates", oneLineSummary = "Compares two BAMs for duplicates",
-        programGroup = TestSparkProgramGroup.class)
+        programGroup = DiagnosticsAndQCProgramGroup.class)
 @BetaFeature
 public final class CompareDuplicatesSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;

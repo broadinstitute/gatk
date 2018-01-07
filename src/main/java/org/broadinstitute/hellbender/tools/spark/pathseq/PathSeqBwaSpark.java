@@ -10,7 +10,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.MetagenomicsProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
@@ -29,7 +29,7 @@ import java.io.IOException;
         "(do not use --input) and a BWA reference image file created using BwaMemIndexImageCreator. For small " +
         "input, it is recommended that the user reduce --bamPartitionSize in order to increase parallelism.",
         oneLineSummary = "Step 2: Aligns reads to the pathogen reference",
-        programGroup = PathSeqProgramGroup.class)
+        programGroup = MetagenomicsProgramGroup.class)
 @BetaFeature
 public final class PathSeqBwaSpark extends GATKSparkTool {
 

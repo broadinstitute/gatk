@@ -7,12 +7,11 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VCFManipulationProgramGroup;
+import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
-import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
 import java.util.ArrayDeque;
@@ -41,7 +40,7 @@ import java.util.ArrayDeque;
         summary = "Remove indels that are close to each other from a vcf. For any pair of indels that are within" +
                   "some minimum allowed distance, both indels are removed, regardless of any intervening non-indel variants.",
         oneLineSummary = "(Internal) Remove indels from the VCF file that are close to each other.",
-        programGroup = VCFManipulationProgramGroup.class
+        programGroup = VariantManipulationProgramGroup.class
 )
 @DocumentedFeature
 public class RemoveNearbyIndels extends VariantWalker {

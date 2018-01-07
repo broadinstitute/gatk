@@ -6,7 +6,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -42,11 +42,11 @@ import java.util.stream.Collectors;
 @CommandLineProgramProperties(
         summary = "Create functional annotations on given variants cross-referenced by a given database.\n" +
                 "A GATK version of the Oncotator.",
-        oneLineSummary = "(Experimental) Functional Annotator",
+        oneLineSummary = "Functional Annotator",
         programGroup = VariantProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
+@ExperimentalFeature
 public class Funcotator extends VariantWalker {
     private static final Logger logger = LogManager.getLogger(Funcotator.class);
 

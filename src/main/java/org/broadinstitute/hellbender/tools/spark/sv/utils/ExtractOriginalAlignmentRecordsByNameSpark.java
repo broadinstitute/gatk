@@ -8,7 +8,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadDataProgramGroup;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -61,7 +61,7 @@ import java.util.stream.Collectors;
             " The matching reads are copied to an output file." +
             " Unlike FilterSamReads (Picard), this tool can take input reads in any order" +
             " (e.g., unsorted or coordinate-sorted).",
-        programGroup = ReadDataProgramGroup.class)
+        programGroup = ReadDataManipulationProgramGroup.class)
 public final class ExtractOriginalAlignmentRecordsByNameSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 

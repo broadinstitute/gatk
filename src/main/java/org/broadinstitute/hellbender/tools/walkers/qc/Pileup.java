@@ -4,10 +4,9 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.Feature;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
@@ -78,7 +77,7 @@ import java.util.stream.Collectors;
         + "name, coordinate, reference base, read bases, and read qualities. In addition to these default fields, "
         + "additional information can be added to the output as extra columns; see options detailed below.",
     oneLineSummary = "Print read alignments in Pileup-style format",
-    programGroup = QCProgramGroup.class)
+    programGroup = CoverageAnalysisProgramGroup.class)
 @DocumentedFeature
 public final class Pileup extends LocusWalker {
 

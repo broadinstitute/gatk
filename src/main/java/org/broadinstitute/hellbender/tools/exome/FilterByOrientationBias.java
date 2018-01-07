@@ -5,11 +5,11 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantFilteringProgramGroup;
+import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -101,11 +101,11 @@ import java.util.stream.Collectors;
                 " - In multiallelic sites, only the first alternate allele is used for filtering.\n" +
                 " - This filter should be applied last in any M2 toolchain.\n" +
                 " - Common artifacts:\n G/T (OxoG)\n C/T (deamination) ",
-        oneLineSummary = "(Experimental) Filter Mutect2 somatic variant calls using orientation bias",
+        oneLineSummary = "Filter Mutect2 somatic variant calls using orientation bias",
         programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
+@ExperimentalFeature
 public class FilterByOrientationBias extends VariantWalker {
 
     public static final String PRE_ADAPTER_METRICS_DETAIL_FILE_SHORT_NAME = "P";
