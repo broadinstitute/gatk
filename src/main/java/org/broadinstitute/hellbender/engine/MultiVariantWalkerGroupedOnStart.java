@@ -45,6 +45,11 @@ public abstract class MultiVariantWalkerGroupedOnStart extends MultiVariantWalke
             optional = true)
     private boolean ignoreIntervalsOutsideStart = false;
 
+    @Override
+    public boolean requiresReference() {
+        return true;
+    }
+
     /**
      * This method keeps track of all the variants it is passed and will feed all the variants that start at the same
      * site to the reduce method.

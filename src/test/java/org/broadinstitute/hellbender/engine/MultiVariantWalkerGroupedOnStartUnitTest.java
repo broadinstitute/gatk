@@ -91,7 +91,7 @@ public class MultiVariantWalkerGroupedOnStartUnitTest extends GATKBaseTest {
     @SuppressWarnings({"unchecked"})
     public void testSimpleCaseDuplicateFile(File file, File file2) {
         final DummyExampleGroupingMultiVariantWalker tool = new DummyExampleGroupingMultiVariantWalker();
-        final String[] args = {"--variant", file.getAbsolutePath(), "--variant", file2.getAbsolutePath()};
+        final String[] args = {"--variant", file.getAbsolutePath(), "--variant", file2.getAbsolutePath(), "-R", b37_reference_20_21};
         tool.instanceMain(args);
 
         //Check that we get the right number of apply calls and the right number of variants
@@ -112,7 +112,7 @@ public class MultiVariantWalkerGroupedOnStartUnitTest extends GATKBaseTest {
     @Test
     public void testIgnoreVariantsThatStartOutsideInterval() {
         final DummyExampleGroupingMultiVariantWalker tool = new DummyExampleGroupingMultiVariantWalker();
-        final String[] args = {"--variant", getTestFile("gvcfExample1.vcf").getAbsolutePath(), "--"+MultiVariantWalkerGroupedOnStart.IGNORE_VARIANTS_THAT_START_OUTSIDE_INTERVAL, "-L", "20:69500-69540"};
+        final String[] args = {"--variant", getTestFile("gvcfExample1.vcf").getAbsolutePath(), "--"+MultiVariantWalkerGroupedOnStart.IGNORE_VARIANTS_THAT_START_OUTSIDE_INTERVAL, "-L", "20:69500-69540", "-R", b37_reference_20_21};
         tool.instanceMain(args);
 
         Assert.assertEquals(tool.seenVariants.size(), 3);
@@ -124,7 +124,7 @@ public class MultiVariantWalkerGroupedOnStartUnitTest extends GATKBaseTest {
     @SuppressWarnings({"unchecked"})
     public void testMergingTwoFilesCorrectBehavior() {
         final DummyExampleGroupingMultiVariantWalker tool = new DummyExampleGroupingMultiVariantWalker();
-        final String[] args = {"--variant", getToolTestDataDir()+"gvcfExample1.vcf", "--variant", getToolTestDataDir()+"gvcfExample2.vcf"};
+        final String[] args = {"--variant", getToolTestDataDir()+"gvcfExample1.vcf", "--variant", getToolTestDataDir()+"gvcfExample2.vcf", "-R", b37_reference_20_21};
         tool.instanceMain(args);
 
         //Check that we get the right number of apply calls and the right number of variants
@@ -133,7 +133,7 @@ public class MultiVariantWalkerGroupedOnStartUnitTest extends GATKBaseTest {
             List<String> inputList1 = ((List<VariantContext>)IteratorUtils.toList(variantContextFeatureDataSource1.iterator())).stream().map(VariantContext::toString).collect(Collectors.toList());
             List<String> inputList2 = ((List<VariantContext>)IteratorUtils.toList(variantContextFeatureDataSource2.iterator())).stream().map(VariantContext::toString).collect(Collectors.toList());
 
-            Assert.assertEquals(tool.seenVariants.size(), 14);
+            Assert.assertEquals(tool.seenVariants.size(), 13);
             int total = 0;
             // We expect each variant in a duplicate file to be applied once but duplicated across the files
             for (int i = 0; i < tool.seenVariants.size(); i++) {
@@ -149,7 +149,7 @@ public class MultiVariantWalkerGroupedOnStartUnitTest extends GATKBaseTest {
     @SuppressWarnings({"unchecked"})
     public void testSingleFileMultisites() {
         final DummyExampleGroupingMultiVariantWalker tool = new DummyExampleGroupingMultiVariantWalker();
-        final String[] args = {"--variant", getToolTestDataDir()+"gvcfExample3.vcf"};
+        final String[] args = {"--variant", getToolTestDataDir()+"gvcfExample3.vcf", "-R", b37_reference_20_21};
         tool.instanceMain(args);
 
         //Check that we get the right number of apply calls and the right number of variants
