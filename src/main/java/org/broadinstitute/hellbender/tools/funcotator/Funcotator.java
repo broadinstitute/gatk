@@ -196,7 +196,7 @@ import java.util.stream.Collectors;
  */
 @CommandLineProgramProperties(
         summary = "Create functional annotations on given variants cross-referenced by a given set of data sources.\n" +
-                "A GATK version of the Oncotator.",
+                "A GATK functional annotation tool (similar functionality to Oncotator).",
         oneLineSummary = "Functional Annotator",
         programGroup = VariantProgramGroup.class
 )
