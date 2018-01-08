@@ -101,7 +101,6 @@ public class GATKHelpDoclet extends HelpDoclet {
          * same as used in the Freemarker template.
          */
         root.put("supercat", HelpConstants.getSuperCategoryProperty(docWorkUnit.getGroupName()));
-        root.put("isspark", HelpConstants.getSparkCategoryProperty(docWorkUnit.getGroupName()));
 
         return root;
     }

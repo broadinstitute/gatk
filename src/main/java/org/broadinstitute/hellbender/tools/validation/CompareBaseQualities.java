@@ -13,7 +13,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.PositionalArguments;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
@@ -28,7 +28,7 @@ import static org.broadinstitute.hellbender.transformers.BQSRReadTransformer.con
         summary = "USAGE: CompareBaseQualities <SAMFile1> <SAMFile2>\n" +
                 "Compares the base qualities of two input SAM/BAM/CRAM files. The files must be sorted exactly the same name.",
         oneLineSummary = "Compares base qualities of two input SAM/BAM/CRAM files",
-        programGroup = ReadProgramGroup.class
+        programGroup = DiagnosticsAndQCProgramGroup.class
 )
 public final class CompareBaseQualities extends PicardCommandLineProgram {
     @PositionalArguments(minElements = 2, maxElements = 2)

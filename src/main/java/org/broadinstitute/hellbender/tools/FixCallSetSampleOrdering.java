@@ -8,10 +8,10 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import org.apache.commons.collections.CollectionUtils;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -28,13 +28,13 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
-@BetaFeature
+@ExperimentalFeature
 @CommandLineProgramProperties(summary = "Fix the sample names in a vcf that ran through the GenomicsDBImport when " +
         "the batch ordering bug was present, this will restore the correct sample names provided it is given the exact sample name mapping / vcf ordering" +
         "and batch sized that was used in the initial import. " +
         "See https://github.com/broadinstitute/gatk/issues/3682 for more information",
         oneLineSummary = "fix sample names in a shuffled callset",
-        programGroup = VariantProgramGroup.class,
+        programGroup = ShortVariantDiscoveryProgramGroup.class,
         omitFromCommandLine = true)
 public final class FixCallSetSampleOrdering extends VariantWalker {
     public static final String SKIP_PROMPT_LONG_NAME = "skipPrompt";

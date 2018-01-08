@@ -22,7 +22,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -108,7 +108,7 @@ import java.util.stream.Collectors;
                   "analyses. Examples include comparing and contrasting cases vs. controls, extracting variant or non-variant loci that meet " +
                   "certain requirements, or troubleshooting some unexpected results, to name a few.",
         oneLineSummary = "Select a subset of variants from a VCF file",
-        programGroup = VariantProgramGroup.class
+        programGroup = VariantManipulationProgramGroup.class
 )
 @DocumentedFeature
 public final class SelectVariants extends VariantWalker {

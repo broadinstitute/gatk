@@ -10,7 +10,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -199,7 +199,7 @@ import java.util.stream.Collectors;
         summary = "Create functional annotations on given variants cross-referenced by a given set of data sources.\n" +
                 "A GATK functional annotation tool (similar functionality to Oncotator).",
         oneLineSummary = "Functional Annotator",
-        programGroup = VariantProgramGroup.class
+        programGroup = VariantEvaluationProgramGroup.class
 )
 @DocumentedFeature
 @BetaFeature

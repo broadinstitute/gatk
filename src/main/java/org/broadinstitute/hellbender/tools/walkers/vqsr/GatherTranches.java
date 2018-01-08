@@ -8,7 +8,7 @@ import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import picard.cmdline.programgroups.OtherProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.File;
@@ -21,7 +21,7 @@ import java.util.*;
         summary = "Gathers scattered VQSLOD tranches into a single file. For use when running VariantRecalibrator on " +
                 "scattered input using the -scatterTranches mode.",
         oneLineSummary = "Gathers scattered VQSLOD tranches into a single file",
-        programGroup = VariantProgramGroup.class
+        programGroup = OtherProgramGroup.class
 )
 @BetaFeature
 public class GatherTranches extends CommandLineProgram {

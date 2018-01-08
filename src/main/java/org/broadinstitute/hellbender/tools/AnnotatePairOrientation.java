@@ -12,7 +12,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -38,7 +38,7 @@ import java.util.*;
                 "\n  The output of this tool only counts reads that fully overlap (and match) the variant or reference sequence (this is relevant for indels)." +
                 "\n  IMPORTANT:  This tool does not produce the exact same F1R2/F2R1 as M2, due to the nature of how M2 calls variants (using read likelihoods, whereas this tool uses a base quality filter).",
         oneLineSummary = "(EXPERIMENTAL) Annotate a non-M2 VCF (using the associated tumor bam) with pair orientation fields (e.g. " + GATKVCFConstants.F1R2_KEY + " ).",
-        programGroup = VariantProgramGroup.class
+        programGroup = VariantEvaluationProgramGroup.class
 )
 @BetaFeature
 public class AnnotatePairOrientation extends VariantWalker {

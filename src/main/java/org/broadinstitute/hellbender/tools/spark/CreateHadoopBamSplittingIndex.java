@@ -17,7 +17,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import picard.cmdline.programgroups.OtherProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
@@ -33,7 +33,7 @@ import java.io.IOException;
 
 @CommandLineProgramProperties(summary = "Create a HadoopBam splitting index as well as a bam index from a bam file.",
         oneLineSummary = "create a hadoop-bam splitting index" ,
-        programGroup = SparkProgramGroup.class)
+        programGroup = OtherProgramGroup.class)
 @DocumentedFeature
 @BetaFeature
 public final class CreateHadoopBamSplittingIndex extends CommandLineProgram {

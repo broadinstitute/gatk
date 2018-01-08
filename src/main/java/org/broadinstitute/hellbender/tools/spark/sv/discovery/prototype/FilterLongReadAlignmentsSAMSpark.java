@@ -10,13 +10,10 @@ import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.barclay.argparser.Advanced;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -33,6 +30,7 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
+import javax.tools.Diagnostic;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -77,15 +75,15 @@ import static org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVar
  * for an example of how to set up and run a Spark tool on a cloud Spark cluster.</p>
  */
 @DocumentedFeature
-@BetaFeature
+@ExperimentalFeature
 @CommandLineProgramProperties(
-        oneLineSummary = "(Internal) Examines alignments of chimeric contigs, attempting to produce an optimal tiling",
+        oneLineSummary = "Examines alignments of chimeric contigs, attempting to produce an optimal tiling",
         summary =
         "This tool is used in development and should not be of interest to most researchers.  It is a prototype" +
         " of one aspect of structural variant calling from chimeric contigs produced by local assemblies." +
         " It takes a SAM/BAM/CRAM containing the alignments of assembled contigs and filters them with the" +
         " aim of providing \"optimal coverage\" of the contig, based on an heuristic scoring scheme.",
-        programGroup = StructuralVariantDiscoveryProgramGroup.class)
+        programGroup = DiagnosticsAndQCProgramGroup.class)
 public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
     private final Logger localLogger = LogManager.getLogger(FilterLongReadAlignmentsSAMSpark.class);

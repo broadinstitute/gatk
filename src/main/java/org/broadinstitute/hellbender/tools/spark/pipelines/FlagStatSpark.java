@@ -7,7 +7,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.tools.FlagStat.FlagStatus;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -17,7 +17,7 @@ import java.io.PrintStream;
 
 @CommandLineProgramProperties(summary ="runs FlagStat on Spark",
         oneLineSummary = "FlagStat on Spark",
-        programGroup = SparkProgramGroup.class)
+        programGroup = DiagnosticsAndQCProgramGroup.class)
 @DocumentedFeature
 @BetaFeature
 public final class FlagStatSpark extends GATKSparkTool {

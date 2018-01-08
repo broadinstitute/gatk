@@ -5,7 +5,7 @@ import htsjdk.samtools.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -46,7 +46,7 @@ import java.io.File;
 @CommandLineProgramProperties(
         summary = "Left-aligns indels from reads in a SAM/BAM/CRAM file.",
         oneLineSummary = "Left-aligns indels from reads in a SAM/BAM/CRAM file",
-        programGroup = ReadProgramGroup.class
+        programGroup = ReadDataManipulationProgramGroup.class
 )
 public final class LeftAlignIndels extends ReadWalker {
 
