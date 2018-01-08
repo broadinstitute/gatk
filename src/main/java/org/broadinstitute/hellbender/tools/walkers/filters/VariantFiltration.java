@@ -11,7 +11,7 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -63,7 +63,7 @@ import static java.util.Collections.singleton;
 @CommandLineProgramProperties(
         summary = "Filter variant calls based on INFO and/or FORMAT annotations.",
         oneLineSummary = "Filter variant calls based on INFO and/or FORMAT annotations",
-        programGroup = VariantProgramGroup.class
+        programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
 public final class VariantFiltration extends VariantWalker {

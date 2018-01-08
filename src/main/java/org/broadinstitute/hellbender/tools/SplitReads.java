@@ -8,7 +8,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
         summary = "Outputs reads by read group, etc. " +
                 "Not to be confused with a tool that splits reads for RNA-Seq analysis.",
         oneLineSummary = "Outputs reads from a SAM/BAM/CRAM by read group, sample and library name",
-        programGroup = ReadProgramGroup.class
+        programGroup = ReadDataManipulationProgramGroup.class
 )
 @DocumentedFeature
 public final class SplitReads extends ReadWalker {

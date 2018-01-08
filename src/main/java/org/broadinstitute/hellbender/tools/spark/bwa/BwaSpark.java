@@ -8,7 +8,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
@@ -21,7 +21,7 @@ import java.io.IOException;
 @DocumentedFeature
 @CommandLineProgramProperties(summary = "Runs BWA",
         oneLineSummary = "BWA on Spark",
-        programGroup = SparkProgramGroup.class)
+        programGroup = ReadDataManipulationProgramGroup.class)
 @BetaFeature
 public final class BwaSpark extends GATKSparkTool {
 

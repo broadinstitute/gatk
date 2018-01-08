@@ -19,7 +19,7 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -119,7 +119,7 @@ import java.util.function.Function;
 @CommandLineProgramProperties(
     summary = "Import VCFs to GenomicsDB",
     oneLineSummary = "Import VCFs to GenomicsDB",
-    programGroup = VariantProgramGroup.class
+    programGroup = ShortVariantDiscoveryProgramGroup.class
 )
 public final class GenomicsDBImport extends GATKTool {
 

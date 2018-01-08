@@ -8,7 +8,7 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.metrics.InsertSizeMetricsArgumentCollection;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -21,7 +21,7 @@ import java.util.List;
 @CommandLineProgramProperties(
         summary        = "Program to collect insert size distribution information in SAM/BAM/CRAM file(s)",
         oneLineSummary = "Collect Insert Size Distribution on Spark",
-        programGroup   = SparkProgramGroup.class)
+        programGroup   = DiagnosticsAndQCProgramGroup.class)
 @DocumentedFeature
 @BetaFeature
 public final class CollectInsertSizeMetricsSpark

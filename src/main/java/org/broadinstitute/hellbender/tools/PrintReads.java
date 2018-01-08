@@ -4,7 +4,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -80,7 +80,7 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 @CommandLineProgramProperties(
         summary = "Prints reads from the input SAM/BAM/CRAM file to the SAM/BAM/CRAM file.",
         oneLineSummary = "Print reads in the SAM/BAM/CRAM file",
-        programGroup = ReadProgramGroup.class
+        programGroup = ReadDataManipulationProgramGroup.class
 )
 @DocumentedFeature
 public final class PrintReads extends ReadWalker {

@@ -4,7 +4,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -19,7 +19,7 @@ import java.io.File;
 @CommandLineProgramProperties(
 	summary = "Fixes Illumina base quality scores in a SAM/BAM/CRAM file",
     oneLineSummary = "Fix Illumina base quality scores in a SAM/BAM/CRAM file",
-    programGroup = ReadProgramGroup.class
+    programGroup = ReadDataManipulationProgramGroup.class
 )
 public final class FixMisencodedBaseQualityReads extends ReadWalker {
 

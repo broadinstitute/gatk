@@ -8,7 +8,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -22,7 +22,7 @@ import java.util.List;
 @DocumentedFeature
 @CommandLineProgramProperties(summary = "Sorts the input SAM/BAM/CRAM",
         oneLineSummary = "SortSam on Spark (works on SAM/BAM/CRAM)",
-        programGroup = SparkProgramGroup.class)
+        programGroup = ReadDataManipulationProgramGroup.class)
 @BetaFeature
 public final class SortReadFileSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;

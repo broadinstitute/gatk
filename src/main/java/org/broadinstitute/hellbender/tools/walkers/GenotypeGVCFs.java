@@ -9,7 +9,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.VariantAnnotationArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
@@ -80,7 +80,7 @@ import java.util.*;
  */
 @CommandLineProgramProperties(summary = "Perform joint genotyping on a single-sample GVCF from HaplotypeCaller or a multi-sample GVCF from CombineGVCFs or GenomicsDBImport",
         oneLineSummary = "Perform joint genotyping on one or more samples pre-called with HaplotypeCaller",
-        programGroup = VariantProgramGroup.class)
+        programGroup = ShortVariantDiscoveryProgramGroup.class)
 @DocumentedFeature
 public final class GenotypeGVCFs extends VariantWalker {
 

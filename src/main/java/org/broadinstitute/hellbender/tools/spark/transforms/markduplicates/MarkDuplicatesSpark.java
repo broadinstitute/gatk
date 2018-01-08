@@ -12,7 +12,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicatesArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -29,7 +29,7 @@ import java.util.List;
 @CommandLineProgramProperties(
         summary ="Marks duplicates on spark",
         oneLineSummary ="MarkDuplicates on Spark",
-        programGroup = SparkProgramGroup.class)
+        programGroup = ReadDataManipulationProgramGroup.class)
 @BetaFeature
 public final class MarkDuplicatesSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;

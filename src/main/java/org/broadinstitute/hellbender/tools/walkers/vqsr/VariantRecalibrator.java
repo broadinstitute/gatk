@@ -17,7 +17,7 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.Hidden;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -158,7 +158,7 @@ import java.util.*;
 @CommandLineProgramProperties(
         summary = "Build a recalibration model to score variant quality for filtering purposes",
         oneLineSummary = "Build a recalibration model to score variant quality for filtering purposes",
-        programGroup = VariantProgramGroup.class
+        programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
 public class VariantRecalibrator extends MultiVariantWalker {

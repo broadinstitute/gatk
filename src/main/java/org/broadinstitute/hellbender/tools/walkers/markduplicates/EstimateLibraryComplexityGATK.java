@@ -17,7 +17,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.AbstractOpticalDuplicateFinderCommandLineProgram;
@@ -79,7 +79,7 @@ import static java.lang.Math.pow;
                 "[#reads in duplicate set -> #of duplicate sets] all bins that contain exactly one duplicate set are " +
                 "then removed from the Histogram as outliers before library size is estimated.",
         oneLineSummary = "Estimates library complexity from the sequence of read pairs",
-        programGroup = ReadProgramGroup.class
+        programGroup = DiagnosticsAndQCProgramGroup.class
 )
 public final class EstimateLibraryComplexityGATK extends AbstractOpticalDuplicateFinderCommandLineProgram {
 

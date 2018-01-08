@@ -10,7 +10,7 @@ import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
         + "name, coordinate, reference base, read bases, and read qualities. In addition to these default fields, "
         + "additional information can be added to the output as extra columns; see options detailed below.",
         oneLineSummary = "Print read alignments in Pileup-style format on Spark",
-        programGroup = SparkProgramGroup.class)
+        programGroup = CoverageAnalysisProgramGroup.class)
 @DocumentedFeature
 @BetaFeature
 public final class PileupSpark extends LocusWalkerSpark {

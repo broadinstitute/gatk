@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools;
 
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -16,7 +16,7 @@ import java.text.NumberFormat;
 	summary = "Walks over all input data, accumulating statistics such as total number of read\n" +
             "reads with QC failure flag set, number of duplicates, percentage mapped, etc.",
 	oneLineSummary = "A reimplementation of the 'samtools flagstat' subcommand",
-    programGroup = ReadProgramGroup.class
+    programGroup = DiagnosticsAndQCProgramGroup.class
 )
 @DocumentedFeature
 public final class FlagStat extends ReadWalker {

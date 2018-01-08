@@ -11,7 +11,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -135,7 +135,7 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 @CommandLineProgramProperties(
         summary = "Call germline SNPs and indels via local re-assembly of haplotypes",
         oneLineSummary = "Call germline SNPs and indels via local re-assembly of haplotypes",
-        programGroup = VariantProgramGroup.class
+        programGroup = ShortVariantDiscoveryProgramGroup.class
 )
 @DocumentedFeature
 @BetaFeature

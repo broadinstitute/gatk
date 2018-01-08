@@ -7,16 +7,17 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import sun.tools.asm.Cover;
 
 import java.io.PrintStream;
 
 @CommandLineProgramProperties(summary = "Counts bases in the input SAM/BAM",
         oneLineSummary = "CountBases on Spark",
-        programGroup = SparkProgramGroup.class)
+        programGroup = CoverageAnalysisProgramGroup.class)
 @DocumentedFeature
 @BetaFeature
 public final class CountBasesSpark extends GATKSparkTool {

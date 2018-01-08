@@ -8,7 +8,7 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.metrics.QualityYieldMetricsArgumentCollection;
@@ -24,7 +24,7 @@ import java.util.List;
         summary = "Collects quality yield metrics, a set of metrics that quantify the quality and yield of sequence data from a " +
                 "SAM/BAM/CRAM input file.",
         oneLineSummary = "CollectQualityYieldMetrics on Spark",
-        programGroup = SparkProgramGroup.class
+        programGroup = DiagnosticsAndQCProgramGroup.class
 )
 @DocumentedFeature
 @BetaFeature

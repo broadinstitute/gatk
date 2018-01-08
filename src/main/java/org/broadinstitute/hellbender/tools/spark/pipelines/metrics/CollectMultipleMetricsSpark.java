@@ -11,7 +11,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MetricAccumulationLevelArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.metrics.*;
@@ -28,7 +28,7 @@ import java.util.*;
                 "metrics modules at the same time to cut down on I/O. Currently all programs are run with " +
                 "default options and fixed output extensions, but this may become more flexible in future.",
         oneLineSummary = "A \"meta-metrics\" calculating program that produces multiple metrics for the provided SAM/BAM/CRAM file",
-        programGroup = SparkProgramGroup.class
+        programGroup = DiagnosticsAndQCProgramGroup.class
 )
 @DocumentedFeature
 @BetaFeature
