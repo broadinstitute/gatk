@@ -13,7 +13,7 @@ public final class StandardArgumentDefinitions {
     public static final String VARIANT_LONG_NAME = "variant";
     public static final String FEATURE_LONG_NAME = "feature";
     public static final String INTERVALS_LONG_NAME = "intervals";
-    public static final String READ_INDEX_LONG_NAME = "readIndex";
+    public static final String READ_INDEX_LONG_NAME = "read-index";
     public static final String USE_ORIGINAL_QUALITIES_LONG_NAME = "use-original-qualities";
     public static final String LENIENT_LONG_NAME = "lenient";
     public static final String VERBOSITY_NAME = "verbosity";
