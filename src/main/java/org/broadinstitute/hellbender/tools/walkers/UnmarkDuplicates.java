@@ -4,7 +4,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.ReadDataProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -18,42 +18,52 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Removes duplicate read tags.
+ * Clears the 0x400 duplicate SAM flag from reads.
+ * <p>
+ * Most GATK tools employ the NotDuplicateReadFilter that removes duplicate reads from analysis.
+ * For these GATK tools, it is possible to disable the engine-level NotDuplicateReadFilter with the --disable-read-filter argument.
+ * Disabling the filter allows a tool to then include duplicate reads in its analysis.
+ * Certain data types, e.g. amplicon data, need to include reads flagged as duplicate in downstream analyses.
+ * </p>
  *
- * <p> This tool "unmarks" duplicate reads in a SAM/BAM/CRAM file. Duplicate reads are defined as originated from a
- * single fragment of DNA and can arise during sample preparation. </p>
- *
+ * <p>
+ * Removing the duplicate flag in its entirety may be desirable for convenience
+ * or for analysis with programs that do not allow disabling their duplicate read filter.
+ * </p>
  *
  * <h3>Input</h3>
- * <p>
- * A SAM/BAM/CRAM file that has been marked for duplicates.
- * </p>
+ * <ul>
+ * <li>
+ * A SAM/BAM/CRAM file marked for duplicates
+ * </li>
+ * </ul>
  * <h3>Output</h3>
- * <p>
- * A SAM/BAM/CRAM file without isDuplicate on reads.
- * </p>
+ * <ul>
+ * <li>
+ * A SAM/BAM/CRAM file lacking 0x400 flags on reads
+ * </li>
+ * </ul>
  *
  * <h3>Usage example: </h3>
  * <pre>
- *     gatk UnmarkDuplicates \
- *     -I marked_duplicates.bam \
- *     -O unmarked_duplicates.bam
+ * gatk UnmarkDuplicates \
+ *   -I clean.bam \
+ *   -O unmarked.bam
  * </pre>
  *
  */
-
 
 @CommandLineProgramProperties(
         summary = UnmarkDuplicates.USAGE_DETAILS,
         oneLineSummary = UnmarkDuplicates.USAGE_SUMMARY,
         usageExample = "gatk UnmarkDuplicates -I marked_duplicates.bam -O unmarked_duplicates.bam",
-        programGroup = ReadProgramGroup.class)
+        programGroup = ReadDataProgramGroup.class)
 @DocumentedFeature
 public class UnmarkDuplicates extends ReadWalker {
 
-    static final String USAGE_SUMMARY = "Unmark duplicates in a SAM/BAM/CRAM file";
-    static final String USAGE_DETAILS = "Simple tool to \"unmark\" duplicates in a SAM/BAM/CRAM file."+
-            "Clears the isDuplicate bit on all reads.";
+    static final String USAGE_SUMMARY = "Clears the 0x400 duplicate SAM flag";
+    static final String USAGE_DETAILS = "Simple tool to unmark duplicates in a SAM/BAM/CRAM file. "+
+            "Clears the 0x400 SAM flag bit on all reads.";
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="Write output to this file")
     public File OUTPUT;
