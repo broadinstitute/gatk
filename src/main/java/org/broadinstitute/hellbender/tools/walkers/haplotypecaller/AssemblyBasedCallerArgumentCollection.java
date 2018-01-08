@@ -53,7 +53,7 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
     public boolean debug;
 
     @Advanced
-    @Argument(fullName="useFilteredReadsForAnnotations", shortName="useFilteredReadsForAnnotations", doc = "Use the contamination-filtered read maps for the purposes of annotating variants", optional=true)
+    @Argument(fullName="use-filtered-reads-for-annotations", doc = "Use the contamination-filtered read maps for the purposes of annotating variants", optional=true)
     public boolean USE_FILTERED_READ_MAP_FOR_ANNOTATIONS = false;
 
     /**
@@ -63,7 +63,7 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
      * This requirement is a temporary workaround for an issue with index compression.
      */
     @Advanced
-    @Argument(fullName="emitRefConfidence", shortName="ERC", doc="Mode for emitting reference confidence scores", optional = true)
+    @Argument(fullName="emit-ref-confidence", shortName="ERC", doc="Mode for emitting reference confidence scores", optional = true)
     public ReferenceConfidenceMode emitReferenceConfidence = ReferenceConfidenceMode.NONE;
 
     /**
@@ -97,7 +97,7 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
      *
      */
     @Advanced
-    @Argument(fullName="bamOutput", shortName="bamout", doc="File to which assembled haplotypes should be written", optional = true)
+    @Argument(fullName="bam-output", shortName="bamout", doc="File to which assembled haplotypes should be written", optional = true)
     public String bamOutputPath = null;
 
     /**
@@ -105,7 +105,7 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
      * considered (top 128 max) or just the ones that were selected as alleles and assigned to samples.
      */
     @Advanced
-    @Argument(fullName="bamWriterType", shortName="bamWriterType", doc="Which haplotypes should be written to the BAM", optional = true)
+    @Argument(fullName="bam-writer-type", doc="Which haplotypes should be written to the BAM", optional = true)
     public HaplotypeBAMWriter.WriterType bamWriterType = HaplotypeBAMWriter.WriterType.CALLED_HAPLOTYPES;
 
     /**
@@ -115,7 +115,7 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
      * reads in regions with no variations. Setting the -forceActive and -dontTrimActiveRegions flags may also be necessary.
      */
     @Advanced
-    @Argument(fullName = "disableOptimizations", shortName="disableOptimizations", doc="Don't skip calculations in ActiveRegions with no variants",
+    @Argument(fullName = "disable-optimizations", doc="Don't skip calculations in ActiveRegions with no variants",
             optional = true)
     public boolean disableOptimizations = false;
 
@@ -124,29 +124,29 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
     // -----------------------------------------------------------------------------------------------
 
     @Hidden
-    @Argument(fullName = "keepRG", shortName = "keepRG", doc = "Only use reads from this read group when making calls (but use all reads to build the assembly)", optional = true)
+    @Argument(fullName = "keep-rg", doc = "Only use reads from this read group when making calls (but use all reads to build the assembly)", optional = true)
     public String keepRG = null;
 
     /**
      * This argument is intended for benchmarking and scalability testing.
      */
     @Hidden
-    @Argument(fullName = "justDetermineActiveRegions", shortName = "justDetermineActiveRegions", doc = "Just determine ActiveRegions, don't perform assembly or calling", optional = true)
+    @Argument(fullName = "just-determine-active-regions", doc = "Just determine ActiveRegions, don't perform assembly or calling", optional = true)
     public boolean justDetermineActiveRegions = false;
 
     /**
      * This argument is intended for benchmarking and scalability testing.
      */
     @Hidden
-    @Argument(fullName = "dontGenotype", shortName = "dontGenotype", doc = "Perform assembly but do not genotype variants", optional = true)
+    @Argument(fullName = "dont-genotype", doc = "Perform assembly but do not genotype variants", optional = true)
     public boolean dontGenotype = false;
 
     @Advanced
-    @Argument(fullName = "dontUseSoftClippedBases", shortName = "dontUseSoftClippedBases", doc = "Do not analyze soft clipped bases in the reads", optional = true)
+    @Argument(fullName = "dont-use-soft-clipped-bases", doc = "Do not analyze soft clipped bases in the reads", optional = true)
     public boolean dontUseSoftClippedBases = false;
 
     @Hidden
-    @Argument(fullName = "captureAssemblyFailureBAM", shortName = "captureAssemblyFailureBAM", doc = "Write a BAM called assemblyFailure.bam capturing all of the reads that were in the active region when the assembler failed for any reason", optional = true)
+    @Argument(fullName = "capture-assembly-failure-bam", doc = "Write a BAM called assemblyFailure.bam capturing all of the reads that were in the active region when the assembler failed for any reason", optional = true)
     public boolean captureAssemblyFailureBAM = false;
 
     // Parameters to control read error correction
@@ -154,26 +154,26 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
      * Enabling this argument may cause fundamental problems with the assembly graph itself.
      */
     @Hidden
-    @Argument(fullName = "errorCorrectReads", shortName = "errorCorrectReads", doc = "Use an exploratory algorithm to error correct the kmers used during assembly", optional = true)
+    @Argument(fullName = "error-correct-reads", doc = "Use an exploratory algorithm to error correct the kmers used during assembly", optional = true)
     public boolean errorCorrectReads = false;
 
     /**
      * As of GATK 3.3, HaplotypeCaller outputs physical (read-based) information (see version 3.3 release notes and documentation for details). This argument disables that behavior.
      */
     @Advanced
-    @Argument(fullName = "doNotRunPhysicalPhasing", shortName = "doNotRunPhysicalPhasing", doc = "Disable physical phasing", optional = true)
+    @Argument(fullName = "do-not-run-physical-phasing",  doc = "Disable physical phasing", optional = true)
     public boolean doNotRunPhysicalPhasing = false;
 
     /**
      * Bases with a quality below this threshold will not be used for calling.
      */
-    @Argument(fullName = "min_base_quality_score", shortName = "mbq", doc = "Minimum base quality required to consider a base for calling", optional = true)
+    @Argument(fullName = "min-base-quality-score", shortName = "mbq", doc = "Minimum base quality required to consider a base for calling", optional = true)
     public byte minBaseQualityScore = 10;
 
     //Annotations
 
     @Advanced
-    @Argument(fullName = "smithWaterman", shortName = "smithWaterman", doc = "Which Smith-Waterman implementation to use, generally FASTEST_AVAILABLE is the right choice", optional = true)
+    @Argument(fullName = "smith-waterman", doc = "Which Smith-Waterman implementation to use, generally FASTEST_AVAILABLE is the right choice", optional = true)
     public SmithWatermanAligner.Implementation smithWatermanImplementation = SmithWatermanAligner.Implementation.JAVA;
 
 }

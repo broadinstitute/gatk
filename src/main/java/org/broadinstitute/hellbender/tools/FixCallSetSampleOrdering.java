@@ -44,7 +44,7 @@ public final class FixCallSetSampleOrdering extends VariantWalker {
             optional = false)
     public String sampleNameMapPath;
 
-    @Argument(fullName = GenomicsDBImport.BATCHSIZE_ARG_NAME,
+    @Argument(fullName = GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME,
             doc="the exact batch size that was used to import the callset using GenomicsDBImport",
             minValue = 0,
             optional = false)
@@ -55,7 +55,7 @@ public final class FixCallSetSampleOrdering extends VariantWalker {
             optional = false)
     public Integer readerThreads;
 
-    @Argument(fullName = "gvcfToHeaderSampleMapFile",
+    @Argument(fullName = "gvcf-to-header-sample-map-file",
             doc="A mapping of GVCF to actual sample name in the GVCF header. You must provide this file if and only if " +
                     "GenomicsDBImport was run with --" + GenomicsDBImport.VCF_INITIALIZER_THREADS_LONG_NAME + " > 1. " +
                     "Each line in this file should contain a GVCF path (matching the one from the sample name " +
@@ -87,7 +87,7 @@ public final class FixCallSetSampleOrdering extends VariantWalker {
         assertThatTheyReallyWantToProceed();
 
         if (batchSize == 0) {
-            throw new SampleNameFixingCannotProceedException("your callset is not affected by the bug if you ran with --"+ GenomicsDBImport.BATCHSIZE_ARG_NAME +" 0");
+            throw new SampleNameFixingCannotProceedException("your callset is not affected by the bug if you ran with --"+ GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME +" 0");
         }
 
         if ( readerThreads > 1 ) {

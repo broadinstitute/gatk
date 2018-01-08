@@ -70,23 +70,23 @@ public class ReadsPipelineSpark extends GATKSparkTool {
     @Argument(doc = "whether to perform alignment using BWA-MEM", shortName = "align", fullName = "align", optional = true)
     private boolean align;
 
-    @Argument(doc = "the known variants", shortName = "knownSites", fullName = "knownSites", optional = false)
+    @Argument(doc = "the known variants", fullName = "known-sites", optional = false)
     protected List<String> baseRecalibrationKnownVariants;
 
     @Argument(doc = "the output vcf", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
     protected String output;
 
-    @Argument(doc = "the output bam", shortName = "outputBam", fullName = "outputBam", optional = true)
+    @Argument(doc = "the output bam", fullName = "output-bam", optional = true)
     protected String outputBam;
 
-    @Argument(doc = "the join strategy for reference bases and known variants", shortName = "joinStrategy", fullName = "joinStrategy", optional = true)
+    @Argument(doc = "the join strategy for reference bases and known variants", fullName = "join-strategy", optional = true)
     private JoinStrategy joinStrategy = JoinStrategy.BROADCAST;
 
     @ArgumentCollection
     public final BwaArgumentCollection bwaArgs = new BwaArgumentCollection();
 
-    @Argument(shortName = "DS", fullName ="duplicates_scoring_strategy", doc = "The scoring strategy for choosing the non-duplicate among candidates.")
+    @Argument(shortName = "DS", fullName ="duplicates-scoring-strategy", doc = "The scoring strategy for choosing the non-duplicate among candidates.")
     public MarkDuplicatesScoringStrategy duplicatesScoringStrategy = MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES;
 
     /**

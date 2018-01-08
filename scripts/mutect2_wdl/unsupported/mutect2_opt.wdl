@@ -339,8 +339,8 @@ task M2 {
     -I ${tumor_bam} \
     -tumor `cat tumor_name.txt` \
     $normal_command_line \
-    ${"--germline_resource " + gnomad} \
-    ${"--normal_panel " + pon} \
+    ${"--germline-resource " + gnomad} \
+    ${"--panel-of-normals " + pon} \
     ${"-L " + intervals} \
     -O "${output_vcf_name}.vcf" \
     ${true='--bamOutput bamout.bam' false='' is_bamOut} \
@@ -546,7 +546,7 @@ task Filter {
     fi
 
     java -Xmx${command_mem}m -jar ${default="/root/gatk.jar" gatk4_jar_override} FilterMutectCalls -V ${unfiltered_vcf} \
-      -O ${output_vcf_name}-filtered.vcf ${"-contaminationTable " + contamination_table} \
+      -O ${output_vcf_name}-filtered.vcf ${"--contamination-table " + contamination_table} \
       ${m2_extra_filtering_args}
   }
 

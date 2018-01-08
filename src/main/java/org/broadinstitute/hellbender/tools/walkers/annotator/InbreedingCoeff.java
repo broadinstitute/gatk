@@ -24,9 +24,11 @@ import java.util.*;
 
 
 /**
- * Likelihood-based test for the inbreeding among samples
+ * Likelihood-based test for the consanguinuity among samples
  *
- * <p>This annotation estimates whether there is evidence of inbreeding in a population. The higher the score, the higher the chance that there is inbreeding.</p>
+ * <p>This annotation estimates whether there is evidence of consanguinuity in a population. The higher the score, the
+ * higher the chance that some samples are related. If samples are known to be related, a pedigree file can be provided so
+ * that the calculation is only performed on founders and offspring are excluded.</p>
  *
  * <h3>Statistical notes</h3>
  * <p>The calculation is a continuous generalization of the Hardy-Weinberg test for disequilibrium that works well with limited coverage per sample. The output is a Phred-scaled p-value derived from running the HW test for disequilibrium with PL values. See the <a href="http://www.broadinstitute.org/gatk/guide/article?id=4732">method document on statistical tests</a> for a more detailed explanation of this statistical test.</p>
@@ -35,9 +37,10 @@ import java.util.*;
  * <ul>
  * <li>The Inbreeding Coefficient annotation can only be calculated for cohorts containing at least 10 founder samples.</li>
  * <li>The Inbreeding Coefficient annotation can only be calculated for diploid samples.</li>
- * <li>This annotation is used in variant recalibration, but may not be appropriate for that purpose if the cohort being analyzed contains many closely related individuals.</li>
  * </ul>
  *
+ * <h3>Related annotations</h3>
+ * <p><b>ExcessHet</b> also describes the heterozygosity of the called samples, giving a probability of excess heterozygosity being observed</p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Likelihood-based test for the consanguinity among samples (InbreedingCoeff)")
 public final class InbreedingCoeff extends PedigreeAnnotation implements StandardAnnotation {

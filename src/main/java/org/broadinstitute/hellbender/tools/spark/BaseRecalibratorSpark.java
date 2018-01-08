@@ -59,10 +59,10 @@ public class BaseRecalibratorSpark extends GATKSparkTool {
         return BaseRecalibrator.getStandardBQSRReadFilterList();
     }
 
-    @Argument(doc = "the known variants", shortName = "knownSites", fullName = "knownSites", optional = false)
+    @Argument(doc = "the known variants", fullName = "known-sites", optional = false)
     private List<String> knownVariants;
 
-    @Argument(doc = "the join strategy for reference bases and known variants", shortName = "joinStrategy", fullName = "joinStrategy", optional = true)
+    @Argument(doc = "the join strategy for reference bases and known variants", fullName = "join-strategy", optional = true)
     private JoinStrategy joinStrategy = JoinStrategy.BROADCAST;
 
     @Argument(doc = "Path to save the final recalibration tables to.",
@@ -75,10 +75,10 @@ public class BaseRecalibratorSpark extends GATKSparkTool {
     @ArgumentCollection(doc = "all the command line arguments for BQSR and its covariates")
     private final RecalibrationArgumentCollection bqsrArgs = new RecalibrationArgumentCollection();
 
-    @Argument(fullName="readShardSize", shortName="readShardSize", doc = "Maximum size of each read shard, in bases. Only applies when using the OVERLAPS_PARTITIONER join strategy.", optional = true)
+    @Argument(fullName="read-shard-size", doc = "Maximum size of each read shard, in bases. Only applies when using the OVERLAPS_PARTITIONER join strategy.", optional = true)
     public int readShardSize = 10000;
 
-    @Argument(fullName="readShardPadding", shortName="readShardPadding", doc = "Each read shard has this many bases of extra context on each side. Only applies when using the OVERLAPS_PARTITIONER join strategy.", optional = true)
+    @Argument(fullName="read-shard-padding", doc = "Each read shard has this many bases of extra context on each side. Only applies when using the OVERLAPS_PARTITIONER join strategy.", optional = true)
     public int readShardPadding = 1000;
 
     @Override

@@ -8,10 +8,10 @@ import org.broadinstitute.barclay.argparser.Argument;
  */
 public class PairHMMNativeArgumentCollection {
 
-    @Argument(fullName = "nativePairHmmThreads", shortName = "threads", doc="How many threads should a native pairHMM implementation use", optional = true)
+    @Argument(fullName = "native-pair-hmm-threads", doc="How many threads should a native pairHMM implementation use", optional = true)
     private int pairHmmNativeThreads = 4;
 
-    @Argument(fullName = "useDoublePrecision", shortName = "useDoublePrecision", doc="use double precision in the native pairHmm. " +
+    @Argument(fullName = "native-pair-hmm-use-double-precision", doc="use double precision in the native pairHmm. " +
             "This is slower but matches the java implementation better", optional = true)
     private boolean useDoublePrecision = false;
 

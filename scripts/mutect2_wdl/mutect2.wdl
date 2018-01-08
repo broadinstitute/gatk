@@ -240,7 +240,7 @@ task M2 {
     ${"-pon " + pon} \
     ${"-L " + intervals} \
     -O "output.vcf" \
-    ${true='--bamOutput bamout.bam' false='' is_bamOut} \
+    ${true='--bam-output bamout.bam' false='' is_bamOut} \
     ${m2_extra_args}
   >>>
 

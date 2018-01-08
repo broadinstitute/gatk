@@ -41,7 +41,7 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
             return  " -R " + referenceURL +
                     " -I " + bam +
                     " " + args +
-                    (knownSites.isEmpty() ? "": " --knownSites " + knownSites) +
+                    (knownSites.isEmpty() ? "": " --known-sites " + knownSites) +
                     " -O %s";
         }
 
@@ -84,19 +84,19 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
                 //        -O src/test/resources/org/broadinstitute/hellbender/tools/BQSR/expected.MultiSite.reads.pipeline.vcf \
                 //        -pairHMM AVX_LOGLESS_CACHING \
                 //        -stand_call_conf 30.0
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--joinStrategy BROADCAST", null, getResourceDir() + expectedSingleKnownSitesVcf)}, // don't write intermediate BAM
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--joinStrategy BROADCAST", getResourceDir() + expectedSingleKnownSites, getResourceDir() + expectedSingleKnownSitesVcf)},
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--joinStrategy OVERLAPS_PARTITIONER --readShardPadding 1000", getResourceDir() + expectedSingleKnownSites, getResourceDir() + expectedSingleKnownSitesVcf)},
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20_queryNameSorted, ".bam", dbSNPb37_20, "--joinStrategy BROADCAST", getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedSingleKnownSitesVcf)},
+                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--join-strategy BROADCAST", null, getResourceDir() + expectedSingleKnownSitesVcf)}, // don't write intermediate BAM
+                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--join-strategy BROADCAST", getResourceDir() + expectedSingleKnownSites, getResourceDir() + expectedSingleKnownSitesVcf)},
+                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--join-strategy OVERLAPS_PARTITIONER --read-shard-padding 1000", getResourceDir() + expectedSingleKnownSites, getResourceDir() + expectedSingleKnownSitesVcf)},
+                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20_queryNameSorted, ".bam", dbSNPb37_20, "--join-strategy BROADCAST", getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedSingleKnownSitesVcf)},
 
                 // Output generated with GATK4
                 // CRAM test fails since can't use 2bit with CRAM, can only use 2bit with HC.
 //                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqCram_chr20, ".cram", dbSNPb37_20, "--joinStrategy BROADCAST --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSitesCram, getResourceDir() + expectedMultipleKnownSitesVcf)},
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--joinStrategy BROADCAST --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedMultipleKnownSitesVcf)},
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--joinStrategy OVERLAPS_PARTITIONER --readShardPadding 1000 --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedMultipleKnownSitesVcf)},
+                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--join-strategy BROADCAST --known-sites " + more20Sites, getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedMultipleKnownSitesVcf)},
+                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--join-strategy OVERLAPS_PARTITIONER --read-shard-padding 1000 --known-sites " + more20Sites, getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedMultipleKnownSitesVcf)},
 
                 // BWA-MEM
-                {new PipelineTest(GRCh37Ref2bit_chr2021, unalignedBam, ".bam", dbSNPb37_20, "--align --bwaMemIndexImage " + GRCh37Ref_2021_img + " --disable-sequence-dictionary-validation true --joinStrategy BROADCAST --knownSites " + more20Sites, null, largeFileTestDir + expectedMultipleKnownSitesFromUnalignedVcf)},
+                {new PipelineTest(GRCh37Ref2bit_chr2021, unalignedBam, ".bam", dbSNPb37_20, "--align --bwaMemIndexImage " + GRCh37Ref_2021_img + " --disable-sequence-dictionary-validation true --join-strategy BROADCAST --known-sites " + more20Sites, null, largeFileTestDir + expectedMultipleKnownSitesFromUnalignedVcf)},
         };
     }
 
@@ -111,7 +111,7 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
         args.add("-O");
         args.add(outFile.getAbsolutePath());
         if (params.expectedBamFileName != null) {
-            args.add("--outputBam");
+            args.add("--output-bam");
             args.add(outFileBam.getAbsolutePath());
         }
 
@@ -125,9 +125,9 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
         args.add("-enableBAQ");
         args.add("-pairHMM");
         args.add("AVX_LOGLESS_CACHING");
-        args.add("-stand_call_conf");
+        args.add("-stand-call-conf");
         args.add("30.0");
-        args.add("--knownSites");
+        args.add("--known-sites");
         args.add(params.knownSites);
         if (params.args != null) {
             Stream.of(params.args.trim().split(" ")).forEach(args::add);
