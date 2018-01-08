@@ -300,7 +300,9 @@ tasks.withType(Jar) {
     manifest {
         attributes 'Implementation-Title': 'Hellbender-tools',
                 'Implementation-Version': version,
-                'Main-Class': project.mainClassName
+                'Main-Class': project.mainClassName,
+                'Picard-Version': picardVersion,
+                'htsjdk-Version': htsjdkVersion
     }
 }
 
