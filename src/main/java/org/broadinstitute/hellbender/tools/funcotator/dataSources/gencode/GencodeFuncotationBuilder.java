@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
+import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfGeneFeature;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.List;
@@ -227,8 +228,6 @@ public class GencodeFuncotationBuilder {
         return this;
     }
 
-
-
     /**
      * Set the CDNA Change {@link String} in the {@link GencodeFuncotation}.
      * @param cDnaChange The {@link String} containing the CDNA Change information for the {@link GencodeFuncotation}.
@@ -236,6 +235,56 @@ public class GencodeFuncotationBuilder {
      */
     public GencodeFuncotationBuilder setcDnaChange( final String cDnaChange ) {
         gencodeFuncotation.setcDnaChange( cDnaChange );
+        return this;
+    }
+
+    /**
+     * Set the LocusLevel {@link Integer} in the {@link GencodeFuncotation}.
+     * @param locusLevel The {@link Integer} containing the locus level for the {@link GencodeFuncotation}.
+     * @return {@code this} {@link GencodeFuncotationBuilder}
+     */
+    public GencodeFuncotationBuilder setLocusLevel( final Integer locusLevel ) {
+        gencodeFuncotation.setLocusLevel( locusLevel );
+        return this;
+    }
+
+    /**
+     * Set the Appris Rank in the {@link GencodeFuncotation}.
+     * @param apprisRank The {@link GencodeGtfGeneFeature.FeatureTag} containing the Appris Rank for the {@link GencodeFuncotation}.
+     * @return {@code this} {@link GencodeFuncotationBuilder}
+     */
+    public GencodeFuncotationBuilder setApprisRank( final GencodeGtfGeneFeature.FeatureTag apprisRank ) {
+        gencodeFuncotation.setApprisRank( apprisRank );
+        return this;
+    }
+
+    /**
+     * Set the Transcript Length {@link Integer} in the {@link GencodeFuncotation}.
+     * @param transcriptLength The {@link Integer} containing the Transcript Length for the {@link GencodeFuncotation}.
+     * @return {@code this} {@link GencodeFuncotationBuilder}
+     */
+    public GencodeFuncotationBuilder setTranscriptLength( final Integer transcriptLength ) {
+        gencodeFuncotation.setTranscriptLength( transcriptLength );
+        return this;
+    }
+
+    /**
+     * Set the GC Content {@link Double} in the {@link GencodeFuncotation}.
+     * @param gcContent The {@link Double} containing the GC Content for the {@link GencodeFuncotation}.
+     * @return {@code this} {@link GencodeFuncotationBuilder}
+     */
+    public GencodeFuncotationBuilder setGcContent( final Double gcContent ) {
+        gencodeFuncotation.setGcContent( gcContent );
+        return this;
+    }
+
+    /**
+     * Set the Reference Context {@link String} in the {@link GencodeFuncotation}.
+     * @param referenceContext The {@link String} containing the ReferenceContext for the {@link GencodeFuncotation}.
+     * @return {@code this} {@link GencodeFuncotationBuilder}
+     */
+    public GencodeFuncotationBuilder setReferenceContext(final String referenceContext) {
+        gencodeFuncotation.setReferenceContext( referenceContext );
         return this;
     }
  }

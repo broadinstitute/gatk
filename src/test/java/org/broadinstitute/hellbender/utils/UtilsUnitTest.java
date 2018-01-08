@@ -15,6 +15,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -349,7 +350,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
         final byte[] sourceBytes = IOUtils.readFileIntoByteArray(source);
         Assert.assertEquals(Utils.calcMD5(sourceBytes), sourceMD5);
 
-        final String sourceString = FileUtils.readFileToString(source);
+        final String sourceString = FileUtils.readFileToString(source, StandardCharsets.UTF_8);
         Assert.assertEquals(Utils.calcMD5(sourceString), sourceMD5);
 
         Assert.assertEquals(Utils.calculateFileMD5(source), sourceMD5);

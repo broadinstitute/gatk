@@ -11,7 +11,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkPipelineProgramGroup;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.ReadContextData;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.AddContextDataToReadSpark;
@@ -39,7 +39,7 @@ import java.util.List;
         summary = "This tools performs 2 steps of BQSR - creation of recalibration tables and rewriting of the bam, without writing the tables to disk. ",
         oneLineSummary = "Both steps of BQSR (BaseRecalibrator and ApplyBQSR) on Spark",
         usageExample = "BQSRPipelineSpark -I in.bam --knownSites in.vcf -O out.bam",
-        programGroup = SparkPipelineProgramGroup.class
+        programGroup = ReadDataManipulationProgramGroup.class
 )
 @DocumentedFeature
 @BetaFeature

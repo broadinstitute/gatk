@@ -45,7 +45,7 @@ import java.io.File;
  *
  * <h3>Usage example</h3>
  * <pre>
- * ./gatk-launch ApplyBQSR \
+ * gatk ApplyBQSR \
  *   -R reference.fasta \
  *   -I input.bam \
  *   -BQSR recalibration.table \

@@ -87,7 +87,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String samplesFile = getToolTestDataDir() + "samples.args";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" --ALLOW_NONOVERLAPPING_COMMAND_LINE_SAMPLES  -select 'RMSMAPQ < 170.0' -sn Z -sn " // non existent samples on command line
+                baseTestString(" --allow-non-overlapping-command-line-samples -select 'RMSMAPQ < 170.0' -sn Z -sn " // non existent samples on command line
                         + samplesFile, testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_ComplexSelectionWithNonExistingSamples.vcf")
         );
@@ -159,7 +159,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "vcfexample2.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -xl_se 'NA069*' ", testFile),
+                baseTestString(" -xl-se 'NA069*' ", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_SampleExclusionJustFromExpression.vcf")
         );
 
@@ -234,7 +234,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "complexExample1.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -restrictAllelesTo MULTIALLELIC -selectType MIXED ",testFile),
+                baseTestString(" -restrict-alleles-to MULTIALLELIC -select-type MIXED ",testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_VariantTypeSelection.vcf")
         );
 
@@ -249,7 +249,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "complexExample1.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -selectType INDEL --maxIndelSize 2 ", testFile),
+                baseTestString(" -select-type INDEL --max-indel-size 2 ", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_MaxIndelLengthSelection.vcf")
         );
 
@@ -264,7 +264,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "complexExample1.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -selectType INDEL --minIndelSize 2 ", testFile),
+                baseTestString(" -select-type INDEL --min-indel-size 2 ", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_MinIndelLengthSelection.vcf")
         );
 
@@ -288,7 +288,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "vcfexample.loseAlleleInSelection.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" --keepOriginalAC -sn NA12892 ", testFile),
+                baseTestString(" --keep-original-AC -sn NA12892 ", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_KeepOriginalAC.vcf")
         );
 
@@ -300,7 +300,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "vcfexample.loseAlleleInSelection.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" --keepOriginalAC -sn NA12892 -env -trimAlternates ", testFile),
+                baseTestString(" --keep-original-AC -sn NA12892 -env -trim-alternates ", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_KeepOriginalACAndENV.vcf")
         );
 
@@ -312,7 +312,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "CEUtrioTest.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" --keepOriginalDP -sn NA12892 ", testFile),
+                baseTestString(" --keep-original-DP -sn NA12892 ", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_KeepOriginalDP.vcf")
         );
 
@@ -349,10 +349,10 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String samplesFile = getToolTestDataDir() + "GIH.samples.args";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -sn " + samplesFile + " --excludeNonVariants -trimAlternates", testFile),
+                baseTestString(" -sn " + samplesFile + " --exclude-non-variants -trim-alternates", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_MultiAllelicExcludeNonVar.vcf")
         );
-        spec.executeTest("test select from multi allelic with excludeNonVariants --" + testFile, this);
+        spec.executeTest("test select from multi allelic with exclude-non-variants --" + testFile, this);
     }
 
     @Test
@@ -360,7 +360,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "multi-allelic-ordering.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -sn SAMPLE-CC -sn SAMPLE-CT -sn SAMPLE-CA --excludeNonVariants", testFile),
+                baseTestString(" -sn SAMPLE-CC -sn SAMPLE-CT -sn SAMPLE-CA --exclude-non-variants", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_MultiAllelicAnnotationOrdering.vcf")
         );
         spec.executeTest("test multi allelic annotation ordering --" + testFile, this);
@@ -411,7 +411,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "forHardLeftAlignVariantsTest.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -sn NA12878 -env -trimAlternates ", testFile),
+                baseTestString(" -sn NA12878 -env -trim-alternates ", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_AlleleTrimming.vcf"));
         spec.executeTest("testAlleleTrimming", this);
     }
@@ -422,7 +422,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         return new Object[][] {
                 {
                         getToolTestDataDir() + "forHardLeftAlignVariantsTest.vcf",
-                        "-trimAlternates",
+                        "-trim-alternates",
                         expectedPath + "testSelectVariants_UnusedAlleleHardLeftTrim.vcf"
                 },
                 {
@@ -442,12 +442,12 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
                 },
                 {
                         getToolTestDataDir() + "multi-allelic-ordering.vcf",
-                        "-sn SAMPLE-CC -sn SAMPLE-CT -trimAlternates",
+                        "-sn SAMPLE-CC -sn SAMPLE-CT -trim-alternates",
                         expectedPath + "testSelectVariants_UnusedAlleleCCCTTrim.vcf"
                 },
                 {
                         getToolTestDataDir() + "multi-allelic-ordering.vcf",
-                        "-sn SAMPLE-CC -sn SAMPLE-CT -env -trimAlternates",
+                        "-sn SAMPLE-CC -sn SAMPLE-CT -env -trim-alternates",
                         expectedPath + "testSelectVariants_UnusedAlleleCCCTTrimAltEnv.vcf"
                 }
         };
@@ -523,7 +523,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 baseTestString(" -sn NA11894 -sn " + samplesFile +
-                                    " -select 'RMSMAPQ < 170.0' -invertSelect ", testFile),
+                                    " -select 'RMSMAPQ < 170.0' -invert-select ", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_InvertSelection.vcf")
         );
 
@@ -587,7 +587,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String idFile = getToolTestDataDir() + "complexExample1.vcf.id.args";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -xlIDs " + idFile, testFile),
+                baseTestString(" -xl-IDs " + idFile, testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_ExcludeSelectionID.vcf")
         );
 
@@ -602,7 +602,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "complexExample1.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -xlIDs testid1", testFile),
+                baseTestString(" -xl-IDs testid1", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_ExcludeSelectionID.vcf")
         );
 
@@ -617,7 +617,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "complexExample1.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -xlSelectType SNP ", testFile),
+                baseTestString(" -xl-select-type SNP ", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_ExcludeSelectionType.vcf")
         );
 
@@ -643,7 +643,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String pedFile = getToolTestDataDir() + "CEUtrio.ped";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -mv -mvq 0 -invMv -ped " + pedFile, testFile),
+                baseTestString(" -mv -mvq 0 -inv-mv -ped " + pedFile, testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_InvertMendelianViolationSelection.vcf")
         );
 
@@ -655,7 +655,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "filteredSamples.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" --maxFilteredGenotypes 1 ", testFile),
+                baseTestString(" --max-filtered-genotypes 1 ", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_MaxFilteredGenotypesSelection.vcf")
         );
 
@@ -667,7 +667,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "filteredSamples.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" --minFilteredGenotypes 2 ", testFile),
+                baseTestString(" --min-filtered-genotypes 2 ", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_MinFilteredGenotypesSelection.vcf")
         );
 
@@ -679,7 +679,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "filteredSamples.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" --maxFractionFilteredGenotypes 0.4 ", testFile),
+                baseTestString(" --max-fraction-filtered-genotypes 0.4 ", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_MaxFractionFilteredGenotypesSelection.vcf")
         );
 
@@ -691,7 +691,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "filteredSamples.vcf";
 
         final  IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" --minFractionFilteredGenotypes 0.6 ", testFile),
+                baseTestString(" --min-fraction-filtered-genotypes 0.6 ", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_MinFractionFilteredGenotypesSelection.vcf")
         );
 
@@ -703,7 +703,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "filteredSamples.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" --setFilteredGtToNocall ", testFile),
+                baseTestString(" --set-filtered-GT-to-no-call ", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_SetFilteredGtoNocall.vcf")
         );
 
@@ -715,7 +715,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "vcfexample.forNoCallFiltering.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" --maxNOCALLnumber 1", testFile),
+                baseTestString(" --max-no-call-number 1", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_maxNOCALLnumber1.vcf")
         );
 
@@ -727,7 +727,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "vcfexample.forNoCallFiltering.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" --maxNOCALLfraction 0.25", testFile),
+                baseTestString(" --max-no-call-fraction 0.25", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_maxNOCALLnumber1.vcf")
         );
 
@@ -739,7 +739,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "vcfexample.forNoCallFiltering.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" --maxNOCALLnumber 2", testFile),
+                baseTestString(" --max-no-call-number 2", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_maxNOCALLnumber2.vcf")
         );
 
@@ -751,7 +751,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "vcfexample.forNoCallFiltering.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" --maxNOCALLfraction 0.5", testFile),
+                baseTestString(" --max-no-call-fraction 0.5", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_maxNOCALLnumber2.vcf")
         );
 
@@ -763,7 +763,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "haploid-multisample.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -sn HG00610 -select 'DP > 7' -trimAlternates ", testFile),
+                baseTestString(" -sn HG00610 -select 'DP > 7' -trim-alternates ", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_Haploid.vcf")
         );
 
@@ -775,7 +775,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "tetraploid-multisample.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -sn NA18486 -select 'DP > 57' -trimAlternates ", testFile),
+                baseTestString(" -sn NA18486 -select 'DP > 57' -trim-alternates ", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_Tetraploid.vcf")
         );
 
@@ -787,7 +787,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "tetra-diploid.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -sn NA12878 -select 'DP > 48' -trimAlternates ", testFile),
+                baseTestString(" -sn NA12878 -select 'DP > 48' -trim-alternates ", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_TetraDiploid.vcf")
         );
 
@@ -799,7 +799,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "261_S01_raw_variants_gvcf.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -trimAlternates", testFile),
+                baseTestString(" -trim-alternates", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_SimpleDiploid.vcf")
         );
 
@@ -811,7 +811,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "diploid-multisample-sac.g.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -sn NA12891 -trimAlternates", testFile),
+                baseTestString(" -sn NA12891 -trim-alternates", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_SACDiploid.vcf")
         );
 
@@ -823,7 +823,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "tetraploid-multisample-sac.g.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -sn NA12891 -trimAlternates", testFile),
+                baseTestString(" -sn NA12891 -trim-alternates", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_SACNonDiploid.vcf")
         );
 
@@ -835,7 +835,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "selectVariantsInfoField.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" --setFilteredGtToNocall --removeUnusedAlternates --excludeNonVariants", testFile),
+                baseTestString(" --set-filtered-GT-to-no-call --remove-unused-alternates --exclude-non-variants", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_SetFilteredGtoNocallUpdateInfo.vcf")
         );
 

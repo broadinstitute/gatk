@@ -10,18 +10,13 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.MetagenomicsProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSFilterEmptyLogger;
 import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSFilterFileLogger;
 import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSFilterLogger;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import scala.Tuple2;
-
-import java.io.IOException;
 
 /**
  * This Spark tool is the first step in the PathSeq pipeline.
@@ -60,7 +55,7 @@ import java.io.IOException;
         "with PathSeqBuildKmers) and host BWA index image (created with BwaMemIndexImageCreator). Lastly, exact " +
         "duplicate sequences are removed.",
         oneLineSummary = "Step 1: Filters low-quality, low-complexity, duplicate, and host reads",
-        programGroup = PathSeqProgramGroup.class)
+        programGroup = MetagenomicsProgramGroup.class)
 @BetaFeature
 public final class PathSeqFilterSpark extends GATKSparkTool {
 
@@ -113,18 +108,5 @@ public final class PathSeqFilterSpark extends GATKSparkTool {
         }
         filter.close();
     }
-
-    private void writeReads(final JavaSparkContext ctx, final String outputFile, JavaRDD<GATKRead> reads,
-                            final SAMFileHeader header) {
-        try {
-            ReadsSparkSink.writeReads(ctx, outputFile,
-                    hasReference() ? referenceArguments.getReferenceFile().getAbsolutePath() : null,
-                    reads, header, shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE,
-                    getRecommendedNumReducers());
-        } catch (IOException e) {
-            throw new UserException.CouldNotCreateOutputFile(outputFile,"writing failed", e);
-        }
-    }
-
 
 }

@@ -18,6 +18,8 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.*;
 import java.net.URI;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -117,7 +119,7 @@ public final class IOUtils {
     public static File writeTempFile(String content, String prefix, String suffix, File directory) {
         try {
             File tempFile = absolute(File.createTempFile(prefix, suffix, directory));
-            FileUtils.writeStringToFile(tempFile, content);
+            FileUtils.writeStringToFile(tempFile, content, StandardCharsets.UTF_8);
             return tempFile;
         } catch (IOException e) {
             throw new UserException.BadTmpDir(e.getMessage());
@@ -513,13 +515,21 @@ public final class IOUtils {
      * to load the filesystem provider using the thread context classloader. This is needed when the filesystem
      * provider is loaded using a URL classloader (e.g. in spark-submit).
      *
-     * @param uriString the URI to convert
+     * Also makes an attempt to interpret the argument as a file name if it's not a URI.
+     *
+     * @param uriString the URI to convert.
      * @return the resulting {@code Path}
      * @throws UserException if an I/O error occurs when creating the file system
      */
     public static Path getPath(String uriString) {
         Utils.nonNull(uriString);
-        URI uri = URI.create(uriString);
+        URI uri;
+        try {
+            uri = URI.create(uriString);
+        } catch (IllegalArgumentException x) {
+            // not a valid URI. Caller probably just gave us a file name.
+            return Paths.get(uriString);
+        }
         try {
             // special case GCS, in case the filesystem provider wasn't installed properly but is available.
             if (CloudStorageFileSystem.URI_SCHEME.equals(uri.getScheme())) {
@@ -533,6 +543,10 @@ public final class IOUtils {
                     throw e;
                 }
                 return FileSystems.newFileSystem(uri, new HashMap<>(), cl).provider().getPath(uri);
+            }
+            catch (ProviderNotFoundException x) {
+                // not a valid URI. Caller probably just gave us a file name or "chr1:1-2".
+                return Paths.get(uriString);
             }
             catch ( IOException io ) {
                 throw new UserException(uriString + " is not a supported path", io);

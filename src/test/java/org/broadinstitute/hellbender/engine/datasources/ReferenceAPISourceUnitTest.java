@@ -1,11 +1,6 @@
 package org.broadinstitute.hellbender.engine.datasources;
 
 import com.google.api.services.genomics.model.Reference;
-import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
-import com.google.cloud.dataflow.sdk.testing.TestPipeline;
-import com.google.cloud.genomics.dataflow.utils.GCSOptions;
-import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.logging.log4j.LogManager;
@@ -13,7 +8,6 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.gcs.GATKGCSOptions;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
@@ -28,40 +22,17 @@ import static org.broadinstitute.hellbender.engine.datasources.ReferenceAPISourc
 public class ReferenceAPISourceUnitTest extends GATKBaseTest {
 
     private ReferenceBases queryReferenceAPI(final String referenceName, final SimpleInterval interval, int pageSize ) {
-        final Pipeline p = setupPipeline();
-
-        ReferenceAPISource refAPISource = makeReferenceAPISource(referenceName, p);
-        return refAPISource.getReferenceBases(p.getOptions(), interval, pageSize);
+        ReferenceAPISource refAPISource = makeReferenceAPISource(referenceName);
+        return refAPISource.getReferenceBases(interval, pageSize);
     }
 
     private ReferenceBases queryReferenceAPI( final String referenceName, final SimpleInterval interval ) {
-        final Pipeline p = setupPipeline();
-
-        ReferenceAPISource refAPISource = makeReferenceAPISource(referenceName, p);
-        return refAPISource.getReferenceBases(p.getOptions(), interval);
+        ReferenceAPISource refAPISource = makeReferenceAPISource(referenceName);
+        return refAPISource.getReferenceBases(interval);
     }
 
-    private ReferenceAPISource makeReferenceAPISource(String referenceName, Pipeline p) {
-        return new ReferenceAPISource(p.getOptions(), ReferenceAPISource.URL_PREFIX + referenceName);
-    }
-
-    private Pipeline setupPipeline() {
-        // We create GATKGCSOptions instead of DataflowPipelineOptions to keep track of the secrets
-        // so we can read the reference.
-        final GATKGCSOptions options = PipelineOptionsFactory.as(GATKGCSOptions.class);
-        options.setProject(getGCPTestProject());
-        if ( getGCPTestApiKey() != null) {
-            options.setApiKey(getGCPTestApiKey());
-            // put a serialized version of the credentials in the pipelineOptions, so we can get to it later.
-            try {
-                GenomicsFactory.OfflineAuth auth = GCSOptions.Methods.createGCSAuth(options);
-                GATKGCSOptions.Methods.setOfflineAuth(options, auth);
-            } catch (Exception x) {
-                throw new GATKException("Error with credentials",x);
-            }
-        }
-
-        return TestPipeline.create(options); // We don't use GATKTestPipeline because we need specific options.
+    private ReferenceAPISource makeReferenceAPISource(String referenceName) {
+        return new ReferenceAPISource(ReferenceAPISource.URL_PREFIX + referenceName);
     }
 
     @DataProvider(name = "sortData")
@@ -106,9 +77,8 @@ public class ReferenceAPISourceUnitTest extends GATKBaseTest {
 
     @Test(groups = "bucket", dataProvider = "assemblyIDData")
     public void testCreateByAssemblyID(final String assemblyID, final String refID) {
-        final Pipeline p = setupPipeline();
-        final ReferenceAPISource apiSourceByAssemblyName = ReferenceAPISource.fromReferenceSetAssemblyID(p.getOptions(), assemblyID);
-        final ReferenceAPISource apiSourceByID = makeReferenceAPISource(refID, p);
+        final ReferenceAPISource apiSourceByAssemblyName = ReferenceAPISource.fromReferenceSetAssemblyID(assemblyID);
+        final ReferenceAPISource apiSourceByID = makeReferenceAPISource(refID);
         Assert.assertEquals(apiSourceByAssemblyName.getReferenceMap(), apiSourceByID.getReferenceMap());
     }
 
@@ -121,9 +91,8 @@ public class ReferenceAPISourceUnitTest extends GATKBaseTest {
 
     @Test(groups = "bucket", dataProvider = "assemblyIDDataMultiple", expectedExceptions = UserException.MultipleReferenceSets.class)
     public void testCreateByAssemblyIDMultipleReferenceSets(final String assemblyID, final String refID) throws Exception {
-        final Pipeline p = setupPipeline();
-        final ReferenceAPISource apiSourceByAssemblyName = ReferenceAPISource.fromReferenceSetAssemblyID(p.getOptions(), assemblyID);
-        final ReferenceAPISource apiSourceByID = makeReferenceAPISource(refID, p);
+        final ReferenceAPISource apiSourceByAssemblyName = ReferenceAPISource.fromReferenceSetAssemblyID( assemblyID);
+        final ReferenceAPISource apiSourceByID = makeReferenceAPISource(refID);
         Assert.assertEquals(apiSourceByAssemblyName.getReferenceMap(), apiSourceByID.getReferenceMap());
     }
 
@@ -135,17 +104,10 @@ public class ReferenceAPISourceUnitTest extends GATKBaseTest {
         SimpleInterval interval = new SimpleInterval("1", 50001, 50001 + expected.length() - 1);
         Logger logger = LogManager.getLogger(ReferenceAPISourceUnitTest.class);
 
-        GenomicsOptions options = PipelineOptionsFactory.create().as(GenomicsOptions.class);
-        options.setApiKey(getGCPTestApiKey());
-        options.setProject(getGCPTestProject());
-
-        final Pipeline p = TestPipeline.create(options); // We don't use GATKTestPipeline because we need specific options.
-        ReferenceAPISource refAPISource = makeReferenceAPISource(referenceName, p);
-        ReferenceBases bases = refAPISource.getReferenceBases(p.getOptions(), interval);
+        ReferenceAPISource refAPISource = makeReferenceAPISource(referenceName);
+        ReferenceBases bases = refAPISource.getReferenceBases( interval);
         final String actual = new String(bases.getBases());
         Assert.assertEquals(actual, expected, "Wrong bases returned");
-        p.run();
-
     }
 
     @Test(groups = "bucket")

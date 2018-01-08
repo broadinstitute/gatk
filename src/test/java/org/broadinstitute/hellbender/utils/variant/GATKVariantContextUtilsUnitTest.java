@@ -2106,8 +2106,8 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "provideDataForTestIsOnp")
     void testIsOnp(final Allele ref, final Allele alt, final boolean expected) {
-        Assert.assertEquals( GATKVariantContextUtils.isOnp(ref, alt), expected );
-        Assert.assertEquals( GATKVariantContextUtils.isOnp(ref.getBaseString(), alt.getBaseString()), expected );
+        Assert.assertEquals( GATKVariantContextUtils.isXnp(ref, alt), expected );
+        Assert.assertEquals( GATKVariantContextUtils.isXnp(ref.getBaseString(), alt.getBaseString()), expected );
     }
 
     @Test(dataProvider = "provideDataForTestIsIndel")

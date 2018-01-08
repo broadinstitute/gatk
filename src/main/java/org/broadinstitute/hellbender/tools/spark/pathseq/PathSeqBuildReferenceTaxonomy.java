@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.MetagenomicsProgramGroup;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -34,7 +34,7 @@ import java.util.*;
         "is required to run the scoring tool. User must supply a pathogen reference, NCBI catalog, and NCBI taxonomy " +
         "'taxdump' archive.",
         oneLineSummary = "Builds a taxonomy database of the pathogen reference",
-        programGroup = PathSeqProgramGroup.class)
+        programGroup = MetagenomicsProgramGroup.class)
 @BetaFeature
 public class PathSeqBuildReferenceTaxonomy extends CommandLineProgram {
 
@@ -69,7 +69,7 @@ public class PathSeqBuildReferenceTaxonomy extends CommandLineProgram {
         }
 
         logger.info("Parsing reference and files... (this may take a few minutes)");
-        final ReferenceDataSource reference = ReferenceDataSource.of(referenceArguments.getReferenceFile());
+        final ReferenceDataSource reference = ReferenceDataSource.of(referenceArguments.getReferencePath());
         if (reference.getSequenceDictionary() == null) {
             throw new UserException.BadInput("Reference sequence dictionary not found. Please build one using CreateSequenceDictionary.");
         }

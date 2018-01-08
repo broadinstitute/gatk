@@ -54,16 +54,16 @@ public class TabCompletionIntegrationTest extends CommandLineProgramTest {
                 "-absolute-version", "0.0-001",
                 "-build-timestamp", new SimpleDateFormat("dd-mm-yyyy hh:mm:ss").format( new Date() ),
 
-                "-caller-script-name", "gatk-launch",
+                "-caller-script-name", "gatk",
 
-                "-caller-pre-legal-args", "--help --list --dryRun --javaOptions",
+                "-caller-pre-legal-args", "--help --list --dry-run --java-options",
                 "-caller-pre-arg-val-types", "null null null String",
-                "-caller-pre-mutex-args", "--help;list,dryRun,javaOptions --list;help,dryRun,javaOptions",
+                "-caller-pre-mutex-args", "--help;list,dry-run,java-options --list;help,dry-run,java-options",
                 "-caller-pre-alias-args", "--help;-h",
                 "-caller-pre-arg-min-occurs", "0 0 0 0",
                 "-caller-pre-arg-max-occurs", "1 1 1 1",
 
-                "-caller-post-legal-args", "--sparkRunner --spark-master --cluster --dryRun --javaOptions --conf --driver-memory --driver-cores --executor-memory --executor-cores --num-executors",
+                "-caller-post-legal-args", "--spark-runner --spark-master --cluster --dry-run --java-options --conf --driver-memory --driver-cores --executor-memory --executor-cores --num-executors",
                 "-caller-post-arg-val-types", "String String String null String file int int int int int",
                 "-caller-post-mutex-args", "",
                 "-caller-post-alias-args", "",

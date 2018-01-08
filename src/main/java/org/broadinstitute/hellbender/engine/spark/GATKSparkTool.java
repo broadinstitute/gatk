@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.engine.spark;
 
-import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.spark.api.java.JavaRDD;
@@ -243,7 +242,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             if (hasCramInput() && !hasReference()){
                 throw new UserException.MissingReference("A reference file is required when using CRAM files.");
             }
-            final String refPath = hasReference() ?  referenceArguments.getReferenceFile().getAbsolutePath() : null;
+            final String refPath = hasReference() ?  referenceArguments.getReferenceFileName() : null;
             return readsSource.getParallelReads(readInput, refPath, traversalParameters, bamPartitionSplitSize);
         }
     }
@@ -255,10 +254,21 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * @param reads reads to write.
      */
     public void writeReads(final JavaSparkContext ctx, final String outputFile, JavaRDD<GATKRead> reads) {
+        writeReads(ctx, outputFile, reads, readsHeader);
+    }
+
+    /**
+     * Writes the reads from a {@link JavaRDD} to an output file.
+     * @param ctx the JavaSparkContext to write.
+     * @param outputFile path to the output bam/cram.
+     * @param reads reads to write.
+     * @param header the header to write.
+     */
+    public void writeReads(final JavaSparkContext ctx, final String outputFile, JavaRDD<GATKRead> reads, SAMFileHeader header) {
         try {
             ReadsSparkSink.writeReads(ctx, outputFile,
-                    hasReference() ? referenceArguments.getReferenceFile().getAbsolutePath() : null,
-                    reads, readsHeader, shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE,
+                    hasReference() ? referenceArguments.getReferencePath().toFile().getAbsolutePath() : null,
+                    reads, header, shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE,
                     getRecommendedNumReducers());
         } catch (IOException e) {
             throw new UserException.CouldNotCreateOutputFile(outputFile,"writing failed", e);
@@ -313,9 +323,16 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * composition methods.
      */
     public ReadFilter makeReadFilter() {
+        return makeReadFilter(getHeaderForReads());
+    }
+
+    /**
+     * Like {@link #makeReadFilter()} but with the ability to pass a different SAMFileHeader.
+     */
+    protected ReadFilter makeReadFilter(SAMFileHeader samFileHeader) {
         final GATKReadFilterPluginDescriptor readFilterPlugin =
                 getCommandLineParser().getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
-        return readFilterPlugin.getMergedReadFilter(getHeaderForReads());
+        return readFilterPlugin.getMergedReadFilter(samFileHeader);
     }
 
     /**
@@ -389,17 +406,16 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
         readsSource = new ReadsSparkSource(sparkContext, readArguments.getReadValidationStringency());
         readsHeader = readsSource.getHeader(
                 readInput,
-                hasReference() ?  referenceArguments.getReferenceFile().getAbsolutePath() : null);
+                hasReference() ?  referenceArguments.getReferenceFileName() : null);
     }
 
     /**
      * Initializes our reference source. Does nothing if no reference was specified.
      */
     private void initializeReference() {
-        final GCSOptions gcsOptions = getAuthenticatedGCSOptions(); // null if we have no api key
         final String referenceURL = referenceArguments.getReferenceFileName();
         if ( referenceURL != null ) {
-            referenceSource = new ReferenceMultiSource(gcsOptions, referenceURL, getReferenceWindowFunction());
+            referenceSource = new ReferenceMultiSource(referenceURL, getReferenceWindowFunction());
             referenceDictionary = referenceSource.getReferenceSequenceDictionary(readsHeader != null ? readsHeader.getSequenceDictionary() : null);
             if (referenceDictionary == null) {
                 throw new UserException.MissingReferenceDictFile(referenceURL);

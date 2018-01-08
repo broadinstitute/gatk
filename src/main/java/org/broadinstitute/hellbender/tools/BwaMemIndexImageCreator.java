@@ -3,16 +3,10 @@ package org.broadinstitute.hellbender.tools;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import picard.cmdline.programgroups.ReferenceProgramGroup;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.BwaMemUtilitiesProgramGroup;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
-
-import java.io.File;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
 
 /**
  * Simply creates the reference index image file.
@@ -21,7 +15,7 @@ import java.util.stream.Collectors;
 @CommandLineProgramProperties(
         summary = "Creates the image file for use by BwaMemAligner",
         oneLineSummary = "Creates the image file for use by BwaMemAligner",
-        programGroup = BwaMemUtilitiesProgramGroup.class
+        programGroup = ReferenceProgramGroup.class
 )
 public final class BwaMemIndexImageCreator extends CommandLineProgram {
 

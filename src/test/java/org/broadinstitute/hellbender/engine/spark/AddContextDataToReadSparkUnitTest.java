@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.engine.spark;
 
 import com.google.api.services.genomics.model.Read;
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
-import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.common.collect.Lists;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -14,6 +12,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.ReadContextData;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.utils.KV;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -93,7 +92,7 @@ public class AddContextDataToReadSparkUnitTest extends GATKBaseTest {
         }
 
         @Override
-        public ReferenceBases getReferenceBases(final PipelineOptions pipelineOptions, final SimpleInterval interval) throws IOException {
+        public ReferenceBases getReferenceBases(final SimpleInterval interval) {
             return FakeReferenceSource.bases(interval);
         }
 

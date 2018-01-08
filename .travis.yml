@@ -1,6 +1,7 @@
 language: java
 sudo: required
 dist: trusty
+group: travis_lts
 git:
   depth: 9999999
   lfs_skip_smudge: true
@@ -11,7 +12,9 @@ env:
   - TEST_TYPE=cloud UPLOAD=true
   - TEST_TYPE=integration TEST_DOCKER=true TEST_VERBOSITY=minimal
   - TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
-  - RUN_CNV_SOMATIC_LEGACY_WDL=true
+  - TEST_TYPE=python TEST_DOCKER=true TEST_VERBOSITY=minimal
+  - RUN_CNV_GERMLINE_WDL=true
+  - RUN_CNV_SOMATIC_WDL=true
   - RUN_M2_WDL=true
   global:
   #gradle needs this
@@ -21,7 +24,7 @@ env:
   #google cloud stuff
   - CLOUDSDK_CORE_DISABLE_PROMPTS=1
   - GCLOUD_HOME=$HOME/gcloud/google-cloud-sdk/bin
-  - CLOUDSDK_PYTHON_SITEPACKAGES=1 
+  - CLOUDSDK_PYTHON_SITEPACKAGES=1
   - GOOGLE_APPLICATION_CREDENTIALS=$TRAVIS_BUILD_DIR/servicekey.json
   #hellbender specific variables
   - HELLBENDER_TEST_INPUTS=gs://hellbender/test/resources/
@@ -29,8 +32,6 @@ env:
   - HELLBENDER_TEST_LOGS=/hellbender-test-logs/build_reports/
   - HELLBENDER_TEST_PROJECT=broad-dsde-dev
   - HELLBENDER_JSON_SERVICE_ACCOUNT_KEY=servicekey.json
-  #google API key
-  - secure: "eHyDxfcfv6pSIkoqQ9PimiYu9I6vmXJOpY/OkXLkc7ZAUfNTfRVytUGG9Xf/bKKF+Wscm5pIfZJ/TMDG6E3Uyngs9nVK/29QWevcEaLDJy8OdI9OgPZb13hlbM2jbVv5AVBGYcbcNBrTvrTs0MOMOFPEJqZ99xWIj5bzZ/AsIfU="
   #for uploading artifacts
   - ARTIFACTORY_USERNAME=gatkci
   #artifactory password
@@ -70,7 +71,7 @@ before_install:
     chmod 600 ~/.ssh/id_rsa;
     echo "Testing github authentication:";
     ssh -T git@github.com;
-    echo "Done testing github authentication";  
+    echo "Done testing github authentication";
   fi
 #install R
 - if [[ $TEST_DOCKER != true ]]; then
@@ -85,8 +86,8 @@ before_install:
    sudo Rscript scripts/docker/gatkbase/install_R_packages.R;
   fi
 # Download Cromwell jar
-- if [[ $RUN_CNV_SOMATIC_LEGACY_WDL == true || $RUN_M2_WDL == true || $RUN_CNV_GERMLINE_WDL == true ]]; then
-    wget -O ~/cromwell-0.28.jar https://github.com/broadinstitute/cromwell/releases/download/28/cromwell-28.jar;
+- if [[ $RUN_CNV_GERMLINE_WDL == true || $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true ]]; then
+    wget -O ~/cromwell-0.29.jar https://github.com/broadinstitute/cromwell/releases/download/29/cromwell-29.jar;
   fi
 # Download Picard jar
 - if [[ $RUN_M2_WDL == true ]]; then
@@ -105,7 +106,7 @@ install:
   else
     ./gradlew assemble;
     ./gradlew installDist;
-    if [[ $RUN_CNV_SOMATIC_LEGACY_WDL == true || $RUN_M2_WDL == true || $RUN_CNV_GERMLINE_WDL == true ]]; then
+    if [[ $RUN_CNV_GERMLINE_WDL == true || $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true ]]; then
       echo "building a shadow jar for the wdl";
       ./gradlew shadowJar;
     elif [[ $TEST_TYPE == cloud ]]; then
@@ -114,18 +115,18 @@ install:
     fi;
   fi
 script:
-# run a basic sanity check to be sure that gatk-launch doesn't explode
+# run a basic sanity check to be sure that gatk doesn't explode
 # run tests
 - if [[ $TRAVIS_EVENT_TYPE == cron ]]; then
     echo "Not running any tests for nightly builds";
   elif [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
     echo "Can't run cloud tests without keys so don't run tests";
-  elif [[ $RUN_CNV_SOMATIC_LEGACY_WDL == true ]]; then
-    echo "Running legacy CNV somatic workflows";
-    bash scripts/cnv_cromwell_tests/somatic_legacy/run_cnv_somatic_workflows.sh;
   elif [[ $RUN_CNV_GERMLINE_WDL == true ]]; then
-    echo "Running CNV germline workflows";
-    bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh;
+      echo "Running CNV germline workflows";
+      bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh;
+  elif [[ $RUN_CNV_SOMATIC_WDL == true ]]; then
+    echo "Running CNV somatic workflows";
+    bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;
   elif [[ $RUN_M2_WDL == true ]]; then
     echo "Deleting some unused files before running M2 WDL...";
     rm -Rf src/test/resources/large/VQSR;
@@ -145,9 +146,9 @@ script:
     echo ${TEST_TYPE};
     sudo mkdir -p build/reports/;
     sudo chmod -R a+w build/reports/;
-    sudo docker run -v $(pwd)/src/test/resources:/testdata -v $(pwd)/build/reports/:/gatk/build/reports/ --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash /root/run_unit_tests.sh;
+    sudo docker run -v $(pwd)/src/test/resources:/testdata -v $(pwd)/build/reports/:/gatk/build/reports/ --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh;
   else
-    ./gatk-launch PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
+    ./gatk PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
     travis_wait 50 ./gradlew jacocoTestReport;
   fi
 

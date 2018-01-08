@@ -9,7 +9,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
@@ -20,12 +20,13 @@ import java.io.OutputStream;
 import java.util.Collections;
 
 /**
- * Dump some statistics about the reads.
+ * (Internal) Collects read metrics relevant to structural variant discovery
  *
- * <p>This tool takes a file of reads as input and calculates a bag of data about them:
- * fragment length statistics by read group, mean length, coverage, partition statistics, etc. This is the first step
- * in the workflow that FindBreakpointEvidenceSpark undertakes.</p>
- * <p>This is currently a debugging tool and it is probably not generally useful to most users.</p>
+ * <p>This tool is used in development and should not be of interest to most researchers.  It executes the first step
+ * in the workflow that the StructuralVariationDiscoveryPipelineSpark tool undertakes, but is packaged as a separately
+ * runnable tool for the convenience of developers.</p>
+ * <p>This tool takes a SAM/BAM/CRAM as input and calculates metrics about the reads:
+ * fragment length statistics by read group, mean length, coverage, partition statistics, etc.</p>
  *
  * <h3>Inputs</h3>
  * <ul>
@@ -34,7 +35,7 @@ import java.util.Collections;
  *
  * <h3>Output</h3>
  * <ul>
- *     <li>A text file describing the statistics.</li>
+ *     <li>A text file describing the collected metrics.</li>
  * </ul>
  *
  * <h3>Usage example</h3>
@@ -43,16 +44,22 @@ import java.util.Collections;
  *     -I input_reads.bam \
  *     -O statistics.txt
  * </pre>
+ * <p>This tool can be run without explicitly specifying Spark options. That is to say, the given example command
+ * without Spark options will run locally. See
+ * <a href ="https://software.broadinstitute.org/gatk/documentation/article?id=10060">Tutorial#10060</a>
+ * for an example of how to set up and run a Spark tool on a cloud Spark cluster.</p>
  */
 @DocumentedFeature
 @BetaFeature
 @CommandLineProgramProperties(
-        oneLineSummary = "Dump some statistics about the reads.",
+        oneLineSummary = "(Internal) Collects read metrics relevant to structural variant discovery",
         summary =
-        "This tool takes a file of reads as input and calculates a bag of data about them:" +
-        " fragment length statistics by read group, mean length, coverage, partition statistics, etc. This is the first step" +
-        " in the workflow that FindBreakpointEvidenceSpark undertakes.",
-        programGroup = StructuralVariantDiscoveryProgramGroup.class)
+        "This tool is used in development and should not be of interest to most researchers.  It executes the first step" +
+        " in the workflow that the StructuralVariationDiscoveryPipelineSpark tool undertakes, but is packaged as a separately" +
+        " runnable tool for the convenience of developers." +
+        " This tool takes a SAM/BAM/CRAM as input and calculates metrics about the reads:" +
+        " fragment length statistics by read group, mean length, coverage, partition statistics, etc.",
+        programGroup = DiagnosticsAndQCProgramGroup.class)
 public class CalcMetadataSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
@@ -61,8 +68,8 @@ public class CalcMetadataSpark extends GATKSparkTool {
     private String outputFile;
 
     @Argument(doc = "write metadata as serialized binary data, rather than as human-readable text",
-            fullName = "write-as-binary", optional = true)
-    private boolean writeAsBinary = true;
+            fullName = "write-as-binary")
+    private boolean writeAsBinary = false;
 
     @Override public boolean requiresReads() { return true; }
 

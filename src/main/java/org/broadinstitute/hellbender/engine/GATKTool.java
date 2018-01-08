@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
@@ -291,7 +292,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * May be overridden by traversals that require custom initialization of the reference data source.
      */
     void initializeReference() {
-        reference = referenceArguments.getReferenceFile() != null ? ReferenceDataSource.of(referenceArguments.getReferenceFile()) : null;
+        reference = referenceArguments.getReferencePath() != null ? ReferenceDataSource.of(referenceArguments.getReferencePath()) : null;
     }
 
     /**
@@ -304,7 +305,7 @@ public abstract class GATKTool extends CommandLineProgram {
         if (! readArguments.getReadFiles().isEmpty()) {
             SamReaderFactory factory = SamReaderFactory.makeDefault().validationStringency(readArguments.getReadValidationStringency());
             if (hasReference()) { // pass in reference if available, because CRAM files need it
-                factory = factory.referenceSequence(referenceArguments.getReferenceFile());
+                factory = factory.referenceSequence(referenceArguments.getReferencePath());
             }
             else if (hasCramInput()) {
                 throw new UserException.MissingReference("A reference file is required when using CRAM files.");
@@ -672,14 +673,27 @@ public abstract class GATKTool extends CommandLineProgram {
      * @return SAMFileWriter
      */
     public final SAMFileGATKReadWriter createSAMWriter(final Path outputPath, final boolean preSorted) {
-        if (!hasReference() && IOUtils.isCramFile(outputPath)) {
+        final boolean isCramFile = IOUtils.isCramFile(outputPath);
+        if (!hasReference() && isCramFile) {
             throw new UserException.MissingReference("A reference file is required for writing CRAM files");
+        }
+
+        //TODO this is a workaround until #4039 is resolved
+        final File reference;
+        if ( isCramFile ){
+            try{
+                reference = referenceArguments.getReferencePath().toFile();
+            } catch ( final UnsupportedOperationException e){
+                throw new UserException("When writing a cram File a local reference file must be used", e);
+            }
+        } else {
+            reference = null;
         }
 
         return new SAMFileGATKReadWriter(
             ReadUtils.createCommonSAMWriter(
                 outputPath,
-                referenceArguments.getReferenceFile(),
+                reference,
                 getHeaderForSAMWriter(),
                 preSorted,
                 createOutputBamIndex,
@@ -786,8 +800,33 @@ public abstract class GATKTool extends CommandLineProgram {
     protected String getToolkitName() { return "GATK"; }
 
     /**
+     * A method to allow a user to inject data sources after initialization that were not specified as command-line
+     * arguments.
+     * @return The {@link FeatureInput} used as the key for this data source.
+     */
+    protected FeatureInput<? extends Feature> addFeatureInputsAfterInitialization(final String filePath,
+                                                                                  final String name,
+                                                                                  final Class<? extends Feature> featureType) {
+
+        final FeatureInput<? extends Feature> featureInput = new FeatureInput<>(name + ":" + filePath);
+
+        //Add datasource to the feature manager too so that it can be queried. Setting lookahead to 0 to avoid caching.
+        //Note: we are disabling lookahead here because of windowed queries that need to "look behind" as well.
+        features.addToFeatureSources(
+                0,
+                featureInput,
+                featureType,
+                cloudPrefetchBuffer,
+                cloudIndexPrefetchBuffer,
+                referenceArguments.getReferencePath()
+        );
+
+        return featureInput;
+    }
+
+    /**
      * Returns the name of this tool.
-     * The default implementation returns the result of calling {@link# getToolkitName} followed by the simple
+     * The default implementation returns the result of calling {@link #getToolkitName} followed by the simple
      * name of the class. Subclasses may override.
      */
     public String getToolName() {

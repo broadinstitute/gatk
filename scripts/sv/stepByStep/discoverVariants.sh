@@ -17,12 +17,12 @@ MASTER_NODE="hdfs://${CLUSTER_NAME}-m:8020"
 PROJECT_OUTPUT_DIR="${MASTER_NODE}$3"
 REF_TWOBIT="${MASTER_NODE}$4"
 
-"${GATK_DIR}/gatk-launch" DiscoverVariantsFromContigAlignmentsSAMSpark \
+"${GATK_DIR}/gatk" DiscoverVariantsFromContigAlignmentsSAMSpark \
     -I "${PROJECT_OUTPUT_DIR}/assemblies.sam" \
     -O "${PROJECT_OUTPUT_DIR}/variants/inv_del_ins.vcf" \
     -R "${REF_TWOBIT}" \
     -- \
-    --sparkRunner GCS \
+    --spark-runner GCS \
     --cluster "${CLUSTER_NAME}" \
     --driver-memory 30G \
     --executor-memory 8G \

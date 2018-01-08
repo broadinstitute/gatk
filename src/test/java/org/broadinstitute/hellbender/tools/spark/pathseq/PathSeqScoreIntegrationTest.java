@@ -10,6 +10,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -114,8 +115,8 @@ public class PathSeqScoreIntegrationTest extends CommandLineProgramTest {
 
         this.runCommandLine(args.getArgsArray());
 
-        final String expectedScoresString = FileUtils.readFileToString(expectedScoresFile);
-        final String actualScoresString = FileUtils.readFileToString(outputScoresFile);
+        final String expectedScoresString = FileUtils.readFileToString(expectedScoresFile, StandardCharsets.UTF_8);
+        final String actualScoresString = FileUtils.readFileToString(outputScoresFile, StandardCharsets.UTF_8);
         compareScoreTables(expectedScoresString, actualScoresString);
 
         Assert.assertTrue(MetricsFile.areMetricsEqual(outputMetricsFile, expectedMetricsFile));

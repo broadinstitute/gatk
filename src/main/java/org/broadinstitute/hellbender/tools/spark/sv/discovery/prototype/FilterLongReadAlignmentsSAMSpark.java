@@ -46,17 +46,18 @@ import static org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVar
 
 
 /**
- * Filters a long read SAM file, and outputs alignments that tile the contig optimally.
+ * (Internal) Examines alignments of chimeric contigs, attempting to produce an optimal tiling
  *
- * <p>This tool takes a file containing the alignments of assembled contigs and filters them with the
- * aim of providing "optimal coverage" of the long read, based on an heuristic scoring scheme.</p>
- * <p>This is a prototyping/debugging tool and it is probably not generally useful to most users.</p>
+ * <p>This tool is used in development and should not be of interest to most researchers.  It is a prototype
+ * of one aspect of structural variant calling from chimeric contigs produced by local assemblies.</p>
+ * <p>It takes a SAM/BAM/CRAM containing the alignments of assembled contigs and filters them with the
+ * aim of providing "optimal coverage" of the contig, based on an heuristic scoring scheme.</p>
  * <p>It saves the result as a text file, formatted as:</p>
- * <pre>(CTG_NAME, [[LIST_OF_PICKED_ALIGNMENT_INTERVAL_AS_COMPACT_STRING]])</pre>
+ * <pre>(CONTIG_NAME, [[LIST_OF_PICKED_ALIGNMENT_INTERVALS_AS_A_COMPACT_STRING]])</pre>
  *
  * <h3>Inputs</h3>
  * <ul>
- *     <li>An input file of assembled contigs or long reads aligned to reference.</li>
+ *     <li>An input file of contigs from local assemblies aligned to reference.</li>
  * </ul>
  *
  * <h3>Output</h3>
@@ -70,14 +71,20 @@ import static org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVar
  *     -I assemblies.sam \
  *     -O selected_alignments.txt
  * </pre>
+ * <p>This tool can be run without explicitly specifying Spark options. That is to say, the given example command
+ * without Spark options will run locally. See
+ * <a href ="https://software.broadinstitute.org/gatk/documentation/article?id=10060">Tutorial#10060</a>
+ * for an example of how to set up and run a Spark tool on a cloud Spark cluster.</p>
  */
 @DocumentedFeature
 @BetaFeature
 @CommandLineProgramProperties(
-        oneLineSummary = "Filters a long read SAM file, and outputs alignments that tile the contig optimally.",
+        oneLineSummary = "(Internal) Examines alignments of chimeric contigs, attempting to produce an optimal tiling",
         summary =
-        "This tool takes a file containing the alignments of assembled contigs and filters them with the" +
-        " aim of providing \"optimal coverage\" of the long read, based on an heuristic scoring scheme.",
+        "This tool is used in development and should not be of interest to most researchers.  It is a prototype" +
+        " of one aspect of structural variant calling from chimeric contigs produced by local assemblies." +
+        " It takes a SAM/BAM/CRAM containing the alignments of assembled contigs and filters them with the" +
+        " aim of providing \"optimal coverage\" of the contig, based on an heuristic scoring scheme.",
         programGroup = StructuralVariantDiscoveryProgramGroup.class)
 public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;

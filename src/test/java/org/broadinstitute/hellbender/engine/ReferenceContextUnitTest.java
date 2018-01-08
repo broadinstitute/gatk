@@ -1,8 +1,10 @@
 package org.broadinstitute.hellbender.engine;
 
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -14,7 +16,7 @@ import java.util.List;
 
 public final class ReferenceContextUnitTest extends GATKBaseTest {
 
-    private static final File TEST_REFERENCE = new File(hg19MiniReference);
+    private static final Path TEST_REFERENCE = IOUtils.getPath(hg19MiniReference);
 
     @DataProvider(name = "EmptyReferenceContextDataProvider")
     public Object[][] getEmptyReferenceContextData() {
@@ -230,8 +232,21 @@ public final class ReferenceContextUnitTest extends GATKBaseTest {
 
     private void checkReferenceContextBasesFromInterval( final ReferenceContext refContext, final String expectedBases, final SimpleInterval interval ) {
 
+        // Do this once for the interval-based call:
         final byte[] contextBases = refContext.getBases(interval);
+        checkReferenceContextBasesFromIntervalHelper(expectedBases, contextBases);
 
+        // Do this again for the leading/trailing bounds-based call:
+        final byte[] contextBases2 = refContext.getBases(interval);
+
+        // First check that the two context bases are the same:
+        Assert.assertEquals(contextBases2, contextBases);
+
+        // Now check vs the expected values:
+        checkReferenceContextBasesFromIntervalHelper(expectedBases, contextBases2);
+    }
+
+    private void checkReferenceContextBasesFromIntervalHelper(final String expectedBases, final byte[] contextBases) {
         Assert.assertEquals(contextBases.length, expectedBases.length(), "Wrong number of bases from refContext.getBases()");
 
         final byte[] expectedBasesByteArray = expectedBases.getBytes();

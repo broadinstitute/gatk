@@ -46,7 +46,7 @@ import static java.util.Collections.singleton;
  *
  * <h3>Usage example</h3>
  * <pre>
- *   ./gatk-launch VariantFiltration \
+ *   gatk VariantFiltration \
  *   -R reference.fasta \
  *   -V input.vcf \
  *   -O output.vcf \

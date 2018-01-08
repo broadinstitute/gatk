@@ -139,7 +139,7 @@ public final class AddContextDataToReadSparkOptimized implements Serializable {
         SimpleInterval refInterval = new SimpleInterval(shard.interval.getContig(), start, end);
         ReferenceBases refBases;
         try {
-            refBases = refSource.getReferenceBases(null, refInterval);
+            refBases = refSource.getReferenceBases(refInterval);
         } catch (IOException x) {
             throw new GATKException("Unable to read the reference");
         }

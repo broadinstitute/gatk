@@ -3,15 +3,18 @@ package org.broadinstitute.hellbender.tools.copynumber;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.tools.copynumber.annotation.AnnotatedInterval;
-import org.broadinstitute.hellbender.tools.copynumber.annotation.AnnotatedIntervalCollection;
-import org.broadinstitute.hellbender.tools.copynumber.annotation.AnnotationSet;
-import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberArgumentValidationUtils;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotatedInterval;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotationSet;
+import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
@@ -20,34 +23,62 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Annotates intervals with GC content.  The output may optionally be used by
- * {@link CreateReadCountPanelOfNormals} and {@link DenoiseReadCounts} to perform explicit GC-bias correction.
+ * Annotates intervals with GC content.  The output may optionally be used as input to
+ * {@link CreateReadCountPanelOfNormals} or {@link DenoiseReadCounts}.  In the former case,
+ * using the resulting panel as input to {@link DenoiseReadCounts} will perform explicit GC-bias correction.
  *
- * <h3>Examples</h3>
-
+ * <h3>Inputs</h3>
+ *
+ * <ul>
+ *     <li>
+ *         Reference FASTA file
+ *     </li>
+ *     <li>
+ *         Intervals to be annotated. Supported formats are described in
+ *         <a href ="https://software.broadinstitute.org/gatk/documentation/article?id=1319">Article#1319</a>.
+ *         The argument {@code interval-merging-rule} must be set to {@link IntervalMergingRule#OVERLAPPING_ONLY}
+ *         and all other common arguments for interval padding or merging must be set to their defaults.
+ *     </li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ *
+ * <ul>
+ *     <li>
+ *         GC-content annotated-intervals file.
+ *         This is a tab-separated values (TSV) file with a SAM-style header containing a sequence dictionary,
+ *         a row specifying the column headers contained in {@link AnnotatedIntervalCollection.AnnotatedIntervalTableColumn},
+ *         and the corresponding entry rows.
+ *     </li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
+ *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" AnnotateIntervals \
- *   -L intervals.interval_list \
- *   --reference ref_fasta.fa \
- *   --output annotated_intervals.tsv
+ *     gatk AnnotateIntervals \
+ *          -R reference.fa \
+ *          -L intervals.interval_list \
+ *          --interval-merging-rule OVERLAPPING_ONLY \
+ *          -O annotated_intervals.tsv
  * </pre>
  *
+ * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Annotate intervals with GC content.  " +
-                "Overlapping intervals will be merged, but no other padding or merging specified by command-line arguments is allowed.",
-        oneLineSummary = "Annotate intervals with GC content.",
+        summary = "Annotates intervals with GC content",
+        oneLineSummary = "Annotates intervals with GC content",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
+@BetaFeature
 public final class AnnotateIntervals extends GATKTool {
     @Argument(
-            doc = "Output annotated-intervals file.",
+            doc = "Output file for annotated intervals.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
-    protected File outputFile;
+    protected File outputAnnotatedIntervalsFile;
 
     @Override
     public boolean requiresReference() {
@@ -60,6 +91,7 @@ public final class AnnotateIntervals extends GATKTool {
     }
 
     private List<SimpleInterval> intervals;
+    private SAMSequenceDictionary sequenceDictionary;
     private ReferenceDataSource reference;
     private final GCContentAnnotator gcContentAnnotator = new GCContentAnnotator();
     private AnnotatedIntervalCollection annotatedIntervals;
@@ -69,9 +101,9 @@ public final class AnnotateIntervals extends GATKTool {
         CopyNumberArgumentValidationUtils.validateIntervalArgumentCollection(intervalArgumentCollection);
 
         logger.info("Loading intervals for annotation...");
-        final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
+        sequenceDictionary = getBestAvailableSequenceDictionary();
         intervals = intervalArgumentCollection.getIntervals(sequenceDictionary);
-        reference = ReferenceDataSource.of(referenceArguments.getReferenceFile());  //the GATKTool ReferenceDataSource is package-protected, so we cannot access it directly
+        reference = ReferenceDataSource.of(referenceArguments.getReferencePath());  //the GATKTool ReferenceDataSource is package-protected, so we cannot access it directly
         logger.info("Annotating intervals...");
     }
 
@@ -85,13 +117,13 @@ public final class AnnotateIntervals extends GATKTool {
                             interval, null, new ReferenceContext(reference, interval), null))));
             progressMeter.update(interval);
         });
-        annotatedIntervals = new AnnotatedIntervalCollection(annotatedIntervalList);
+        annotatedIntervals = new AnnotatedIntervalCollection(new SimpleLocatableMetadata(sequenceDictionary), annotatedIntervalList);
     }
 
     @Override
     public Object onTraversalSuccess() {
-        logger.info(String.format("Writing annotated intervals to %s...", outputFile));
-        annotatedIntervals.write(outputFile);
+        logger.info(String.format("Writing annotated intervals to %s...", outputAnnotatedIntervalsFile));
+        annotatedIntervals.write(outputAnnotatedIntervalsFile);
         return super.onTraversalSuccess();
     }
 

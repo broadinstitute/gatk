@@ -51,12 +51,12 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
         final GATKReadFilterPluginDescriptor pluginDescriptor = clp.getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
 
         // the help for disable-read-filter should point out to the default filters in the order provided
-        Assert.assertEquals(pluginDescriptor.getAllowedValuesForDescriptorArgument(StandardArgumentDefinitions.DISABLE_READ_FILTER_LONG_NAME),
+        Assert.assertEquals(pluginDescriptor.getAllowedValuesForDescriptorHelp(StandardArgumentDefinitions.DISABLE_READ_FILTER_LONG_NAME),
                 defaultFilters.stream().map(rf -> rf.getClass().getSimpleName()).collect(Collectors.toSet()));
 
         // test if the help for readFilter is not empty after parsing: if custom validation throws, the help should print the readFilter available
         // the complete set could not checked because that requires to discover all the implemented filters
-        Assert.assertFalse(pluginDescriptor.getAllowedValuesForDescriptorArgument(StandardArgumentDefinitions.READ_FILTER_LONG_NAME).isEmpty());
+        Assert.assertFalse(pluginDescriptor.getAllowedValuesForDescriptorHelp(StandardArgumentDefinitions.READ_FILTER_LONG_NAME).isEmpty());
     }
 
     //Filters with arguments to verify filter test method actually filters
@@ -172,7 +172,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
 
         // get the command line read filters
         final GATKReadFilterPluginDescriptor readFilterPlugin = clp.getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
-        final List<ReadFilter> readFilters = readFilterPlugin.getAllInstances();
+        final List<ReadFilter> readFilters = readFilterPlugin.getResolvedInstances();
         Assert.assertEquals(readFilters.size(), 0);
     }
 
@@ -275,7 +275,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
 
         // get the command line read filters
         GATKReadFilterPluginDescriptor readFilterPlugin = clp.getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
-        List<ReadFilter> readFilters = readFilterPlugin.getAllInstances();
+        List<ReadFilter> readFilters = readFilterPlugin.getResolvedInstances();
 
         Assert.assertEquals(readFilters.size(), 2);
         Assert.assertEquals(readFilters.get(0).getClass().getSimpleName(),
@@ -333,7 +333,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
 
         // get the command line read filters
         GATKReadFilterPluginDescriptor readFilterPlugin = clp.getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
-        List<ReadFilter> readFilters = readFilterPlugin.getAllInstances();
+        List<ReadFilter> readFilters = readFilterPlugin.getResolvedInstances();
 
         Assert.assertEquals(readFilters.size(), 1);
         Assert.assertEquals(readFilters.get(0).getClass().getSimpleName(),
@@ -384,7 +384,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
         Assert.assertTrue(readFilterPlugin.userArgs.getDisableToolDefaultReadFilters());
 
         // no instances because no readFilter was provided
-        List<ReadFilter> readFilters = readFilterPlugin.getAllInstances();
+        List<ReadFilter> readFilters = readFilterPlugin.getResolvedInstances();
         Assert.assertEquals(readFilters.size(), (expectedFilter == null) ? 0 : 1);
 
         // all the default filters returns true for isDisabledFilter if it is not the expected
@@ -463,7 +463,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadLengthReadFilter.class.getSimpleName(),
                 "--" + ReadLengthReadFilter.maxLengthArgName, "13"}
         );
-        List<ReadFilter> allFilters = rfDesc.getAllInstances();
+        List<ReadFilter> allFilters = rfDesc.getResolvedInstances();
         ReadLengthReadFilter rf = (ReadLengthReadFilter) allFilters.get(0);
         Assert.assertEquals(rf.maxReadLength.intValue(), 13);
     }
@@ -483,7 +483,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadFilterLibrary.MAPPED.getClass().getSimpleName(),
                 "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadLengthReadFilter.class.getSimpleName()}
         );
-        List<ReadFilter> allFilters = rfDesc.getAllInstances();
+        List<ReadFilter> allFilters = rfDesc.getResolvedInstances();
         // User filter is first according to the command line
         Assert.assertSame(allFilters.get(0).getClass(), ReadFilterLibrary.GOOD_CIGAR.getClass());
         // default filters are exactly the same object
@@ -524,14 +524,20 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
 
         GATKReadFilterPluginDescriptor readFilterPlugin = clp.getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
 
-        // get and verify the list of filters enabled on the command line (not including defaults)
-        List<ReadFilter> orderedFilters = readFilterPlugin.getAllInstances();
-        Assert.assertEquals(orderedFilters.size(), 3);
+        // get and verify the final resolved list of filters enabled on the command line, resolved with the defaults
+        List<ReadFilter> orderedFilters = readFilterPlugin.getResolvedInstances();
+        Assert.assertEquals(orderedFilters.size(), 6);
         Assert.assertEquals(orderedFilters.get(0).getClass().getSimpleName(),
-                ReadFilterLibrary.MAPPED.getClass().getSimpleName());
+                WellformedReadFilter.class.getSimpleName());
         Assert.assertEquals(orderedFilters.get(1).getClass().getSimpleName(),
-                ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS.getClass().getSimpleName());
+                ReadFilterLibrary.HAS_READ_GROUP.getClass().getSimpleName());
         Assert.assertEquals(orderedFilters.get(2).getClass().getSimpleName(),
+                ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO.getClass().getSimpleName());
+        Assert.assertEquals(orderedFilters.get(3).getClass().getSimpleName(),
+                ReadFilterLibrary.MAPPED.getClass().getSimpleName());
+        Assert.assertEquals(orderedFilters.get(4).getClass().getSimpleName(),
+                ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS.getClass().getSimpleName());
+        Assert.assertEquals(orderedFilters.get(5).getClass().getSimpleName(),
                 ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName());
 
         // Now get the final merged read filter and verify the execution order. We need to ensure that

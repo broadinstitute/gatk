@@ -7,11 +7,6 @@ if [ -z "$GCS_CLUSTER" ]; then
   exit 1
 fi
 
-if [ -z "$API_KEY" ]; then
-  echo "Please set the API_KEY environment variable to a path to the local json file."
-  exit 1
-fi
-
 # Create cluster
 gcloud beta dataproc clusters create "$GCS_CLUSTER" \
   --zone us-central1-a \

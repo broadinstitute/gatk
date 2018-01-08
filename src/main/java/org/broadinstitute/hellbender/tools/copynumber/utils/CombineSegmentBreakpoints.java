@@ -5,13 +5,14 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberStandardArgument;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.SimpleAnnotatedGenomicRegion;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -23,13 +24,14 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
-        oneLineSummary = "(EXPERIMENTAL) Combine the breakpoints of two segment files and annotate the resulting intervals with chosen columns from each file.",
+        oneLineSummary = "Combine the breakpoints of two segment files and annotate the resulting intervals with chosen columns from each file.",
         summary = "Combine the breakpoints of two segment files while preserving annotations.\n" +
                 "This tool will load all segments into RAM.\n"+
         "Expected interval columns are: " + SimpleAnnotatedGenomicRegion.CONTIG_HEADER + ", " +
         SimpleAnnotatedGenomicRegion.START_HEADER + ", " + SimpleAnnotatedGenomicRegion.END_HEADER,
         programGroup = CopyNumberProgramGroup.class)
-@BetaFeature
+@DocumentedFeature
+@ExperimentalFeature
 public class CombineSegmentBreakpoints extends GATKTool {
 
     public static final String COLUMNS_OF_INTEREST_LONG_NAME = "columnsOfInterest";
@@ -41,7 +43,6 @@ public class CombineSegmentBreakpoints extends GATKTool {
     @Argument(
             doc = "Input segment files -- must be specified twice, but order does not matter.",
             fullName = CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME,
-            shortName = CopyNumberStandardArgument.SEGMENTS_FILE_SHORT_NAME,
             maxElements = 2,
             minElements = 2
     )

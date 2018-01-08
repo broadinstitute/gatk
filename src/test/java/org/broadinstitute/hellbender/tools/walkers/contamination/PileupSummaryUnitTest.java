@@ -8,8 +8,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.testng.Assert.*;
-
 /**
  * Created by David Benjamin on 2/15/17.
  */
@@ -27,8 +25,8 @@ public class PileupSummaryUnitTest {
         final List<PileupSummary> ps = Arrays.asList(new PileupSummary(contig, position, refCount, altCount, otherAltCount, alleleFrequency));
 
         final File file = File.createTempFile("pileup_sumary", ".table");
-        PileupSummary.writePileupSummaries(ps, file);
-        final List<PileupSummary> psCopy = PileupSummary.readPileupSummaries(file);
+        PileupSummary.writeToFile(ps, file);
+        final List<PileupSummary> psCopy = PileupSummary.readFromFile(file);
 
         Assert.assertEquals(psCopy.size(), 1);
         Assert.assertEquals(psCopy.get(0).getContig(), contig);

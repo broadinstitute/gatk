@@ -411,4 +411,53 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
             Assert.assertEquals((boolean)seenBP.get(i), true);
         }
     }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testRefVsAnyResultNotNegative() throws Exception {
+        new ReferenceConfidenceModel.RefVsAnyResult(-1);
+    }
+    @Test
+    public void testRefVsAnyResultConstructor() throws Exception {
+        final ReferenceConfidenceModel.RefVsAnyResult res = new ReferenceConfidenceModel.RefVsAnyResult(3);
+        Assert.assertEquals(res.getAD().length, 2);
+        Assert.assertEquals(res.getGenotypeLikelihoodsCappedByHomRefLikelihood().length, 3);
+        Assert.assertEquals(res.getDP(), 0);
+        Assert.assertEquals(res.getAD(), new int[]{0, 0});
+        Assert.assertEquals(res.getGenotypeLikelihoodsCappedByHomRefLikelihood(), new double[]{0.0, 0.0, 0.0});
+    }
+
+    @Test
+    public void testRefVsAnyResultADInc() throws Exception {
+        final ReferenceConfidenceModel.RefVsAnyResult res = new ReferenceConfidenceModel.RefVsAnyResult(3);
+        res.refDepth += 2;
+        res.nonRefDepth += 3;
+        Assert.assertEquals(res.getAD(), new int[]{2, 3});
+    }
+
+    @Test
+    public void testRefVsAnyResultCapByHomRefLikelihood() throws Exception {
+        final ReferenceConfidenceModel.RefVsAnyResult res = new ReferenceConfidenceModel.RefVsAnyResult(3);
+        res.genotypeLikelihoods[0] += 100;
+        res.genotypeLikelihoods[1] += 200;
+        res.genotypeLikelihoods[2] += 60;
+        Assert.assertEquals(res.getGenotypeLikelihoodsCappedByHomRefLikelihood(), new double[]{100.0, 100.0, 60.0});
+    }
+
+    @Test
+    public void testRefVsAnyResultArrays() throws Exception {
+        final ReferenceConfidenceModel.RefVsAnyResult res = new ReferenceConfidenceModel.RefVsAnyResult(3);
+        res.refDepth += 2;
+        res.nonRefDepth += 3;
+        final int[] adArray = res.getAD();
+        Assert.assertEquals(adArray, new int[]{2, 3});
+
+        adArray[0] = 17;
+        Assert.assertEquals(res.getAD(), new int[]{2, 3}); //verify that the ad array is a copy
+
+        Assert.assertEquals(res.getGenotypeLikelihoodsCappedByHomRefLikelihood(), new double[]{0, 0, 0});
+        double[] liks = res.getGenotypeLikelihoodsCappedByHomRefLikelihood();
+        liks[0] = 19;
+        Assert.assertEquals(res.getGenotypeLikelihoodsCappedByHomRefLikelihood(), new double[]{0, 0, 0}); //verify that the GL array is a copy
+    }
+
 }

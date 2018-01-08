@@ -11,7 +11,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
+import picard.cmdline.programgroups.ReferenceProgramGroup;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -30,10 +30,12 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Find high copy number kmers in a reference.
+ * Identifies sequences that occur at high frequency in a reference
  *
- * <p>Search the reference for kmers that occur more than a specified number of times,
- * and list them to an output file.</p>
+ * <p>Search the reference for kmers (fixed-length substrings) that occur more than a specified number of times,
+ * and list them to an output file.  The resulting output file is appropriate for use as the --kmers-to-ignore
+ * input file by the StructuralVariationDiscoveryPipelineSpark tool, which will ignore these kmers when trying
+ * to produce candidate reads for local assemblies.</p>
  *
  * <h3>Inputs</h3>
  * <ul>
@@ -51,15 +53,21 @@ import java.util.List;
  *     -R reference.fasta \
  *     -O kmers_to_ignore.txt
  * </pre>
+ * <p>This tool can be run without explicitly specifying Spark options. That is to say, the given example command
+ * without Spark options will run locally. See
+ * <a href ="https://software.broadinstitute.org/gatk/documentation/article?id=10060">Tutorial#10060</a>
+ * for an example of how to set up and run a Spark tool on a cloud Spark cluster.</p>
  */
 @DocumentedFeature
 @BetaFeature
 @CommandLineProgramProperties(
-        oneLineSummary = "Find high copy number kmers in a reference.",
+        oneLineSummary = "Identifies sequences that occur at high frequency in a reference",
         summary =
-        "Search the reference for kmers that occur more than a specified number of times,"+
-        " and list them to an output file.",
-        programGroup = StructuralVariantDiscoveryProgramGroup.class)
+        "Search the reference for kmers (fixed-length substrings) that occur more than a specified number of times," +
+        " and list them to an output file.  The resulting output file is appropriate for use as the --kmers-to-ignore" +
+        " input file by the StructuralVariationDiscoveryPipelineSpark tool, which will ignore these kmers when trying" +
+        " to produce candidate reads for local assemblies.",
+        programGroup = ReferenceProgramGroup.class)
 public final class FindBadGenomicKmersSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 

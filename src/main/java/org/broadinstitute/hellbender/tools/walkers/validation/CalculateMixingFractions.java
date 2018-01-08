@@ -41,7 +41,7 @@ import java.util.stream.StreamSupport;
  * <h3>Example</h3>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" CalculateMixingFractions \
+ * gatk --java-options "-Xmx4g" CalculateMixingFractions \
  *   -V input.vcf \
  *   -O output.table
  * </pre>

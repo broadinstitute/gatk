@@ -120,7 +120,7 @@ public final class PSFilterArgumentCollection implements Serializable {
     public boolean filterDuplicates = true;
 
     public void doReadFilterArgumentWarnings(final GATKReadFilterPluginDescriptor pluginDescriptor, final Logger logger) {
-        final List<ReadFilter> readFilters = pluginDescriptor.getAllInstances();
+        final List<ReadFilter> readFilters = pluginDescriptor.getResolvedInstances();
         for (final ReadFilter filter : readFilters) {
             if (filter.getClass().isAssignableFrom(AmbiguousBaseReadFilter.class)) {
                 logger.warn("Detected the use of AmbiguousBaseReadFilter, which is applied before the PathSeq " +

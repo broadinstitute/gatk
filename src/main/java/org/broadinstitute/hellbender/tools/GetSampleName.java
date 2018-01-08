@@ -2,11 +2,11 @@ package org.broadinstitute.hellbender.tools;
 
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
@@ -17,13 +17,13 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @DocumentedFeature
+@ExperimentalFeature
 @CommandLineProgramProperties(
-        oneLineSummary = "(EXPERIMENTAL) Emit a single sample name from the bam header into an output file.",
+        oneLineSummary = "Emit a single sample name from the bam header into an output file.",
         summary = "If the bam has zero or more than one sample names in the header, this tool will error, by design.\n" +
                 "  This tool has not been tested extensively.  Most options supported by the GATK are irrelevant for this tool.",
-        programGroup = QCProgramGroup.class
+        programGroup = DiagnosticsAndQCProgramGroup.class
 )
-@BetaFeature
 final public class GetSampleName extends GATKTool{
 
     @Argument(

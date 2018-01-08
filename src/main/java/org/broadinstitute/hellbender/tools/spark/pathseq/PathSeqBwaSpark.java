@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.SAMFileHeader;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -11,7 +10,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.MetagenomicsProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
@@ -30,7 +29,7 @@ import java.io.IOException;
         "(do not use --input) and a BWA reference image file created using BwaMemIndexImageCreator. For small " +
         "input, it is recommended that the user reduce --bamPartitionSize in order to increase parallelism.",
         oneLineSummary = "Step 2: Aligns reads to the pathogen reference",
-        programGroup = PathSeqProgramGroup.class)
+        programGroup = MetagenomicsProgramGroup.class)
 @BetaFeature
 public final class PathSeqBwaSpark extends GATKSparkTool {
 
@@ -58,7 +57,7 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
     /**
      * Reads bam from path and returns tuple of the header and reads RDD
      */
-    private Tuple2<SAMFileHeader, JavaRDD<GATKRead>> loadBam(final String path, final PipelineOptions options,
+    private Tuple2<SAMFileHeader, JavaRDD<GATKRead>> loadBam(final String path,
                                                              final ReadsSparkSource readsSource) {
         if (path == null) return null;
         if (BucketUtils.fileExists(path)) {
@@ -66,7 +65,7 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
             if (header.getSequenceDictionary() != null && !header.getSequenceDictionary().isEmpty()) {
                 throw new UserException.BadInput("Input BAM should be unaligned, but found one or more sequences in the header.");
             }
-            PSBwaUtils.addReferenceSequencesToHeader(header, bwaArgs.referencePath, getReferenceWindowFunction(), options);
+            PSBwaUtils.addReferenceSequencesToHeader(header, bwaArgs.referencePath, getReferenceWindowFunction());
             final JavaRDD<GATKRead> reads = readsSource.getParallelReads(path, null, null, bamPartitionSplitSize);
             return new Tuple2<>(header, reads);
         }
@@ -102,9 +101,9 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
      * be read.
      */
     private boolean alignBam(final String inputBamPath, final PSBwaAlignerSpark aligner, final boolean isPaired,
-                             final JavaSparkContext ctx, final PipelineOptions options, final ReadsSparkSource readsSource) {
+                             final JavaSparkContext ctx, final ReadsSparkSource readsSource) {
 
-        final Tuple2<SAMFileHeader, JavaRDD<GATKRead>> loadedBam = loadBam(inputBamPath, options, readsSource);
+        final Tuple2<SAMFileHeader, JavaRDD<GATKRead>> loadedBam = loadBam(inputBamPath, readsSource);
         if (loadedBam == null) return false;
         final SAMFileHeader header = loadedBam._1;
         final JavaRDD<GATKRead> reads = loadedBam._2;
@@ -126,11 +125,10 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
             throw new UserException.BadInput("Please use --pairedInput or --unpairedInput instead of --input");
         }
         final ReadsSparkSource readsSource = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency());
-        final PipelineOptions options = getAuthenticatedGCSOptions();
 
         final PSBwaAlignerSpark aligner = new PSBwaAlignerSpark(ctx, bwaArgs);
-        boolean bPairedSuccess = alignBam(inputPaired, aligner, true, ctx, options, readsSource);
-        boolean bUnpairedSuccess = alignBam(inputUnpaired, aligner, false, ctx, options, readsSource);
+        boolean bPairedSuccess = alignBam(inputPaired, aligner, true, ctx, readsSource);
+        boolean bUnpairedSuccess = alignBam(inputUnpaired, aligner, false, ctx, readsSource);
         if (!bPairedSuccess && !bUnpairedSuccess) {
             throw new UserException.BadInput("No reads were loaded. Ensure --pairedInput and/or --unpairedInput are set and valid.");
         }

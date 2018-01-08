@@ -2,11 +2,10 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequence;
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.iterators.ByteArrayIterator;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,11 +31,11 @@ public final class ReferenceFileSource implements ReferenceDataSource {
      *
      * The provided fasta file must have companion .fai and .dict files.
      *
-     * @param fastaFile reference fasta file
+     * @param fastaPath reference fasta file
      */
-    public ReferenceFileSource(final File fastaFile) {
+    public ReferenceFileSource(final Path fastaPath) {
         // Will throw a UserException if the .fai and/or .dict are missing
-        reference = CachingIndexedFastaSequenceFile.checkAndCreate(Utils.nonNull(fastaFile));
+        reference = CachingIndexedFastaSequenceFile.checkAndCreate(Utils.nonNull(fastaPath));
     }
 
     /**

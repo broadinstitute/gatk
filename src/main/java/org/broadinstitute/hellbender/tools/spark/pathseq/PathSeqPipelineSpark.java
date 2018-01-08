@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.SAMFileHeader;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -13,7 +12,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.MetagenomicsProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -32,7 +31,7 @@ import java.util.List;
 @CommandLineProgramProperties(summary = "Combined tool that performs all steps: read filtering, pathogen alignment, and abundance " +
         "scoring. Note that reducing reads per partition increases parallelism of pathogen alignment on Spark.",
         oneLineSummary = "Combined tool that performs all steps: read filtering, pathogen alignment, and abundance scoring",
-        programGroup = PathSeqProgramGroup.class)
+        programGroup = MetagenomicsProgramGroup.class)
 @BetaFeature
 public class PathSeqPipelineSpark extends GATKSparkTool {
 
@@ -148,8 +147,7 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
 
         //Bwa pathogen alignment
         final PSBwaAlignerSpark aligner = new PSBwaAlignerSpark(ctx, bwaArgs);
-        final PipelineOptions options = getAuthenticatedGCSOptions();
-        PSBwaUtils.addReferenceSequencesToHeader(header, bwaArgs.referencePath, getReferenceWindowFunction(), options);
+        PSBwaUtils.addReferenceSequencesToHeader(header, bwaArgs.referencePath, getReferenceWindowFunction());
         final Broadcast<SAMFileHeader> headerBroadcast = ctx.broadcast(header);
         JavaRDD<GATKRead> alignedPairedReads = aligner.doBwaAlignment(pairedReads, true, headerBroadcast);
         JavaRDD<GATKRead> alignedUnpairedReads = aligner.doBwaAlignment(unpairedReads, false, headerBroadcast);

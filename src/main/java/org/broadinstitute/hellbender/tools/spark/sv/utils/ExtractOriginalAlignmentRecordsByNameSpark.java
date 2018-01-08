@@ -8,10 +8,9 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.pipelines.PrintReadsSpark;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -23,11 +22,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Find reads by name.
+ * Subsets reads by name
  *
- * <p>Reads a file of read (i.e., template) names, and searches an input file of reads to find names that match.
- * The matching reads are copied to an output file.
- * Unlike {@link PrintReadsSpark}, this tool does not require reads to be coordinate-sorted.</p>
+ * <p>Reads a file of read (i.e., template) names, and searches a SAM/BAM/CRAM to find names that match.
+ * The matching reads are copied to an output file.</p>
+ * <p>Unlike FilterSamReads (Picard), this tool can take input reads in any order
+ * (e.g., unsorted or coordinate-sorted).</p>
  *
  * <h3>Inputs</h3>
  * <ul>
@@ -47,16 +47,21 @@ import java.util.stream.Collectors;
  *     --read-name-file read_names.txt \
  *     -O output_reads.bam
  * </pre>
+ * <p>This tool can be run without explicitly specifying Spark options. That is to say, the given example command
+ * without Spark options will run locally. See
+ * <a href ="https://software.broadinstitute.org/gatk/documentation/article?id=10060">Tutorial#10060</a>
+ * for an example of how to set up and run a Spark tool on a cloud Spark cluster.</p>
  */
 @DocumentedFeature
 @BetaFeature
 @CommandLineProgramProperties(
-        oneLineSummary = "Find reads by name.",
+        oneLineSummary = "Subsets reads by name",
         summary =
-            "Reads a file of read (i.e., template) names, and searches an input file of reads to find names that match." +
-            " The matching reads are copied to an output file. Unlike PrintReadsSpark, this tool does not require" +
-            " reads to be coordinate-sorted.",
-        programGroup = StructuralVariantDiscoveryProgramGroup.class)
+            "Reads a file of read (i.e., template) names, and searches a SAM/BAM/CRAM to find names that match." +
+            " The matching reads are copied to an output file." +
+            " Unlike FilterSamReads (Picard), this tool can take input reads in any order" +
+            " (e.g., unsorted or coordinate-sorted).",
+        programGroup = ReadDataManipulationProgramGroup.class)
 public final class ExtractOriginalAlignmentRecordsByNameSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 

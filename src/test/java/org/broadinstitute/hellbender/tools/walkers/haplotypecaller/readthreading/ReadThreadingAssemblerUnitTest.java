@@ -8,6 +8,7 @@ import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import java.nio.file.Paths;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResultSet;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.KBestHaplotype;
@@ -40,7 +41,7 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
 
     @BeforeClass
     public void setup() throws FileNotFoundException {
-        seq = new CachingIndexedFastaSequenceFile(new File(hg19_chr1_1M_Reference));
+        seq = new CachingIndexedFastaSequenceFile(Paths.get(hg19_chr1_1M_Reference));
         header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
     }
 

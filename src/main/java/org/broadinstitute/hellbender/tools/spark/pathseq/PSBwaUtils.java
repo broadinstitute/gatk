@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
@@ -23,9 +22,8 @@ public final class PSBwaUtils {
 
     static void addReferenceSequencesToHeader(final SAMFileHeader header,
                                               final String referencePath,
-                                              final SerializableFunction<GATKRead, SimpleInterval> windowFunction,
-                                              final PipelineOptions options) {
-        final List<SAMSequenceRecord> refSeqs = getReferenceSequences(referencePath, windowFunction, options);
+                                              final SerializableFunction<GATKRead, SimpleInterval> windowFunction) {
+        final List<SAMSequenceRecord> refSeqs = getReferenceSequences(referencePath, windowFunction);
         for (final SAMSequenceRecord rec : refSeqs) {
             if (header.getSequence(rec.getSequenceName()) == null) {
                 header.addSequence(rec);
@@ -34,9 +32,8 @@ public final class PSBwaUtils {
     }
 
     private static List<SAMSequenceRecord> getReferenceSequences(final String referencePath,
-                                                                 final SerializableFunction<GATKRead, SimpleInterval> windowFunction,
-                                                                 final PipelineOptions options) {
-        final ReferenceMultiSource referenceSource = new ReferenceMultiSource(options, referencePath, windowFunction);
+                                                                 final SerializableFunction<GATKRead, SimpleInterval> windowFunction) {
+        final ReferenceMultiSource referenceSource = new ReferenceMultiSource(referencePath, windowFunction);
         final SAMSequenceDictionary referenceDictionary = referenceSource.getReferenceSequenceDictionary(null);
         if (referenceDictionary == null) {
             throw new UserException.MissingReferenceDictFile(referencePath);
