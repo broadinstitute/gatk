@@ -47,12 +47,12 @@ workflow Mutect2Trio {
 	String gatk
 	Int scatter_count
 	# trio_list file is a tsv file with the following nine columns in this order.
-	# normal_bam, normal_bam_index, normal_sample_name, good_tumor_bam, good_tumor_bam_index, good_tumor_sample_name, bad_tumor_bam, bad_tumor_bam_index, bad_tumor_sample_name,
+	# normal_bam, normal_bai, normal_sample_name, good_tumor_bam, good_tumor_bai, good_tumor_sample_name, bad_tumor_bam, bad_tumor_bai, bad_tumor_sample_name,
 	File trio_list
 	Array[Array[String]] trios = read_tsv(trio_list)
 	File? intervals
 	File ref_fasta
-	File ref_fasta_index
+	File ref_fai
 	File ref_dict
 	File? pon
 	File? pon_index
@@ -72,13 +72,13 @@ workflow Mutect2Trio {
 				gatk=gatk,
 				intervals=intervals,
 				ref_fasta=ref_fasta,
-				ref_fasta_index=ref_fasta_index,
+				ref_fai=ref_fai,
 				ref_dict=ref_dict,
 				tumor_bam=trio[3],
-				tumor_bam_index=trio[4],
+				tumor_bai=trio[4],
 				tumor_sample_name=trio[5],
 				normal_bam=trio[0],
-				normal_bam_index=trio[1],
+				normal_bai=trio[1],
 				normal_sample_name=trio[2],
 				pon=pon,
 				pon_index=pon_index,
@@ -100,13 +100,13 @@ workflow Mutect2Trio {
         				gatk=gatk,
         				intervals=intervals,
         				ref_fasta=ref_fasta,
-        				ref_fasta_index=ref_fasta_index,
+        				ref_fai=ref_fai,
         				ref_dict=ref_dict,
         				tumor_bam=trio[6],
-        				tumor_bam_index=trio[7],
+        				tumor_bai=trio[7],
         				tumor_sample_name=trio[8],
         				normal_bam=trio[0],
-        				normal_bam_index=trio[1],
+        				normal_bai=trio[1],
         				normal_sample_name=trio[2],
         				pon=pon,
         				pon_index=pon_index,

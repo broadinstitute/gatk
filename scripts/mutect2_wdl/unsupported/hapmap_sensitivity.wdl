@@ -26,7 +26,7 @@ workflow HapmapSensitivity {
   	File bam_list
   	Array[Array[String]] replicates = read_tsv(bam_list)
   	File ref_fasta
-  	File ref_fasta_index
+  	File ref_fai
   	File ref_dict
   	File? intervals
   	File? pon
@@ -68,10 +68,10 @@ workflow HapmapSensitivity {
                 gatk = "OVERRIDDEN",
                 scatter_count = scatter_count,
                 tumor_bam = bam,
-                tumor_bam_index = index,
+                tumor_bai = index,
                 intervals = intervals,
                 ref_fasta = ref_fasta,
-                ref_fasta_index = ref_fasta_index,
+                ref_fai = ref_fai,
                 ref_dict = ref_dict,
                 pon = pon,
                 pon_index = pon_index,

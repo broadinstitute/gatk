@@ -28,7 +28,7 @@ workflow HapmapSensitivityAllPlexes {
   	File twenty_plex_bam_list
 
   	File ref_fasta
-  	File ref_fasta_index
+  	File ref_fai
   	File ref_dict
   	File? pon
   	File? pon_index
@@ -57,7 +57,7 @@ workflow HapmapSensitivityAllPlexes {
           scatter_count = scatter_count,
           bam_list = five_plex_bam_list,
           ref_fasta = ref_fasta,
-          ref_fasta_index = ref_fasta_index,
+          ref_fai = ref_fai,
           ref_dict = ref_dict,
           pon = pon,
           pon_index = pon_index,
@@ -80,7 +80,7 @@ workflow HapmapSensitivityAllPlexes {
           scatter_count = scatter_count,
           bam_list = ten_plex_bam_list,
           ref_fasta = ref_fasta,
-          ref_fasta_index = ref_fasta_index,
+          ref_fai = ref_fai,
           ref_dict = ref_dict,
           pon = pon,
           pon_index = pon_index,
@@ -103,7 +103,7 @@ workflow HapmapSensitivityAllPlexes {
           scatter_count = scatter_count,
           bam_list = twenty_plex_bam_list,
           ref_fasta = ref_fasta,
-          ref_fasta_index = ref_fasta_index,
+          ref_fai = ref_fai,
           ref_dict = ref_dict,
           pon = pon,
           pon_index = pon_index,

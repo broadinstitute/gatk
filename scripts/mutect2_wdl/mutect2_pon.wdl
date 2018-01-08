@@ -4,7 +4,7 @@
 #  gatk: java jar file containing gatk 4
 #  picard: java jar file containing picard
 #  intervals: genomic intervals
-#  ref_fasta, ref_fasta_index, ref_dict: reference genome, index, and dictionary
+#  ref_fasta, ref_fai, ref_dict: reference genome, index, and dictionary
 #  normal_bams, normal_bais: arrays of normal bams and bam indices
 #  scatter_count: number of parallel jobs when scattering over intervals
 #  pon_name: the resulting panel of normals is {pon_name}.vcf
@@ -25,7 +25,7 @@ workflow Mutect2_Panel {
 	Array[File] normal_bais
 	File? intervals
 	File ref_fasta
-	File ref_fasta_index
+	File ref_fai
 	File ref_dict
     String gatk_docker
     File? gatk_override
@@ -46,10 +46,10 @@ workflow Mutect2_Panel {
                 gatk = gatk,
                 intervals = intervals,
                 ref_fasta = ref_fasta,
-                ref_fasta_index = ref_fasta_index,
+                ref_fai = ref_fai,
                 ref_dict = ref_dict,
                 tumor_bam = normal_bam,
-                tumor_bam_index = normal_bai,
+                tumor_bai = normal_bai,
                 scatter_count = scatter_count,
                 gatk_docker = gatk_docker,
                 gatk_override = gatk_override,

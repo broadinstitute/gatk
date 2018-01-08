@@ -3,19 +3,19 @@
 #  Description of inputs
 #  gatk: java jar file containing gatk 4 (protected)
 #  intervals: genomic intervals
-#  ref_fasta, ref_fasta_index, ref_dict: reference genome, index, and dictionary
+#  ref_fasta, ref_fai, ref_dict: reference genome, index, and dictionary
 #  pon, pon_index: optional panel of normals and index in vcf format containing known false positves
 #  scatter_count: number of parallel jobs when scattering over intervals
 #  gnomad, gnomad_index: optional database of known germline variants, obtainable from http://gnomad.broadinstitute.org/downloads
 #  variants_for_contamination, variants_for_contamination_index: vcf of common variants with allele frequencies fo calculating contamination
 #  is_run_orientation_bias_filter: if true, run the orientation bias filter post-processing step
 #  pair_list: a tab-separated table with no header in the following format:
-#   TUMOR_1_BAM</TAB>TUMOR_1_BAM_INDEX</TAB>NORMAL_1_BAM</TAB>NORMAL_1_BAM_INDEX
-#   TUMOR_2_BAM</TAB>TUMOR_2_BAM_INDEX</TAB>NORMAL_2_BAM</TAB>NORMAL_2_BAM_INDEX
+#   TUMOR_1_BAM</TAB>TUMOR_1_bai</TAB>NORMAL_1_BAM</TAB>NORMAL_1_bai
+#   TUMOR_2_BAM</TAB>TUMOR_2_bai</TAB>NORMAL_2_BAM</TAB>NORMAL_2_bai
 #   . . .
 #  Tumor-only input is the same but without the columns for the normal:
-#  TUMOR_1_BAM</TAB>TUMOR_1_BAM_INDEX
-#  TUMOR_2_BAM</TAB>TUMOR_2_BAM_INDEX
+#  TUMOR_1_BAM</TAB>TUMOR_1_bai
+#  TUMOR_2_BAM</TAB>TUMOR_2_bai
 #   . . .
 
 import "mutect2.wdl" as m2
@@ -62,7 +62,7 @@ workflow Mutect2_Multi {
 	Array[Array[String]] pairs = read_tsv(pair_list)
 	File? intervals
 	File ref_fasta
-	File ref_fasta_index
+	File ref_fai
 	File ref_dict
 	File? pon
 	File? pon_index
@@ -94,7 +94,7 @@ workflow Mutect2_Multi {
 	    #      Otherwise they are treated as null, which in WDL is equivalent to an empty optional
         if(length(row) == 4) {
             File normal_bam = row[2]
-            File normal_bam_index = row[3]
+            File normal_bai = row[3]
         }
 
             call m2.Mutect2 {
@@ -102,12 +102,12 @@ workflow Mutect2_Multi {
                     gatk = gatk,
                     intervals = intervals,
                     ref_fasta = ref_fasta,
-                    ref_fasta_index = ref_fasta_index,
+                    ref_fai = ref_fai,
                     ref_dict = ref_dict,
                     tumor_bam = row[0],
-                    tumor_bam_index = row[1],
+                    tumor_bai = row[1],
                     normal_bam = normal_bam,
-                    normal_bam_index = normal_bam_index,
+                    normal_bai = normal_bai,
                     pon = pon,
                     pon_index = pon_index,
                     scatter_count = scatter_count,

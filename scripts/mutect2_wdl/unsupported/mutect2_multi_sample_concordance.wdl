@@ -13,7 +13,7 @@ workflow Mutect2_Multi_Concordance {
 	File pair_list
 	File? intervals
 	File ref_fasta
-	File ref_fasta_index
+	File ref_fai
 	File ref_dict
 	File? pon
 	File? pon_index
@@ -40,7 +40,7 @@ workflow Mutect2_Multi_Concordance {
         	pair_list = pair_list,
         	intervals = intervals,
         	ref_fasta = ref_fasta,
-        	ref_fasta_index = ref_fasta_index,
+        	ref_fai = ref_fai,
         	ref_dict = ref_dict,
         	pon = pon,
         	pon_index = pon_index,

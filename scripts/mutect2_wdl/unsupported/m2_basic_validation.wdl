@@ -23,13 +23,13 @@ workflow m2_validation {
     String gatk
     File? intervals
     File ref_fasta
-    File ref_fasta_index
+    File ref_fai
     File ref_dict
     File tumor_bam
-    File tumor_bam_index
+    File tumor_bai
     String tumor_sample_name
     File? normal_bam
-    File? normal_bam_index
+    File? normal_bai
     String? normal_sample_name
     File? pon
     File? pon_index
@@ -100,12 +100,12 @@ workflow m2_validation {
                 gatk_override = gatk_override,
                 intervals = intervals,
                 ref_fasta = ref_fasta,
-                ref_fasta_index = ref_fasta_index,
+                ref_fai = ref_fai,
                 ref_dict = ref_dict,
                 tumor_bam = tumor_bam_files[i],
-                tumor_bam_index = tumor_bam_indices[i],
+                tumor_bai = tumor_bam_indices[i],
                 normal_bam = normal_bam_files[i],
-                normal_bam_index = normal_bam_indices[i],
+                normal_bai = normal_bam_indices[i],
                 scatter_count = scatter_count,
                 pon = pon,
                 pon_index = pon_index,
@@ -133,12 +133,12 @@ workflow m2_validation {
                 gatk_override = gatk_override,
                 intervals = intervals,
                 ref_fasta = ref_fasta,
-                ref_fasta_index = ref_fasta_index,
+                ref_fai = ref_fai,
                 ref_dict = ref_dict,
                 tumor_bam = validation_tumor_bam_files[i],
-                tumor_bam_index = validation_tumor_bam_indices[i],
+                tumor_bai = validation_tumor_bam_indices[i],
                 normal_bam = validation_normal_bam_files[i],
-                normal_bam_index = validation_normal_bam_indices[i],
+                normal_bai = validation_normal_bam_indices[i],
                 scatter_count = scatter_count,
                 pon = pon,
                 pon_index = pon_index,
@@ -176,13 +176,13 @@ workflow m2_validation {
                 discovery_tumor_sample_name = m2_tn.tumor_bam_sample_name,
                 discovery_normal_sample_name = m2_tn.normal_bam_sample_name,
                 validation_tumor_bam = m2_rewrite_bam_by_sample.sample_bam,
-                validation_tumor_bai = m2_rewrite_bam_by_sample.sample_bam_index,
+                validation_tumor_bai = m2_rewrite_bam_by_sample.sample_bai,
                 validation_normal_bam = validation_normal_bam_files[i],
                 validation_normal_bai = validation_normal_bam_indices[i],
                 vcf_calls = m2_tn.filtered_vcf,
                 vcf_calls_idx = m2_tn.filtered_vcf_index,
                 ref_fasta = ref_fasta,
-                ref_fasta_index = ref_fasta_index,
+                ref_fai = ref_fai,
                 ref_dict = ref_dict,
                 call_intervals = m2_tn.filtered_vcf,
                 entity_id = "m2_" + m2_tn.tumor_bam_sample_name,
@@ -195,9 +195,9 @@ workflow m2_validation {
                 preemptible_attempts = preemptible_attempts,
                 m2_docker = m2_docker,
                 tumor_bam = validation_normal_bam_files[i],
-                tumor_bam_index = validation_normal_bam_indices[i],
+                tumor_bai = validation_normal_bam_indices[i],
                 ref_fasta = ref_fasta,
-                ref_fasta_index = ref_fasta_index,
+                ref_fai = ref_fai,
                 picard = picard
         }
     }
@@ -231,7 +231,7 @@ task basic_validator {
     File vcf_calls_idx
 
     File ref_fasta
-    File ref_fasta_index
+    File ref_fai
     File ref_dict
 
     # Same calls as what is in the VCF
@@ -369,6 +369,6 @@ task rewrite_bam_by_sample {
 
     output {
         File sample_bam = "${output_bam_basename}.bam"
-        File sample_bam_index = "${output_bam_basename}.bai"
+        File sample_bai = "${output_bam_basename}.bai"
     }
 }

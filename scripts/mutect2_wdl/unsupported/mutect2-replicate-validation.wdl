@@ -33,7 +33,7 @@ task CountFalsePositives {
 	File filtered_vcf
 	File filtered_vcf_index
 	File ref_fasta
-	File ref_fasta_index
+	File ref_fai
 	File ref_dict
 	File? intervals
 	File? gatk_override
@@ -67,12 +67,12 @@ workflow Mutect2ReplicateValidation {
 	File gatk
 	Int scatter_count
 	# replicate_pair_list file is a tsv file with the following six columns in this order.
-	# tumor_bam, tumor_bam_index, tumor_sample_name, normal_bam, normal_bam_index, normal_sample_name
+	# tumor_bam, tumor_bai, tumor_sample_name, normal_bam, normal_bai, normal_sample_name
 	File replicate_pair_list
 	Array[Array[String]] pairs = read_tsv(replicate_pair_list)
 	File? intervals
 	File ref_fasta
-	File ref_fasta_index
+	File ref_fai
 	File ref_dict
 	File? pon
 	File? pon_index
@@ -93,13 +93,13 @@ workflow Mutect2ReplicateValidation {
 				gatk = gatk,
 				intervals = intervals,
 				ref_fasta = ref_fasta,
-				ref_fasta_index = ref_fasta_index,
+				ref_fai = ref_fai,
 				ref_dict = ref_dict,
 				tumor_bam = pair[0],
-				tumor_bam_index = pair[1],
+				tumor_bai = pair[1],
 				tumor_sample_name = pair[2],
 				normal_bam = pair[3],
-				normal_bam_index = pair[4],
+				normal_bai = pair[4],
 				normal_sample_name = pair[5],
 				pon = pon,
 				pon_index = pon_index,
@@ -124,7 +124,7 @@ workflow Mutect2ReplicateValidation {
 				filtered_vcf = Mutect2.filtered_vcf,
 				filtered_vcf_index = Mutect2.filtered_vcf_index,
 				ref_fasta = ref_fasta,
-				ref_fasta_index = ref_fasta_index,
+				ref_fai = ref_fai,
 				ref_dict = ref_dict,
 				intervals = intervals,
 				gatk_override = gatk_override
