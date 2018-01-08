@@ -246,7 +246,7 @@ public class Funcotator extends VariantWalker {
     @Argument(
             fullName  = FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_LONG_NAME,
             optional = true,
-            doc = "Set of transcripts to use for annotation to override selected transcript."
+            doc = "Set of transcript IDs to use for annotation to override selected transcript."
     )
     protected Set<String> transcriptList = FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_DEFAULT_VALUE;
 
