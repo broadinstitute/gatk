@@ -11,9 +11,9 @@ import java.io.Serializable;
 public class BwaArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    public static final String SINGLE_END_ALIGNMENT_FULL_NAME = "singleEndAlignment";
-    public static final String SINGLE_END_ALIGNMENT_SHORT_NAME = "SE";
-    public static final String BWA_MEM_INDEX_IMAGE_FULL_NAME = "bwaMemIndexImage";
+    public static final String SINGLE_END_ALIGNMENT_FULL_NAME = "single-end-alignment";
+    public static final String SINGLE_END_ALIGNMENT_SHORT_NAME = "se";
+    public static final String BWA_MEM_INDEX_IMAGE_FULL_NAME = "bwa-mem-index-image";
     public static final String BWA_MEM_INDEX_IMAGE_SHORT_NAME = "image";
 
     /**

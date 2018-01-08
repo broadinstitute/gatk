@@ -96,7 +96,7 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
                 {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--join-strategy OVERLAPS_PARTITIONER --read-shard-padding 1000 --known-sites " + more20Sites, getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedMultipleKnownSitesVcf)},
 
                 // BWA-MEM
-                {new PipelineTest(GRCh37Ref2bit_chr2021, unalignedBam, ".bam", dbSNPb37_20, "--align --bwaMemIndexImage " + GRCh37Ref_2021_img + " --disable-sequence-dictionary-validation true --join-strategy BROADCAST --known-sites " + more20Sites, null, largeFileTestDir + expectedMultipleKnownSitesFromUnalignedVcf)},
+                {new PipelineTest(GRCh37Ref2bit_chr2021, unalignedBam, ".bam", dbSNPb37_20, "--align --bwa-mem-index-image " + GRCh37Ref_2021_img + " --disable-sequence-dictionary-validation true --join-strategy BROADCAST --known-sites " + more20Sites, null, largeFileTestDir + expectedMultipleKnownSitesFromUnalignedVcf)},
         };
     }
 
@@ -121,8 +121,8 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
             args.add("-R");
             args.add(referenceFile.getAbsolutePath());
         }
-        args.add("-indelBQSR");
-        args.add("-enableBAQ");
+        args.add("-indels");
+        args.add("--enable-baq");
         args.add("-pairHMM");
         args.add("AVX_LOGLESS_CACHING");
         args.add("-stand-call-conf");

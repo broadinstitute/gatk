@@ -8,7 +8,6 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
@@ -20,6 +19,7 @@ import org.broadinstitute.hellbender.utils.recalibration.BaseRecalibrationEngine
 import org.broadinstitute.hellbender.utils.recalibration.QuantizationInfo;
 import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
 import java.io.File;
 import java.io.IOException;
@@ -28,20 +28,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * First pass of the base quality score recalibration -- Generates recalibration table based on various covariates
- * (such as read group, reported quality score, machine cycle, and nucleotide context).
+ * First pass of the base quality score recalibration.
+ * Generates a recalibration table based on various covariates.
+ * The default covariates are read group, reported quality score, machine cycle, and nucleotide context.
  *
  * <p>
- * This walker is designed to work as the first pass in a two-pass processing step. It does a by-locus traversal operating
- * only at sites that are not in dbSNP. We assume that all reference mismatches we see are therefore errors and indicative
- * of poor base quality. This walker generates tables based on various user-specified covariates (such as read group,
- * reported quality score, cycle, and context). Since there is a large amount of data one can then calculate an empirical
+ * This walker generates tables based on specified covariates.
+ * It does a by-locus traversal operating only at sites that are in the known sites VCF.
+ * ExAc, gnomAD, or dbSNP resources can be used as known sites of variation.
+ * We assume that all reference mismatches we see are therefore errors and indicative of poor base quality.
+ * Since there is a large amount of data one can then calculate an empirical
  * probability of error given the particular covariates seen at this site, where p(error) = num mismatches / num observations.
  * The output file is a table (of the several covariate values, num observations, num mismatches, empirical quality score).
- * <p>
- * Note: ReadGroupCovariate and QualityScoreCovariate are required covariates and will be added for the user regardless of whether or not they were specified.
- *
- * <p>
+ * </p>
  *
  * <h3>Input</h3>
  * <p>
@@ -66,23 +65,29 @@ import java.util.List;
  *
  * <h3>Examples</h3>
  * <pre>
- * java -Xmx4g -jar GenomeAnalysisTK.jar \
- *   -T BaseRecalibrator \
+ * gatk BaseRecalibrator \
  *   -I my_reads.bam \
- *   -R resources/Homo_sapiens_assembly18.fasta \
- *   -knownSites bundle/hg18/dbsnp_132.hg18.vcf \
- *   -knownSites another/optional/setOfSitesToMask.vcf \
- *   -o recal_data.table
+ *   -R reference.fasta \
+ *   --known-sites sites_of_variation.vcf \
+ *   --known-sites another/optional/setOfSitesToMask.vcf \
+ *   -O recal_data.table
  * </pre>
  */
 
 @CommandLineProgramProperties(
-        summary = "First pass of the Base Quality Score Recalibration (BQSR) -- Generates recalibration table based on various user-specified covariates (such as read group, reported quality score, machine cycle, and nucleotide context).",
-        oneLineSummary = "Generates recalibration table for BQSR",
-        programGroup = ReadProgramGroup.class
+        summary = BaseRecalibrator.USAGE_SUMMARY,
+        oneLineSummary = BaseRecalibrator.USAGE_ONE_LINE_SUMMARY,
+        programGroup = ReadDataManipulationProgramGroup.class
 )
 @DocumentedFeature
 public final class BaseRecalibrator extends ReadWalker {
+    public static final String USAGE_ONE_LINE_SUMMARY = "Generates recalibration table for Base Quality Score Recalibration (BQSR)";
+    public static final String USAGE_SUMMARY = "First pass of the Base Quality Score Recalibration (BQSR)" +
+            " -- Generates recalibration table based on various user-specified covariates " +
+            "(such as read group, reported quality score, machine cycle, and nucleotide context).";
+
+    public static final String KNOWN_SITES_ARG_FULL_NAME = "known-sites";
+
     protected static final Logger logger = LogManager.getLogger(BaseRecalibrator.class);
 
     /**
@@ -98,7 +103,7 @@ public final class BaseRecalibrator extends ReadWalker {
      * use -XL my.interval.list to skip over processing those sites. Please note however that the statistics reported by the tool will not accurately
      * reflected those sites skipped by the -XL argument.
      */
-    @Argument(fullName = "knownSites", shortName = "knownSites", doc = "One or more databases of known polymorphic sites used to exclude regions around known polymorphisms from analysis.", optional = false)
+    @Argument(fullName = KNOWN_SITES_ARG_FULL_NAME, doc = "One or more databases of known polymorphic sites used to exclude regions around known polymorphisms from analysis.", optional = false)
     private List<FeatureInput<Feature>> knownSites;
 
     /**
