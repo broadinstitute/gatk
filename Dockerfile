@@ -49,3 +49,5 @@ CMD ["bash", "--init-file", "/gatk/gatkenv.rc"]
 # End GATK Python environment
 
 WORKDIR /gatk
+
+ENV PATH /gatk:$PATH
