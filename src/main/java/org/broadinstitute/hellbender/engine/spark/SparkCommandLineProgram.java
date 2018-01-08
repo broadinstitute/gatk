@@ -10,11 +10,11 @@ import java.io.Serializable;
 
 public abstract class SparkCommandLineProgram extends CommandLineProgram implements Serializable {
     private static final long serialVersionUID = 1L;
+    public static final String SPARK_PROGRAM_NAME_LONG_NAME = "program-name";
 
     @Argument(
             doc = "Name of the program running",
-            shortName = "N",
-            fullName = "programName",
+            fullName = SPARK_PROGRAM_NAME_LONG_NAME,
             optional = true
     )
     public String programName;
@@ -52,7 +52,7 @@ public abstract class SparkCommandLineProgram extends CommandLineProgram impleme
 
     /**
      * Returns the program's name.
-     * If programName argument is provided, returns that. Otherwise, returns the simple name of the class.
+     * If {@link #programName} argument is provided, returns that. Otherwise, returns the simple name of the class.
      *
      * Subclasses can override if desired.
      */

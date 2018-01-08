@@ -27,7 +27,7 @@ import java.io.IOException;
 @CommandLineProgramProperties(summary = "Aligns reads to a reference using Bwa-mem. This is a specialized version of " +
         "BwaSpark designed for the PathSeq pipeline. User must supply unaligned paired read and/or unpaired reads " +
         "(do not use --input) and a BWA reference image file created using BwaMemIndexImageCreator. For small " +
-        "input, it is recommended that the user reduce --bamPartitionSize in order to increase parallelism.",
+        "input, it is recommended that the user reduce --bam-partition-size in order to increase parallelism.",
         oneLineSummary = "Step 2: Aligns reads to the pathogen reference",
         programGroup = MetagenomicsProgramGroup.class)
 @BetaFeature
