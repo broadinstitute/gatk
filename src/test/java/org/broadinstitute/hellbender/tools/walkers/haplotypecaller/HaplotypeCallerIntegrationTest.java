@@ -458,6 +458,23 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
     }
 
+    // test fix for https://github.com/broadinstitute/gatk/issues/3466
+    @Test
+    public void testCompletelyClippedReadNearStartOfContig() throws Exception {
+        final File testCaseFilesDir = new File(TEST_FILES_DIR, "issue3466_gatk_cigar_error");
+        final File output = createTempFile("testCompletelyClippedReadNearStartOfContig", ".vcf");
+        final File expected = new File(testCaseFilesDir, "expected_output_gatk3.vcf");
+
+        final String[] args = {
+                "-I", new File(testCaseFilesDir, "culprit.bam").getAbsolutePath(),
+                "-R", new File(testCaseFilesDir, "GRCh37_MTonly.fa").getAbsolutePath(),
+                "-O", output.getAbsolutePath()
+        };
+        runCommandLine(args);
+
+        Assert.assertEquals(calculateConcordance(output, expected), 1.0);
+    }
+
     @Test
     public void testAssemblyRegionAndActivityProfileOutput() throws Exception {
         final File output = createTempFile("testAssemblyRegionAndActivityProfileOutput", ".vcf");

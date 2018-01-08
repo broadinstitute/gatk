@@ -7,6 +7,7 @@ import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.*;
 
@@ -365,6 +366,14 @@ public final class ClippingOp {
         // the cigar may force a shift left or right (or both) in case we are left with insertions
         // starting or ending the read after applying the hard clip on start/stop.
         final int newLength = read.getLength() - (stop - start + 1) - cigarShift.shiftFromStart - cigarShift.shiftFromEnd;
+
+        // If the new read is going to be empty, return an empty read now. This avoids initializing the new
+        // read with invalid values below in certain cases (such as a negative alignment start).
+        // See https://github.com/broadinstitute/gatk/issues/3466
+        if ( newLength == 0 ) {
+            return ReadUtils.emptyRead(read);
+        }
+
         final byte[] newBases = new byte[newLength];
         final byte[] newQuals = new byte[newLength];
         final int copyStart = (start == 0) ? stop + 1 + cigarShift.shiftFromStart : cigarShift.shiftFromStart;
