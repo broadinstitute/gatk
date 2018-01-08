@@ -55,7 +55,7 @@ import java.util.stream.Collectors;
  *     --input-gcs-path gs://bucket_name/input_reads.bam \
  *     --output-hdfs-directory hdfs://cluster-name-m:8020/directory/input_reads.bam \
  *     -- \
- *     --sparkRunner GCS \
+ *     --spark-runner GCS \
  *     --cluster my-dataproc-cluster
  * </pre>
  */
@@ -81,11 +81,15 @@ public class ParallelCopyGCSDirectoryIntoHDFSSpark extends GATKSparkTool {
     // default buffer size for reading chunks is 64MiB based on performance profiling and what appears to be conventional
     // wisdom to use a power of two for byte buffer sizes
     public static final int SIXTY_FOUR_MIB = 67108864;
+    public static final String INPUT_GCS_PATH_LONG_NAME = "input-gcs-path";
+    public static final String OUTPUT_HDFS_DIRECTORY_LONG_NAME = "output-hdfs-directory";
 
-    @Argument(doc = "input GCS file path (add trailing slash when specifying a directory)", fullName = "input-gcs-path")
-    private String inputGCSPath;
+    @Argument(doc = "input GCS file path (add trailing slash when specifying a directory)",
+            fullName = INPUT_GCS_PATH_LONG_NAME)
+    private String inputGCSPath = null;
 
-    @Argument(doc = "output directory on HDFS", fullName = "output-hdfs-directory")
+    @Argument(doc = "output directory on HDFS to into which to transfer the data (will be created by the tool)",
+            fullName = OUTPUT_HDFS_DIRECTORY_LONG_NAME)
     private String outputHDFSDirectory;
 
     @Override
