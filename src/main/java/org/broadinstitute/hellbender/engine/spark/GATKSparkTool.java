@@ -64,6 +64,8 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     private static final long serialVersionUID = 1L;
 
     public static final String BAM_PARTITION_SIZE_LONG_NAME = "bam-partition-size";
+    public static final String NUM_REDUCERS_LONG_NAME = "num-reducers";
+    public static final String SHARDED_OUTPUT_LONG_NAME = "sharded-output";
 
     @ArgumentCollection
     public final ReferenceInputArgumentCollection referenceArguments = requiresReference() ? new RequiredReferenceInputArgumentCollection() :  new OptionalReferenceInputArgumentCollection();
@@ -84,11 +86,14 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     @Argument(fullName = StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, shortName = StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, doc = "If specified, do not check the sequence dictionaries from our inputs for compatibility. Use at your own risk!", optional = true)
     private boolean disableSequenceDictionaryValidation = false;
 
-    @Argument(doc = "For tools that write an output, write the output in multiple pieces (shards)", shortName = "shardedOutput", fullName = "shardedOutput", optional = true)
+    @Argument(doc = "For tools that write an output, write the output in multiple pieces (shards)",
+            fullName = SHARDED_OUTPUT_LONG_NAME,
+            optional = true)
     protected boolean shardedOutput = false;
 
     @Argument(doc="For tools that shuffle data or write an output, sets the number of reducers. Defaults to 0, which gives one partition per 10MB of input.",
-            shortName = "numReducers", fullName = "numReducers", optional = true)
+            fullName = NUM_REDUCERS_LONG_NAME,
+            optional = true)
     protected int numReducers = 0;
 
     private ReadsSparkSource readsSource;

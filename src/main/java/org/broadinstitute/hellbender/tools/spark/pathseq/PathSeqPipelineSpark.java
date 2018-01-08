@@ -71,7 +71,7 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
     /**
      * Because numReducers is based on the input size, it causes too many partitions to be produced when the output size is much smaller.
      */
-    @Argument(doc = "Number of reads per partition for output. Use this to control the number of sharded BAMs (not --numReducers).",
+    @Argument(doc = "Number of reads per partition for output. Use this to control the number of sharded BAMs (not --num-reducers).",
             fullName = "readsPerPartitionOutput",
             optional = true,
             minValue = 100,
@@ -117,7 +117,7 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
 
         //Do not allow use of numReducers
         if (numReducers > 0) {
-            throw new UserException.BadInput("Use --readsPerPartitionOutput instead of --numReducers.");
+            throw new UserException.BadInput("Use --readsPerPartitionOutput instead of --num-reducers.");
         }
 
         //Filter
