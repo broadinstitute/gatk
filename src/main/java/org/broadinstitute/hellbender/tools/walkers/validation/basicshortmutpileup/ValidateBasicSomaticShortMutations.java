@@ -61,7 +61,6 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             doc = "The output file, which will be a validation table (tsv).")
     protected String outputFile;
-
     @Argument(shortName = SAMPLE_NAME_VALIDATION_CASE,
             doc = "validation case sample name (in the bam)")
     protected String validationCaseName;
