@@ -8,6 +8,7 @@ import org.apache.commons.lang3.mutable.MutableInt;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -43,6 +44,7 @@ import java.util.stream.Collectors;
         programGroup = VariantEvaluationProgramGroup.class
 )
 @ExperimentalFeature
+@DocumentedFeature
 public class ValidateBasicSomaticShortMutations extends VariantWalker {
     public static final String SAMPLE_NAME_DISCOVERY_VCF_SHORT_NAME = "discv";
     public static final String SAMPLE_NAME_DISCOVERY_VCF_LONG_NAME = "discoveryVariants";
