@@ -125,7 +125,7 @@ workflow HapmapSensitivityAllPlexes {
   call single_plex.CombineTables as AllPlexTable { input: input_tables = all_plex_sensitivity_tables, prefix = "all_plex" }
 
   call single_plex.AnalyzeSensitivity as AllPlex {
-    input: input_table = AllPlexTable.table, python_script = python_script, prefix = "all_plex"
+      input: input_table = AllPlexTable.table, python_script = python_script, prefix = "all_plex"
   }
 
   output {

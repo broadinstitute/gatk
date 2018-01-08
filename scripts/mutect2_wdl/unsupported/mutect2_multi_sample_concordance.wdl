@@ -34,7 +34,7 @@ workflow Mutect2_Multi_Concordance {
     Array[Array[String]] truth = read_tsv(truth_list)
 
     call m2_multi.Mutect2_Multi {
-      input:
+        input:
             gatk = gatk,
         	scatter_count = scatter_count,
         	pair_list = pair_list,
@@ -60,72 +60,72 @@ workflow Mutect2_Multi_Concordance {
             m2_filtering_args = m2_filtering_args
     }
 
-       scatter (n in range(length(truth))) {
-            call Concordance {
-                input:
-                    gatk = gatk,
-                    gatk_override = gatk_override,
-                    intervals = intervals,
-                    truth_vcf = truth[n][0],
-                    truth_vcf_idx = truth[n][1],
-                    eval_vcf = Mutect2_Multi.filtered_vcf_files[n],
-                    eval_vcf_idx = Mutect2_Multi.filtered_vcf_index_files[n],
-                    gatk_docker = gatk_docker,
-                    preemptible_attempts = preemptible_attempts
-            }
-         }
+    scatter (n in range(length(truth))) {
+        call Concordance {
+            input:
+                gatk = gatk,
+                gatk_override = gatk_override,
+                intervals = intervals,
+                truth_vcf = truth[n][0],
+                truth_vcf_idx = truth[n][1],
+                eval_vcf = Mutect2_Multi.filtered_vcf_files[n],
+                eval_vcf_idx = Mutect2_Multi.filtered_vcf_index_files[n],
+                gatk_docker = gatk_docker,
+                preemptible_attempts = preemptible_attempts
+        }
+    }
 
     output {
-      Array[File] tpfn = Concordance.tpfn
-      Array[File] tpfn_idx = Concordance.tpfn_idx
-      Array[File] tpfp = Concordance.tpfp
-      Array[File] tpfp_idx = Concordance.tpfp_idx
-      Array[File] ftnfn = Concordance.ftnfn
-      Array[File] ftnfn_idx = Concordance.ftnfn_idx
-      Array[File] summary = Concordance.summary
+        Array[File] tpfn = Concordance.tpfn
+        Array[File] tpfn_idx = Concordance.tpfn_idx
+        Array[File] tpfp = Concordance.tpfp
+        Array[File] tpfp_idx = Concordance.tpfp_idx
+        Array[File] ftnfn = Concordance.ftnfn
+        Array[File] ftnfn_idx = Concordance.ftnfn_idx
+        Array[File] summary = Concordance.summary
     }
 }
 
-    task Concordance {
-      String gatk
-      File? gatk_override
-      File? intervals
-      File truth_vcf
-      File truth_vcf_idx
-      File eval_vcf
-      File eval_vcf_idx
-      String gatk_docker
-      Int preemptible_attempts
+task Concordance {
+    String gatk
+    File? gatk_override
+    File? intervals
+    File truth_vcf
+    File truth_vcf_idx
+    File eval_vcf
+    File eval_vcf_idx
+    String gatk_docker
+    Int preemptible_attempts
 
-      command {
+    command {
         # Use GATK Jar override if specified
-          GATK_JAR=${gatk}
-          if [[ "${gatk_override}" == *.jar ]]; then
-              GATK_JAR=${gatk_override}
-          fi
+        GATK_JAR=${gatk}
+        if [[ "${gatk_override}" == *.jar ]]; then
+            GATK_JAR=${gatk_override}
+        fi
 
-          java -jar $GATK_JAR Concordance ${"-L " + intervals} \
+        java -jar $GATK_JAR Concordance ${"-L " + intervals} \
             -truth ${truth_vcf} -eval ${eval_vcf} \
             -tpfn "tpfn.vcf" \
             -tpfp "tpfp.vcf" \
             -ftnfn "ftnfn.vcf" \
             -summary summary.tsv
-      }
+    }
 
-        runtime {
-            memory: "5 GB"
-            docker: "${gatk_docker}"
-            disks: "local-disk " + 400 + " HDD"
-             preemptible: "${preemptible_attempts}"
-        }
+    runtime {
+        memory: "5 GB"
+        docker: "${gatk_docker}"
+        disks: "local-disk " + 400 + " HDD"
+         preemptible: "${preemptible_attempts}"
+    }
 
-      output {
-            File tpfn = "tpfn.vcf"
-            File tpfn_idx = "tpfn.vcf.idx"
-            File tpfp = "tpfp.vcf"
-            File tpfp_idx = "tpfp.vcf.idx"
-            File ftnfn = "ftnfn.vcf"
-            File ftnfn_idx = "ftnfn.vcf.idx"
-            File summary = "summary.tsv"
-      }
+    output {
+        File tpfn = "tpfn.vcf"
+        File tpfn_idx = "tpfn.vcf.idx"
+        File tpfp = "tpfp.vcf"
+        File tpfp_idx = "tpfp.vcf.idx"
+        File ftnfn = "ftnfn.vcf"
+        File ftnfn_idx = "ftnfn.vcf.idx"
+        File summary = "summary.tsv"
+    }
 }

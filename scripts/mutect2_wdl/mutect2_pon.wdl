@@ -84,33 +84,33 @@ workflow Mutect2_Panel {
 }
 
 task CreatePanel {
-      String gatk
-      Array[File] input_vcfs
-      Array[File] input_vcfs_idx
-      String? duplicate_sample_strategy
-      String output_vcf_name
-      File? gatk_override
-      Int? preemptible_attempts
-      String gatk_docker
+    String gatk
+    Array[File] input_vcfs
+    Array[File] input_vcfs_idx
+    String? duplicate_sample_strategy
+    String output_vcf_name
+    File? gatk_override
+    Int? preemptible_attempts
+    String gatk_docker
 
-      String gatk_local_jar = select_first([gatk_override, gatk])
+    String gatk_local_jar = select_first([gatk_override, gatk])
 
-      command {
-            # Use GATK Jar override if specified
-            export GATK_LOCAL_JAR=${gatk_local_jar}
+    command {
+        # Use GATK Jar override if specified
+        export GATK_LOCAL_JAR=${gatk_local_jar}
 
-            gatk --java-options "-Xmx2g"  CreateSomaticPanelOfNormals -vcfs ${sep=' -vcfs ' input_vcfs} ${"-duplicate-sample-strategy " + duplicate_sample_strategy} -O ${output_vcf_name}.vcf
-      }
+        gatk --java-options "-Xmx2g"  CreateSomaticPanelOfNormals -vcfs ${sep=' -vcfs ' input_vcfs} ${"-duplicate-sample-strategy " + duplicate_sample_strategy} -O ${output_vcf_name}.vcf
+    }
 
-      runtime {
-            docker: "${gatk_docker}"
-            memory: "5 GB"
-            disks: "local-disk " + 300 + " HDD"
-            preemptible: select_first([preemptible_attempts, 2])
-      }
+    runtime {
+        docker: "${gatk_docker}"
+        memory: "5 GB"
+        disks: "local-disk " + 300 + " HDD"
+        preemptible: select_first([preemptible_attempts, 2])
+    }
 
-      output {
-            File output_vcf = "${output_vcf_name}.vcf"
-            File output_vcf_index = "${output_vcf_name}.vcf.idx"
-      }
+    output {
+        File output_vcf = "${output_vcf_name}.vcf"
+        File output_vcf_index = "${output_vcf_name}.vcf.idx"
+    }
 }

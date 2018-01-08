@@ -29,10 +29,10 @@ task CreateOutputList {
 	Array[String] vcfs
 
 
-	  # Runtime parameters
-      Int? mem
-      Int? preemptible_attempts
-      Int? disk_space_gb
+	# Runtime parameters
+    Int? mem
+    Int? preemptible_attempts
+    Int? disk_space_gb
 
 	command {
 		for vcf in ${sep=" " vcfs}; do
@@ -52,7 +52,6 @@ task CreateOutputList {
 		File vcf_list = "${output_name}.list"
 	}
 }
-
 
 workflow Mutect2_Multi {
     # gatk needs to be a String input to the workflow in order to work in a Docker image
@@ -85,9 +84,9 @@ workflow Mutect2_Multi {
     File? default_config_file
     Boolean? is_bamOut
 
-     String gatk_docker
-     String oncotator_docker
-     Int? preemptible_attempts
+    String gatk_docker
+    String oncotator_docker
+    Int? preemptible_attempts
 
 	scatter( row in pairs ) {
 	    #      If the condition is true, variables inside the 'if' block retain their values outside the block.
@@ -97,56 +96,55 @@ workflow Mutect2_Multi {
             File normal_bai = row[3]
         }
 
-            call m2.Mutect2 {
-                input:
-                    gatk = gatk,
-                    intervals = intervals,
-                    ref_fasta = ref_fasta,
-                    ref_fai = ref_fai,
-                    ref_dict = ref_dict,
-                    tumor_bam = row[0],
-                    tumor_bai = row[1],
-                    normal_bam = normal_bam,
-                    normal_bai = normal_bai,
-                    pon = pon,
-                    pon_index = pon_index,
-                    scatter_count = scatter_count,
-                    gnomad = gnomad,
-                    gnomad_index = gnomad_index,
-                    variants_for_contamination = variants_for_contamination,
-                    variants_for_contamination_index = variants_for_contamination_index,
-                    is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-                    is_run_oncotator = is_run_oncotator,
-                    oncotator_docker = oncotator_docker,
-                    gatk_docker = gatk_docker,
-                    gatk_override = gatk_override,
-                    preemptible_attempts = preemptible_attempts,
-                    onco_ds_tar_gz = onco_ds_tar_gz,
-                    onco_ds_local_db_dir = onco_ds_local_db_dir,
-                    artifact_modes = artifact_modes,
-                    picard = picard,
-                    m2_extra_args = m2_extra_args,
-                    m2_extra_filtering_args = m2_extra_filtering_args,
-                    sequencing_center = sequencing_center,
-                    sequence_source = sequence_source,
-                    default_config_file = default_config_file,
-                    is_bamOut = select_first([is_bamOut, false])
-            }
+        call m2.Mutect2 {
+            input:
+                gatk = gatk,
+                intervals = intervals,
+                ref_fasta = ref_fasta,
+                ref_fai = ref_fai,
+                ref_dict = ref_dict,
+                tumor_bam = row[0],
+                tumor_bai = row[1],
+                normal_bam = normal_bam,
+                normal_bai = normal_bai,
+                pon = pon,
+                pon_index = pon_index,
+                scatter_count = scatter_count,
+                gnomad = gnomad,
+                gnomad_index = gnomad_index,
+                variants_for_contamination = variants_for_contamination,
+                variants_for_contamination_index = variants_for_contamination_index,
+                is_run_orientation_bias_filter = is_run_orientation_bias_filter,
+                is_run_oncotator = is_run_oncotator,
+                oncotator_docker = oncotator_docker,
+                gatk_docker = gatk_docker,
+                gatk_override = gatk_override,
+                preemptible_attempts = preemptible_attempts,
+                onco_ds_tar_gz = onco_ds_tar_gz,
+                onco_ds_local_db_dir = onco_ds_local_db_dir,
+                artifact_modes = artifact_modes,
+                picard = picard,
+                m2_extra_args = m2_extra_args,
+                m2_extra_filtering_args = m2_extra_filtering_args,
+                sequencing_center = sequencing_center,
+                sequence_source = sequence_source,
+                default_config_file = default_config_file,
+                is_bamOut = select_first([is_bamOut, false])
+        }
     }
 
-
 	call CreateOutputList as unfilteredOutputList {
-		input:
+	    input:
 		    output_name = "unfiltered",
-			vcfs = Mutect2.unfiltered_vcf,
-			preemptible_attempts = preemptible_attempts
-	}
+		    vcfs = Mutect2.unfiltered_vcf,
+		    preemptible_attempts = preemptible_attempts
+    }
 
-	call CreateOutputList as filteredOutputList {
+    call CreateOutputList as filteredOutputList {
         input:
-    	    output_name = "filtered",
-    	    vcfs = Mutect2.filtered_vcf,
-    	    preemptible_attempts = preemptible_attempts
+   	        output_name = "filtered",
+            vcfs = Mutect2.filtered_vcf,
+            preemptible_attempts = preemptible_attempts
     }
 
     output {

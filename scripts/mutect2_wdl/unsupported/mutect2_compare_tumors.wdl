@@ -9,38 +9,37 @@ import "mutect2.wdl" as m2
 
 
 task Concordance {
-  String gatk
-  File? gatk_override
-  File? intervals
-  File truth_vcf
-  File truth_vcf_idx
-  File eval_vcf
-  File eval_vcf_idx
+    String gatk
+    File? gatk_override
+    File? intervals
+    File truth_vcf
+    File truth_vcf_idx
+    File eval_vcf
+    File eval_vcf_idx
 
-  command {
-
+    command {
         GATK_JAR=${gatk}
         if [[ "${gatk_override}" == *.jar ]]; then
             GATK_JAR=${gatk_override}
         fi
 
-      java -jar $GATK_JAR Concordance ${"-L " + intervals} \
-        -truth ${truth_vcf} -eval ${eval_vcf} -tpfn "true_positives_and_false_negatives.vcf" \
-        -tpfp "true_positives_and_false_positives.vcf" \
-        -summary summary.tsv
-  }
+        java -jar $GATK_JAR Concordance ${"-L " + intervals} \
+            -truth ${truth_vcf} -eval ${eval_vcf} -tpfn "true_positives_and_false_negatives.vcf" \
+            -tpfp "true_positives_and_false_positives.vcf" \
+            -summary summary.tsv
+    }
 
     runtime {
         memory: "5 GB"
     }
 
-  output {
+    output {
         File tpfn = "true_positives_and_false_negatives.vcf"
         File tpfn_idx = "true_positives_and_false_negatives.vcf.idx"
         File tpfp = "true_positives_and_false_positives.vcf"
         File tpfp_idx = "true_positives_and_false_positives.vcf.idx"
         File summary = "summary.tsv"
-  }
+    }
 }
 
 workflow Mutect2Trio {
@@ -96,32 +95,32 @@ workflow Mutect2Trio {
 		}
 
 		call m2.Mutect2 as BadTumor {
-        			input:
-        				gatk=gatk,
-        				intervals=intervals,
-        				ref_fasta=ref_fasta,
-        				ref_fai=ref_fai,
-        				ref_dict=ref_dict,
-        				tumor_bam=trio[6],
-        				tumor_bai=trio[7],
-        				tumor_sample_name=trio[8],
-        				normal_bam=trio[0],
-        				normal_bai=trio[1],
-        				normal_sample_name=trio[2],
-        				pon=pon,
-        				pon_index=pon_index,
-        				scatter_count=scatter_count,
-        				gnomad=gnomad,
-        				gnomad_index=gnomad_index,
-        				picard = picard,
-                        is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-                        is_run_oncotator=is_run_oncotator,
-                        oncotator_docker=oncotator_docker,
-                        m2_docker = m2_docker,
-                        gatk_override = gatk_override,
-                        preemptible_attempts = preemptible_attempts,
-                        artifact_modes = artifact_modes
-        		}
+            input:
+        	    gatk=gatk,
+        		intervals=intervals,
+        		ref_fasta=ref_fasta,
+       			ref_fai=ref_fai,
+        		ref_dict=ref_dict,
+        		tumor_bam=trio[6],
+        		tumor_bai=trio[7],
+        		tumor_sample_name=trio[8],
+        		normal_bam=trio[0],
+        		normal_bai=trio[1],
+        		normal_sample_name=trio[2],
+        		pon=pon,
+        		pon_index=pon_index,
+        		scatter_count=scatter_count,
+        		gnomad=gnomad,
+        		gnomad_index=gnomad_index,
+        		picard = picard,
+                is_run_orientation_bias_filter = is_run_orientation_bias_filter,
+                is_run_oncotator=is_run_oncotator,
+                oncotator_docker=oncotator_docker,
+                m2_docker = m2_docker,
+                gatk_override = gatk_override,
+                preemptible_attempts = preemptible_attempts,
+                artifact_modes = artifact_modes
+        }
 
 		call Concordance {
 		    input:

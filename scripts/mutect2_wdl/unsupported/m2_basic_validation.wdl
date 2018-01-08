@@ -18,7 +18,6 @@ import "mutect2.wdl" as m2
 # The output is a tar file of validation reports (tsv) for the
 #
 workflow m2_validation {
-
     #### M2 parameters
     String gatk
     File? intervals
@@ -298,7 +297,6 @@ task tar_results {
     Int preemptible_attempts=2
 
     command <<<
-
     set -e
     python <<CODE
 	import shutil
@@ -312,21 +310,21 @@ task tar_results {
 			shutil.copy(f, "${group_id}_results/")
 	CODE
     tar zcvfh "${group_id}_results.tar.gz" "${group_id}_results"
-
     >>>
+
     runtime {
         docker: "${basic_python_docker}"
         preemptible: "${preemptible_attempts}"
         memory: "3 GB"
         disks: "local-disk " + 50 + " HDD"
     }
+
     output {
         File tar_file = "${group_id}_results.tar.gz"
     }
 }
 
 task rewrite_bam_by_sample {
-
     # Also, removes samples not in the list from the header
     String new_sample_name
     File bam
@@ -357,7 +355,6 @@ task rewrite_bam_by_sample {
 
         java -Xmx${final_mem-1}g -jar $GATK_JAR ReplaceSamHeader --HEADER new_header.txt -I ${output_bam_basename}.tmp.bam -O ${output_bam_basename}.bam
         samtools index ${output_bam_basename}.bam ${output_bam_basename}.bai
-
     >>>
 
     runtime {

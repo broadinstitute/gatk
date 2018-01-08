@@ -39,17 +39,17 @@ task CountFalsePositives {
 	File? gatk_override
 
 	command {
-      # Use GATK Jar override if specified
-      GATK_JAR=${gatk}
-      if [[ "${gatk_override}" == *.jar ]]; then
-          GATK_JAR=${gatk_override}
-      fi
+        # Use GATK Jar override if specified
+        GATK_JAR=${gatk}
+        if [[ "${gatk_override}" == *.jar ]]; then
+            GATK_JAR=${gatk_override}
+        fi
 
-	  java -jar $GATK_JAR CountFalsePositives \
-		-V ${filtered_vcf} \
-		-R ${ref_fasta} \
-		${"-L " + intervals} \
-		-O false-positives.txt \
+	    java -jar $GATK_JAR CountFalsePositives \
+		    -V ${filtered_vcf} \
+		    -R ${ref_fasta} \
+		    ${"-L " + intervals} \
+		    -O false-positives.txt \
 	}
 
     runtime {
