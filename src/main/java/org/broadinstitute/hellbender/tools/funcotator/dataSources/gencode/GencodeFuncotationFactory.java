@@ -927,13 +927,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             // Get our coding sequence for this region:
             final List<Locatable> activeRegions = Collections.singletonList(utr);
 
-            final String referenceCodingSequence;
-            if ( transcriptFastaReferenceDataSource != null ) {
-                referenceCodingSequence = getCodingSequenceFromTranscriptFasta( transcript.getTranscriptId(), transcriptIdMap, transcriptFastaReferenceDataSource);
-            }
-            else {
-                referenceCodingSequence = FuncotatorUtils.getCodingSequence(reference, activeRegions, strand);
-            }
+            final String referenceCodingSequence =
+                    getCodingSequenceFromTranscriptFasta( transcript.getTranscriptId(), transcriptIdMap, transcriptFastaReferenceDataSource);
 
             final int codingStartPos = FuncotatorUtils.getStartPositionInTranscript(variant, activeRegions, strand);
 

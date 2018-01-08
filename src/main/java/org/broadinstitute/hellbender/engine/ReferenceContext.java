@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequence;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -347,6 +349,12 @@ public final class ReferenceContext implements Iterable<Byte> {
      * @return The end, potentially trimmed to the contig's length
      */
     private int trimToContigLength(final String contig, final int end){
+
+        final SAMSequenceRecord sequence = dataSource.getSequenceDictionary().getSequence(contig);
+        if ( sequence == null ) {
+            throw new UserException("Given reference file does not have data at the requested contig(" + contig + ")!");
+        }
+
         final int sequenceLength = dataSource.getSequenceDictionary().getSequence(contig).getSequenceLength();
         return Math.min(end, sequenceLength);
     }
