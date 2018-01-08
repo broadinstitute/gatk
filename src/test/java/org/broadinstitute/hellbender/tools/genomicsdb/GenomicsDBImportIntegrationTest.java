@@ -151,7 +151,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         checkGenomicsDBAgainstExpected(workspace2.getAbsolutePath() + "/workspace", INTERVAL, COMBINED, b38_reference_20_21, true);
     }
 
-    @Test //(enabled = false)
+    @Test (enabled = false)
     public void testGenomicsDBAlleleSpecificAnnotations() throws IOException {
         testGenomicsDBAgainstCombineGVCFs(Arrays.asList(COMBINEGVCFS_TEST_DIR+"NA12878.AS.chr20snippet.g.vcf", COMBINEGVCFS_TEST_DIR+"NA12892.AS.chr20snippet.g.vcf"),
                 new SimpleInterval("20", 10433000, 10700000),
