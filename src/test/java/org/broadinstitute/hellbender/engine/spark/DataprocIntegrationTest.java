@@ -54,7 +54,7 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
         argBuilder.addArgument("input", gcsInputPath)
                 .addArgument("output", outputPath)
                 //set the partition size to something small enough that we force multiple partitions to be written
-                .addArgument("bamPartitionSize", String.valueOf(10*1024*1024));
+                .addArgument(GATKSparkTool.BAM_PARTITION_SIZE_LONG_NAME, String.valueOf(10*1024*1024));
         DataprocTestUtils.launchGatkTool(PrintReadsSpark.class.getSimpleName(), argBuilder.getArgsList(), clusterName);
         final File expected = copyLocally(gcsInputPath, "expected");
         final File actual = copyLocally(outputPath, "actual");

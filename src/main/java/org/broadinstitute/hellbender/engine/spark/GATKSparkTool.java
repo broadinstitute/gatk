@@ -63,6 +63,8 @@ import java.util.List;
 public abstract class GATKSparkTool extends SparkCommandLineProgram {
     private static final long serialVersionUID = 1L;
 
+    public static final String BAM_PARTITION_SIZE_LONG_NAME = "bam-partition-size";
+
     @ArgumentCollection
     public final ReferenceInputArgumentCollection referenceArguments = requiresReference() ? new RequiredReferenceInputArgumentCollection() :  new OptionalReferenceInputArgumentCollection();
 
@@ -75,7 +77,8 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     @Argument(doc = "maximum number of bytes to read from a file into each partition of reads. " +
             "Setting this higher will result in fewer partitions. Note that this will not be equal to the size of the partition in memory. " +
             "Defaults to 0, which uses the default split size (determined by the Hadoop input format, typically the size of one HDFS block).",
-            fullName = "bamPartitionSize", shortName = "bps", optional = true)
+            fullName = BAM_PARTITION_SIZE_LONG_NAME,
+            optional = true)
     protected long bamPartitionSplitSize = 0;
 
     @Argument(fullName = StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, shortName = StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, doc = "If specified, do not check the sequence dictionaries from our inputs for compatibility. Use at your own risk!", optional = true)
