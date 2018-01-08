@@ -22,7 +22,7 @@
 #############
 
 import "cnv_common_tasks.wdl" as CNVTasks
-import "cnv_somatic_oncotate.wdl" as Oncotate
+import "cnv_somatic_oncotator_workflow.wdl" as CNVOncotator
 
 workflow CNVSomaticPairWorkflow {
     File common_sites
@@ -233,7 +233,7 @@ workflow CNVSomaticPairWorkflow {
     }
 
     if (is_run_oncotator) {
-        call Oncotate.CNVOncotateCalledSegments as OncotateCalledCNVWorkflow {
+        call CNVOncotator.CNVOncotatorWorkflow as CNVOncotatorWorkflow {
             input:
                  called_file = CallCopyRatioSegmentsTumor.called_copy_ratio_segments,
                  oncotator_docker = oncotator_docker
@@ -291,8 +291,8 @@ workflow CNVSomaticPairWorkflow {
         File scaled_delta_MAD_normal = PlotDenoisedCopyRatiosNormal.scaled_delta_MAD
         File modeled_segments_plot_normal = PlotModeledSegmentsNormal.modeled_segments_plot
 
-        File oncotated_called_file_tumor = select_first([OncotateCalledCNVWorkflow.oncotated_called_file, "null"])
-        File oncotated_called_gene_list_file_tumor = select_first([OncotateCalledCNVWorkflow.oncotated_called_gene_list_file, "null"])
+        File oncotated_called_file_tumor = select_first([CNVOncotatorWorkflow.oncotated_called_file, "null"])
+        File oncotated_called_gene_list_file_tumor = select_first([CNVOncotatorWorkflow.oncotated_called_gene_list_file, "null"])
     }
 }
 
