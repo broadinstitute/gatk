@@ -4,7 +4,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadDataProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -57,7 +57,7 @@ import java.util.List;
         summary = UnmarkDuplicates.USAGE_DETAILS,
         oneLineSummary = UnmarkDuplicates.USAGE_SUMMARY,
         usageExample = "gatk UnmarkDuplicates -I marked_duplicates.bam -O unmarked_duplicates.bam",
-        programGroup = ReadDataProgramGroup.class)
+        programGroup = ReadProgramGroup.class)
 @DocumentedFeature
 public class UnmarkDuplicates extends ReadWalker {
 
