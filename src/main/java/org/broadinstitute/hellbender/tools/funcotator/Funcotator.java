@@ -6,7 +6,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.ExperimentalFeature;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -201,7 +201,7 @@ import java.util.stream.Collectors;
         programGroup = VariantProgramGroup.class
 )
 @DocumentedFeature
-@ExperimentalFeature
+@BetaFeature
 public class Funcotator extends VariantWalker {
     private static final Logger logger = LogManager.getLogger(Funcotator.class);
 
