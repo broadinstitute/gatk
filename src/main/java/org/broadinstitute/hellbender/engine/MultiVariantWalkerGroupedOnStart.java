@@ -114,6 +114,11 @@ public abstract class MultiVariantWalkerGroupedOnStart extends MultiVariantWalke
         afterTraverse();
     }
 
+    @Override
+    public boolean requiresReference() {
+        return true;
+    }
+
     /**
      * Marked final so that tool authors don't override it. Tool authors should override {@link #onTraversalStart} instead.
      */
