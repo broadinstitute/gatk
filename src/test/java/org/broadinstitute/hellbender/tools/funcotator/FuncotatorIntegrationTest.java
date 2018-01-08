@@ -72,6 +72,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
         arguments.add("--" + FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME);
         arguments.add(FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER);
+
         arguments.add("--" + FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME);
         arguments.add(FuncotatorArgumentDefinitions.ReferenceVersionType.hg19.toString());
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);

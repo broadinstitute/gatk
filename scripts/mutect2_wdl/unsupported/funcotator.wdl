@@ -1,52 +1,64 @@
 # Run Funcotator on a set of called variants from Mutect 2.
 #
 # Description of inputs:
-#     gatk4_jar                  -  Jar file containing GATK 4.0
+#
+#   Required:
 #     gatk_docker                -  GATK Docker image in which to run
 #     ref_fasta                  -  Reference FASTA file.
+#     ref_fasta_index            -  Reference FASTA file index.
+#     ref_fasta_dict             -  Reference FASTA file sequence dictionary.
 #     variant_vcf_to_funcotate   -  Variant Context File (VCF) containing the variants to annotate.
 #     reference_version          -  Version of the reference being used.  Either `hg19` or `hg38`.
-#     data_sources_folder        -  Path to folder containing the data sources for Funcotator to create annotations.
+#     output_vcf_name            -  Path to desired output file (`.out.vcf` will be appended to this value).
+#
+#   Optional:
+#     data_sources_tar_gz        -  Path to tar.gz containing the data sources for Funcotator to create annotations.
 #     transcript_selection_mode  -  Method of detailed transcript selection.  This will select the transcript for detailed annotation (either `CANONICAL` or `BEST_EFFECT`).
 #     transcript_selection_list  -  Set of transcript IDs to use for annotation to override selected transcript.
 #     annotation_defaults        -  Annotations to include in all annotated variants if the annotation is not specified in the data sources (in the format <ANNOTATION>:<VALUE>).  This will add the specified annotation to every annotated variant if it is not already present.
 #     annotation_overrides       -  Override values for annotations (in the format <ANNOTATION>:<VALUE>).  Replaces existing annotations of the given name with given values.
-#     output_vcf_name            -  Path to desired output file (`.out.vcf` will be appended to this value).
+#     gatk4_jar_override         -  Override Jar file containing GATK 4.0.  Use this when overriding the docker JAR or when using a backend without docker.
 #
 # This WDL needs to decide whether to use the ``gatk_jar`` or ``gatk_jar_override`` for the jar location.  As of cromwell-0.24,
 # this logic *must* go into each task.  Therefore, there is a lot of duplicated code.  This allows users to specify a jar file
 # independent of what is in the docker file.  See the README.md for more info.
 #
 workflow Funcotator {
-    # gatk4_jar needs to be a String input to the workflow in order to work in a Docker image
-    String gatk4_jar
     String gatk_docker
     File ref_fasta
-    File variant_vcf_to_funcotate
-
+    File ref_fasta_index
+    File ref_dict
+    File variant_vcf_to_annotate
     String reference_version
-    String? data_sources_folder
+    String output_vcf_name
 
+    String? data_sources_tar_gz
     String? transcript_selection_mode
     Array[String]? transcript_selection_list
     Array[String]? annotation_defaults
     Array[String]? annotation_overrides
-
-    String output_vcf_name
+    File? gatk4_jar_override
 
     call MakeItFunky {
         input:
             ref_fasta                 = ref_fasta,
-            variant_vcf_to_funcotate  = variant_vcf_to_funcotate,
+            ref_fasta_index           = ref_fasta_index,
+            ref_dict                  = ref_dict,
+            variant_vcf_to_annotate  = variant_vcf_to_annotate,
             reference_version         = reference_version,
             output_vcf_name           = output_vcf_name,
-            data_sources_folder       = data_sources_folder,
+            data_sources_tar_gz       = data_sources_tar_gz,
             transcript_selection_mode = transcript_selection_mode,
             transcript_selection_list = transcript_selection_list,
             annotation_defaults       = annotation_defaults,
             annotation_overrides      = annotation_overrides,
-            gatk4_jar_override        = gatk4_jar,
+            gatk4_jar_override        = gatk4_jar_override,
             gatk_docker               = gatk_docker
+    }
+
+    output {
+        File annotated_vcf_out = MakeItFunky.annotated_vcf_out
+        File annotated_vcf_out_idx = MakeItFunky.annotated_vcf_out_idx
     }
 }
 
@@ -54,11 +66,13 @@ workflow Funcotator {
 task MakeItFunky {
     # Inputs for this task
     File ref_fasta
-    File variant_vcf_to_funcotate
+    File ref_fasta_index
+    File ref_dict
+    File variant_vcf_to_annotate
     String reference_version
     String output_vcf_name
 
-    String? data_sources_folder
+    File? data_sources_tar_gz
     String? transcript_selection_mode
     Array[String]? transcript_selection_list
     Array[String]? annotation_defaults
@@ -71,8 +85,8 @@ task MakeItFunky {
     String annotation_over_arg = if defined(annotation_overrides) then "--annotation-override " else ""
 
     # ==============
-
     # Runtime parameters
+
     String gatk_docker
 
     File? gatk4_jar_override
@@ -96,17 +110,22 @@ command <<<
     set -e
     export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
-    cd gatk
-
-    DATA_SOURCES_FOLDER=${data_sources_folder}
-    if [[ ! -d $DATA_SOURCES_FOLDER ]] ; then
+    DATA_SOURCES_TAR_GZ=${data_sources_tar_gz}
+    if [[ ! -e $DATA_SOURCES_TAR_GZ ]] ; then
         # We have to download the data sources:
+        echo "Data sources gzip does not exist: $DATA_SOURCES_TAR_GZ"
+        echo "Downloading default data sources..."
         wget ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/funcotator_dataSources.v1.0.20180105.tar.gz
         tar -zxf funcotator_dataSources.v1.0.20180105.tar.gz
         DATA_SOURCES_FOLDER=funcotator_dataSources.v1.0.20180105
+    else
+        # Extract the tar.gz:
+        mkdir datasources_dir
+        tar zxvf ${data_sources_tar_gz} -C datasources_dir --strip-components 1
+        DATA_SOURCES_FOLDER="$PWD/datasources_dir"
     fi
 
-    ./gatk --java-options "-Xmx${command_mem}m" \
+    /gatk/gatk --java-options "-Xmx${command_mem}m" \
         Funcotator --data-sources-path $DATA_SOURCES_FOLDER \
             --ref-version ${reference_version} \
             -R ${ref_fasta} \
@@ -122,12 +141,13 @@ command <<<
     docker: gatk_docker
     memory: machine_mem + " MB"
     # Note that the space before SSD and HDD should be included.
-    disks: "local-disk " + select_first([disk_space_gb, default_disk_space_gb]) + ${true=" SSD" false=" HDD" use_ssd}
+    disks: "local-disk " + select_first([disk_space_gb, default_disk_space_gb]) + if use_ssd then " SSD" else " HDD"
     preemptible: select_first([preemptible_attempts, 3])
     cpu: select_first([cpu, 1])
   }
 
   output {
-    File annotated_vcf_out = "${output_vcf_name}.out.vcf"
+    File annotated_vcf_out = "${output_vcf_name}"
+    File annotated_vcf_out_idx = "${output_vcf_name}.idx"
   }
 }
