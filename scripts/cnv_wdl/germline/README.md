@@ -7,7 +7,7 @@
 
 #### Setting up parameter json file for a run
 
-To get started, create the json template (using ``java -jar wdltool.jar inputs <workflow>``) for the workflow you wish to run and adjust parameters accordingly.  
+To get started, create the json template (using ``java -jar wdltool.jar inputs <workflow>``) for the workflow you wish to run and adjust parameters accordingly.
 
 *Please note that there are optional workflow-level and task-level parameters that do not appear in the template file.  These are set to reasonable values by default, but can also be adjusted if desired.*
 
@@ -19,8 +19,8 @@ The reference used must be the same between PoN and case samples.
 - ``CNVGermlineCohortWorkflow.contig_ploidy_priors`` -- TSV file containing prior probabilities for the ploidy of each contig, with column headers: CONTIG_NAME, PLOIDY_PRIOR_0, PLOIDY_PRIOR_1, ...
 - ``CNVGermlineCohortWorkflow.gatk_docker`` -- GATK Docker image (e.g., ``broadinstitute/gatk:latest``).
 - ``CNVGermlineCohortWorkflow.intervals`` -- Picard or GATK-style interval list.  For WGS, this should typically only include the chromosomes of interest.
-- ``CNVGermlineCohortWorkflow.normal_bams`` -- List of files consisting of bams.  This list must correspond to `normal_bais`.  For example, `["Sample1.bam", "Sample2.bam"]`.
-- ``CNVGermlineCohortWorkflow.normal_bais`` -- List of files consisting of bais.  This list must correspond to `normal_bams`.  For example, `["Sample1.bai", "Sample2.bai"]`.
+- ``CNVGermlineCohortWorkflow.normal_bais`` -- List of BAI files.  This list must correspond to `normal_bams`.  For example, `["Sample1.bai", "Sample2.bai"]`.
+- ``CNVGermlineCohortWorkflow.normal_bams`` -- List of BAM files.  This list must correspond to `normal_bais`.  For example, `["Sample1.bam", "Sample2.bam"]`.
 - ``CNVGermlineCohortWorkflow.num_intervals_per_scatter`` -- Number of intervals (i.e., targets or bins) in each scatter for GermlineCNVCaller.  If total number of intervals is not divisible by the value provided, the last scatter will contain the remainder.
 - ``CNVGermlineCohortWorkflow.ref_fasta_dict`` -- Path to reference dict file.
 - ``CNVGermlineCohortWorkflow.ref_fasta_fai`` -- Path to reference fasta fai file.
@@ -32,7 +32,7 @@ In additional, there are optional workflow-level and task-level parameters that 
 - ``CNVGermlineCohortWorkflow.PreprocessIntervals.bin_length`` -- Size of bins (in bp) for coverage collection.  *This must be the same value used for all case samples.*
 - ``CNVGermlineCohortWorkflow.PreprocessIntervals.padding`` -- Amount of padding (in bp) to add to both sides of targets for WES coverage collection.  *This must be the same value used for all case samples.*
 
-Further explanation of other task-level parameters may be found by invoking the ``--help`` documentation available in the gatk.jar for each tool.  
+Further explanation of other task-level parameters may be found by invoking the ``--help`` documentation available in the gatk.jar for each tool.
 
 #### Required parameters in the germline case workflow
 
