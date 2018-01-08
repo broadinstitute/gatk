@@ -275,7 +275,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     public void writeReads(final JavaSparkContext ctx, final String outputFile, JavaRDD<GATKRead> reads, SAMFileHeader header) {
         try {
             ReadsSparkSink.writeReads(ctx, outputFile,
-                    hasReference() ? referenceArguments.getReferencePath().toFile().getAbsolutePath() : null,
+                    hasReference() ? referenceArguments.getReferencePath().toAbsolutePath().toUri().toString() : null,
                     reads, header, shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE,
                     getRecommendedNumReducers());
         } catch (IOException e) {
