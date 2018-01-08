@@ -1,7 +1,7 @@
 #  Run Mutect 2 on a single tumor-normal pair or on a single tumor sample.
 #
 #  Description of inputs
-#  gatk4_jar: java jar file containing gatk 4
+#  gatk: java jar file containing gatk 4
 #  intervals: genomic intervals
 #  ref_fasta, ref_fasta_index, ref_dict: reference genome, index, and dictionary
 #  tumor_bam, tumor_bam_index: self-explanatory
@@ -21,8 +21,8 @@
 #   independent of what is in the docker file.  See the README.md for more info.
 #
 workflow Mutect2 {
-  # gatk4_jar needs to be a String input to the workflow in order to work in a Docker image
-  String gatk4_jar
+  # gatk needs to be a String input to the workflow in order to work in a Docker image
+  String gatk
   File? intervals
   File ref_fasta
   File ref_fasta_index
@@ -42,11 +42,11 @@ workflow Mutect2 {
   Boolean is_run_orientation_bias_filter
   Boolean is_run_oncotator
 
-  File? gatk4_jar_override
+  File? gatk_override
   File? onco_ds_tar_gz
   String? onco_ds_local_db_dir
   Array[String] artifact_modes
-  File picard_jar
+  File picard
   String? m2_extra_args
   String? m2_extra_filtering_args
   String? sequencing_center
@@ -61,13 +61,13 @@ workflow Mutect2 {
 
   call SplitIntervals {
     input:
-      gatk4_jar = gatk4_jar,
+      gatk = gatk,
       scatter_count = scatter_count,
       intervals = intervals,
       ref_fasta = ref_fasta,
       ref_fasta_index = ref_fasta_index,
       ref_dict = ref_dict,
-      gatk4_jar_override = gatk4_jar_override,
+      gatk_override = gatk_override,
       preemptible_attempts = preemptible_attempts,
       gatk_docker = gatk_docker
   }
@@ -76,7 +76,7 @@ workflow Mutect2 {
 
     call M2 {
       input: 
-        gatk4_jar = gatk4_jar,
+        gatk = gatk,
         intervals = subintervals,
         ref_fasta = ref_fasta,
         ref_fasta_index = ref_fasta_index,
@@ -89,7 +89,7 @@ workflow Mutect2 {
         pon_index = pon_index,
         gnomad = gnomad,
         gnomad_index = gnomad_index,
-        gatk4_jar_override = gatk4_jar_override,
+        gatk_override = gatk_override,
         preemptible_attempts = preemptible_attempts,
         gatk_docker = gatk_docker,
         m2_extra_args = m2_extra_args,
@@ -101,9 +101,9 @@ workflow Mutect2 {
 
   call MergeVCFs {
     input:
-      gatk4_jar = gatk4_jar,
+      gatk = gatk,
       input_vcfs = M2.output_vcf,
-      gatk4_jar_override = gatk4_jar_override,
+      gatk_override = gatk_override,
       preemptible_attempts = preemptible_attempts,
       gatk_docker = gatk_docker,
       output_vcf_name = output_vcf_name
@@ -113,12 +113,12 @@ workflow Mutect2 {
     call MergeBamOuts {
         input:
             bam_outs = M2.output_bamOut,
-            picard_jar = picard_jar,
+            picard = picard,
             ref_fasta = ref_fasta,
             ref_fasta_index = ref_fasta_index,
             ref_dict = ref_dict,
-            gatk4_jar = gatk4_jar,
-            gatk4_jar_override = gatk4_jar_override,
+            gatk = gatk,
+            gatk_override = gatk_override,
             gatk_docker = gatk_docker,
             output_vcf_name = basename(MergeVCFs.output_vcf, ".vcf")
     }
@@ -133,14 +133,14 @@ workflow Mutect2 {
             tumor_bam_index = tumor_bam_index,
             ref_fasta = ref_fasta,
             ref_fasta_index = ref_fasta_index,
-            picard_jar = picard_jar
+            picard = picard
       }
   }
 
   call Filter {
     input:
-      gatk4_jar = gatk4_jar,
-      gatk4_jar_override = gatk4_jar_override,
+      gatk = gatk,
+      gatk_override = gatk_override,
       unfiltered_vcf = MergeVCFs.output_vcf,
       intervals = intervals,
       gatk_docker = gatk_docker,
@@ -189,7 +189,7 @@ workflow Mutect2 {
 }
 
 task M2 {
-  String gatk4_jar
+  String gatk
   File? intervals
   File ref_fasta
   File ref_fasta_index
@@ -202,7 +202,7 @@ task M2 {
   File? pon_index
   File? gnomad
   File? gnomad_index
-  File? gatk4_jar_override
+  File? gatk_override
   String? m2_extra_args
   Boolean? is_bamOut
 
@@ -212,7 +212,7 @@ task M2 {
   Int? preemptible_attempts
   Int? disk_space_gb
 
-  String gatk_local_jar = select_first([gatk4_jar_override, gatk4_jar])
+  String gatk_local_jar = select_first([gatk_override, gatk])
 
   command <<<
 
@@ -259,9 +259,9 @@ task M2 {
 }
 
 task MergeVCFs {
-  String gatk4_jar
+  String gatk
   Array[File] input_vcfs
-  File? gatk4_jar_override
+  File? gatk_override
   String output_vcf_name
 
   # Runtime parameters
@@ -270,7 +270,7 @@ task MergeVCFs {
   Int? preemptible_attempts
   Int? disk_space_gb
 
-  String gatk_local_jar = select_first([gatk4_jar_override, gatk4_jar])
+  String gatk_local_jar = select_first([gatk_override, gatk])
 
   # using MergeVcfs instead of GatherVcfs so we can create indices
   # WARNING 2015-10-28 15:01:48 GatherVcfs  Index creation not currently supported when gathering block compressed VCFs.
@@ -298,7 +298,7 @@ task CollectSequencingArtifactMetrics {
   File tumor_bam_index
   File ref_fasta
   File ref_fasta_index
-  File picard_jar
+  File picard
 
   # Runtime parameters
   Int? mem
@@ -308,7 +308,7 @@ task CollectSequencingArtifactMetrics {
 
   command {
         set -e
-        java -Xmx4G -jar ${picard_jar} CollectSequencingArtifactMetrics I=${tumor_bam} O="gatk" R=${ref_fasta} VALIDATION_STRINGENCY=LENIENT
+        java -Xmx4G -jar ${picard} CollectSequencingArtifactMetrics I=${tumor_bam} O="gatk" R=${ref_fasta} VALIDATION_STRINGENCY=LENIENT
   }
 
   runtime {
@@ -324,8 +324,8 @@ task CollectSequencingArtifactMetrics {
 }
 
 task Filter {
-  String gatk4_jar
-  File? gatk4_jar_override
+  String gatk
+  File? gatk_override
   File unfiltered_vcf
   String filtered_vcf_name = basename(unfiltered_vcf, ".vcf") + "-filtered.vcf"
   File? intervals
@@ -345,7 +345,7 @@ task Filter {
   Int? preemptible_attempts
   Int? disk_space_gb
 
-  String gatk_local_jar = select_first([gatk4_jar_override, gatk4_jar])
+  String gatk_local_jar = select_first([gatk_override, gatk])
 
   command {
     set -e
@@ -389,13 +389,13 @@ task Filter {
 }
 
 task SplitIntervals {
-  String gatk4_jar
+  String gatk
   Int scatter_count
   File? intervals
   File ref_fasta
   File ref_fasta_index
   File ref_dict
-  File? gatk4_jar_override
+  File? gatk_override
 
   # Runtime parameters
   Int? mem
@@ -403,7 +403,7 @@ task SplitIntervals {
   Int? preemptible_attempts
   Int? disk_space_gb
 
-  String gatk_local_jar = select_first([gatk4_jar_override, gatk4_jar])
+  String gatk_local_jar = select_first([gatk_override, gatk])
 
   command {
     # fail if *any* command below (not just the last) doesn't return 0, in particular if GATK SplitIntervals fails
@@ -430,13 +430,13 @@ task SplitIntervals {
 }
 
 task MergeBamOuts {
-   String gatk4_jar
+   String gatk
    Array[File]+ bam_outs
-   File picard_jar
+   File picard
    File ref_fasta
    File ref_fasta_index
    File ref_dict
-   File? gatk4_jar_override
+   File? gatk_override
    String output_vcf_name
 
    # Runtime parameters
@@ -449,7 +449,7 @@ task MergeBamOuts {
            # This command block assumes that there is at least one file in bam_outs.
            #  Do not call this task if len(bam_outs) == 0
            set -e
-           java -Xmx4G -jar ${picard_jar} GatherBamFiles I=${sep=" I=" bam_outs} O=${output_vcf_name}.out.bam R=${ref_fasta}
+           java -Xmx4G -jar ${picard} GatherBamFiles I=${sep=" I=" bam_outs} O=${output_vcf_name}.out.bam R=${ref_fasta}
 
            samtools index ${output_vcf_name}.out.bam ${output_vcf_name}.out.bam.bai
    >>>

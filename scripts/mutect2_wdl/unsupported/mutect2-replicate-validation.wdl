@@ -29,20 +29,20 @@ task GatherTables {
 }
 
 task CountFalsePositives {
-	String gatk4_jar
+	String gatk
 	File filtered_vcf
 	File filtered_vcf_index
 	File ref_fasta
 	File ref_fasta_index
 	File ref_dict
 	File? intervals
-	File? gatk4_jar_override
+	File? gatk_override
 
 	command {
       # Use GATK Jar override if specified
-      GATK_JAR=${gatk4_jar}
-      if [[ "${gatk4_jar_override}" == *.jar ]]; then
-          GATK_JAR=${gatk4_jar_override}
+      GATK_JAR=${gatk}
+      if [[ "${gatk_override}" == *.jar ]]; then
+          GATK_JAR=${gatk_override}
       fi
 
 	  java -jar $GATK_JAR CountFalsePositives \
@@ -64,7 +64,7 @@ task CountFalsePositives {
 }
 
 workflow Mutect2ReplicateValidation {
-	File gatk4_jar
+	File gatk
 	Int scatter_count
 	# replicate_pair_list file is a tsv file with the following six columns in this order.
 	# tumor_bam, tumor_bam_index, tumor_sample_name, normal_bam, normal_bam_index, normal_sample_name
@@ -80,17 +80,17 @@ workflow Mutect2ReplicateValidation {
 	File? gnomad_index
 	Boolean is_run_orientation_bias_filter
 	String gatk_docker
-	File? gatk4_jar_override
+	File? gatk_override
 	Int? preemptible_attempts
 	Array[String] artifact_modes
-	File picard_jar
+	File picard
 	String? m2_extra_args
     String? m2_extra_filtering_args
 
 	scatter(pair in pairs) {
 		call m2.Mutect2 {
 			input:
-				gatk4_jar = gatk4_jar,
+				gatk = gatk,
 				intervals = intervals,
 				ref_fasta = ref_fasta,
 				ref_fasta_index = ref_fasta_index,
@@ -106,12 +106,12 @@ workflow Mutect2ReplicateValidation {
 				scatter_count = scatter_count,
 				gnomad = gnomad,
 				gnomad_index = gnomad_index,
-				picard_jar = picard_jar,
+				picard = picard,
                 is_run_orientation_bias_filter = is_run_orientation_bias_filter,
                 is_run_oncotator = false,
                 oncotator_docker = gatk_docker,
                 gatk_docker = gatk_docker,
-                gatk4_jar_override = gatk4_jar_override,
+                gatk_override = gatk_override,
                 preemptible_attempts = preemptible_attempts,
                 artifact_modes = artifact_modes,
                 m2_extra_args = m2_extra_args,
@@ -120,14 +120,14 @@ workflow Mutect2ReplicateValidation {
 
 		call CountFalsePositives {
 			input:
-				gatk4_jar = gatk4_jar,
+				gatk = gatk,
 				filtered_vcf = Mutect2.filtered_vcf,
 				filtered_vcf_index = Mutect2.filtered_vcf_index,
 				ref_fasta = ref_fasta,
 				ref_fasta_index = ref_fasta_index,
 				ref_dict = ref_dict,
 				intervals = intervals,
-				gatk4_jar_override = gatk4_jar_override
+				gatk_override = gatk_override
 		}
 	}
 

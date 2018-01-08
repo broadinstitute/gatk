@@ -35,7 +35,7 @@ workflow HapmapSensitivityAllPlexes {
   	Boolean is_run_orientation_bias_filter
     File gatk
     Array[String] artifact_modes
-    File picard_jar
+    File picard
 
     File five_plex_preprocessed
     File five_plex_preprocessed_idx
@@ -64,7 +64,7 @@ workflow HapmapSensitivityAllPlexes {
           is_run_orientation_bias_filter = is_run_orientation_bias_filter,
           gatk = gatk,
           artifact_modes = artifact_modes,
-          picard_jar = picard_jar,
+          picard = picard,
           preprocessed_hapmap = five_plex_preprocessed,
           preprocessed_hapmap_idx = five_plex_preprocessed_idx,
           m2_extra_args = m2_extra_args,
@@ -87,7 +87,7 @@ workflow HapmapSensitivityAllPlexes {
           is_run_orientation_bias_filter = is_run_orientation_bias_filter,
           gatk = gatk,
           artifact_modes = artifact_modes,
-          picard_jar = picard_jar,
+          picard = picard,
           preprocessed_hapmap = ten_plex_preprocessed,
           preprocessed_hapmap_idx = ten_plex_preprocessed_idx,
           m2_extra_args = m2_extra_args,
@@ -110,7 +110,7 @@ workflow HapmapSensitivityAllPlexes {
           is_run_orientation_bias_filter = is_run_orientation_bias_filter,
           gatk = gatk,
           artifact_modes = artifact_modes,
-          picard_jar = picard_jar,
+          picard = picard,
           preprocessed_hapmap = twenty_plex_preprocessed,
           preprocessed_hapmap_idx = twenty_plex_preprocessed_idx,
           m2_extra_args = m2_extra_args,

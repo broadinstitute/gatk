@@ -7,8 +7,8 @@
 import "mutect2_multi_sample.wdl" as m2_multi
 
 workflow Mutect2_Multi_Concordance {
-    # gatk4_jar needs to be a String input to the workflow in order to work in a Docker image
-	String gatk4_jar
+    # gatk needs to be a String input to the workflow in order to work in a Docker image
+	String gatk
 	Int scatter_count
 	File pair_list
 	File? intervals
@@ -23,10 +23,10 @@ workflow Mutect2_Multi_Concordance {
     File? variants_for_contamination_index
 	Boolean is_run_orientation_bias_filter
     String gatk_docker
-    File? gatk4_jar_override
+    File? gatk_override
     Int? preemptible_attempts
     Array[String] artifact_modes
-    File picard_jar
+    File picard
     String? m2_args
     String? m2_filtering_args
 
@@ -35,7 +35,7 @@ workflow Mutect2_Multi_Concordance {
 
     call m2_multi.Mutect2_Multi {
       input:
-            gatk4_jar = gatk4_jar,
+            gatk = gatk,
         	scatter_count = scatter_count,
         	pair_list = pair_list,
         	intervals = intervals,
@@ -52,10 +52,10 @@ workflow Mutect2_Multi_Concordance {
         	is_run_oncotator = false,
             gatk_docker = gatk_docker,
             oncotator_docker = "NO_ONCOTATOR",
-            gatk4_jar_override = gatk4_jar_override,
+            gatk_override = gatk_override,
             preemptible_attempts = preemptible_attempts,
             artifact_modes = artifact_modes,
-            picard_jar = picard_jar,
+            picard = picard,
             m2_args = m2_args,
             m2_filtering_args = m2_filtering_args
     }
@@ -63,8 +63,8 @@ workflow Mutect2_Multi_Concordance {
        scatter (n in range(length(truth))) {
             call Concordance {
                 input:
-                    gatk4_jar = gatk4_jar,
-                    gatk4_jar_override = gatk4_jar_override,
+                    gatk = gatk,
+                    gatk_override = gatk_override,
                     intervals = intervals,
                     truth_vcf = truth[n][0],
                     truth_vcf_idx = truth[n][1],
@@ -87,8 +87,8 @@ workflow Mutect2_Multi_Concordance {
 }
 
     task Concordance {
-      String gatk4_jar
-      File? gatk4_jar_override
+      String gatk
+      File? gatk_override
       File? intervals
       File truth_vcf
       File truth_vcf_idx
@@ -99,9 +99,9 @@ workflow Mutect2_Multi_Concordance {
 
       command {
         # Use GATK Jar override if specified
-          GATK_JAR=${gatk4_jar}
-          if [[ "${gatk4_jar_override}" == *.jar ]]; then
-              GATK_JAR=${gatk4_jar_override}
+          GATK_JAR=${gatk}
+          if [[ "${gatk_override}" == *.jar ]]; then
+              GATK_JAR=${gatk_override}
           fi
 
           java -jar $GATK_JAR Concordance ${"-L " + intervals} \

@@ -1,7 +1,7 @@
 #  Run Mutect 2 on a list of tumors or tumor-normal pairs
 #
 #  Description of inputs
-#  gatk4_jar: java jar file containing gatk 4 (protected)
+#  gatk: java jar file containing gatk 4 (protected)
 #  intervals: genomic intervals
 #  ref_fasta, ref_fasta_index, ref_dict: reference genome, index, and dictionary
 #  pon, pon_index: optional panel of normals and index in vcf format containing known false positves
@@ -55,8 +55,8 @@ task CreateOutputList {
 
 
 workflow Mutect2_Multi {
-    # gatk4_jar needs to be a String input to the workflow in order to work in a Docker image
-	String gatk4_jar
+    # gatk needs to be a String input to the workflow in order to work in a Docker image
+	String gatk
 	Int scatter_count
 	File pair_list
 	Array[Array[String]] pairs = read_tsv(pair_list)
@@ -72,12 +72,12 @@ workflow Mutect2_Multi {
     File? variants_for_contamination_index
 	Boolean is_run_orientation_bias_filter
 	Boolean is_run_oncotator
-    File? gatk4_jar_override
+    File? gatk_override
 
     File? onco_ds_tar_gz
     String? onco_ds_local_db_dir
     Array[String] artifact_modes
-    File picard_jar
+    File picard
     String? m2_extra_args
     String? m2_extra_filtering_args
     String? sequencing_center
@@ -99,7 +99,7 @@ workflow Mutect2_Multi {
 
             call m2.Mutect2 {
                 input:
-                    gatk4_jar = gatk4_jar,
+                    gatk = gatk,
                     intervals = intervals,
                     ref_fasta = ref_fasta,
                     ref_fasta_index = ref_fasta_index,
@@ -119,12 +119,12 @@ workflow Mutect2_Multi {
                     is_run_oncotator = is_run_oncotator,
                     oncotator_docker = oncotator_docker,
                     gatk_docker = gatk_docker,
-                    gatk4_jar_override = gatk4_jar_override,
+                    gatk_override = gatk_override,
                     preemptible_attempts = preemptible_attempts,
                     onco_ds_tar_gz = onco_ds_tar_gz,
                     onco_ds_local_db_dir = onco_ds_local_db_dir,
                     artifact_modes = artifact_modes,
-                    picard_jar = picard_jar,
+                    picard = picard,
                     m2_extra_args = m2_extra_args,
                     m2_extra_filtering_args = m2_extra_filtering_args,
                     sequencing_center = sequencing_center,

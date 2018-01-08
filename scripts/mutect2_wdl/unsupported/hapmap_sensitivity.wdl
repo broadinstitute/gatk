@@ -33,7 +33,7 @@ workflow HapmapSensitivity {
   	File? pon_index
   	Boolean is_run_orientation_bias_filter
     Array[String] artifact_modes
-    File picard_jar
+    File picard
     String? m2_extra_args
     String? m2_extra_filtering_args
     String prefix   #a prefix string like "5plex"
@@ -65,7 +65,7 @@ workflow HapmapSensitivity {
 
         call MutectSingleSample.Mutect2 {
             input:
-                gatk4_jar = "OVERRIDDEN",
+                gatk = "OVERRIDDEN",
                 scatter_count = scatter_count,
                 tumor_bam = bam,
                 tumor_bam_index = index,
@@ -79,9 +79,9 @@ workflow HapmapSensitivity {
                 is_run_oncotator = false,
 		        gatk_docker = "ubuntu:16.04",
                 oncotator_docker = "ubuntu:16.04",
-		        gatk4_jar_override = gatk,
+		        gatk_override = gatk,
                 artifact_modes = artifact_modes,
-                picard_jar = picard_jar,
+                picard = picard,
                 m2_extra_args = m2_extra_args,
                 m2_extra_filtering_args = m2_extra_filtering_args
         }

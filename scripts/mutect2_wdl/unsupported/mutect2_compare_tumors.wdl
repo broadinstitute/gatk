@@ -9,8 +9,8 @@ import "mutect2.wdl" as m2
 
 
 task Concordance {
-  String gatk4_jar
-  File? gatk4_jar_override
+  String gatk
+  File? gatk_override
   File? intervals
   File truth_vcf
   File truth_vcf_idx
@@ -19,9 +19,9 @@ task Concordance {
 
   command {
 
-        GATK_JAR=${gatk4_jar}
-        if [[ "${gatk4_jar_override}" == *.jar ]]; then
-            GATK_JAR=${gatk4_jar_override}
+        GATK_JAR=${gatk}
+        if [[ "${gatk_override}" == *.jar ]]; then
+            GATK_JAR=${gatk_override}
         fi
 
       java -jar $GATK_JAR Concordance ${"-L " + intervals} \
@@ -44,7 +44,7 @@ task Concordance {
 }
 
 workflow Mutect2Trio {
-	String gatk4_jar
+	String gatk
 	Int scatter_count
 	# trio_list file is a tsv file with the following nine columns in this order.
 	# normal_bam, normal_bam_index, normal_sample_name, good_tumor_bam, good_tumor_bam_index, good_tumor_sample_name, bad_tumor_bam, bad_tumor_bam_index, bad_tumor_sample_name,
@@ -62,14 +62,14 @@ workflow Mutect2Trio {
 	Boolean is_run_oncotator
 	String oncotator_docker
 	String m2_docker
-	File? gatk4_jar_override
+	File? gatk_override
 	Int preemptible_attempts
 	Array[String] artifact_modes
 
 	scatter(trio in trios) {
 		call m2.Mutect2 as GoodTumor {
 			input:
-				gatk4_jar=gatk4_jar,
+				gatk=gatk,
 				intervals=intervals,
 				ref_fasta=ref_fasta,
 				ref_fasta_index=ref_fasta_index,
@@ -85,19 +85,19 @@ workflow Mutect2Trio {
 				scatter_count=scatter_count,
 				gnomad=gnomad,
 				gnomad_index=gnomad_index,
-				picard_jar = picard_jar,
+				picard = picard,
                 is_run_orientation_bias_filter = is_run_orientation_bias_filter,
                 is_run_oncotator=is_run_oncotator,
                 oncotator_docker=oncotator_docker,
                 m2_docker = m2_docker,
-                gatk4_jar_override = gatk4_jar_override,
+                gatk_override = gatk_override,
                 preemptible_attempts = preemptible_attempts,
                 artifact_modes = artifact_modes
 		}
 
 		call m2.Mutect2 as BadTumor {
         			input:
-        				gatk4_jar=gatk4_jar,
+        				gatk=gatk,
         				intervals=intervals,
         				ref_fasta=ref_fasta,
         				ref_fasta_index=ref_fasta_index,
@@ -113,20 +113,20 @@ workflow Mutect2Trio {
         				scatter_count=scatter_count,
         				gnomad=gnomad,
         				gnomad_index=gnomad_index,
-        				picard_jar = picard_jar,
+        				picard = picard,
                         is_run_orientation_bias_filter = is_run_orientation_bias_filter,
                         is_run_oncotator=is_run_oncotator,
                         oncotator_docker=oncotator_docker,
                         m2_docker = m2_docker,
-                        gatk4_jar_override = gatk4_jar_override,
+                        gatk_override = gatk_override,
                         preemptible_attempts = preemptible_attempts,
                         artifact_modes = artifact_modes
         		}
 
 		call Concordance {
 		    input:
-		        gatk4_jar = gatk4_jar,
-                gatk4_jar_override = gatk4_jar_override,
+		        gatk = gatk,
+                gatk_override = gatk_override,
                 intervals = intervals,
                 truth_vcf = GoodTumor.filtered_vcf, #note, no orientation bias since it's optional output
                 truth_vcf_idx = GoodTumor.filtered_vcf_index,

@@ -20,7 +20,7 @@ import "mutect2.wdl" as m2
 workflow m2_validation {
 
     #### M2 parameters
-    String gatk4_jar
+    String gatk
     File? intervals
     File ref_fasta
     File ref_fasta_index
@@ -43,12 +43,12 @@ workflow m2_validation {
     String m2_docker
     String basic_bash_docker = "ubuntu:16.04"
     String oncotator_docker
-    File? gatk4_jar_override
+    File? gatk_override
     Int preemptible_attempts
     File? onco_ds_tar_gz
     String? onco_ds_local_db_dir
     Array[String] artifact_modes
-    File picard_jar
+    File picard
     String? m2_extra_args
     String? m2_extra_filtering_args
     String? sequencing_center
@@ -96,8 +96,8 @@ workflow m2_validation {
     scatter (i in range(length(tumor_bam_files))) {
         call m2.Mutect2 as m2_tn {
             input:
-                gatk4_jar = gatk4_jar,
-                gatk4_jar_override = gatk4_jar_override,
+                gatk = gatk,
+                gatk_override = gatk_override,
                 intervals = intervals,
                 ref_fasta = ref_fasta,
                 ref_fasta_index = ref_fasta_index,
@@ -118,7 +118,7 @@ workflow m2_validation {
                 preemptible_attempts = select_first([preemptible_attempts, 2]),
                 onco_ds_local_db_dir = onco_ds_local_db_dir,
                 artifact_modes = artifact_modes,
-                picard_jar = picard_jar,
+                picard = picard,
                 variants_for_contamination = variants_for_contamination,
                 variants_for_contamination_index = variants_for_contamination_index,
                 basic_bash_docker = basic_bash_docker,
@@ -129,8 +129,8 @@ workflow m2_validation {
 
         call m2.Mutect2 as m2_validation_bamout {
             input:
-                gatk4_jar = gatk4_jar,
-                gatk4_jar_override = gatk4_jar_override,
+                gatk = gatk,
+                gatk_override = gatk_override,
                 intervals = intervals,
                 ref_fasta = ref_fasta,
                 ref_fasta_index = ref_fasta_index,
@@ -151,7 +151,7 @@ workflow m2_validation {
                 preemptible_attempts = preemptible_attempts,
                 onco_ds_local_db_dir = onco_ds_local_db_dir,
                 artifact_modes = artifact_modes,
-                picard_jar = picard_jar,
+                picard = picard,
                 variants_for_contamination = variants_for_contamination,
                 variants_for_contamination_index = variants_for_contamination_index,
                 basic_bash_docker = basic_bash_docker,
@@ -166,13 +166,13 @@ workflow m2_validation {
                 bam = m2_validation_bamout.bamout,
                 gatk_docker = m2_docker,
                 new_sample_name = m2_validation_bamout.tumor_bam_sample_name,
-                gatk4_jar_override = gatk4_jar_override,
+                gatk_override = gatk_override,
                 output_bam_basename = m2_validation_bamout.tumor_bam_sample_name
         }
 
         call basic_validator as m2_basic_validator {
             input:
-                gatk4_jar_override = gatk4_jar_override,
+                gatk_override = gatk_override,
                 discovery_tumor_sample_name = m2_tn.tumor_bam_sample_name,
                 discovery_normal_sample_name = m2_tn.normal_bam_sample_name,
                 validation_tumor_bam = m2_rewrite_bam_by_sample.sample_bam,
@@ -198,7 +198,7 @@ workflow m2_validation {
                 tumor_bam_index = validation_normal_bam_indices[i],
                 ref_fasta = ref_fasta,
                 ref_fasta_index = ref_fasta_index,
-                picard_jar = picard_jar
+                picard = picard
         }
     }
 
@@ -216,7 +216,7 @@ workflow m2_validation {
 
 # Validation bams should *not* be RNA.
 task basic_validator {
-    File? gatk4_jar_override
+    File? gatk_override
 
     String discovery_tumor_sample_name
     String discovery_normal_sample_name
@@ -253,7 +253,7 @@ task basic_validator {
     command <<<
         set -e
         # Use GATK Jar override if specified
-        GATK_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+        GATK_JAR=${default="/root/gatk.jar" gatk_override}
 
         echo "Getting sample names...."
         java -Xmx${final_mem-1}g -jar $GATK_JAR GetSampleName -I ${validation_normal_bam} -O validation_normal_name.txt
@@ -331,7 +331,7 @@ task rewrite_bam_by_sample {
     String new_sample_name
     File bam
 
-    File? gatk4_jar_override
+    File? gatk_override
     String output_bam_basename
 
     # Runtime parameters
@@ -346,7 +346,7 @@ task rewrite_bam_by_sample {
         set -e
 
         # Use GATK Jar override if specified
-        GATK_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+        GATK_JAR=${default="/root/gatk.jar" gatk_override}
 
         java -Xmx${final_mem-1}g -jar $GATK_JAR PrintReads -I ${bam} -O ${output_bam_basename}.tmp.bam -RF SampleReadFilter -sample ${sep=" -sample " new_sample_name}
 

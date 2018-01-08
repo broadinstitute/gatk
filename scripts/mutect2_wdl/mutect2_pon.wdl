@@ -1,8 +1,8 @@
 #  Create a Mutect2 panel of normals
 #
 #  Description of inputs
-#  gatk4_jar: java jar file containing gatk 4
-#  picard_jar: java jar file containing picard
+#  gatk: java jar file containing gatk 4
+#  picard: java jar file containing picard
 #  intervals: genomic intervals
 #  ref_fasta, ref_fasta_index, ref_dict: reference genome, index, and dictionary
 #  normal_bams, normal_bais: arrays of normal bams and bam indices
@@ -18,8 +18,8 @@
 import "mutect2.wdl" as m2
 
 workflow Mutect2_Panel {
-    # gatk4_jar needs to be a String input to the workflow in order to work in a Docker image
-	String gatk4_jar
+    # gatk needs to be a String input to the workflow in order to work in a Docker image
+	String gatk
 	Int scatter_count
 	Array[File] normal_bams
 	Array[File] normal_bais
@@ -28,9 +28,9 @@ workflow Mutect2_Panel {
 	File ref_fasta_index
 	File ref_dict
     String gatk_docker
-    File? gatk4_jar_override
+    File? gatk_override
     Int? preemptible_attempts
-    File picard_jar
+    File picard
     String? m2_extra_args
     String? duplicate_sample_strategy
     String pon_name
@@ -43,7 +43,7 @@ workflow Mutect2_Panel {
 
         call m2.Mutect2 {
             input:
-                gatk4_jar = gatk4_jar,
+                gatk = gatk,
                 intervals = intervals,
                 ref_fasta = ref_fasta,
                 ref_fasta_index = ref_fasta_index,
@@ -52,12 +52,12 @@ workflow Mutect2_Panel {
                 tumor_bam_index = normal_bai,
                 scatter_count = scatter_count,
                 gatk_docker = gatk_docker,
-                gatk4_jar_override = gatk4_jar_override,
+                gatk_override = gatk_override,
                 preemptible_attempts = preemptible_attempts,
                 m2_extra_args = m2_extra_args,
                 is_run_orientation_bias_filter = false,
                 is_run_oncotator = false,
-                picard_jar = picard_jar,
+                picard = picard,
                 oncotator_docker = gatk_docker,
                 artifact_modes = [""]
         }
@@ -65,12 +65,12 @@ workflow Mutect2_Panel {
 
     call CreatePanel {
         input:
-            gatk4_jar = gatk4_jar,
+            gatk = gatk,
             input_vcfs = Mutect2.unfiltered_vcf,
             input_vcfs_idx = Mutect2.unfiltered_vcf_index,
             duplicate_sample_strategy = duplicate_sample_strategy,
             output_vcf_name = pon_name,
-            gatk4_jar_override = gatk4_jar_override,
+            gatk_override = gatk_override,
             preemptible_attempts = preemptible_attempts,
             gatk_docker = gatk_docker
     }
@@ -84,16 +84,16 @@ workflow Mutect2_Panel {
 }
 
 task CreatePanel {
-      String gatk4_jar
+      String gatk
       Array[File] input_vcfs
       Array[File] input_vcfs_idx
       String? duplicate_sample_strategy
       String output_vcf_name
-      File? gatk4_jar_override
+      File? gatk_override
       Int? preemptible_attempts
       String gatk_docker
 
-      String gatk_local_jar = select_first([gatk4_jar_override, gatk4_jar])
+      String gatk_local_jar = select_first([gatk_override, gatk])
 
       command {
             # Use GATK Jar override if specified
