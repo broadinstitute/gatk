@@ -43,7 +43,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String HG_00096 = largeFileTestDir + "gvcfs/HG00096.g.vcf.gz";
     private static final String HG_00268 = largeFileTestDir + "gvcfs/HG00268.g.vcf.gz";
     private static final String NA_19625 = largeFileTestDir + "gvcfs/NA19625.g.vcf.gz";
-    private static final String NA_12878_PHASED = largeFileTestDir + "NA12878.phasedData.Chr20.vcf";
+    private static final String NA_12878_PHASED = largeFileTestDir + "NA12878.phasedData.Chr20.vcf"; //NOTE: this is not phased according to the vcf spec but it reflects phasing currently produced by haplotype caller
     private static final String MULTIPLOID_DATA_HG37 = largeFileTestDir + "gvcfs/HapMap5plex.ploidy10.b37.g.vcf";
     private static final String NA12878_HG37 = " src/test/resources/org/broadinstitute/hellbender/tools/haplotypecaller/expected.testGVCFMode.gatk4.g.vcf";
     private static final String ARTIFICIAL_PHASED = getTestDataDir() + "/ArtificalPhasedData.1.g.vcf";
@@ -268,7 +268,6 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static void checkGenomicsDBAgainstExpected(final String workspace, final SimpleInterval interval, final String expectedCombinedVCF, final String referenceFile, final boolean testAll) throws IOException {
         final GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> genomicsDBFeatureReader =
                 getGenomicsDBFeatureReader(workspace, referenceFile, !testAll);
-		getGenomicsDBFeatureReader(workspace, b38_reference_20_21);
 
         final AbstractFeatureReader<VariantContext, LineIterator> combinedVCFReader =
                 AbstractFeatureReader.getFeatureReader(expectedCombinedVCF, new VCFCodec(), true);
