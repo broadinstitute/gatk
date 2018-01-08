@@ -442,7 +442,7 @@ task sparkJar(type: ShadowJar) {
 }
 
 task bundle(type: Zip) {
-    dependsOn shadowJar, sparkJar, 'gatkTabComplete'
+    dependsOn shadowJar, sparkJar, 'gatkTabComplete', 'createPythonPackageArchive'
 
     doFirst {
         assert file("gatk").exists()
@@ -459,6 +459,8 @@ task bundle(type: Zip) {
     from("gatk")
     from("README.md")
     from("build/docs/tabCompletion/gatk-completion.sh")
+    from("scripts/gatkcondaenv.yml")
+    from("$buildDir/gatkPythonPackageArchive.zip")
 
     into(baseName)
 
@@ -475,7 +477,7 @@ task createPythonPackageArchive(type: Zip) {
 
     logger.lifecycle("Creating GATK Python package archive...")
     destinationDir file("$buildDir")
-    archiveName "gatkPythonPackageArchive" + ".zip"
+    archiveName "gatkPythonPackageArchive.zip"
     from("src/main/python/org/broadinstitute/hellbender/")
     into("/")
 
