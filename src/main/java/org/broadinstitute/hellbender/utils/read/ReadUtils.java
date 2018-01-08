@@ -896,6 +896,8 @@ public final class ReadUtils {
     public static GATKRead emptyRead( final GATKRead read ) {
         final GATKRead emptyRead = read.copy();
 
+        emptyRead.setIsUnmapped();
+        emptyRead.setMappingQuality(0);
         emptyRead.setCigar("");
         emptyRead.setBases(new byte[0]);
         emptyRead.setBaseQualities(new byte[0]);
