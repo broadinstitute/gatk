@@ -1,4 +1,4 @@
-workflow CNVOncotateCalledSegments {
+workflow CNVOncotatorWorkflow {
     File called_file
     Int? mem
     String? oncotator_docker

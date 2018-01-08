@@ -212,27 +212,26 @@ task M2 {
   Int? preemptible_attempts
   Int? disk_space_gb
 
+  String gatk_local_jar = select_first([gatk4_jar_override, gatk4_jar])
+
   command <<<
 
   # Use GATK Jar override if specified
-  GATK_JAR=${gatk4_jar}
-  if [[ "${gatk4_jar_override}" == *.jar ]]; then
-      GATK_JAR=${gatk4_jar_override}
-  fi
+  export GATK_LOCAL_JAR=${gatk_local_jar}
 
    # We need to create these files regardless, even if they stay empty
    touch bamout.bam
    echo "" > normal_name.txt
 
-   java -Xmx4g -jar $GATK_JAR GetSampleName -I ${tumor_bam} -O tumor_name.txt
+   gatk --java-options "-Xmx4g" GetSampleName -I ${tumor_bam} -O tumor_name.txt
    tumor_command_line="-I ${tumor_bam} -tumor `cat tumor_name.txt`"
 
    if [[ "_${normal_bam}" == *.bam ]]; then
-         java -Xmx4g -jar $GATK_JAR GetSampleName -I ${normal_bam} -O normal_name.txt
+         gatk --java-options "-Xmx4g" GetSampleName -I ${normal_bam} -O normal_name.txt
          normal_command_line="-I ${normal_bam} -normal `cat normal_name.txt`"
    fi
 
-  java -Xmx4g -jar $GATK_JAR Mutect2 \
+  gatk --java-options "-Xmx4g" Mutect2 \
     -R ${ref_fasta} \
     $tumor_command_line \
     $normal_command_line \
@@ -271,17 +270,14 @@ task MergeVCFs {
   Int? preemptible_attempts
   Int? disk_space_gb
 
+  String gatk_local_jar = select_first([gatk4_jar_override, gatk4_jar])
 
   # using MergeVcfs instead of GatherVcfs so we can create indices
   # WARNING 2015-10-28 15:01:48 GatherVcfs  Index creation not currently supported when gathering block compressed VCFs.
   command {
-    # Use GATK Jar override if specified
-    GATK_JAR=${gatk4_jar}
-    if [[ "${gatk4_jar_override}" == *.jar ]]; then
-        GATK_JAR=${gatk4_jar_override}
-    fi
+    export GATK_LOCAL_JAR=${gatk_local_jar}
 
-    java -Xmx2g -jar $GATK_JAR MergeVcfs -I ${sep=' -I ' input_vcfs} -O ${output_vcf_name}
+    gatk --java-options "-Xmx2g" MergeVcfs -I ${sep=' -I ' input_vcfs} -O ${output_vcf_name}
   }
 
   runtime {
@@ -349,29 +345,28 @@ task Filter {
   Int? preemptible_attempts
   Int? disk_space_gb
 
+  String gatk_local_jar = select_first([gatk4_jar_override, gatk4_jar])
+
   command {
     set -e
 
     # Use GATK Jar override if specified
-    GATK_JAR=${gatk4_jar}
-    if [[ "${gatk4_jar_override}" == *.jar ]]; then
-        GATK_JAR=${gatk4_jar_override}
-    fi
+    export GATK_LOCAL_JAR=${gatk_local_jar}
 
     touch contamination.table
     if [[ "${variants_for_contamination}" == *.vcf ]]; then
-        java -Xmx4g -jar $GATK_JAR GetPileupSummaries -I ${tumor_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O pileups.table
-        java -Xmx4g -jar $GATK_JAR CalculateContamination -I pileups.table -O contamination.table
+        gatk --java-options "-Xmx4g" GetPileupSummaries -I ${tumor_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O pileups.table
+        gatk --java-options "-Xmx4g" CalculateContamination -I pileups.table -O contamination.table
         contamination_cmd="--contamination-table contamination.table"
     fi
 
-    java -Xmx4g -jar $GATK_JAR FilterMutectCalls -V ${unfiltered_vcf} \
+    gatk --java-options "-Xmx4g" FilterMutectCalls -V ${unfiltered_vcf} \
       	    -O filtered.vcf $contamination_cmd \
       	    ${m2_extra_filtering_args}
 
     # FilterByOrientationBias must come after all of the other filtering.
     if [[ ! -z "${pre_adapter_metrics}" ]]; then
-        java -Xmx4g -jar $GATK_JAR FilterByOrientationBias -AM ${sep=" -AM " artifact_modes} \
+        gatk --java-options "-Xmx4g" FilterByOrientationBias -AM ${sep=" -AM " artifact_modes} \
             -V filtered.vcf -P ${pre_adapter_metrics} --output ${filtered_vcf_name}
     else
         mv filtered.vcf ${filtered_vcf_name}
@@ -408,18 +403,17 @@ task SplitIntervals {
   Int? preemptible_attempts
   Int? disk_space_gb
 
+  String gatk_local_jar = select_first([gatk4_jar_override, gatk4_jar])
+
   command {
     # fail if *any* command below (not just the last) doesn't return 0, in particular if GATK SplitIntervals fails
     set -e
 
     # Use GATK Jar override if specified
-    GATK_JAR=${gatk4_jar}
-    if [[ "${gatk4_jar_override}" == *.jar ]]; then
-        GATK_JAR=${gatk4_jar_override}
-    fi
+    export GATK_LOCAL_JAR=${gatk_local_jar}
 
     mkdir interval-files
-    java -jar $GATK_JAR SplitIntervals -R ${ref_fasta} ${"-L " + intervals} -scatter ${scatter_count} -O interval-files
+    gatk SplitIntervals -R ${ref_fasta} ${"-L " + intervals} -scatter ${scatter_count} -O interval-files
     cp interval-files/*.intervals .
   }
 

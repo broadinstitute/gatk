@@ -173,6 +173,14 @@ workflow CNVGermlineCaseWorkflow {
                 preemptible_attempts = preemptible_attempts
         }
     }
+
+    output {
+        File preprocessed_intervals = PreprocessIntervals.preprocessed_intervals
+        File read_counts = CollectCounts.counts
+        File read_counts_entity_id = CollectCounts.entity_id
+        File contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar
+        Array[File] gcnv_calls_tars = GermlineCNVCallerCaseMode.gcnv_calls_tar
+    }
 }
 
 task DetermineGermlineContigPloidyCaseMode {
@@ -203,14 +211,14 @@ task DetermineGermlineContigPloidyCaseMode {
     command <<<
         set -e
         mkdir ${output_dir_}
-        GATK_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
         export MKL_NUM_THREADS=${default=8 cpu}
         export OMP_NUM_THREADS=${default=8 cpu}
 
         mkdir input-contig-ploidy-model
         tar xzf ${contig_ploidy_model_tar} -C input-contig-ploidy-model
 
-        java -Xmx${machine_mem}g -jar $GATK_JAR DetermineGermlineContigPloidy \
+        gatk --java-options "-Xmx${machine_mem}g" DetermineGermlineContigPloidy \
             --input ${sep=" --input " read_count_files} \
             --model input-contig-ploidy-model \
             --output ${output_dir_} \
@@ -294,7 +302,7 @@ task GermlineCNVCallerCaseMode {
     command <<<
         set -e
         mkdir ${output_dir_}
-        GATK_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
         export MKL_NUM_THREADS=${default=8 cpu}
         export OMP_NUM_THREADS=${default=8 cpu}
 
@@ -304,7 +312,7 @@ task GermlineCNVCallerCaseMode {
         mkdir gcnv-model
         tar xzf ${gcnv_model_tar} -C gcnv-model
 
-        java -Xmx${machine_mem}g -jar $GATK_JAR GermlineCNVCaller \
+        gatk --java-options "-Xmx${machine_mem}g"  GermlineCNVCaller \
             --run-mode CASE \
             --input ${sep=" --input " read_count_files} \
             --contig-ploidy-calls contig-ploidy-calls-dir \
