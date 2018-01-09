@@ -44,9 +44,9 @@ public class CompareDuplicatesSparkIntegrationTest extends CommandLineProgramTes
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
         args.add(firstBam.getCanonicalPath());
-        args.add("--" + "I2");
+        args.add("--" + CompareDuplicatesSpark.INPUT_2_SHORT_NAME);
         args.add(secondBam.getCanonicalPath());
-        args.add("--" + "throwOnDiff");
+        args.add("--" + CompareDuplicatesSpark.THROW_ON_DIFF_LONG_NAME);
         args.add("true");
 
         this.runCommandLine(args.getArgsArray());
@@ -54,13 +54,13 @@ public class CompareDuplicatesSparkIntegrationTest extends CommandLineProgramTes
 
     @Test(dataProvider = "CompareDifferentDuplicatesProvider", expectedExceptions = UserException.class, groups = "spark")
     public void differentBamTest(File firstBam, File secondBam) throws Exception {
-        // These files are the same and should produce no diffs.
+        // These files are not the same and should throw an exception
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
         args.add(firstBam.getCanonicalPath());
-        args.add("--" + "I2");
+        args.add("--" + CompareDuplicatesSpark.INPUT_2_SHORT_NAME);
         args.add(secondBam.getCanonicalPath());
-        args.add("--" + "throwOnDiff");
+        args.add("--" + CompareDuplicatesSpark.THROW_ON_DIFF_LONG_NAME);
         args.add("true");
 
         this.runCommandLine(args.getArgsArray());
