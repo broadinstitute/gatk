@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
 
 import java.io.File;
 import java.io.IOException;
@@ -171,21 +172,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         BucketUtils.setGlobalNIODefaultOptions(NIO_MAX_REOPENS);
 
         if (!QUIET) {
-            System.err.println("[" + Utils.getDateTimeForDisplay(startDateTime) + "] " + commandLine);
-
-            // Output a one liner about who/where and what software/os we're running on
-            try {
-                System.err.println("[" + Utils.getDateTimeForDisplay(startDateTime) + "] Executing as " +
-                        System.getProperty("user.name") + "@" + InetAddress.getLocalHost().getHostName() +
-                        " on " + System.getProperty("os.name") + " " + System.getProperty("os.version") +
-                        " " + System.getProperty("os.arch") + "; " + System.getProperty("java.vm.name") +
-                        " " + System.getProperty("java.runtime.version") +
-                        "; Version: " + getVersion() + getLibraryVersions());
-
-                // Print important settings to the logger:
-                printSettings();
-            }
-            catch (final Exception e) { /* Unpossible! */ }
+            printStartupMessage(startDateTime);
         }
 
         try {
@@ -261,16 +248,75 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     }
 
     /**
-     * Returns the version of this tool. It is the version stored in the manifest of the jarfile.
+     * Prints a user-friendly message on startup with some information about who we are and the
+     * runtime environment.
+     *
+     * May be overridden by subclasses to provide a custom implementation if desired.
+     *
+     * @param startDateTime Startup date/time
      */
-    public final String getVersion() {
+    protected void printStartupMessage(final ZonedDateTime startDateTime) {
+        try {
+            logger.info(Utils.dupChar('-', 60));
+            logger.info(String.format("%s v%s", getToolkitName(), getVersion()));
+            logger.info(getSupportInformation());
+            logger.info(String.format("Executing as %s@%s on %s v%s %s",
+                    System.getProperty("user.name"), InetAddress.getLocalHost().getHostName(),
+                    System.getProperty("os.name"), System.getProperty("os.version"), System.getProperty("os.arch")));
+            logger.info(String.format("Java runtime: %s v%s",
+                    System.getProperty("java.vm.name"), System.getProperty("java.runtime.version")));
+            logger.info("Start Date/Time: " + Utils.getDateTimeForDisplay(startDateTime));
+            logger.info(Utils.dupChar('-', 60));
+            logger.info(Utils.dupChar('-', 60));
+
+            // Print versions of important dependencies
+            printLibraryVersions();
+
+            // Print important settings to the logger:
+            printSettings();
+        }
+        catch (final Exception e) { /* Unpossible! */ }
+    }
+
+    /**
+     * @return The name of this toolkit. The default implementation uses "Implementation-Title" from the
+     *         jar manifest, or (if that's not available) the package name.
+     *
+     * May be overridden by subclasses to provide a custom implementation if desired.
+     */
+    protected String getToolkitName() {
+        final String implementationTitle = getClass().getPackage().getImplementationTitle();
+        return implementationTitle != null ? implementationTitle : getClass().getPackage().getName();
+    }
+
+    /**
+     * @return the version of this tool. It is the version stored in the manifest of the jarfile
+     *          by default, or "Unavailable" if that's not available.
+     *
+     * May be overridden by subclasses to provide a custom implementation if desired.
+     */
+    protected String getVersion() {
         String versionString = this.getClass().getPackage().getImplementationVersion();
         return versionString != null ?
                 versionString :
                 "Unavailable";
     }
 
-    public String getLibraryVersions() {
+    /**
+     * @return A String containing information about how to get support for this toolkit.
+     *
+     * May be overridden by subclasses to provide a custom implementation if desired.
+     */
+    protected String getSupportInformation() {
+        return "For support and documentation go to " + HelpConstants.GATK_MAIN_SITE;
+    }
+
+    /**
+     * Output versions of important dependencies to the logger.
+     *
+     * May be overridden by subclasses to provide a custom implementation if desired.
+     */
+    protected void printLibraryVersions() {
         try {
             final String classPath = getClass().getResource(getClass().getSimpleName() + ".class").toString();
             if (classPath.startsWith("jar")) {
@@ -280,40 +326,13 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
                     final String htsjdkVersion = manifestAttributes.getValue("htsjdk-Version");
                     final String picardVersion = manifestAttributes.getValue("Picard-Version");
 
-                    return "; HTSJDK Version: " + (htsjdkVersion != null ? htsjdkVersion : "unknown") +
-                           "; Picard Version: " + (picardVersion != null ? picardVersion : "unknown");
+                    logger.info("HTSJDK Version: " + (htsjdkVersion != null ? htsjdkVersion : "unknown"));
+                    logger.info("Picard Version: " + (picardVersion != null ? picardVersion : "unknown"));
                 }
             }
         }
         catch (IOException ignored) {
         }
-
-        return "";
-    }
-
-    /**
-     * @return the commandline used to run this program, will be null if arguments have not yet been parsed
-     */
-    public final String getCommandLine() {
-        return commandLine;
-    }
-
-    /**
-     * @return get usage and help information for this command line program if it is available
-     *
-     */
-    public final String getUsage(){
-        return getCommandLineParser().usage(true, specialArgumentsCollection.SHOW_HIDDEN);
-    }
-
-    /**
-     * Replaces the set of default metrics headers by the given argument.
-     * The given list is copied.
-     */
-    public final void setDefaultHeaders(final List<Header> headers) {
-        Utils.nonNull(headers);
-        this.defaultHeaders.clear();
-        this.defaultHeaders.addAll(headers);
     }
 
     /**
@@ -345,6 +364,31 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
 
         logger.info("GCS max retries/reopens: " + BucketUtils.getCloudStorageConfiguration(NIO_MAX_REOPENS).maxChannelReopens());
         logger.info("Using google-cloud-java patch 6d11bef1c81f885c26b2b56c8616b7a705171e4f from https://github.com/droazen/google-cloud-java/tree/dr_all_nio_fixes");
+    }
+
+    /**
+     * @return the commandline used to run this program, will be null if arguments have not yet been parsed
+     */
+    public final String getCommandLine() {
+        return commandLine;
+    }
+
+    /**
+     * @return get usage and help information for this command line program if it is available
+     *
+     */
+    public final String getUsage(){
+        return getCommandLineParser().usage(true, specialArgumentsCollection.SHOW_HIDDEN);
+    }
+
+    /**
+     * Replaces the set of default metrics headers by the given argument.
+     * The given list is copied.
+     */
+    public final void setDefaultHeaders(final List<Header> headers) {
+        Utils.nonNull(headers);
+        this.defaultHeaders.clear();
+        this.defaultHeaders.addAll(headers);
     }
 
     /**

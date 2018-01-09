@@ -772,7 +772,7 @@ public abstract class GATKTool extends CommandLineProgram {
             simpleHeaderLineMap.put("Date", Utils.getDateTimeForDisplay((ZonedDateTime.now())));
             simpleHeaderLineMap.put("CommandLine", getCommandLine());
             gatkToolHeaderLines.add(new VCFHeaderLine("source", this.getClass().getSimpleName()));
-            gatkToolHeaderLines.add(new VCFSimpleHeaderLine(String.format("%sCommandLine", getToolkitName()), simpleHeaderLineMap));
+            gatkToolHeaderLines.add(new VCFSimpleHeaderLine(String.format("%sCommandLine", getToolkitShortName()), simpleHeaderLineMap));
         }
         return gatkToolHeaderLines;
     }
@@ -795,9 +795,13 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
-     * @return The name of toolkit for this tool. Subclasses may override to provide a custom toolkit name.
+     * @return An abbreviated name of the toolkit for this tool. Subclasses may override to provide
+     *         a custom toolkit name.
+     *
+     * TODO: This should be refactored and moved up into CommandLineProgram, with this value
+     * TODO: stored in the jar manifest, like {@link CommandLineProgram#getToolkitName}
      */
-    protected String getToolkitName() { return "GATK"; }
+    protected String getToolkitShortName() { return "GATK"; }
 
     /**
      * A method to allow a user to inject data sources after initialization that were not specified as command-line
@@ -826,11 +830,11 @@ public abstract class GATKTool extends CommandLineProgram {
 
     /**
      * Returns the name of this tool.
-     * The default implementation returns the result of calling {@link #getToolkitName} followed by the simple
+     * The default implementation returns the result of calling {@link #getToolkitShortName} followed by the simple
      * name of the class. Subclasses may override.
      */
     public String getToolName() {
-        return String.format("%s %s", getToolkitName(), getClass().getSimpleName());
+        return String.format("%s %s", getToolkitShortName(), getClass().getSimpleName());
     }
 
     /**
