@@ -50,6 +50,9 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
+ * This tool DOES NOT match the output of HaplotypeCaller.  It is still under development and should not be used for production work.
+ * For evaluation only.
+ *
  * Call germline SNPs and indels via local re-assembly of haplotypes.
  *
  * <p>This is an implementation of {@link HaplotypeCaller} using spark to distribute the computation.
@@ -126,6 +129,9 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
+        logger.info("The output of this tool DOES NOT match the output of HaplotypeCaller. " +
+                            "It is under development and should not be used for production work. ");
+        logger.info("For evaluation only.");
         final List<SimpleInterval> intervals = hasIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(getHeaderForReads().getSequenceDictionary());
         callVariantsWithHaplotypeCallerAndWriteOutput(ctx, getReads(), getHeaderForReads(), getReference(), intervals, hcArgs, shardingArgs, numReducers, output);
     }
