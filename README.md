@@ -68,6 +68,7 @@ releases of the toolkit.
     * R 3.2.5 (needed for producing plots in certain tools, and for running the test suite)
     * [git-lfs](https://git-lfs.github.com/) 1.1.0 or greater (needed to download large files for the complete test suite).
       Run `git lfs install` after downloading, followed by `git lfs pull` from the root of your git clone to download the large files. The download is several hundred megabytes.
+* Alternatively, pre-packaged images with all needed dependencies installed can be found on [our dockerhub repository](https://hub.docker.com/r/broadinstitute/gatk/). This requires a recent version of the docker client, which can be found on the [docker website](https://www.docker.com/get-docker).
 
 ## <a name="quickstart">Quick Start Guide</a>
 
