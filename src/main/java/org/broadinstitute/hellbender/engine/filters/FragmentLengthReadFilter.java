@@ -18,8 +18,7 @@ import java.io.Serializable;
 public final class FragmentLengthReadFilter extends ReadFilter implements Serializable  {
     private static final long serialVersionUID = 1l;
 
-    @Argument(fullName = "maxFragmentLength",
-            shortName = "maxFragmentLength",
+    @Argument(fullName = "max-fragment-length",
             doc = "Maximum length of fragment (insert size)",
             optional = true)
     public int maxFragmentLength = 1000000;

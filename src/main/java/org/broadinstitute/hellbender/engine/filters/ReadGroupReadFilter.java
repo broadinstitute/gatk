@@ -17,7 +17,7 @@ public final class ReadGroupReadFilter extends ReadFilter implements Serializabl
     private static final long serialVersionUID = 1L;
     public static final String KEEP_READ_GROUP_LONG_NAME = "keep-read-group";
 
-    @Argument(fullName = KEEP_READ_GROUP_LONG_NAME, shortName = "keepReadGroup", doc="The name of the read group to keep", optional=false)
+    @Argument(fullName = KEEP_READ_GROUP_LONG_NAME, doc="The name of the read group to keep", optional=false)
     public String readGroup = null;
 
     @Override

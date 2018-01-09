@@ -66,13 +66,13 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 { LibraryReadFilter.class.getSimpleName(),
                         (Consumer<SetupTest>) this::setupLibraryTest, "--library", "Foo" },
                 { MappingQualityReadFilter.class.getSimpleName(),
-                        (Consumer<SetupTest>) this::setupMappingQualityTest, "--minimumMappingQuality", "255" },
+                        (Consumer<SetupTest>) this::setupMappingQualityTest, "--minimum-mapping-quality", "255" },
                 { MappingQualityReadFilter.class.getSimpleName(),
-                        (Consumer<SetupTest>) this::setupMappingQualityTest, "--minimumMappingQuality", "60" },
+                        (Consumer<SetupTest>) this::setupMappingQualityTest, "--minimum-mapping-quality", "60" },
                 { ReadGroupReadFilter.class.getSimpleName(),
-                        (Consumer<SetupTest>) this::setupReadGroupTest, "--keepReadGroup", "fred" },
+                        (Consumer<SetupTest>) this::setupReadGroupTest, "--keep-read-group", "fred" },
                 { ReadNameReadFilter.class.getSimpleName(),
-                        (Consumer<SetupTest>) this::setupReadNameTest, "--readName", "fred" },
+                        (Consumer<SetupTest>) this::setupReadNameTest, "--read-name", "fred" },
                 { SampleReadFilter.class.getSimpleName(),
                         (Consumer<SetupTest>) this::setupSampleTest, "--sample", "fred" }
         };
