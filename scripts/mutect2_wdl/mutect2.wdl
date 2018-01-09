@@ -16,17 +16,23 @@
 #   hub is also required, since the task will download a public docker image.
 #
 #
-# This WDL needs to decide whether to use the ``gatk_jar`` or ``gatk_jar_override`` for the jar location.  As of cromwell-0.24,
+# This WDL needs to decide whether to use the ``gatk`` or ``gatk_override`` for the jar location.  As of cromwell-0.24,
 #   this logic *must* go into each task.  Therefore, there is a lot of duplicated code.  This allows users to specify a jar file
 #   independent of what is in the docker file.  See the README.md for more info.
 #
 workflow Mutect2 {
     # gatk needs to be a String input to the workflow in order to work in a Docker image
     String gatk
+    File? gatk_override
+    File picard
+    String gatk_docker
+    String basic_bash_docker = "ubuntu:16.04"
+    String oncotator_docker
     File? intervals
     File ref_fasta
     File ref_fai
     File ref_dict
+
     File tumor_bam
     File tumor_bai
     File? normal_bam
@@ -42,11 +48,9 @@ workflow Mutect2 {
     Boolean is_run_orientation_bias_filter
     Boolean is_run_oncotator
 
-    File? gatk_override
     File? onco_ds_tar_gz
     String? onco_ds_local_db_dir
     Array[String] artifact_modes
-    File picard
     String? m2_extra_args
     String? m2_extra_filtering_args
     String? sequencing_center
@@ -55,27 +59,27 @@ workflow Mutect2 {
     Boolean is_bamOut = false
 
     Int? preemptible_attempts
-    String gatk_docker
-    String basic_bash_docker = "ubuntu:16.04"
-    String oncotator_docker
+
 
     call SplitIntervals {
         input:
             gatk = gatk,
-            scatter_count = scatter_count,
+            gatk_override = gatk_override,
+            gatk_docker = gatk_docker,
             intervals = intervals,
             ref_fasta = ref_fasta,
             ref_fai = ref_fai,
             ref_dict = ref_dict,
-            gatk_override = gatk_override,
-            preemptible_attempts = preemptible_attempts,
-            gatk_docker = gatk_docker
+            scatter_count = scatter_count,
+            preemptible_attempts = preemptible_attempts
     }
 
     scatter (subintervals in SplitIntervals.interval_files ) {
         call M2 {
             input:
                 gatk = gatk,
+                gatk_override = gatk_override,
+                gatk_docker = gatk_docker,
                 intervals = subintervals,
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
@@ -88,37 +92,34 @@ workflow Mutect2 {
                 pon_index = pon_index,
                 gnomad = gnomad,
                 gnomad_index = gnomad_index,
-                gatk_override = gatk_override,
                 preemptible_attempts = preemptible_attempts,
-                gatk_docker = gatk_docker,
                 m2_extra_args = m2_extra_args,
                 is_bamOut = is_bamOut,
-                preemptible_attempts = preemptible_attempts,
-                gatk_docker = gatk_docker
+                preemptible_attempts = preemptible_attempts
         }
     }
 
     call MergeVCFs {
         input:
             gatk = gatk,
-            input_vcfs = M2.output_vcf,
             gatk_override = gatk_override,
-            preemptible_attempts = preemptible_attempts,
             gatk_docker = gatk_docker,
+            input_vcfs = M2.output_vcf,
+            preemptible_attempts = preemptible_attempts,
             output_vcf_name = output_vcf_name
     }
 
     if (is_bamOut) {
         call MergeBamOuts {
             input:
-                bam_outs = M2.output_bamOut,
+                gatk = gatk,
+                gatk_override = gatk_override,
                 picard = picard,
+                gatk_docker = gatk_docker,
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
                 ref_dict = ref_dict,
-                gatk = gatk,
-                gatk_override = gatk_override,
-                gatk_docker = gatk_docker,
+                bam_outs = M2.output_bamOut,
                 output_vcf_name = basename(MergeVCFs.output_vcf, ".vcf")
         }
     }
@@ -126,13 +127,15 @@ workflow Mutect2 {
     if (is_run_orientation_bias_filter) {
         call CollectSequencingArtifactMetrics {
             input:
-                preemptible_attempts = preemptible_attempts,
+                picard = picard,
                 gatk_docker = gatk_docker,
-                tumor_bam = tumor_bam,
-                tumor_bai = tumor_bai,
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
-                picard = picard
+                preemptible_attempts = preemptible_attempts,
+                tumor_bam = tumor_bam,
+                tumor_bai = tumor_bai,
+
+
         }
     }
 
@@ -140,15 +143,15 @@ workflow Mutect2 {
         input:
             gatk = gatk,
             gatk_override = gatk_override,
-            unfiltered_vcf = MergeVCFs.output_vcf,
-            intervals = intervals,
             gatk_docker = gatk_docker,
+            intervals = intervals,
+            ref_fasta = ref_fasta,
+            ref_fai = ref_fai,
+            unfiltered_vcf = MergeVCFs.output_vcf,
             preemptible_attempts = preemptible_attempts,
             pre_adapter_metrics = CollectSequencingArtifactMetrics.pre_adapter_metrics,
             tumor_bam = tumor_bam,
             tumor_bai = tumor_bai,
-            ref_fasta = ref_fasta,
-            ref_fai = ref_fai,
             artifact_modes = artifact_modes,
             variants_for_contamination = variants_for_contamination,
             variants_for_contamination_index = variants_for_contamination_index,
@@ -159,9 +162,9 @@ workflow Mutect2 {
     if (is_run_oncotator) {
         call oncotate_m2 {
             input:
+                oncotator_docker = oncotator_docker,
                 m2_vcf = Filter.filtered_vcf,
                 preemptible_attempts = preemptible_attempts,
-                oncotator_docker = oncotator_docker,
                 onco_ds_tar_gz = onco_ds_tar_gz,
                 onco_ds_local_db_dir = onco_ds_local_db_dir,
                 sequencing_center = sequencing_center,
@@ -189,6 +192,8 @@ workflow Mutect2 {
 
 task M2 {
     String gatk
+    File? gatk_override
+    String gatk_docker
     File? intervals
     File ref_fasta
     File ref_fai
@@ -201,13 +206,11 @@ task M2 {
     File? pon_index
     File? gnomad
     File? gnomad_index
-    File? gatk_override
     String? m2_extra_args
     Boolean? is_bamOut
 
     # Runtime parameters
     Int? mem
-    String gatk_docker
     Int? preemptible_attempts
     Int? disk_space_gb
 
@@ -258,13 +261,13 @@ task M2 {
 
 task MergeVCFs {
     String gatk
-    Array[File] input_vcfs
     File? gatk_override
+    String gatk_docker
+    Array[File] input_vcfs
     String output_vcf_name
 
     # Runtime parameters
     Int? mem
-    String gatk_docker
     Int? preemptible_attempts
     Int? disk_space_gb
 
@@ -291,15 +294,15 @@ task MergeVCFs {
 }
 
 task CollectSequencingArtifactMetrics {
-    File tumor_bam
-    File tumor_bai
+    File picard
+    String gatk_docker
     File ref_fasta
     File ref_fai
-    File picard
+    File tumor_bam
+    File tumor_bai
 
     # Runtime parameters
     Int? mem
-    String gatk_docker
     Int? preemptible_attempts
     Int? disk_space_gb
 
@@ -323,14 +326,15 @@ task CollectSequencingArtifactMetrics {
 task Filter {
     String gatk
     File? gatk_override
+    String gatk_docker
+    File? intervals
+    File? ref_fasta
+    File? ref_fai
     File unfiltered_vcf
     String filtered_vcf_name = basename(unfiltered_vcf, ".vcf") + "-filtered.vcf"
-    File? intervals
     File? pre_adapter_metrics
     File? tumor_bam
     File? tumor_bai
-    File? ref_fasta
-    File? ref_fai
     Array[String]? artifact_modes
     File? variants_for_contamination
     File? variants_for_contamination_index
@@ -338,7 +342,6 @@ task Filter {
 
     # Runtime parameters
     Int? mem
-    String gatk_docker
     Int? preemptible_attempts
     Int? disk_space_gb
 
@@ -387,16 +390,16 @@ task Filter {
 
 task SplitIntervals {
     String gatk
-    Int scatter_count
+    File? gatk_override
+    String gatk_docker
     File? intervals
     File ref_fasta
     File ref_fai
     File ref_dict
-    File? gatk_override
+    Int scatter_count
 
     # Runtime parameters
     Int? mem
-    String gatk_docker
     Int? preemptible_attempts
     Int? disk_space_gb
 
@@ -428,17 +431,18 @@ task SplitIntervals {
 
 task MergeBamOuts {
     String gatk
-   `Array[File]+ bam_outs
+    File? gatk_override
     File picard
+    String gatk_docker
     File ref_fasta
     File ref_fai
     File ref_dict
-    File? gatk_override
+    Array[File]+ bam_outs
+
     String output_vcf_name
 
     # Runtime parameters
     Int? mem
-    String gatk_docker
     Int? preemptible_attempts
     Int? disk_space_gb
 
@@ -464,6 +468,7 @@ task MergeBamOuts {
 }
 
 task oncotate_m2 {
+    String oncotator_docker
     File m2_vcf
     File? onco_ds_tar_gz
     String? onco_ds_local_db_dir
@@ -476,7 +481,6 @@ task oncotate_m2 {
 
     # Runtime parameters
     Int? mem
-    String oncotator_docker
     Int? preemptible_attempts
     Int? disk_space_gb
 

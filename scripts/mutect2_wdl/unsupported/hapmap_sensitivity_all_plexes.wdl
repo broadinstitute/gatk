@@ -20,6 +20,13 @@
 import "hapmap_sensitivity.wdl" as single_plex
 
 workflow HapmapSensitivityAllPlexes {
+    File gatk
+    File picard
+    File? intervals
+  	File ref_fasta
+  	File ref_fai
+  	File ref_dict
+
     Int max_depth
   	Int scatter_count
 
@@ -27,16 +34,10 @@ workflow HapmapSensitivityAllPlexes {
   	File ten_plex_bam_list
   	File twenty_plex_bam_list
 
-  	File ref_fasta
-  	File ref_fai
-  	File ref_dict
   	File? pon
   	File? pon_index
   	Boolean is_run_orientation_bias_filter
-    File gatk
     Array[String] artifact_modes
-    File picard
-
     File five_plex_preprocessed
     File five_plex_preprocessed_idx
     File ten_plex_preprocessed
@@ -46,78 +47,75 @@ workflow HapmapSensitivityAllPlexes {
 
     String? m2_extra_args
     String? m2_extra_filtering_args
-
-    File? intervals
-
     File python_script
 
   call single_plex.HapmapSensitivity as FivePlex {
       input:
-          max_depth = max_depth,
-          scatter_count = scatter_count,
-          bam_list = five_plex_bam_list,
+          gatk = gatk,
+          picard = picard,
+          intervals = intervals,
           ref_fasta = ref_fasta,
           ref_fai = ref_fai,
           ref_dict = ref_dict,
+          max_depth = max_depth,
+          scatter_count = scatter_count,
+          bam_list = five_plex_bam_list,
           pon = pon,
           pon_index = pon_index,
           is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-          gatk = gatk,
           artifact_modes = artifact_modes,
-          picard = picard,
           preprocessed_hapmap = five_plex_preprocessed,
           preprocessed_hapmap_idx = five_plex_preprocessed_idx,
           m2_extra_args = m2_extra_args,
           m2_extra_filtering_args = m2_extra_filtering_args,
           prefix = "5plex",
-          python_script = python_script,
-          intervals = intervals
+          python_script = python_script
   }
 
   call single_plex.HapmapSensitivity as TenPlex {
       input:
-          max_depth = max_depth,
-          scatter_count = scatter_count,
-          bam_list = ten_plex_bam_list,
+          gatk = gatk,
+          picard = picard,
+          intervals = intervals,
           ref_fasta = ref_fasta,
           ref_fai = ref_fai,
           ref_dict = ref_dict,
+          max_depth = max_depth,
+          scatter_count = scatter_count,
+          bam_list = ten_plex_bam_list,
           pon = pon,
           pon_index = pon_index,
           is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-          gatk = gatk,
           artifact_modes = artifact_modes,
-          picard = picard,
           preprocessed_hapmap = ten_plex_preprocessed,
           preprocessed_hapmap_idx = ten_plex_preprocessed_idx,
           m2_extra_args = m2_extra_args,
           m2_extra_filtering_args = m2_extra_filtering_args,
           prefix = "10plex",
-          python_script = python_script,
-          intervals = intervals
+          python_script = python_script
   }
 
   call single_plex.HapmapSensitivity as TwentyPlex {
       input:
-          max_depth = max_depth,
-          scatter_count = scatter_count,
-          bam_list = twenty_plex_bam_list,
+          gatk = gatk,
+          picard = picard,
+          intervals = intervals,
           ref_fasta = ref_fasta,
           ref_fai = ref_fai,
           ref_dict = ref_dict,
+          max_depth = max_depth,
+          scatter_count = scatter_count,
+          bam_list = twenty_plex_bam_list,
           pon = pon,
           pon_index = pon_index,
           is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-          gatk = gatk,
           artifact_modes = artifact_modes,
-          picard = picard,
           preprocessed_hapmap = twenty_plex_preprocessed,
           preprocessed_hapmap_idx = twenty_plex_preprocessed_idx,
           m2_extra_args = m2_extra_args,
           m2_extra_filtering_args = m2_extra_filtering_args,
           prefix = "20plex",
-          python_script = python_script,
-          intervals = intervals
+          python_script = python_script
   }
 
   Array[File] all_plex_sensitivity_tables = [FivePlex.raw_table, TenPlex.raw_table, TwentyPlex.raw_table]

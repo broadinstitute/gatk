@@ -22,18 +22,18 @@ import "mutect2.wdl" as MutectSingleSample
 
 workflow HapmapSensitivity {
     File gatk
-  	Int scatter_count
-  	File bam_list
-  	Array[Array[String]] replicates = read_tsv(bam_list)
+    File picard
+    File? intervals
   	File ref_fasta
   	File ref_fai
   	File ref_dict
-  	File? intervals
+  	Int scatter_count
+  	File bam_list
+  	Array[Array[String]] replicates = read_tsv(bam_list)
   	File? pon
   	File? pon_index
   	Boolean is_run_orientation_bias_filter
     Array[String] artifact_modes
-    File picard
     String? m2_extra_args
     String? m2_extra_filtering_args
     String prefix   #a prefix string like "5plex"
@@ -66,32 +66,33 @@ workflow HapmapSensitivity {
         call MutectSingleSample.Mutect2 {
             input:
                 gatk = "OVERRIDDEN",
-                scatter_count = scatter_count,
-                tumor_bam = bam,
-                tumor_bai = index,
+                gatk_override = gatk,
+                picard = picard,
+                gatk_docker = "ubuntu:16.04",
+                oncotator_docker = "ubuntu:16.04",
                 intervals = intervals,
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
                 ref_dict = ref_dict,
+                scatter_count = scatter_count,
+                tumor_bam = bam,
+                tumor_bai = index,
                 pon = pon,
                 pon_index = pon_index,
                 is_run_orientation_bias_filter = is_run_orientation_bias_filter,
                 is_run_oncotator = false,
-		        gatk_docker = "ubuntu:16.04",
-                oncotator_docker = "ubuntu:16.04",
-		        gatk_override = gatk,
                 artifact_modes = artifact_modes,
-                picard = picard,
                 m2_extra_args = m2_extra_args,
                 m2_extra_filtering_args = m2_extra_filtering_args
         }
 
         call Concordance {
-            input: gatk = gatk, intervals = intervals,
-                  truth = BamDepth.output_vcf,
-                  truth_idx = BamDepth.output_vcf_idx,
-                  eval = Mutect2.filtered_vcf,
-                  eval_idx = Mutect2.filtered_vcf_index
+            input:
+                gatk = gatk, intervals = intervals,
+                truth = BamDepth.output_vcf,
+                truth_idx = BamDepth.output_vcf_idx,
+                eval = Mutect2.filtered_vcf,
+                eval_idx = Mutect2.filtered_vcf_index
         }
 
         call ConvertToTable {

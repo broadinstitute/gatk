@@ -9,12 +9,16 @@ import "mutect2_multi_sample.wdl" as m2_multi
 workflow Mutect2_Multi_Concordance {
     # gatk needs to be a String input to the workflow in order to work in a Docker image
 	String gatk
+	File? gatk_override
+	File picard
+	String gatk_docker
+	File? intervals
+    File ref_fasta
+    File ref_fai
+    File ref_dict
+
 	Int scatter_count
 	File pair_list
-	File? intervals
-	File ref_fasta
-	File ref_fai
-	File ref_dict
 	File? pon
 	File? pon_index
 	File? gnomad
@@ -22,11 +26,9 @@ workflow Mutect2_Multi_Concordance {
 	File? variants_for_contamination
     File? variants_for_contamination_index
 	Boolean is_run_orientation_bias_filter
-    String gatk_docker
-    File? gatk_override
     Int? preemptible_attempts
     Array[String] artifact_modes
-    File picard
+
     String? m2_args
     String? m2_filtering_args
 
@@ -36,12 +38,16 @@ workflow Mutect2_Multi_Concordance {
     call m2_multi.Mutect2_Multi {
         input:
             gatk = gatk,
+            gatk_override = gatk_override,
+            picard = picard,
+            gatk_docker = gatk_docker,
+            oncotator_docker = "NO_ONCOTATOR",
+            ref_fasta = ref_fasta,
+            ref_fai = ref_fai,
+            ref_dict = ref_dict,
         	scatter_count = scatter_count,
         	pair_list = pair_list,
         	intervals = intervals,
-        	ref_fasta = ref_fasta,
-        	ref_fai = ref_fai,
-        	ref_dict = ref_dict,
         	pon = pon,
         	pon_index = pon_index,
         	gnomad = gnomad,
@@ -50,12 +56,8 @@ workflow Mutect2_Multi_Concordance {
             variants_for_contamination_index = variants_for_contamination_index,
         	is_run_orientation_bias_filter = is_run_orientation_bias_filter,
         	is_run_oncotator = false,
-            gatk_docker = gatk_docker,
-            oncotator_docker = "NO_ONCOTATOR",
-            gatk_override = gatk_override,
             preemptible_attempts = preemptible_attempts,
             artifact_modes = artifact_modes,
-            picard = picard,
             m2_args = m2_args,
             m2_filtering_args = m2_filtering_args
     }
@@ -65,12 +67,12 @@ workflow Mutect2_Multi_Concordance {
             input:
                 gatk = gatk,
                 gatk_override = gatk_override,
+                gatk_docker = gatk_docker,
                 intervals = intervals,
                 truth_vcf = truth[n][0],
                 truth_vcf_idx = truth[n][1],
                 eval_vcf = Mutect2_Multi.filtered_vcf_files[n],
                 eval_vcf_idx = Mutect2_Multi.filtered_vcf_index_files[n],
-                gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts
         }
     }
@@ -89,12 +91,12 @@ workflow Mutect2_Multi_Concordance {
 task Concordance {
     String gatk
     File? gatk_override
+    String gatk_docker
     File? intervals
     File truth_vcf
     File truth_vcf_idx
     File eval_vcf
     File eval_vcf_idx
-    String gatk_docker
     Int preemptible_attempts
 
     command {
@@ -116,7 +118,7 @@ task Concordance {
         memory: "5 GB"
         docker: "${gatk_docker}"
         disks: "local-disk " + 400 + " HDD"
-         preemptible: "${preemptible_attempts}"
+        preemptible: "${preemptible_attempts}"
     }
 
     output {

@@ -30,13 +30,13 @@ task GatherTables {
 
 task CountFalsePositives {
 	String gatk
-	File filtered_vcf
-	File filtered_vcf_index
+	File? gatk_override
+	File? intervals
 	File ref_fasta
 	File ref_fai
 	File ref_dict
-	File? intervals
-	File? gatk_override
+	File filtered_vcf
+	File filtered_vcf_index
 
 	command {
         # Use GATK Jar override if specified
@@ -65,25 +65,26 @@ task CountFalsePositives {
 
 workflow Mutect2ReplicateValidation {
 	File gatk
+	File? gatk_override
+	File picard
+	String gatk_docker
+	File? intervals
+	File ref_fasta
+	File ref_fai
+	File ref_dict
+
 	Int scatter_count
 	# replicate_pair_list file is a tsv file with the following four columns in this order.
 	# tumor_bam, tumor_bai, normal_bam, normal_bai
 	File replicate_pair_list
 	Array[Array[String]] pairs = read_tsv(replicate_pair_list)
-	File? intervals
-	File ref_fasta
-	File ref_fai
-	File ref_dict
 	File? pon
 	File? pon_index
 	File? gnomad
 	File? gnomad_index
 	Boolean is_run_orientation_bias_filter
-	String gatk_docker
-	File? gatk_override
 	Int? preemptible_attempts
 	Array[String] artifact_modes
-	File picard
 	String? m2_extra_args
     String? m2_extra_filtering_args
 
@@ -91,6 +92,9 @@ workflow Mutect2ReplicateValidation {
 		call m2.Mutect2 {
 			input:
 				gatk = gatk,
+				gatk_override = gatk_override,
+				gatk_docker = gatk_docker,
+				oncotator_docker = gatk_docker,
 				intervals = intervals,
 				ref_fasta = ref_fasta,
 				ref_fai = ref_fai,
@@ -107,9 +111,6 @@ workflow Mutect2ReplicateValidation {
 				picard = picard,
                 is_run_orientation_bias_filter = is_run_orientation_bias_filter,
                 is_run_oncotator = false,
-                oncotator_docker = gatk_docker,
-                gatk_docker = gatk_docker,
-                gatk_override = gatk_override,
                 preemptible_attempts = preemptible_attempts,
                 artifact_modes = artifact_modes,
                 m2_extra_args = m2_extra_args,
@@ -119,20 +120,17 @@ workflow Mutect2ReplicateValidation {
 		call CountFalsePositives {
 			input:
 				gatk = gatk,
-				filtered_vcf = Mutect2.filtered_vcf,
-				filtered_vcf_index = Mutect2.filtered_vcf_index,
-				ref_fasta = ref_fasta,
-				ref_fai = ref_fai,
-				ref_dict = ref_dict,
+				gatk_override = gatk_override,
 				intervals = intervals,
-				gatk_override = gatk_override
+				ref_fasta = ref_fasta,
+                ref_fai = ref_fai,
+                ref_dict = ref_dict,
+				filtered_vcf = Mutect2.filtered_vcf,
+				filtered_vcf_index = Mutect2.filtered_vcf_index
 		}
 	}
 
-	call GatherTables {
-        input:
-            tables = CountFalsePositives.false_positive_counts
-	}
+	call GatherTables { input: tables = CountFalsePositives.false_positive_counts }
 
 	output {
 		File summary = GatherTables.summary

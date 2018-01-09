@@ -44,76 +44,76 @@ task Concordance {
 
 workflow Mutect2Trio {
 	String gatk
+	File? gatk_override
+	String oncotator_docker
+    String gatk_docker
+	File? intervals
+	File ref_fasta
+	File ref_fai
+	File ref_dict
 	Int scatter_count
 	# trio_list file is a tsv file with the following nine columns in this order.
 	# normal_bam, normal_bai, good_tumor_bam, good_tumor_bai, bad_tumor_bam, bad_tumor_bai
 	File trio_list
 	Array[Array[String]] trios = read_tsv(trio_list)
-	File? intervals
-	File ref_fasta
-	File ref_fai
-	File ref_dict
 	File? pon
 	File? pon_index
 	File? gnomad
 	File? gnomad_index
 	Boolean is_run_orientation_bias_filter
 	Boolean is_run_oncotator
-	String oncotator_docker
-	String m2_docker
-	File? gatk_override
 	Int preemptible_attempts
 	Array[String] artifact_modes
 
 	scatter(trio in trios) {
 		call m2.Mutect2 as GoodTumor {
 			input:
-				gatk=gatk,
-				intervals=intervals,
-				ref_fasta=ref_fasta,
-				ref_fai=ref_fai,
-				ref_dict=ref_dict,
-				tumor_bam=trio[2],
-				tumor_bai=trio[3],
-				normal_bam=trio[0],
-				normal_bai=trio[1],
-				pon=pon,
-				pon_index=pon_index,
-				scatter_count=scatter_count,
-				gnomad=gnomad,
-				gnomad_index=gnomad_index,
+				gatk = gatk,
+				gatk_override = gatk_override,
 				picard = picard,
+				gatk_docker = gatk_docker,
+				oncotator_docker = oncotator_docker,
+				intervals = intervals,
+				ref_fasta = ref_fasta,
+				ref_fai = ref_fai,
+				ref_dict = ref_dict,
+				tumor_bam = trio[2],
+				tumor_bai = trio[3],
+				normal_bam = trio[0],
+				normal_bai = trio[1],
+				pon = pon,
+				pon_index = pon_index,
+				scatter_count = scatter_count,
+				gnomad = gnomad,
+				gnomad_index = gnomad_index,
                 is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-                is_run_oncotator=is_run_oncotator,
-                oncotator_docker=oncotator_docker,
-                m2_docker = m2_docker,
-                gatk_override = gatk_override,
+                is_run_oncotator = is_run_oncotator,
                 preemptible_attempts = preemptible_attempts,
                 artifact_modes = artifact_modes
 		}
 
 		call m2.Mutect2 as BadTumor {
             input:
-        	    gatk=gatk,
-        		intervals=intervals,
-        		ref_fasta=ref_fasta,
-       			ref_fai=ref_fai,
-        		ref_dict=ref_dict,
-        		tumor_bam=trio[4],
-        		tumor_bai=trio[5],
-        		normal_bam=trio[0],
+        	    gatk = gatk,
+        	    gatk_override = gatk_override,
+        	    picard  =  picard,
+        	    gatk_docker = gatk_docker,
+        	    oncotator_docker = oncotator_docker,
+        		intervals = intervals,
+        		ref_fasta = ref_fasta,
+       			ref_fai = ref_fai,
+        		ref_dict = ref_dict,
+        		tumor_bam = trio[4],
+        		tumor_bai = trio[5],
+        		normal_bam = trio[0],
         		normal_bai=trio[1],
-        		pon=pon,
-        		pon_index=pon_index,
-        		scatter_count=scatter_count,
-        		gnomad=gnomad,
-        		gnomad_index=gnomad_index,
-        		picard = picard,
-                is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-                is_run_oncotator=is_run_oncotator,
-                oncotator_docker=oncotator_docker,
-                m2_docker = m2_docker,
-                gatk_override = gatk_override,
+        		pon = pon,
+        		pon_index = pon_index,
+        		scatter_count = scatter_count,
+        		gnomad = gnomad,
+        		gnomad_index = gnomad_index,
+                is_run_orientation_bias_filter  =  is_run_orientation_bias_filter,
+                is_run_oncotator = is_run_oncotator,
                 preemptible_attempts = preemptible_attempts,
                 artifact_modes = artifact_modes
         }
