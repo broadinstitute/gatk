@@ -66,8 +66,8 @@ task CountFalsePositives {
 workflow Mutect2ReplicateValidation {
 	File gatk
 	Int scatter_count
-	# replicate_pair_list file is a tsv file with the following six columns in this order.
-	# tumor_bam, tumor_bai, tumor_sample_name, normal_bam, normal_bai, normal_sample_name
+	# replicate_pair_list file is a tsv file with the following four columns in this order.
+	# tumor_bam, tumor_bai, normal_bam, normal_bai
 	File replicate_pair_list
 	Array[Array[String]] pairs = read_tsv(replicate_pair_list)
 	File? intervals
@@ -97,10 +97,8 @@ workflow Mutect2ReplicateValidation {
 				ref_dict = ref_dict,
 				tumor_bam = pair[0],
 				tumor_bai = pair[1],
-				tumor_sample_name = pair[2],
-				normal_bam = pair[3],
-				normal_bai = pair[4],
-				normal_sample_name = pair[5],
+				normal_bam = pair[2],
+				normal_bai = pair[3],
 				pon = pon,
 				pon_index = pon_index,
 				scatter_count = scatter_count,
