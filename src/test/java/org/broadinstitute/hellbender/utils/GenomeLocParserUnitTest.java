@@ -508,18 +508,43 @@ public final class GenomeLocParserUnitTest extends GATKBaseTest {
     @Test
     public void testQueryAllHG38Intervals() {
         SAMSequenceDictionary sd;
-        final File testFile = new File ("src/test/resources/org/broadinstitute/hellbender/engine/Homo_sapiens_assembly38.headerOnly.vcf.gz");
+        final File testFile = new File (publicTestDir, "org/broadinstitute/hellbender/engine/Homo_sapiens_assembly38.headerOnly.vcf.gz");
 
         try (VCFFileReader vcfReader = new VCFFileReader(testFile, false)) {
             sd = vcfReader.getFileHeader().getSequenceDictionary();
         }
 
-        // Test that we can use any contig from hg38 as a query against a VCF with an hg38 sequence dictionary without
-        // having an ambiguity.
+        // Test that we can use any contig from hg38 as a query against a VCF with an hg38 sequence dictionary, in any
+        // query format, without ambiguity.
         final GenomeLocParser localGenomeLocParser = new GenomeLocParser(sd);
-        sd.getSequences().stream().forEach(hg38Contig -> localGenomeLocParser.parseGenomeLoc(hg38Contig.getSequenceName()));
-        sd.getSequences().stream().forEach(hg38Contig -> localGenomeLocParser.parseGenomeLoc(hg38Contig.getSequenceName() + ":1-1"));
-        sd.getSequences().stream().forEach(hg38Contig -> localGenomeLocParser.parseGenomeLoc(hg38Contig.getSequenceName() + ":1+"));
+        sd.getSequences().stream().forEach(
+                hg38Contig -> {
+                    assertValidUniqueInterval(
+                            localGenomeLocParser,
+                            hg38Contig.getSequenceName(),
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength()));
+                    assertValidUniqueInterval(
+                            localGenomeLocParser,
+                            hg38Contig.getSequenceName() + ":1",
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, 1));
+                    assertValidUniqueInterval(
+                            localGenomeLocParser,
+                            hg38Contig.getSequenceName() + ":1+",
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength()));
+                    assertValidUniqueInterval(
+                            localGenomeLocParser,
+                            hg38Contig.getSequenceName() + ":1-1",
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, 1));
+                }
+        );
+    }
+
+    private void assertValidUniqueInterval(
+            final GenomeLocParser localGenomeLocParser,
+            final String queryString,
+            final SimpleInterval expectedInterval) {
+        final SimpleInterval actualInterval = new SimpleInterval(localGenomeLocParser.parseGenomeLoc(queryString));
+        Assert.assertEquals(actualInterval, expectedInterval);
     }
 
 }

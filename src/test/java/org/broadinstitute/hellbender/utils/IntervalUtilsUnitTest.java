@@ -547,22 +547,44 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         sd.getSequences().stream().forEach(
                 hg38Contig -> {
                     // query using just the raw contig name
-                    List<SimpleInterval> ambiguousIntervals = SimpleInterval.getResolvedIntervals(hg38Contig.getSequenceName(), sd);
-                    Assert.assertNotNull(ambiguousIntervals);
-                    Assert.assertEquals(ambiguousIntervals.size(), 1);
+                    assertValidUniqueInterval(
+                            sd,
+                            hg38Contig.getSequenceName(),
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength())
+                    );
 
-                    // query using an interval with the format "name:1-end"
-                    ambiguousIntervals = SimpleInterval.getResolvedIntervals(
-                            new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength()).toString(), sd);
-                    Assert.assertNotNull(ambiguousIntervals);
-                    Assert.assertEquals(ambiguousIntervals.size(), 1);
+                    // query using the format "name:1"
+                    assertValidUniqueInterval(
+                            sd,
+                            hg38Contig.getSequenceName() + ":1",
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, 1)
+                    );
 
-                    // query using an interval with the format "name:1+"
-                    ambiguousIntervals = SimpleInterval.getResolvedIntervals(hg38Contig.getSequenceName() + ":1+", sd);
-                    Assert.assertNotNull(ambiguousIntervals);
-                    Assert.assertEquals(ambiguousIntervals.size(), 1);
+                    // query using the format "name:1+"
+                    assertValidUniqueInterval(
+                            sd,
+                            hg38Contig.getSequenceName() + ":1+",
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength())
+                    );
+
+                    // query using the format "name:1-end"
+                    assertValidUniqueInterval(
+                            sd,
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength()).toString(),
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength())
+                    );
                 }
         );
+    }
+
+    private void assertValidUniqueInterval(
+            final SAMSequenceDictionary sequenceDictionary,
+            final String queryString,
+            final SimpleInterval expectedInterval) {
+        final List<SimpleInterval> ambiguousIntervals = SimpleInterval.getResolvedIntervals(queryString, sequenceDictionary);
+        Assert.assertNotNull(ambiguousIntervals);
+        Assert.assertEquals(ambiguousIntervals.size(), 1);
+        Assert.assertEquals(ambiguousIntervals.get(0), expectedInterval);
     }
 
     @Test
