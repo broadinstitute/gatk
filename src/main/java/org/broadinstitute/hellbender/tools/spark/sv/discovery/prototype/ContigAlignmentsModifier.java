@@ -3,9 +3,8 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.ChimericAlignment;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -34,24 +33,14 @@ public final class ContigAlignmentsModifier {
 
         final AlignmentInterval reconstructedOne, reconstructedTwo;
         final int overlapOnRead = AlignmentInterval.overlapOnContig(one, two);
+        Utils.validateArg(overlapOnRead < Math.min(one.getSizeOnRead(), two.getSizeOnRead()),
+                "two input alignments' overlap on read consumes completely one of them.\t"
+                        + one.toPackedString() + "\t" + two.toPackedString());
         if (overlapOnRead == 0) {
             reconstructedOne = one;
             reconstructedTwo = two;
         } else {
-            final boolean oneYieldToTwo;
-            if (one.referenceSpan.getContig().equals(two.referenceSpan.getContig())) {
-                if (one.forwardStrand != two.forwardStrand) { // so that the inverted duplicated reference span is minimal.
-                    // jumpStart is for "the starting reference location of a jump that linked two alignment intervals", and
-                    // jumpLandingRefLoc is for "that jump's landing reference location"
-                    final int jumpStartRefLoc = one.referenceSpan.getEnd(),
-                            jumpLandingRefLoc = two.referenceSpan.getStart();
-                    oneYieldToTwo = jumpStartRefLoc <= jumpLandingRefLoc == one.forwardStrand;
-                } else {
-                    oneYieldToTwo = one.forwardStrand;
-                }
-            } else {
-                oneYieldToTwo = IntervalUtils.compareContigs(one.referenceSpan, two.referenceSpan, dictionary) > 0;
-            }
+            final boolean oneYieldToTwo = yieldHomologousSequenceToAlignmentTwo(one, two, dictionary);
 
             if (oneYieldToTwo) {
                 reconstructedOne = clipAlignmentInterval(one, overlapOnRead, true);
@@ -63,6 +52,71 @@ public final class ContigAlignmentsModifier {
 
         }
         return Arrays.asList(reconstructedOne, reconstructedTwo);
+    }
+
+    /**
+     * Implementing homology-yielding strategy between two alignments {@code one} and {@code two}.
+     *
+     * <p>
+     *     The strategy aims to follow the left-align convention:
+     *     <ul>
+     *         <li>
+     *             when two alignments are mapped to different chromosomes,
+     *             the homologous sequence is yielded to the alignment block
+     *             whose reference contig comes later as defined by {@code refSequenceDictionary}
+     *         </li>
+     *         <li>
+     *             when two alignments are mapped to the same chromosome,
+     *             <ul>
+     *                 <li>
+     *                     if the two alignments are of the same orientation,
+     *                     the homologous sequence is yielded to {@code two}
+     *                     when both are of the '+' strand
+     *                 </li>
+     *                 <li>
+     *                     if the two alignments are of opposite orientations,
+     *                     the homologous sequence is yielded so that
+     *                     a) when the two alignments' ref span doesn't overlap,
+     *                        we follow the left align convention for the resulting strand-switch breakpoints;
+     *                     b) when the two alignments' ref span do overlap,
+     *                        we makes it so that the inverted duplicated reference span is minimized
+     *                        (this avoids over detection of inverted duplications as by {@link ChimericAlignment#isLikelyInvertedDuplication()}).
+     *                 </li>
+     *             </ul>
+     *         </li>
+     *     </ul>
+     * </p>
+     *
+     *
+     * @return true if {@code one} should yield the homologous sequence to {@code two}.
+     * @throws IllegalArgumentException when the two alignments contains one another in terms of their read span
+     */
+    static boolean yieldHomologousSequenceToAlignmentTwo(final AlignmentInterval one, final AlignmentInterval two,
+                                                         final SAMSequenceDictionary refSequenceDictionary) {
+
+        Utils.validateArg( !(one.containsOnRead(two) || two.containsOnRead(one)),
+                "assumption that two alignments don't contain one another on their read span is violated.\n" +
+                        one.toPackedString() + "\n" + two.toPackedString());
+
+        final boolean oneYieldToTwo;
+        if ( one.referenceSpan.getContig().equals(two.referenceSpan.getContig()) ) {
+            // motivation: when the two alignments' ref span doesn't overlap,
+            //             this strategy follows the left align convention for the strand-switch breakpoints;
+            //             when the two alignments' ref span do overlap,
+            //             this strategy makes it so that the inverted duplicated reference span is minimal.
+            if (one.forwardStrand != two.forwardStrand) {
+                // jumpStart is for "the starting reference location of a jump that linked two alignment intervals", and
+                // jumpLandingRefLoc is for "that jump's landing reference location"
+                final int jumpStartRefLoc = one.referenceSpan.getEnd(),
+                          jumpLandingRefLoc = two.referenceSpan.getStart();
+                oneYieldToTwo = ( (jumpStartRefLoc <= jumpLandingRefLoc) == one.forwardStrand );
+            } else {
+                oneYieldToTwo = one.forwardStrand;
+            }
+        } else {
+            oneYieldToTwo = IntervalUtils.compareContigs(one.referenceSpan, two.referenceSpan, refSequenceDictionary) > 0;
+        }
+        return oneYieldToTwo;
     }
 
     /**

@@ -24,16 +24,16 @@ public abstract class SvType {
         extraAttributes = typeSpecificExtraAttributes;
     }
 
-    final String getInternalVariantId() {
+    public final String getInternalVariantId() {
         return variantId;
     }
-    final Allele getAltAllele() {
+    public final Allele getAltAllele() {
         return altAllele;
     }
-    final int getSVLength() {
+    public final int getSVLength() {
         return svLen;
     }
-    final Map<String, String> getTypeSpecificAttributes() {
+    public final Map<String, String> getTypeSpecificAttributes() {
         return extraAttributes;
     }
 }

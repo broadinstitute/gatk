@@ -24,9 +24,7 @@ public class AssemblyContigWithFineTunedAlignmentsUnitTest extends GATKBaseTest 
     @Test(groups = "sv", dataProvider = "createData")
     void test(final AlignedContig alignedContig, final boolean expectedHasIncompletePicture) {
 
-        Assert.assertEquals(new AssemblyContigWithFineTunedAlignments(alignedContig).hasIncomePicture(), expectedHasIncompletePicture);
-
-
+        Assert.assertEquals(new AssemblyContigWithFineTunedAlignments(alignedContig).hasIncompletePicture(), expectedHasIncompletePicture);
     }
 
     @DataProvider(name = "createData")

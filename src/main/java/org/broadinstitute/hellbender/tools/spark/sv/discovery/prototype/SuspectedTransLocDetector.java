@@ -20,21 +20,23 @@ final class SuspectedTransLocDetector implements VariantDetectorFromLocalAssembl
     private static final List<String> EMPTY_INSERTION_MAPPINGS = Collections.EMPTY_LIST;
 
     @Override
-    public void inferSvAndWriteVCF(final JavaRDD<AlignedContig> localAssemblyContigs,
-                                   final String vcfOutputFileName,
+    public void inferSvAndWriteVCF(final String vcfOutputFileName, final String sampleId,
+                                   final JavaRDD<AssemblyContigWithFineTunedAlignments> localAssemblyContigs,
                                    final Broadcast<ReferenceMultiSource> broadcastReference,
                                    final Broadcast<SAMSequenceDictionary> refSequenceDictionary,
-                                   final Logger toolLogger,
-                                   final String sampleId) {
+                                   final Logger toolLogger) {
         toolLogger.info(localAssemblyContigs.count() + " chimeras indicating strand-switch-less breakpoints");
 
+        // TODO: 11/23/17 take insertion mappings from the input and add them to VC
         final JavaPairRDD<ChimericAlignment, byte[]> chimeraAndSequence =
                 localAssemblyContigs
-                        .filter(tig ->
-                                SimpleStrandSwitchVariantDetector.splitPairStrongEnoughEvidenceForCA(tig.alignmentIntervals.get(0),
-                                        tig.alignmentIntervals.get(1), SimpleStrandSwitchVariantDetector.MORE_RELAXED_ALIGNMENT_MIN_MQ,
+                        .filter(decoratedTig ->
+                                SimpleStrandSwitchVariantDetector.splitPairStrongEnoughEvidenceForCA(
+                                                decoratedTig.contig.alignmentIntervals.get(0), decoratedTig.contig.alignmentIntervals.get(1),
+                                        SimpleStrandSwitchVariantDetector.MORE_RELAXED_ALIGNMENT_MIN_MQ,
                                         0))
-                        .mapToPair(tig -> convertAlignmentIntervalsToChimericAlignment(tig, refSequenceDictionary.getValue())).cache();
+                        .mapToPair(decoratedTig ->
+                                convertAlignmentIntervalsToChimericAlignment(decoratedTig.contig, refSequenceDictionary.getValue())).cache();
 
         final JavaRDD<VariantContext> annotatedBNDs =
                 chimeraAndSequence

@@ -190,7 +190,7 @@ public class AnnotatedVariantProducer implements Serializable {
 
     // TODO: 12/13/16 again ignoring translocation
     @VisibleForTesting
-    static List<Allele> produceAlleles(final SimpleInterval refLoc, final ReferenceMultiSource reference, final SvType SvType)
+    public static List<Allele> produceAlleles(final SimpleInterval refLoc, final ReferenceMultiSource reference, final SvType SvType)
             throws IOException {
 
         final byte[] refBases = reference.getReferenceBases(refLoc).getBases();

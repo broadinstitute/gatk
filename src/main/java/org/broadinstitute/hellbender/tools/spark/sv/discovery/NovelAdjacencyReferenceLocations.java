@@ -34,14 +34,19 @@ public class NovelAdjacencyReferenceLocations {
     public NovelAdjacencyReferenceLocations(final ChimericAlignment chimericAlignment, final byte[] contigSequence,
                                             final SAMSequenceDictionary referenceDictionary) {
 
-        // first get strand switch type, then get complications, finally use complications to justify breakpoints
         strandSwitch = chimericAlignment.strandSwitch;
 
-        complication = new BreakpointComplications(chimericAlignment, contigSequence);
+        try {
+            complication = new BreakpointComplications(chimericAlignment, contigSequence);
 
-        final Tuple2<SimpleInterval, SimpleInterval> leftJustifiedBreakpoints = leftJustifyBreakpoints(chimericAlignment, complication, referenceDictionary);
-        leftJustifiedLeftRefLoc = leftJustifiedBreakpoints._1();
-        leftJustifiedRightRefLoc = leftJustifiedBreakpoints._2();
+            final Tuple2<SimpleInterval, SimpleInterval> leftJustifiedBreakpoints =
+                    leftJustifyBreakpoints(chimericAlignment, complication, referenceDictionary);
+            leftJustifiedLeftRefLoc = leftJustifiedBreakpoints._1();
+            leftJustifiedRightRefLoc = leftJustifiedBreakpoints._2();
+        } catch (final IllegalArgumentException iaex) { // catching IAEX specifically because it is the most likely exception thrown if there's bug, this helps quickly debugging what the problem is
+            throw new GATKException("Erred when inferring breakpoint location and event type from chimeric alignment:\n" +
+                    chimericAlignment.onErrStringRep(), iaex);
+        }
     }
 
     protected NovelAdjacencyReferenceLocations(final Kryo kryo, final Input input) {
