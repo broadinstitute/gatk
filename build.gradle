@@ -199,7 +199,6 @@ dependencies {
 
     compile('org.bdgenomics.adam:adam-core-spark2_2.11:0.23.0') {
         exclude group: 'org.slf4j'
-        exclude group: 'org.slf4j'
         exclude group: 'org.apache.hadoop'
         exclude group: 'org.scala-lang'
         exclude module: 'kryo'
