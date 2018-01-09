@@ -15,15 +15,15 @@ public final class AmbiguousBaseReadFilter extends ReadFilter {
     private static final long serialVersionUID = 1L;
 
     @Argument(doc = "Threshold fraction of ambiguous bases",
-            fullName = "ambigFilterFrac",
+            fullName = "ambig-filter-frac",
             optional = true,
-            mutex = {"ambigFilterBases"})
+            mutex = {"ambig-filter-bases"})
     public double maxAmbiguousBaseFraction = 0.05;
 
     @Argument(doc = "Threshold number of ambiguous bases. If null, uses threshold fraction; otherwise, overrides threshold fraction.",
-            fullName = "ambigFilterBases",
+            fullName = "ambig-filter-bases",
             optional = true,
-            mutex = {"ambigFilterFrac"})
+            mutex = {"ambig-filter-frac"})
     public Integer maxAmbiguousBases = null;
 
     public AmbiguousBaseReadFilter() {}

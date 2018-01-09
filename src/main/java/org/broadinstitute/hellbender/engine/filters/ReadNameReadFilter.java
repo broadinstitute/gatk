@@ -17,7 +17,7 @@ public final class ReadNameReadFilter extends ReadFilter implements Serializable
     private static final long serialVersionUID = 1L;
     public static final String READ_NAME_LONG_NAME = "read-name";
 
-    @Argument(fullName = READ_NAME_LONG_NAME, shortName = "readName", doc="Keep only reads with this read name", optional=false)
+    @Argument(fullName = READ_NAME_LONG_NAME, doc="Keep only reads with this read name", optional=false)
     public String readName = null;
 
     @Override
