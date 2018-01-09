@@ -20,7 +20,12 @@ import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.text.DecimalFormat;
 import java.time.Duration;
 import java.time.ZonedDateTime;
@@ -28,6 +33,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 
 /**
@@ -173,7 +180,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
                         " on " + System.getProperty("os.name") + " " + System.getProperty("os.version") +
                         " " + System.getProperty("os.arch") + "; " + System.getProperty("java.vm.name") +
                         " " + System.getProperty("java.runtime.version") +
-                        "; Version: " + getVersion());
+                        "; Version: " + getVersion() + getLibraryVersions());
 
                 // Print important settings to the logger:
                 printSettings();
@@ -261,6 +268,27 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         return versionString != null ?
                 versionString :
                 "Unavailable";
+    }
+
+    public String getLibraryVersions() {
+        try {
+            final String classPath = getClass().getResource(getClass().getSimpleName() + ".class").toString();
+            if (classPath.startsWith("jar")) {
+                final String manifestPath = classPath.substring(0, classPath.lastIndexOf("!") + 1) + "/META-INF/MANIFEST.MF";
+                try ( final InputStream manifestStream = new URL(manifestPath).openStream() ) {
+                    final Attributes manifestAttributes = new Manifest(manifestStream).getMainAttributes();
+                    final String htsjdkVersion = manifestAttributes.getValue("htsjdk-Version");
+                    final String picardVersion = manifestAttributes.getValue("Picard-Version");
+
+                    return "; HTSJDK Version: " + (htsjdkVersion != null ? htsjdkVersion : "unknown") +
+                           "; Picard Version: " + (picardVersion != null ? picardVersion : "unknown");
+                }
+            }
+        }
+        catch (IOException ignored) {
+        }
+
+        return "";
     }
 
     /**
