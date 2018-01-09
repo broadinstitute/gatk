@@ -7,41 +7,6 @@
 # mutect2_multi_sample.wdl
 import "mutect2.wdl" as m2
 
-
-task Concordance {
-    String gatk
-    File? gatk_override
-    File? intervals
-    File truth_vcf
-    File truth_vcf_idx
-    File eval_vcf
-    File eval_vcf_idx
-
-    command {
-        GATK_JAR=${gatk}
-        if [[ "${gatk_override}" == *.jar ]]; then
-            GATK_JAR=${gatk_override}
-        fi
-
-        java -jar $GATK_JAR Concordance ${"-L " + intervals} \
-            -truth ${truth_vcf} -eval ${eval_vcf} -tpfn "true_positives_and_false_negatives.vcf" \
-            -tpfp "true_positives_and_false_positives.vcf" \
-            -summary summary.tsv
-    }
-
-    runtime {
-        memory: "5 GB"
-    }
-
-    output {
-        File tpfn = "true_positives_and_false_negatives.vcf"
-        File tpfn_idx = "true_positives_and_false_negatives.vcf.idx"
-        File tpfp = "true_positives_and_false_positives.vcf"
-        File tpfp_idx = "true_positives_and_false_positives.vcf.idx"
-        File summary = "summary.tsv"
-    }
-}
-
 workflow Mutect2Trio {
 	String gatk
 	File? gatk_override
@@ -137,4 +102,38 @@ workflow Mutect2Trio {
         Array[File] tpf_idx = Concordance.tpfp_idx
         Array[File] summary = Concordance.summary
 	}
+}
+
+task Concordance {
+    String gatk
+    File? gatk_override
+    File? intervals
+    File truth_vcf
+    File truth_vcf_idx
+    File eval_vcf
+    File eval_vcf_idx
+
+    command {
+        GATK_JAR=${gatk}
+        if [[ "${gatk_override}" == *.jar ]]; then
+            GATK_JAR=${gatk_override}
+        fi
+
+        java -jar $GATK_JAR Concordance ${"-L " + intervals} \
+            -truth ${truth_vcf} -eval ${eval_vcf} -tpfn "true_positives_and_false_negatives.vcf" \
+            -tpfp "true_positives_and_false_positives.vcf" \
+            -summary summary.tsv
+    }
+
+    runtime {
+        memory: "5 GB"
+    }
+
+    output {
+        File tpfn = "true_positives_and_false_negatives.vcf"
+        File tpfn_idx = "true_positives_and_false_negatives.vcf.idx"
+        File tpfp = "true_positives_and_false_positives.vcf"
+        File tpfp_idx = "true_positives_and_false_positives.vcf.idx"
+        File summary = "summary.tsv"
+    }
 }

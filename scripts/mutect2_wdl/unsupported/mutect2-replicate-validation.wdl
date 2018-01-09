@@ -3,66 +3,6 @@
 
 import "mutect2.wdl" as m2
 
-task GatherTables {
-    # we assume that each table consists of two lines: one header line and one record
-	Array[File] tables
-
-	command {
-	    # extract the header from one of the files
-		head -n 1 ${tables[0]} > summary.txt
-
-		# then append the record from each table
-		for table in ${sep=" " tables}; do
-			tail -n +2 $table >> summary.txt						
-		done
-	}
-
-	runtime {
-        docker: "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282"
-        memory: "1 GB"
-        disks: "local-disk " + 100 + " HDD"
-    }
-
-	output {
-		File summary = "summary.txt"
-	}
-}
-
-task CountFalsePositives {
-	String gatk
-	File? gatk_override
-	File? intervals
-	File ref_fasta
-	File ref_fai
-	File ref_dict
-	File filtered_vcf
-	File filtered_vcf_index
-
-	command {
-        # Use GATK Jar override if specified
-        GATK_JAR=${gatk}
-        if [[ "${gatk_override}" == *.jar ]]; then
-            GATK_JAR=${gatk_override}
-        fi
-
-	    java -jar $GATK_JAR CountFalsePositives \
-		    -V ${filtered_vcf} \
-		    -R ${ref_fasta} \
-		    ${"-L " + intervals} \
-		    -O false-positives.txt \
-	}
-
-    runtime {
-        docker: "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282"
-        memory: "5 GB"
-        disks: "local-disk " + 500 + " HDD"
-    }
-
-	output {
-		File false_positive_counts = "false-positives.txt"
-	}
-}
-
 workflow Mutect2ReplicateValidation {
 	File gatk
 	File? gatk_override
@@ -136,5 +76,65 @@ workflow Mutect2ReplicateValidation {
 		File summary = GatherTables.summary
 		Array[File] false_positives_vcfs = Mutect2.filtered_vcf
 		Array[File] unfiltered_vcfs = Mutect2.unfiltered_vcf
+	}
+}
+
+task GatherTables {
+    # we assume that each table consists of two lines: one header line and one record
+	Array[File] tables
+
+	command {
+	    # extract the header from one of the files
+		head -n 1 ${tables[0]} > summary.txt
+
+		# then append the record from each table
+		for table in ${sep=" " tables}; do
+			tail -n +2 $table >> summary.txt
+		done
+	}
+
+	runtime {
+        docker: "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282"
+        memory: "1 GB"
+        disks: "local-disk " + 100 + " HDD"
+    }
+
+	output {
+		File summary = "summary.txt"
+	}
+}
+
+task CountFalsePositives {
+	String gatk
+	File? gatk_override
+	File? intervals
+	File ref_fasta
+	File ref_fai
+	File ref_dict
+	File filtered_vcf
+	File filtered_vcf_index
+
+	command {
+        # Use GATK Jar override if specified
+        GATK_JAR=${gatk}
+        if [[ "${gatk_override}" == *.jar ]]; then
+            GATK_JAR=${gatk_override}
+        fi
+
+	    java -jar $GATK_JAR CountFalsePositives \
+		    -V ${filtered_vcf} \
+		    -R ${ref_fasta} \
+		    ${"-L " + intervals} \
+		    -O false-positives.txt \
+	}
+
+    runtime {
+        docker: "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282"
+        memory: "5 GB"
+        disks: "local-disk " + 500 + " HDD"
+    }
+
+	output {
+		File false_positive_counts = "false-positives.txt"
 	}
 }
