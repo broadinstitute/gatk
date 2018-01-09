@@ -16,12 +16,31 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import java.util.List;
 
 /**
- * Spark tool for collecting insert size metrics.
+ * Collects insert size distribution information in alignment data. The tool leverages the Spark framework
+ * for faster operation.
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ * gatk CollectInsertSizeMetricsSpark \
+ *   -I gs://cloud-bucket/input.bam \
+ *   -H gs://cloud-bucket/insert_size_histogram.pdf \
+ *   -O gs://cloud-bucket/insert_size_metrics.txt \
+ *   -- \
+ *   --spark-runner GCS \
+ *   --cluster my-dataproc-cluster
+ * </pre>
+ * <p>
+ * See <a href=http://broadinstitute.github.io/picard/picard-metric-definitions.html#InsertSizeMetrics>
+ *     http://broadinstitute.github.io/picard/picard-metric-definitions.html#InsertSizeMetrics</a>
+ * for an explanation of individual metrics. See <a href ="https://software.broadinstitute.org/gatk/documentation/article?id=10060">
+ *     Tutorial#10060</a> for an example of how to set up and run a Spark tool on a cloud Spark cluster.
+ * </p>
  */
 @CommandLineProgramProperties(
-        summary        = "Program to collect insert size distribution information in SAM/BAM/CRAM file(s)",
-        oneLineSummary = "Collect Insert Size Distribution on Spark",
-        programGroup   = DiagnosticsAndQCProgramGroup.class)
+        summary = "Collects insert size distribution information in SAM/BAM/CRAM file(s). The tool leverages " +
+                "the Spark framework for faster operation.",
+        oneLineSummary = "Collects insert size distribution information on alignment data",
+        programGroup = DiagnosticsAndQCProgramGroup.class)
 @DocumentedFeature
 @BetaFeature
 public final class CollectInsertSizeMetricsSpark

@@ -23,6 +23,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Integration tests for {@link CollectMultipleMetricsSpark}.
+ */
 public final class CollectMultipleMetricsSparkIntegrationTest extends CommandLineProgramTest{
     private static final File TEST_DATA_DIR = new File(
             "src/test/resources/org/broadinstitute/hellbender/metrics/analysis/CollectInsertSizeMetrics");
