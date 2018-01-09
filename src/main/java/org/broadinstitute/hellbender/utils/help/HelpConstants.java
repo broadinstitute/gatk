@@ -12,7 +12,8 @@ public final class HelpConstants {
     private HelpConstants() {};
 
     public static final String GATK_FORUM_URL = "http://gatkforums.broadinstitute.org/";
-
+    public static final String GATK_MAIN_SITE = "https://software.broadinstitute.org/gatk/";
+    
     public static String forumPost(String post) {
         return GATK_FORUM_URL + post;
     }

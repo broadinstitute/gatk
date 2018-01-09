@@ -298,7 +298,7 @@ group = 'org.broadinstitute'
 
 tasks.withType(Jar) {
     manifest {
-        attributes 'Implementation-Title': 'Hellbender-tools',
+        attributes 'Implementation-Title': 'The Genome Analysis Toolkit (GATK)',
                 'Implementation-Version': version,
                 'Main-Class': project.mainClassName,
                 'Picard-Version': picardVersion,
