@@ -10,6 +10,7 @@ import "mutect2.wdl" as m2
 workflow Mutect2Trio {
 	String gatk
 	File? gatk_override
+	File picard
 	String oncotator_docker
     String gatk_docker
 	File? intervals
@@ -26,7 +27,6 @@ workflow Mutect2Trio {
 	File? gnomad
 	File? gnomad_index
 	Boolean is_run_orientation_bias_filter
-	Boolean is_run_oncotator
 	Int preemptible_attempts
 	Array[String] artifact_modes
 
@@ -52,7 +52,7 @@ workflow Mutect2Trio {
 				gnomad = gnomad,
 				gnomad_index = gnomad_index,
                 is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-                is_run_oncotator = is_run_oncotator,
+                is_run_oncotator = false,
                 preemptible_attempts = preemptible_attempts,
                 artifact_modes = artifact_modes
 		}
@@ -78,7 +78,7 @@ workflow Mutect2Trio {
         		gnomad = gnomad,
         		gnomad_index = gnomad_index,
                 is_run_orientation_bias_filter  =  is_run_orientation_bias_filter,
-                is_run_oncotator = is_run_oncotator,
+                is_run_oncotator = false,
                 preemptible_attempts = preemptible_attempts,
                 artifact_modes = artifact_modes
         }
