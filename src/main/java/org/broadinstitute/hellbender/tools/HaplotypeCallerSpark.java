@@ -50,8 +50,12 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
- * This tool DOES NOT match the output of HaplotypeCaller.  It is still under development and should not be used for production work.
- * For evaluation only.
+ * ********************************************************************************
+ * *   This tool DOES NOT match the output of HaplotypeCaller.                    *
+ * *   It is still under development and should not be used for production work.  *
+ * *   For evaluation only.                                                       *
+ * *   Use the non-spark HaplotypeCaller if you care about the results.           *
+ * ********************************************************************************
  *
  * Call germline SNPs and indels via local re-assembly of haplotypes.
  *
@@ -129,9 +133,12 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
-        logger.info("The output of this tool DOES NOT match the output of HaplotypeCaller. " +
-                            "It is under development and should not be used for production work. ");
+        logger.info("********************************************************************************");
+        logger.info("The output of this tool DOES NOT match the output of HaplotypeCaller. ");
+        logger.info("It is under development and should not be used for production work. ");
         logger.info("For evaluation only.");
+        logger.info("Use the non-spark HaplotypeCaller if you care about the results. ");
+        logger.info("********************************************************************************");
         final List<SimpleInterval> intervals = hasIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(getHeaderForReads().getSequenceDictionary());
         callVariantsWithHaplotypeCallerAndWriteOutput(ctx, getReads(), getHeaderForReads(), getReference(), intervals, hcArgs, shardingArgs, numReducers, output);
     }
