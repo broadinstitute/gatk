@@ -138,7 +138,6 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
         programGroup = ShortVariantDiscoveryProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
 public final class HaplotypeCaller extends AssemblyRegionWalker {
 
     //NOTE: many of these settings are referenced by HaplotypeCallerSpark
