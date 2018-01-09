@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.help;
 
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DefaultDocWorkUnitHandler;
 import org.broadinstitute.barclay.help.DocWorkUnit;
 
@@ -36,4 +37,25 @@ public class GATKHelpDocWorkUnitHandler extends DefaultDocWorkUnitHandler {
      */
     @Override
     public String getTemplateName(final DocWorkUnit workUnit) { return GATK_FREEMARKER_TEMPLATE_NAME; }
+
+
+    /**
+     * Add any custom freemarker bindings discovered via custom javadoc tags. Subclasses can override this to
+     * provide additional custom bindings.
+     *
+     * @param currentWorkUnit the work unit for the feature being documented
+     */
+    @Override
+    protected void addCustomBindings(final DocWorkUnit currentWorkUnit) {
+        super.addCustomBindings(currentWorkUnit);
+
+        // Picard tools use the summary line for the long overview section, so extract that
+        // from Picard tools only, and put it in the freemarker map.
+        Class<?> toolClass = currentWorkUnit.getClazz();
+        if (picard.cmdline.CommandLineProgram.class.isAssignableFrom(toolClass)) {
+            final CommandLineProgramProperties clpProperties = currentWorkUnit.getCommandLineProperties();
+            currentWorkUnit.setProperty("picardsummary", clpProperties.summary());
+        }
+    }
+
 }
