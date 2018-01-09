@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMTag;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -20,9 +21,8 @@ import java.util.Set;
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads with matching platform unit attribute")
 public final class PlatformUnitReadFilter extends ReadFilter implements Serializable {
     private static final long serialVersionUID = 1L;
-    public static final String BLACK_LISTED_LANES_LONG_NAME = "black-listed-lanes";
 
-    @Argument(fullName = BLACK_LISTED_LANES_LONG_NAME,
+    @Argument(fullName = ReadFilterArgumentDefinitions.BLACK_LISTED_LANES_LONG_NAME,
             doc="Platform unit (PU) to filter out",
             optional=false)
     public Set<String> blackListedLanes = new LinkedHashSet<>();

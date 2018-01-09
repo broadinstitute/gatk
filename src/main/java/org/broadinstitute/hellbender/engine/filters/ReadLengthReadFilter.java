@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine.filters;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -14,15 +15,12 @@ import java.io.Serializable;
 public final class ReadLengthReadFilter extends ReadFilter implements Serializable{
     private static final long serialVersionUID = 1L;
 
-    public static final String maxLengthArgName = "max-read-length";
-
-    @Argument(fullName = maxLengthArgName,
+    @Argument(fullName = ReadFilterArgumentDefinitions.MAX_LENGTH_ARG_NAME,
             doc="Keep only reads with length at most equal to the specified value",
             optional=false)
     public Integer maxReadLength;
 
-    public static final String minLengthArg = "min-read-length";
-    @Argument(fullName = minLengthArg,
+    @Argument(fullName = ReadFilterArgumentDefinitions.MIN_LENGTH_ARG,
             doc="Keep only reads with length at least equal to the specified value",
             optional=true)
     public int minReadLength = 1;

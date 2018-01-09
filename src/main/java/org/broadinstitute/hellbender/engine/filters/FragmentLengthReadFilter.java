@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine.filters;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -18,7 +19,7 @@ import java.io.Serializable;
 public final class FragmentLengthReadFilter extends ReadFilter implements Serializable  {
     private static final long serialVersionUID = 1l;
 
-    @Argument(fullName = "max-fragment-length",
+    @Argument(fullName = ReadFilterArgumentDefinitions.MAX_FRAGMENT_LENGTH_NAME,
             doc = "Maximum length of fragment (insert size)",
             optional = true)
     public int maxFragmentLength = 1000000;

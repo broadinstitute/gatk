@@ -4,6 +4,7 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -23,12 +24,12 @@ public final class OverclippedReadFilter extends ReadFilter{
 
     static final long serialVersionUID = 1L;
 
-    @Argument(fullName = "filter-too-short",
+    @Argument(fullName = ReadFilterArgumentDefinitions.FILTER_TOO_SORT_NAME,
             doc = "Minimum number of aligned bases",
             optional = true)
     public int minimumSequenceLength = 30;
 
-    @Argument(fullName = "dont-require-soft-clips-both-ends",
+    @Argument(fullName = ReadFilterArgumentDefinitions.DONT_REQUIRE_SOFT_CLIPS_BOTH_ENDS,
             doc = "Allow a read to be filtered out based on having only 1 soft-clipped block. By default, both ends must " +
                     "have a soft-clipped block, setting this flag requires only 1 soft-clipped block",
             optional = true)
