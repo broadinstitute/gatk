@@ -37,6 +37,8 @@ import java.util.stream.Collectors;
  */
 public final class IntervalUtils {
 
+    private static final Logger log = LogManager.getLogger(IntervalUtils.class);
+
     /**
      * Recognized extensions for interval files
      */
@@ -1053,6 +1055,111 @@ public final class IntervalUtils {
                 .collect(Collectors.toList());
     }
 
+
+    /**
+     * Given an interval query string and a sequence dictionary, determine if the query string can be
+     * resolved as a valid interval query against more than one contig in the dictionary, i.e., more than
+     * one of:
+     *
+     *     prefix
+     *     prefix:nnn
+     *     prefix:nnn+
+     *     prefix:nnn-nnn
+     *
+     * and return the list of all possible interpretations (there can never be more than 2). Note that for
+     * an ambiguity to exist, the query string must contain at least one colon.
+     *
+     * @param intervalQueryString
+     * @param sequenceDictionary
+     * @return List<SimpleInterval> containing 0, 1, or 2 valid interpretations of {code queryString} given
+     * {@code sequenceDictionary}. If the list is empty, the query doesn't match any contig in the sequence
+     * dictionary. If the list contains more than one interval, the query string is ambiguous and should be
+     * rejected. If the list contains a single interval, the query is unambiguous and can be safely used to
+     * conduct a query.
+     * @thows IllegalArgumentException if the query only matches a single contig in the dictionary, but the start
+     * and end positions are not valid
+     * @throws NumberFormatException if the query only matches a single contig in the dictionary, but the query
+     * interval paramaters (start, end) cannot be parsed
+     */
+    public static List<SimpleInterval> getResolvedIntervals(
+            final String intervalQueryString,
+            final SAMSequenceDictionary sequenceDictionary) {
+        Utils.nonNull(intervalQueryString);
+        Utils.validateArg(!intervalQueryString.isEmpty(), "intervalQueryString should not be empty");
+
+        // Keep a list of all valid interpretations
+        final List<SimpleInterval> resolvedIntervals = new ArrayList<>();
+
+        // Treat the entire query string as a contig name. If it exists in the sequence dictionary,
+        // count that as one valid interpretation.
+        final SAMSequenceRecord queryAsContigName = sequenceDictionary.getSequence(intervalQueryString);
+        if (queryAsContigName != null) {
+            resolvedIntervals.add(new SimpleInterval(intervalQueryString, 1, queryAsContigName.getSequenceLength()));
+        }
+
+        // The query must contain at least one colon for an ambiguity to exist.
+        final int lastColonIndex = intervalQueryString.lastIndexOf(SimpleInterval.CONTIG_SEPARATOR);
+        if (lastColonIndex == -1) {
+            return resolvedIntervals;
+        }
+
+        // Get a prefix containing everything up to the last colon, and see if it represents a valid contig.
+        final String prefix = intervalQueryString.substring(0, lastColonIndex);
+        final SAMSequenceRecord prefixSequence = sequenceDictionary.getSequence(prefix);
+        if (prefixSequence == null) {
+            return resolvedIntervals;
+        }
+
+        try {
+            final int lastDashIndex = intervalQueryString.lastIndexOf(SimpleInterval.START_END_SEPARATOR);
+            int startPos;
+            int endPos;
+
+            // Try to resolve the suffix as a query against the contig represented by the prefix.
+            if (intervalQueryString.endsWith(SimpleInterval.END_OF_CONTIG)) {
+                // try to resolve as "prefix:nnn+"
+                startPos = SimpleInterval.parsePositionThrowOnFailure(intervalQueryString.substring(lastColonIndex + 1, intervalQueryString.length()-1));
+                endPos = prefixSequence.getSequenceLength();
+            } else if (lastDashIndex > lastColonIndex) {
+                // try to resolve as "prefix:start-end"
+                startPos = SimpleInterval.parsePositionThrowOnFailure(intervalQueryString.substring(lastColonIndex + 1, lastDashIndex));
+                endPos = SimpleInterval.parsePositionThrowOnFailure(intervalQueryString.substring(lastDashIndex + 1, intervalQueryString.length()));
+            } else {
+                // finally, try to resolve as "prefix:nnn"
+                startPos = SimpleInterval.parsePositionThrowOnFailure(intervalQueryString.substring(lastColonIndex + 1, intervalQueryString.length()));
+                endPos = startPos;
+            }
+
+            if (SimpleInterval.isValid(prefix, startPos, endPos)) {
+                // We've pre-tested to validate the positions, so add this interval. This should never throw.
+                resolvedIntervals.add(new SimpleInterval(prefix, startPos, endPos));
+            } else {
+                // Positions don't appear to be valid, but we don't want to throw if there is any other valid
+                // interpretation of the query string
+                if (resolvedIntervals.isEmpty()) {
+                    // validatePositions throws on validation failure, which is guaranteed if we got here
+                    SimpleInterval.validatePositions(prefix, startPos, endPos);
+                }
+            }
+        } catch (NumberFormatException e) {
+            // parsing of the start or end pos failed
+            if (resolvedIntervals.isEmpty()) {
+                throw e;
+            } else {
+                // We're interpreting this as a query against a full contig, but its POSSIBLE that the user
+                // mis-entered the start or stop position, and had they entered them correctly, would have resulted
+                // in an ambiguity. So accept the query as an interval for the full contig, but issue a warning
+                // saying how the query as resolved.
+                log.warn(String.format(
+                        "The query interval string \"%s\" is interpreted as a query against the contig named \"%s\", " +
+                                "but may have been intended as an (accidentally malformed) query against the contig named \"%s\"",
+                        intervalQueryString,
+                        resolvedIntervals.get(0).getContig(),
+                        prefixSequence.getSequenceName()));
+            }
+        }
+        return resolvedIntervals;
+    }
 
     /**
      * Create a new interval, bounding start and stop by the start and end of contig

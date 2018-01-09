@@ -504,7 +504,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
     @Test(dataProvider = "ambiguousIntervalQueries")
     public void testAmbiguousIntervalQueries(final String ambiguousQuery, final List<String> expectedAmbiguousContigs) {
         final SAMSequenceDictionary sd = getAmbiguousSequenceDictionary();
-        Assert.assertEquals(new HashSet<>(SimpleInterval.getResolvedIntervals(ambiguousQuery, sd)), new HashSet<>(expectedAmbiguousContigs));
+        Assert.assertEquals(new HashSet<>(IntervalUtils.getResolvedIntervals(ambiguousQuery, sd)), new HashSet<>(expectedAmbiguousContigs));
     }
 
     @Test(expectedExceptions = NumberFormatException.class)
@@ -512,7 +512,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         final SAMSequenceDictionary sd = getAmbiguousSequenceDictionary();
         sd.addSequence(new SAMSequenceRecord("contig:1-10", 99));
         sd.addSequence(new SAMSequenceRecord("contig", 99));
-        SimpleInterval.getResolvedIntervals("contig:abc-dce", sd);
+        IntervalUtils.getResolvedIntervals("contig:abc-dce", sd);
     }
 
     @Test
@@ -529,7 +529,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         HashSet<SimpleInterval> expectedIntervals = new HashSet<>();
         expectedIntervals.add(new SimpleInterval(queryString, 1, 99));
         Assert.assertEquals(
-                new HashSet<>(SimpleInterval.getResolvedIntervals(queryString, sd)),
+                new HashSet<>(IntervalUtils.getResolvedIntervals(queryString, sd)),
                 new HashSet<>(expectedIntervals));
     }
 
@@ -581,7 +581,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
             final SAMSequenceDictionary sequenceDictionary,
             final String queryString,
             final SimpleInterval expectedInterval) {
-        final List<SimpleInterval> ambiguousIntervals = SimpleInterval.getResolvedIntervals(queryString, sequenceDictionary);
+        final List<SimpleInterval> ambiguousIntervals = IntervalUtils.getResolvedIntervals(queryString, sequenceDictionary);
         Assert.assertNotNull(ambiguousIntervals);
         Assert.assertEquals(ambiguousIntervals.size(), 1);
         Assert.assertEquals(ambiguousIntervals.get(0), expectedInterval);
@@ -594,14 +594,14 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         final String contigPrefix = "prefix:";
         sd.addSequence(new SAMSequenceRecord(contigPrefix, 99));
         Assert.assertEquals(
-                new HashSet<>(SimpleInterval.getResolvedIntervals(contigPrefix + "+", sd)),
+                new HashSet<>(IntervalUtils.getResolvedIntervals(contigPrefix + "+", sd)),
                 new HashSet<>());
 
         sd.addSequence(new SAMSequenceRecord(contigPrefix + "+", 99));
         HashSet<SimpleInterval> expectedIntervals = new HashSet<>();
         expectedIntervals.add(new SimpleInterval("prefix:+", 1, 99));
         Assert.assertEquals(
-                new HashSet<>(SimpleInterval.getResolvedIntervals(contigPrefix + "+", sd)),
+                new HashSet<>(IntervalUtils.getResolvedIntervals(contigPrefix + "+", sd)),
                 expectedIntervals);
     }
 

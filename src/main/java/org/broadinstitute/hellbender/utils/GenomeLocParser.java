@@ -305,7 +305,7 @@ public final class GenomeLocParser {
 
             // Get a list of all possible valid intervals for this query by resolving the query against the sequence
             // dictionary. Throw if there is an ambiguity, otherwise get the unique interval from the list.
-            final List<SimpleInterval> allResolvedIntervals = SimpleInterval.getResolvedIntervals(str, contigInfo.getDictionary());
+            final List<SimpleInterval> allResolvedIntervals = IntervalUtils.getResolvedIntervals(str, contigInfo.getDictionary());
             final Locatable locatable = getUnambiguousInterval(str, allResolvedIntervals);
 
             final String contig = locatable.getContig();
