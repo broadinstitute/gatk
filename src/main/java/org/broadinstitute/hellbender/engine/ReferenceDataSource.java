@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequence;
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.iterators.ByteArrayIterator;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -21,10 +22,10 @@ public interface ReferenceDataSource extends GATKDataSource<Byte>, AutoCloseable
      *
      * The provided fasta file must have companion .fai and .dict files.
      *
-     * @param fastaFile reference fasta file
+     * @param fastaPath reference fasta Path
      */
-    public static ReferenceDataSource of(final File fastaFile) {
-        return new ReferenceFileSource(fastaFile);
+    public static ReferenceDataSource of(final Path fastaPath) {
+        return new ReferenceFileSource(fastaPath);
     }
 
 

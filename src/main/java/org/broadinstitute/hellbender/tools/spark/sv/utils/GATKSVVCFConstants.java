@@ -73,6 +73,10 @@ public final class GATKSVVCFConstants {
     public static final String COPY_NUMBER_FORMAT = "CN";
     public static final String COPY_NUMBER_QUALITY_FORMAT = "CNQ";
 
+    public static final String CPX_SV_SYB_ALT_ALLELE_STR = "CPX";
+    public static final String CPX_EVENT_ALT_ARRANGEMENTS = "ALT_ARRANGEMENT";
+    public static final String CPX_SV_REF_SEGMENTS = "SEGMENTS";
+
     public static final List<String> expectedHeaderLinesInVCF
             = Stream.of("SVTYPE", "SVLEN", "MATEID", "INV", "DEL", "INS", "DUP", "DUP:INV",
                     "CIPOS", "CIEND", "IMPRECISE", "READ_PAIR_SUPPORT", "SPLIT_READ_SUPPORT",

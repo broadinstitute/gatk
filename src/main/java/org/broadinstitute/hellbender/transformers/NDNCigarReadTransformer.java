@@ -8,17 +8,13 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
- * A read transformer that refactor NDN cigar elements to one N element.
+ * A read transformer that refactors NDN cigar elements to one N element.
  *
  *  <p>
  *     This read transformer will refactor cigar strings that contain N-D-N elements to one N element (with total length of the three refactored elements).
  *     This is intended primarily for users of RNA-Seq data handling programs such as TopHat2.
  *     Currently we consider that the internal N-D-N motif is illegal and we error out when we encounter it. By refactoring the cigar string of
  *     those specific reads, users of TopHat and other tools can circumvent this problem without affecting the rest of their dataset.
- *
- *     NOTE: any walker that need that functionality should apply that read transformer in its map function, since it won't be activated by the GATK engine.
- *
- *     The engine parameter that activate this read transformer is --refactor_NDN_cigar_string or -fixNDN
  *  </p>
  *
  */

@@ -4,6 +4,7 @@ import org.apache.commons.math3.exception.NotStrictlyPositiveException;
 import org.apache.commons.math3.exception.NumberIsTooLargeException;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
+import org.apache.commons.math3.util.FastMath;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -23,6 +24,8 @@ public final class MathUtils {
     public static final double LOG10_P_OF_ZERO = -1000000.0;
 
     public static final double LOG10_ONE_HALF = Math.log10(0.5);
+
+    public static final double LOG_ONE_HALF = FastMath.log(0.5);
 
     public static final double LOG10_ONE_THIRD = -Math.log10(3.0);
 
@@ -607,6 +610,10 @@ public final class MathUtils {
 
     public static double log10SumLog10(final double a, final double b) {
         return a > b ? a + Math.log10(1 + Math.pow(10.0, b - a)) : b + Math.log10(1 + Math.pow(10.0, a - b));
+    }
+
+    public static double logSumLog(final double a, final double b) {
+        return a > b ? a + FastMath.log(1 + FastMath.exp(b - a)) : b + FastMath.log(1 + FastMath.exp(a - b));
     }
 
     /**

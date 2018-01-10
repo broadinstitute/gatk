@@ -1,5 +1,5 @@
 ReadTSV = function(tsv_file) {
-    return(suppressWarnings(fread(tsv_file, sep="\t", stringsAsFactors=FALSE, header=TRUE, check.names=FALSE, data.table=FALSE, showProgress=FALSE, verbose=FALSE)))
+    return(suppressWarnings(fread(sprintf("grep -v ^@ %s", tsv_file), sep="\t", stringsAsFactors=FALSE, header=TRUE, check.names=FALSE, data.table=FALSE, showProgress=FALSE, verbose=FALSE)))
 }
 
 ## Contig Background for data

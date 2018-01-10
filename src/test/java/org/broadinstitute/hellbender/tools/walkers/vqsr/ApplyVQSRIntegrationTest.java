@@ -48,10 +48,10 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
                     " --lenient" +
                     " --output %s" +
                     " -mode SNP" +
-                    " -tranchesFile " + getLargeVQSRTestDataDir() + "expected/SNPTranches.txt" +
+                    " --tranches-file " + getLargeVQSRTestDataDir() + "expected/SNPTranches.txt" +
                     // pass in the tranche file to match GATK3; though without a TS_FILTER_LEVEL
                     // arg they aren't used
-                    " -recalFile " + getLargeVQSRTestDataDir() + "snpRecal.vcf" +
+                    " --recal-file " + getLargeVQSRTestDataDir() + "snpRecal.vcf" +
                     " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
                 Arrays.asList(getLargeVQSRTestDataDir() + "expected/snpApplyResult.vcf"));
         spec.executeTest("testApplyRecalibrationSNP", this);
@@ -69,8 +69,8 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
                     " --output %s" +
                     // pass in the tranche file to match GATK3; though without a TS_FILTER_LEVEL
                     // arg they aren't used
-                    " -tranchesFile " + getLargeVQSRTestDataDir() + "expected/indelTranches.txt" +
-                    " -recalFile " + getLargeVQSRTestDataDir() + "indelRecal.vcf" +
+                    " --tranches-file " + getLargeVQSRTestDataDir() + "expected/indelTranches.txt" +
+                    " --recal-file " + getLargeVQSRTestDataDir() + "indelRecal.vcf" +
                     " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
                 Arrays.asList(getLargeVQSRTestDataDir() + "expected/indelApplyResult.vcf"));
         spec.executeTest("testApplyRecalibrationIndel", this);
@@ -83,8 +83,8 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
                     " -mode BOTH" +
                     " --variant " + getToolTestDataDir() + "VQSR.mixedTest.input.vcf" +
                     " --output %s" +
-                    " -tranchesFile " + getToolTestDataDir() + "VQSR.mixedTest.tranches" +
-                    " -recalFile " + getToolTestDataDir() + "VQSR.mixedTest.recal.vcf" +
+                    " --tranches-file " + getToolTestDataDir() + "VQSR.mixedTest.tranches" +
+                    " --recal-file " + getToolTestDataDir() + "VQSR.mixedTest.recal.vcf" +
                     " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
                 Arrays.asList(getToolTestDataDir() + "expected/applySNPAndIndelResult.vcf"));
         spec.executeTest("testApplyRecalibrationSnpAndIndelTogether", this);
@@ -101,12 +101,12 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
         args.add("20:1000100-1000500");
         args.add("-mode");
         args.add("BOTH");
-        args.add("--excludeFiltered");
-        args.add("-ts_filter_level");
+        args.add("-exclude-filtered");
+        args.add("-truth-sensitivity-filter-level");
         args.add("90.0");
-        args.add("-tranchesFile ");
+        args.add("--tranches-file ");
         args.add(getToolTestDataDir() + "VQSR.mixedTest.tranches");
-        args.add("-recalFile");
+        args.add("--recal-file");
         args.add(getToolTestDataDir() + "VQSR.mixedTest.recal.vcf");
         args.addOutput(tempOut);
 
@@ -125,11 +125,11 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
         final String base =
                 " -L 3:113005755-195507036" +
                 " -mode SNP -AS" +
-                " -ts_filter_level 99.7" +
+                " -ts-filter-level 99.7" +
                 " --variant " + getToolTestDataDir() + "VQSR.AStest.input.vcf" +
                 " --output %s" +
-                " -tranchesFile " + getToolTestDataDir() + "VQSR.AStest.snps.tranches" +
-                " -recalFile " + getToolTestDataDir() + "VQSR.AStest.snps.recal.vcf" +
+                " --tranches-file " + getToolTestDataDir() + "VQSR.AStest.snps.tranches" +
+                " --recal-file " + getToolTestDataDir() + "VQSR.AStest.snps.recal.vcf" +
                 " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
@@ -143,11 +143,11 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
         final String base =
                 " -L 3:113005755-195507036" +
                 " -mode INDEL -AS" +
-                " -ts_filter_level 99.3" +
+                " -ts-filter-level 99.3" +
                 " --variant " + getToolTestDataDir() + "VQSR.AStest.postSNPinput.vcf" +
                 " --output %s" +
-                " -tranchesFile " + getToolTestDataDir() + "VQSR.AStest.indels.tranches" +
-                " -recalFile " + getToolTestDataDir() + "VQSR.AStest.indels.recal.vcf" +
+                " --tranches-file " + getToolTestDataDir() + "VQSR.AStest.indels.tranches" +
+                " --recal-file " + getToolTestDataDir() + "VQSR.AStest.indels.recal.vcf" +
                 " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
@@ -180,11 +180,11 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
         final String base =
                 " -L " +  queryInterval.toString() +
                         " -mode INDEL -AS" +
-                        " -ts_filter_level 99.3" +
+                        " -ts-filter-level 99.3" +
                         " --variant " + getToolTestDataDir() + "VQSR.AStest.postSNPinput.HACKEDhg38header.vcf.gz" +
                         " --output " + tempGZIPOut.getAbsolutePath() +
-                        " -tranchesFile " + getToolTestDataDir() + "VQSR.AStest.indels.tranches" +
-                        " -recalFile " + getToolTestDataDir() + "VQSR.AStest.indels.recal.vcf" +
+                        " --tranches-file " + getToolTestDataDir() + "VQSR.AStest.indels.tranches" +
+                        " --recal-file " + getToolTestDataDir() + "VQSR.AStest.indels.recal.vcf" +
                         " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(base, Collections.emptyList());

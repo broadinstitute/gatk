@@ -84,7 +84,7 @@ public abstract class IntervalWalkerSpark extends GATKSparkTool {
                 }
             }, shard.getInterval());
             ReferenceDataSource reference = bReferenceSource == null ? null :
-                    new ReferenceMemorySource(bReferenceSource.getValue().getReferenceBases(null, paddedInterval), sequenceDictionary);
+                    new ReferenceMemorySource(bReferenceSource.getValue().getReferenceBases(paddedInterval), sequenceDictionary);
             FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
             return new IntervalWalkerContext(interval, readsContext, new ReferenceContext(reference, interval), new FeatureContext(features, interval));
         };

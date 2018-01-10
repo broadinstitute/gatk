@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import java.nio.file.Path;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -10,7 +11,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -20,6 +21,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.List;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 
 /**
@@ -82,19 +84,19 @@ import java.util.List;
  * <br />
  * <h4>Single-sample GVCF calling (outputs intermediate GVCF)</h4>
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" HaplotypeCaller  \
- *   -R reference.fasta \
+ * gatk --java-options "-Xmx4g" HaplotypeCaller  \
+ *   -R Homo_sapiens_assembly38.fasta \
  *   -I input.bam \
- *   -O output.g.vcf \
+ *   -O output.g.vcf.gz \
  *   -ERC GVCF
  * </pre>
  *
  * <h4>Single-sample GVCF calling with <a href='https://software.broadinstitute.org/gatk/documentation/article?id=9622'>allele-specific annotations</a></h4>
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" HaplotypeCaller  \
- *   -R reference.fasta \
+ * gatk --java-options "-Xmx4g" HaplotypeCaller  \
+ *   -R Homo_sapiens_assembly38.fasta \
  *   -I input.bam \
- *   -O output.g.vcf \
+ *   -O output.g.vcf.gz \
  *   -ERC GVCF \
  *   -G Standard \
  *   -G AS_Standard
@@ -102,10 +104,10 @@ import java.util.List;
  *
  * <h4>Variant calling with <a href='https://software.broadinstitute.org/gatk/documentation/article?id=5484'>bamout</a> to show realigned reads</h4>
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" HaplotypeCaller  \
- *   -R reference.fasta \
+ * gatk --java-options "-Xmx4g" HaplotypeCaller  \
+ *   -R Homo_sapiens_assembly38.fasta \
  *   -I input.bam \
- *   -O output.vcf \
+ *   -O output.vcf.gz \
  *   -bamout bamout.bam
  * </pre>
  *
@@ -133,14 +135,12 @@ import java.util.List;
 @CommandLineProgramProperties(
         summary = "Call germline SNPs and indels via local re-assembly of haplotypes",
         oneLineSummary = "Call germline SNPs and indels via local re-assembly of haplotypes",
-        programGroup = VariantProgramGroup.class
+        programGroup = ShortVariantDiscoveryProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
 public final class HaplotypeCaller extends AssemblyRegionWalker {
 
-    public static final int DEFAULT_READSHARD_SIZE = NO_INTERVAL_SHARDING;
-    public static final int DEFAULT_READSHARD_PADDING = 100;
+    //NOTE: many of these settings are referenced by HaplotypeCallerSpark
     public static final int DEFAULT_MIN_ASSEMBLY_REGION_SIZE = 50;
     public static final int DEFAULT_MAX_ASSEMBLY_REGION_SIZE = 300;
     public static final int DEFAULT_ASSEMBLY_REGION_PADDING = 100;
@@ -159,12 +159,6 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     private VariantContextWriter vcfWriter;
 
     private HaplotypeCallerEngine hcEngine;
-
-    @Override
-    protected int defaultReadShardSize() { return DEFAULT_READSHARD_SIZE; }
-
-    @Override
-    protected int defaultReadShardPadding() { return DEFAULT_READSHARD_PADDING; }
 
     @Override
     protected int defaultMinAssemblyRegionSize() { return DEFAULT_MIN_ASSEMBLY_REGION_SIZE; }
@@ -210,7 +204,7 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
 
     private static CachingIndexedFastaSequenceFile getReferenceReader(ReferenceInputArgumentCollection referenceArguments) {
         final CachingIndexedFastaSequenceFile referenceReader;
-        final File reference = new File(referenceArguments.getReferenceFileName());
+        final Path reference = IOUtils.getPath(referenceArguments.getReferenceFileName());
         try {
             referenceReader = new CachingIndexedFastaSequenceFile(reference);
         } catch (FileNotFoundException e) {

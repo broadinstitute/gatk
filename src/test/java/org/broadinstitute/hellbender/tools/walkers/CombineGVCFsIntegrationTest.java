@@ -65,10 +65,10 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
                 {new File[]{getTestFile("gvcf.basepairResolution.vcf")}, getTestFile("testBasepairResolutionInput.vcf"), Arrays.asList("-A", "ClippingRankSumTest"), b37_reference_20_21},
                 // Interval Test
                 {new File[]{getTestFile("gvcfExample1.vcf"),getTestFile("gvcfExample2.vcf"),}, getTestFile("IntervalTest.vcf"), Arrays.asList(" -L ",  "20:69485-69791"), b37_reference_20_21},
-                // convertToBasePairResolution argument test
-                {new File[]{getTestFile("gvcfExample1.vcf"),getTestFile("gvcfExample2.vcf"),}, getTestFile("convertToBasePairResolution.vcf"), Arrays.asList(" -L ",  "20:69485-69791", "--convertToBasePairResolution"), b37_reference_20_21},
-                // Testing the breakBands argument " -L 1:69485-69791 --breakBandsAtMultiplesOf 5"
-                {new File[]{getTestFile("gvcfExample1.vcf"),getTestFile("gvcfExample2.vcf"),}, getTestFile("testBreakBandsArgumet.vcf"), Arrays.asList(" -L ",  "20:69485-69791", "--breakBandsAtMultiplesOf", "5", "-A", "ClippingRankSumTest"), b37_reference_20_21},
+                // convert-to-base-pair-resolution argument test
+                {new File[]{getTestFile("gvcfExample1.vcf"),getTestFile("gvcfExample2.vcf"),}, getTestFile("convertToBasePairResolution.vcf"), Arrays.asList(" -L ",  "20:69485-69791", "--" + CombineGVCFs.BP_RES_LONG_NAME), b37_reference_20_21},
+                // Testing the breakBands argument " -L 1:69485-69791 --break-bands-at-multiples-of 5"
+                {new File[]{getTestFile("gvcfExample1.vcf"),getTestFile("gvcfExample2.vcf"),}, getTestFile("testBreakBandsArgumet.vcf"), Arrays.asList(" -L ",  "20:69485-69791", "--" + CombineGVCFs.BREAK_BANDS_LONG_NAME, "5", "-A", "ClippingRankSumTest"), b37_reference_20_21},
                 // Testing mismatched reference bases
                 {new File[]{getTestFile("combine-gvcf-wrong-ref-input1.vcf"),getTestFile("combine-gvcf-wrong-ref-input2.vcf"),}, getTestFile("testWrongReferenceBaseBugFix.vcf"), Arrays.asList("-A", "ClippingRankSumTest"), b37_reference_20_21},
                 //Testing allele-specific annotations
@@ -150,7 +150,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         }, reference);
     }
 
-    private void runCombineGVCFSandAssertSomething(List<File> inputs, File expected, List<String> additionalArguments, BiConsumer<VariantContext, VariantContext> assertion, String reference) throws IOException {
+    public void runCombineGVCFSandAssertSomething(List<File> inputs, File expected, List<String> additionalArguments, BiConsumer<VariantContext, VariantContext> assertion, String reference) throws IOException {
         final File output = createTempFile("genotypegvcf", ".vcf");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
@@ -363,6 +363,51 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(third.getStart(), 69775);
         Assert.assertEquals(third.getEnd(), 69783);
         Assert.assertEquals(third.getGenotypes().size(), 2);
+    }
+
+    @Test
+    // This test asserts that the behavior is rational in the case of whole genome gvcfs which have variants starting at
+    // the first and ending on the last base of each contig.
+    public void testStartChromosome() throws Exception {
+        final File output = createTempFile("genotypegvcf", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(b37_reference_20_21))
+                .addOutput(output);
+        args.addVCF(getTestFile("gvcfExample1.fullchrom.2021.vcf"));
+        args.addVCF(getTestFile("gvcfExample2.vcf"));
+
+        runCommandLine(args);
+
+        final List<VariantContext> allVCs = getVariantContexts(output);
+
+        final VariantContext first = allVCs.get(0);
+        Assert.assertEquals(first.getStart(), 1);
+        Assert.assertEquals(first.getEnd(), 69490);
+        Assert.assertEquals(first.getContig(), "20");
+        Assert.assertEquals(first.getNAlleles(), 2);
+        Assert.assertEquals(first.getGenotypes().size(), 2);
+
+        final VariantContext last = allVCs.get(19);
+        Assert.assertEquals(last.getStart(), 69792);
+        Assert.assertEquals(last.getEnd(), 63025520);
+        Assert.assertEquals(last.getContig(), "20");
+        Assert.assertEquals(last.getNAlleles(), 2);
+        Assert.assertEquals(last.getGenotypes().size(), 2);
+
+        final VariantContext nextchrom = allVCs.get(20);
+        Assert.assertEquals(nextchrom.getStart(), 1);
+        Assert.assertEquals(nextchrom.getEnd(), 69490);
+        Assert.assertEquals(nextchrom.getContig(), "21");
+        Assert.assertEquals(nextchrom.getNAlleles(), 2);
+        Assert.assertEquals(nextchrom.getGenotypes().size(), 2);
+
+        final VariantContext nextcromlast = allVCs.get(allVCs.size()-1);
+        Assert.assertEquals(nextcromlast.getStart(), 69784);
+        Assert.assertEquals(nextcromlast.getEnd(), 48129895);
+        Assert.assertEquals(nextcromlast.getContig(), "21");
+        Assert.assertEquals(nextcromlast.getNAlleles(), 2);
+        Assert.assertEquals(nextcromlast.getGenotypes().size(), 2);
     }
 
 }

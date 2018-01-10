@@ -55,7 +55,7 @@ public final class BaseRecalibratorEngineSparkWrapper implements Serializable {
     }
 
     // saves to output
-    public static void saveTextualReport(String output, SAMFileHeader header, RecalibrationTables rt, RecalibrationArgumentCollection recalArgs, AuthHolder auth) throws IOException {
+    public static void saveTextualReport(String output, SAMFileHeader header, RecalibrationTables rt, RecalibrationArgumentCollection recalArgs) throws IOException {
         OutputStream oStream = BucketUtils.createFile(output);
         QuantizationInfo qi = new QuantizationInfo(rt, recalArgs.QUANTIZING_LEVELS);
         if (recalArgs.FORCE_PLATFORM != null) {

@@ -44,7 +44,7 @@ public final class SortReadFileSparkIntegrationTest extends CommandLineProgramTe
             args.add("--R");
             args.add(referenceFile.getAbsolutePath());
         }
-        args.add("--numReducers"); args.add("1");
+        args.add("--num-reducers"); args.add("1");
 
         //https://github.com/broadinstitute/gatk/issues/1260
 //        args.add("--SORT_ORDER");
@@ -63,7 +63,7 @@ public final class SortReadFileSparkIntegrationTest extends CommandLineProgramTe
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--"+ StandardArgumentDefinitions.INPUT_LONG_NAME); args.add(unsortedBam.getCanonicalPath());
         args.add("--"+StandardArgumentDefinitions.OUTPUT_LONG_NAME); args.add(outputBam.getCanonicalPath());
-        args.add("--numReducers"); args.add("1");
+        args.add("--num-reducers"); args.add("1");
 
         this.runCommandLine(args.getArgsArray());
 

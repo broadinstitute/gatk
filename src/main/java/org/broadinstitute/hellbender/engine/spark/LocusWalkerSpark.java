@@ -114,7 +114,7 @@ public abstract class LocusWalkerSpark extends GATKSparkTool {
             SimpleInterval paddedInterval = shardedRead.getPaddedInterval();
             Iterator<GATKRead> readIterator = shardedRead.iterator();
             ReferenceDataSource reference = bReferenceSource == null ? null :
-                    new ReferenceMemorySource(bReferenceSource.getValue().getReferenceBases(null, paddedInterval), sequenceDictionary);
+                    new ReferenceMemorySource(bReferenceSource.getValue().getReferenceBases(paddedInterval), sequenceDictionary);
             FeatureManager fm = bFeatureManager == null ? null : bFeatureManager.getValue();
 
             final SAMSequenceDictionary referenceDictionary = reference == null? null : reference.getSequenceDictionary();

@@ -68,7 +68,10 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-L", "20",
                 "-germline-resource", GNOMAD.getAbsolutePath(),
                 "-XL", mask.getAbsolutePath(),
-                "-O", unfilteredVcf.getAbsolutePath()
+                "-O", unfilteredVcf.getAbsolutePath(),
+                "--downsampling-stride", "20",
+                "--max-reads-per-alignment-start", "4",
+                "--max-suspicious-reads-per-alignment-start", "4"
         };
 
         runCommandLine(args);
@@ -198,7 +201,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), "FilterMutectCalls"));
 
 
-        final long numVariantsBeforeFiltering = StreamSupport.stream(new FeatureDataSource<VariantContext>(filteredVcf).spliterator(), false).count();
+        final long numVariantsBeforeFiltering = StreamSupport.stream(new FeatureDataSource<VariantContext>(unfilteredVcf).spliterator(), false).count();
 
         final long numVariantsPassingFilters = StreamSupport.stream(new FeatureDataSource<VariantContext>(filteredVcf).spliterator(), false)
                 .filter(vc -> vc.getFilters().isEmpty()).count();
@@ -311,6 +314,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 {new File(DREAM_BAMS_DIR, "tumor_2.bam"), "background.synth.challenge2.snvs.svs.tumorbackground", new File(DREAM_BAMS_DIR, "normal_2.bam"), "synthetic.challenge.set2.normal", new File(DREAM_VCFS_DIR, "sample_2.vcf"), new File(DREAM_MASKS_DIR, "mask2.list"), 0.95},
                 {new File(DREAM_BAMS_DIR, "tumor_3.bam"), "IS3.snv.indel.sv", new File(DREAM_BAMS_DIR, "normal_3.bam"), "G15512.prenormal.sorted", new File(DREAM_VCFS_DIR, "sample_3.vcf"), new File(DREAM_MASKS_DIR, "mask3.list"), 0.90},
                 {new File(DREAM_BAMS_DIR, "tumor_4.bam"), "synthetic.challenge.set4.tumour", new File(DREAM_BAMS_DIR, "normal_4.bam"), "synthetic.challenge.set4.normal", new File(DREAM_VCFS_DIR, "sample_4.vcf"), new File(DREAM_MASKS_DIR, "mask4.list"), 0.65}
+
         };
     }
 

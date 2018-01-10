@@ -70,7 +70,7 @@ public final class IndexUtils {
      * Prints a warning if the index is not up-to date (ie older than the feature file)
      */
     public static void checkIndexVersionAndModificationTime(final File featureFile, final File indexFile, final Index index) {
-        Utils.nonNull(featureFile, "featureFile");
+        Utils.nonNull(featureFile, "feature-file");
         Utils.nonNull(indexFile, "indexFile");
         Utils.nonNull(index, "index");
         if (! index.isCurrentVersion()) {

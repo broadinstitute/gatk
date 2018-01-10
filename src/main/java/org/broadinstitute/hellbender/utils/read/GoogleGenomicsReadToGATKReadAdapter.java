@@ -257,7 +257,7 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
 
         return StringUtil.stringToBytes(basesString);
     }
-
+    
     @Override
     public int getLength() {
         final String basesString = genomicsRead.getAlignedSequence();

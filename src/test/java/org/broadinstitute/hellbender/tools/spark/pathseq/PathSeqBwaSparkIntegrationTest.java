@@ -29,16 +29,14 @@ public class PathSeqBwaSparkIntegrationTest extends CommandLineProgramTest {
     @Test(dataProvider = "pathseqBwaTestData")
     private void testBwaTool(final String inputBamFilename, final String expectedBamFilename) throws Exception {
         final File inputBamFile = getTestFile(inputBamFilename);
-        final File outputTempDir = createTempDir("tmp_pathseqBwaTest");
-        final File outputBamFile = new File(outputTempDir.getAbsolutePath(), "output");
-        final String outputBasePath = outputBamFile.getAbsolutePath();
+        final File pairedOutputBamFile = createTempFile("paired_output", ".bam");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addArgument("pairedInput", inputBamFile.getAbsolutePath());
-        args.addArgument("output", outputBasePath);
-        args.addArgument("pathogenBwaImage", IMAGE_PATH);
-        args.addArgument("pathogenFasta", REF_PATH);
+        args.addFileArgument(PathSeqBwaSpark.PAIRED_INPUT_LONG_NAME, inputBamFile);
+        args.addFileArgument(PathSeqBwaSpark.PAIRED_OUTPUT_LONG_NAME, pairedOutputBamFile);
+        args.addArgument(PSBwaArgumentCollection.MICROBE_BWA_IMAGE_LONG_NAME, IMAGE_PATH);
+        args.addArgument(PSBwaArgumentCollection.MICROBE_FASTA_LONG_NAME, REF_PATH);
         this.runCommandLine(args.getArgsArray());
-        SamAssertionUtils.assertSamsEqual(new File(outputBasePath + ".paired.bam"), getTestFile(expectedBamFilename), ValidationStringency.LENIENT);
+        SamAssertionUtils.assertSamsEqual(pairedOutputBamFile, getTestFile(expectedBamFilename), ValidationStringency.LENIENT);
     }
 }

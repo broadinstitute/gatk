@@ -133,7 +133,7 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
 
             args.addOutput(output)
                     .addArgument(StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_LONG_NAME, "0")
-                    .addArgument("gatherType", GatherVcfsCloud.GatherType.BLOCK.toString())
+                    .addArgument(GatherVcfsCloud.GATHER_TYPE_LONG_NAME, GatherVcfsCloud.GatherType.BLOCK.toString())
                     .addBooleanArgument(GatherVcfsCloud.IGNORE_SAFETY_CHECKS_LONG_NAME, true) // much faster this way
                     .addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME, false);
             runCommandLine(args);

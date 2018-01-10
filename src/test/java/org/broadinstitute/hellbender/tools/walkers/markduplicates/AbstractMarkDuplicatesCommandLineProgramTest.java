@@ -21,6 +21,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
@@ -559,7 +560,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         IntegrationTestSpec.assertEqualTextFiles(metricsFile, expectedMetrics, "#"); //this compares the values but not headers
 
         //Note: headers need to be compares not by exact values because they include times and class names
-        final List<String> lines = FileUtils.readLines(metricsFile);
+        final List<String> lines = FileUtils.readLines(metricsFile, StandardCharsets.UTF_8);
         Assert.assertTrue(lines.get(0).startsWith("##"), lines.get(0));
         Assert.assertTrue(lines.get(1).startsWith("#"), lines.get(1));
         Assert.assertTrue(lines.get(1).toLowerCase().contains("--input"), lines.get(1));  //Note: lowercase because picard uses INPUT and GATK uses input for full name
@@ -593,7 +594,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
 
     @Test(dataProvider = "testMDdata")
     public void testMDOrder(final File input, final File expectedOutput) throws Exception {
-        // This method is overridden in MarkDuplicatesSparkIntegrationTest to provide a --numReducers argument
+        // This method is overridden in MarkDuplicatesSparkIntegrationTest to provide a --num-reducers argument
         testMDOrderImpl(input, expectedOutput, "");
     }
 

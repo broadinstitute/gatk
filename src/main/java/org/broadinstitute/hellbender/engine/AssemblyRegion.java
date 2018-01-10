@@ -313,7 +313,7 @@ public final class AssemblyRegion implements Locatable {
      * @return true if read can be added to this region, false otherwise
      */
     public boolean readOverlapsRegion(final GATKRead read) {
-        if ( read.getStart() > read.getEnd() ) {
+        if ( read.isEmpty() || read.getStart() > read.getEnd() ) {
             return false;
         }
 

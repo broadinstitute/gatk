@@ -363,6 +363,41 @@ public class GATKReadAdaptersUnitTest extends GATKBaseTest {
         Assert.assertEquals(read.getUnclippedEnd(), expectedUnclippedEnd, "Wrong unclipped end for read");
     }
 
+    @Test
+    public void testGetSoftStartAndEnd() {
+        final GATKRead read = basicReadBackedBySam();
+
+        Assert.assertEquals(read.getSoftStart(), 5);
+        Assert.assertEquals(read.getSoftEnd(), 7);
+
+        // Should invalidate the cached soft start/end
+        read.setCigar("1S2M1S1H");
+
+        Assert.assertEquals(read.getSoftStart(), 4);
+        Assert.assertEquals(read.getSoftEnd(), 7);
+
+        // Should invalidate the cached soft start/end
+        read.setCigar("4M");
+
+        Assert.assertEquals(read.getSoftStart(), 5);
+        Assert.assertEquals(read.getSoftEnd(), 8);
+    }
+
+    @Test
+    public void testGetAdaptorBoundary() {
+        final GATKRead read = basicReadBackedBySam();
+        read.setFragmentLength(2);
+        read.setIsReverseStrand(false);
+        read.setMateIsReverseStrand(true);
+
+        Assert.assertEquals(read.getAdaptorBoundary(), ReadUtils.getAdaptorBoundary(read));
+
+        // Should invalidate the cached adaptor boundary
+        read.setIsReverseStrand(true);
+
+        Assert.assertEquals(read.getAdaptorBoundary(), ReadUtils.getAdaptorBoundary(read));
+    }
+
     @DataProvider(name = "GetAndSetMatePositionData")
     public Object[][] getAndSetMatePositionData() {
         final SAMRecord samWithUnmappedMate = basicSAMRecord();
@@ -640,6 +675,18 @@ public class GATKReadAdaptersUnitTest extends GATKBaseTest {
 
         read.setCigar((Cigar)null);
         Assert.assertEquals(read.getCigar(), new Cigar(), "Wrong cigar for read after setCigar()");
+    }
+
+    @Test
+    public void testCigarLengthCaching() {
+        final GATKRead read = basicReadBackedBySam();
+
+        Assert.assertEquals(read.numCigarElements(), 3);
+
+        // Should invalidate the cached cigar length
+        read.setCigar("4M");
+
+        Assert.assertEquals(read.numCigarElements(), 1);
     }
 
     @DataProvider(name = "GetAndSetReadGroupData")

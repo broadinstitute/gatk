@@ -14,6 +14,9 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+/**
+ * Integration tests for {@link CollectBaseDistributionByCycleSpark}.
+ */
 public final class CollectBaseDistributionByCycleSparkIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(
             "src/test/resources/org/broadinstitute/hellbender/metrics/analysis/CollectBaseDistributionByCycle");
@@ -65,9 +68,9 @@ public final class CollectBaseDistributionByCycleSparkIntegrationTest extends Co
             args.add("-" + "R");
             args.add(reference.getCanonicalPath());
         }
-        args.add("--" + "pfReadsOnly");
+        args.add("--" + "pf-reads-only");
         args.add(pfReadsOnly);
-        args.add("--" + "alignedReadsOnly");
+        args.add("--" + "aligned-reads-only");
         args.add(alignedReadsOnly);
 
         this.runCommandLine(args.getArgsArray());

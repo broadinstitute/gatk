@@ -2,8 +2,8 @@ package org.broadinstitute.hellbender.tools.copynumber;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.tools.copynumber.coverage.copyratio.CopyRatioCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberStandardArgument;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -20,7 +20,7 @@ import java.util.List;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class DenoiseReadCountsIntegrationTest extends CommandLineProgramTest {
-    private static final String TEST_SUB_DIR = toolsTestDir + "copynumber/coverage/denoising";
+    private static final File TEST_SUB_DIR = new File(toolsTestDir, "copynumber");
     private static final File WGS_READ_COUNTS_TSV_FILE = new File(TEST_SUB_DIR, "denoise-read-counts-wgs-read-counts-HCC1143_BL-n1-chr20-downsampled-deduplicated.tsv");
     private static final File WGS_READ_COUNTS_HDF5_FILE = new File(TEST_SUB_DIR, "denoise-read-counts-wgs-read-counts-HCC1143_BL-n1-chr20-downsampled-deduplicated.hdf5");
     private static final File WGS_ANNOTATED_INTERVALS_FILE = new File(TEST_SUB_DIR, "denoise-read-counts-wgs-annotated-intervals.tsv");
@@ -39,13 +39,13 @@ public final class DenoiseReadCountsIntegrationTest extends CommandLineProgramTe
                         final ArgumentsBuilder arguments = new ArgumentsBuilder()
                                 .addFileArgument(StandardArgumentDefinitions.INPUT_SHORT_NAME, inputReadCountsFile);
                         if (annotatedIntervalsFile != null) {
-                            arguments.addFileArgument(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_SHORT_NAME, annotatedIntervalsFile);
+                            arguments.addFileArgument(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME, annotatedIntervalsFile);
                         }
                         if (ponFile != null) {
-                            arguments.addFileArgument(CopyNumberStandardArgument.READ_COUNT_PANEL_OF_NORMALS_FILE_SHORT_NAME, ponFile);
+                            arguments.addFileArgument(CopyNumberStandardArgument.COUNT_PANEL_OF_NORMALS_FILE_LONG_NAME, ponFile);
                         }
                         if (numberOfEigenvalues != null) {
-                            arguments.addArgument(CopyNumberStandardArgument.NUMBER_OF_EIGENSAMPLES_SHORT_NAME, numberOfEigenvalues.toString());
+                            arguments.addArgument(CopyNumberStandardArgument.NUMBER_OF_EIGENSAMPLES_LONG_NAME, numberOfEigenvalues.toString());
                         }
                         data.add(Arrays.asList(arguments, ponFile == null));    //set isStandardizedEqualsDenoised = true if no PoN
                     }
@@ -65,8 +65,8 @@ public final class DenoiseReadCountsIntegrationTest extends CommandLineProgramTe
         final File standardizedCRFile = createTempFile("test", ".standardizedCR.tsv");
         final File denoisedCRFile = createTempFile("test", ".denoisedCR.tsv");
         final String[] arguments = argumentsBuilder
-                .addFileArgument(CopyNumberStandardArgument.STANDARDIZED_COPY_RATIOS_FILE_SHORT_NAME, standardizedCRFile)
-                .addFileArgument(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_SHORT_NAME, denoisedCRFile)
+                .addFileArgument(CopyNumberStandardArgument.STANDARDIZED_COPY_RATIOS_FILE_LONG_NAME, standardizedCRFile)
+                .addFileArgument(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, denoisedCRFile)
                 .addArgument(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO")
                 .getArgsArray();
         runCommandLine(arguments);
@@ -78,7 +78,7 @@ public final class DenoiseReadCountsIntegrationTest extends CommandLineProgramTe
         final CopyRatioCollection denoisedCopyRatios = new CopyRatioCollection(denoisedCRFile);
         Assert.assertFalse(standardizedCopyRatios == denoisedCopyRatios);
         //sample names and intervals should always be the same
-        Assert.assertEquals(standardizedCopyRatios.getSampleName(), denoisedCopyRatios.getSampleName());
+        Assert.assertEquals(standardizedCopyRatios.getMetadata(), denoisedCopyRatios.getMetadata());
         Assert.assertEquals(standardizedCopyRatios.getIntervals(), denoisedCopyRatios.getIntervals());
         //standardized and denoised copy ratios should be the same if PoN is not provided
         Assert.assertEquals(standardizedCopyRatios.getLog2CopyRatioValues().equals(denoisedCopyRatios.getLog2CopyRatioValues()), isStandardizedEqualsDenoised);

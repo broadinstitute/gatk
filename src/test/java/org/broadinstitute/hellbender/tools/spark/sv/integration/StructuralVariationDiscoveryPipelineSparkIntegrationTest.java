@@ -52,7 +52,7 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
             this.cnvCallsLoc = cnvCallsLoc;
         }
 
-        String getCommandLineNoApiKey() {
+        String getCommandLine() {
             return  " -R " + SVIntegrationTestDataProvider.reference_2bit +
                     " -I " + bamLoc +
                     " -O " + outputDir        + "/variants.vcf" +
@@ -105,7 +105,7 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
     @Test(dataProvider = "svDiscoverPipelineSparkIntegrationTest", groups = "sv")
     public void testSVDiscoverPipelineRunnableLocal(final StructuralVariationDiscoveryPipelineSparkIntegrationTest.StructuralVariationDiscoveryPipelineSparkIntegrationTestArgs params) throws Exception {
 
-        final List<String> args = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLineNoApiKey()).getArgsArray() );
+        final List<String> args = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLine()).getArgsArray() );
         runCommandLine(args);
 
         svDiscoveryVCFEquivalenceTest(args.get(args.indexOf("-O")+1), SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF,
@@ -118,7 +118,7 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
 
         MiniClusterUtils.runOnIsolatedMiniCluster(cluster -> {
 
-            final List<String> argsToBeModified = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLineNoApiKey()).getArgsArray() );
+            final List<String> argsToBeModified = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLine()).getArgsArray() );
             final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
 
             int idx = 0;

@@ -9,7 +9,7 @@ import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -20,7 +20,7 @@ import java.util.List;
 
 @CommandLineProgramProperties(summary = "Counts variants in the input VCF",
         oneLineSummary = "CountVariants on Spark",
-        programGroup = SparkProgramGroup.class)
+        programGroup = VariantEvaluationProgramGroup.class)
 @DocumentedFeature
 @BetaFeature
 public final class CountVariantsSpark extends GATKSparkTool {

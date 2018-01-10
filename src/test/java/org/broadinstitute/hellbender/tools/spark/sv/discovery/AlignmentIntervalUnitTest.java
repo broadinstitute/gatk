@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.utils.read.*;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import scala.Tuple2;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -21,7 +22,7 @@ public class AlignmentIntervalUnitTest extends GATKBaseTest {
     private static final List<String> refNames = Collections.singletonList(dummyRefName);
 
     @DataProvider(name = "TestDataForAIOverlaps")
-    Object[][] testDataFor() {
+    Object[][] testDataForAIOverlaps() {
         final List<Object[]> data = new ArrayList<>(20);
 
         AlignmentInterval ar1 = new AlignmentInterval(new SimpleInterval("1",1,5), 1,5, TextCigarCodec.decode("5M5H"),true, 60, 0, 100, AlnModType.NONE);
@@ -357,5 +358,53 @@ public class AlignmentIntervalUnitTest extends GATKBaseTest {
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
         final SAMRecord unmappedSam = ArtificialReadUtils.createArtificialUnmappedRead(header, new byte[]{}, new byte[]{}).convertToSAMRecord(header);
         new AlignmentInterval(unmappedSam);
+    }
+
+    @DataProvider(name = "TestDataForReadIntervalAlignedToRefSpan")
+    Object[][] testDataForReadIntervalAlignedToRefSpan() {
+        final List<Object[]> data = new ArrayList<>(20);
+
+        final Tuple2<Integer, Integer> noOverlap = new Tuple2<>(-1,-1);
+
+        SimpleInterval alignmentRefSpan = new SimpleInterval("chr1",4938770,4939497);
+        AlignmentInterval alignment = new AlignmentInterval(alignmentRefSpan, 1,728, TextCigarCodec.decode("728M61S"),true, 60, 0, 728, AlnModType.NONE);
+        SimpleInterval otherRefSpan = new SimpleInterval("chr2", 4938770, 4939497);
+        data.add(new Object[]{alignment, otherRefSpan, noOverlap});
+
+        otherRefSpan = new SimpleInterval("chr1", 1000, 2000);
+        data.add(new Object[]{alignment, otherRefSpan, noOverlap});
+
+        Tuple2<Integer, Integer> readInterval = new Tuple2<>(1, 728);
+        otherRefSpan = new SimpleInterval("chr1",4938770,4939497);
+        data.add(new Object[]{alignment, otherRefSpan, readInterval});
+
+        alignmentRefSpan = new SimpleInterval("chr1",9170350,9171390);
+        alignment = new AlignmentInterval(alignmentRefSpan, 1,1041, TextCigarCodec.decode("1041M1298H"),false, 60, 4, 1021, AlnModType.NONE);
+        otherRefSpan = new SimpleInterval("chr1",934806,935261);
+        data.add(new Object[]{alignment, otherRefSpan, noOverlap});
+
+
+
+        alignmentRefSpan = new SimpleInterval("chr1",66659809,66660176);
+        alignment = new AlignmentInterval(alignmentRefSpan, 1,354, TextCigarCodec.decode("124M10D106M3D16M2I75M3D31M241H"),true, 60, 35, 185, AlnModType.NONE);
+        otherRefSpan = new SimpleInterval("chr1",66659958,66660262);
+        readInterval = new Tuple2<>(140,354);
+        data.add(new Object[]{alignment, otherRefSpan, readInterval});
+
+        alignmentRefSpan = new SimpleInterval("chr1",156328046,156328757);
+        alignment = new AlignmentInterval(alignmentRefSpan, 1,712, TextCigarCodec.decode("712M444S"),false, 60, 2, 702, AlnModType.NONE);
+        otherRefSpan = new SimpleInterval("chr1",156327744,156328331);
+        readInterval = new Tuple2<>(427,712);
+        data.add(new Object[]{alignment, otherRefSpan, readInterval});
+
+
+
+        return data.toArray(new Object[data.size()][]);
+    }
+
+    @Test(dataProvider = "TestDataForReadIntervalAlignedToRefSpan", groups = "sv")
+    public void testComputeReadIntervalAlignedToRefSpan(final AlignmentInterval alignment, final SimpleInterval otherRefSpan,
+                                                        final Tuple2<Integer, Integer> expectedReadInterval) {
+        Assert.assertEquals(alignment.readIntervalAlignedToRefSpan(otherRefSpan), expectedReadInterval);
     }
 }

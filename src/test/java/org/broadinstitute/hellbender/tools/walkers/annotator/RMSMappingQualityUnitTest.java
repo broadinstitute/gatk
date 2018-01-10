@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
-import com.google.cloud.dataflow.sdk.repackaged.com.google.common.collect.Sets;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Sets;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.ArrayUtils;

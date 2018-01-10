@@ -10,6 +10,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -100,22 +101,22 @@ public class PathSeqScoreIntegrationTest extends CommandLineProgramTest {
         final File outputMetricsFile = createTempFile("score", ".metrics");
         final ArgumentsBuilder args = new ArgumentsBuilder();
         if (inputPairedBamFile != null) {
-            args.addFileArgument("pairedInput", inputPairedBamFile);
+            args.addFileArgument(PathSeqScoreSpark.PAIRED_INPUT_LONG_NAME, inputPairedBamFile);
         }
         if (inputUnpairedBamFile != null) {
-            args.addFileArgument("unpairedInput", inputUnpairedBamFile);
+            args.addFileArgument(PathSeqScoreSpark.UNPAIRED_INPUT_LONG_NAME, inputUnpairedBamFile);
         }
-        args.addFileArgument("scoreMetricsFile", outputMetricsFile);
-        args.addFileArgument("taxonomicDatabasePath", taxFile);
-        args.addFileArgument("scoresOutputPath", outputScoresFile);
+        args.addFileArgument(PSScoreArgumentCollection.SCORE_METRICS_FILE_LONG_NAME, outputMetricsFile);
+        args.addFileArgument(PSScoreArgumentCollection.TAXONOMIC_DATABASE_LONG_NAME, taxFile);
+        args.addFileArgument(PSScoreArgumentCollection.SCORES_OUTPUT_LONG_NAME, outputScoresFile);
         args.addOutput(outputBamFile);
-        args.addBooleanArgument("divideByGenomeLength", divideByGenomeLength);
-        args.addBooleanArgument("notNormalizedByKingdom", notNormalizedByKingdom);
+        args.addBooleanArgument(PSScoreArgumentCollection.DIVIDE_BY_GENOME_LENGTH_LONG_NAME, divideByGenomeLength);
+        args.addBooleanArgument(PSScoreArgumentCollection.NOT_NORMALIZED_BY_KINGDOM_LONG_NAME, notNormalizedByKingdom);
 
         this.runCommandLine(args.getArgsArray());
 
-        final String expectedScoresString = FileUtils.readFileToString(expectedScoresFile);
-        final String actualScoresString = FileUtils.readFileToString(outputScoresFile);
+        final String expectedScoresString = FileUtils.readFileToString(expectedScoresFile, StandardCharsets.UTF_8);
+        final String actualScoresString = FileUtils.readFileToString(outputScoresFile, StandardCharsets.UTF_8);
         compareScoreTables(expectedScoresString, actualScoresString);
 
         Assert.assertTrue(MetricsFile.areMetricsEqual(outputMetricsFile, expectedMetricsFile));

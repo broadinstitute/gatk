@@ -18,7 +18,7 @@ public class ReferenceTwoBitSourceUnitTest extends GATKBaseTest {
     @DataProvider(name = "goodIntervals")
     public Object[][] goodIntervals() throws IOException {
         ReferenceSource fastaRef = new ReferenceFileSource(fastaRefURL);
-        ReferenceSource twoBitRef = new ReferenceTwoBitSource(null, twoBitRefURL);
+        ReferenceSource twoBitRef = new ReferenceTwoBitSource(twoBitRefURL);
         return new Object[][]{
                 {fastaRef, twoBitRef, "20:2-10"},
                 {fastaRef, twoBitRef, "20:4-5"},
@@ -30,14 +30,14 @@ public class ReferenceTwoBitSourceUnitTest extends GATKBaseTest {
     @Test(dataProvider = "goodIntervals")
     public void testIntervalConversion(ReferenceSource fastaRef, ReferenceSource twoBitRef, String intervalString) throws IOException {
         SimpleInterval interval = new SimpleInterval(intervalString);
-        ReferenceBases expected = fastaRef.getReferenceBases(null, interval);
-        ReferenceBases actual = twoBitRef.getReferenceBases(null, interval);
+        ReferenceBases expected = fastaRef.getReferenceBases(interval);
+        ReferenceBases actual = twoBitRef.getReferenceBases(interval);
         Assert.assertEquals(actual, expected);
     }
 
     @DataProvider(name = "outOfBoundsIntervals")
     public Object[][] getOutOfBoundsIntervals() throws IOException {
-        final ReferenceTwoBitSource twoBitRef = new ReferenceTwoBitSource(null, publicTestDir + "large/human_g1k_v37.20.21.2bit");
+        final ReferenceTwoBitSource twoBitRef = new ReferenceTwoBitSource(publicTestDir + "large/human_g1k_v37.20.21.2bit");
         final int chr20End = 63025520;
 
         return new Object[][] {
@@ -50,7 +50,7 @@ public class ReferenceTwoBitSourceUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "outOfBoundsIntervals")
     public void testQueryPastContigEnd( final ReferenceTwoBitSource refSource, final SimpleInterval outOfBoundsInterval, final int expectedNumBases, final int contigEnd ) throws IOException {
-        final ReferenceBases bases = refSource.getReferenceBases(null, outOfBoundsInterval);
+        final ReferenceBases bases = refSource.getReferenceBases(outOfBoundsInterval);
 
         // Verify that the ReferenceTwoBitSource cropped our out-of-bounds interval at the contig end, as expected,
         // and that we got the correct number of bases back.

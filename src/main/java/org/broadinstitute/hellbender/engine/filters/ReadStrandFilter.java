@@ -14,8 +14,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 public final class ReadStrandFilter extends ReadFilter {
     private static final long serialVersionUID = 1L;
 
-    @Argument(fullName = "keepReverse",
-            shortName = "keepReverse",
+    @Argument(fullName = "keep-reverse-strand-only",
             doc="Keep only reads on the reverse strand",
             optional=false)
 	public Boolean keepOnlyReverse;

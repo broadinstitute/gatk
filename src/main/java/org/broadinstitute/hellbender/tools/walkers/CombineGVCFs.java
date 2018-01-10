@@ -16,7 +16,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.VariantAnnotationArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.MultiVariantWalkerGroupedOnStart;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
@@ -34,41 +34,42 @@ import java.util.*;
  * Combine per-sample gVCF files produced by HaplotypeCaller into a multi-sample gVCF file
  *
  * <p>
- * CombineGVCFs is meant to be used for hierarchical merging of gVCFs that will eventually be input into GenotypeGVCFs.
- * One would use this tool when needing to genotype too large a number of individual gVCFs; One would first use
- * CombineGVCFs to combine them into a single GVCF and pass this into GenotypeGVCFs.</p>
+ * CombineGVCFs is meant to be used for merging of GVCFs that will eventually be input into GenotypeGVCFs.
+ * One could use this tool to genotype multiple individual GVCFs instead of GenomicsDBImport; one would first use
+ * CombineGVCFs to combine them into a single GVCF and pass the results into GenotypeGVCFs. The main advantage of using CombineGVCFs
+ * over GenomicsDBImport is the ability to combine multiple intervals at once without building a GenomicsDB. CombineGVCFs
+ * is slower than GenomicsDBImport though, so it is recommended CombineGVCFs only be used when there are few samples to merge.</p>
  *
  * <h3>Input</h3>
  * <p>
- * Two or more Haplotype Caller gVCFs to combine.
+ * Two or more HaplotypeCaller GVCFs to combine.
  * </p>
  *
  * <h3>Output</h3>
  * <p>
- * A combined multisample gVCF.
+ * A combined multi-sample gVCF.
  * </p>
  *
  * <h3>Usage example</h3>
  * <pre>
- * ./gatk-launch \
- *   CombineGVCFs \
+ * gatk CombineGVCFs \
  *   -R reference.fasta \
- *   --variant sample1.g.vcf \
- *   --variant sample2.g.vcf \
- *   -O cohort.g.vcf
+ *   --variant sample1.g.vcf.gz \
+ *   --variant sample2.g.vcf.gz \
+ *   -O cohort.g.vcf.gz
  * </pre>
  *
  * <h3>Caveats</h3>
- * <p>Only gVCF files produced by HaplotypeCaller (or CombineGVCFs) can be used as input for this tool. Some other
- * programs produce files that they call gVCFs but those lack some important information (accurate genotype likelihoods
+ * <p>Only GVCF files produced by HaplotypeCaller (or CombineGVCFs) can be used as input for this tool. Some other
+ * programs produce files that they call GVCFs but those lack some important information (accurate genotype likelihoods
  * for every position) that GenotypeGVCFs requires for its operation.</p>
- * <p>If the gVCF files contain allele specific annotations, add -G Standard -G AS_Standard to the command line.</p>
+ * <p>If the GVCF files contain allele specific annotations, add `-G Standard -G AS_Standard` to the command line.</p>
  *
  * <p>Users generating large callsets (1000+ samples) may prefer GenomicsDBImport, which uses Intel's GenomicsDB and is capable of scaling to much larger sample sizes than CombineGVCFs.
  * This tool provides a pure java reference implementation of the combine operation which is available on all architectures.<p/>
  *
  */
-@CommandLineProgramProperties(summary = "Merges one or more HaplotypeCaller GVCF files into a single GVCF with appropriate annotations", oneLineSummary = "Merges one or more HaplotypeCaller GVCF files into a single GVCF with appropriate annotations", programGroup = VariantProgramGroup.class)
+@CommandLineProgramProperties(summary = "Merges one or more HaplotypeCaller GVCF files into a single GVCF with appropriate annotations", oneLineSummary = "Merges one or more HaplotypeCaller GVCF files into a single GVCF with appropriate annotations", programGroup = ShortVariantDiscoveryProgramGroup.class)
 @DocumentedFeature
 public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
@@ -76,6 +77,9 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
     private VariantContextWriter vcfWriter;
     private SAMSequenceDictionary sequenceDictionary;
     private ReferenceConfidenceVariantContextMerger referenceConfidenceVariantContextMerger;
+
+    public static final String BP_RES_LONG_NAME = "convert-to-base-pair-resolution";
+    public static final String BREAK_BANDS_LONG_NAME = "break-bands-at-multiples-of";
 
     /**
      * Which groups of annotations to add to the output VCF file.
@@ -91,7 +95,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
             doc="The combined GVCF output file", optional=false)
     private File outputFile;
 
-    @Argument(fullName="convertToBasePairResolution", shortName="bpResolution", doc = "If specified, convert banded gVCFs to all-sites gVCFs", optional=true)
+    @Argument(fullName=BP_RES_LONG_NAME, doc = "If specified, convert banded gVCFs to all-sites gVCFs", optional=true)
     protected boolean useBpResolution = false;
 
     /**
@@ -101,7 +105,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
      *
      * Note that the --convertToBasePairResolution argument is just a special case of this argument with a value of 1.
      */
-    @Argument(fullName="breakBandsAtMultiplesOf", shortName="breakBandsAtMultiplesOf", doc = "If > 0, reference bands will be broken up at genomic positions that are multiples of this number", optional=true)
+    @Argument(fullName=BREAK_BANDS_LONG_NAME, doc = "If > 0, reference bands will be broken up at genomic positions that are multiples of this number", optional=true)
     protected int multipleAtWhichToBreakBands = 0;
 
     /**
@@ -121,7 +125,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
     public void apply(List<VariantContext> variantContexts, ReferenceContext referenceContext) {
         // If we need to stop at an intermediate site since the last apply, do so (caused by gvcfBlocks, contexts ending, etc...)
         if (!variantContextsOverlappingCurrentMerge.isEmpty()) {
-            Locatable last = prevPos==null ? variantContextsOverlappingCurrentMerge.get(0) : prevPos;
+            Locatable last = prevPos!=null && prevPos.getContig().equals(variantContextsOverlappingCurrentMerge.get(0).getContig()) ?  prevPos : variantContextsOverlappingCurrentMerge.get(0);
             // If on a different contig, close out all the queued states on the current contig
             int end = last.getContig().equals(referenceContext.getWindow().getContig())
                     ? referenceContext.getInterval().getStart() - 1
@@ -255,10 +259,12 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
         if ( !variantContexts.isEmpty() ) {
             if ( ! okayToSkipThisSite(variantContexts, referenceContext) ) {
                 SimpleInterval loc = referenceContext.getInterval();
-                endPreviousStates( new SimpleInterval(loc.getContig(),loc.getStart()-1,loc.getStart()-1),
-                        Arrays.copyOfRange(referenceContext.getBases(), 1, referenceContext.getWindow().getLengthOnReference()),
-                        variantContexts,
-                        false);
+                if (loc.getStart()-1 > 0) {
+                    endPreviousStates(new SimpleInterval(loc.getContig(), loc.getStart() - 1, loc.getStart() - 1),
+                            Arrays.copyOfRange(referenceContext.getBases(), 1, referenceContext.getWindow().getLengthOnReference()),
+                            variantContexts,
+                            false);
+                }
             }
             variantContextsOverlappingCurrentMerge.addAll(variantContexts);
             for(final VariantContext vc : variantContextsOverlappingCurrentMerge){

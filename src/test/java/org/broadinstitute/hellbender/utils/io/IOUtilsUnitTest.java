@@ -180,6 +180,16 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         innerTestGetPath(NA12878_20_21_WGS_bam);
     }
 
+    @Test
+    public void testGetPathHandlesIntervals() throws IOException {
+        // Make sure we don't crash if passing intervals to getPath.
+        // Also, it shouldn't crash when we check whether the file exists.
+        Assert.assertFalse(Files.exists(IOUtils.getPath("chr1:10-11")));
+        Assert.assertFalse(Files.exists(IOUtils.getPath("chr1:10")));
+        Assert.assertFalse(Files.exists(IOUtils.getPath("1:10-11")));
+        Assert.assertFalse(Files.exists(IOUtils.getPath("1:10")));
+    }
+
     private void innerTestGetPath(String s) throws IOException {
         Path p = IOUtils.getPath(s);
         long size = Files.size(p);

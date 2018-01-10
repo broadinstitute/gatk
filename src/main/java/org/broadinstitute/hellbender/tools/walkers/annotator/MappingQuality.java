@@ -12,9 +12,9 @@ import java.util.List;
 import java.util.OptionalInt;
 
 /**
- * Median mapping quality of reads supporting each allele.
+ * Median mapping quality of reads supporting each alt allele.
  *
- * Created by David Benjamin on 3/20/17.
+ * <p>The output is an array containing, for each alt allele, the median mapping quality over all reads that best match that allele.</p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Median mapping quality of reads supporting each allele (MMQ)")
 public class MappingQuality extends PerAlleleAnnotation implements StandardMutectAnnotation {

@@ -422,7 +422,7 @@ public final class PileupElementUnitTest extends LocusIteratorByStateBaseTest {
         };
     }
 
-    @Test(dataProvider = "elementData_badOffsetOutOfBounds", expectedExceptions = IllegalArgumentException.class)
+    @Test(dataProvider = "elementData_badOffsetOutOfBounds", expectedExceptions = IllegalStateException.class)
     public void testBadOffsetOutOfBounds(GATKRead read, int badOffset) throws Exception {
         PileupElement.createPileupForReadAndOffset(read, badOffset);
     }

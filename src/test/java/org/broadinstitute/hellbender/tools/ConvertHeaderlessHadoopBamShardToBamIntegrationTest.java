@@ -20,9 +20,9 @@ public class ConvertHeaderlessHadoopBamShardToBamIntegrationTest extends Command
         final int expectedReadCount = 11;
 
         List<String> args = Arrays.asList(
-            "--bamShard", bamShard.getAbsolutePath(),
-            "--bamWithHeader", headerSource.getAbsolutePath(),
-            "-O", output.getAbsolutePath()
+            "--" + ConvertHeaderlessHadoopBamShardToBam.BAM_SHARD_LONG_NAME, bamShard.getAbsolutePath(),
+            "--" + ConvertHeaderlessHadoopBamShardToBam.BAM_WITH_HEADER_LONG_NAME, headerSource.getAbsolutePath(),
+            "-" + ConvertHeaderlessHadoopBamShardToBam.OUTPUT_SHORT_NAME, output.getAbsolutePath()
         );
         runCommandLine(args);
 

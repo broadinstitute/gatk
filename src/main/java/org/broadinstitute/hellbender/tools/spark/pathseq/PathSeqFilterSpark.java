@@ -5,76 +5,142 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.MetagenomicsProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSFilterEmptyLogger;
 import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSFilterFileLogger;
 import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSFilterLogger;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import scala.Tuple2;
 
-import java.io.IOException;
-
 /**
- * This Spark tool is the first step in the PathSeq pipeline.
- * Input: set of unaligned or host-aligned reads. Optional: host K-mer file and bwa mem image.
- * Output: set of high quality non-host reads.
+ * Filters low complexity, low quality, duplicate, and host reads. First step in the PathSeq pipeline.
  *
- * Filtering steps:
- * 1)  Remove secondary and supplementary alignments
- * 2)  Trim adapter sequences
- * 3)  Mask sequences with excessive A/T or G/C content
- * 4)  Mask repetitive sequences with 'N' and base quality --dustPhred using symmetric DUST
- * 5)  Hard clip read ends using base qualities
- * 6)  Remove reads shorter than --minClippedReadLength
- * 7)  Mask bases whose Phred score is less than --minBaseQuality with 'N'
- * 8)  Remove reads whose fraction of bases that are 'N' is greater than --maxAmbiguousBases
- * 9)  If specified, remove reads containing one or more kmers --kmerLibraryPath
- * 10) If specified, remove reads that align to the host BWA image --filterBwaImage with at least --minCoverage and --minIdentity
- * 11) If --filterDuplicates is set, remove exact duplicate reads (not using Mark Duplicates because it requires aligned reads)
+ * <p>See PathSeqPipelineSpark for an overview of the PathSeq pipeline.</p>
  *
- * Notes:
+ * <h4>Methods</h4>
  *
- * - Steps 2 - 6 can be skipped by setting --skipFilters.
- * - The tool assumes the BAM file is unaligned by default. If the BAM is aligned to the host, use --isHostAligned to filter.
- * - Output will be two BAM files, outputPath.paired.bam and outputPath.unpaired.bam containing paired and unpaired reads.
- * - If the resulting set of reads is empty, the file will not be written.
- * - If --unpaired is set, pairedness flags will not be corrected after filtering, and all reads will be written to
- *     outputPath.unpaired.bam. This improves performance by avoiding shuffles but violates the SAM format specification.
+ * <p>The tool works by filtering out reads in a series of stages:</p>
  *
+ * <ol>
+ *      <li>Remove secondary and supplementary alignments</li>
+ *      <li>If the input reads are aligned to a host reference, remove mapped reads with sufficient alignment identity</li>
+ *      <li>Trim adapter sequences</li>
+ *      <li>Mask sequences with excessive A/T or G/C content</li>
+ *      <li>Mask repetitive sequences (see Liebert et al. 2006)</li>
+ *      <li>Hard clip read ends using base qualities</li>
+ *      <li>Remove reads that are too short or were trimmed excessively</li>
+ *      <li>Mask low-quality bases</li>
+ *      <li>Remove reads with too many masked bases</li>
+ *      <li>Remove reads containing one or more host k-mers</li>
+ *      <li>Remove reads with sufficient alignment identity to the host reference</li>
+ *      <li>Remove exact duplicate reads</li>
+ *</ol>
+ *
+ * <h3>Input</h3>
+ *
+ * <ul>
+ *     <li>BAM containing input reads (either unaligned or aligned to a host reference)</li>
+ *     <li>*Host k-mer file generated using PathSeqBuildKmers</li>
+ *     <li>*Host BWA-MEM index image generated using BwaMemIndexImageCreator</li>
+ * </ul>
+ *
+ * <p>*A standard host reference is available in the <a href="https://software.broadinstitute.org/gatk/download/bundle">GATK Resource Bundle</a>.</p>
+ *
+ * <h3>Output</h3>
+ *
+ * <ul>
+ *     <li>BAM containing high quality, non-host paired reads (paired-end reads with both mates)</li>
+ *     <li>BAM containing high quality, non-host unpaired reads (single-end reads and/or paired-end reads without mates)</li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
+ *
+ * <p>This tool can be run without explicitly specifying Spark options. That is to say, the given example command
+ * without Spark options will run locally. See
+ * <a href ="https://software.broadinstitute.org/gatk/documentation/article?id=10060">Tutorial#10060</a> for an example
+ * of how to set up and run a Spark tool on a cloud Spark cluster.</p>
+ *
+ * <h4>Local mode:</h4>
+ *
+ * <pre>
+ * gatk PathSeqFilterSpark  \
+ *   --input input_reads.bam \
+ *   --paired-output output_reads_paired.bam \
+ *   --unpaired-output output_reads_unpaired.bam \
+ *   --min-clipped-read-length 60 \
+ *   --kmer-file host_kmers.bfi \
+ *   --filter-bwa-image host_reference.img \
+ *   --filter-metrics metrics.txt \
+ *   --bam-partition-size 4000000
+ * </pre>
+ *
+ * <h4>Spark cluster on Google Cloud DataProc with 4 16-core / 100GB memory worker nodes:</h4>
+ *
+ * <pre>
+ * gatk PathSeqFilterSpark  \
+ *   --input gs://my-gcs-bucket/input_reads.bam \
+ *   --paired-output gs://my-gcs-bucket/output_reads_paired.bam \
+ *   --unpaired-output gs://my-gcs-bucket/output_reads_unpaired.bam \
+ *   --min-clipped-read-length 60 \
+ *   --kmer-file hdfs://my-cluster-m:8020//references/host_kmers.bfi \
+ *   --filter-bwa-image /references/host_reference.img \
+ *   --filter-metrics gs://my-gcs-bucket/metrics.txt \
+ *   --bam-partition-size 4000000 \
+ *   -- \
+ *   --sparkRunner GCS \
+ *   --cluster my_cluster \
+ *   --driver-memory 8G \
+ *   --executor-memory 32G \
+ *   --num-executors 4 \
+ *   --executor-cores 15 \
+ *   --conf spark.yarn.executor.memoryOverhead=32000
+ * </pre>
+ *
+ * <p>Note that the host BWA image must be copied to the same path on every worker node. The host k-mer file
+ * may also be copied to a single path on every worker node or to HDFS.</p>
+ *
+ * <h3>Notes</h3>
+ *
+ * <p>The input BAM may be unaligned (a uBAM) or aligned to a host reference (e.g. hg38). If it is aligned then
+ * --is-host-aligned should be enabled. This will substantially increase performance, as host reads can then be immediately
+ * subtracted prior to quality filtering and host alignment.</p>
+ *
+ * <h3>References</h3>
+ * <ol>
+ *     <li>Liebert, M. A. et al. (2006). A Fast and Symmetric DUST Implementation to Mask Low-Complexity DNA Sequences. J. Comput. Biol., 13, 1028-1040. </li>
+ * </ol>
+ *
+ * @author Mark Walker &lt;markw@broadinstitute.org&gt;
  */
+
+@CommandLineProgramProperties(summary = "Filters low complexity, low quality, duplicate, and host reads. First step in the PathSeq pipeline.",
+        oneLineSummary = "Step 1: Filters low quality, low complexity, duplicate, and host reads",
+        programGroup = MetagenomicsProgramGroup.class)
 @DocumentedFeature
-@CommandLineProgramProperties(summary = "First, low-quality and repetitive sequences reads are filtered: \n\t(1) Remove secondary and " +
-        "supplementary alignments; \n\t(2) trim adapter sequences; \n\t(3) mask sequences with excessive A/T or G/C content; " +
-        "\n\t(4) mask repetitive sequences using the sDUST algorithm; \n\t(5) hard clip according to masked " +
-        "and low-quality bases; \n\t(6) remove reads below minimum length; \n\t(7) mask low-quality bases; \n\t(8) filter reads with" +
-        " too many masked bases. \nHost reads are then filtered using optionally-supplied host k-mer database (created " +
-        "with PathSeqBuildKmers) and host BWA index image (created with BwaMemIndexImageCreator). Lastly, exact " +
-        "duplicate sequences are removed.",
-        oneLineSummary = "Step 1: Filters low-quality, low-complexity, duplicate, and host reads",
-        programGroup = PathSeqProgramGroup.class)
-@BetaFeature
 public final class PathSeqFilterSpark extends GATKSparkTool {
 
     private static final long serialVersionUID = 1L;
 
-    @Argument(doc = "Base uri for the output file(s). Paired and unpaired reads will be written to uri appended with" +
-            " '.paired.bam' and '.unpaired.bam'",
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
-    public String outputPath;
-    @Argument(doc = "Log counts of filtered reads to this file. May increase run time.",
-            fullName = "filterMetricsFile",
+    public static final String PAIRED_OUTPUT_LONG_NAME = "paired-output";
+    public static final String PAIRED_OUTPUT_SHORT_NAME = "PO";
+    public static final String UNPAIRED_OUTPUT_LONG_NAME = "unpaired-output";
+    public static final String UNPAIRED_OUTPUT_SHORT_NAME = "UO";
+
+    @Argument(doc = "Output BAM containing only paired reads",
+            fullName = PAIRED_OUTPUT_LONG_NAME,
+            shortName = PAIRED_OUTPUT_SHORT_NAME,
             optional = true)
-    public String metricsFileUri = null;
+    public String outputPaired = null;
+
+    @Argument(doc = "Output BAM containing only unpaired reads",
+            fullName = UNPAIRED_OUTPUT_LONG_NAME,
+            shortName = UNPAIRED_OUTPUT_SHORT_NAME,
+            optional = true)
+    public String outputUnpaired = null;
 
     @ArgumentCollection
     public PSFilterArgumentCollection filterArgs = new PSFilterArgumentCollection();
@@ -93,7 +159,7 @@ public final class PathSeqFilterSpark extends GATKSparkTool {
         final JavaRDD<GATKRead> reads = getReads();
         final PSFilter filter = new PSFilter(ctx, filterArgs, header);
         final Tuple2<JavaRDD<GATKRead>, JavaRDD<GATKRead>> filterResult;
-        try (final PSFilterLogger filterLogger = metricsFileUri != null ? new PSFilterFileLogger(getMetricsFile(), metricsFileUri) : new PSFilterEmptyLogger()) {
+        try (final PSFilterLogger filterLogger = filterArgs.filterMetricsFileUri != null ? new PSFilterFileLogger(getMetricsFile(), filterArgs.filterMetricsFileUri) : new PSFilterEmptyLogger()) {
             filterResult = filter.doFilter(reads, filterLogger);
         }
         final JavaRDD<GATKRead> pairedReads = filterResult._1;
@@ -101,30 +167,17 @@ public final class PathSeqFilterSpark extends GATKSparkTool {
 
         if (!pairedReads.isEmpty()) {
             header.setSortOrder(SAMFileHeader.SortOrder.queryname);
-            writeReads(ctx, outputPath + ".paired.bam", pairedReads, header);
+            writeReads(ctx, outputPaired, pairedReads, header);
         } else {
             logger.info("No paired reads to write - BAM will not be written.");
         }
         if (!unpairedReads.isEmpty()) {
             header.setSortOrder(SAMFileHeader.SortOrder.unsorted);
-            writeReads(ctx, outputPath + ".unpaired.bam", unpairedReads, header);
+            writeReads(ctx, outputUnpaired, unpairedReads, header);
         } else {
             logger.info("No unpaired reads to write - BAM will not be written.");
         }
         filter.close();
     }
-
-    private void writeReads(final JavaSparkContext ctx, final String outputFile, JavaRDD<GATKRead> reads,
-                            final SAMFileHeader header) {
-        try {
-            ReadsSparkSink.writeReads(ctx, outputFile,
-                    hasReference() ? referenceArguments.getReferenceFile().getAbsolutePath() : null,
-                    reads, header, shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE,
-                    getRecommendedNumReducers());
-        } catch (IOException e) {
-            throw new UserException.CouldNotCreateOutputFile(outputFile,"writing failed", e);
-        }
-    }
-
 
 }

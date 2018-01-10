@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
-import com.google.cloud.dataflow.sdk.repackaged.com.google.common.primitives.Doubles;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.primitives.Doubles;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;

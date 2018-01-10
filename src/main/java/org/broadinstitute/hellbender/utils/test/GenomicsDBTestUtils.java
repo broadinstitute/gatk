@@ -52,7 +52,7 @@ public final class GenomicsDBTestUtils {
 
 
         final String workspace = new File(workspaceDir, "workspace").getAbsolutePath();
-        args.addArgument(GenomicsDBImport.WORKSPACE_ARG_NAME, workspace);
+        args.addArgument(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, workspace);
         args.addArgument("L", IntervalUtils.locatableToString(interval));
         importer.runCommandLine(args);
         return new File(workspace);

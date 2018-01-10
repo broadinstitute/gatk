@@ -6,10 +6,11 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -34,15 +35,16 @@ import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
 
-        summary = "(Experimental) Bare-bones implementation heavily inspired by MutationValidator from Broad CGA group.\n" +
+        summary = "Bare-bones implementation heavily inspired by MutationValidator from Broad CGA group.\n" +
                 "The algorithm is not the same.\n" +
                 "This tool can only handle exactly one validation PAIR at a time and this should not be RNA.\n" +
                 "Multiallelics in a VCF are not supported and will be skipped.\n" +
                 "This tool will validate germline mutations as true positives.\n",
-        oneLineSummary = "(Experimental) Check the variants in a VCF against a tumor-normal pair of bams representing the same samples, though not the ones from the actual calls.",
-        programGroup = VariantProgramGroup.class
+        oneLineSummary = "Check the variants in a VCF against a tumor-normal pair of bams representing the same samples, though not the ones from the actual calls.",
+        programGroup = VariantEvaluationProgramGroup.class
 )
-@BetaFeature
+@ExperimentalFeature
+@DocumentedFeature
 public class ValidateBasicSomaticShortMutations extends VariantWalker {
     public static final String SAMPLE_NAME_DISCOVERY_VCF_SHORT_NAME = "discv";
     public static final String SAMPLE_NAME_DISCOVERY_VCF_LONG_NAME = "discoveryVariants";

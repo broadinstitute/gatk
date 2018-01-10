@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.engine;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import org.apache.spark.SparkConf;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
@@ -16,8 +15,7 @@ public class ReferenceMultiSourceUnitTest extends GATKBaseTest {
 
     @Test
     public void testSerializeRoundTrip2Bit() {
-        PipelineOptions options = null;
-        ReferenceMultiSource referenceMultiSource = new ReferenceMultiSource(options, twoBitRefURL, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+        ReferenceMultiSource referenceMultiSource = new ReferenceMultiSource(twoBitRefURL, ReferenceWindowFunctions.IDENTITY_FUNCTION);
 
         final ReferenceMultiSource roundTrippedReference = SparkTestUtils.roundTripInKryo(referenceMultiSource, ReferenceMultiSource.class, new SparkConf());
 
@@ -28,8 +26,7 @@ public class ReferenceMultiSourceUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = UserException.MissingReference.class)
     public void testBadReferenceFile() {
-        PipelineOptions options = null;
-        new ReferenceMultiSource(options,
+        new ReferenceMultiSource(
                 GATKBaseTest.getSafeNonExistentFile("NonExistentReference.fasta").getAbsolutePath(),
                 ReferenceWindowFunctions.IDENTITY_FUNCTION);
     }

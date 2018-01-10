@@ -36,17 +36,12 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
             this.expectedFileName = expectedFileName;
         }
 
-        public String getCommandLineNoApiKey() {
+        public String getCommandLine() {
             return  " -R " + referenceURL +
                     " -I " + bam +
                     " " + args +
-                    (knownSites.isEmpty() ? "": " -knownSites " + knownSites) +
+                    (knownSites.isEmpty() ? "": " --known-sites " + knownSites) +
                     " -O %s";
-        }
-
-        public String getCommandLine() {
-            return  getCommandLineNoApiKey() +
-                    " --apiKey " + getGCPTestApiKey();
         }
 
         @Override
@@ -75,20 +70,20 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
 
         return new Object[][]{
                 // local computation and files (except for the reference)
-                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "-indelBQSR -enableBAQ ", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
+                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "-indels --enable-baq ", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
                 {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, " ", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_NOINDEL_NOBAQ_RECAL)},
-                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "-indelBQSR -enableBAQ " +"--indels_context_size 4",  localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_INDELS_CONTEXT_SIZE_4_RECAL)},
-                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "-indelBQSR -enableBAQ " +"--low_quality_tail 5",     localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_LOW_QUALITY_TAIL_5_RECAL)},
-                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "-indelBQSR -enableBAQ " +"--quantizing_levels 6",    localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_QUANTIZING_LEVELS_6_RECAL)},
-                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "-indelBQSR -enableBAQ " +"--mismatches_context_size 4", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_MISMATCHES_CONTEXT_SIZE_4_RECAL)},
+                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "-indels --enable-baq " +"--indels-context-size 4",  localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_INDELS_CONTEXT_SIZE_4_RECAL)},
+                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "-indels --enable-baq " +"--low-quality-tail 5",     localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_LOW_QUALITY_TAIL_5_RECAL)},
+                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "-indels --enable-baq " +"--quantizing-levels 6",    localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_QUANTIZING_LEVELS_6_RECAL)},
+                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "-indels --enable-baq " +"--mismatches-context-size 4", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_MISMATCHES_CONTEXT_SIZE_4_RECAL)},
 
                 //multiple known sites; expected output generated with GATK4 walker BQSR
-                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "-indelBQSR -enableBAQ " +"-knownSites " + more20Sites, localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.2inputs.recal.txt")},
+                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "-indels --enable-baq " +"--known-sites " + more20Sites, localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.2inputs.recal.txt")},
 
                 //// //{new BQSRTest(b36Reference, origQualsBam, dbSNPb36, "-OQ", getResourceDir() + "expected.originalQuals.1kg.chr1.1-1K.1RG.dictFix.OQ.txt")},
 
                 // local reference
-                {new BQSRTest(GRCh37RefLocal, HiSeqBam_chr20, dbSNPb37_chr20, "-indelBQSR -enableBAQ ", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
+                {new BQSRTest(GRCh37RefLocal, HiSeqBam_chr20, dbSNPb37_chr20, "-indels --enable-baq ", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
                 {new BQSRTest(GRCh37RefLocal, HiSeqBam_chr20, dbSNPb37_chr20, " ", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_NOINDEL_NOBAQ_RECAL)},
         };
     }
@@ -102,7 +97,7 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
 
         return new Object[][]{
                 // input in cloud, computation local.
-                {new BQSRTest(GRCh37Ref, HiSeqBamCloud_chr20, dbSNPb37_chr20, "-indelBQSR -enableBAQ ", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
+                {new BQSRTest(GRCh37Ref, HiSeqBamCloud_chr20, dbSNPb37_chr20, "-indels --enable-baq ", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
                 {new BQSRTest(GRCh37Ref, HiSeqBamCloud_chr20, dbSNPb37_chr20, " ", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_NOINDEL_NOBAQ_RECAL)},
         };
     }
@@ -139,16 +134,16 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
         final File actualHiSeqBam_recalibrated = createTempFile("actual.NA12878.chr17_69k_70k.dictFix.recalibrated", ".bam");
 
         final String tablePre = createTempFile("gatk4.pre.cols", ".table").getAbsolutePath();
-        final String argPre = " -R " + ReferenceAPISource.URL_PREFIX + GRCh37Ref + "-indelBQSR -enableBAQ " +" -knownSites " + dbSNPb37 + " -I " + HiSeqBam
-                + " -O " + tablePre + " " + " --apiKey " + getGCPTestApiKey();
+        final String argPre = " -R " + ReferenceAPISource.URL_PREFIX + GRCh37Ref + "-indels --enable-baq " +" --known-sites " + dbSNPb37 + " -I " + HiSeqBam
+                + " -O " + tablePre;
         new BaseRecalibratorSpark().instanceMain(Utils.escapeExpressions(argPre));
 
-        final String argApply = "-I " + HiSeqBam + " --bqsr_recal_file " + tablePre + " -O " + actualHiSeqBam_recalibrated.getAbsolutePath() + " --apiKey " + getGCPTestApiKey();
+        final String argApply = "-I " + HiSeqBam + " --bqsr-recal-file " + tablePre + " -O " + actualHiSeqBam_recalibrated.getAbsolutePath();
         new ApplyBQSRSpark().instanceMain(Utils.escapeExpressions(argApply));
 
         final File actualTablePost = createTempFile("gatk4.post.cols", ".table");
-        final String argsPost = " -R " + ReferenceAPISource.URL_PREFIX + GRCh37Ref + "-indelBQSR -enableBAQ " +" -knownSites " + dbSNPb37 + " -I " + actualHiSeqBam_recalibrated.getAbsolutePath()
-                + " -O " + actualTablePost.getAbsolutePath() + " " + " --apiKey " + getGCPTestApiKey();
+        final String argsPost = " -R " + ReferenceAPISource.URL_PREFIX + GRCh37Ref + "-indels --enable-baq " +" --known-sites " + dbSNPb37 + " -I " + actualHiSeqBam_recalibrated.getAbsolutePath()
+                + " -O " + actualTablePost.getAbsolutePath();
         new BaseRecalibratorSpark().instanceMain(Utils.escapeExpressions(argsPost));
 
         final File expectedHiSeqBam_recalibrated = new File(resourceDir + "expected.NA12878.chr17_69k_70k.dictFix.recalibrated.DIQ.bam");
@@ -168,7 +163,7 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
         final String HiSeqBam = resourceDir + "NA12878.chr17_69k_70k.dictFix.bam";
 
         final String  NO_DBSNP = "";
-        final BQSRTest params = new BQSRTest(GRCh37Ref, HiSeqBam, NO_DBSNP, "-indelBQSR -enableBAQ ", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL);
+        final BQSRTest params = new BQSRTest(GRCh37Ref, HiSeqBam, NO_DBSNP, "-indels --enable-baq ", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL);
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 params.getCommandLine(),
                 1,
@@ -185,7 +180,7 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
         final String HiSeqBam = resourceDir + "NA12878.chr17_69k_70k.dictFix.bam";
 
         final String dbSNPb37 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
-        final BQSRTest params = new BQSRTest(hg19Ref, HiSeqBam, dbSNPb37, "-indelBQSR -enableBAQ ", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL);
+        final BQSRTest params = new BQSRTest(hg19Ref, HiSeqBam, dbSNPb37, "-indels --enable-baq ", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL);
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 params.getCommandLine(),
                 1,

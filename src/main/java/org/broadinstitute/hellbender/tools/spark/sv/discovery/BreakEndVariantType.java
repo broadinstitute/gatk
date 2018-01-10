@@ -112,7 +112,7 @@ public abstract class BreakEndVariantType extends SvType {
                                                final ReferenceMultiSource reference) {
             try {
                 final byte[] ref = reference
-                        .getReferenceBases(null, forUpstreamLoc ? narl.leftJustifiedLeftRefLoc :
+                        .getReferenceBases(forUpstreamLoc ? narl.leftJustifiedLeftRefLoc :
                                                                                 narl.leftJustifiedRightRefLoc)
                         .getBases();
                 final String ins = narl.complication.getInsertedSequenceForwardStrandRep();
@@ -174,7 +174,7 @@ public abstract class BreakEndVariantType extends SvType {
                                                final ReferenceMultiSource reference, final SAMSequenceDictionary referenceDictionary) {
             try {
                 final SimpleInterval refLoc = forUpstreamLoc ? narl.leftJustifiedLeftRefLoc : narl.leftJustifiedRightRefLoc;
-                final byte[] ref = reference.getReferenceBases(null, refLoc).getBases();
+                final byte[] ref = reference.getReferenceBases(refLoc).getBases();
                 final String ins = narl.complication.getInsertedSequenceForwardStrandRep();
                 if (ins.isEmpty()) {
                     return ref;

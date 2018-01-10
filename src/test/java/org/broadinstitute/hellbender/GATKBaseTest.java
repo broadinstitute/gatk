@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.BeforeClass;
 
@@ -19,6 +20,9 @@ public abstract class GATKBaseTest extends BaseTest {
 
     private static final String CURRENT_DIRECTORY = System.getProperty("user.dir");
     public static final String gatkDirectory = System.getProperty("gatkdir", CURRENT_DIRECTORY) + "/";
+
+    public static final String publicMainResourcesDir = new File(gatkDirectory, "src/main/resources").getAbsolutePath() + "/";
+    public static final String packageMainResourcesDir = publicMainResourcesDir + "org/broadinstitute/hellbender/";
 
     private static final String publicTestDirRelative = "src/test/resources/";
     public static final String publicTestDir = new File(gatkDirectory, publicTestDirRelative).getAbsolutePath() + "/";
@@ -41,6 +45,8 @@ public abstract class GATKBaseTest extends BaseTest {
     public static final String b37_reference_20_21 = largeFileTestDir + "human_g1k_v37.20.21.fasta";
 
     public static final String b37_2bit_reference_20_21 = largeFileTestDir + "human_g1k_v37.20.21.2bit";
+
+    public static final String b37_reference_20_21_img = largeFileTestDir + "human_g1k_v37.20.21.fasta.img";
 
     // All of chromosomes 20 and 21 from the b38 reference
     public static final String b38_reference_20_21 = largeFileTestDir + "Homo_sapiens_assembly38.20.21.fasta";
@@ -91,7 +97,7 @@ public abstract class GATKBaseTest extends BaseTest {
 
     @BeforeClass
     public void initGenomeLocParser() throws FileNotFoundException {
-        hg19ReferenceReader = new CachingIndexedFastaSequenceFile(new File(hg19MiniReference));
+        hg19ReferenceReader = new CachingIndexedFastaSequenceFile(IOUtils.getPath(hg19MiniReference));
         hg19Header = new SAMFileHeader();
         hg19Header.setSequenceDictionary(hg19ReferenceReader.getSequenceDictionary());
         hg19GenomeLocParser = new GenomeLocParser(hg19ReferenceReader);

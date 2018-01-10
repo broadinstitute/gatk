@@ -119,7 +119,7 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkUnitTest extends GATKBa
         final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection params =
                 new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection();
 
-        final ReferenceMultiSource referenceMultiSource = new ReferenceMultiSource((com.google.cloud.dataflow.sdk.options.PipelineOptions)null,
+        final ReferenceMultiSource referenceMultiSource = new ReferenceMultiSource(
                 twoBitRefURL, ReferenceWindowFunctions.IDENTITY_FUNCTION);
 
         ReadMetadata metadata = Mockito.mock(ReadMetadata.class);

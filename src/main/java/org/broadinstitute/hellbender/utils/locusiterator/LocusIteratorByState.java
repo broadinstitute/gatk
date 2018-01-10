@@ -315,12 +315,16 @@ public final class LocusIteratorByState implements Iterator<AlignmentContext> {
             readStates.collectPendingReads();
 
             final Locatable location = getLocation();
-            final Map<String, ReadPileup> fullPileupPerSample = new LinkedHashMap<>();
+
+            // We don't need to keep the pileup elements separated by sample within this method,
+            // since they are just going to get combined into one monolithic pileup anyway
+            // when we construct the final ReadPileup below. This optimization speeds up the
+            // HaplotypeCaller by quite a bit!
+            final List<PileupElement> allPileupElements = new ArrayList<>(100);
+
             for (final Map.Entry<String, PerSampleReadStateManager> sampleStatePair : readStates) {
-                final String sample = sampleStatePair.getKey();
                 final PerSampleReadStateManager readState = sampleStatePair.getValue();
                 final Iterator<AlignmentStateMachine> iterator = readState.iterator();
-                final List<PileupElement> pile = new ArrayList<>(readState.size());
 
                 while (iterator.hasNext()) {
                     // state object with the read/offset information
@@ -337,18 +341,14 @@ public final class LocusIteratorByState implements Iterator<AlignmentContext> {
                             continue;
                         }
 
-                        pile.add(state.makePileupElement());
+                        allPileupElements.add(state.makePileupElement());
                     }
-                }
-
-                if (!pile.isEmpty()) { // if this pileup added at least one base, add it to the full pileup
-                    fullPileupPerSample.put(sample, new ReadPileup(location, pile));
                 }
             }
 
             readStates.updateReadStates(); // critical - must be called after we get the current state offsets and location
-            if (!fullPileupPerSample.isEmpty()) { // if we got reads with non-D/N over the current position, we are done
-                nextAlignmentContext = new AlignmentContext(location, new ReadPileup(location, fullPileupPerSample));
+            if (!allPileupElements.isEmpty()) { // if we got reads with non-D/N over the current position, we are done
+                nextAlignmentContext = new AlignmentContext(location, new ReadPileup(location, allPileupElements));
             }
         }
     }

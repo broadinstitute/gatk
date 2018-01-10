@@ -21,7 +21,7 @@ public class ApplyBQSRUniqueArgumentCollection implements Serializable {
      * Any value greater than zero will be used to recalculate the quantization using that many levels.
      * Negative values mean that we should quantize using the recalibration report's quantization level.
      */
-    @Argument(fullName="quantize_quals", shortName = "qq", doc = "Quantize quality scores to a given number of levels", optional=true)
+    @Argument(fullName="quantize-quals", doc = "Quantize quality scores to a given number of levels", optional=true)
     public int quantizationLevels = 0;
 
 
@@ -30,7 +30,7 @@ public class ApplyBQSRUniqueArgumentCollection implements Serializable {
      * The two types of binning should not be used together.
      */
     @Advanced
-    @Argument(fullName="static_quantized_quals", shortName = "SQQ", doc = "Use static quantized quality scores to a given number of levels (with -"+ StandardArgumentDefinitions.BQSR_TABLE_SHORT_NAME+ ")", optional=true, mutex = "quantize_quals")
+    @Argument(fullName="static-quantized-quals", doc = "Use static quantized quality scores to a given number of levels (with -"+ StandardArgumentDefinitions.BQSR_TABLE_SHORT_NAME+ ")", optional=true, mutex = "quantize-quals")
     public List<Integer> staticQuantizationQuals = new ArrayList<>();
 
     /**
@@ -40,7 +40,7 @@ public class ApplyBQSRUniqueArgumentCollection implements Serializable {
      * that is smaller than the current bin.
      */
     @Advanced
-    @Argument(fullName="round_down_quantized", shortName = "RDQ", doc = "Round quals down to nearest quantized qual", optional=true, mutex = "quantize_quals")
+    @Argument(fullName="round-down-quantized", doc = "Round quals down to nearest quantized qual", optional=true, mutex = "quantize-quals")
     public boolean roundDown = false;
 
     /**
@@ -48,14 +48,14 @@ public class ApplyBQSRUniqueArgumentCollection implements Serializable {
      * under the "OQ" tag. By default, this behavior is disabled because emitting original qualities results in a
      * significant increase of the file size. Use this flag to turn on emission of original qualities.
      */
-    @Argument(fullName="emit_original_quals", shortName = "EOQ", doc = "Emit original base qualities under the OQ tag", optional=true)
+    @Argument(fullName="emit-original-quals", doc = "Emit original base qualities under the OQ tag", optional=true)
     public boolean emitOriginalQuals = false;
 
     /**
      * If specified, the value of this argument will be used as a flat prior for all mismatching quality scores instead
      * of the reported quality score (assigned by the sequencer).
      */
-    @Argument(fullName = "globalQScorePrior", shortName = "globalQScorePrior", doc = "Global Qscore Bayesian prior to use for BQSR", optional = true)
+    @Argument(fullName = "global-qscore-prior", doc = "Global Qscore Bayesian prior to use for BQSR", optional = true)
     public double globalQScorePrior = -1.0;
 
     public ApplyBQSRArgumentCollection toApplyBQSRArgumentCollection(int PRESERVE_QSCORES_LESS_THAN) {

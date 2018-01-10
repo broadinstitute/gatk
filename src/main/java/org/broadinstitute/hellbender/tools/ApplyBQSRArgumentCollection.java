@@ -19,7 +19,7 @@ public class ApplyBQSRArgumentCollection extends ApplyBQSRUniqueArgumentCollecti
      */
     //TODO: add those when https://github.com/broadinstitute/hellbender/issues/143 is fixed
     //TODO: minValue = 0, minRecommendedValue = QualityUtils.MIN_USABLE_Q_SCORE
-    @Argument(fullName = "preserve_qscores_less_than", shortName = "preserveQ", doc = "Don't recalibrate bases with quality scores less than this threshold", optional = true)
+    @Argument(fullName = "preserve-qscores-less-than", doc = "Don't recalibrate bases with quality scores less than this threshold", optional = true)
     public int PRESERVE_QSCORES_LESS_THAN = QualityUtils.MIN_USABLE_Q_SCORE;
 
     /**
@@ -27,6 +27,6 @@ public class ApplyBQSRArgumentCollection extends ApplyBQSRUniqueArgumentCollecti
      * are stored in the OQ tag, if they are present, rather than use the post-recalibration quality scores. If no OQ
      * tag is present for a read, the standard quality score will be used.
      */
-    @Argument(fullName="useOriginalQualities", shortName = "OQ", doc = "Use the base quality scores from the OQ tag", optional = true)
+    @Argument(fullName="use-original-qualities", shortName = "OQ", doc = "Use the base quality scores from the OQ tag", optional = true)
     public Boolean useOriginalBaseQualities = false;
 }

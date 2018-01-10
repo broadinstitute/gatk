@@ -7,10 +7,10 @@ import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.SortingCollection;
 import htsjdk.samtools.util.SortingLongCollection;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.*;
 import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
@@ -29,13 +29,13 @@ import java.util.stream.Collectors;
  *
  * @author Tim Fennell
  */
-@BetaFeature
+@ExperimentalFeature
 @DocumentedFeature
 @CommandLineProgramProperties(
         summary = "(Experimental) Examines aligned records in the supplied SAM/BAM/CRAM file to locate duplicate molecules. " +
                 "All records are then written to the output file with the duplicate records flagged.",
-        oneLineSummary = "(Experimental) Examines aligned records in the supplied SAM/BAM/CRAM file to locate duplicate molecules.",
-        programGroup = ReadProgramGroup.class
+        oneLineSummary = "Examines aligned records in the supplied SAM/BAM/CRAM file to locate duplicate molecules.",
+        programGroup = ReadDataManipulationProgramGroup.class
 )
 public final class MarkDuplicatesGATK extends AbstractMarkDuplicatesCommandLineProgram {
     /**

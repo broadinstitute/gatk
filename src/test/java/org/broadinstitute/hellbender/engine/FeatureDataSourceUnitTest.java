@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -242,6 +243,22 @@ public final class FeatureDataSourceUnitTest extends GATKBaseTest {
             }
 
             checkVariantQueryResults(queryResults, expectedVariantIDs, queryInterval);
+        }
+    }
+
+    @Test
+    public void testQueryAllHG38Intervals() {
+        SAMSequenceDictionary sd;
+        final File testFile = new File (FEATURE_DATA_SOURCE_TEST_DIRECTORY, "Homo_sapiens_assembly38.headerOnly.vcf.gz");
+
+        try (VCFFileReader vcfReader = new VCFFileReader(testFile, false)) {
+            sd = vcfReader.getFileHeader().getSequenceDictionary();
+        }
+
+        // Test that we can execute an unambiguous query using any hg38 contig name against a VCF with an hg38 sequence dictionary.
+        try (final FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(testFile)) {
+            sd.getSequences().stream().forEach(
+                    hg38Contig -> featureSource.query(new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength())));
         }
     }
 

@@ -13,7 +13,7 @@ public final class StandardArgumentDefinitions {
     public static final String VARIANT_LONG_NAME = "variant";
     public static final String FEATURE_LONG_NAME = "feature";
     public static final String INTERVALS_LONG_NAME = "intervals";
-    public static final String READ_INDEX_LONG_NAME = "readIndex";
+    public static final String READ_INDEX_LONG_NAME = "read-index";
     public static final String USE_ORIGINAL_QUALITIES_LONG_NAME = "use-original-qualities";
     public static final String LENIENT_LONG_NAME = "lenient";
     public static final String VERBOSITY_NAME = "verbosity";
@@ -37,6 +37,8 @@ public final class StandardArgumentDefinitions {
     public static final String ANNOTATION_LONG_NAME = "annotation";
     public static final String ANNOTATION_GROUP_LONG_NAME = "annotation-group";
     public static final String ANNOTATIONS_TO_EXCLUDE_LONG_NAME = "annotations-to-exclude";
+    public static final String SAMPLE_NAME_LONG_NAME = "sample-name";
+    public static final String PEDIGREE_FILE_LONG_NAME = "pedigree";
 
     public static final String INPUT_SHORT_NAME = "I";
     public static final String OUTPUT_SHORT_NAME = "O";
@@ -50,7 +52,6 @@ public final class StandardArgumentDefinitions {
     public static final String SAMPLE_ALIAS_SHORT_NAME = "ALIAS";
     public static final String LIBRARY_NAME_SHORT_NAME = "LIB";
     public static final String EXPECTED_INSERT_SIZE_SHORT_NAME = "INSERT";
-    public static final String SEQUENCE_DICTIONARY_SHORT_NAME = "SD";
     public static final String METRICS_FILE_SHORT_NAME = "M";
     public static final String ASSUME_SORTED_SHORT_NAME = "AS";
     public static final String PF_READS_ONLY_SHORT_NAME = "PF";
@@ -73,9 +74,17 @@ public final class StandardArgumentDefinitions {
     public static final String ANNOTATION_SHORT_NAME = "A";
     public static final String ANNOTATION_GROUP_SHORT_NAME = "G";
     public static final String ANNOTATIONS_TO_EXCLUDE_SHORT_NAME = "AX";
+    public static final String SAMPLE_NAME_SHORT_NAME = "sn";
+    public static final String PEDIGREE_FILE_SHORT_NAME = "ped";
 
     public static final String SPARK_PROPERTY_NAME = "conf";
 
     public static final String BQSR_TABLE_SHORT_NAME = "bqsr";
     public static final String BQSR_TABLE_LONG_NAME = "bqsr-recal-file";
+
+    /**
+     * The option specifying a main configuration file.
+     * This is used in {@link org.broadinstitute.hellbender.Main} to control which config file is loaded.
+     */
+    public static final String GATK_CONFIG_FILE_OPTION = "gatk-config-file";
 }

@@ -46,13 +46,13 @@ public class StandardCallerArgumentCollection implements Serializable {
     @ArgumentCollection
     public GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
 
-    @Argument(fullName = "genotyping_mode", shortName = "gt_mode", doc = "Specifies how to determine the alternate alleles to use for genotyping", optional=true)
+    @Argument(fullName = "genotyping-mode", doc = "Specifies how to determine the alternate alleles to use for genotyping", optional=true)
     public GenotypingOutputMode genotypingOutputMode = GenotypingOutputMode.DISCOVERY;
 
     /**
      * When the caller is put into GENOTYPE_GIVEN_ALLELES mode it will genotype the samples using only the alleles provide in this rod binding
      */
-    @Argument(fullName="alleles", shortName = "alleles", doc="The set of alleles at which to genotype when --genotyping_mode is GENOTYPE_GIVEN_ALLELES", optional=true)
+    @Argument(fullName="alleles", doc="The set of alleles at which to genotype when --genotyping_mode is GENOTYPE_GIVEN_ALLELES", optional=true)
     public FeatureInput<VariantContext> alleles;
 
     /**
@@ -60,7 +60,7 @@ public class StandardCallerArgumentCollection implements Serializable {
      * Basically, it will ignore the contamination fraction of reads for each alternate allele.  So if the pileup contains N total bases, then we
      * will try to remove (N * contamination fraction) bases for each alternate allele.
      */
-    @Argument(fullName = "contamination_fraction_to_filter", shortName = "contamination", doc = "Fraction of contamination in sequencing data (for all samples) to aggressively remove", optional=true)
+    @Argument(fullName = "contamination-fraction-to-filter", shortName = "contamination", doc = "Fraction of contamination in sequencing data (for all samples) to aggressively remove", optional=true)
     public double CONTAMINATION_FRACTION = DEFAULT_CONTAMINATION_FRACTION;
     public static final double DEFAULT_CONTAMINATION_FRACTION = 0.0;
 
@@ -69,7 +69,7 @@ public class StandardCallerArgumentCollection implements Serializable {
      *  Samples that do not appear in this file will be processed with CONTAMINATION_FRACTION.
      **/
     @Advanced
-    @Argument(fullName = "contamination_fraction_per_sample_file", shortName = "contaminationFile", doc = "Tab-separated File containing fraction of contamination in sequencing data (per sample) to aggressively remove. Format should be \"<SampleID><TAB><Contamination>\" (Contamination is double) per line; No header.", optional = true)
+    @Argument(fullName = "contamination-fraction-per-sample-file", shortName = "contamination-file", doc = "Tab-separated File containing fraction of contamination in sequencing data (per sample) to aggressively remove. Format should be \"<SampleID><TAB><Contamination>\" (Contamination is double) per line; No header.", optional = true)
     public File CONTAMINATION_FRACTION_FILE = null;
 
     /**
@@ -109,14 +109,14 @@ public class StandardCallerArgumentCollection implements Serializable {
      * Controls the model used to calculate the probability that a site is variant plus the various sample genotypes in the data at a given locus.
      */
     @Hidden
-    @Argument(fullName = "p_nonref_model", shortName = "pnrm", doc = "Non-reference probability calculation model to employ", optional = true)
+    @Argument(fullName = "p-nonref-model", doc = "Non-reference probability calculation model to employ", optional = true)
     public AFCalculatorImplementation requestedAlleleFrequencyCalculationModel;
 
     @Hidden
-    @Argument(shortName = "logExactCalls", doc="x", optional=true)
+    @Argument(shortName = "log-exact-calls", optional=true)
     public File exactCallsLog = null;
 
-    @Argument(fullName = "output_mode", shortName = "out_mode", doc = "Specifies which type of calls we should output", optional = true)
+    @Argument(fullName = "output-mode", doc = "Specifies which type of calls we should output", optional = true)
     public OutputMode outputMode = OutputMode.EMIT_VARIANTS_ONLY;
 
     /**
@@ -128,6 +128,6 @@ public class StandardCallerArgumentCollection implements Serializable {
      * - An error will be emitted if EMIT_ALL_SITES is not set, or if anything other than diploid SNP model is used
      */
     @Advanced
-    @Argument(fullName = "allSitePLs", shortName = "allSitePLs", doc = "Annotate all sites with PLs", optional = true)
+    @Argument(fullName = "all-site-pls", doc = "Annotate all sites with PLs", optional = true)
     public boolean annotateAllSitesWithPLs = false;
 }

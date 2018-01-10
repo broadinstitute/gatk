@@ -67,7 +67,7 @@ public class PileupIntegrationTest extends CommandLineProgramTest {
                 " -L 20:10000092-10000112" +
                         " -R " + b37_reference_20_21 +
                         " -I " + NA12878_20_21_WGS_bam +
-                        " -outputInsertLength " +
+                        " -output-insert-length " +
                         " -O %s",
                 Arrays.asList(TEST_OUTPUT_DIRECTORY + "expectedInsertLengthPileup.txt")
         );

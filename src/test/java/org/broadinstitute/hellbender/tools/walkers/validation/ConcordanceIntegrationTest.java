@@ -27,9 +27,9 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
         final File summary = createTempFile("summary", ".txt");
 
         final String[] args = {
-                "-" + AbstractConcordanceWalker.EVAL_VARIANTS_SHORT_NAME, evalVcf.toString(),
-                "-" + AbstractConcordanceWalker.TRUTH_VARIANTS_SHORT_NAME, truthVcf.toString(),
-                "-" + Concordance.SUMMARY_SHORT_NAME, summary.toString(),
+                "--" + AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcf.toString(),
+                "--" + AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, truthVcf.toString(),
+                "--" + Concordance.SUMMARY_LONG_NAME, summary.toString(),
         };
         runCommandLine(args);
 
@@ -64,12 +64,12 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
         final File summary = createTempFile("summary", ".txt");
 
         final String[] args = {
-                "-" + AbstractConcordanceWalker.EVAL_VARIANTS_SHORT_NAME, evalVcf.toString(),
-                "-" + AbstractConcordanceWalker.TRUTH_VARIANTS_SHORT_NAME, truthVcf.toString(),
-                "-" + Concordance.SUMMARY_SHORT_NAME, summary.toString(),
-                "-" + Concordance.TRUE_POSITIVES_AND_FALSE_NEGATIVES_SHORT_NAME, tpfn.getAbsolutePath(),
-                "-" + Concordance.TRUE_POSITIVES_AND_FALSE_POSITIVES_SHORT_NAME, tpfp.getAbsolutePath(),
-                "-" + Concordance.FILTERED_TRUE_NEGATIVES_AND_FALSE_NEGATIVES_SHORT_NAME, ftnfn.getAbsolutePath()
+                "--" + AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcf.toString(),
+                "--" + AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, truthVcf.toString(),
+                "--" + Concordance.SUMMARY_LONG_NAME, summary.toString(),
+                "--" + Concordance.TRUE_POSITIVES_AND_FALSE_NEGATIVES_LONG_NAME, tpfn.getAbsolutePath(),
+                "--" + Concordance.TRUE_POSITIVES_AND_FALSE_POSITIVES_LONG_NAME, tpfp.getAbsolutePath(),
+                "--" + Concordance.FILTERED_TRUE_NEGATIVES_AND_FALSE_NEGATIVES_LONG_NAME, ftnfn.getAbsolutePath()
         };
         runCommandLine(args);
         ConcordanceSummaryRecord.Reader summaryReader = new ConcordanceSummaryRecord.Reader(summary);
@@ -115,9 +115,9 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
         final File summary = createTempFile("summary", ".txt");
 
         final String[] args = {
-                "-" + AbstractConcordanceWalker.EVAL_VARIANTS_SHORT_NAME, evalVcf.toString(),
-                "-" + AbstractConcordanceWalker.TRUTH_VARIANTS_SHORT_NAME, truthVcf.toString(),
-                "-" + Concordance.SUMMARY_SHORT_NAME, summary.toString(),
+                "--" + AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcf.toString(),
+                "--" + AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, truthVcf.toString(),
+                "--" + Concordance.SUMMARY_LONG_NAME, summary.toString(),
         };
 
         runCommandLine(args);
@@ -144,9 +144,9 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
         final File summary = createTempFile("summary", ".txt");
 
         final String[] args = {
-                "-" + AbstractConcordanceWalker.EVAL_VARIANTS_SHORT_NAME, evalVcf.toString(),
-                "-" + AbstractConcordanceWalker.TRUTH_VARIANTS_SHORT_NAME, truthVcf.toString(),
-                "-" + Concordance.SUMMARY_SHORT_NAME, summary.toString(),
+                "--" + AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcf.toString(),
+                "--" + AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, truthVcf.toString(),
+                "--" + Concordance.SUMMARY_LONG_NAME, summary.toString(),
         };
 
         runCommandLine(args);

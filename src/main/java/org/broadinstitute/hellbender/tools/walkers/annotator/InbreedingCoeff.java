@@ -4,30 +4,31 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.GenotypeCounts;
 import org.broadinstitute.hellbender.utils.GenotypeUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.samples.PedigreeValidationType;
+import org.broadinstitute.hellbender.utils.samples.SampleDBBuilder;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.io.File;
+import java.util.*;
 
 
 /**
- * Likelihood-based test for the inbreeding among samples
+ * Likelihood-based test for the consanguinuity among samples
  *
- * <p>This annotation estimates whether there is evidence of inbreeding in a population. The higher the score, the higher the chance that there is inbreeding.</p>
+ * <p>This annotation estimates whether there is evidence of consanguinuity in a population. The higher the score, the
+ * higher the chance that some samples are related. If samples are known to be related, a pedigree file can be provided so
+ * that the calculation is only performed on founders and offspring are excluded.</p>
  *
  * <h3>Statistical notes</h3>
  * <p>The calculation is a continuous generalization of the Hardy-Weinberg test for disequilibrium that works well with limited coverage per sample. The output is a Phred-scaled p-value derived from running the HW test for disequilibrium with PL values. See the <a href="http://www.broadinstitute.org/gatk/guide/article?id=4732">method document on statistical tests</a> for a more detailed explanation of this statistical test.</p>
@@ -36,25 +37,28 @@ import java.util.Set;
  * <ul>
  * <li>The Inbreeding Coefficient annotation can only be calculated for cohorts containing at least 10 founder samples.</li>
  * <li>The Inbreeding Coefficient annotation can only be calculated for diploid samples.</li>
- * <li>This annotation is used in variant recalibration, but may not be appropriate for that purpose if the cohort being analyzed contains many closely related individuals.</li>
  * </ul>
  *
+ * <h3>Related annotations</h3>
+ * <p><b>ExcessHet</b> also describes the heterozygosity of the called samples, giving a probability of excess heterozygosity being observed</p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Likelihood-based test for the consanguinity among samples (InbreedingCoeff)")
-public final class InbreedingCoeff extends InfoFieldAnnotation implements StandardAnnotation {
+public final class InbreedingCoeff extends PedigreeAnnotation implements StandardAnnotation {
 
     private static final Logger logger = LogManager.getLogger(InbreedingCoeff.class);
     private static final int MIN_SAMPLES = 10;
     private static final boolean ROUND_GENOTYPE_COUNTS = false;
-    private final Set<String> founderIds;
 
     public InbreedingCoeff(){
-        this(null);
+        super((Set<String>) null);
     }
 
     public InbreedingCoeff(final Set<String> founderIds){
-        //If available, get the founder IDs and cache them. the IC will only be computed on founders then.
-        this.founderIds = founderIds;
+        super(founderIds);
+    }
+
+    public InbreedingCoeff(final File pedigreeFile){
+        super(pedigreeFile);
     }
 
     @Override
@@ -62,7 +66,7 @@ public final class InbreedingCoeff extends InfoFieldAnnotation implements Standa
                                         final VariantContext vc,
                                         final ReadLikelihoods<Allele> likelihoods) {
         Utils.nonNull(vc);
-        final GenotypesContext genotypes = (founderIds == null || founderIds.isEmpty()) ? vc.getGenotypes() : vc.getGenotypes(founderIds);
+        final GenotypesContext genotypes = getFounderGenotypes(vc);
         if (genotypes == null || genotypes.size() < MIN_SAMPLES || !vc.isVariant()) {
             return Collections.emptyMap();
         }
@@ -96,5 +100,4 @@ public final class InbreedingCoeff extends InfoFieldAnnotation implements Standa
 
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.INBREEDING_COEFFICIENT_KEY); }
-
 }

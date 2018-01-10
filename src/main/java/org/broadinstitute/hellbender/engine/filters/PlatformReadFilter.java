@@ -21,7 +21,7 @@ public final class PlatformReadFilter extends ReadFilter implements Serializable
     private static final long serialVersionUID = 1L;
     public static final String PL_FILTER_NAME_LONG_NAME = "platform-filter-name";
 
-    @Argument(fullName = PL_FILTER_NAME_LONG_NAME, shortName = "PLFilterName",
+    @Argument(fullName = PL_FILTER_NAME_LONG_NAME,
             doc="Platform attribute (PL) to match", optional=false)
     public Set<String> PLFilterNames = new LinkedHashSet<>();
 

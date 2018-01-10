@@ -1,12 +1,10 @@
 package org.broadinstitute.hellbender.tools;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
@@ -163,10 +161,9 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
 
     @Test
     public void testReferenceAdapterIsSerializable() throws IOException {
-        final AuthHolder auth = new AuthHolder("name", "somestring");
-        final ReferenceMultiSource referenceMultiSource = new ReferenceMultiSource(auth, b37_2bit_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+        final ReferenceMultiSource referenceMultiSource = new ReferenceMultiSource(b37_2bit_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
         SparkTestUtils.roundTripInKryo(referenceMultiSource, ReferenceMultiSource.class, SparkContextFactory.getTestSparkContext().getConf());
-        final HaplotypeCallerSpark.ReferenceMultiSourceAdapter adapter = new HaplotypeCallerSpark.ReferenceMultiSourceAdapter(referenceMultiSource, auth);
+        final HaplotypeCallerSpark.ReferenceMultiSourceAdapter adapter = new HaplotypeCallerSpark.ReferenceMultiSourceAdapter(referenceMultiSource);
         SparkTestUtils.roundTripInKryo(adapter, HaplotypeCallerSpark.ReferenceMultiSourceAdapter.class, SparkContextFactory.getTestSparkContext().getConf());
 
     }
@@ -187,7 +184,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
 
     @Test
     public void testReferenceMultiSourceIsSerializable() {
-        final ReferenceMultiSource args = new ReferenceMultiSource((PipelineOptions) null, GATKBaseTest.b37_2bit_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+        final ReferenceMultiSource args = new ReferenceMultiSource(GATKBaseTest.b37_2bit_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
         SparkTestUtils.roundTripInKryo(args, ReferenceMultiSource.class, SparkContextFactory.getTestSparkContext().getConf());
     }
 

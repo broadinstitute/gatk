@@ -13,20 +13,20 @@ import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
-import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.barclay.argparser.CommandLineParser;
-import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
-import org.broadinstitute.barclay.argparser.CommandLinePluginProvider;
-import org.broadinstitute.barclay.argparser.SpecialArgumentsCollection;
+import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.text.DecimalFormat;
 import java.time.Duration;
 import java.time.ZonedDateTime;
@@ -34,6 +34,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 
 /**
@@ -53,6 +55,10 @@ import java.util.stream.Collectors;
  *
  */
 public abstract class CommandLineProgram implements CommandLinePluginProvider {
+
+    // Logger is a protected instance variable here to output the correct class name
+    // with concrete sub-classes of CommandLineProgram.  Since CommandLineProgram is
+    // abstract, this is fine (as long as no logging has to happen statically in this class).
     protected final Logger logger = LogManager.getLogger(this.getClass());
 
     @Argument(common=true, optional=true)
@@ -68,14 +74,25 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     @Argument(doc = "Whether to suppress job-summary info on System.err.", common=true)
     public Boolean QUIET = false;
 
-    @Argument(fullName = "use_jdk_deflater", shortName = "jdk_deflater", doc = "Whether to use the JdkDeflater (as opposed to IntelDeflater)", common=true)
+    @Argument(fullName = "use-jdk-deflater", shortName = "jdk-deflater", doc = "Whether to use the JdkDeflater (as opposed to IntelDeflater)", common=true)
     public boolean useJdkDeflater = false;
 
-    @Argument(fullName = "use_jdk_inflater", shortName = "jdk_inflater", doc = "Whether to use the JdkInflater (as opposed to IntelInflater)", common=true)
+    @Argument(fullName = "use-jdk-inflater", shortName = "jdk-inflater", doc = "Whether to use the JdkInflater (as opposed to IntelInflater)", common=true)
     public boolean useJdkInflater = false;
 
-    @Argument(fullName = "gcs_max_retries", shortName = "gcs_retries", doc = "If the GCS bucket channel errors out, how many times it will attempt to re-initiate the connection", optional = true)
-    public int NIO_MAX_REOPENS = BucketUtils.DEFAULT_GCS_MAX_REOPENS;
+    @Argument(fullName = "gcs-max-retries", shortName = "gcs-retries", doc = "If the GCS bucket channel errors out, how many times it will attempt to re-initiate the connection", optional = true)
+    public int NIO_MAX_REOPENS = ConfigFactory.getInstance().getGATKConfig().gcsMaxRetries();
+
+    // This option is here for documentation completeness.
+    // This is actually parsed out in Main to initialize configuration files because
+    // we need to have the configuration completely set up before we create our CommandLinePrograms.
+    // (Some of the CommandLinePrograms have default values set to config values, and these are loaded
+    // at class load time as static initializers).
+    @Argument(fullName = StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION,
+              doc = "A configuration file to use with the GATK.",
+                common = true,
+                optional = true)
+    public String GATK_CONFIG_FILE = null;
 
     private CommandLineParser commandLineParser;
 
@@ -155,21 +172,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         BucketUtils.setGlobalNIODefaultOptions(NIO_MAX_REOPENS);
 
         if (!QUIET) {
-            System.err.println("[" + Utils.getDateTimeForDisplay(startDateTime) + "] " + commandLine);
-
-            // Output a one liner about who/where and what software/os we're running on
-            try {
-                System.err.println("[" + Utils.getDateTimeForDisplay(startDateTime) + "] Executing as " +
-                        System.getProperty("user.name") + "@" + InetAddress.getLocalHost().getHostName() +
-                        " on " + System.getProperty("os.name") + " " + System.getProperty("os.version") +
-                        " " + System.getProperty("os.arch") + "; " + System.getProperty("java.vm.name") +
-                        " " + System.getProperty("java.runtime.version") +
-                        "; Version: " + getVersion());
-
-                // Print important settings to the logger:
-                printSettings();
-            }
-            catch (final Exception e) { /* Unpossible! */ }
+            printStartupMessage(startDateTime);
         }
 
         try {
@@ -245,13 +248,122 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     }
 
     /**
-     * Returns the version of this tool. It is the version stored in the manifest of the jarfile.
+     * Prints a user-friendly message on startup with some information about who we are and the
+     * runtime environment.
+     *
+     * May be overridden by subclasses to provide a custom implementation if desired.
+     *
+     * @param startDateTime Startup date/time
      */
-    public final String getVersion() {
+    protected void printStartupMessage(final ZonedDateTime startDateTime) {
+        try {
+            logger.info(Utils.dupChar('-', 60));
+            logger.info(String.format("%s v%s", getToolkitName(), getVersion()));
+            logger.info(getSupportInformation());
+            logger.info(String.format("Executing as %s@%s on %s v%s %s",
+                    System.getProperty("user.name"), InetAddress.getLocalHost().getHostName(),
+                    System.getProperty("os.name"), System.getProperty("os.version"), System.getProperty("os.arch")));
+            logger.info(String.format("Java runtime: %s v%s",
+                    System.getProperty("java.vm.name"), System.getProperty("java.runtime.version")));
+            logger.info("Start Date/Time: " + Utils.getDateTimeForDisplay(startDateTime));
+            logger.info(Utils.dupChar('-', 60));
+            logger.info(Utils.dupChar('-', 60));
+
+            // Print versions of important dependencies
+            printLibraryVersions();
+
+            // Print important settings to the logger:
+            printSettings();
+        }
+        catch (final Exception e) { /* Unpossible! */ }
+    }
+
+    /**
+     * @return The name of this toolkit. The default implementation uses "Implementation-Title" from the
+     *         jar manifest, or (if that's not available) the package name.
+     *
+     * May be overridden by subclasses to provide a custom implementation if desired.
+     */
+    protected String getToolkitName() {
+        final String implementationTitle = getClass().getPackage().getImplementationTitle();
+        return implementationTitle != null ? implementationTitle : getClass().getPackage().getName();
+    }
+
+    /**
+     * @return the version of this tool. It is the version stored in the manifest of the jarfile
+     *          by default, or "Unavailable" if that's not available.
+     *
+     * May be overridden by subclasses to provide a custom implementation if desired.
+     */
+    protected String getVersion() {
         String versionString = this.getClass().getPackage().getImplementationVersion();
         return versionString != null ?
                 versionString :
                 "Unavailable";
+    }
+
+    /**
+     * @return A String containing information about how to get support for this toolkit.
+     *
+     * May be overridden by subclasses to provide a custom implementation if desired.
+     */
+    protected String getSupportInformation() {
+        return "For support and documentation go to " + HelpConstants.GATK_MAIN_SITE;
+    }
+
+    /**
+     * Output versions of important dependencies to the logger.
+     *
+     * May be overridden by subclasses to provide a custom implementation if desired.
+     */
+    protected void printLibraryVersions() {
+        try {
+            final String classPath = getClass().getResource(getClass().getSimpleName() + ".class").toString();
+            if (classPath.startsWith("jar")) {
+                final String manifestPath = classPath.substring(0, classPath.lastIndexOf("!") + 1) + "/META-INF/MANIFEST.MF";
+                try ( final InputStream manifestStream = new URL(manifestPath).openStream() ) {
+                    final Attributes manifestAttributes = new Manifest(manifestStream).getMainAttributes();
+                    final String htsjdkVersion = manifestAttributes.getValue("htsjdk-Version");
+                    final String picardVersion = manifestAttributes.getValue("Picard-Version");
+
+                    logger.info("HTSJDK Version: " + (htsjdkVersion != null ? htsjdkVersion : "unknown"));
+                    logger.info("Picard Version: " + (picardVersion != null ? picardVersion : "unknown"));
+                }
+            }
+        }
+        catch (IOException ignored) {
+        }
+    }
+
+    /**
+     * Output a curated set of important settings to the logger.
+     *
+     * May be overridden by subclasses to specify a different set of settings to output.
+     */
+    protected void printSettings() {
+        if ( VERBOSITY != Log.LogLevel.DEBUG ) {
+            logger.info("HTSJDK Defaults.COMPRESSION_LEVEL : " + Defaults.COMPRESSION_LEVEL);
+            logger.info("HTSJDK Defaults.USE_ASYNC_IO_READ_FOR_SAMTOOLS : " + Defaults.USE_ASYNC_IO_READ_FOR_SAMTOOLS);
+            logger.info("HTSJDK Defaults.USE_ASYNC_IO_WRITE_FOR_SAMTOOLS : " + Defaults.USE_ASYNC_IO_WRITE_FOR_SAMTOOLS);
+            logger.info("HTSJDK Defaults.USE_ASYNC_IO_WRITE_FOR_TRIBBLE : " + Defaults.USE_ASYNC_IO_WRITE_FOR_TRIBBLE);
+        }
+        else {
+            // At DEBUG verbosity, print all the HTSJDK defaults:
+            Defaults.allDefaults().entrySet().stream().forEach(e->
+                    logger.info("HTSJDK " + Defaults.class.getSimpleName() + "." + e.getKey() + " : " + e.getValue())
+            );
+        }
+
+        // Log the configuration options:
+        ConfigFactory.logConfigFields(ConfigFactory.getInstance().getGATKConfig(), Log.LogLevel.DEBUG);
+
+        final boolean usingIntelDeflater = (BlockCompressedOutputStream.getDefaultDeflaterFactory() instanceof IntelDeflaterFactory && ((IntelDeflaterFactory)BlockCompressedOutputStream.getDefaultDeflaterFactory()).usingIntelDeflater());
+        logger.info("Deflater: " + (usingIntelDeflater ? "IntelDeflater": "JdkDeflater"));
+        final boolean usingIntelInflater = (BlockGunzipper.getDefaultInflaterFactory() instanceof IntelInflaterFactory && ((IntelInflaterFactory)BlockGunzipper.getDefaultInflaterFactory()).usingIntelInflater());
+        logger.info("Inflater: " + (usingIntelInflater ? "IntelInflater": "JdkInflater"));
+
+        logger.info("GCS max retries/reopens: " + BucketUtils.getCloudStorageConfiguration(NIO_MAX_REOPENS).maxChannelReopens());
+        logger.info("Using google-cloud-java patch 6d11bef1c81f885c26b2b56c8616b7a705171e4f from https://github.com/droazen/google-cloud-java/tree/dr_all_nio_fixes");
     }
 
     /**
@@ -277,34 +389,6 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         Utils.nonNull(headers);
         this.defaultHeaders.clear();
         this.defaultHeaders.addAll(headers);
-    }
-
-    /**
-     * Output a curated set of important settings to the logger.
-     *
-     * May be overridden by subclasses to specify a different set of settings to output.
-     */
-    protected void printSettings() {
-        if ( VERBOSITY != Log.LogLevel.DEBUG ) {
-            logger.info("HTSJDK Defaults.COMPRESSION_LEVEL : " + Defaults.COMPRESSION_LEVEL);
-            logger.info("HTSJDK Defaults.USE_ASYNC_IO_READ_FOR_SAMTOOLS : " + Defaults.USE_ASYNC_IO_READ_FOR_SAMTOOLS);
-            logger.info("HTSJDK Defaults.USE_ASYNC_IO_WRITE_FOR_SAMTOOLS : " + Defaults.USE_ASYNC_IO_WRITE_FOR_SAMTOOLS);
-            logger.info("HTSJDK Defaults.USE_ASYNC_IO_WRITE_FOR_TRIBBLE : " + Defaults.USE_ASYNC_IO_WRITE_FOR_TRIBBLE);
-        }
-        else {
-            // At DEBUG verbosity, print all the HTSJDK defaults:
-            Defaults.allDefaults().entrySet().stream().forEach(e->
-                    logger.info("HTSJDK " + Defaults.class.getSimpleName() + "." + e.getKey() + " : " + e.getValue())
-            );
-        }
-
-        final boolean usingIntelDeflater = (BlockCompressedOutputStream.getDefaultDeflaterFactory() instanceof IntelDeflaterFactory && ((IntelDeflaterFactory)BlockCompressedOutputStream.getDefaultDeflaterFactory()).usingIntelDeflater());
-        logger.info("Deflater: " + (usingIntelDeflater ? "IntelDeflater": "JdkDeflater"));
-        final boolean usingIntelInflater = (BlockGunzipper.getDefaultInflaterFactory() instanceof IntelInflaterFactory && ((IntelInflaterFactory)BlockGunzipper.getDefaultInflaterFactory()).usingIntelInflater());
-        logger.info("Inflater: " + (usingIntelInflater ? "IntelInflater": "JdkInflater"));
-
-        logger.info("GCS max retries/reopens: " + BucketUtils.getCloudStorageConfiguration(NIO_MAX_REOPENS).maxChannelReopens());
-        logger.info("Using google-cloud-java patch 6d11bef1c81f885c26b2b56c8616b7a705171e4f from https://github.com/droazen/google-cloud-java/tree/dr_all_nio_fixes");
     }
 
     /**

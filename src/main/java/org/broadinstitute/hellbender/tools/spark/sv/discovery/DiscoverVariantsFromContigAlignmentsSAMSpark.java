@@ -21,7 +21,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -49,14 +49,18 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.*;
 
 /**
- * Parse aligned contigs and call structural variants.
+ * (Internal) Examines aligned contigs from local assemblies and calls structural variants
  *
- * <p>This tool takes a file containing the alignments of assembled contigs
+ * <p>This tool is used in development and should not be of interest to most researchers.  It packages structural
+ * variant calling as a separate tool, independent of the generation of local assemblies.
+ * Most researchers will run StructuralVariationDiscoveryPipelineSpark, which both generates local assemblies
+ * of interesting genomic regions, and then calls structural variants from these assemblies.</p>
+ * <p>This tool takes a SAM/BAM/CRAM containing the alignments of assembled contigs from local assemblies
  * and searches it for split alignments indicating the presence of structural variations. To do so the tool parses
  * primary and supplementary alignments; secondary alignments are ignored. To be considered valid evidence of an SV,
  * two alignments from the same contig must have mapping quality 60, and both alignments must have length greater than
  * or equal to min-alignment-length. Imprecise variants with approximate locations are also called.</p>
- * <p>The input file is typically the SAM file produced by FindBreakpointEvidenceSpark.</p>
+ * <p>The input file is typically the output file produced by FindBreakpointEvidenceSpark.</p>
  *
  * <h3>Inputs</h3>
  * <ul>
@@ -76,21 +80,30 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
  *     -R reference.2bit \
  *     -O structural_variants.vcf
  * </pre>
+ * <p>This tool can be run without explicitly specifying Spark options. That is to say, the given example command
+ * without Spark options will run locally. See
+ * <a href ="https://software.broadinstitute.org/gatk/documentation/article?id=10060">Tutorial#10060</a>
+ * for an example of how to set up and run a Spark tool on a cloud Spark cluster.</p>
  *
  * <h3>Notes</h3>
- * <p>The reference is broadcast by Spark, and must therefore be a 2bit file due to current restrictions.</p>
+ * <p>The reference is broadcast by Spark, and must therefore be a .2bit file due to current restrictions.</p>
  */
 @DocumentedFeature
 @BetaFeature
 @CommandLineProgramProperties(
-        oneLineSummary = "Parse aligned contigs and call structural variants.",
+        oneLineSummary = "(Internal) Examines aligned contigs from local assemblies and calls structural variants",
         summary =
-        "This tool takes a file containing the alignments of assembled contigs" +
+        "This tool is used in development and should not be of interest to most researchers.  It packages structural" +
+        " variant calling as a separate tool, independent of the generation of local assemblies." +
+        " Most researchers will run StructuralVariationDiscoveryPipelineSpark, which both generates local assemblies" +
+        " of interesting genomic regions, and then calls structural variants from these assemblies." +
+        " This tool takes a SAM/BAM/CRAM containing the alignments of assembled contigs from local assemblies" +
         " and searches it for split alignments indicating the presence of structural variations. To do so the tool parses" +
         " primary and supplementary alignments; secondary alignments are ignored. To be considered valid evidence of an SV," +
         " two alignments from the same contig must have mapping quality 60, and both alignments must have length greater than" +
-        " or equal to min-alignment-length. Imprecise variants with approximate locations are also called.",
-        programGroup = StructuralVariationSparkProgramGroup.class)
+        " or equal to min-alignment-length. Imprecise variants with approximate locations are also called.\n" +
+        " The input file is typically the output file produced by FindBreakpointEvidenceSpark.",
+        programGroup = StructuralVariantDiscoveryProgramGroup.class)
 public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
     private final Logger localLogger = LogManager.getLogger(DiscoverVariantsFromContigAlignmentsSAMSpark.class);

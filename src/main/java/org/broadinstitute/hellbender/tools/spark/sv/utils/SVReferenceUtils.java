@@ -2,15 +2,12 @@ package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
-import org.apache.spark.HashPartitioner;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.utils.HopscotchMap;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import scala.Tuple2;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -48,7 +45,7 @@ public final class SVReferenceUtils {
             final int seqLen = rec.getSequenceLength();
             final SimpleInterval interval = new SimpleInterval(seqName, 1, seqLen);
             try {
-                final byte[] bases = ref.getReferenceBases(null, interval).getBases();
+                final byte[] bases = ref.getReferenceBases(interval).getBases();
                 for ( int start = 0; start < seqLen; start += effectiveRecLen ) {
                     sequenceChunks.add(Arrays.copyOfRange(bases, start, Math.min(start+refRecordLen, seqLen)));
                 }

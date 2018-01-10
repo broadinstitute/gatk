@@ -1,12 +1,15 @@
 package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.tools.PrintReads;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -67,5 +70,22 @@ public class ReadWalkerGCSSupportIntegrationTest extends CommandLineProgramTest 
                 Collections.singletonList(expectedOutput)
         );
         testSpec.executeTest("testReadBAMOnGCS", this);
+    }
+
+    @Test(groups = {"bucket"})
+    public void testBAMReferenceAndIntervalsOnGCS() throws Exception {
+        final File output = createTempFile("testBAMReferenceAndIntervalsOnGCS", ".out");
+        final File expected = new File(EXPECTED_OUTPUT_DIR, "expected_testBAMReferenceAndIntervalsOnGCS.out");
+
+        final String[] args = new String[] {
+            "ExampleReadWalkerWithReference",
+            "-I", getGCPTestInputPath() + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam",
+            "-R", getGCPTestInputPath() + "large/human_g1k_v37.20.21.fasta",
+            "-L", getGCPTestInputPath() + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.smallIntervalList.intervals",
+            "-O", output.getAbsolutePath()
+        };
+        new Main().instanceMain(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(output, expected);
     }
 }

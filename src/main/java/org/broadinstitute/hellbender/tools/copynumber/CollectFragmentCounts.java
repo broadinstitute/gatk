@@ -9,9 +9,11 @@ import htsjdk.samtools.util.OverlapDetector;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -19,12 +21,14 @@ import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.SimpleCount;
-import org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.SimpleCountCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberArgumentValidationUtils;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleNameUtils;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.HDF5SimpleCountCollection;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.Metadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.MetadataUtils;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.SimpleCount;
+import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -38,34 +42,76 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Naive implementation of fragment-based coverage collection. The count for each interval is calculated by counting
- * how many different fragment centers intersect with this interval. The start and end positions of fragments are
- * inferred from read information. We only allow properly paired, first of pair reads - thus we do not double count
- * and we exclude reads whose fragment's position cannot be automatically inferred from its SAM record.
+ * Collects fragment counts at specified intervals.  The count for each interval is calculated by counting
+ * the number of fragment centers that lie in interval.  The start and end positions of fragments are
+ * inferred from read information; only properly paired, first-of-pair reads that pass the specified read filters are
+ * used.
+ *
+ * <h3>Inputs</h3>
+ *
+ * <ul>
+ *     <li>
+ *         SAM format read data
+ *     </li>
+ *     <li>
+ *         Intervals at which counts will be collected.
+ *         The argument {@code interval-merging-rule} must be set to {@link IntervalMergingRule#OVERLAPPING_ONLY}
+ *         and all other common arguments for interval padding or merging must be set to their defaults.
+ *     </li>
+ *     <li>
+ *         Output file format.  This can be used to select TSV or HDF5 output.
+ *     </li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ *
+ * <ul>
+ *     <li>
+ *         Counts file.
+ *         By default, the tool produces HDF5 format results. This can be changed with the {@code format} option
+ *         to TSV format. Using HDF5 files with {@link CreateReadCountPanelOfNormals}
+ *         can decrease runtime, by reducing time spent on IO, so this is the default output format.
+ *         The HDF5 format contains information in the paths defined in {@link HDF5SimpleCountCollection}. HDF5 files may be viewed using
+ *         <a href="https://support.hdfgroup.org/products/java/hdfview/">hdfview</a> or loaded in python using
+ *         <a href="http://www.pytables.org/">PyTables</a> or <a href="http://www.h5py.org/">h5py</a>.
+ *         The TSV format has a SAM-style header containing a read group sample name, a sequence dictionary, a row specifying the column headers contained in
+ *         {@link SimpleCountCollection.SimpleCountTableColumn}, and the corresponding entry rows.
+ *     </li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
+ *
+ * <pre>
+ *     gatk CollectFragmentCounts \
+ *          -I sample.bam \
+ *          -L intervals.interval_list \
+ *          --interval-merging-rule OVERLAPPING_ONLY \
+ *          -O sample.counts.hdf5
+ * </pre>
  *
  * @author Andrey Smirnov &lt;asmirnov@broadinstitute.org&gt;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Collect fragment counts, by counting how many fragment centers intersect with a given interval. " +
-                "The fragments are inferred from SAM records of only properly paired intervals.",
-        oneLineSummary = "Collect fragment counts.",
-        programGroup = CopyNumberProgramGroup.class
+        summary = "Collects fragment counts at specified intervals",
+        oneLineSummary = "Collects fragment counts at specified intervals",
+        programGroup = CoverageAnalysisProgramGroup.class
 )
+@DocumentedFeature
+@BetaFeature
 public final class CollectFragmentCounts extends ReadWalker {
     private static final Logger logger = LogManager.getLogger(CollectFragmentCounts.class);
 
     private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 30;
 
-    enum OutputFormat {
+    enum Format {
         TSV, HDF5
     }
 
-    public static final String OUTPUT_FORMAT_LONG_NAME = "outputFormat";
-    public static final String OUTPUT_FORMAT_SHORT_NAME = "fmt";
+    public static final String FORMAT_LONG_NAME = "format";
 
     @Argument(
-            doc = "Output fragment-counts file",
+            doc = "Output file for fragment counts.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
@@ -73,16 +119,15 @@ public final class CollectFragmentCounts extends ReadWalker {
 
     @Argument(
             doc = "Output file format.",
-            fullName = OUTPUT_FORMAT_LONG_NAME,
-            shortName = OUTPUT_FORMAT_SHORT_NAME,
+            fullName = FORMAT_LONG_NAME,
             optional = true
     )
-    private OutputFormat outputFormat = OutputFormat.HDF5;
+    private Format format = Format.HDF5;
 
     /**
-     * Sample metadata contained in the BAM file.
+     * Metadata contained in the BAM file.
      */
-    private SampleMetadata sampleMetadata;
+    private SampleLocatableMetadata metadata;
 
     /**
      * Overlap detector used to determine when fragment centers overlap with input intervals.
@@ -112,13 +157,17 @@ public final class CollectFragmentCounts extends ReadWalker {
 
     @Override
     public void onTraversalStart() {
-        final String sampleName = SampleNameUtils.readSampleName(getHeaderForReads());
-        sampleMetadata = new SimpleSampleMetadata(sampleName);
+        metadata = MetadataUtils.fromHeader(getHeaderForReads(), Metadata.Type.SAMPLE_LOCATABLE);
+        final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
+        //this check is currently redundant, since the master dictionary is taken from the reads;
+        //however, if any other dictionary is added in the future, such a check should be performed
+        if (!CopyNumberArgumentValidationUtils.isSameDictionary(metadata.getSequenceDictionary(), sequenceDictionary)) {
+            logger.warn("Sequence dictionary in BAM does not match the master sequence dictionary.");
+        }
 
         CopyNumberArgumentValidationUtils.validateIntervalArgumentCollection(intervalArgumentCollection);
 
         logger.info("Initializing and validating intervals...");
-        final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
         final List<SimpleInterval> intervals = intervalArgumentCollection.getIntervals(sequenceDictionary);
         intervalCachedOverlapDetector = new CachedOverlapDetector<>(intervals);
 
@@ -154,12 +203,12 @@ public final class CollectFragmentCounts extends ReadWalker {
     public Object onTraversalSuccess() {
         logger.info("Writing fragment counts to " + outputCountsFile);
         final SimpleCountCollection fragmentCounts = new SimpleCountCollection(
-                sampleMetadata,
+                metadata,
                 intervalCachedOverlapDetector.overlapDetector.getAll().stream()
                         .map(i -> new SimpleCount(i, intervalMultiset.count(i)))
                         .collect(Collectors.toList()));
 
-        if (outputFormat == OutputFormat.HDF5) {
+        if (format == Format.HDF5) {
             fragmentCounts.writeHDF5(outputCountsFile);
         } else {
             fragmentCounts.write(outputCountsFile);

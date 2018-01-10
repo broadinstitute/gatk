@@ -13,7 +13,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.programgroups.TestSparkProgramGroup;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
@@ -30,26 +30,75 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * The goal of this program is to load two potentially identical BAMs and determine if the BAMs contain the same
- * reads marked as duplicates. It fails if the BAMs don't have the same number of reads or total duplicates.
+ * Determine if two potentially identical BAMs have the same duplicate reads. This tool is useful for checking if two
+ * BAMs that seem identical have the same reads marked as duplicates.
+ *
+ * <p>It fails if at least one of the following conditions is true of the two BAM files:</p>
+ *
+ * <ul>
+ *     <li>Different number of primary mapped reads</li>
+ *     <li>Different number of duplicate reads (as indicated by the SAM record flag)</li>
+ *     <li>Different reads mapped to some position in the reference</li>
+ * </ul>
+ *
+ * <p>The tool gathers the mapped reads together into groups that belong to the same library and map to the same
+ * position and strand in the reference. If the tool does not fail, then it reports the number of these groups with
+ * the following properties:</p>
+ *
+ * <ul>
+ *     <li>SIZE_UNEQUAL: different number of reads</li>
+ *     <li>EQUAL: same reads and same duplicates</li>
+ *     <li>READ_MISMATCH: reads with different names</li>
+ *     <li>DIFFERENT_REPRESENTATIVE_READ: same reads and number of duplicates, but one or more duplicate reads are different</li>
+ *     <li>DIFF_NUM_DUPES: same reads but different number of duplicates</li>
+ * </ul>
+ *
+ * <h3>Input</h3>
+ *
+ * <ul>
+ *     <li>Two BAM files</li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ *
+ * <p>Results are printed to the screen</p>
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ * gatk CompareDuplicatesSpark \
+ *     -I input_reads_1.bam \
+ *     -I2 input_reads_2.bam
+ * </pre>
+ *
+ * <p>This tool can be run without explicitly specifying Spark options. That is to say, the given example command
+ * without Spark options will run locally. See
+ * <a href ="https://software.broadinstitute.org/gatk/documentation/article?id=10060">Tutorial#10060</a> for an example
+ * of how to set up and run a Spark tool on a cloud Spark cluster.</p>
  */
 @DocumentedFeature
-@CommandLineProgramProperties(summary = "Compares two BAMs for duplicates", oneLineSummary = "Compares two BAMs for duplicates",
-        programGroup = TestSparkProgramGroup.class)
+@CommandLineProgramProperties(summary = "Determine if two potentially identical BAMs have the same duplicate reads. " +
+        "This tool is useful for checking if two BAMs that seem identical have the same reads marked as duplicates.",
+        oneLineSummary = "Determine if two potentially identical BAMs have the same duplicate reads",
+        programGroup = DiagnosticsAndQCProgramGroup.class)
 @BetaFeature
 public final class CompareDuplicatesSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
+    public static final String INPUT_2_LONG_NAME = "input2";
+    public static final String INPUT_2_SHORT_NAME = "I2";
+    public static final String PRINT_SUMMARY_LONG_NAME = "print-summary";
+    public static final String THROW_ON_DIFF_LONG_NAME = "throw-on-diff";
+
     @Override
     public boolean requiresReads() { return true; }
 
-    @Argument(doc="the second BAM", shortName = "I2", fullName = "input2", optional = false)
+    @Argument(doc="The second BAM", shortName = INPUT_2_SHORT_NAME, fullName = INPUT_2_LONG_NAME, optional = false)
     protected String input2;
 
-    @Argument(doc="print summary", shortName = "ps", fullName = "printSummary", optional = true)
+    @Argument(doc="Print a summary", fullName = PRINT_SUMMARY_LONG_NAME, optional = true)
     protected boolean printSummary = true;
 
-    @Argument(doc="throw error on diff", shortName = "cd", fullName = "throwOnDiff", optional = true)
+    @Argument(doc="Throw error if any differences were found", fullName = THROW_ON_DIFF_LONG_NAME, optional = true)
     protected boolean throwOnDiff = false;
 
     @Override

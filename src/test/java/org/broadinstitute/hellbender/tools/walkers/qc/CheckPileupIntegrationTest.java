@@ -45,7 +45,7 @@ public class CheckPileupIntegrationTest extends CommandLineProgramTest {
     public void testBAQPileup() throws IOException {
         // pileup was generated with "samtools -f hg19MiniReference --min-BQ 0 reads_data_source_test1.bam"
         IntegrationTestSpec testSpec = new IntegrationTestSpec(
-                " --continue_after_error " +
+                " --continue-after-error " +
                 " -R " + hg19MiniReference +
                 " -I " + TEST_DATA_DIRECTORY + "reads_data_source_test1.bam" +
                 " -pileup " +  TEST_OUTPUT_DIRECTORY + "reads_data_source_test1.samtools.baq.pileup" +

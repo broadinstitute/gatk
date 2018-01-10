@@ -8,7 +8,7 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.metrics.QualityYieldMetricsArgumentCollection;
@@ -18,13 +18,22 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Spark tool for collecting quality yield metrics. Delegates to QualityYieldMetricsCollectorSpark.
- */
-@CommandLineProgramProperties(
-        summary = "Collects quality yield metrics, a set of metrics that quantify the quality and yield of sequence data from a " +
-                "SAM/BAM/CRAM input file.",
-        oneLineSummary = "CollectQualityYieldMetrics on Spark",
-        programGroup = SparkProgramGroup.class
+ * Collects quality yield metrics in SAM/BAM/CRAM file(s). The tool leverages the Spark framework for faster
+ * operation.
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ * gatk CollectQualityYieldMetricsSpark \
+ *   -R reference.fasta \
+ *   -I input.bam \
+ *   -O quality_yield_metrics.txt
+ * </pre>
+ *
+ */@CommandLineProgramProperties(
+        summary = "Collects quality yield metrics from SAM/BAM/CRAM file(s). The tool leverages the Spark " +
+                "framework for faster operation.",
+        oneLineSummary = "Collects quality yield metrics from SAM/BAM/CRAM file(s).",
+        programGroup = DiagnosticsAndQCProgramGroup.class
 )
 @DocumentedFeature
 @BetaFeature

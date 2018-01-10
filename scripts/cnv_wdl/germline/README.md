@@ -1,86 +1,54 @@
 ## Running the Germline CNV WDL
 
 ### Which WDL should you use?
-- Building a panel of normals (PoN): ``cnv_germline_panel_workflow.wdl``
-- Calling events on a single normal sample: ``cnv_germline_single_sample_workflow.wdl``
-- Calling events on a cohort of normal samples: ``cnv_germline_cohort_workflow.wdl``
+
+- Calling a cohort of samples and building a model for denoising further case samples: ``cnv_germline_cohort_workflow.wdl``
+- Calling a case sample using a previously built model for denoising: ``cnv_germline_case_workflow.wdl``
 
 #### Setting up parameter json file for a run
 
-To get started, copy the relevant ``*_template.json`` for the workflow you wish to run and adjust parameters accordingly.
-You can find all required resource inputs needed to run the workflows in the ``/resources`` directory. These inputs could be run out-of-the-box.
+To get started, create the json template (using ``java -jar wdltool.jar inputs <workflow>``) for the workflow you wish to run and adjust parameters accordingly.
 
-*Please note that there are task-level parameters that do not appear in the template files.  These are set to reasonable values by default, but can also be adjusted if desired.
+*Please note that there are optional workflow-level and task-level parameters that do not appear in the template file.  These are set to reasonable values by default, but can also be adjusted if desired.*
 
-#### Fields of germline CNV panel of normals creation workflow
-
-  ``CNVGermlinePanelWorkflow.sex_genotypes`` -- path to table of per-sample sex genotypes
-  ``CNVGermlinePanelWorkflow.contig_ploidy_annotations`` --  path to the germline contig ploidy annotations table; located in ``/resources`` directory
-  ``CNVGermlinePanelWorkflow.transition_prior_table`` -- path to copy number transition priors table; located in ``/resources`` directory
-  ``CNVGermlinePanelWorkflow.transition_matrix_XY_Y`` -- path to copy number transition prior for Y contig for XY-genotyped samples; located in ``/resources`` directory
-  ``CNVGermlinePanelWorkflow.transition_matrix_XX_X`` -- path to copy number transition prior for X contig for XX-genotyped samples; located in ``/resources`` directory
-  ``CNVGermlinePanelWorkflow.transition_matrix_XY_X`` -- path to copy number transition prior for X contig for XY-genotyped samples; located in ``/resources`` directory
-  ``CNVGermlinePanelWorkflow.transition_matrix_XX_Y`` -- path to copy number transition prior for Y contig for XX-genotyped samples; located in ``/resources`` directory
-  ``CNVGermlinePanelWorkflow.transition_matrix_autosomal`` -- path to transition prior on autosomal loci; located in ``/resources`` directory,
-  ``CNVGermlinePanelWorkflow.normal_bams_list`` -- TSV file consisting of corresponding bam and corresponding index files as described in cnv_germline_panel_workflow.wdl
-  ``CNVGermlinePanelWorkflow.pon_output_path`` -- name of the final output directory
-  ``CNVGermlinePanelWorkflow.num_latents`` -- (advanced) maximum number of principal components. Must be strictly less than the number of samples. The recommended value is 20 ~ 30 for large cohorts. For smaller cohorts, use 0.5 * number of samples. Unnecessary principal components are automatically pruned during PoN creation
-  ``CNVGermlinePanelWorkflow.ref_fasta`` -- path to reference fasta file
-  ``CNVGermlinePanelWorkflow.ref_fasta_dict`` -- path to reference dict file
-  ``CNVGermlinePanelWorkflow.ref_fasta_fai`` -- path to reference fasta fai file
-  ``CNVGermlinePanelWorkflow.gatk_jar`` -- absolute path to gatk.jar
-  ``CNVGermlinePanelWorkflow.targets`` -- (optional) Target file (NOT in BED format) corresponding to the genomic loci of enriched targets in WES sample (e.g. Agilent, Illumina, etc). Please run ConvertBedToTargetFile to convert a BED file to a target file. If provided, then WES workflow will be run; otherwise, WGS workflow will be run
-  
-  In addition, there are several task-level parameters that may be set by advanced users; for example:
-  
-  - ``CNVGermlinePanelWorkflow.CollectReadCounts.wgs_bin_length`` -- Size of bins (in bp) for WGS coverage collection.  *This must be the same value used for all samples.*  Ignored if not running WGS.
-  - ``CNVGermlinePanelWorkflow.PadTargets.padding`` -- Amount of padding (in bp) to add to both sides of targets for WES coverage collection.  *This must be the same value used for all samples.*  Ignored if not running WES.
-  
-  Further explanation of these task-level parameters may be found by invoking the ``--help`` documentation available in the gatk.jar for each tool.
-
-
-#### Fields of germline CNV single sample calling workflow
+#### Required parameters in the germline cohort workflow
 
 The reference used must be the same between PoN and case samples.
 
-  ``CNVGermlineSingleSampleWorkflow.sex_genotypes`` -- path to table of per-sample sex genotypes
-  ``CNVGermlineSingleSampleWorkflow.contig_ploidy_annotations`` --  path to the germline contig ploidy annotations table; located in ``/resources`` directory
-  ``CNVGermlineSingleSampleWorkflow.transition_prior_table`` -- path to copy number transition priors table; located in ``/resources`` directory
-  ``CNVGermlineSingleSampleWorkflow.transition_matrix_XY_Y`` -- path to copy number transition prior for Y contig for XY-genotyped samples; located in ``/resources`` directory
-  ``CNVGermlineSingleSampleWorkflow.transition_matrix_XX_X`` -- path to copy number transition prior for X contig for XX-genotyped samples; located in ``/resources`` directory
-  ``CNVGermlineSingleSampleWorkflow.transition_matrix_XY_X`` -- path to copy number transition prior for X contig for XY-genotyped samples; located in ``/resources`` directory
-  ``CNVGermlineSingleSampleWorkflow.transition_matrix_XX_Y`` -- path to copy number transition prior for Y contig for XX-genotyped samples; located in ``/resources`` directory
-  ``CNVGermlineSingleSampleWorkflow.transition_matrix_autosomal`` -- path to transition prior on autosomal loci; located in ``/resources`` directory,
-  ``CNVGermlineSingleSampleWorkflow.output_path`` -- name of the final output directory
-  ``CNVGermlineSingleSampleWorkflow.num_latents`` -- (advanced) maximum number of principal components. Must be strictly less than the number of samples. The recommended value is 20 ~ 30 for large cohorts. For smaller cohorts, use 0.5 * number of samples. Unnecessary principal components are automatically pruned during PoN creation
-  ``CNVGermlineSingleSampleWorkflow.model_path`` -- absolute path of the PoN model (posterior_finals directory of the panel creation output)
-  ``CNVGermlineSingleSampleWorkflow.normal_bam`` -- path to the normal bam file
-  ``CNVGermlineSingleSampleWorkflow.normal_bam_idx`` -- path to the corresponding bam index file
-  ``CNVGermlineSingleSampleWorkflow.ref_fasta`` -- path to reference fasta file
-  ``CNVGermlineSingleSampleWorkflow.ref_fasta_dict`` -- path to reference dict file
-  ``CNVGermlineSingleSampleWorkflow.ref_fasta_fai`` -- path to reference fasta fai file
-  ``CNVGermlineSingleSampleWorkflow.gatk_jar`` -- absolute path to gatk.jar
-  ``CNVGermlineSingleSampleWorkflow.targets`` -- (optional) Target file (NOT in BED format) corresponding to the genomic loci of enriched targets in WES sample (e.g. Agilent, Illumina, etc). Please run ConvertBedToTargetFile to convert a BED file to a target file. If provided, then WES workflow will be run; otherwise, WGS workflow will be run
+- ``CNVGermlineCohortWorkflow.cohort_entity_id`` -- Name of the cohort.  Will be used as a prefix for output filenames.
+- ``CNVGermlineCohortWorkflow.contig_ploidy_priors`` -- TSV file containing prior probabilities for the ploidy of each contig, with column headers: CONTIG_NAME, PLOIDY_PRIOR_0, PLOIDY_PRIOR_1, ...
+- ``CNVGermlineCohortWorkflow.gatk_docker`` -- GATK Docker image (e.g., ``broadinstitute/gatk:latest``).
+- ``CNVGermlineCohortWorkflow.intervals`` -- Picard or GATK-style interval list.  For WGS, this should typically only include the chromosomes of interest.
+- ``CNVGermlineCohortWorkflow.normal_bais`` -- List of BAI files.  This list must correspond to `normal_bams`.  For example, `["Sample1.bai", "Sample2.bai"]`.
+- ``CNVGermlineCohortWorkflow.normal_bams`` -- List of BAM files.  This list must correspond to `normal_bais`.  For example, `["Sample1.bam", "Sample2.bam"]`.
+- ``CNVGermlineCohortWorkflow.num_intervals_per_scatter`` -- Number of intervals (i.e., targets or bins) in each scatter for GermlineCNVCaller.  If total number of intervals is not divisible by the value provided, the last scatter will contain the remainder.
+- ``CNVGermlineCohortWorkflow.ref_fasta_dict`` -- Path to reference dict file.
+- ``CNVGermlineCohortWorkflow.ref_fasta_fai`` -- Path to reference fasta fai file.
+- ``CNVGermlineCohortWorkflow.ref_fasta`` -- Path to reference fasta file.
 
+In additional, there are optional workflow-level and task-level parameters that may be set by advanced users; for example:
 
-#### Fields of germline CNV cohort calling workflow
+- ``CNVGermlineCohortWorkflow.do_explicit_gc_correction`` -- (optional) If true, perform explicit GC-bias correction when creating PoN and in subsequent denoising of case samples.  If false, rely on PCA-based denoising to correct for GC bias.
+- ``CNVGermlineCohortWorkflow.PreprocessIntervals.bin_length`` -- Size of bins (in bp) for coverage collection.  *This must be the same value used for all case samples.*
+- ``CNVGermlineCohortWorkflow.PreprocessIntervals.padding`` -- Amount of padding (in bp) to add to both sides of targets for WES coverage collection.  *This must be the same value used for all case samples.*
 
-The reference used must be the same between PoN and case samples.
+Further explanation of other task-level parameters may be found by invoking the ``--help`` documentation available in the gatk.jar for each tool.
 
-  ``CNVGermlineCohortWorkflow.sex_genotypes`` -- path to table of per-sample sex genotypes
-  ``CNVGermlineCohortWorkflow.contig_ploidy_annotations`` --  path to the germline contig ploidy annotations table; located in ``/resources`` directory
-  ``CNVGermlineCohortWorkflow.transition_prior_table`` -- path to copy number transition priors table; located in ``/resources`` directory
-  ``CNVGermlineCohortWorkflow.transition_matrix_XY_Y`` -- path to copy number transition prior for Y contig for XY-genotyped samples; located in ``/resources`` directory
-  ``CNVGermlineCohortWorkflow.transition_matrix_XX_X`` -- path to copy number transition prior for X contig for XX-genotyped samples; located in ``/resources`` directory
-  ``CNVGermlineCohortWorkflow.transition_matrix_XY_X`` -- path to copy number transition prior for X contig for XY-genotyped samples; located in ``/resources`` directory
-  ``CNVGermlineCohortWorkflow.transition_matrix_XX_Y`` -- path to copy number transition prior for Y contig for XX-genotyped samples; located in ``/resources`` directory
-  ``CNVGermlineCohortWorkflow.transition_matrix_autosomal`` -- path to transition prior on autosomal loci; located in ``/resources`` directory
-  ``CNVGermlineCohortWorkflow.output_path`` -- name of the final output directory
-  ``CNVGermlineCohortWorkflow.num_latents`` -- (advanced) maximum number of principal components. Must be strictly less than the number of samples. The recommended value is 20 ~ 30 for large cohorts. For smaller cohorts, use 0.5 * number of samples. Unnecessary principal components are automatically pruned during PoN creation
-  ``CNVGermlineCohortWorkflow.model_path`` -- absolute path of the PoN model (posterior_finals directory of the panel creation output)
-  ``CNVGermlineCohortWorkflow.normal_bams_list`` -- TSV file consisting of corresponding bam and corresponding index files as described in cnv_germline_cohort_workflow.wdl
-  ``CNVGermlineCohortWorkflow.ref_fasta`` -- path to reference fasta file
-  ``CNVGermlineCohortWorkflow.ref_fasta_dict`` -- path to reference dict file
-  ``CNVGermlineCohortWorkflow.ref_fasta_fai`` -- path to reference fasta fai file
-  ``CNVGermlineCohortWorkflow.gatk_jar`` -- absolute path to gatk.jar
-  ``CNVGermlineCohortWorkflow.targets`` -- (optional) Target file (NOT in BED format) corresponding to the genomic loci of enriched targets in WES sample (e.g. Agilent, Illumina, etc). Please run ConvertBedToTargetFile to convert a BED file to a target file. If provided, then WES workflow will be run; otherwise, WGS workflow will be run
+#### Required parameters in the germline case workflow
+
+The reference, number of intervals per scatter, and bins (if specified) must be the same between cohort and case samples.
+
+- ``CNVGermlineCaseWorkflow.bam`` -- Path to case BAM file.
+- ``CNVGermlineCaseWorkflow.bam_idx`` -- Path to case BAM file index.
+- ``CNVGermlineCaseWorkflow.contig_ploidy_model_tar`` -- Path to tar of the contig-ploidy model directory generated by the DetermineGermlineContigPloidyCohortMode task. 
+- ``CNVGermlineCaseWorkflow.gatk_docker`` -- GATK Docker image (e.g., ``broadinstitute/gatk:latest``).
+- ``CNVGermlineCaseWorkflow.gcnv_model_tars`` -- Array of paths to tars of the contig-ploidy model directories generated by the GermlineCNVCallerCohortMode tasks.
+- ``CNVGermlineCaseWorkflow.intervals`` -- Picard or GATK-style interval list.  For WGS, this should typically only include the chromosomes of interest.
+- ``CNVGermlineCaseWorkflow.num_intervals_per_scatter`` -- Number of intervals (i.e., targets or bins) in each scatter for GermlineCNVCaller.  If total number of intervals is not divisible by the value provided, the last scatter will contain the remainder.
+- ``CNVGermlineCaseWorkflow.ref_fasta_dict`` -- Path to reference dict file.
+- ``CNVGermlineCaseWorkflow.ref_fasta_fai`` -- Path to reference fasta fai file.
+- ``CNVGermlineCaseWorkflow.ref_fasta`` -- Path to reference fasta file.
+
+In additional, there are several task-level parameters that may be set by advanced users as above.
+
+Further explanation of these task-level parameters may be found by invoking the ``--help`` documentation available in the gatk.jar for each tool.

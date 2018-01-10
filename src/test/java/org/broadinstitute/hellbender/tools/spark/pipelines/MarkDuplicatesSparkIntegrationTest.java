@@ -6,6 +6,7 @@ import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.tools.walkers.markduplicates.MarkDuplicatesGATKIntegrationTest;
 import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSpark;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -42,9 +43,9 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
     @Test(dataProvider = "testMDdata", groups = "spark")
     @Override
     public void testMDOrder(final File input, final File expectedOutput) throws Exception {
-        // Override this test case to provide a --shardedOutput false argument, so that we write a single, sorted
+        // Override this test case to provide a --sharded-output false argument, so that we write a single, sorted
         // bam (since sharded output is not sorted, and this test case is sensitive to order).
-        testMDOrderImpl(input, expectedOutput, "--shardedOutput false");
+        testMDOrderImpl(input, expectedOutput, "--" + GATKSparkTool.SHARDED_OUTPUT_LONG_NAME +" false");
     }
 
     @DataProvider(name = "md")

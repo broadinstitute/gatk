@@ -16,9 +16,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Annotate with local reference bases.
+ * Local reference context at a variant position.
  *
- * Created by David Benjamin on 3/20/17.
+ * </p>The annotation gives ten reference bases each to the left and right of the variant start and the start base for a total of 21 reference bases.
+ * Start position is defined as one base before indels.  For example, the reference context AAAAAAAAAACTTTTTTTTTT would apply to a SNV variant
+ * context with ref allele C and alt allele G as well as to a deletion variant context with ref allele CT and alt allele C.</p>
+ *
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Annotate with local reference bases (REF_BASES)")
 public class ReferenceBases extends InfoFieldAnnotation {

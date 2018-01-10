@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.utils.test;
 import htsjdk.samtools.util.Log;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.FileSystem;
@@ -12,7 +11,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -26,7 +24,6 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
-import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
@@ -35,14 +32,6 @@ import org.broadinstitute.hellbender.utils.runtime.ProcessSettings;
 import org.testng.Assert;
 import org.testng.Reporter;
 import org.testng.annotations.BeforeSuite;
-
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.PrintStream;
-import java.nio.file.Path;
-import java.util.*;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 
 /**
@@ -106,14 +95,6 @@ public abstract class BaseTest {
      */
     public static String getGCPTestProject() {
         return getNonNullEnvironmentVariable("HELLBENDER_TEST_PROJECT");
-    }
-
-    /**
-     * API key for HELLBENDER_TEST_PROJECT
-     * @return HELLBENDER_TEST_APIKEY env. var if defined, throws otherwise.
-     */
-    public static String getGCPTestApiKey() {
-        return getNonNullEnvironmentVariable("HELLBENDER_TEST_APIKEY");
     }
 
     /**

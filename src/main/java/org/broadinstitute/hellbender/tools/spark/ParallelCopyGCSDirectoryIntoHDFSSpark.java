@@ -8,7 +8,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import picard.cmdline.programgroups.OtherProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -26,15 +26,18 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Parallel copy a file or directory from GCS into HDFS.
+ * Parallel copy a file or directory from Google Cloud Storage into the HDFS file system used by Spark
  *
- * <p>This tool uses Spark to do a parallel copy of either a file or a directory from GCS into HDFS.
+ * <p>This tool uses a Spark cluster to do a parallel copy of either a single file or a directory from
+ * Google Cloud Storage (GCS) into the HDFS file system used by Spark to support Resilient Distributed Datasets (RDDs).
  * Files are divided into chunks of size equal to the HDFS block size (with the exception of the final
  * chunk) and each Spark task is responsible for copying one chunk. To copy all of the files in a GCS directory,
  * provide the GCS directory path, including the trailing slash. Directory copies are non-recursive so
  * subdirectories will be skipped. Within directories each file is divided into chunks independently (so this will be
  * inefficient if you have lots of files smaller than the block size). After all chunks are copied, the HDFS
  * concat method is used to stitch together chunks into single files without re-copying them.</p>
+ * <p>This functionality is used by the structural variation workflow to copy reference data when a
+ * Spark cluster is created, and may also be used to copy sample data to a Spark cluster.</p>
  *
  * <h3>Inputs</h3>
  * <ul>
@@ -49,22 +52,28 @@ import java.util.stream.Collectors;
  * <h3>Usage example</h3>
  * <pre>
  *   gatk ParallelCopyGCSDirectoryIntoHDFSSpark \
- *     --input-gcs-path gs://bucket_name/someFile \
- *     --output-hdfs-directory hdfs://cluster-name-m:8020/directory
+ *     --input-gcs-path gs://bucket_name/input_reads.bam \
+ *     --output-hdfs-directory hdfs://cluster-name-m:8020/directory/input_reads.bam \
+ *     -- \
+ *     --spark-runner GCS \
+ *     --cluster my-dataproc-cluster
  * </pre>
  */
 @DocumentedFeature
 @CommandLineProgramProperties(
-        oneLineSummary = "Parallel copy a file or directory from GCS into HDFS.",
+        oneLineSummary = "Parallel copy a file or directory from Google Cloud Storage into the HDFS file system used by Spark",
         summary =
-        "This tool uses Spark to do a parallel copy of either a file or a directory from GCS into HDFS." +
+        "This tool uses a Spark cluster to do a parallel copy of either a single file or a directory from" +
+        " Google Cloud Storage (GCS) into the HDFS file system used by Spark to support Resilient Distributed Datasets (RDDs)." +
         " Files are divided into chunks of size equal to the HDFS block size (with the exception of the final" +
         " chunk) and each Spark task is responsible for copying one chunk. To copy all of the files in a GCS directory," +
         " provide the GCS directory path, including the trailing slash. Directory copies are non-recursive so" +
         " subdirectories will be skipped. Within directories each file is divided into chunks independently (so this will be" +
         " inefficient if you have lots of files smaller than the block size). After all chunks are copied, the HDFS" +
-        " concat method is used to stitch together chunks into single files without re-copying them.",
-        programGroup = SparkProgramGroup.class)
+        " concat method is used to stitch together chunks into single files without re-copying them." +
+        " This functionality is used by the structural variation workflow to copy reference data when a" +
+        " Spark cluster is created, and may also be used to copy sample data to a Spark cluster.",
+        programGroup = OtherProgramGroup.class)
 @BetaFeature
 public class ParallelCopyGCSDirectoryIntoHDFSSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
@@ -72,11 +81,15 @@ public class ParallelCopyGCSDirectoryIntoHDFSSpark extends GATKSparkTool {
     // default buffer size for reading chunks is 64MiB based on performance profiling and what appears to be conventional
     // wisdom to use a power of two for byte buffer sizes
     public static final int SIXTY_FOUR_MIB = 67108864;
+    public static final String INPUT_GCS_PATH_LONG_NAME = "input-gcs-path";
+    public static final String OUTPUT_HDFS_DIRECTORY_LONG_NAME = "output-hdfs-directory";
 
-    @Argument(doc = "input GCS file path (add trailing slash when specifying a directory)", fullName = "input-gcs-path")
-    private String inputGCSPath;
+    @Argument(doc = "input GCS file path (add trailing slash when specifying a directory)",
+            fullName = INPUT_GCS_PATH_LONG_NAME)
+    private String inputGCSPath = null;
 
-    @Argument(doc = "output directory on HDFS", fullName = "output-hdfs-directory")
+    @Argument(doc = "output directory on HDFS to into which to transfer the data (will be created by the tool)",
+            fullName = OUTPUT_HDFS_DIRECTORY_LONG_NAME)
     private String outputHDFSDirectory;
 
     @Override
