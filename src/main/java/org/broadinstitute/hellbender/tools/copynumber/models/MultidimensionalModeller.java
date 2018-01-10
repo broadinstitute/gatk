@@ -211,7 +211,7 @@ public final class MultidimensionalModeller {
 
     private void ensureModelIsFit() {
         if (!isModelFit) {
-            logger.warn("Attempted to write ACNV results to file when model was not completely fit. Performing model fit now.");
+            logger.warn("Attempted to write results to file when model was not completely fit. Performing model fit now.");
             fitModel();
         }
     }
