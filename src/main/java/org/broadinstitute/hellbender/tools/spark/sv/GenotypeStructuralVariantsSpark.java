@@ -803,6 +803,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         switch (ctx.getStructuralVariantType()) {
             case INS:
             case DEL:
+            case DUP:
                 return true;
             default:
                 return false;

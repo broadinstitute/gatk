@@ -179,6 +179,7 @@ public final class SVContext extends VariantContext {
         result.add(referenceHaplotype);
         switch (getStructuralVariantType()) {
             case INS:
+            case DUP:
                     result.add(composeInsertionHaplotype(referenceBases));
                     break;
             case DEL:
