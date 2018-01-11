@@ -123,7 +123,7 @@ task SelectCommonBiallelicSNPs {
 
     command {
         java -jar ${gatk} SelectVariants -V ${input_vcf} \
-            -selectType SNP -restrictAllelesTo BIALLELIC \
+            -select-type SNP -restrict-alleles-to BIALLELIC \
             -select "AF > ${minimum_allele_frequency}" \
             -O ${output_name}.vcf.gz \
             --lenient
