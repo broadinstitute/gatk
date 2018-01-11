@@ -57,9 +57,7 @@ public final class ReadThreadingAssembler {
     private boolean debugGraphTransformations = false;
     private boolean recoverDanglingBranches = true;
     private int minDanglingBranchLength = 0;
-
-    private static final byte MIN_BASE_QUALITY_TO_USE_IN_ASSEMBLY = DEFAULT_MIN_BASE_QUALITY_TO_USE;
-
+    
     protected byte minBaseQualityToUseInAssembly = DEFAULT_MIN_BASE_QUALITY_TO_USE;
     private int pruneFactor = 2;
 
@@ -444,7 +442,7 @@ public final class ReadThreadingAssembler {
             return null;
         }
 
-        final ReadThreadingGraph rtgraph = new ReadThreadingGraph(kmerSize, debugGraphTransformations, MIN_BASE_QUALITY_TO_USE_IN_ASSEMBLY, numPruningSamples);
+        final ReadThreadingGraph rtgraph = new ReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples);
 
         rtgraph.setThreadingStartOnlyAtExistingVertex(!recoverDanglingBranches);
 
