@@ -1,7 +1,6 @@
 #  Run Mutect 2 on a list of tumors or tumor-normal pairs
 #
 #  Description of inputs
-#  gatk: java jar file containing gatk 4 (protected)
 #  intervals: genomic intervals
 #  ref_fasta, ref_fai, ref_dict: reference genome, index, and dictionary
 #  pon, pon_index: optional panel of normals and index in vcf format containing known false positves
