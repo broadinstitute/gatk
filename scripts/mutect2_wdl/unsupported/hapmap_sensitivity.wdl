@@ -144,7 +144,8 @@ task RestrictIntervals {
     File? intervals
 
     command {
-        # subsampling and restriction to biallelics and intervals
+        # restricting intervals
+        # subsamplign and restricting to biallelics done in preprocess_hapmap.wdl
         java -jar ${gatk} SelectVariants -V ${vcf} -O restricted.vcf \
             ${"-L " + intervals} \
     }

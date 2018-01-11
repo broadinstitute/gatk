@@ -75,11 +75,11 @@ task Subsample {
     command {
         # subsampling and restriction to biallelics
         java -jar ${gatk} SelectVariants -V ${hapmap} -O sub.vcf \
-            -restrictAllelesTo BIALLELIC \
-            --sample_name ${samples} \
+            -restrict-alleles-to BIALLELIC \
+            --sample-name ${samples} \
             -L ${gnomad} \
-            -maxIndelSize 10 \
-            --excludeNonVariants
+            -max-indel-size 10 \
+            --exclude-non-variants
 
          #remove NEGATIVE_TRAIN_SITE variants and re-index
          grep -v NEGATIVE_TRAIN_SITE sub.vcf > subsampled.vcf
@@ -100,7 +100,7 @@ task RemoveNearbyIndels {
     String name
 
     command {
-        java -jar ${gatk} RemoveNearbyIndels -V ${input_vcf} -O ${name}.vcf -minIndelSpacing ${min_indel_spacing}
+        java -jar ${gatk} RemoveNearbyIndels -V ${input_vcf} -O ${name}.vcf -min-indel-spacing ${min_indel_spacing}
     }
 
     output {
