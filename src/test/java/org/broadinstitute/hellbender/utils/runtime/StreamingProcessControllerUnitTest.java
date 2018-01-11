@@ -68,7 +68,7 @@ public class StreamingProcessControllerUnitTest extends BaseTest {
         }
     }
 
-    @Test(timeOut = 10000)
+    @Test(timeOut = 50000)
     public void testMultipleParallelStreamingControllers() throws TimeoutException {
         final ProcessSettings catProcessSettings = new ProcessSettings(new String[] {"cat"});
         final StreamingProcessController catController = new StreamingProcessController(catProcessSettings);
@@ -97,7 +97,8 @@ public class StreamingProcessControllerUnitTest extends BaseTest {
         Assert.assertFalse(teeController.getProcess().isAlive());
     }
 
-    @Test(groups = "python", timeOut = 10000)
+    // The timeout value here needs to exceed the timeout value used by StreamingProcessController.
+    @Test(groups = "python", timeOut = 60000)
     public void testStartupCommandExecution() throws TimeoutException, IOException {
         final String writeOutTemplate = "fd=open('%s', 'w')\nfd.write('some output\\n')\nfd.close()\n";
         final File tempFile = createTempFile("streamingControllerStartupCommand", ".txt");
@@ -208,7 +209,7 @@ public class StreamingProcessControllerUnitTest extends BaseTest {
 
     // this needs to have a testNG timeOut that is longer than the timeout built in to the StreamingProcessController,
     // since we want to trigger the latter first, to ensure that we hit the builtin one first
-    @Test(groups = "python", timeOut = 10000, expectedExceptions=TimeoutException.class)
+    @Test(groups = "python", timeOut = 50000, expectedExceptions=TimeoutException.class)
     public void testPromptTimeout() throws TimeoutException {
         // start an interactive Python session with unbuffered IO
         final ProcessSettings processSettings = new ProcessSettings(new String[] {"python", "-i", "-u"});
