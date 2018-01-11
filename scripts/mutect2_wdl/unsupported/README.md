@@ -17,6 +17,8 @@ The following files from a clone of the gatk git repository, copied into a singl
 * scripts/mutect2_wdl/unsupported/mutect2-replicate-validation.wdl
 * scripts/mutect2_wdl/unsupported/calculate_sensitivity.py
 
+Additionally, the gatk git repository has a script called gatk (in the root directory of the repo) that is used to invoke the gatk.  If running on the cloud this is in the gatk docker image and you don't have to do anything.  If running on SGE, you must copy this script to a directory that is in your $PATH.
+
 The following resources:
 * Three preprocessed Hapmap vcfs -- one each for the 5-plex, 10-plex and 20-plex mixtures.  These are produced by preprocess_hapmap.wdl but as long as the sample composition of the mixtures remains the same they do not need to be generated again.  That is, the proportions need not be the same, but the same 5, 10, and 20 Hapmap samples must be present.
 * A reference .fasta file, along with accompanying .fasta.fai and .dict files.
@@ -33,19 +35,20 @@ In the same directory as your wdl scripts, fill in a file called sensitivity.jso
 
 ```
 {
-  "HapmapSensitivityAllPlexes.max_depth": "The maximum depth to consider for sensitivity.  1000 is a reasonable default.",
-  "HapmapSensitivityAllPlexes.gatk": "[path to gatk .jar file]",
+  "HapmapSensitivityAllPlexes.gatk_override": "[Path to a gatk jar file.  Omitting this line uses the gatk jar in the docker image.]",
+  "HapmapSensitivityAllPlexes.picard": "[path to Picard .jar file]",
+  "HapmapSensitivityAllPlexes.gatk_docker": "[gatk docker image eg broadinstitute/gatk:4.beta.3 -- this is not used in SGE but you still have to fill it in.]",
+  "HapmapSensitivityAllPlexes.intervals": "[path to intervals file]",
   "HapmapSensitivityAllPlexes.ref_fasta": "[path to reference .fasta file]",
   "HapmapSensitivityAllPlexes.ref_fai": "[path to reference .fasta.fai file]",
   "HapmapSensitivityAllPlexes.ref_dict": "[path to reference .dict file]",
   "HapmapSensitivityAllPlexes.five_plex_bam_list": "[path to 5-plex bams list]",
   "HapmapSensitivityAllPlexes.ten_plex_bam_list": "[path to 10-plex bams list]",
   "HapmapSensitivityAllPlexes.twenty_plex_bam_list": "[path to 20-plex bams list]",
-  "HapmapSensitivityAllPlexes.intervals": "[path to intervals file]",
+  "HapmapSensitivityAllPlexes.max_depth": "The maximum depth to consider for sensitivity.  1000 is a reasonable default.",
   "HapmapSensitivityAllPlexes.scatter_count": "[How many ways to scatter runs on Mutect2 on each bam file]",
   "HapmapSensitivityAllPlexes.is_run_orientation_bias_filter": "true/false depending on whether you wish to run this filter",
   "HapmapSensitivityAllPlexes.artifact_modes": The artifact modes of the orientation bias filter eg: ["G/T", "C/T"],
-  "HapmapSensitivityAllPlexes.picard": "[path to Picard .jar file]",
   "HapmapSensitivityAllPlexes.five_plex_preprocessed": "[path to preprocessed 5-plex vcf]",
   "HapmapSensitivityAllPlexes.five_plex_preprocessed_idx": "[path to preprocessed 5-plex vcf index]",
   "HapmapSensitivityAllPlexes.ten_plex_preprocessed": "[path to preprocessed 10-plex vcf]",
@@ -64,8 +67,9 @@ In the same directory as your wdl scripts, fill in a file called specificity.jso
 
 ```
 {
-  "Mutect2ReplicateValidation.gatk": "[path to gatk .jar file in the docker image if running on the cloud eg /root/gatk.jar]",
-  "Mutect2ReplicateValidation.gatk_override": "[path to local gatk .jar file when not running in the cloud]",
+  "Mutect2ReplicateValidation.gatk_override": "[Path to a gatk jar file.  Omitting this line uses the gatk jar in the docker image.]",
+  "Mutect2ReplicateValidation.gatk_docker": "[gatk docker image eg broadinstitute/gatk:4.beta.3 -- this is not used in SGE but you still have to fill it in.]",
+  "Mutect2ReplicateValidation.picard": "[path to Picard .jar file]",
   "Mutect2ReplicateValidation.ref_fasta": "[path to reference .fasta file]",
   "Mutect2ReplicateValidation.ref_fai": "[path to reference .fasta.fai file]",
   "Mutect2ReplicateValidation.ref_dict": "[path to reference .dict file]",
@@ -79,14 +83,17 @@ In the same directory as your wdl scripts, fill in a file called specificity.jso
   "Mutect2ReplicateValidation.is_run_orientation_bias_filter": "true/false depending on whether you wish to run this filter",
   "Mutect2ReplicateValidation.artifact_modes": The artifact modes of the orientation bias filter eg: ["G/T", "C/T"],
   "Mutect2ReplicateValidation.preemptible_attempts": "2",
-  "Mutect2ReplicateValidation.gatk_docker": "[gatk docker image eg broadinstitute/gatk:4.beta.3]",
-  "Mutect2ReplicateValidation.picard": "[path to Picard .jar file]",
   "Mutect2ReplicateValidation.m2_extra_args": "optionally, any additional Mutect2 command line arguments",
   "Mutect2ReplicateValidation.m2_extra_filtering_args": "optionally, any additional Mutect2 command line arguments"  
 }
 ```
 
-Note that the docker image path is not used when the validations are run locally.  When running locally, a valid docker path must still be given or else cromwell will fail.  When running locally, fill in gatk4_jar with some dummy value such as "OVERRIDDEN".
+Note that the docker image path is not used when the validations are run on an SGE cluster.  When running on SGE, a valid docker path must still be given or else cromwell will fail.
+
+To summarize the differences between running in the cloud and on SGE:
+* Your jsons must include a valid gatk_docker in both cases, however, when running on SGE this docker image is not actually used.
+* When running in SGE you must put a gatk_override jar file in your jsons.  When running in the cloud you may include one but if you omit this line from your jsons the gatk jar in the docker image will be used.
+* When running in SGE you must make sure to copy the gatk script in the root directory of the gatk git repo into a folder that is in your bash $PATH variable.
 
 ## Running in Cromwell
 * Run hapmap_sensitivity_all_plexes.wdl with the parameters in sensitivity.json

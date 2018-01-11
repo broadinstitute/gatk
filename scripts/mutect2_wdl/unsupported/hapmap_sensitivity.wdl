@@ -21,8 +21,9 @@
 import "mutect2.wdl" as MutectSingleSample
 
 workflow HapmapSensitivity {
-    File gatk
+    File gatk_override
     File picard
+    String gatk_docker
     File? intervals
   	File ref_fasta
   	File ref_fai
@@ -43,7 +44,7 @@ workflow HapmapSensitivity {
     File preprocessed_hapmap_idx
 
     call RestrictIntervals {
-        input: gatk = gatk, vcf = preprocessed_hapmap, vcf_idx = preprocessed_hapmap_idx, intervals = intervals
+        input: gatk_override = gatk_override, gatk_docker = gatk_docker, vcf = preprocessed_hapmap, vcf_idx = preprocessed_hapmap_idx, intervals = intervals
     }
 
     scatter (row in replicates) {
@@ -51,23 +52,23 @@ workflow HapmapSensitivity {
         File index = row[1]
 
         call MixingFractions {
-            input: gatk = gatk, vcf = RestrictIntervals.output_vcf, vcf_idx = RestrictIntervals.output_vcf_idx, bam = bam, bam_idx = index
+            input: gatk_override = gatk_override, gatk_docker = gatk_docker, vcf = RestrictIntervals.output_vcf, vcf_idx = RestrictIntervals.output_vcf_idx, bam = bam, bam_idx = index
         }
 
         call ExpectedAlleleFraction {
-            input: gatk = gatk, vcf = RestrictIntervals.output_vcf, vcf_idx = RestrictIntervals.output_vcf_idx, mixing_fractions = MixingFractions.mixing
+            input: gatk_override = gatk_override, gatk_docker = gatk_docker, vcf = RestrictIntervals.output_vcf, vcf_idx = RestrictIntervals.output_vcf_idx, mixing_fractions = MixingFractions.mixing
         }
 
         call BamDepth {
-            input: gatk = gatk, vcf = ExpectedAlleleFraction.output_vcf, vcf_idx = ExpectedAlleleFraction.output_vcf_idx,
+            input: gatk_override = gatk_override, gatk_docker = gatk_docker, vcf = ExpectedAlleleFraction.output_vcf, vcf_idx = ExpectedAlleleFraction.output_vcf_idx,
                 bam = bam, bam_idx = index, max_depth = max_depth
         }
 
         call MutectSingleSample.Mutect2 {
             input:
-                gatk_override = gatk,
+                gatk_override = gatk_override,
                 picard = picard,
-                gatk_docker = "ubuntu:16.04",
+                gatk_docker = gatk_docker,
                 oncotator_docker = "ubuntu:16.04",
                 intervals = intervals,
                 ref_fasta = ref_fasta,
@@ -87,7 +88,8 @@ workflow HapmapSensitivity {
 
         call Concordance {
             input:
-                gatk = gatk, intervals = intervals,
+                gatk_override = gatk_override, intervals = intervals,
+                gatk_docker = gatk_docker,
                 truth = BamDepth.output_vcf,
                 truth_idx = BamDepth.output_vcf_idx,
                 eval = Mutect2.filtered_vcf,
@@ -95,7 +97,7 @@ workflow HapmapSensitivity {
         }
 
         call ConvertToTable {
-            input: gatk = gatk, input_vcf = Concordance.tpfn, input_vcf_idx = Concordance.tpfn_idx
+            input: gatk_override = gatk_override, gatk_docker = gatk_docker, input_vcf = Concordance.tpfn, input_vcf_idx = Concordance.tpfn_idx
         }
     } #done with scatter over replicates
 
@@ -112,11 +114,11 @@ workflow HapmapSensitivity {
     }
 
     call Jaccard as JaccardSNP {
-        input: gatk = gatk, calls = Mutect2.filtered_vcf, calls_idx = Mutect2.filtered_vcf_index, prefix = prefix, type = "SNP"
+        input: gatk_override = gatk_override, gatk_docker = gatk_docker, calls = Mutect2.filtered_vcf, calls_idx = Mutect2.filtered_vcf_index, prefix = prefix, type = "SNP"
     }
 
     call Jaccard as JaccardINDEL {
-        input: gatk = gatk, calls = Mutect2.filtered_vcf, calls_idx = Mutect2.filtered_vcf_index, prefix = prefix, type = "INDEL"
+        input: gatk_override = gatk_override, gatk_docker = gatk_docker, calls = Mutect2.filtered_vcf, calls_idx = Mutect2.filtered_vcf_index, prefix = prefix, type = "INDEL"
     }
 
     output {
@@ -137,16 +139,26 @@ workflow HapmapSensitivity {
 
 #### Tasks for making truth
 task RestrictIntervals {
-    File gatk
+    File gatk_override
+    String gatk_docker
     File vcf
     File vcf_idx
     File? intervals
 
     command {
-        # restricting intervals
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+
+        # only restricting intervals here
         # subsamplign and restricting to biallelics done in preprocess_hapmap.wdl
-        java -jar ${gatk} SelectVariants -V ${vcf} -O restricted.vcf \
-            ${"-L " + intervals} \
+        gatk --java-options "-Xmx4g" SelectVariants \
+            -V ${vcf} \
+            -O restricted.vcf \
+            ${"-L " + intervals}
+    }
+
+    runtime {
+        docker: "${gatk_docker}"
+        preemptible: 2
     }
 
     output {
@@ -156,7 +168,8 @@ task RestrictIntervals {
 }
 
 task BamDepth {
-    File gatk
+    File gatk_override
+    String gatk_docker
     File vcf
     File vcf_idx
     File bam
@@ -164,8 +177,14 @@ task BamDepth {
     Int  max_depth   #ignore sites with depth greater than this because they are alignment artifacts
 
     command {
-        java -jar ${gatk} AnnotateVcfWithBamDepth -V ${vcf} -I ${bam} -O "bam_depth.vcf"
-        java -jar ${gatk} SelectVariants -V bam_depth.vcf --select "BAM_DEPTH < ${max_depth}" -O truth.vcf
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        gatk --java-options "-Xmx4g" AnnotateVcfWithBamDepth -V ${vcf} -I ${bam} -O "bam_depth.vcf"
+        gatk --java-options "-Xmx4g" SelectVariants -V bam_depth.vcf --select "BAM_DEPTH < ${max_depth}" -O truth.vcf
+    }
+
+    runtime {
+        docker: "${gatk_docker}"
+        preemptible: 2
     }
 
     output {
@@ -175,27 +194,41 @@ task BamDepth {
 }
 
 task MixingFractions {
-    File gatk
+    File gatk_override
+    String gatk_docker
     File vcf
     File vcf_idx
     File bam
     File bam_idx
 
     command {
-        java -jar ${gatk} CalculateMixingFractions -V ${vcf} -I ${bam} -O "mixing.table"
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        gatk --java-options "-Xmx4g" CalculateMixingFractions -V ${vcf} -I ${bam} -O "mixing.table"
+    }
+
+    runtime {
+        docker: "${gatk_docker}"
+        preemptible: 2
     }
 
     output { File mixing = "mixing.table" }
 }
 
 task ExpectedAlleleFraction {
-    File gatk
+    File gatk_override
+    String gatk_docker
     File vcf
     File vcf_idx
     File mixing_fractions
 
     command {
-        java -jar ${gatk} AnnotateVcfWithExpectedAlleleFraction -V ${vcf} -O af_exp.vcf --mixing-fractions  ${mixing_fractions}
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        gatk --java-options "-Xmx4g" AnnotateVcfWithExpectedAlleleFraction -V ${vcf} -O af_exp.vcf --mixing-fractions  ${mixing_fractions}
+    }
+
+    runtime {
+        docker: "${gatk_docker}"
+        preemptible: 2
     }
 
     output {
@@ -207,15 +240,20 @@ task ExpectedAlleleFraction {
 ### Tasks for analysing sensitivity
 
 task ConvertToTable {
-  File gatk
+  File gatk_override
+  String gatk_docker
   File input_vcf
   File input_vcf_idx
 
   command {
-      java -jar ${gatk} VariantsToTable -V ${input_vcf} -F STATUS -F BAM_DEPTH -F AF_EXP -F TYPE -O "result.table"
+      export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+      gatk --java-options "-Xmx4g" VariantsToTable -V ${input_vcf} -F STATUS -F BAM_DEPTH -F AF_EXP -F TYPE -O "result.table"
   }
 
-  runtime { memory: "5 GB" }
+  runtime {
+      docker: "${gatk_docker}"
+      preemptible: 2
+  }
 
   output { File table = "result.table" }
 }
@@ -254,8 +292,8 @@ task AnalyzeSensitivity {
     }
 
     runtime {
-            continueOnReturnCode: [0,1]
-            memory: "5 GB"
+        continueOnReturnCode: [0,1]
+        preemptible: 2
     }
 
     output {
@@ -268,20 +306,23 @@ task AnalyzeSensitivity {
 
 #Make Jaccard index table for SNVs or indels from an array of called vcfs
 task Jaccard {
-    File gatk
+    File gatk_override
+    String gatk_docker
     Array[File] calls
     Array[File] calls_idx
     String prefix
     String type #SNP or INDEL
 
     command {
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+
         result="${prefix}_${type}_jaccard.txt"
         touch $result
 
         count=0
         for vcf in ${sep = ' ' calls}; do
             ((count++))
-            java -jar ${gatk} SelectVariants -V $vcf --select-type-to-include ${type} -O ${type}_only_$count.vcf
+            gatk --java-options "-Xmx4g" SelectVariants -V $vcf --select-type-to-include ${type} -O ${type}_only_$count.vcf
         done
 
         for file1 in ${type}_only*.vcf; do
@@ -295,7 +336,7 @@ task Jaccard {
             if [ $file1 == $file2 ]; then
                 printf 1.0000 >> $result
             else
-                java -jar ${gatk} SelectVariants -V $file1 --concordance $file2 -O overlap.vcf
+                gatk --java-options "-Xmx4g" SelectVariants -V $file1 --concordance $file2 -O overlap.vcf
                 overlap=`grep -v '#' overlap.vcf | wc -l`
 
                 num1=`grep -v '#' $file1 | wc -l`
@@ -314,13 +355,17 @@ task Jaccard {
 
     }
 
-    runtime { memory: "5 GB" }
+    runtime {
+        docker: "${gatk_docker}"
+        preemptible: 2
+    }
 
     output { File table = "${prefix}_${type}_jaccard.txt" }
 }
 
 task Concordance {
-      File gatk
+      File gatk_override
+      String gatk_docker
       File? intervals
       File truth
       File truth_idx
@@ -328,11 +373,17 @@ task Concordance {
       File eval_idx
 
       command {
-          java -jar ${gatk} Concordance ${"-L " + intervals} \
+          export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+          gatk --java-options "-Xmx4g" Concordance ${"-L " + intervals} \
             -truth ${truth} -eval ${eval} \
             -tpfn "tpfn.vcf" \
             -ftnfn "ftnfn.vcf" \
             -summary summary.tsv
+      }
+
+      runtime {
+          docker: "${gatk_docker}"
+          preemptible: 2
       }
 
       runtime { memory: "5 GB" }
