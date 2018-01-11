@@ -6,6 +6,8 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AlleleSpecificAnnotationData;
@@ -34,6 +36,7 @@ public final class ReferenceConfidenceVariantContextMerger {
     protected final VariantAnnotatorEngine annotatorEngine;
     protected final OneShotLogger oneShotAnnotationLogger = new OneShotLogger(this.getClass());
     protected final OneShotLogger oneShotHeaderLineLogger = new OneShotLogger(this.getClass());
+    protected final OneShotLogger AS_warning = new OneShotLogger(this.getClass());
 
     public ReferenceConfidenceVariantContextMerger(VariantAnnotatorEngine engine, final VCFHeader inputHeader) {
         Utils.nonNull(inputHeader, "A VCF header must be provided");
@@ -390,7 +393,8 @@ public final class ReferenceConfidenceVariantContextMerger {
                 try {
                     values.add(parseNumericInfoAttributeValue(vcfInputHeader, key, value.toString()));
                 } catch (final NumberFormatException e) {
-                    oneShotAnnotationLogger.warn(String.format("Detected invalid annotations: When trying to merge variant contexts at location %s:%d the annotation %s was not a numerical value and was ignored",vcPair.getVc().getContig(),vcPair.getVc().getStart(),p.toString()));
+                    warning.warn(String.format("Detected invalid annotations: When trying to merge variant contexts at location %s:%d the annotation %s was not a numerical value and was ignored",vcPair.getVc().getContig(),vcPair.getVc().getStart(),p.toString()));
+                    if (key.startsWith("AS")) AS_warning.warn(String.format("Reducible annotation '%s' detected, add -G Standard -G AS_Standard to the command to annotate in the final VC with this annotation.",key));
                 }
             }
         }

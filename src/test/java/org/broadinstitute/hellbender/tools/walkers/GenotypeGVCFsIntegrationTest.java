@@ -266,4 +266,14 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         args.addArgument("L", "20:69512-69513");
         runCommandLine(args);
     }
+
+    @Test
+    public void testMissingAlleleSpecificAnnotationGroup() throws IOException {
+        final File output = createTempFile("test", ".g.vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addVCF(getTestFile("alleleSpecific.g.vcf"))
+                .addOutput(output)
+                .addReference(new File(b37_reference_20_21));
+        runCommandLine(args);
+    }
 }
