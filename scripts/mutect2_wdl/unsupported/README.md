@@ -36,7 +36,7 @@ In the same directory as your wdl scripts, fill in a file called sensitivity.jso
   "HapmapSensitivityAllPlexes.max_depth": "The maximum depth to consider for sensitivity.  1000 is a reasonable default.",
   "HapmapSensitivityAllPlexes.gatk": "[path to gatk .jar file]",
   "HapmapSensitivityAllPlexes.ref_fasta": "[path to reference .fasta file]",
-  "HapmapSensitivityAllPlexes.ref_fasta_index": "[path to reference .fasta.fai file]",
+  "HapmapSensitivityAllPlexes.ref_fai": "[path to reference .fasta.fai file]",
   "HapmapSensitivityAllPlexes.ref_dict": "[path to reference .dict file]",
   "HapmapSensitivityAllPlexes.five_plex_bam_list": "[path to 5-plex bams list]",
   "HapmapSensitivityAllPlexes.ten_plex_bam_list": "[path to 10-plex bams list]",
@@ -45,7 +45,7 @@ In the same directory as your wdl scripts, fill in a file called sensitivity.jso
   "HapmapSensitivityAllPlexes.scatter_count": "[How many ways to scatter runs on Mutect2 on each bam file]",
   "HapmapSensitivityAllPlexes.is_run_orientation_bias_filter": "true/false depending on whether you wish to run this filter",
   "HapmapSensitivityAllPlexes.artifact_modes": The artifact modes of the orientation bias filter eg: ["G/T", "C/T"],
-  "HapmapSensitivityAllPlexes.picard_jar": "[path to Picard .jar file]",
+  "HapmapSensitivityAllPlexes.picard": "[path to Picard .jar file]",
   "HapmapSensitivityAllPlexes.five_plex_preprocessed": "[path to preprocessed 5-plex vcf]",
   "HapmapSensitivityAllPlexes.five_plex_preprocessed_idx": "[path to preprocessed 5-plex vcf index]",
   "HapmapSensitivityAllPlexes.ten_plex_preprocessed": "[path to preprocessed 10-plex vcf]",
@@ -64,10 +64,10 @@ In the same directory as your wdl scripts, fill in a file called specificity.jso
 
 ```
 {
-  "Mutect2ReplicateValidation.gatk4_jar": "[path to gatk .jar file in the docker image if running on the cloud eg /root/gatk.jar]",
-  "Mutect2ReplicateValidation.gatk4_jar_override": "[path to local gatk .jar file when not running in the cloud]",
+  "Mutect2ReplicateValidation.gatk": "[path to gatk .jar file in the docker image if running on the cloud eg /root/gatk.jar]",
+  "Mutect2ReplicateValidation.gatk_override": "[path to local gatk .jar file when not running in the cloud]",
   "Mutect2ReplicateValidation.ref_fasta": "[path to reference .fasta file]",
-  "Mutect2ReplicateValidation.ref_fasta_index": "[path to reference .fasta.fai file]",
+  "Mutect2ReplicateValidation.ref_fai": "[path to reference .fasta.fai file]",
   "Mutect2ReplicateValidation.ref_dict": "[path to reference .dict file]",
   "Mutect2ReplicateValidation.replicate_pair_list": "[path to replicate bams list]",
   "Mutect2ReplicateValidation.intervals": "[path to intervals file]",
@@ -79,8 +79,8 @@ In the same directory as your wdl scripts, fill in a file called specificity.jso
   "Mutect2ReplicateValidation.is_run_orientation_bias_filter": "true/false depending on whether you wish to run this filter",
   "Mutect2ReplicateValidation.artifact_modes": The artifact modes of the orientation bias filter eg: ["G/T", "C/T"],
   "Mutect2ReplicateValidation.preemptible_attempts": "2",
-  "Mutect2ReplicateValidation.m2_docker": "[gatk docker image eg broadinstitute/gatk:4.beta.3]",
-  "Mutect2ReplicateValidation.picard_jar": "[path to Picard .jar file]",
+  "Mutect2ReplicateValidation.gatk_docker": "[gatk docker image eg broadinstitute/gatk:4.beta.3]",
+  "Mutect2ReplicateValidation.picard": "[path to Picard .jar file]",
   "Mutect2ReplicateValidation.m2_extra_args": "optionally, any additional Mutect2 command line arguments",
   "Mutect2ReplicateValidation.m2_extra_filtering_args": "optionally, any additional Mutect2 command line arguments"  
 }
