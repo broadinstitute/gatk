@@ -1,25 +1,24 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.vcf.*;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-
-import org.broadinstitute.barclay.argparser.Argument;
+import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFFilterHeaderLine;
+import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.barclay.argparser.Advanced;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import picard.cmdline.programgroups.VariantFilteringProgramGroup;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.FeatureInput;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.MultiVariantWalker;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 import java.io.File;
 import java.io.IOException;
@@ -277,12 +276,12 @@ public class ApplyVQSR extends MultiVariantWalker {
     }
 
     private boolean trancheIntervalIsValid(final String sensitivityLimits) {
-        final String[] vals = sensitivityLimits.split("to");
-        if(vals.length != 2)
+        final List<String> vals = Utils.split(sensitivityLimits, "to");
+        if(vals.size() != 2)
             return false;
         try {
-            double lowerLimit = Double.parseDouble(vals[0]);
-            double upperLimit = Double.parseDouble(vals[1].replace("+",""));    //why does our last tranche end with 100+? Is there anything greater than 100 percent?  Really???
+            double lowerLimit = Double.parseDouble(vals.get(0));
+            double upperLimit = Double.parseDouble(vals.get(1).replace("+",""));    //why does our last tranche end with 100+? Is there anything greater than 100 percent?  Really???
         }
         catch(NumberFormatException e) {
             throw new UserException("Poorly formatted tranche filter name does not contain two sensitivity interval end points.");
@@ -393,7 +392,7 @@ public class ApplyVQSR extends MultiVariantWalker {
         //if this site hasn't had a filter applied yet
         if (prevFilterStatus != null && !prevFilterStatus.equals(VCFConstants.UNFILTERED)) {
             final String prevAllelesFilterStatusString = vc.getAttributeAsString(GATKVCFConstants.AS_FILTER_STATUS_KEY, null);
-            final String[] prevAllelesFilterStatusList = prevAllelesFilterStatusString.split(listPrintSeparator);
+            final List<String> prevAllelesFilterStatusList = Utils.split(prevAllelesFilterStatusString, listPrintSeparator);
             //start with the current best allele filter as the most lenient filter across all modes and all alleles
             String mostLenientFilterName = generateFilterString(bestLod);
             //if the current mode's best allele passes the tranche filter, then let the whole site pass
@@ -403,8 +402,8 @@ public class ApplyVQSR extends MultiVariantWalker {
             //if the current mode's best allele does not pass the tranche filter, compare the most lenient filter of this mode with those from the previous mode
             else {
                 double mostLenientSensitivityLowerLimit = parseFilterLowerLimit(mostLenientFilterName);
-                for (int i = 0; i < prevAllelesFilterStatusList.length; i++) {
-                    final String alleleFilterString = prevAllelesFilterStatusList[i].replaceAll(arrayParseRegex, "").trim();
+                for (int i = 0; i < prevAllelesFilterStatusList.size(); i++) {
+                    final String alleleFilterString = prevAllelesFilterStatusList.get(i).replaceAll(arrayParseRegex, "").trim();
                     //if any allele from the previous mode passed the tranche filter, then let the whole site pass
                     if (alleleFilterString.equals(VCFConstants.PASSES_FILTERS_v4)) { //this allele is PASS
                         mostLenientFilterName = alleleFilterString;
@@ -521,11 +520,31 @@ public class ApplyVQSR extends MultiVariantWalker {
         //get VQSR annotations from previous run of ApplyRecalibration, if applicable
         if(foundINDELTranches || foundSNPTranches) {
             final String prevCulprits = vc.getAttributeAsString(GATKVCFConstants.AS_CULPRIT_KEY,"");
-            prevCulpritList = prevCulprits.isEmpty()? new String[0] : prevCulprits.split(listPrintSeparator);
+            if ( prevCulprits.isEmpty() ) {
+                prevCulpritList = new String[0];
+            }
+            else {
+                final List<String> tmpSplitList = Utils.split(prevCulprits, listPrintSeparator);
+                prevCulpritList = tmpSplitList.toArray(new String[tmpSplitList.size()]);
+            }
+
             final String prevLodString = vc.getAttributeAsString(GATKVCFConstants.AS_VQS_LOD_KEY,"");
-            prevLodList = prevLodString.isEmpty()? new String[0] : prevLodString.split(listPrintSeparator);
+            if ( prevLodString.isEmpty() ) {
+                prevLodList = new String[0];
+            }
+            else {
+                final List<String> tmpSplitList = Utils.split(prevLodString, listPrintSeparator);
+                prevLodList = tmpSplitList.toArray(new String[tmpSplitList.size()]);
+            }
+
             final String prevASfilters = vc.getAttributeAsString(GATKVCFConstants.AS_FILTER_STATUS_KEY,"");
-            prevASfiltersList = prevASfilters.isEmpty()? new String[0] : prevASfilters.split(listPrintSeparator);
+            if ( prevASfilters.isEmpty() ) {
+                prevASfiltersList = new String[0];
+            }
+            else {
+                final List<String> tmpSplitList = Utils.split(prevASfilters, listPrintSeparator);
+                prevASfiltersList = tmpSplitList.toArray(new String[tmpSplitList.size()]);
+            }
         }
 
         //for each allele in the current VariantContext

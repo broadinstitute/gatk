@@ -7,7 +7,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.annotator.*;
+import org.broadinstitute.hellbender.tools.walkers.annotator.RankSumTest;
 import org.broadinstitute.hellbender.utils.CompressedDataList;
 import org.broadinstitute.hellbender.utils.Histogram;
 import org.broadinstitute.hellbender.utils.MannWhitneyU;
@@ -22,7 +22,7 @@ import java.util.*;
  */
 public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnnotation {
     private static final Logger logger = Logger.getLogger(AS_RankSumTest.class);
-    public static final String SPLIT_DELIM = "\\|"; //String.split takes a regex, so we need to escape the pipe
+    public static final String SPLIT_DELIM = "|";
     public static final String PRINT_DELIM = "|";
     public static final String RAW_DELIM = ",";
     public static final String REDUCED_DELIM = ",";
@@ -252,16 +252,16 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
         }
         //TODO handle misformatted annotation field more gracefully
         //rawDataPerAllele is a per-sample list of the rank sum statistic for each allele
-        final String[] rawDataPerAllele = rawDataNoBrackets.split(SPLIT_DELIM);
-        for (int i=0; i<rawDataPerAllele.length; i++) {
-            final String alleleData = rawDataPerAllele[i];
+        final List<String> rawDataPerAllele = Utils.split(rawDataNoBrackets, SPLIT_DELIM);
+        for (int i=0; i<rawDataPerAllele.size(); i++) {
+            final String alleleData = rawDataPerAllele.get(i);
             final Histogram alleleList = perAlleleValues.get(myData.getAlleles().get(i));
-            final String[] rawListEntriesAsStringVector = alleleData.split(RAW_DELIM);
-            for (int j=0; j<rawListEntriesAsStringVector.length; j+=2) {
-                if (!rawListEntriesAsStringVector[j].isEmpty()) {
-                    Double value = Double.parseDouble(rawListEntriesAsStringVector[j].trim());
-                    if (!value.isNaN() && (!rawListEntriesAsStringVector[j + 1].isEmpty())) {
-                        int count = Integer.parseInt(rawListEntriesAsStringVector[j + 1].trim());
+            final List<String> rawListEntriesAsStringVector = Utils.split(alleleData, RAW_DELIM);
+            for (int j=0; j<rawListEntriesAsStringVector.size(); j+=2) {
+                if (!rawListEntriesAsStringVector.get(j).isEmpty()) {
+                    Double value = Double.parseDouble(rawListEntriesAsStringVector.get(j).trim());
+                    if (!value.isNaN() && (!rawListEntriesAsStringVector.get(j + 1).isEmpty())) {
+                        int count = Integer.parseInt(rawListEntriesAsStringVector.get(j + 1).trim());
                         alleleList.add(value, count);
                     }
                 }

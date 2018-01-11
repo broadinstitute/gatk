@@ -281,7 +281,7 @@ public final class ValidateVariants extends VariantWalker {
     private Set<String> getRSIDs(FeatureContext featureContext) {
         Set<String> rsIDs = new LinkedHashSet<>();
         for (VariantContext rsID : featureContext.getValues(dbsnp.dbsnp)) {
-            rsIDs.addAll(Arrays.asList(rsID.getID().split(VCFConstants.ID_FIELD_SEPARATOR)));
+            rsIDs.addAll(Utils.split(rsID.getID(), VCFConstants.ID_FIELD_SEPARATOR));
         }
         return rsIDs;
     }

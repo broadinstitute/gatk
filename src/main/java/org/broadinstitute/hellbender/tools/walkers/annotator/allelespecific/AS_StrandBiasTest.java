@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasTest;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -18,7 +19,7 @@ import java.util.*;
  */
 public abstract class AS_StrandBiasTest extends StrandBiasTest implements ReducibleAnnotation {
     private final static Logger logger = Logger.getLogger(AS_StrandBiasTest.class);
-    public static final String SPLIT_DELIM = "\\|"; //String.split takes a regex, so we need to escape the pipe
+    public static final String SPLIT_DELIM = "|";
     public static final String PRINT_DELIM = "|";
     public static final String REDUCED_DELIM = ",";
     public static final int MIN_COUNT = 2;
@@ -168,20 +169,19 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
         if (rawDataString.startsWith("[")) {
             rawDataString = rawDataString.substring(1,rawDataString.length()-1);
         }
-        String[] rawDataPerAllele;
-        String[] rawListEntriesAsStringVector;
+
         Map<Allele, List<Integer>> perAlleleValues = new HashMap<>();
         //Initialize maps
         for (Allele current : myData.getAlleles()) {
             perAlleleValues.put(current, new LinkedList<Integer>());
         }
         //rawDataPerAllele is the list of values for each allele (each of variable length)
-        rawDataPerAllele = rawDataString.split(SPLIT_DELIM);
-        for (int i=0; i<rawDataPerAllele.length; i++) {
-            String alleleData = rawDataPerAllele[i];
+        final List<String> rawDataPerAllele = Utils.split(rawDataString, SPLIT_DELIM);
+        for (int i=0; i<rawDataPerAllele.size(); i++) {
+            String alleleData = rawDataPerAllele.get(i);
             if (!alleleData.isEmpty()) {
                 List<Integer> alleleList = perAlleleValues.get(myData.getAlleles().get(i));
-                rawListEntriesAsStringVector = alleleData.split(",");
+                List<String> rawListEntriesAsStringVector = Utils.split(alleleData, ',');
                 //Read counts will only ever be integers
                 for (String s : rawListEntriesAsStringVector) {
                     if (!s.isEmpty()) {

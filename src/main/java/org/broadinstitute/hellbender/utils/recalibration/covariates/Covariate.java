@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.recalibration.covariates;
 
 import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.Serializable;
@@ -54,7 +55,7 @@ public interface Covariate extends Serializable {
      * Returns the names of the covariate, which is the simple class name without the "Covariate" part;
      */
     default String parseNameForReport() {
-        return getClass().getSimpleName().split("Covariate")[0];
+        return Utils.split(getClass().getSimpleName(),"Covariate").get(0);
     }
 
 }

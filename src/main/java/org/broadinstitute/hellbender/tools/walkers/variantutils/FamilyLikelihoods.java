@@ -392,10 +392,10 @@ public final class FamilyLikelihoods {
         if (genotype != null && hasCalledGT(genotype.getType()) && genotype.hasExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY)) {
             final Object GPfromVCF = genotype.getExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
             //parse the GPs into a vector of probabilities
-            final String[] likelihoodsAsStringVector = ((String)GPfromVCF).split(",");
-            final double[] likelihoodsAsVector = new double[likelihoodsAsStringVector.length];
-            for ( int i = 0; i < likelihoodsAsStringVector.length; i++ ) {
-                likelihoodsAsVector[i] = Double.parseDouble(likelihoodsAsStringVector[i]) / -10.0;
+            final List<String> likelihoodsAsStringVector = Utils.split(((String)GPfromVCF), ',');
+            final double[] likelihoodsAsVector = new double[likelihoodsAsStringVector.size()];
+            for ( int i = 0; i < likelihoodsAsStringVector.size(); i++ ) {
+                likelihoodsAsVector[i] = Double.parseDouble(likelihoodsAsStringVector.get(i)) / -10.0;
             }
             //keep in log10 space for large GQs
             likelihoods = GeneralUtils.normalizeFromLog10(likelihoodsAsVector, true, true);

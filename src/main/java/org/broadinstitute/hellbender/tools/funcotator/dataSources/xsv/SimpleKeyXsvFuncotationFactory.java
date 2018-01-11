@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.nio.PathLineIterator;
 
 import java.nio.file.Path;
@@ -220,7 +221,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
         // We're at the header, so we need to initialize the header columns,
         // And fix the column headers to not contain any spaces:
         final List<String> annotationColumnNames =
-                Arrays.stream(lineIterator.next().split(delimiter))
+                Utils.split(lineIterator.next(), delimiter).stream()
                         .map(n -> n.replaceAll("^\\s+", "").replaceAll("\\s+$", ""))
                         .map(n -> getName() + "_" + n.replaceAll(" ", "_"))
                         .collect(Collectors.toCollection(ArrayList::new));
@@ -269,7 +270,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
                     throw new UserException.MalformedFile("File contains an empty line (" + dataRowNum + ").  All lines must have data.");
             }
 
-            final List<String> dataRow = new ArrayList<>( Arrays.asList(rawRow.split(delimiter)) );
+            final List<String> dataRow = Utils.split(rawRow, delimiter);
 
             // Remove the key column:
             final String rowKey = dataRow.remove(keyColumn);

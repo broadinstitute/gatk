@@ -88,7 +88,7 @@ public final class PosteriorProbabilitiesUtils {
             final String PPstring = (String) PPfromVCF;
             //samples not in trios will have PP tag like ".,.,." if family priors are applied
             return PPstring.charAt(0)=='.' ? getLikelihoodsVector(genotype) :
-                    Arrays.stream(PPstring.split(",")).mapToDouble(s -> Double.parseDouble(s)/-10.0).toArray();
+                    Utils.split(PPstring, ',').stream().mapToDouble(s -> Double.parseDouble(s)/-10.0).toArray();
         } else {
             return Arrays.stream(extractInts(PPfromVCF)).mapToDouble(i -> i/-10.0).toArray();
         }

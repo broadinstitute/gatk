@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.log4j.Logger;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.InfoFieldAnnotation;
@@ -48,7 +49,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
 
     private static final OneShotLogger allele_logger = new OneShotLogger(AS_RMSMappingQuality.class);
     private static final OneShotLogger genotype_logger = new OneShotLogger(AS_RMSMappingQuality.class);
-    public static final String SPLIT_DELIM = "\\|"; //String.split takes a regex, so we need to escape the pipe
+    public static final String SPLIT_DELIM = "|";
     public static final String PRINT_DELIM = "|";
 
 
@@ -141,9 +142,9 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
     protected void parseRawDataString(final ReducibleAnnotationData<Double> myData) {
         final String rawDataString = myData.getRawData();
         //get per-allele data by splitting on allele delimiter
-        final String[] rawDataPerAllele = rawDataString.split(SPLIT_DELIM);
-        for (int i=0; i<rawDataPerAllele.length; i++) {
-            final String alleleData = rawDataPerAllele[i];
+        final List<String> rawDataPerAllele = Utils.split(rawDataString, SPLIT_DELIM);
+        for (int i=0; i<rawDataPerAllele.size(); i++) {
+            final String alleleData = rawDataPerAllele.get(i);
             myData.putAttribute(myData.getAlleles().get(i), Double.parseDouble(alleleData));
         }
     }

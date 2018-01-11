@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_R
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
@@ -170,10 +171,10 @@ public final class RMSMappingQualityUnitTest {
         Assert.assertEquals(annotate.size(), 1, "size");
         Assert.assertEquals(annotate.keySet(), Collections.singleton(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY), "annots");
         final double rms= MathUtils.sumOfSquares(MQsListOK); //only those are MQ0
-        final String[] split =((String)annotate.get(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY)).split(AS_RMSMappingQuality.SPLIT_DELIM);
-        Assert.assertEquals(split.length, 2);
-        Assert.assertEquals(split[0], String.format("%.2f", rms));
-        Assert.assertEquals(split[1], String.format("%.2f", 0.0));
+        final List<String> split = Utils.split(((String)annotate.get(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY)), AS_RMSMappingQuality.SPLIT_DELIM);
+        Assert.assertEquals(split.size(), 2);
+        Assert.assertEquals(split.get(0), String.format("%.2f", rms));
+        Assert.assertEquals(split.get(1), String.format("%.2f", 0.0));
     }
 
     @Test
@@ -187,10 +188,10 @@ public final class RMSMappingQualityUnitTest {
         final VariantContext vc= makeVC();
         final ReferenceContext referenceContext= null;
         final Map<String, Object> annotate = new AS_RMSMappingQuality().annotateRawData(referenceContext, vc, likelihoods);
-        final String[] split =((String)annotate.get(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY)).split(AS_RMSMappingQuality.SPLIT_DELIM);
-        Assert.assertEquals(split.length, 2);
-        Assert.assertEquals(split[0], String.format("%.2f", 0.0));
-        Assert.assertEquals(split[1], String.format("%.2f", 0.0));
+        final List<String> split = Utils.split((String)annotate.get(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY), AS_RMSMappingQuality.SPLIT_DELIM);
+        Assert.assertEquals(split.size(), 2);
+        Assert.assertEquals(split.get(0), String.format("%.2f", 0.0));
+        Assert.assertEquals(split.get(1), String.format("%.2f", 0.0));
     }
 
     @Test

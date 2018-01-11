@@ -27,6 +27,7 @@ import shaded.cloud_nio.org.threeten.bp.Duration;
 import java.io.*;
 import java.nio.file.Files;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -333,18 +334,17 @@ public final class BucketUtils {
     /**
      * Given a path of the form "gs://bucket/folder/folder/file", returns "bucket".
      */
-    public static String getBucket(String path) {
-        return path.split("/")[2];
+    public static String getBucket(final String path) {
+        return Utils.split(path, "/").get(2);
     }
 
     /**
      * Given a path of the form "gs://bucket/folder/folder/file", returns "folder/folder/file".
      */
     public static String getPathWithoutBucket(String path) {
-        final String[] split = path.split("/");
-        final String BUCKET = split[2];
-        return String.join("/", Arrays.copyOfRange(split, 3, split.length));
-
+        final List<String> split = Utils.split(path, "/");
+        final String BUCKET = split.get(2);
+        return String.join("/", split.subList(3, split.size()));
     }
 
     /**

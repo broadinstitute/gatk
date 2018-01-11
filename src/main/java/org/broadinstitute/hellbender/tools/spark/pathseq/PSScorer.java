@@ -259,17 +259,17 @@ public final class PSScorer {
         if (read.hasAttribute(tag)) {
             final int expectedTokens = Math.max(contigIndex, Math.max(cigarIndex, numMismatchesIndex)) + 1;
             final String tagValue = read.getAttributeAsString(tag);
-            final String[] tagTokens = tagValue.split(";");
+            final List<String> tagTokens = Utils.split(tagValue, ';');
             for (final String tok : tagTokens) {
-                final String[] subtokens = tok.split(",");
-                if (subtokens.length < expectedTokens) {
-                    throw new UserException.BadInput("Error parsing " + tag + " tag: expected at least " + expectedTokens + " values per alignment but found " + subtokens.length);
+                final List<String> subtokens = Utils.split(tok, ',');
+                if (subtokens.size() < expectedTokens) {
+                    throw new UserException.BadInput("Error parsing " + tag + " tag: expected at least " + expectedTokens + " values per alignment but found " + subtokens.size());
                 }
-                final int numMismatches = Integer.valueOf(subtokens[numMismatchesIndex]);
-                final Cigar cigar = TextCigarCodec.decode(subtokens[cigarIndex]);
+                final int numMismatches = Integer.valueOf(subtokens.get(numMismatchesIndex));
+                final Cigar cigar = TextCigarCodec.decode(subtokens.get(cigarIndex));
                 final int numMatches = PSUtils.getMatchesLessDeletions(cigar, numMismatches);
                 if (numMatches >= minIdentityBases) {
-                    final String recordName = SAMSequenceRecord.truncateSequenceName(subtokens[contigIndex]);
+                    final String recordName = SAMSequenceRecord.truncateSequenceName(subtokens.get(contigIndex));
                     alternateHits.add(new PSPathogenHitAlignment(numMatches, recordName, cigar));
                 }
             }

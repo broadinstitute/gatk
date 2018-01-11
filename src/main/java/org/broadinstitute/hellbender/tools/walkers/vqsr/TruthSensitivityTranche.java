@@ -5,9 +5,13 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.*;
 
 /*
@@ -104,20 +108,20 @@ final class TruthSensitivityTranche extends Tranche {
                     continue;
                 }
 
-                final String[] vals = line.split(VALUE_SEPARATOR);
+                final List<String> vals = Utils.split(line, VALUE_SEPARATOR);
                 if (header == null) {  //reading the header
-                    header = vals;
+                    header = vals.toArray(new String[vals.size()]);
                     if (header.length != EXPECTED_COLUMN_COUNT) {
                         throw new UserException.MalformedFile(f, "Expected 11 elements in header line " + line);
                     }
                 } else {
-                    if (header.length != vals.length) {
-                        throw new UserException.MalformedFile(f, "Line had too few/many fields.  Header = " + header.length + " vals " + vals.length + ". The line was: " + line);
+                    if (header.length != vals.size()) {
+                        throw new UserException.MalformedFile(f, "Line had too few/many fields.  Header = " + header.length + " vals " + vals.size() + ". The line was: " + line);
                     }
 
                     Map<String, String> bindings = new LinkedHashMap<>();
-                    for (int i = 0; i < vals.length; i++) {
-                        bindings.put(header[i], vals[i]);
+                    for (int i = 0; i < vals.size(); i++) {
+                        bindings.put(header[i], vals.get(i));
                     }
                     tranches.add(new TruthSensitivityTranche(
                             getRequiredDouble(bindings, "targetTruthSensitivity"),

@@ -2,23 +2,12 @@ package org.broadinstitute.hellbender.utils.report;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.PrintStream;
-import java.io.Reader;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.NavigableMap;
-import java.util.SortedSet;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import java.io.*;
+import java.util.*;
 
 /**
  * Container class for GATK report tables
@@ -107,7 +96,7 @@ public final class GATKReport {
                 version.equals(GATKReportVersion.V0_2))
             throw new UserException("The GATK no longer supports reading legacy GATK Reports. Please use v1.0 or newer.");
 
-        int nTables = Integer.parseInt(reportHeader.split(":")[2]);
+        int nTables = Integer.parseInt(Utils.split(reportHeader, ':').get(2));
 
         // Read each table according ot the number of tables
         for (int i = 0; i < nTables; i++) {

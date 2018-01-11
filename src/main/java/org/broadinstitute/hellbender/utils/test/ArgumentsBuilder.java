@@ -40,7 +40,7 @@ public final class ArgumentsBuilder {
         for (String chunk : chunks){
             if(chunk.contains("=")){
                 String tmp = "--"+chunk;
-                args.addAll(Arrays.asList(tmp.split("=")));
+                args.addAll(Utils.split(tmp, '='));
             }
             else{
                 args.add(chunk);

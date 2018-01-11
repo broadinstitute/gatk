@@ -25,7 +25,6 @@ import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
@@ -112,8 +111,8 @@ public class GATKProtectedVariantContextUtils {
             return StreamSupport.stream(((Iterable<?>)value).spliterator(), false)
                     .mapToDouble(doubleConverter).toArray();
         } else { // as a last resort with transform it into an String and try to parse an array out of it.
-            return Stream.of(String.valueOf(value).trim().replaceAll("\\[|\\]", "")
-                    .split(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR))
+            return Utils.split(String.valueOf(value).trim().replaceAll("\\[|\\]", ""), VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)
+                    .stream()
                     .mapToDouble(doubleConverter).toArray();
         }
     }
@@ -149,8 +148,8 @@ public class GATKProtectedVariantContextUtils {
             return StreamSupport.stream(((Iterable<?>)value).spliterator(), false)
                     .mapToInt(intConverter).toArray();
         } else { // as a last resort with transform it into an String and try to parse an array out of it.
-            return Stream.of(String.valueOf(value).trim().replaceAll("\\[|\\]", "")
-                    .split(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR))
+            return Utils.split(String.valueOf(value).trim().replaceAll("\\[|\\]", ""), VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)
+                    .stream()
                     .mapToInt(intConverter).toArray();
         }
     }

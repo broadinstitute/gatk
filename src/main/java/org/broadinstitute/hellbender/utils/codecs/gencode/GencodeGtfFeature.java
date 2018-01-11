@@ -110,10 +110,10 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         // But we need to match up the field names to the fields themselves:
         for ( final String extraField : extraFields ) {
 
-            final String[] fieldParts = extraField.trim().split(EXTRA_FIELD_KEY_VALUE_SPLITTER);
+            final List<String> fieldParts = Utils.split(extraField.trim(), EXTRA_FIELD_KEY_VALUE_SPLITTER);
 
-            if ( fieldParts.length == 1 ){
-                if ( fieldParts[EXTRA_FIELD_KEY_INDEX].isEmpty() ){
+            if ( fieldParts.size() == 1 ){
+                if ( fieldParts.get(EXTRA_FIELD_KEY_INDEX).isEmpty() ){
                     continue;
                 }
                 else {
@@ -122,11 +122,11 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
             }
 
             // Each optional field is in a key/value pair:
-            final String fieldName = fieldParts[EXTRA_FIELD_KEY_INDEX].trim();
+            final String fieldName = fieldParts.get(EXTRA_FIELD_KEY_INDEX).trim();
 
             // The value of the field may be between two quotes.
             // We remove them here.
-            final String fieldValue = fieldParts[EXTRA_FIELD_VALUE_INDEX].trim().replaceAll("\"", "");
+            final String fieldValue = fieldParts.get(EXTRA_FIELD_VALUE_INDEX).trim().replaceAll("\"", "");
 
             OptionalField<?> optionalField = null;
 
@@ -255,7 +255,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
      */
     public static GencodeGtfFeature create(final String gtfLine) {
         Utils.nonNull(gtfLine);
-        return create(gtfLine.split(FIELD_DELIMITER));
+        final List<String> splitLine = Utils.split(gtfLine, FIELD_DELIMITER);
+        return create(splitLine.toArray(new String[splitLine.size()]));
     }
 
     /**
@@ -271,8 +272,6 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
             throw new UserException.MalformedFile("Invalid number of fields in the given GENCODE line " +
                     " - Given: " + gtfFields.length + " Expected: " + GencodeGtfCodec.NUM_COLUMNS);
         }
-
-
 
         final FeatureType featureType = FeatureType.getEnum( gtfFields[FEATURE_TYPE_INDEX] );
 

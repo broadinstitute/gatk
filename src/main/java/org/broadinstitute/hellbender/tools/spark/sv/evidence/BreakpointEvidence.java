@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.StrandedInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.TextMDCodec;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.ArrayList;
@@ -435,8 +436,8 @@ public class BreakpointEvidence {
             if (tagSA == null) {
                 return null;
             } else {
-                final String[] saStrings = tagSA.split(";");
-                final List<SAMapping> supplementaryAlignments = new ArrayList<>(saStrings.length);
+                final List<String> saStrings = Utils.split(tagSA, ';');
+                final List<SAMapping> supplementaryAlignments = new ArrayList<>(saStrings.size());
                 for (final String saString : saStrings) {
                     final String[] saFields = saString.split(",", -1);
                     if (saFields.length != 6) {
@@ -448,7 +449,7 @@ public class BreakpointEvidence {
                     final String cigarString = saFields[3];
                     final int mapQ = Integer.parseInt(saFields[4]);
                     final int mismatches = Integer.parseInt(saFields[5]);
-                    SAMapping saMapping = new SAMapping(contigId, pos, strand, cigarString, mapQ, mismatches);
+                    final SAMapping saMapping = new SAMapping(contigId, pos, strand, cigarString, mapQ, mismatches);
 
                     supplementaryAlignments.add(saMapping);
                 }

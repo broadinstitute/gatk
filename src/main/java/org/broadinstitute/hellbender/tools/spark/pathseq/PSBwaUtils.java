@@ -3,14 +3,15 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.apache.logging.log4j.Logger;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -73,8 +74,8 @@ public final class PSBwaUtils {
     private static Iterator<String> getSequenceNames(final GATKRead read) {
         if (read.isUnmapped() || read.getAssignedContig().equals("*")) return Collections.emptyIterator();
         if (!read.hasAttribute("SA")) return Collections.singleton(read.getAssignedContig()).iterator();
-        final String[] saTokens = read.getAttributeAsString("SA").split(";");
-        final Set<String> sequenceNames = new HashSet<>(SVUtils.hashMapCapacity(1 + saTokens.length));
+        final List<String> saTokens = Utils.split(read.getAttributeAsString("SA"), ";");
+        final Set<String> sequenceNames = new HashSet<>(SVUtils.hashMapCapacity(1 + saTokens.size()));
         sequenceNames.add(read.getAssignedContig());
         for (final String token : saTokens) {
             final String[] alignmentTokens = token.split(",", 1);

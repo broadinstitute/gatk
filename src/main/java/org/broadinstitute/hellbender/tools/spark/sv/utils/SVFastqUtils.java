@@ -259,8 +259,8 @@ public class SVFastqUtils {
         }
 
         public String getId() {
-            final String[] headerParts = header.split(HEADER_FIELD_SEPARATOR_STR);
-            return headerParts[0].substring(1); // skip the '@'.
+            final List<String> headerParts = Utils.split(header, HEADER_FIELD_SEPARATOR_STR);
+            return headerParts.get(0).substring(1); // skip the '@'.
         }
 
         public String getName() { final String id = getId();

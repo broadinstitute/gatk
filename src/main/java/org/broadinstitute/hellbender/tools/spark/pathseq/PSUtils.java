@@ -27,7 +27,8 @@ public final class PSUtils {
         if (arg == null || arg.isEmpty()) {
             return new String[0];
         }
-        return arg.split(",");
+        final List<String> splitArgs = Utils.split(arg, ',');
+        return splitArgs.toArray(new String[splitArgs.size()]);
     }
 
     /**

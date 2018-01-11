@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.report;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.text.TextFormattingUtils;
 
 import java.io.BufferedReader;
@@ -108,24 +109,24 @@ public final class GATKReportTable {
         switch ( version ) {
             case V1_1:
                 // read in the header lines
-                final String[] tableData, tableNameData;
+                final List<String> tableData, tableNameData;
                 try {
-                    tableData = reader.readLine().split(SEPARATOR);
-                    tableNameData = reader.readLine().split(SEPARATOR);
+                    tableData = Utils.split(reader.readLine(), SEPARATOR);
+                    tableNameData = Utils.split(reader.readLine(), SEPARATOR);
                 } catch (IOException e) {
                     throw new GATKException(COULD_NOT_READ_HEADER + e.getMessage());
                 }
 
                 // parse the header fields
-                tableName = tableNameData[TableNameHeaderFields.NAME.index()];
-                tableDescription = (tableNameData.length <= TableNameHeaderFields.DESCRIPTION.index()) ? "" : tableNameData[TableNameHeaderFields.DESCRIPTION.index()];                                           // table may have no description! (and that's okay)
+                tableName = tableNameData.get(TableNameHeaderFields.NAME.index());
+                tableDescription = (tableNameData.size() <= TableNameHeaderFields.DESCRIPTION.index()) ? "" : tableNameData.get(TableNameHeaderFields.DESCRIPTION.index());                                           // table may have no description! (and that's okay)
 
                 // when reading from a file, we do not re-sort the rows
                 sortingWay = Sorting.DO_NOT_SORT;
 
                 // initialize the data
-                final int nColumns = Integer.parseInt(tableData[TableDataHeaderFields.COLS.index()]);
-                final int nRows = Integer.parseInt(tableData[TableDataHeaderFields.ROWS.index()]);
+                final int nColumns = Integer.parseInt(tableData.get(TableDataHeaderFields.COLS.index()));
+                final int nRows = Integer.parseInt(tableData.get(TableDataHeaderFields.ROWS.index()));
                 underlyingData = new ArrayList<>(nRows);
                 columnInfo = new ArrayList<>(nColumns);
                 columnNameToIndex = new LinkedHashMap<>(nColumns);
@@ -148,7 +149,7 @@ public final class GATKReportTable {
 
                 // Put in columns using the format string from the header
                 for ( int i = 0; i < nColumns; i++ ) {
-                    final String format = tableData[TableDataHeaderFields.FORMAT_START.index() + i];
+                    final String format = tableData.get(TableDataHeaderFields.FORMAT_START.index() + i);
                     addColumn(columnNames[i], format);
                 }
 

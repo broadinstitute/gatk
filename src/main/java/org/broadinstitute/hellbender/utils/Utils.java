@@ -1165,6 +1165,61 @@ public final class Utils {
     }
 
     /**
+     * Splits a String without using a regex to speed things up.
+     * This method produces the same results as {@link String#split(String)} and {@code String.split(String, 0)},
+     * but has been measured to be ~2x faster (see {@code StringSplitSpeedUnitTest} for details).
+     *
+     * @param str       the string to split.
+     * @param delimiter the delimiter used to split the string.
+     * @return A {@link List} of {@link String} tokens.
+     */
+    public static List<String> split_ts(final String str, final char delimiter) {
+        int end = str.length();
+        // empty strings get special handling, for some odd reason
+        if ( end == 0 ) {
+            final List<String> tokens = new ArrayList<>(1);
+            tokens.add("");
+            return tokens;
+        }
+        // scan backwards until we find a non-delimiter in order to eliminate trailing delimiters
+        while ( --end >= 0 ) {
+            if ( str.charAt(end) != delimiter ) {
+                return splitHelper(str, delimiter, end+1, 1);
+            }
+        }
+        // string was all delimiters
+        return new ArrayList<>(0);
+    }
+
+    /**
+     * Helper method for {@link #split_ts(String, char)}.
+     * @param str Input {@link String} to split.
+     * @param delimiter Character delimiter on which to split the given input.
+     * @param end Last position in the given string to look for the delimiter.
+     * @param depth The level of recursion of the current call to {@link #splitHelper(String, char, int, int)}.
+     * @return A list of Strings resulting from splitting {@code str} by {@code delimiter}.
+     */
+    private static List<String> splitHelper(final String str, final char delimiter, final int end, final int depth) {
+        int beg = end;
+        // scan backwards from end to find another delimiter
+        while ( --beg >= 0 ) {
+            if ( str.charAt(beg) == delimiter ) {
+                // recurse until we find the initial token
+                final List<String> result = splitHelper(str, delimiter, beg, depth+1);
+                // if token length is 0, just use the empty string
+                if ( ++beg == end ) result.add("");
+                else result.add(str.substring(beg, end));
+                return result;
+            }
+        }
+        // we got to the beginning of the string without finding a delimiter -- wrap up the recursion
+        final List<String> result = new ArrayList<>(depth);
+        if ( end == 0 ) result.add("");
+        else result.add(str.substring(0, end));
+        return result;
+    }
+
+    /**
      * Splits a String using indexOf instead of regex to speed things up.
      * If given an empty delimiter, will return each character in the string as a token.
      * This method produces the same results as {@link String#split(String)} and {@code String.split(String, 0)},

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 
 import java.io.ByteArrayOutputStream;
@@ -97,20 +98,20 @@ public class VQSLODTranche extends Tranche {
                     }
                 }
 
-                final String[] vals = line.split(VALUE_SEPARATOR);
+                final List<String> vals = Utils.split(line, VALUE_SEPARATOR);
                 if (header == null) {  //reading the header
-                    header = vals;
+                    header = vals.toArray(new String[vals.size()]);
                     if (header.length != EXPECTED_COLUMN_COUNT) {
                         throw new UserException.MalformedFile(f, "Expected " + EXPECTED_COLUMN_COUNT + " elements in header line " + line);
                     }
                 } else {
-                    if (header.length != vals.length) {
-                        throw new UserException.MalformedFile(f, "Line had too few/many fields.  Header = " + header.length + " vals " + vals.length + ". The line was: " + line);
+                    if (header.length != vals.size()) {
+                        throw new UserException.MalformedFile(f, "Line had too few/many fields.  Header = " + header.length + " vals " + vals.size() + ". The line was: " + line);
                     }
 
                     Map<String, String> bindings = new LinkedHashMap<>();
-                    for (int i = 0; i < vals.length; i++) {
-                        bindings.put(header[i], vals[i]);
+                    for (int i = 0; i < vals.size(); i++) {
+                        bindings.put(header[i], vals.get(i));
                     }
                     tranches.add(new VQSLODTranche(
                             getRequiredDouble(bindings, "minVQSLod"),

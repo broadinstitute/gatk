@@ -9,9 +9,11 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.InputStream;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.stream.Collectors;
@@ -120,7 +122,7 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
             return null;
         }
 
-        final List<String> split = new ArrayList<>(Arrays.asList(s.split(delimiter)));
+        final List<String> split = Utils.split(s, delimiter);
         if (split.size() < 1) {
             throw new UserException.BadInput("XSV file has a line with no delimiter at line number: " + currentLine);
         }
@@ -154,7 +156,7 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
                 // The first non-commented line is the column header.
                 // Add the data source name to teh start of each header row,
                 // then add those rows to the header object.
-                header = Arrays.stream(line.split(delimiter))
+                header = Utils.split(line, delimiter).stream()
                         .map(x -> dataSourceName + "_" + x)
                         .collect(Collectors.toCollection(ArrayList::new));
 

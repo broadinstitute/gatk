@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvLocatableTableCodec;
 import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvTableFeature;
 
@@ -145,7 +146,7 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
                 String line = inputReader.readLine();
                 while (line != null) {
                     if ( !line.startsWith(XsvLocatableTableCodec.COMMENT_DELIMITER) ) {
-                        header = Arrays.stream(line.split(delimiter))
+                        header = Utils.split(line, delimiter).stream()
                                 .map(x -> dataSourceName + "_" + x)
                                 .collect(Collectors.toCollection(ArrayList::new));
                         break;

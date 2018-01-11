@@ -10,7 +10,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -161,8 +160,8 @@ public class SATagBuilder {
         if (!read.hasAttribute("SA")){
             return;
         }
-        String[] tags = read.getAttributeAsString("SA").split(";");
-        supplementaryReads = Arrays.stream(tags).map(r -> new SARead(r)).collect(Collectors.toList());
+        final List<String> tags = Utils.split(read.getAttributeAsString("SA"), ";");
+        supplementaryReads = tags.stream().map(r -> new SARead(r)).collect(Collectors.toList());
 
     }
 

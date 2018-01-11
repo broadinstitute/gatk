@@ -6,11 +6,8 @@ import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.collections4.map.DefaultedMap;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.pileup.PileupElement;
-import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 
@@ -186,21 +183,21 @@ public final class AlleleBiasedDownsamplingUtils {
                     continue;
                 }
 
-                final String [] fields = line.split("\t");
-                if (fields.length != 2){
+                final List<String> fields = Utils.split(line, '\t');
+                if (fields.size() != 2){
                     throw new UserException.MalformedFile("Contamination file must have exactly two, tab-delimited columns. Offending line:\n" + line);
                 }
-                if (fields[0].isEmpty() || fields[1].isEmpty()) {
+                if (fields.get(0).isEmpty() || fields.get(1).isEmpty()) {
                     throw new UserException.MalformedFile("Contamination file can not have empty strings in either column. Offending line:\n" + line);
                 }
 
                 final double contamination;
                 try {
-                    contamination = Double.parseDouble(fields[1]);
+                    contamination = Double.parseDouble(fields.get(1));
                 } catch (final NumberFormatException e) {
                     throw new UserException.MalformedFile("Contamination file contains unparsable double in the second field. Offending line: " + line);
                 }
-                final String sampleName= fields[0];
+                final String sampleName= fields.get(0);
                 if (sampleContamination.containsKey(sampleName)) {
                     throw new UserException.MalformedFile("Contamination file contains duplicate entries for input name " + sampleName);
                 }

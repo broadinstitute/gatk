@@ -81,6 +81,7 @@ public class StringSplitSpeedUnitTest extends GATKBaseTest {
                                          final long   htsjdkSplitSingleCharTotalTime_ns,
                                          final long   gatkSplitWordTotalTime_ns,
                                          final long   gatkSplitSingleCharStringTotalTime_ns,
+                                         final long   gatkSplitTsSingleCharStringTotalTime_ns,
                                          final long   overallElapsedTime_ns,
                                          final double overallElapsedTime_ms) {
         System.out.println("================================================================================");
@@ -96,6 +97,8 @@ public class StringSplitSpeedUnitTest extends GATKBaseTest {
         System.out.println("GATK Utils::split");
         printTimingString("Words", gatkSplitWordTotalTime_ns, wordsToSplitOn.size());
         printTimingString("\"Chars\"", gatkSplitSingleCharStringTotalTime_ns, singleCharStringsToSplitOn.size());
+        System.out.println("GATK Utils::split_ts");
+        printTimingString("\"Chars\"", gatkSplitTsSingleCharStringTotalTime_ns, singleCharStringsToSplitOn.size());
         System.out.println("================================================================================");
     }
 
@@ -103,7 +106,8 @@ public class StringSplitSpeedUnitTest extends GATKBaseTest {
                                                  final long   javaSplitSingleCharStringTotalTime_ns,
                                                  final long   htsjdkSplitSingleCharTotalTime_ns,
                                                  final long   gatkSplitWordTotalTime_ns,
-                                                 final long   gatkSplitSingleCharStringTotalTime_ns ) {
+                                                 final long   gatkSplitSingleCharStringTotalTime_ns,
+                                                 final long   gatkSplitTsSingleCharStringTotalTime_ns) {
 
         System.out.println( "| Method | Benchmark | Total Time (ns) | Total Time (ms) | Time Per Split Operation (ns) | Time Per Split Operation (ms) |" );
         System.out.println( "| --- | --- | --- | --- | --- | --- |" );
@@ -113,6 +117,8 @@ public class StringSplitSpeedUnitTest extends GATKBaseTest {
         printTimingMarkdownLine( "| HTSJDK ParsingUtils::split | Split on Chars | ", htsjdkSplitSingleCharTotalTime_ns, singleCharStringsToSplitOn.size() );
         printTimingMarkdownLine( "| GATK Utils::split | Split on Words | ", gatkSplitWordTotalTime_ns, wordsToSplitOn.size() );
         printTimingMarkdownLine( "| GATK Utils::split | Split on Chars | ", gatkSplitSingleCharStringTotalTime_ns, singleCharStringsToSplitOn.size() );
+        System.out.println( "| GATK Utils::split_ts | Split on Words | NA | NA | NA | NA |" );
+        printTimingMarkdownLine( "| GATK Utils::split_ts | Split on Chars | ", gatkSplitTsSingleCharStringTotalTime_ns, singleCharStringsToSplitOn.size() );
     }
 
     private static void printTimingMarkdownLine(final String rowHeader,
@@ -234,6 +240,29 @@ public class StringSplitSpeedUnitTest extends GATKBaseTest {
         System.out.println( " Done! (" + (gatkSplitSingleCharStringTotalTime_ns / MS_TO_NS / S_TO_MS) + "s)" );
 
         //------------------------------------------------------------------------------------------------------------------
+        // GATK's Utils::split_ts:
+
+        //-------------------------------------------------
+        // First we do words:
+        // NOT APPLICABLE FOR GATK's Utils::split_ts!
+
+        //-------------------------------------------------
+        // Now we do single char words:
+        System.out.print("Testing GATK's Utils::split_ts: on single characters..."); System.out.flush();
+        final long gatkSplitTsSingleCharStringStartTime = System.nanoTime();
+
+        for ( int i = 0; i < numIterations; ++i ) {
+            for ( final String word : singleCharStringsToSplitOn ) {
+                Utils.split_ts( stringToSplit, word.charAt(0) );
+            }
+        }
+        final long gatkSplitTsSingleCharStringStopTime = System.nanoTime();
+        final long gatkSplitTsSingleCharStringTotalTime_ns = gatkSplitTsSingleCharStringStopTime - gatkSplitTsSingleCharStringStartTime;
+        System.out.println( " Done! (" + (gatkSplitSingleCharStringTotalTime_ns / MS_TO_NS / S_TO_MS) + "s)" );
+
+        //------------------------------------------------------------------------------------------------------------------
+
+        //------------------------------------------------------------------------------------------------------------------
 
         final long overallEndTime = System.nanoTime();
         final long overallElapsedTime_ns = overallEndTime - overallStartTime;
@@ -242,13 +271,13 @@ public class StringSplitSpeedUnitTest extends GATKBaseTest {
         //------------------------------------------------------------------------------------------------------------------
 
         // Print results:
-        printTimingTable(javaSplitWordTotalTime_ns, javaSplitSingleCharStringTotalTime_ns, htsjdkSplitSingleCharTotalTime_ns, gatkSplitWordTotalTime_ns, gatkSplitSingleCharStringTotalTime_ns, overallElapsedTime_ns, overallElapsedTime_ms);
+        printTimingTable(javaSplitWordTotalTime_ns, javaSplitSingleCharStringTotalTime_ns, htsjdkSplitSingleCharTotalTime_ns, gatkSplitWordTotalTime_ns, gatkSplitSingleCharStringTotalTime_ns, gatkSplitTsSingleCharStringTotalTime_ns, overallElapsedTime_ns, overallElapsedTime_ms);
 
         System.out.println("");
         System.out.println("====");
         System.out.println("");
 
-        printTimingTableMarkdown(javaSplitWordTotalTime_ns, javaSplitSingleCharStringTotalTime_ns, htsjdkSplitSingleCharTotalTime_ns, gatkSplitWordTotalTime_ns, gatkSplitSingleCharStringTotalTime_ns );
+        printTimingTableMarkdown(javaSplitWordTotalTime_ns, javaSplitSingleCharStringTotalTime_ns, htsjdkSplitSingleCharTotalTime_ns, gatkSplitWordTotalTime_ns, gatkSplitSingleCharStringTotalTime_ns, gatkSplitTsSingleCharStringTotalTime_ns );
     }
 
 }

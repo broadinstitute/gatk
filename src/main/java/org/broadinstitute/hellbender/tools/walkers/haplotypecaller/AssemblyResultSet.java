@@ -460,7 +460,7 @@ public final class AssemblyResultSet {
         final PrintWriter pw = new PrintWriter(sw);
         debugDump(pw);
         final String str = sw.toString();
-        final String[] lines = str.split("\n");
+        final List<String> lines = Utils.split(str, '\n');
         for (final String line : lines) {
             if (line.isEmpty()) {
                 continue;

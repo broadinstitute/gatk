@@ -11,11 +11,12 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 import java.io.File;
 import java.util.*;
@@ -360,7 +361,7 @@ public final class VariantFiltration extends VariantWalker {
     private List<String> getGenotypeFilters(final VariantContext vc, final Genotype g) {
         final List<String> filters = new ArrayList<>();
         if (g.isFiltered()) {
-            filters.addAll(Arrays.asList(g.getFilters().split(FILTER_DELIMITER)));
+            filters.addAll(Utils.split(g.getFilters(), FILTER_DELIMITER));
         }
 
         // Add if expression filters the variant context

@@ -4,6 +4,7 @@ package org.broadinstitute.hellbender.engine.spark;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -31,11 +32,11 @@ public final class SparkCommandLineArgumentCollection implements Serializable {
     public Map<String,String> getSparkProperties(){
         final Map<String, String> propertyMap = new LinkedHashMap<>();
         for( String property: sparkProperties) {
-            final String[] splits = property.split("=");
-            if (splits.length != 2 || splits[0].isEmpty() || splits[1].isEmpty()) {
+            final List<String> splits = Utils.split(property, '=');
+            if (splits.size() != 2 || splits.get(0).isEmpty() || splits.get(1).isEmpty()) {
                 throw new CommandLineException.BadArgumentValue(StandardArgumentDefinitions.SPARK_PROPERTY_NAME, property, "Expected a value of the form spark.property.name=value");
             } else {
-                propertyMap.put(splits[0], splits[1]);
+                propertyMap.put(splits.get(0), splits.get(1));
             }
         }
         return propertyMap;

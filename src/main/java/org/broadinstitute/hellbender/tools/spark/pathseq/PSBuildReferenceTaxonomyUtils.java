@@ -8,6 +8,7 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import scala.Tuple2;
 
@@ -45,8 +46,8 @@ public final class PSBuildReferenceTaxonomyUtils {
             }
             if (recordTaxId == PSTree.NULL_NODE) {
                 if (recordAccession == null) {
-                    final String[] tokens2 = tokens[0].split(" "); //Default accession to first word in the name
-                    recordAccession = tokens2[0];
+                    final List<String> tokens2 = Utils.split(tokens[0], " "); //Default accession to first word in the name
+                    recordAccession = tokens2.get(0);
                 }
                 accessionToNameAndLength.put(recordAccession, new Tuple2<>(recordName, recordLength));
             } else {

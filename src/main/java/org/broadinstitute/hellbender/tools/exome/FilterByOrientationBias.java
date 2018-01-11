@@ -5,11 +5,10 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -19,9 +18,11 @@ import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.Or
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.PreAdapterOrientationScorer;
 import org.broadinstitute.hellbender.tools.walkers.mutect.FilterMutectCalls;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.artifacts.Transition;
 import picard.analysis.artifacts.CollectSequencingArtifactMetrics;
 import picard.analysis.artifacts.SequencingArtifactMetrics;
+import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -196,9 +197,11 @@ public class FilterByOrientationBias extends VariantWalker {
     }
 
     private Transition convertParameterToTransition(final String stringTransition) {
-        final String[] splitTransition = stringTransition.split("/");
+        final List<String> splitTransitionList= Utils.split(stringTransition, '/');
+        final String[] splitTransition = splitTransitionList
+                .toArray(new String[splitTransitionList.size()]);
         if (!isValidTransition(splitTransition)) {
-            throw new UserException("Invalid artifact mode: " + String.join("/", splitTransition));
+            throw new UserException("Invalid artifact mode: " + stringTransition);
         }
 
         return Transition.transitionOf(splitTransition[0].charAt(0), splitTransition[1].charAt(0));

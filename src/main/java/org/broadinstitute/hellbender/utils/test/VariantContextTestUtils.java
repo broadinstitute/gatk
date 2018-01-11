@@ -1,12 +1,6 @@
 package org.broadinstitute.hellbender.utils.test;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFConstants;
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.collections4.CollectionUtils;
@@ -15,11 +9,7 @@ import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
-import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.collections.Permutation;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.testng.Assert;
 
@@ -241,7 +231,7 @@ public final class VariantContextTestUtils {
 
     static List<Object> remapGTypeValues(List<?> oldValue, List<Allele> originalAlleles, int ploidy, List<Allele> remappedAlleles){
         if (oldValue.size() == 1 && oldValue.get(0) instanceof String) {
-            oldValue = Arrays.stream(((String) oldValue.get(0)).split(",")).collect(Collectors.toList());
+            oldValue = Utils.split(((String) oldValue.get(0)), ',');
         }
 
         List<Object> newValues = new ArrayList<>(oldValue.size());
@@ -253,7 +243,7 @@ public final class VariantContextTestUtils {
     }
 
     static List<Object> remapASValues(String oldValue, List<Integer> mapping) {
-        return remapListValues(Arrays.asList(oldValue.split("\\|")), mapping, 0);
+        return remapListValues(Utils.split(oldValue, '|'), mapping, 0);
     }
 
     //copied from htsjdk.variant.variantcontext.CommonInfo.getAttributeAsList for simplicity

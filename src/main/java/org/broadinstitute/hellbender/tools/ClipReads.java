@@ -13,17 +13,18 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.clipping.ClippingOp;
 import org.broadinstitute.hellbender.utils.clipping.ClippingRepresentation;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -273,18 +274,18 @@ public final class ClipReads extends ReadWalker {
         //
         if (cyclesToClipArg != null) {
             cyclesToClip = new ArrayList<>();
-            for (String range : cyclesToClipArg.split(",")) {
+            for (final String range : Utils.split(cyclesToClipArg,',') ) {
                 try {
-                    String[] elts = range.split("-");
-                    int start = Integer.parseInt(elts[0]) - 1;
-                    int stop = Integer.parseInt(elts[1]) - 1;
+                    final List<String> elts = Utils.split(range, '-');
+                    final int start = Integer.parseInt(elts.get(0)) - 1;
+                    final int stop = Integer.parseInt(elts.get(1)) - 1;
 
                     if (start < 0) throw new Exception();
                     if (stop < start) throw new Exception();
 
                     logger.info(String.format("Creating cycle clipper %d-%d", start, stop));
                     cyclesToClip.add(new MutablePair<>(start, stop));
-                } catch (Exception e) {
+                } catch (final Exception e) {
                     throw new RuntimeException("Badly formatted cyclesToClip argument: " + cyclesToClipArg);
                 }
             }

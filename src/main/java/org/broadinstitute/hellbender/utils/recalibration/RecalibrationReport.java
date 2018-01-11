@@ -335,7 +335,7 @@ public final class RecalibrationReport {
             }
 
             if (argument.equals("covariate") && value != null) {
-                final List<String> covs = new ArrayList<>(Arrays.asList(value.toString().split(",")));
+                final List<String> covs = Utils.split(value.toString(), ',');
                 if (!covs.equals(standardCovariateClassNames)) {
                     throw new UserException("Non-standard covariates are not supported. Only the following are supported " + standardCovariateClassNames + " but was " + covs);
                 }

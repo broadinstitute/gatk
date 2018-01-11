@@ -865,6 +865,9 @@ public final class UtilsUnitTest extends GATKBaseTest {
         if ( delimiter.length() == 1 ) {
             splitStrings = Utils.split( str, delimiter.charAt(0) );
             Assert.assertEquals( splitStrings, Arrays.asList(str.split(delimiter)) );
+
+            splitStrings = Utils.split_ts( str, delimiter.charAt(0) );
+            Assert.assertEquals( splitStrings, Arrays.asList(str.split(delimiter)) );
         }
 
         splitStrings = Utils.split(str, delimiter);

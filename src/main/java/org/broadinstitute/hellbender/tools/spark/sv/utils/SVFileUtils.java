@@ -120,16 +120,16 @@ public final class SVFileUtils {
                 if (line.startsWith(REFERENCE_GAP_INTERVAL_FILE_COMMENT_LINE_PROMPT)) {
                     continue;
                 }
-                final String[] tokens = line.split("\t");
-                if ( tokens.length != 3 ) {
+                final List<String> tokens = Utils.split(line, '\t');
+                if ( tokens.size() != 3 ) {
                     throw new GATKException("Interval file " + intervalsFilePath + " line " +
                             lineNo + " did not contain 3 columns: " + line);
                 }
                 try {
-                    final Integer contigId = contigNameMap.get(tokens[0]);
-                    if ( contigId == null ) throw new GATKException("contig name " + tokens[0] + " not in dictionary");
-                    final int start = Integer.valueOf(tokens[1]);
-                    final int end = Integer.valueOf(tokens[2]);
+                    final Integer contigId = contigNameMap.get(tokens.get(0));
+                    if ( contigId == null ) throw new GATKException("contig name " + tokens.get(0) + " not in dictionary");
+                    final int start = Integer.valueOf(tokens.get(1));
+                    final int end = Integer.valueOf(tokens.get(2));
                     intervals.add(new SVInterval(contigId, start, end));
                 }
                 catch ( final Exception e ) {

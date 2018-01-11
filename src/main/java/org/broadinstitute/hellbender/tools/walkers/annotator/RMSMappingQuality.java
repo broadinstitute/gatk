@@ -191,9 +191,8 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
 
     protected void parseRawDataString(ReducibleAnnotationData<Number> myData) {
         final String rawDataString = myData.getRawData();
-        String[] rawMQdataAsStringVector;
-        rawMQdataAsStringVector = rawDataString.split(",");
-        double squareSum = Double.parseDouble(rawMQdataAsStringVector[0]);
+        final List<String> rawMQdataAsStringVector = Utils.split(rawDataString, ',');
+        final double squareSum = Double.parseDouble(rawMQdataAsStringVector.get(0));
         myData.putAttribute(Allele.NO_CALL, squareSum);
     }
 
@@ -205,7 +204,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
              * the right thing to do or if it should just convert the string without trying to split it and fail if
              * there is more than one value
              */
-            final double squareSum = Double.parseDouble(rawDataString.split(",")[0]);
+            final double squareSum = Double.parseDouble(Utils.split(rawDataString, ',').get(0));
             return squareSum;
         } catch (final NumberFormatException e) {
             throw new UserException.BadInput("malformed " + GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY + " annotation: " + rawDataString);

@@ -133,22 +133,22 @@ public final class AlignmentInterval {
             throw new IllegalArgumentException("the input string cannot contain more than one interval");
         }
 
-        final String[] parts = terminationTrimmedString.split(SA_TAG_FIELD_SEPARATOR);
-        if (parts.length < 5) {
+        final List<String> parts = Utils.split(terminationTrimmedString, SA_TAG_FIELD_SEPARATOR);
+        if (parts.size() < 5) {
             throw new IllegalArgumentException("the input SA string at least must contain 5 parts: " + samSAtagString);
         }
 
         int nextPartsIndex = 0; // holds the next element index in parts to be parsed.
 
-        final String referenceContig = parts[nextPartsIndex++];
-        final int start = Integer.parseInt(parts[nextPartsIndex++]);
-        final Strand strand = parseStrand(parts[nextPartsIndex++]);
+        final String referenceContig = parts.get(nextPartsIndex++);
+        final int start = Integer.parseInt(parts.get(nextPartsIndex++));
+        final Strand strand = parseStrand(parts.get(nextPartsIndex++));
         final boolean forwardStrand = strand == Strand.POSITIVE;
-        final Cigar originalCigar = TextCigarCodec.decode(parts[nextPartsIndex++]);
+        final Cigar originalCigar = TextCigarCodec.decode(parts.get(nextPartsIndex++));
         final Cigar cigar = forwardStrand ? originalCigar : CigarUtils.invertCigar(originalCigar);
-        final int mappingQuality = ParamUtils.inRange(parseZeroOrPositiveInt(parts[nextPartsIndex++], SAMRecord.UNKNOWN_MAPPING_QUALITY, "invalid mapping quality"), 0, 255, "the mapping quality must be in the range [0, 255]");
-        final int mismatches = parts.length > nextPartsIndex ? parseZeroOrPositiveInt(parts[nextPartsIndex++], NO_NM, "invalid number of mismatches") : NO_NM;
-        final int alignmentScore = parts.length > nextPartsIndex ? parseZeroOrPositiveInt(parts[nextPartsIndex], NO_AS, "invalid alignment score") : NO_AS;
+        final int mappingQuality = ParamUtils.inRange(parseZeroOrPositiveInt(parts.get(nextPartsIndex++), SAMRecord.UNKNOWN_MAPPING_QUALITY, "invalid mapping quality"), 0, 255, "the mapping quality must be in the range [0, 255]");
+        final int mismatches = parts.size() > nextPartsIndex ? parseZeroOrPositiveInt(parts.get(nextPartsIndex++), NO_NM, "invalid number of mismatches") : NO_NM;
+        final int alignmentScore = parts.size() > nextPartsIndex ? parseZeroOrPositiveInt(parts.get(nextPartsIndex), NO_AS, "invalid alignment score") : NO_AS;
 
         this.referenceSpan = new SimpleInterval(referenceContig, start,
                 Math.max(start, cigar.getReferenceLength() + start - 1));

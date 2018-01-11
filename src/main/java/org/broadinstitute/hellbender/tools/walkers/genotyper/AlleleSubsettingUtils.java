@@ -161,10 +161,10 @@ public final class AlleleSubsettingUtils {
 
         if ( clazz.equals(String.class) ) {
             final String SACsString = (String) g.getExtendedAttributes().get(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY);
-            String[] stringSACs = SACsString.split(",");
-            final int[] intSACs = new int[stringSACs.length];
+            final List<String> stringSACs = Utils.split(SACsString, ',');
+            final int[] intSACs = new int[stringSACs.size()];
             int i = 0;
-            for (String sac : stringSACs) {
+            for (final String sac : stringSACs) {
                 intSACs[i++] = Integer.parseInt(sac);
             }
 

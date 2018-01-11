@@ -757,7 +757,7 @@ public final class GATKVariantContextUtils {
                 String rawAlleleCounts = vc.getAttributeAsString(VCFConstants.ALLELE_COUNT_KEY, null);
                 // lets see if the string contains a "," separator
                 if (rawAlleleCounts.contains(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)) {
-                    final List<String> alleleCountArray = Arrays.asList(rawAlleleCounts.substring(1, rawAlleleCounts.length() - 1).split(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR));
+                    final List<String> alleleCountArray = Utils.split(rawAlleleCounts.substring(1, rawAlleleCounts.length() - 1), VCFConstants.INFO_FIELD_ARRAY_SEPARATOR);
                     for (final String alleleCount : alleleCountArray) {
                         final int ac = Integer.valueOf(alleleCount.trim());
                         if (ac > maxAC) {
