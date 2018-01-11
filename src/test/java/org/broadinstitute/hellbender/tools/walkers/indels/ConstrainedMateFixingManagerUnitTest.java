@@ -1,19 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.indels;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMValidationError;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLoggerInterface;
-import org.broadinstitute.hellbender.utils.GenomeLocParser;
-import org.broadinstitute.hellbender.utils.LoggingUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.GATKReadWriter;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -22,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-public class ConstrainedMateFixingManagerUnitTest extends BaseTest {
+public class ConstrainedMateFixingManagerUnitTest extends GATKBaseTest {
 
     private static SAMFileHeader header;
 
