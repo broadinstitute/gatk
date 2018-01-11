@@ -37,6 +37,7 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
     private final IndependentSampleGenotypesModel genotypingModel;
 
     private final PloidyModel ploidyModel;
+    private final ReferenceConfidenceMode referenceConfidenceMode;
 
     private final int maxGenotypeCountToEnumerate;
     private final Map<Integer, Integer> practicalAlleleCountForPloidy = new HashMap<>();
@@ -47,17 +48,24 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
      * @param samples {@inheritDoc}
      * @param doPhysicalPhasing whether to try physical phasing.
      */
-    public HaplotypeCallerGenotypingEngine(final AssemblyBasedCallerArgumentCollection configuration, final SampleList samples,
+    public HaplotypeCallerGenotypingEngine(final HaplotypeCallerArgumentCollection configuration, final SampleList samples,
                                            final AFCalculatorProvider afCalculatorProvider, final boolean doPhysicalPhasing) {
         super(configuration, samples, afCalculatorProvider, doPhysicalPhasing);
         ploidyModel = new HomogeneousPloidyModel(samples,configuration.genotypeArgs.samplePloidy);
         genotypingModel = new IndependentSampleGenotypesModel();
         maxGenotypeCountToEnumerate = configuration.genotypeArgs.MAX_GENOTYPE_COUNT;
+        referenceConfidenceMode = configuration.emitReferenceConfidence;
     }
 
     @Override
     protected String callSourceString() {
         return "HC_call";
+    }
+
+    @Override
+    protected boolean forceKeepAllele(final Allele allele) {
+        return allele == Allele.NON_REF_ALLELE || referenceConfidenceMode != ReferenceConfidenceMode.NONE
+                || configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES;
     }
 
 

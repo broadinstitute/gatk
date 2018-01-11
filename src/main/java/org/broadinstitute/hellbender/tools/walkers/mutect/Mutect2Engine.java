@@ -112,9 +112,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
                     " sample name " + MTAC.normalSampleName);
         }
 
-        annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(MTAC.variantAnnotationArgumentCollection,
-                MTAC.dbsnp.dbsnp,
-                MTAC.comps);
+        annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(MTAC.variantAnnotationArgumentCollection, null, Collections.emptyList());
 
         assemblyEngine = AssemblyBasedCallerUtils.createReadThreadingAssembler(MTAC);
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs);
@@ -203,7 +201,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     }
 
     public List<VariantContext> callRegion(final AssemblyRegion originalAssemblyRegion, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
-        if ( MTAC.justDetermineActiveRegions || !originalAssemblyRegion.isActive() || originalAssemblyRegion.size() == 0 ) {
+        if ( !originalAssemblyRegion.isActive() || originalAssemblyRegion.size() == 0 ) {
             return NO_CALLS;
         }
 
@@ -248,9 +246,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     private void writeBamOutput(AssemblyResultSet assemblyResult, ReadLikelihoods<Haplotype> readLikelihoods, HaplotypeCallerGenotypingEngine.CalledHaplotypes calledHaplotypes) {
         if ( haplotypeBAMWriter.isPresent() ) {
             final Set<Haplotype> calledHaplotypeSet = new HashSet<>(calledHaplotypes.getCalledHaplotypes());
-            if (MTAC.disableOptimizations) {
-                calledHaplotypeSet.add(assemblyResult.getReferenceHaplotype());
-            }
             haplotypeBAMWriter.get().writeReadsAlignedToHaplotypes(
                     assemblyResult.getHaplotypeList(),
                     assemblyResult.getPaddedReferenceLoc(),
