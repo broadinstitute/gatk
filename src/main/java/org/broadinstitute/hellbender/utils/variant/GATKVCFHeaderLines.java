@@ -153,6 +153,7 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(ORIGINAL_CONTIG_KEY, 1, VCFHeaderLineType.String, "Original contig name for the record"));
         addInfoLine(new VCFInfoHeaderLine(ORIGINAL_START_KEY, 1, VCFHeaderLineType.Integer, "Original start position for the record"));
         addInfoLine(new VCFInfoHeaderLine(VQS_LOD_KEY, 1, VCFHeaderLineType.Float, "Log odds of being a true variant versus being false under the trained gaussian mixture model"));
+        addInfoLine(new VCFInfoHeaderLine(CNN_1D_KEY, 1, VCFHeaderLineType.Float, "Log odds of being a true variant versus being false under the trained 1D Convolutional Neural Network"));
         addInfoLine(new VCFInfoHeaderLine(CULPRIT_KEY, 1, VCFHeaderLineType.String, "The annotation which was the worst performing in the Gaussian mixture model, likely the reason why the variant was filtered out"));
         addInfoLine(new VCFInfoHeaderLine(POSITIVE_LABEL_KEY, 1, VCFHeaderLineType.Flag, "This variant was used to build the positive training set of good variants"));
         addInfoLine(new VCFInfoHeaderLine(NEGATIVE_LABEL_KEY, 1, VCFHeaderLineType.Flag, "This variant was used to build the negative training set of bad variants"));
