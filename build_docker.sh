@@ -138,7 +138,7 @@ if [ -n "${IS_PUSH}" ]; then
 
 	if [ -z "${IS_NOT_LATEST}" ] && [ -z "${IS_HASH}" ] ; then
 		echo "Updating latest tag in ${REPO_PRJ}"
-		docker build -t ${REPO_PRJ}:latest .
+		docker tag ${REPO_PRJ}:${GITHUB_TAG} ${REPO_PRJ}:latest
 		docker push ${REPO_PRJ}:latest
 		
 		echo "Updating latest tag in ${GCR_REPO}"
