@@ -19,7 +19,6 @@ import "mutect2.wdl" as m2
 #
 workflow m2_validation {
     #### M2 parameters
-    String gatk
     File? gatk_override
     String gatk_docker
     String basic_bash_docker = "ubuntu:16.04"
@@ -95,7 +94,6 @@ workflow m2_validation {
     scatter (i in range(length(tumor_bam_files))) {
         call m2.Mutect2 as m2_tn {
             input:
-                gatk = gatk,
                 gatk_override = gatk_override,
                 picard = picard,
                 gatk_docker = gatk_docker,
@@ -128,7 +126,6 @@ workflow m2_validation {
 
         call m2.Mutect2 as m2_validation_bamout {
             input:
-                gatk = gatk,
                 gatk_override = gatk_override,
                 picard = picard,
                 gatk_docker = gatk_docker,
@@ -250,7 +247,6 @@ task basic_validator {
 
     command <<<
         set -e
-        # Use GATK Jar override if specified
         GATK_JAR=${default="/root/gatk.jar" gatk_override}
 
         echo "Getting sample names...."
@@ -340,8 +336,6 @@ task rewrite_bam_by_sample {
 
     command <<<
         set -e
-
-        # Use GATK Jar override if specified
         GATK_JAR=${default="/root/gatk.jar" gatk_override}
 
         java -Xmx${final_mem-1}g -jar $GATK_JAR PrintReads -I ${bam} -O ${output_bam_basename}.tmp.bam -RF SampleReadFilter -sample ${sep=" -sample " new_sample_name}

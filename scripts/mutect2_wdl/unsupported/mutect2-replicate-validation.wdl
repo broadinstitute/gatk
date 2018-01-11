@@ -4,7 +4,6 @@
 import "mutect2.wdl" as m2
 
 workflow Mutect2ReplicateValidation {
-	File gatk
 	File? gatk_override
 	File picard
 	String gatk_docker
@@ -31,7 +30,6 @@ workflow Mutect2ReplicateValidation {
 	scatter(pair in pairs) {
 		call m2.Mutect2 {
 			input:
-				gatk = gatk,
 				gatk_override = gatk_override,
 				gatk_docker = gatk_docker,
 				oncotator_docker = gatk_docker,
@@ -59,7 +57,6 @@ workflow Mutect2ReplicateValidation {
 
 		call CountFalsePositives {
 			input:
-				gatk = gatk,
 				gatk_override = gatk_override,
 				intervals = intervals,
 				ref_fasta = ref_fasta,
@@ -105,7 +102,6 @@ task GatherTables {
 }
 
 task CountFalsePositives {
-	String gatk
 	File? gatk_override
 	File? intervals
 	File ref_fasta
@@ -115,13 +111,9 @@ task CountFalsePositives {
 	File filtered_vcf_index
 
 	command {
-        # Use GATK Jar override if specified
-        GATK_JAR=${gatk}
-        if [[ "${gatk_override}" == *.jar ]]; then
-            GATK_JAR=${gatk_override}
-        fi
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
-	    java -jar $GATK_JAR CountFalsePositives \
+	    gatk --java-options "-Xmx4g" CountFalsePositives \
 		    -V ${filtered_vcf} \
 		    -R ${ref_fasta} \
 		    ${"-L " + intervals} \

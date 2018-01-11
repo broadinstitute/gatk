@@ -65,7 +65,6 @@ workflow HapmapSensitivity {
 
         call MutectSingleSample.Mutect2 {
             input:
-                gatk = "OVERRIDDEN",
                 gatk_override = gatk,
                 picard = picard,
                 gatk_docker = "ubuntu:16.04",

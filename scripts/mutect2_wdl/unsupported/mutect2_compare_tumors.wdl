@@ -8,7 +8,6 @@
 import "mutect2.wdl" as m2
 
 workflow Mutect2Trio {
-	String gatk
 	File? gatk_override
 	File picard
 	String oncotator_docker
@@ -33,7 +32,6 @@ workflow Mutect2Trio {
 	scatter(trio in trios) {
 		call m2.Mutect2 as GoodTumor {
 			input:
-				gatk = gatk,
 				gatk_override = gatk_override,
 				picard = picard,
 				gatk_docker = gatk_docker,
@@ -59,7 +57,6 @@ workflow Mutect2Trio {
 
 		call m2.Mutect2 as BadTumor {
             input:
-        	    gatk = gatk,
         	    gatk_override = gatk_override,
         	    picard  =  picard,
         	    gatk_docker = gatk_docker,
@@ -105,7 +102,6 @@ workflow Mutect2Trio {
 }
 
 task Concordance {
-    String gatk
     File? gatk_override
     File? intervals
     File truth_vcf
@@ -114,12 +110,10 @@ task Concordance {
     File eval_vcf_idx
 
     command {
-        GATK_JAR=${gatk}
-        if [[ "${gatk_override}" == *.jar ]]; then
-            GATK_JAR=${gatk_override}
-        fi
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
-        java -jar $GATK_JAR Concordance ${"-L " + intervals} \
+        gatk --java-options "-Xmx2g" Concordance \
+            ${"-L " + intervals} \
             -truth ${truth_vcf} -eval ${eval_vcf} -tpfn "true_positives_and_false_negatives.vcf" \
             -tpfp "true_positives_and_false_positives.vcf" \
             -summary summary.tsv

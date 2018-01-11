@@ -7,8 +7,6 @@
 import "mutect2_multi_sample.wdl" as m2_multi
 
 workflow Mutect2_Multi_Concordance {
-    # gatk needs to be a String input to the workflow in order to work in a Docker image
-	String gatk
 	File? gatk_override
 	File picard
 	String gatk_docker
@@ -37,7 +35,6 @@ workflow Mutect2_Multi_Concordance {
 
     call m2_multi.Mutect2_Multi {
         input:
-            gatk = gatk,
             gatk_override = gatk_override,
             picard = picard,
             gatk_docker = gatk_docker,
@@ -65,7 +62,6 @@ workflow Mutect2_Multi_Concordance {
     scatter (n in range(length(truth))) {
         call Concordance {
             input:
-                gatk = gatk,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 intervals = intervals,
@@ -89,7 +85,6 @@ workflow Mutect2_Multi_Concordance {
 }
 
 task Concordance {
-    String gatk
     File? gatk_override
     String gatk_docker
     File? intervals
@@ -100,13 +95,10 @@ task Concordance {
     Int preemptible_attempts
 
     command {
-        # Use GATK Jar override if specified
-        GATK_JAR=${gatk}
-        if [[ "${gatk_override}" == *.jar ]]; then
-            GATK_JAR=${gatk_override}
-        fi
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
-        java -jar $GATK_JAR Concordance ${"-L " + intervals} \
+        gatk --java-options "-Xmx2g" Concordance \
+            ${"-L " + intervals} \
             -truth ${truth_vcf} -eval ${eval_vcf} \
             -tpfn "tpfn.vcf" \
             -tpfp "tpfp.vcf" \

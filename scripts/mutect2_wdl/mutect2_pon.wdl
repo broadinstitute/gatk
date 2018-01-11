@@ -18,19 +18,17 @@
 import "mutect2.wdl" as m2
 
 workflow Mutect2_Panel {
-    # gatk needs to be a String input to the workflow in order to work in a Docker image
-	String gatk
-	Int scatter_count
-	Array[File] normal_bams
-	Array[File] normal_bais
+    File? gatk_override
+    File picard
+    String gatk_docker
 	File? intervals
 	File ref_fasta
 	File ref_fai
 	File ref_dict
-    String gatk_docker
-    File? gatk_override
+	Int scatter_count
+	Array[File] normal_bams
+	Array[File] normal_bais
     Int? preemptible_attempts
-    File picard
     String? m2_extra_args
     String? duplicate_sample_strategy
     String pon_name
@@ -43,7 +41,6 @@ workflow Mutect2_Panel {
 
         call m2.Mutect2 {
             input:
-                gatk = gatk,
                 intervals = intervals,
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
@@ -65,7 +62,6 @@ workflow Mutect2_Panel {
 
     call CreatePanel {
         input:
-            gatk = gatk,
             input_vcfs = Mutect2.unfiltered_vcf,
             input_vcfs_idx = Mutect2.unfiltered_vcf_index,
             duplicate_sample_strategy = duplicate_sample_strategy,
@@ -84,7 +80,6 @@ workflow Mutect2_Panel {
 }
 
 task CreatePanel {
-    String gatk
     Array[File] input_vcfs
     Array[File] input_vcfs_idx
     String? duplicate_sample_strategy
@@ -93,11 +88,8 @@ task CreatePanel {
     Int? preemptible_attempts
     String gatk_docker
 
-    String gatk_local_jar = select_first([gatk_override, gatk])
-
     command {
-        # Use GATK Jar override if specified
-        export GATK_LOCAL_JAR=${gatk_local_jar}
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
         gatk --java-options "-Xmx2g"  CreateSomaticPanelOfNormals -vcfs ${sep=' -vcfs ' input_vcfs} ${"-duplicate-sample-strategy " + duplicate_sample_strategy} -O ${output_vcf_name}.vcf
     }

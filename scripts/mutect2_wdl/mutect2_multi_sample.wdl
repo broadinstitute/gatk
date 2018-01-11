@@ -20,39 +20,6 @@
 
 import "mutect2.wdl" as m2
 
-
-#
-# IMPORTANT: This task will not generate useful results for any backends using docker (incl. JES/cloud).
-#
-task CreateOutputList {
-    String output_name
-	Array[String] vcfs
-
-
-	# Runtime parameters
-    Int? mem
-    Int? preemptible_attempts
-    Int? disk_space_gb
-
-	command {
-		for vcf in ${sep=" " vcfs}; do
-			echo $vcf
-			echo $vcf >> ${output_name}.list
-		done
-	}
-
-	runtime {
-        docker: "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282"
-        memory: select_first([mem, 1]) + " GB"
-        disks: "local-disk " + select_first([disk_space_gb, 100]) + " HDD"
-        preemptible: select_first([preemptible_attempts, 2])
-	}
-
-	output {
-		File vcf_list = "${output_name}.list"
-	}
-}
-
 workflow Mutect2_Multi {
     # gatk needs to be a String input to the workflow in order to work in a Docker image
 	String gatk
@@ -160,4 +127,35 @@ workflow Mutect2_Multi {
         Array[File?] m2_bamout = Mutect2.bamout
         Array[File?] m2_bamout_index = Mutect2.bamout_index
     }
+}
+
+#
+# IMPORTANT: This task will not generate useful results for any backends using docker (incl. JES/cloud).
+#
+task CreateOutputList {
+    String output_name
+	Array[String] vcfs
+
+	# Runtime parameters
+    Int? mem
+    Int? preemptible_attempts
+    Int? disk_space_gb
+
+	command {
+		for vcf in ${sep=" " vcfs}; do
+			echo $vcf
+			echo $vcf >> ${output_name}.list
+		done
+	}
+
+	runtime {
+        docker: "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282"
+        memory: select_first([mem, 1]) + " GB"
+        disks: "local-disk " + select_first([disk_space_gb, 100]) + " HDD"
+        preemptible: select_first([preemptible_attempts, 2])
+	}
+
+	output {
+		File vcf_list = "${output_name}.list"
+	}
 }

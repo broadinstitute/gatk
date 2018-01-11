@@ -21,8 +21,6 @@
 #   independent of what is in the docker file.  See the README.md for more info.
 #
 workflow Mutect2 {
-    # gatk needs to be a String input to the workflow in order to work in a Docker image
-    String gatk
     File? gatk_override
     File picard
     String gatk_docker
@@ -63,7 +61,6 @@ workflow Mutect2 {
 
     call SplitIntervals {
         input:
-            gatk = gatk,
             gatk_override = gatk_override,
             gatk_docker = gatk_docker,
             intervals = intervals,
@@ -77,7 +74,6 @@ workflow Mutect2 {
     scatter (subintervals in SplitIntervals.interval_files ) {
         call M2 {
             input:
-                gatk = gatk,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 intervals = subintervals,
@@ -101,7 +97,6 @@ workflow Mutect2 {
 
     call MergeVCFs {
         input:
-            gatk = gatk,
             gatk_override = gatk_override,
             gatk_docker = gatk_docker,
             input_vcfs = M2.output_vcf,
@@ -112,7 +107,6 @@ workflow Mutect2 {
     if (is_bamOut) {
         call MergeBamOuts {
             input:
-                gatk = gatk,
                 gatk_override = gatk_override,
                 picard = picard,
                 gatk_docker = gatk_docker,
@@ -134,14 +128,11 @@ workflow Mutect2 {
                 preemptible_attempts = preemptible_attempts,
                 tumor_bam = tumor_bam,
                 tumor_bai = tumor_bai,
-
-
         }
     }
 
     call Filter {
         input:
-            gatk = gatk,
             gatk_override = gatk_override,
             gatk_docker = gatk_docker,
             intervals = intervals,
@@ -191,7 +182,6 @@ workflow Mutect2 {
 }
 
 task M2 {
-    String gatk
     File? gatk_override
     String gatk_docker
     File? intervals
@@ -214,11 +204,8 @@ task M2 {
     Int? preemptible_attempts
     Int? disk_space_gb
 
-    String gatk_local_jar = select_first([gatk_override, gatk])
-
     command <<<
-        # Use GATK Jar override if specified
-        export GATK_LOCAL_JAR=${gatk_local_jar}
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
         # We need to create these files regardless, even if they stay empty
         touch bamout.bam
@@ -260,7 +247,6 @@ task M2 {
 }
 
 task MergeVCFs {
-    String gatk
     File? gatk_override
     String gatk_docker
     Array[File] input_vcfs
@@ -271,12 +257,10 @@ task MergeVCFs {
     Int? preemptible_attempts
     Int? disk_space_gb
 
-    String gatk_local_jar = select_first([gatk_override, gatk])
-
     # using MergeVcfs instead of GatherVcfs so we can create indices
     # WARNING 2015-10-28 15:01:48 GatherVcfs  Index creation not currently supported when gathering block compressed VCFs.
     command {
-        export GATK_LOCAL_JAR=${gatk_local_jar}
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
         gatk --java-options "-Xmx2g" MergeVcfs -I ${sep=' -I ' input_vcfs} -O ${output_vcf_name}
     }
 
@@ -324,7 +308,6 @@ task CollectSequencingArtifactMetrics {
 }
 
 task Filter {
-    String gatk
     File? gatk_override
     String gatk_docker
     File? intervals
@@ -345,13 +328,9 @@ task Filter {
     Int? preemptible_attempts
     Int? disk_space_gb
 
-    String gatk_local_jar = select_first([gatk_override, gatk])
-
     command {
         set -e
-
-        # Use GATK Jar override if specified
-        export GATK_LOCAL_JAR=${gatk_local_jar}
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
         touch contamination.table
         if [[ "${variants_for_contamination}" == *.vcf ]]; then
@@ -389,7 +368,6 @@ task Filter {
 }
 
 task SplitIntervals {
-    String gatk
     File? gatk_override
     String gatk_docker
     File? intervals
@@ -403,14 +381,10 @@ task SplitIntervals {
     Int? preemptible_attempts
     Int? disk_space_gb
 
-    String gatk_local_jar = select_first([gatk_override, gatk])
 
     command {
-        # fail if *any* command below (not just the last) doesn't return 0, in particular if GATK SplitIntervals fails
         set -e
-
-        # Use GATK Jar override if specified
-        export GATK_LOCAL_JAR=${gatk_local_jar}
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
         mkdir interval-files
         gatk SplitIntervals -R ${ref_fasta} ${"-L " + intervals} -scatter ${scatter_count} -O interval-files
@@ -430,7 +404,6 @@ task SplitIntervals {
 }
 
 task MergeBamOuts {
-    String gatk
     File? gatk_override
     File picard
     String gatk_docker
