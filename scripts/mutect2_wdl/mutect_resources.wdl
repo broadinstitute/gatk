@@ -5,40 +5,43 @@
 #   this is used as the variants_for_contamination input to mutect2.wdl
 
 workflow MutectResources {
-    String gatk
-    String gatk_docker
+    # inputs
     File gnomad
     File gnomad_idx
     File? intervals
     Float minimum_allele_frequency
 
+    File? gatk_override
+
+    # runtime
+    String gatk_docker
+
     call SelectIntervals {
         input:
-            gatk = gatk,
-            gatk_docker = gatk_docker,
             input_vcf = gnomad,
             input_vcf_idx = gnomad_idx,
-            intervals = intervals
+            intervals = intervals,
+            gatk_override = gatk_override,
+            gatk_docker = gatk_docker
     }
 
     call MakeAlleleFrequencyOnlyVcf {
         input:
-            gatk = gatk,
-            gatk_docker = gatk_docker,
             input_vcf = SelectIntervals.output_vcf,
-            output_name = "gnomad-for-mutect2"
+            output_name = "gnomad-for-mutect2",
+            gatk_override = gatk_override,
+            gatk_docker = gatk_docker
     }
 
     call SelectCommonBiallelicSNPs {
         input:
-            gatk = gatk,
-            gatk_docker = gatk_docker,
             input_vcf = MakeAlleleFrequencyOnlyVcf.output_vcf,
             input_vcf_idx = MakeAlleleFrequencyOnlyVcf.output_vcf_idx,
             minimum_allele_frequency = minimum_allele_frequency,
-            output_name = "mutect2-contamination-variants"
+            output_name = "mutect2-contamination-variants",
+            gatk_override = gatk_override,
+            gatk_docker = gatk_docker
     }
-
 
     output {
         File m2_gnomad = MakeAlleleFrequencyOnlyVcf.output_vcf
@@ -49,20 +52,36 @@ workflow MutectResources {
 }
 
 task SelectIntervals {
-    String gatk
-    String gatk_docker
+    # inputs
     File input_vcf
     File input_vcf_idx
     File? intervals
 
+    File? gatk_override
+
+    # runtime
+    String gatk_docker
+    Int? mem
+    Int? preemptible_attempts
+    Int? disk_space
+    Int? cpu
+    Boolean use_ssd = false
+
+    Int machine_mem = select_first([mem, 3])
+    Int command_mem = machine_mem - 1
+
     command {
-        java -jar ${gatk} SelectVariants -V ${input_vcf} ${"-L " + intervals} -O selected.vcf --lenient
+        set -e
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        gatk --java-options "-Xmx${command_mem}g" SelectVariants -V ${input_vcf} ${"-L " + intervals} -O selected.vcf --lenient
     }
 
     runtime {
-        docker: "${gatk_docker}"
-        memory: "2 GB"
-        disks: "local-disk " + 300 + " HDD"
+        docker: gatk_docker
+        memory: machine_mem + " GB"
+        disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
+        preemptible: select_first([preemptible_attempts, 3])
+        cpu: select_first([cpu, 1])
     }
 
     output {
@@ -76,12 +95,27 @@ task SelectIntervals {
 # note that input must be a plain-text vcf, not a vcf.gz.
 # this task re-indexes and compresses the output vcf
 task MakeAlleleFrequencyOnlyVcf {
-    String gatk
-    String gatk_docker
+    # inputs
     File input_vcf
     String output_name
 
+    File? gatk_override
+
+    # runtime
+    String gatk_docker
+    Int? mem
+    Int? preemptible_attempts
+    Int? disk_space
+    Int? cpu
+    Boolean use_ssd = false
+
+    Int machine_mem = select_first([mem, 3])
+    Int command_mem = machine_mem - 1
+
     command {
+        set -e
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+
         grep '#' ${input_vcf} > header
         grep -v '#' ${input_vcf} | grep PASS > body
 
@@ -96,8 +130,8 @@ task MakeAlleleFrequencyOnlyVcf {
 
         cat header simplified_body > simplified.vcf
 
-        java -jar ${gatk} IndexFeatureFile -F simplified.vcf
-        java -jar ${gatk} SelectVariants -V simplified.vcf -O ${output_name}.vcf.gz
+        gatk --java-options "-Xmx${command_mem}g" IndexFeatureFile -F simplified.vcf
+        gatk --java-options "-Xmx${command_mem}g" SelectVariants -V simplified.vcf -O ${output_name}.vcf.gz
         rm header body simplified_info simplified_body simplified.vcf simplified.vcf.idx
     }
 
@@ -107,22 +141,40 @@ task MakeAlleleFrequencyOnlyVcf {
     }
 
     runtime {
-        docker: "${gatk_docker}"
-        memory: "2 GB"
-        disks: "local-disk " + 100 + " HDD"
+        docker: gatk_docker
+        memory: machine_mem + " GB"
+        disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
+        preemptible: select_first([preemptible_attempts, 3])
+        cpu: select_first([cpu, 1])
     }
 }
 
 task SelectCommonBiallelicSNPs {
-    String gatk
-    String gatk_docker
+    # inputs
     File input_vcf
     File input_vcf_idx
     Float minimum_allele_frequency
     String output_name
 
+    File? gatk_override
+
+    # runtime
+    String gatk_docker
+    Int? mem
+    Int? preemptible_attempts
+    Int? disk_space
+    Int? cpu
+    Boolean use_ssd = false
+
+    Int machine_mem = select_first([mem, 3])
+    Int command_mem = machine_mem - 1
+
     command {
-        java -jar ${gatk} SelectVariants -V ${input_vcf} \
+        set -e
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+
+        gatk --java-options "-Xmx${command_mem}g" SelectVariants \
+            -V ${input_vcf} \
             -select-type SNP -restrict-alleles-to BIALLELIC \
             -select "AF > ${minimum_allele_frequency}" \
             -O ${output_name}.vcf.gz \
@@ -130,9 +182,11 @@ task SelectCommonBiallelicSNPs {
     }
 
     runtime {
-        docker: "${gatk_docker}"
-        memory: "2 GB"
-        disks: "local-disk " + 300 + " HDD"
+        docker: gatk_docker
+        memory: machine_mem + " GB"
+        disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
+        preemptible: select_first([preemptible_attempts, 3])
+        cpu: select_first([cpu, 1])
     }
 
     output {
