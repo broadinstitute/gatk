@@ -1,5 +1,11 @@
 ReadTSV = function(tsv_file) {
-    return(suppressWarnings(fread(sprintf("grep -v ^@ %s", tsv_file), sep="\t", stringsAsFactors=FALSE, header=TRUE, check.names=FALSE, data.table=FALSE, showProgress=FALSE, verbose=FALSE)))
+    # We need to filter out header lines beginning with '@';
+    # however, the standard 'fread("grep ...")' causes issues with the default Docker container, so we use a temporary file.
+    # See https://github.com/broadinstitute/gatk/issues/4140.
+    temp_file = tempfile()
+    system(sprintf("echo %s", temp_file))
+    system(sprintf("grep -v ^@ %s > %s", tsv_file, temp_file))
+    return(suppressWarnings(fread(temp_file, sep="\t", stringsAsFactors=FALSE, header=TRUE, check.names=FALSE, data.table=FALSE, showProgress=FALSE, verbose=FALSE)))
 }
 
 ## Contig Background for data
