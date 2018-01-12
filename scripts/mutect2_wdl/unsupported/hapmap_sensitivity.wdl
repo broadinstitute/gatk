@@ -387,8 +387,6 @@ task Concordance {
           preemptible: 2
       }
 
-      runtime { memory: "5 GB" }
-
       output {
             File tpfn = "tpfn.vcf"
             File tpfn_idx = "tpfn.vcf.idx"
