@@ -20,8 +20,7 @@
 import "mutect2.wdl" as m2
 
 workflow Mutect2_Multi {
-    # gatk needs to be a String input to the workflow in order to work in a Docker image
-	String gatk
+	File? gatk_override
 	Int scatter_count
 	File pair_list
 	Array[Array[String]] pairs = read_tsv(pair_list)
@@ -64,7 +63,7 @@ workflow Mutect2_Multi {
 
         call m2.Mutect2 {
             input:
-                gatk = gatk,
+                gatk_override = gatk_override,
                 intervals = intervals,
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
