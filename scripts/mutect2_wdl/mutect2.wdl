@@ -21,16 +21,12 @@
 #   independent of what is in the docker file.  See the README.md for more info.
 #
 workflow Mutect2 {
-    File? gatk_override
+    # Mutect2 inputs
     File picard
-    String gatk_docker
-    String basic_bash_docker = "ubuntu:16.04"
-    String oncotator_docker
     File? intervals
     File ref_fasta
     File ref_fai
     File ref_dict
-
     File tumor_bam
     File tumor_bai
     File? normal_bam
@@ -44,38 +40,43 @@ workflow Mutect2 {
     File? variants_for_contamination
     File? variants_for_contamination_index
     Boolean is_run_orientation_bias_filter
-    Boolean is_run_oncotator
-
-    File? onco_ds_tar_gz
-    String? onco_ds_local_db_dir
     Array[String] artifact_modes
     String? m2_extra_args
     String? m2_extra_filtering_args
+    Boolean is_bamOut = false
+
+    # oncotator inputs
+    Boolean is_run_oncotator
+    File? onco_ds_tar_gz
+    String? onco_ds_local_db_dir
     String? sequencing_center
     String? sequence_source
     File? default_config_file
-    Boolean is_bamOut = false
 
+    File? gatk_override
+
+    # runtime
+    String gatk_docker
+    String basic_bash_docker = "ubuntu:16.04"
+    String oncotator_docker
     Int? preemptible_attempts
 
 
     call SplitIntervals {
         input:
-            gatk_override = gatk_override,
-            gatk_docker = gatk_docker,
             intervals = intervals,
             ref_fasta = ref_fasta,
             ref_fai = ref_fai,
             ref_dict = ref_dict,
             scatter_count = scatter_count,
+            gatk_override = gatk_override,
+            gatk_docker = gatk_docker,
             preemptible_attempts = preemptible_attempts
     }
 
     scatter (subintervals in SplitIntervals.interval_files ) {
         call M2 {
             input:
-                gatk_override = gatk_override,
-                gatk_docker = gatk_docker,
                 intervals = subintervals,
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
@@ -91,30 +92,32 @@ workflow Mutect2 {
                 preemptible_attempts = preemptible_attempts,
                 m2_extra_args = m2_extra_args,
                 is_bamOut = is_bamOut,
+                gatk_override = gatk_override,
+                gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts
         }
     }
 
     call MergeVCFs {
         input:
+            input_vcfs = M2.output_vcf,
+            output_vcf_name = output_vcf_name,
             gatk_override = gatk_override,
             gatk_docker = gatk_docker,
-            input_vcfs = M2.output_vcf,
-            preemptible_attempts = preemptible_attempts,
-            output_vcf_name = output_vcf_name
+            preemptible_attempts = preemptible_attempts
     }
 
     if (is_bamOut) {
         call MergeBamOuts {
             input:
-                gatk_override = gatk_override,
                 picard = picard,
-                gatk_docker = gatk_docker,
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
                 ref_dict = ref_dict,
                 bam_outs = M2.output_bamOut,
-                output_vcf_name = basename(MergeVCFs.output_vcf, ".vcf")
+                output_vcf_name = basename(MergeVCFs.output_vcf, ".vcf"),
+                gatk_override = gatk_override,
+                gatk_docker = gatk_docker
         }
     }
 
@@ -127,7 +130,7 @@ workflow Mutect2 {
                 ref_fai = ref_fai,
                 preemptible_attempts = preemptible_attempts,
                 tumor_bam = tumor_bam,
-                tumor_bai = tumor_bai,
+                tumor_bai = tumor_bai
         }
     }
 
@@ -153,16 +156,16 @@ workflow Mutect2 {
     if (is_run_oncotator) {
         call oncotate_m2 {
             input:
-                oncotator_docker = oncotator_docker,
                 m2_vcf = Filter.filtered_vcf,
-                preemptible_attempts = preemptible_attempts,
                 onco_ds_tar_gz = onco_ds_tar_gz,
                 onco_ds_local_db_dir = onco_ds_local_db_dir,
                 sequencing_center = sequencing_center,
                 sequence_source = sequence_source,
                 default_config_file = default_config_file,
                 case_id = M2.tumor_sample[0],
-                control_id = M2.normal_sample[0]
+                control_id = M2.normal_sample[0],
+                oncotator_docker = oncotator_docker,
+                preemptible_attempts = preemptible_attempts
         }
     }
 
@@ -182,8 +185,7 @@ workflow Mutect2 {
 }
 
 task M2 {
-    File? gatk_override
-    String gatk_docker
+    # inputs
     File? intervals
     File ref_fasta
     File ref_fai
@@ -199,10 +201,18 @@ task M2 {
     String? m2_extra_args
     Boolean? is_bamOut
 
-    # Runtime parameters
+    File? gatk_override
+
+    # runtime
+    String gatk_docker
     Int? mem
     Int? preemptible_attempts
-    Int? disk_space_gb
+    Int? disk_space
+    Int? cpu
+    Boolean use_ssd = false
+
+    Int machine_mem = select_first([mem, 3])
+    Int command_mem = machine_mem - 1
 
     command <<<
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
@@ -211,15 +221,15 @@ task M2 {
         touch bamout.bam
         echo "" > normal_name.txt
 
-        gatk --java-options "-Xmx4g" GetSampleName -I ${tumor_bam} -O tumor_name.txt
+        gatk --java-options "-Xmx${command_mem}g" GetSampleName -I ${tumor_bam} -O tumor_name.txt
         tumor_command_line="-I ${tumor_bam} -tumor `cat tumor_name.txt`"
 
         if [[ "_${normal_bam}" == *.bam ]]; then
-            gatk --java-options "-Xmx4g" GetSampleName -I ${normal_bam} -O normal_name.txt
+            gatk --java-options "-Xmx${command_mem}g" GetSampleName -I ${normal_bam} -O normal_name.txt
             normal_command_line="-I ${normal_bam} -normal `cat normal_name.txt`"
         fi
 
-        gatk --java-options "-Xmx4g" Mutect2 \
+        gatk --java-options "-Xmx${command_mem}g" Mutect2 \
             -R ${ref_fasta} \
             $tumor_command_line \
             $normal_command_line \
@@ -232,10 +242,11 @@ task M2 {
     >>>
 
     runtime {
-        docker: "${gatk_docker}"
-        memory: select_first([mem, 5]) + " GB"
-        disks: "local-disk " + select_first([disk_space_gb, 100]) + " HDD"
-        preemptible: select_first([preemptible_attempts, 2])
+        docker: gatk_docker
+        memory: machine_mem + " GB"
+        disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
+        preemptible: select_first([preemptible_attempts, 3])
+        cpu: select_first([cpu, 1])
     }
 
     output {
@@ -247,28 +258,36 @@ task M2 {
 }
 
 task MergeVCFs {
-    File? gatk_override
-    String gatk_docker
+    # inputs
     Array[File] input_vcfs
     String output_vcf_name
 
-    # Runtime parameters
+    File? gatk_override
+
+    # runtime
+    String gatk_docker
     Int? mem
     Int? preemptible_attempts
-    Int? disk_space_gb
+    Int? disk_space
+    Int? cpu
+    Boolean use_ssd = false
+
+    Int machine_mem = select_first([mem, 3])
+    Int command_mem = machine_mem - 1
 
     # using MergeVcfs instead of GatherVcfs so we can create indices
     # WARNING 2015-10-28 15:01:48 GatherVcfs  Index creation not currently supported when gathering block compressed VCFs.
     command {
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
-        gatk --java-options "-Xmx2g" MergeVcfs -I ${sep=' -I ' input_vcfs} -O ${output_vcf_name}
+        gatk --java-options "-Xmx${command_mem}g" MergeVcfs -I ${sep=' -I ' input_vcfs} -O ${output_vcf_name}
     }
 
     runtime {
-        docker: "${gatk_docker}"
-        memory: select_first([mem, 5]) + " GB"
-        disks: "local-disk " + select_first([disk_space_gb, 100]) + " HDD"
-        preemptible: select_first([preemptible_attempts, 2])
+        docker: gatk_docker
+        memory: machine_mem + " GB"
+        disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
+        preemptible: select_first([preemptible_attempts, 3])
+        cpu: select_first([cpu, 1])
     }
 
     output {
@@ -278,17 +297,23 @@ task MergeVCFs {
 }
 
 task CollectSequencingArtifactMetrics {
+    # inputs
     File picard
-    String gatk_docker
     File ref_fasta
     File ref_fai
     File tumor_bam
     File tumor_bai
 
-    # Runtime parameters
+    # runtime
+    String gatk_docker
     Int? mem
     Int? preemptible_attempts
-    Int? disk_space_gb
+    Int? disk_space
+    Int? cpu
+    Boolean use_ssd = false
+
+    Int machine_mem = select_first([mem, 3])
+    Int command_mem = machine_mem - 1
 
     command {
         set -e
@@ -296,10 +321,11 @@ task CollectSequencingArtifactMetrics {
     }
 
     runtime {
-        docker: "${gatk_docker}"
-        memory: select_first([mem, 5]) + " GB"
-        disks: "local-disk " + select_first([disk_space_gb, 100]) + " HDD"
-        preemptible: select_first([preemptible_attempts, 2])
+        docker: gatk_docker
+        memory: machine_mem + " GB"
+        disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
+        preemptible: select_first([preemptible_attempts, 3])
+        cpu: select_first([cpu, 1])
     }
 
     output {
@@ -308,8 +334,7 @@ task CollectSequencingArtifactMetrics {
 }
 
 task Filter {
-    File? gatk_override
-    String gatk_docker
+    # inputs
     File? intervals
     File? ref_fasta
     File? ref_fai
@@ -323,10 +348,18 @@ task Filter {
     File? variants_for_contamination_index
     String? m2_extra_filtering_args
 
-    # Runtime parameters
+    File? gatk_override
+
+    # runtime
+    String gatk_docker
     Int? mem
     Int? preemptible_attempts
-    Int? disk_space_gb
+    Int? disk_space
+    Int? cpu
+    Boolean use_ssd = false
+
+    Int machine_mem = select_first([mem, 3])
+    Int command_mem = machine_mem - 1
 
     command {
         set -e
@@ -334,18 +367,18 @@ task Filter {
 
         touch contamination.table
         if [[ "${variants_for_contamination}" == *.vcf ]]; then
-            gatk --java-options "-Xmx4g" GetPileupSummaries -I ${tumor_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O pileups.table
-            gatk --java-options "-Xmx4g" CalculateContamination -I pileups.table -O contamination.table
+            gatk --java-options "-Xmx${command_mem}g" GetPileupSummaries -I ${tumor_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O pileups.table
+            gatk --java-options "-Xmx${command_mem}g" CalculateContamination -I pileups.table -O contamination.table
             contamination_cmd="--contamination-table contamination.table"
         fi
 
-        gatk --java-options "-Xmx4g" FilterMutectCalls -V ${unfiltered_vcf} \
+        gatk --java-options "-Xmx${command_mem}g" FilterMutectCalls -V ${unfiltered_vcf} \
       	    -O filtered.vcf $contamination_cmd \
       	    ${m2_extra_filtering_args}
 
         # FilterByOrientationBias must come after all of the other filtering.
         if [[ ! -z "${pre_adapter_metrics}" ]]; then
-            gatk --java-options "-Xmx4g" FilterByOrientationBias -AM ${sep=" -AM " artifact_modes} \
+            gatk --java-options "-Xmx${command_mem}g" FilterByOrientationBias -AM ${sep=" -AM " artifact_modes} \
                 -V filtered.vcf -P ${pre_adapter_metrics} --output ${filtered_vcf_name}
         else
             mv filtered.vcf ${filtered_vcf_name}
@@ -354,10 +387,11 @@ task Filter {
     }
 
     runtime {
-        docker: "${gatk_docker}"
-        memory: select_first([mem, 5]) + " GB"
-        disks: "local-disk " + select_first([disk_space_gb, 100]) + " HDD"
-        preemptible: select_first([preemptible_attempts, 2])
+        docker: gatk_docker
+        memory: machine_mem + " GB"
+        disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
+        preemptible: select_first([preemptible_attempts, 3])
+        cpu: select_first([cpu, 1])
     }
 
     output {
@@ -368,18 +402,25 @@ task Filter {
 }
 
 task SplitIntervals {
-    File? gatk_override
-    String gatk_docker
+    # inputs
     File? intervals
     File ref_fasta
     File ref_fai
     File ref_dict
     Int scatter_count
 
-    # Runtime parameters
+    File? gatk_override
+
+    # runtime
+    String gatk_docker
     Int? mem
     Int? preemptible_attempts
-    Int? disk_space_gb
+    Int? disk_space
+    Int? cpu
+    Boolean use_ssd = false
+
+    Int machine_mem = select_first([mem, 3])
+    Int command_mem = machine_mem - 1
 
 
     command {
@@ -387,15 +428,16 @@ task SplitIntervals {
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
         mkdir interval-files
-        gatk SplitIntervals -R ${ref_fasta} ${"-L " + intervals} -scatter ${scatter_count} -O interval-files
+        gatk --java-options "-Xmx${command_mem}g" SplitIntervals -R ${ref_fasta} ${"-L " + intervals} -scatter ${scatter_count} -O interval-files
         cp interval-files/*.intervals .
     }
 
     runtime {
-        docker: "${gatk_docker}"
-        memory: select_first([mem, 3]) + " GB"
-        disks: "local-disk " + select_first([disk_space_gb, 100]) + " HDD"
-        preemptible: select_first([preemptible_attempts, 2])
+        docker: gatk_docker
+        memory: machine_mem + " GB"
+        disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
+        preemptible: select_first([preemptible_attempts, 3])
+        cpu: select_first([cpu, 1])
     }
 
     output {
@@ -404,20 +446,26 @@ task SplitIntervals {
 }
 
 task MergeBamOuts {
-    File? gatk_override
+    # inputs
     File picard
-    String gatk_docker
     File ref_fasta
     File ref_fai
     File ref_dict
     Array[File]+ bam_outs
-
     String output_vcf_name
 
-    # Runtime parameters
+    File? gatk_override
+
+    # runtime
+    String gatk_docker
     Int? mem
     Int? preemptible_attempts
-    Int? disk_space_gb
+    Int? disk_space
+    Int? cpu
+    Boolean use_ssd = false
+
+    Int machine_mem = select_first([mem, 3])
+    Int command_mem = machine_mem - 1
 
     command <<<
         # This command block assumes that there is at least one file in bam_outs.
@@ -428,10 +476,11 @@ task MergeBamOuts {
     >>>
 
     runtime {
-        docker: "${gatk_docker}"
-        memory: select_first([mem, 3]) + " GB"
-        disks: "local-disk " + select_first([disk_space_gb, 100]) + " HDD"
-        preemptible: select_first([preemptible_attempts, 2])
+        docker: gatk_docker
+        memory: machine_mem + " GB"
+        disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
+        preemptible: select_first([preemptible_attempts, 3])
+        cpu: select_first([cpu, 1])
     }
 
     output {
@@ -441,7 +490,7 @@ task MergeBamOuts {
 }
 
 task oncotate_m2 {
-    String oncotator_docker
+    # inputs
     File m2_vcf
     File? onco_ds_tar_gz
     String? onco_ds_local_db_dir
@@ -452,10 +501,16 @@ task oncotate_m2 {
     String case_id
     String? control_id
 
-    # Runtime parameters
+    # runtime
+    String oncotator_docker
     Int? mem
     Int? preemptible_attempts
-    Int? disk_space_gb
+    Int? disk_space
+    Int? cpu
+    Boolean use_ssd = false
+
+    Int machine_mem = select_first([mem, 3])
+    Int command_mem = machine_mem - 1
 
     command <<<
 
@@ -489,11 +544,12 @@ task oncotate_m2 {
     >>>
 
     runtime {
-        docker: "${oncotator_docker}"
-        memory: select_first([mem, 3]) + " GB"
+        docker: oncotator_docker
+        memory: machine_mem + " GB"
         bootDiskSizeGb: 12
-        disks: "local-disk " + select_first([disk_space_gb, 100]) + " HDD"
-        preemptible: select_first([preemptible_attempts, 2])
+        disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
+        preemptible: select_first([preemptible_attempts, 3])
+        cpu: select_first([cpu, 1])
     }
 
     output {

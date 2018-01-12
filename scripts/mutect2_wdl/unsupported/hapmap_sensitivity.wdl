@@ -21,9 +21,7 @@
 import "mutect2.wdl" as MutectSingleSample
 
 workflow HapmapSensitivity {
-    File gatk_override
     File picard
-    String gatk_docker
     File? intervals
   	File ref_fasta
   	File ref_fai
@@ -42,6 +40,9 @@ workflow HapmapSensitivity {
     Int max_depth
     File preprocessed_hapmap
     File preprocessed_hapmap_idx
+
+    File? gatk_override
+    String gatk_docker
 
     call RestrictIntervals {
         input: gatk_override = gatk_override, gatk_docker = gatk_docker, vcf = preprocessed_hapmap, vcf_idx = preprocessed_hapmap_idx, intervals = intervals
@@ -139,7 +140,7 @@ workflow HapmapSensitivity {
 
 #### Tasks for making truth
 task RestrictIntervals {
-    File gatk_override
+    File? gatk_override
     String gatk_docker
     File vcf
     File vcf_idx
@@ -168,7 +169,7 @@ task RestrictIntervals {
 }
 
 task BamDepth {
-    File gatk_override
+    File? gatk_override
     String gatk_docker
     File vcf
     File vcf_idx
@@ -194,7 +195,7 @@ task BamDepth {
 }
 
 task MixingFractions {
-    File gatk_override
+    File? gatk_override
     String gatk_docker
     File vcf
     File vcf_idx
@@ -215,7 +216,7 @@ task MixingFractions {
 }
 
 task ExpectedAlleleFraction {
-    File gatk_override
+    File? gatk_override
     String gatk_docker
     File vcf
     File vcf_idx
@@ -240,7 +241,7 @@ task ExpectedAlleleFraction {
 ### Tasks for analysing sensitivity
 
 task ConvertToTable {
-  File gatk_override
+  File? gatk_override
   String gatk_docker
   File input_vcf
   File input_vcf_idx
@@ -306,7 +307,7 @@ task AnalyzeSensitivity {
 
 #Make Jaccard index table for SNVs or indels from an array of called vcfs
 task Jaccard {
-    File gatk_override
+    File? gatk_override
     String gatk_docker
     Array[File] calls
     Array[File] calls_idx
@@ -364,7 +365,7 @@ task Jaccard {
 }
 
 task Concordance {
-      File gatk_override
+      File? gatk_override
       String gatk_docker
       File? intervals
       File truth

@@ -20,9 +20,7 @@
 import "hapmap_sensitivity.wdl" as single_plex
 
 workflow HapmapSensitivityAllPlexes {
-    File gatk_override
     File picard
-    String gatk_docker
     File? intervals
   	File ref_fasta
   	File ref_fai
@@ -49,6 +47,10 @@ workflow HapmapSensitivityAllPlexes {
     String? m2_extra_args
     String? m2_extra_filtering_args
     File python_script
+
+    File? gatk_override
+
+    String gatk_docker
 
   call single_plex.HapmapSensitivity as FivePlex {
       input:

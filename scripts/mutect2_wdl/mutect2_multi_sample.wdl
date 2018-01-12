@@ -20,14 +20,13 @@
 import "mutect2.wdl" as m2
 
 workflow Mutect2_Multi {
-	File? gatk_override
-	Int scatter_count
-	File pair_list
-	Array[Array[String]] pairs = read_tsv(pair_list)
+    # Mutect2 inputs
 	File? intervals
 	File ref_fasta
 	File ref_fai
 	File ref_dict
+	File pair_list
+	Array[Array[String]] pairs = read_tsv(pair_list)
 	File? pon
 	File? pon_index
 	File? gnomad
@@ -35,20 +34,24 @@ workflow Mutect2_Multi {
 	File? variants_for_contamination
     File? variants_for_contamination_index
 	Boolean is_run_orientation_bias_filter
-	Boolean is_run_oncotator
-    File? gatk_override
+	Int scatter_count
+	Array[String] artifact_modes
+    File picard
+	String? m2_extra_args
+    String? m2_extra_filtering_args
+    Boolean? is_bamOut
 
+    # Oncotator inputs
+    Boolean is_run_oncotator
     File? onco_ds_tar_gz
     String? onco_ds_local_db_dir
-    Array[String] artifact_modes
-    File picard
-    String? m2_extra_args
-    String? m2_extra_filtering_args
     String? sequencing_center
     String? sequence_source
     File? default_config_file
-    Boolean? is_bamOut
 
+    File? gatk_override
+
+    # runtime
     String gatk_docker
     String oncotator_docker
     Int? preemptible_attempts
@@ -63,7 +66,6 @@ workflow Mutect2_Multi {
 
         call m2.Mutect2 {
             input:
-                gatk_override = gatk_override,
                 intervals = intervals,
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
@@ -80,80 +82,33 @@ workflow Mutect2_Multi {
                 variants_for_contamination = variants_for_contamination,
                 variants_for_contamination_index = variants_for_contamination_index,
                 is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-                is_run_oncotator = is_run_oncotator,
-                oncotator_docker = oncotator_docker,
-                gatk_docker = gatk_docker,
-                gatk_override = gatk_override,
-                preemptible_attempts = preemptible_attempts,
-                onco_ds_tar_gz = onco_ds_tar_gz,
-                onco_ds_local_db_dir = onco_ds_local_db_dir,
                 artifact_modes = artifact_modes,
                 picard = picard,
                 m2_extra_args = m2_extra_args,
                 m2_extra_filtering_args = m2_extra_filtering_args,
+                is_run_oncotator = is_run_oncotator,
+                onco_ds_tar_gz = onco_ds_tar_gz,
+                onco_ds_local_db_dir = onco_ds_local_db_dir,
                 sequencing_center = sequencing_center,
                 sequence_source = sequence_source,
                 default_config_file = default_config_file,
-                is_bamOut = select_first([is_bamOut, false])
+                is_bamOut = select_first([is_bamOut, false]),
+                gatk_override = gatk_override,
+                gatk_docker = gatk_docker,
+                oncotator_docker = oncotator_docker,
+                preemptible_attempts = preemptible_attempts
         }
     }
 
-	call CreateOutputList as unfilteredOutputList {
-	    input:
-		    output_name = "unfiltered",
-		    vcfs = Mutect2.unfiltered_vcf,
-		    preemptible_attempts = preemptible_attempts
-    }
-
-    call CreateOutputList as filteredOutputList {
-        input:
-   	        output_name = "filtered",
-            vcfs = Mutect2.filtered_vcf,
-            preemptible_attempts = preemptible_attempts
-    }
-
     output {
-        File unfiltered_vcfs = unfilteredOutputList.vcf_list
-        File filtered_vcfs = filteredOutputList.vcf_list
-        Array[File] unfiltered_vcf_files = Mutect2.unfiltered_vcf
-        Array[File] unfiltered_vcf_index_files = Mutect2.unfiltered_vcf_index
-        Array[File] filtered_vcf_files = Mutect2.filtered_vcf
-        Array[File] filtered_vcf_index_files = Mutect2.filtered_vcf_index
+        Array[File] unfiltered_vcf = Mutect2.unfiltered_vcf
+        Array[File] unfiltered_vcf_idx = Mutect2.unfiltered_vcf_index
+        Array[File] filtered_vcf = Mutect2.filtered_vcf
+        Array[File] filtered_vcf_idx = Mutect2.filtered_vcf_index
         Array[File] contamination_tables = Mutect2.contamination_table
 
         Array[File?] oncotated_m2_mafs = Mutect2.oncotated_m2_maf
         Array[File?] m2_bamout = Mutect2.bamout
         Array[File?] m2_bamout_index = Mutect2.bamout_index
     }
-}
-
-#
-# IMPORTANT: This task will not generate useful results for any backends using docker (incl. JES/cloud).
-#
-task CreateOutputList {
-    String output_name
-	Array[String] vcfs
-
-	# Runtime parameters
-    Int? mem
-    Int? preemptible_attempts
-    Int? disk_space_gb
-
-	command {
-		for vcf in ${sep=" " vcfs}; do
-			echo $vcf
-			echo $vcf >> ${output_name}.list
-		done
-	}
-
-	runtime {
-        docker: "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282"
-        memory: select_first([mem, 1]) + " GB"
-        disks: "local-disk " + select_first([disk_space_gb, 100]) + " HDD"
-        preemptible: select_first([preemptible_attempts, 2])
-	}
-
-	output {
-		File vcf_list = "${output_name}.list"
-	}
 }

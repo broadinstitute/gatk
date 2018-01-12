@@ -8,10 +8,7 @@
 import "mutect2.wdl" as m2
 
 workflow Mutect2Trio {
-	File? gatk_override
 	File picard
-	String oncotator_docker
-    String gatk_docker
 	File? intervals
 	File ref_fasta
 	File ref_fai
@@ -26,16 +23,18 @@ workflow Mutect2Trio {
 	File? gnomad
 	File? gnomad_index
 	Boolean is_run_orientation_bias_filter
-	Int preemptible_attempts
 	Array[String] artifact_modes
+
+    File? gatk_override
+
+    # runtime
+    String gatk_docker
+    Int? preemptible_attempts
 
 	scatter(trio in trios) {
 		call m2.Mutect2 as GoodTumor {
 			input:
-				gatk_override = gatk_override,
 				picard = picard,
-				gatk_docker = gatk_docker,
-				oncotator_docker = oncotator_docker,
 				intervals = intervals,
 				ref_fasta = ref_fasta,
 				ref_fai = ref_fai,
@@ -51,16 +50,16 @@ workflow Mutect2Trio {
 				gnomad_index = gnomad_index,
                 is_run_orientation_bias_filter = is_run_orientation_bias_filter,
                 is_run_oncotator = false,
-                preemptible_attempts = preemptible_attempts,
-                artifact_modes = artifact_modes
+                artifact_modes = artifact_modes,
+                gatk_override = gatk_override,
+                gatk_docker = gatk_docker,
+                oncotator_docker = "NO_ONCOTATOR",
+                preemptible_attempts = preemptible_attempts
 		}
 
 		call m2.Mutect2 as BadTumor {
             input:
-        	    gatk_override = gatk_override,
         	    picard  =  picard,
-        	    gatk_docker = gatk_docker,
-        	    oncotator_docker = oncotator_docker,
         		intervals = intervals,
         		ref_fasta = ref_fasta,
        			ref_fai = ref_fai,
@@ -74,21 +73,23 @@ workflow Mutect2Trio {
         		scatter_count = scatter_count,
         		gnomad = gnomad,
         		gnomad_index = gnomad_index,
-                is_run_orientation_bias_filter  =  is_run_orientation_bias_filter,
+                is_run_orientation_bias_filter = is_run_orientation_bias_filter,
                 is_run_oncotator = false,
-                preemptible_attempts = preemptible_attempts,
-                artifact_modes = artifact_modes
+                artifact_modes = artifact_modes,
+                gatk_override = gatk_override,
+        	    gatk_docker = gatk_docker,
+        	    oncotator_docker = "NO_ONCOTATOR",
+                preemptible_attempts = preemptible_attempts
         }
 
 		call Concordance {
 		    input:
-		        gatk = gatk,
-                gatk_override = gatk_override,
                 intervals = intervals,
                 truth_vcf = GoodTumor.filtered_vcf, #note, no orientation bias since it's optional output
                 truth_vcf_idx = GoodTumor.filtered_vcf_index,
                 eval_vcf = BadTumor.filtered_vcf,
                 eval_vcf_idx = BadTumor.filtered_vcf_index,
+                gatk_override = gatk_override
 		}
 	}
 
@@ -102,12 +103,15 @@ workflow Mutect2Trio {
 }
 
 task Concordance {
-    File? gatk_override
     File? intervals
     File truth_vcf
     File truth_vcf_idx
     File eval_vcf
     File eval_vcf_idx
+
+    File? gatk_override
+
+    String gatk_docker
 
     command {
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
@@ -120,6 +124,7 @@ task Concordance {
     }
 
     runtime {
+        docker: gatk_docker
         memory: "5 GB"
     }
 

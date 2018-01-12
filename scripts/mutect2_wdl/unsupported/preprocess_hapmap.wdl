@@ -17,8 +17,7 @@
 # neighboring indels.
 
 workflow PreprocessHapmap {
-    File gatk_override
-    String gatk_docker
+    # inputs
     File hapmap
     File hapmap_idx
     File five_plex_samples
@@ -27,6 +26,11 @@ workflow PreprocessHapmap {
     Int  min_indel_spacing
     File gnomad         # common variants eg gnomad variants with AF > 0.001
     File gnomad_idx
+
+    File? gatk_override
+
+    # runtime
+    String gatk_docker
 
     call Subsample as SubsampleFive {
         input: gatk_override = gatk_override, gatk_docker = gatk_docker, hapmap = hapmap, hapmap_idx = hapmap_idx, samples = five_plex_samples, gnomad = gnomad, gnomad_idx = gnomad_idx
@@ -66,13 +70,17 @@ workflow PreprocessHapmap {
 }
 
 task Subsample {
-    File gatk_override
-    String gatk_docker
+    # inputs
     File hapmap
     File hapmap_idx
     File samples
     File gnomad           # common variants, to reduce false positives eg mapping artifacts in the original Hapmap vcf
     File gnomad_idx
+
+    File? gatk_override
+
+    # runtime
+    String gatk_docker
 
     command {
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
@@ -102,12 +110,16 @@ task Subsample {
 }
 
 task RemoveNearbyIndels {
-    File gatk_override
-    String gatk_docker
+    # inputs
     File input_vcf
     File input_vcf_idx
     Int min_indel_spacing
     String name
+
+    File? gatk_override
+
+    # runtime
+    String gatk_docker
 
     command {
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}

@@ -19,10 +19,6 @@ import "mutect2.wdl" as m2
 #
 workflow m2_validation {
     #### M2 parameters
-    File? gatk_override
-    String gatk_docker
-    String basic_bash_docker = "ubuntu:16.04"
-    String oncotator_docker
     File? intervals
     File ref_fasta
     File ref_fai
@@ -53,6 +49,12 @@ workflow m2_validation {
     String? sequence_source
     File? default_config_file
     Boolean is_bamOut = false
+
+    File? gatk_override
+
+    String gatk_docker
+    String basic_bash_docker = "ubuntu:16.04"
+    String oncotator_docker
     #####
 
     ### parameter-fu

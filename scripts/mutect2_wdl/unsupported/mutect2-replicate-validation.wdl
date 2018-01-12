@@ -4,14 +4,11 @@
 import "mutect2.wdl" as m2
 
 workflow Mutect2ReplicateValidation {
-	File? gatk_override
 	File picard
-	String gatk_docker
 	File? intervals
 	File ref_fasta
 	File ref_fai
 	File ref_dict
-
 	Int scatter_count
 	# replicate_pair_list file is a tsv file with the following four columns in this order.
 	# tumor_bam, tumor_bai, normal_bam, normal_bai
@@ -22,17 +19,18 @@ workflow Mutect2ReplicateValidation {
 	File? gnomad
 	File? gnomad_index
 	Boolean is_run_orientation_bias_filter
-	Int? preemptible_attempts
 	Array[String] artifact_modes
 	String? m2_extra_args
     String? m2_extra_filtering_args
 
+    File? gatk_override
+
+    String gatk_docker
+    Int? preemptible_attempts
+
 	scatter(pair in pairs) {
 		call m2.Mutect2 {
 			input:
-				gatk_override = gatk_override,
-				gatk_docker = gatk_docker,
-				oncotator_docker = gatk_docker,
 				intervals = intervals,
 				ref_fasta = ref_fasta,
 				ref_fai = ref_fai,
@@ -52,18 +50,22 @@ workflow Mutect2ReplicateValidation {
                 preemptible_attempts = preemptible_attempts,
                 artifact_modes = artifact_modes,
                 m2_extra_args = m2_extra_args,
-                m2_extra_filtering_args = m2_extra_filtering_args
+                m2_extra_filtering_args = m2_extra_filtering_args,
+                gatk_override = gatk_override,
+				gatk_docker = gatk_docker,
+				oncotator_docker = gatk_docker
 		}
 
 		call CountFalsePositives {
 			input:
-				gatk_override = gatk_override,
 				intervals = intervals,
 				ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
                 ref_dict = ref_dict,
 				filtered_vcf = Mutect2.filtered_vcf,
-				filtered_vcf_index = Mutect2.filtered_vcf_index
+				filtered_vcf_index = Mutect2.filtered_vcf_index,
+				gatk_override = gatk_override,
+				gatk_docker = gatk_docker
 		}
 	}
 
@@ -102,13 +104,16 @@ task GatherTables {
 }
 
 task CountFalsePositives {
-	File? gatk_override
 	File? intervals
 	File ref_fasta
 	File ref_fai
 	File ref_dict
 	File filtered_vcf
 	File filtered_vcf_index
+
+	File? gatk_override
+
+	String gatk_docker
 
 	command {
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
@@ -121,7 +126,7 @@ task CountFalsePositives {
 	}
 
     runtime {
-        docker: "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282"
+        docker: gatk_docker
         memory: "5 GB"
         disks: "local-disk " + 500 + " HDD"
     }
