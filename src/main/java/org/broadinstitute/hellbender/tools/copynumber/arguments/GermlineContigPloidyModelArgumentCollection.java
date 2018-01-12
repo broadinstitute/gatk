@@ -21,7 +21,7 @@ public final class GermlineContigPloidyModelArgumentCollection implements Serial
     public static final String SAMPLE_PSI_SCALE_LONG_NAME = "sample-psi-scale";
 
     @Argument(
-            doc = "Contig-level mean bias standard deviation.  If a single sample is provided, " +
+            doc = "Prior standard deviation of the contig-level mean coverage bias.  If a single sample is provided, " +
                     "this input will be ignored.",
             fullName = MEAN_BIAS_STANDARD_DEVIATION_LONG_NAME,
             minValue = 0.,
@@ -38,7 +38,7 @@ public final class GermlineContigPloidyModelArgumentCollection implements Serial
     private double mappingErrorRate = 0.01;
 
     @Argument(
-            doc = "Global contig-level unexplained variance scale.  If a single sample is provided, " +
+            doc = "Prior scale of contig coverage unexplained variance.  If a single sample is provided, " +
                     "this input will be ignored.",
             fullName = GLOBAL_PSI_SCALE_LONG_NAME,
             minValue = 0.,
@@ -47,7 +47,7 @@ public final class GermlineContigPloidyModelArgumentCollection implements Serial
     private double globalPsiScale = 0.001;
 
     @Argument(
-            doc = "Sample-specific contig-level unexplained variance scale.",
+            doc = "Prior scale of the sample-specific correction to the coverage unexplained variance.",
             fullName = SAMPLE_PSI_SCALE_LONG_NAME,
             minValue = 0.,
             optional = true
@@ -68,12 +68,13 @@ public final class GermlineContigPloidyModelArgumentCollection implements Serial
 
     public void validate() {
         ParamUtils.isPositive(meanBiasStandardDeviation,
-                "Contig-level mean bias standard deviation must be positive.");
+                "Prior standard deviation of the contig-level mean coverage bias must be positive.");
         ParamUtils.isPositive(mappingErrorRate,
                 "Typical mapping error rate must be positive.");
         ParamUtils.isPositive(globalPsiScale,
-                "Global contig-level unexplained variance scale must be positive.");
+                "Prior scale of contig coverage unexplained variance must be positive.");
         ParamUtils.isPositive(samplePsiScale,
-                "Sample-specific contig-level unexplained variance scale must be positive.");
+                "Prior scale of the sample-specific correction to the coverage unexplained variance " +
+                        "must be positive.");
     }
 }

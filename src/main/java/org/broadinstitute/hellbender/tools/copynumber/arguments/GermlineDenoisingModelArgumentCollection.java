@@ -66,7 +66,7 @@ public final class GermlineDenoisingModelArgumentCollection implements Serializa
     private double intervalPsiScale = 0.001;
 
     @Argument(
-            doc = "Typical scale of sample-specific unexplained variance.",
+            doc = "Typical scale of sample-specific correction to the unexplained variance.",
             fullName = SAMPLE_PSI_SCALE_LONG_NAME,
             minValue = 0.,
             optional = true
@@ -90,7 +90,8 @@ public final class GermlineDenoisingModelArgumentCollection implements Serializa
     private double logMeanBiasStandardDeviation = 0.1;
 
     @Argument(
-            doc = "Initial value of ARD prior precision relative to the typical interval-specific unexplained variance scale.",
+            doc = "Initial value of ARD prior precisions relative to the scale of interval-specific " +
+                    "unexplained variance.",
             fullName = INIT_ARD_REL_UNEXPLAINED_VARIANCE_LONG_NAME,
             minValue = 0.,
             optional = true
@@ -98,7 +99,7 @@ public final class GermlineDenoisingModelArgumentCollection implements Serializa
     private double initARDRelUnexplainedVariance = 0.1;
 
     @Argument(
-            doc = "Number of knobs on the GC curves.",
+            doc = "Number of knobs on GC curves.",
             fullName = NUM_GC_BINS_LONG_NAME,
             minValue = 1,
             optional = true
@@ -114,7 +115,7 @@ public final class GermlineDenoisingModelArgumentCollection implements Serializa
     private double gcCurveStandardDeviation = 1.;
 
     @Argument(
-            doc = "The strategy for calculating copy number posterior expectations in the denoising model.",
+            doc = "The strategy for calculating copy number posterior expectations in the coverage denoising model.",
             fullName = COPY_NUMBER_POSTERIOR_EXPECTATION_MODE_LONG_NAME,
             optional = true
     )
@@ -129,9 +130,9 @@ public final class GermlineDenoisingModelArgumentCollection implements Serializa
     private boolean enableBiasFactors = true;
 
     @Argument(
-            doc = "If copy-number-posterior-expectation-mode is set to hybrid, pad active intervals determined " +
-                    "at any time by this value (in the units of bp) in order to obtain the set of intervals on " +
-                    "which copy number posterior expectation is performed exactly.",
+            doc = "If copy-number-posterior-expectation-mode is set to HYBRID, CNV-active intervals determined " +
+                    "at any time will be padded by this value (in the units of bp) in order to obtain the set of " +
+                    "intervals on which copy number posterior expectation is performed exactly.",
             fullName = ACTIVE_CLASS_PADDING_HYBRID_MODE_LONG_NAME,
             optional = true
     )
@@ -175,19 +176,20 @@ public final class GermlineDenoisingModelArgumentCollection implements Serializa
         ParamUtils.isPositive(intervalPsiScale,
                 "Typical scale of interval-specific unexplained variance must be positive.");
         ParamUtils.isPositive(samplePsiScale,
-                "Typical scale of sample-specific unexplained variance must be positive.");
+                "Typical scale of sample-specific correction to the unexplained variance must be positive.");
         ParamUtils.isPositive(depthCorrectionTau,
                 "Precision of read depth pinning to its global value must be positive.");
         ParamUtils.isPositive(logMeanBiasStandardDeviation,
                 "Standard deviation of log mean bias must be positive.");
         ParamUtils.isPositive(initARDRelUnexplainedVariance,
-                "Initial value of ARD prior precision relative to the typical " +
-                        "interval-specific unexplained variance scale must be positive.");
+                "Initial value of ARD prior precision relative to the scale of " +
+                        "interval-specific unexplained variance must be positive.");
         Utils.validateArg(numGCBins >= 2,
-                "Number of knobs on the GC curves must be at least 2.");
+                "Number of knobs on GC curves must be at least 2.");
         ParamUtils.isPositive(gcCurveStandardDeviation,
                 "Prior standard deviation of the GC curve from flat must be positive.");
         ParamUtils.isPositiveOrZero(activeClassPaddingHybridMode,
-                "Active interval padding in the HYBRID copy-number posterior expectation mode must be non-negative.");
+                "CNV-active interval padding in HYBRID copy-number posterior expectation mode must " +
+                        "be non-negative.");
     }
 }
