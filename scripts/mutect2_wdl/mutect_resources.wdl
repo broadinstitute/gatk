@@ -117,7 +117,7 @@ task MakeAlleleFrequencyOnlyVcf {
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
         grep '#' ${input_vcf} > header
-        grep -v '#' ${input_vcf} | grep "\tPASS\t" > body
+        grep -v '#' ${input_vcf} | grep -P "\tPASS\t" > body
 
         # delete any INFO fields before AF (PASS<TAB><other info fields>;AF=___ --> PASS<TAB>AF=____)
         # delete any INFO fields after AF (;<other info fields><end of line> --> nothing)
