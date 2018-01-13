@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
-import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberFormatsUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.ModeledSegment;
-import org.broadinstitute.hellbender.tools.copynumber.models.MultidimensionalModeller;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;

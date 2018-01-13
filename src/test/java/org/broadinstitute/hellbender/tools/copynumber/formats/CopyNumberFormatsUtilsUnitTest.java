@@ -3,8 +3,6 @@ package org.broadinstitute.hellbender.tools.copynumber.formats;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import static org.testng.Assert.*;
-
 public final class CopyNumberFormatsUtilsUnitTest {
     @Test
     public void testFormatDouble() {

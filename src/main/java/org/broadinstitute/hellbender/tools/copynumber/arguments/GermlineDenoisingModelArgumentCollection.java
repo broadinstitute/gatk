@@ -4,7 +4,6 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
-import scala.xml.PrettyPrinter;
 
 import java.io.Serializable;
 import java.util.ArrayList;
