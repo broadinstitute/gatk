@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber.models;
 
+import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberFormatsUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AllelicCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.ParameterDecileCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
@@ -54,8 +55,6 @@ import java.util.stream.IntStream;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class AlleleFractionModeller {
-    private static final String DOUBLE_FORMAT = MultidimensionalModeller.DOUBLE_FORMAT;
-
     private static final double MAX_REASONABLE_MEAN_BIAS = AlleleFractionInitializer.MAX_REASONABLE_MEAN_BIAS;
     private static final double MAX_REASONABLE_BIAS_VARIANCE = AlleleFractionInitializer.MAX_REASONABLE_BIAS_VARIANCE;
     private static final double MAX_REASONABLE_OUTLIER_PROBABILITY = AlleleFractionInitializer.MAX_REASONABLE_OUTLIER_PROBABILITY;
@@ -185,7 +184,7 @@ public final class AlleleFractionModeller {
         parameterToDecilesMap.put(AlleleFractionParameter.MEAN_BIAS, new DecileCollection(meanBiasSamples));
         parameterToDecilesMap.put(AlleleFractionParameter.BIAS_VARIANCE, new DecileCollection(biasVarianceSamples));
         parameterToDecilesMap.put(AlleleFractionParameter.OUTLIER_PROBABILITY, new DecileCollection(outlierProbabilitySamples));
-        return new ParameterDecileCollection<>(new SimpleSampleMetadata(metadata.getSampleName()), parameterToDecilesMap, AlleleFractionParameter.class, DOUBLE_FORMAT);
+        return new ParameterDecileCollection<>(new SimpleSampleMetadata(metadata.getSampleName()), parameterToDecilesMap, AlleleFractionParameter.class);
     }
 
     //use width of a probability distribution given the position of its mode (estimated from Gaussian approximation) as step size

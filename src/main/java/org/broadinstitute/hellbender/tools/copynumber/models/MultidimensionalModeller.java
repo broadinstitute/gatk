@@ -28,8 +28,6 @@ import java.util.stream.Stream;
 public final class MultidimensionalModeller {
     private static final Logger logger = LogManager.getLogger(MultidimensionalModeller.class);
 
-    public static final String DOUBLE_FORMAT = "%6.6f";
-
     private final SampleLocatableMetadata metadata;
     private final CopyRatioCollection denoisedCopyRatios;
     private final OverlapDetector<CopyRatio> copyRatioMidpointOverlapDetector;

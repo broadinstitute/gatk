@@ -44,7 +44,7 @@ public final class CopyRatioSegmentCollection extends AbstractSampleLocatableCol
                     .append(copyRatioSegment.getInterval().getStart())
                     .append(copyRatioSegment.getInterval().getEnd())
                     .append(copyRatioSegment.getNumPoints())
-                    .append(copyRatioSegment.getMeanLog2CopyRatio());
+                    .append(formatDouble(copyRatioSegment.getMeanLog2CopyRatio()));
 
     public CopyRatioSegmentCollection(final File inputFile) {
         super(inputFile, CopyRatioSegmentTableColumn.COLUMNS, COPY_RATIO_SEGMENT_RECORD_FROM_DATA_LINE_DECODER, COPY_RATIO_SEGMENT_RECORD_TO_DATA_LINE_ENCODER);

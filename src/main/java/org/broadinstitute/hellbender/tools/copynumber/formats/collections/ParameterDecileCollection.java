@@ -52,25 +52,23 @@ public final class ParameterDecileCollection<T extends Enum<T> & ParameterEnum> 
     }
 
     private static void appendDecilesToDataLine(final DataLine dataLine,
-                                                final DecileCollection deciles,
-                                                final String doubleFormat) {
-        dataLine.append(String.format(doubleFormat, deciles.get(Decile.DECILE_10)))
-                .append(String.format(doubleFormat, deciles.get(Decile.DECILE_20)))
-                .append(String.format(doubleFormat, deciles.get(Decile.DECILE_30)))
-                .append(String.format(doubleFormat, deciles.get(Decile.DECILE_40)))
-                .append(String.format(doubleFormat, deciles.get(Decile.DECILE_50)))
-                .append(String.format(doubleFormat, deciles.get(Decile.DECILE_60)))
-                .append(String.format(doubleFormat, deciles.get(Decile.DECILE_70)))
-                .append(String.format(doubleFormat, deciles.get(Decile.DECILE_80)))
-                .append(String.format(doubleFormat, deciles.get(Decile.DECILE_90)));
+                                                final DecileCollection deciles) {
+        dataLine.append(formatDouble(deciles.get(Decile.DECILE_10)))
+                .append(formatDouble(deciles.get(Decile.DECILE_20)))
+                .append(formatDouble(deciles.get(Decile.DECILE_30)))
+                .append(formatDouble(deciles.get(Decile.DECILE_40)))
+                .append(formatDouble(deciles.get(Decile.DECILE_50)))
+                .append(formatDouble(deciles.get(Decile.DECILE_60)))
+                .append(formatDouble(deciles.get(Decile.DECILE_70)))
+                .append(formatDouble(deciles.get(Decile.DECILE_80)))
+                .append(formatDouble(deciles.get(Decile.DECILE_90)));
     }
 
     private final Map<T, DecileCollection> parameterToDecileCollectionMap;
 
     public ParameterDecileCollection(final SampleMetadata metadata,
                                      final Map<T, DecileCollection> parameterToDecileCollectionMap,
-                                     final Class<T> parameterClass,
-                                     final String doubleFormat) {
+                                     final Class<T> parameterClass) {
         super(
                 Utils.nonNull(metadata),
                 new ArrayList<>(parameterToDecileCollectionMap.entrySet()),
@@ -83,15 +81,14 @@ public final class ParameterDecileCollection<T extends Enum<T> & ParameterEnum> 
                 (record, dataLine) -> {
                     final T parameter = record.getKey();
                     final DecileCollection deciles = record.getValue();
-                    appendDecilesToDataLine(dataLine.append(parameter.toString()), deciles, doubleFormat);
+                    appendDecilesToDataLine(dataLine.append(parameter.toString()), deciles);
                 }
         );
         this.parameterToDecileCollectionMap = parameterToDecileCollectionMap;
     }
 
     public ParameterDecileCollection(final File file,
-                                     final Class<T> parameterClass,
-                                     final String doubleFormat) {
+                                     final Class<T> parameterClass) {
         super(
                 Utils.nonNull(file),
                 ParameterTableColumn.COLUMNS,
@@ -104,7 +101,7 @@ public final class ParameterDecileCollection<T extends Enum<T> & ParameterEnum> 
                     final T parameter = record.getKey();
                     final DecileCollection deciles = record.getValue();
                     dataLine.append(parameter.toString());
-                    appendDecilesToDataLine(dataLine, deciles, doubleFormat);
+                    appendDecilesToDataLine(dataLine, deciles);
                 }
         );
         parameterToDecileCollectionMap = getRecords().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));

@@ -43,7 +43,7 @@ public final class CopyRatioCollection extends AbstractSampleLocatableCollection
         dataLine.append(copyRatio.getInterval().getContig())
                 .append(copyRatio.getInterval().getStart())
                 .append(copyRatio.getInterval().getEnd())
-                .append(copyRatio.getLog2CopyRatioValue());
+                .append(formatDouble(copyRatio.getLog2CopyRatioValue()));
 
     public CopyRatioCollection(final File inputFile) {
         super(inputFile, CopyRatioTableColumn.COLUMNS, COPY_RATIO_RECORD_FROM_DATA_LINE_DECODER, COPY_RATIO_RECORD_TO_DATA_LINE_ENCODER);

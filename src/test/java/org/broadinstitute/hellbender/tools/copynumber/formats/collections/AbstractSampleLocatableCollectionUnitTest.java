@@ -6,6 +6,7 @@ import htsjdk.samtools.util.Locatable;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberFormatsUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -47,17 +48,17 @@ public final class AbstractSampleLocatableCollectionUnitTest extends GATKBaseTes
     private static final SimpleSampleLocatableCollection SIMPLE_LOCATABLE_COLLECTION_EXPECTED = new SimpleSampleLocatableCollection(
             METADATA_EXPECTED,
             Arrays.asList(
-                    new SimpleLocatable(new SimpleInterval("1", 1, 1), 1),
-                    new SimpleLocatable(new SimpleInterval("1", 2, 2), 2),
-                    new SimpleLocatable(new SimpleInterval("2", 1, 1), 4),
-                    new SimpleLocatable(new SimpleInterval("10", 1, 1), 3)));
+                    new SimpleLocatable(new SimpleInterval("1", 1, 1), 1.),
+                    new SimpleLocatable(new SimpleInterval("1", 2, 2), 2.),
+                    new SimpleLocatable(new SimpleInterval("2", 1, 1), 3.),
+                    new SimpleLocatable(new SimpleInterval("10", 1, 1), Double.NaN)));
 
     //simple example of a record class
     private static final class SimpleLocatable implements Locatable {
         private final SimpleInterval interval;
-        private final int value;
+        private final double value;
 
-        private SimpleLocatable(final SimpleInterval interval, final int value) {
+        private SimpleLocatable(final SimpleInterval interval, final double value) {
             this.interval = Utils.nonNull(interval);
             this.value = value;
         }
@@ -95,13 +96,16 @@ public final class AbstractSampleLocatableCollectionUnitTest extends GATKBaseTes
             }
             final SimpleLocatable that = (SimpleLocatable) o;
 
-            return value == that.value && interval.equals(that.interval);
+            return Double.compare(that.value, value) == 0 && interval.equals(that.interval);
         }
 
         @Override
         public int hashCode() {
-            int result = interval.hashCode();
-            result = 31 * result + value;
+            int result;
+            long temp;
+            result = interval.hashCode();
+            temp = Double.doubleToLongBits(value);
+            result = 31 * result + (int) (temp ^ (temp >>> 32));
             return result;
         }
 
@@ -129,7 +133,7 @@ public final class AbstractSampleLocatableCollectionUnitTest extends GATKBaseTes
             final String contig = dataLine.get(SimpleLocatableTableColumn.CONTIG);
             final int start = dataLine.getInt(SimpleLocatableTableColumn.START);
             final int end = dataLine.getInt(SimpleLocatableTableColumn.END);
-            final int value = dataLine.getInt(SimpleLocatableTableColumn.VALUE);
+            final double value = dataLine.getDouble(SimpleLocatableTableColumn.VALUE);
             final SimpleInterval interval = new SimpleInterval(contig, start, end);
             return new SimpleLocatable(interval, value);
         };
@@ -138,7 +142,7 @@ public final class AbstractSampleLocatableCollectionUnitTest extends GATKBaseTes
                 dataLine.append(simpleLocatable.getInterval().getContig())
                         .append(simpleLocatable.getInterval().getStart())
                         .append(simpleLocatable.getInterval().getEnd())
-                        .append(simpleLocatable.getValue());
+                        .append(formatDouble(simpleLocatable.getValue()));
 
         private SimpleSampleLocatableCollection(final File inputFile) {
             super(inputFile, SimpleLocatableTableColumn.COLUMNS, SIMPLE_LOCATABLE_RECORD_FROM_DATA_LINE_DECODER, SIMPLE_LOCATABLE_RECORD_TO_DATA_LINE_ENCODER);
@@ -166,6 +170,9 @@ public final class AbstractSampleLocatableCollectionUnitTest extends GATKBaseTes
         new SimpleSampleLocatableCollection(SIMPLE_LOCATABLE_COLLECTION_MISSING_COLUMN_FILE);
     }
 
+    /**
+     * Note that this will fail if {@link CopyNumberFormatsUtils#DOUBLE_FORMAT} is changed.
+     */
     @Test
     public void testWrite() throws IOException {
         final File tempFile = createTempFile("test", ".tsv");
@@ -179,35 +186,35 @@ public final class AbstractSampleLocatableCollectionUnitTest extends GATKBaseTes
         final SimpleSampleLocatableCollection simpleLocatableCollectionExpectedUnsortedListArgument = new SimpleSampleLocatableCollection(
                 METADATA_EXPECTED,
                 Arrays.asList(
-                        new SimpleLocatable(new SimpleInterval("1", 1, 1), 1),
-                        new SimpleLocatable(new SimpleInterval("1", 2, 2), 2),
-                        new SimpleLocatable(new SimpleInterval("10", 1, 1), 3),
-                        new SimpleLocatable(new SimpleInterval("2", 1, 1), 4)));
+                        new SimpleLocatable(new SimpleInterval("1", 1, 1), 1.),
+                        new SimpleLocatable(new SimpleInterval("1", 2, 2), 2.),
+                        new SimpleLocatable(new SimpleInterval("10", 1, 1), Double.NaN),
+                        new SimpleLocatable(new SimpleInterval("2", 1, 1), 3.)));
         assertSimpleLocatableCollectionEqualsExpected(simpleLocatableCollectionExpectedUnsortedListArgument);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testIntervalsWithDuplicates() {
         final List<SimpleLocatable> intervalsWithDuplicates = Arrays.asList(
-                new SimpleLocatable(new SimpleInterval("1", 1, 1), 1),
-                new SimpleLocatable(new SimpleInterval("1", 1, 1), 2),
-                new SimpleLocatable(new SimpleInterval("2", 1, 1), 1));
+                new SimpleLocatable(new SimpleInterval("1", 1, 1), 1.),
+                new SimpleLocatable(new SimpleInterval("1", 1, 1), 1.),
+                new SimpleLocatable(new SimpleInterval("2", 1, 1), 1.));
         new SimpleSampleLocatableCollection(METADATA_EXPECTED, intervalsWithDuplicates);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testIntervalsWithOverlaps() {
         final List<SimpleLocatable> intervalsWithOverlaps = Arrays.asList(
-                new SimpleLocatable(new SimpleInterval("1", 1, 100), 1),
-                new SimpleLocatable(new SimpleInterval("1", 100, 200), 2),
-                new SimpleLocatable(new SimpleInterval("2", 1, 1), 1));
+                new SimpleLocatable(new SimpleInterval("1", 1, 100), 1.),
+                new SimpleLocatable(new SimpleInterval("1", 100, 200), 1.),
+                new SimpleLocatable(new SimpleInterval("2", 1, 1), 1.));
         new SimpleSampleLocatableCollection(METADATA_EXPECTED, intervalsWithOverlaps);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testIntervalOutsideSequenceDictionary() {
         final List<SimpleLocatable> intervalOutsideSequenceDictionary = Collections.singletonList(
-                new SimpleLocatable(new SimpleInterval("X", 1, 100), 1));
+                new SimpleLocatable(new SimpleInterval("X", 1, 100), 1.));
         new SimpleSampleLocatableCollection(METADATA_EXPECTED, intervalOutsideSequenceDictionary);
     }
 

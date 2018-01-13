@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMTextHeaderCodec;
 import htsjdk.samtools.util.BufferedLineReader;
 import htsjdk.samtools.util.LineReader;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberFormatsUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.Metadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.MetadataUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -155,6 +156,10 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
                 "metadata=" + metadata +
                 ", records=" + records +
                 '}';
+    }
+
+    static String formatDouble(final double value) {
+        return CopyNumberFormatsUtils.formatDouble(value);
     }
 
     private final class RecordCollectionReader extends TableReader<RECORD> {

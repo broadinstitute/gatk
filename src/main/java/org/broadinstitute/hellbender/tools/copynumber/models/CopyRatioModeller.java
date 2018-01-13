@@ -28,8 +28,6 @@ import java.util.stream.Collectors;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class CopyRatioModeller {
-    private static final String DOUBLE_FORMAT = MultidimensionalModeller.DOUBLE_FORMAT;
-
     private static final double EPSILON = 1E-6;
     static final double LOG2_COPY_RATIO_MIN = -50.;
     static final double LOG2_COPY_RATIO_MAX = 10.;
@@ -165,6 +163,6 @@ public final class CopyRatioModeller {
         final Map<CopyRatioParameter, DecileCollection> parameterToDecilesMap = new LinkedHashMap<>();
         parameterToDecilesMap.put(CopyRatioParameter.VARIANCE, new DecileCollection(varianceSamples));
         parameterToDecilesMap.put(CopyRatioParameter.OUTLIER_PROBABILITY, new DecileCollection(outlierProbabilitySamples));
-        return new ParameterDecileCollection<>(new SimpleSampleMetadata(metadata.getSampleName()), parameterToDecilesMap, CopyRatioParameter.class, DOUBLE_FORMAT);
+        return new ParameterDecileCollection<>(new SimpleSampleMetadata(metadata.getSampleName()), parameterToDecilesMap, CopyRatioParameter.class);
     }
 }

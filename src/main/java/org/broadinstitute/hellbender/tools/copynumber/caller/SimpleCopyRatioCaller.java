@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.copynumber.caller;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberFormatsUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CalledCopyRatioSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
@@ -84,25 +85,31 @@ public final class SimpleCopyRatioCaller {
         final List<CopyRatioSegment> copyNeutralSegments = copyRatioSegments.getRecords().stream()
                 .filter(s -> Math.abs(1. - Math.pow(2., s.getMeanLog2CopyRatio())) < neutralSegmentCopyRatioThreshold)
                 .collect(Collectors.toList());
-        logger.info(String.format("%d segments in copy-neutral region [%.4f, %.4f]...", copyNeutralSegments.size(),
-                1. - neutralSegmentCopyRatioThreshold, 1. + neutralSegmentCopyRatioThreshold));
+        logger.info(String.format("%d segments in copy-neutral region [%s, %s]...", copyNeutralSegments.size(),
+                CopyNumberFormatsUtils.formatDouble(1. - neutralSegmentCopyRatioThreshold),
+                CopyNumberFormatsUtils.formatDouble(1. + neutralSegmentCopyRatioThreshold)));
 
         //calculate length-weighted statistics of unfiltered copy-neutral segments
         final Statistics unfilteredStatistics = calculateLengthWeightedStatistics(copyNeutralSegments);
-        logger.info(String.format("Length-weighted mean of segments in copy-neutral region (CR space): %.4f", unfilteredStatistics.mean));
-        logger.info(String.format("Length-weighted standard deviation for segments in copy-neutral region : %.4f", unfilteredStatistics.standardDeviation));
+        logger.info(String.format("Length-weighted mean of segments in copy-neutral region (CR space): %s",
+                CopyNumberFormatsUtils.formatDouble(unfilteredStatistics.mean)));
+        logger.info(String.format("Length-weighted standard deviation for segments in copy-neutral region : %s",
+                CopyNumberFormatsUtils.formatDouble(unfilteredStatistics.standardDeviation)));
 
         //filter outlier segments by only including those within 2 standard deviations
         final List<CopyRatioSegment> filteredCopyNeutralSegments = copyNeutralSegments.stream()
                 .filter(s -> Math.abs(Math.pow(2., s.getMeanLog2CopyRatio()) - unfilteredStatistics.mean)
                         <= unfilteredStatistics.standardDeviation * outlierNeutralSegmentCopyRatioZScoreThreshold)
                 .collect(Collectors.toList());
-        logger.info(String.format("%d / %d segments in copy-neutral region remain after outliers filtered using z-score threshold (%.4f)...",
-                filteredCopyNeutralSegments.size(), copyNeutralSegments.size(), outlierNeutralSegmentCopyRatioZScoreThreshold));
+        logger.info(String.format("%d / %d segments in copy-neutral region remain after outliers filtered using z-score threshold (%s)...",
+                filteredCopyNeutralSegments.size(), copyNeutralSegments.size(),
+                CopyNumberFormatsUtils.formatDouble(outlierNeutralSegmentCopyRatioZScoreThreshold)));
 
         final Statistics statistics = calculateLengthWeightedStatistics(filteredCopyNeutralSegments);
-        logger.info(String.format("Length-weighted mean for z-score calling (CR space): %.4f", statistics.mean));
-        logger.info(String.format("Length-weighted standard deviation for z-score calling (CR space): %.4f", statistics.standardDeviation));
+        logger.info(String.format("Length-weighted mean for z-score calling (CR space): %s",
+                CopyNumberFormatsUtils.formatDouble(statistics.mean)));
+        logger.info(String.format("Length-weighted standard deviation for z-score calling (CR space): %s",
+                CopyNumberFormatsUtils.formatDouble(statistics.standardDeviation)));
 
         return statistics;
     }

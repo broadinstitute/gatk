@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
+import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberFormatsUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.ModeledSegment;
 import org.broadinstitute.hellbender.tools.copynumber.models.MultidimensionalModeller;
@@ -16,8 +17,6 @@ import java.util.function.Function;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class ModeledSegmentCollection extends AbstractSampleLocatableCollection<ModeledSegment> {
-    private static final String DOUBLE_FORMAT = MultidimensionalModeller.DOUBLE_FORMAT;
-
     //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
     /**
      * CONTIG, START, END, NUM_POINTS_COPY_RATIO, NUM_POINTS_ALLELE_FRACTION,
@@ -64,12 +63,12 @@ public final class ModeledSegmentCollection extends AbstractSampleLocatableColle
                     .append(modeledSegment.getEnd())
                     .append(modeledSegment.getNumPointsCopyRatio())
                     .append(modeledSegment.getNumPointsAlleleFraction())
-                    .append(String.format(DOUBLE_FORMAT, modeledSegment.getLog2CopyRatioSimplePosteriorSummary().getDecile10()))
-                    .append(String.format(DOUBLE_FORMAT, modeledSegment.getLog2CopyRatioSimplePosteriorSummary().getDecile50()))
-                    .append(String.format(DOUBLE_FORMAT, modeledSegment.getLog2CopyRatioSimplePosteriorSummary().getDecile90()))
-                    .append(String.format(DOUBLE_FORMAT, modeledSegment.getMinorAlleleFractionSimplePosteriorSummary().getDecile10()))
-                    .append(String.format(DOUBLE_FORMAT, modeledSegment.getMinorAlleleFractionSimplePosteriorSummary().getDecile50()))
-                    .append(String.format(DOUBLE_FORMAT, modeledSegment.getMinorAlleleFractionSimplePosteriorSummary().getDecile90()));
+                    .append(formatDouble(modeledSegment.getLog2CopyRatioSimplePosteriorSummary().getDecile10()))
+                    .append(formatDouble(modeledSegment.getLog2CopyRatioSimplePosteriorSummary().getDecile50()))
+                    .append(formatDouble(modeledSegment.getLog2CopyRatioSimplePosteriorSummary().getDecile90()))
+                    .append(formatDouble(modeledSegment.getMinorAlleleFractionSimplePosteriorSummary().getDecile10()))
+                    .append(formatDouble(modeledSegment.getMinorAlleleFractionSimplePosteriorSummary().getDecile50()))
+                    .append(formatDouble(modeledSegment.getMinorAlleleFractionSimplePosteriorSummary().getDecile90()));
 
     public ModeledSegmentCollection(final File inputFile) {
         super(inputFile, ModeledSegmentTableColumn.COLUMNS, MODELED_SEGMENT_RECORD_FROM_DATA_LINE_DECODER, MODELED_SEGMENT_RECORD_TO_DATA_LINE_ENCODER);
