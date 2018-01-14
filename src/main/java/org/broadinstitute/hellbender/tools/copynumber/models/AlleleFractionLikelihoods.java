@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.copynumber.models;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AllelicCount;
-import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
+import org.broadinstitute.hellbender.utils.MathUtils;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -115,7 +115,7 @@ final class AlleleFractionLikelihoods {
 
             final double outlierLogLikelihood = logPi + log10ToLog(log10Factorial(a) + log10Factorial(r) - log10Factorial(a + r + 1));
 
-            logLikelihood += GATKProtectedMathUtils.logSumExp(altMinorLogLikelihood, refMinorLogLikelihood, outlierLogLikelihood);
+            logLikelihood += MathUtils.logSumExp(altMinorLogLikelihood, refMinorLogLikelihood, outlierLogLikelihood);
         }
         return logLikelihood;
     }

@@ -10,8 +10,8 @@ import javax.annotation.Nonnull;
 import java.util.stream.IntStream;
 
 import static com.google.common.math.IntMath.isPowerOfTwo;
-import static org.broadinstitute.hellbender.utils.GATKProtectedMathUtils.nearestNeighborUniform1DInterpolate;
-import static org.broadinstitute.hellbender.utils.GATKProtectedMathUtils.smallestPowerOfTwoGreaterThan;
+import static org.broadinstitute.hellbender.utils.MathUtils.nearestNeighborUniform1DInterpolate;
+import static org.broadinstitute.hellbender.utils.MathUtils.smallestPowerOfTwoGreaterThan;
 
 /**
  * An abstract class that represents a circulant linear operator $F(x,x') = F(|x-x'|)$ specified

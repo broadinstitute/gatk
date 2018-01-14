@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.hmm;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.apache.commons.math3.util.FastMath;
-import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
+import org.broadinstitute.hellbender.utils.MathUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -123,11 +123,11 @@ public interface HMM<D, T, S> {
         final List<S> hiddenStates = hiddenStates();
         final List<S> result = new ArrayList<>(positions.size());
 
-        final S initialState = GATKProtectedMathUtils.randomSelect(hiddenStates, s -> Math.exp(logPriorProbability(s, positions.get(0))), rg);
+        final S initialState = MathUtils.randomSelect(hiddenStates, s -> Math.exp(logPriorProbability(s, positions.get(0))), rg);
         result.add(initialState);
 
         IntStream.range(1, positions.size()).forEach(n ->
-            result.add(GATKProtectedMathUtils.randomSelect(hiddenStates,
+            result.add(MathUtils.randomSelect(hiddenStates,
                     s -> Math.exp(logTransitionProbability(result.get(n-1), positions.get(n - 1), s, positions.get(n))), rg)));
         return result;
     }

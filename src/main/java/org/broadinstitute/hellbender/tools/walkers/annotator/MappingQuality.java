@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import com.google.common.primitives.Ints;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -22,7 +22,7 @@ public class MappingQuality extends PerAlleleAnnotation implements StandardMutec
 
     @Override
     protected int aggregate(final List<Integer> values) {
-        return values.isEmpty() ? 0 : GATKProtectedMathUtils.median(Ints.toArray(values));
+        return values.isEmpty() ? 0 : MathUtils.median(Ints.toArray(values));
     }
 
     @Override

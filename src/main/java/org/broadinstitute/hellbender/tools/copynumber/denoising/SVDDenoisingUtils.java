@@ -12,10 +12,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.CreateReadCountPanelOfNormals;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
-import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
-import org.broadinstitute.hellbender.utils.MatrixSummaryUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.Arrays;
@@ -35,7 +32,7 @@ public final class SVDDenoisingUtils {
     private static final Logger logger = LogManager.getLogger(SVDDenoisingUtils.class);
 
     private static final double EPSILON = 1E-9;
-    private static final double INV_LN2 = GATKProtectedMathUtils.INV_LOG_2;
+    private static final double INV_LN2 = MathUtils.INV_LOG_2;
     private static final double LN2_EPSILON = Math.log(EPSILON) * INV_LN2;
 
     private SVDDenoisingUtils() {}
@@ -453,7 +450,7 @@ public final class SVDDenoisingUtils {
 
     private static void transformToFractionalCoverage(final RealMatrix matrix) {
         logger.info("Transforming read counts to fractional coverage...");
-        final double[] sampleSums = GATKProtectedMathUtils.rowSums(matrix);
+        final double[] sampleSums = MathUtils.rowSums(matrix);
         matrix.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
             @Override
             public double visit(int sampleIndex, int intervalIndex, double value) {

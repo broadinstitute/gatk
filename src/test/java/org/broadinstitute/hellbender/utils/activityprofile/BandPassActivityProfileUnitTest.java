@@ -12,7 +12,6 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -92,7 +91,7 @@ public class BandPassActivityProfileUnitTest extends GATKBaseTest {
         for( int iii = 0; iii < activeProbArray.length; iii++ ) {
             final double[] kernel = ArrayUtils.subarray(GaussianKernel, Math.max(profile.getFilteredSize() - iii, 0), Math.min(GaussianKernel.length, profile.getFilteredSize() + activeProbArray.length - iii));
             final double[] activeProbSubArray = ArrayUtils.subarray(activeProbArray, Math.max(0,iii - profile.getFilteredSize()), Math.min(activeProbArray.length,iii + profile.getFilteredSize() + 1));
-            bandPassProbArray[iii] = GATKProtectedMathUtils.dotProduct(activeProbSubArray, kernel);
+            bandPassProbArray[iii] = MathUtils.dotProduct(activeProbSubArray, kernel);
         }
 
         return bandPassProbArray;
