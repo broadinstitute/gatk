@@ -3,10 +3,7 @@ package org.broadinstitute.hellbender.utils.activityprofile;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import org.apache.commons.lang.ArrayUtils;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
-import org.broadinstitute.hellbender.utils.GenomeLocParser;
-import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -95,19 +92,10 @@ public class BandPassActivityProfileUnitTest extends GATKBaseTest {
         for( int iii = 0; iii < activeProbArray.length; iii++ ) {
             final double[] kernel = ArrayUtils.subarray(GaussianKernel, Math.max(profile.getFilteredSize() - iii, 0), Math.min(GaussianKernel.length, profile.getFilteredSize() + activeProbArray.length - iii));
             final double[] activeProbSubArray = ArrayUtils.subarray(activeProbArray, Math.max(0,iii - profile.getFilteredSize()), Math.min(activeProbArray.length,iii + profile.getFilteredSize() + 1));
-            bandPassProbArray[iii] = dotProduct(activeProbSubArray, kernel);
+            bandPassProbArray[iii] = GATKProtectedMathUtils.dotProduct(activeProbSubArray, kernel);
         }
 
         return bandPassProbArray;
-    }
-
-    private static double dotProduct(double[] v1, double[] v2) {
-        Assert.assertEquals(v1.length,v2.length,"Array lengths do not mach in dotProduct");
-        double result = 0.0;
-        for (int k = 0; k < v1.length; k++)
-            result += v1[k] * v2[k];
-
-        return result;
     }
 
     @DataProvider(name = "BandPassComposition")
