@@ -1,13 +1,16 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.util.Locatable;
+import htsjdk.samtools.util.OverlapDetector;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.collections.IntervalsSkipListOneContig;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Immutable storage class.
@@ -21,7 +24,7 @@ public class ContextShard implements Serializable {
     // the interval covered by this shard
     public final SimpleInterval interval;
     // variants that overlap with the shard.
-    public final IntervalsSkipListOneContig<GATKVariant> variants;
+    public final OverlapDetector<GATKVariant> variants;
     // reads that start in the shard
     public final List<GATKRead> reads;
     // variants and reference for the particular read at the same index as this element.
@@ -38,7 +41,7 @@ public class ContextShard implements Serializable {
      * Careful: this ctor takes ownership of the passed reads and ReadContextData array.
      * Do not modify them after this call (ideally don't even keep a reference to them).
      */
-    private ContextShard(SimpleInterval interval, IntervalsSkipListOneContig<GATKVariant> variants, final List<GATKRead> reads, final List<ReadContextData> readContext) {
+    private ContextShard(SimpleInterval interval, OverlapDetector<GATKVariant> variants, final List<GATKRead> reads, final List<ReadContextData> readContext) {
         this.interval = interval;
         this.variants = variants;
         this.reads = reads;
@@ -50,12 +53,8 @@ public class ContextShard implements Serializable {
      * with the new interval. Reads, readContext, and the variants in readContext are unchanged.
      */
     public ContextShard split(SimpleInterval newInterval) {
-        final IntervalsSkipListOneContig<GATKVariant> newVariants;
-        if (null==variants) {
-            newVariants = null;
-        } else {
-            newVariants = new IntervalsSkipListOneContig<>( variants.getOverlapping(newInterval) );
-        }
+        final OverlapDetector<GATKVariant> newVariants = variants == null ? null :
+                OverlapDetector.create( new ArrayList<>(variants.getOverlaps(newInterval)) );
         return new ContextShard(newInterval, newVariants, reads, readContext);
     }
 
@@ -64,7 +63,7 @@ public class ContextShard implements Serializable {
      * Note that readContext is unchanged (including the variants it may refer to).
      */
     public ContextShard withVariants(List<GATKVariant> newVariants) {
-        return new ContextShard(this.interval, new IntervalsSkipListOneContig<>(newVariants), reads, readContext);
+        return new ContextShard(this.interval, OverlapDetector.create(newVariants), reads, readContext);
     }
 
     /**
@@ -86,8 +85,8 @@ public class ContextShard implements Serializable {
     /**
      * Returns the variants that overlap the query interval, in start-position order.
      */
-    public List<GATKVariant> variantsOverlapping(SimpleInterval interval) {
-        return variants.getOverlapping(interval);
+    public List<GATKVariant> variantsOverlapping(Locatable interval) {
+        return variants.getOverlaps(interval).stream().sorted(Comparator.comparingInt(GATKVariant::getStart)).collect(Collectors.toList());
     }
 
 }

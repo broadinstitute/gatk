@@ -198,7 +198,7 @@ public final class ReadsSparkSource implements Serializable {
      * Tests if a given SAMRecord overlaps any interval in a collection. This is only used as a fallback option for
      * formats that don't support query-by-interval natively at the Hadoop-BAM layer.
      */
-    //TODO: use IntervalsSkipList, see https://github.com/broadinstitute/gatk/issues/1531
+    //TODO: use OverlapDetector, see https://github.com/broadinstitute/gatk/issues/1531
     private static boolean samRecordOverlaps(final SAMRecord record, final TraversalParameters traversalParameters ) {
         if (traversalParameters == null) {
             return true;
