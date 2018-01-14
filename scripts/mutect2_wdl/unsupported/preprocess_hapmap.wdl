@@ -17,7 +17,7 @@
 # neighboring indels.
 
 workflow PreprocessHapmap {
-    File gatk
+    # inputs
     File hapmap
     File hapmap_idx
     File five_plex_samples
@@ -27,30 +27,35 @@ workflow PreprocessHapmap {
     File gnomad         # common variants eg gnomad variants with AF > 0.001
     File gnomad_idx
 
+    File? gatk_override
+
+    # runtime
+    String gatk_docker
+
     call Subsample as SubsampleFive {
-        input: gatk = gatk, hapmap = hapmap, hapmap_idx = hapmap_idx, samples = five_plex_samples, gnomad = gnomad, gnomad_idx = gnomad_idx
+        input: gatk_override = gatk_override, gatk_docker = gatk_docker, hapmap = hapmap, hapmap_idx = hapmap_idx, samples = five_plex_samples, gnomad = gnomad, gnomad_idx = gnomad_idx
     }
 
     call Subsample as SubsampleTen {
-        input: gatk = gatk, hapmap = hapmap, hapmap_idx = hapmap_idx, samples = ten_plex_samples, gnomad = gnomad, gnomad_idx = gnomad_idx
+        input: gatk_override = gatk_override, gatk_docker = gatk_docker,  hapmap = hapmap, hapmap_idx = hapmap_idx, samples = ten_plex_samples, gnomad = gnomad, gnomad_idx = gnomad_idx
     }
 
     call Subsample as SubsampleTwenty {
-         input: gatk = gatk, hapmap = hapmap, hapmap_idx = hapmap_idx, samples = twenty_plex_samples, gnomad = gnomad, gnomad_idx = gnomad_idx
+         input: gatk_override = gatk_override, gatk_docker = gatk_docker,  hapmap = hapmap, hapmap_idx = hapmap_idx, samples = twenty_plex_samples, gnomad = gnomad, gnomad_idx = gnomad_idx
     }
 
     call RemoveNearbyIndels as RemoveFive {
-        input: gatk = gatk, input_vcf = SubsampleFive.output_vcf, input_vcf_idx = SubsampleFive.output_vcf_idx,
+        input: gatk_override = gatk_override, gatk_docker = gatk_docker,  input_vcf = SubsampleFive.output_vcf, input_vcf_idx = SubsampleFive.output_vcf_idx,
             min_indel_spacing = min_indel_spacing, name = "five_plex"
     }
 
     call RemoveNearbyIndels as RemoveTen {
-        input: gatk = gatk, input_vcf = SubsampleTen.output_vcf, input_vcf_idx = SubsampleTen.output_vcf_idx,
+        input: gatk_override = gatk_override, gatk_docker = gatk_docker,  input_vcf = SubsampleTen.output_vcf, input_vcf_idx = SubsampleTen.output_vcf_idx,
             min_indel_spacing = min_indel_spacing, name = "ten_plex"
     }
 
     call RemoveNearbyIndels as RemoveTwenty {
-        input: gatk = gatk, input_vcf = SubsampleTwenty.output_vcf, input_vcf_idx = SubsampleTwenty.output_vcf_idx,
+        input: gatk_override = gatk_override, gatk_docker = gatk_docker,  input_vcf = SubsampleTwenty.output_vcf, input_vcf_idx = SubsampleTwenty.output_vcf_idx,
             min_indel_spacing = min_indel_spacing, name = "twenty_plex"
     }
 
@@ -65,25 +70,37 @@ workflow PreprocessHapmap {
 }
 
 task Subsample {
-    File gatk
+    # inputs
     File hapmap
     File hapmap_idx
     File samples
     File gnomad           # common variants, to reduce false positives eg mapping artifacts in the original Hapmap vcf
     File gnomad_idx
 
+    File? gatk_override
+
+    # runtime
+    String gatk_docker
+
     command {
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+
         # subsampling and restriction to biallelics
-        java -jar ${gatk} SelectVariants -V ${hapmap} -O sub.vcf \
-            -restrictAllelesTo BIALLELIC \
-            --sample_name ${samples} \
+        gatk --java-options "-Xmx4g" SelectVariants -V ${hapmap} -O sub.vcf \
+            -restrict-alleles-to BIALLELIC \
+            --sample-name ${samples} \
             -L ${gnomad} \
-            -maxIndelSize 10 \
-            --excludeNonVariants
+            -max-indel-size 10 \
+            --exclude-non-variants
 
          #remove NEGATIVE_TRAIN_SITE variants and re-index
          grep -v NEGATIVE_TRAIN_SITE sub.vcf > subsampled.vcf
-         java -jar ${gatk} IndexFeatureFile -F subsampled.vcf
+         gatk --java-options "-Xmx4g" IndexFeatureFile -F subsampled.vcf
+    }
+
+    runtime {
+        docker: "${gatk_docker}"
+        preemptible: 2
     }
 
     output {
@@ -93,14 +110,25 @@ task Subsample {
 }
 
 task RemoveNearbyIndels {
-    File gatk
+    # inputs
     File input_vcf
     File input_vcf_idx
     Int min_indel_spacing
     String name
 
+    File? gatk_override
+
+    # runtime
+    String gatk_docker
+
     command {
-        java -jar ${gatk} RemoveNearbyIndels -V ${input_vcf} -O ${name}.vcf -minIndelSpacing ${min_indel_spacing}
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        gatk --java-options "-Xmx4g" RemoveNearbyIndels -V ${input_vcf} -O ${name}.vcf -min-indel-spacing ${min_indel_spacing}
+    }
+
+    runtime {
+        docker: "${gatk_docker}"
+        preemptible: 2
     }
 
     output {

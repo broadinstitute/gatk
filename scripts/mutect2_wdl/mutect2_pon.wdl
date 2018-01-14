@@ -1,10 +1,10 @@
 #  Create a Mutect2 panel of normals
 #
 #  Description of inputs
-#  gatk4_jar: java jar file containing gatk 4
-#  picard_jar: java jar file containing picard
+#  gatk: java jar file containing gatk 4
+#  picard: java jar file containing picard
 #  intervals: genomic intervals
-#  ref_fasta, ref_fasta_index, ref_dict: reference genome, index, and dictionary
+#  ref_fasta, ref_fai, ref_dict: reference genome, index, and dictionary
 #  normal_bams, normal_bais: arrays of normal bams and bam indices
 #  scatter_count: number of parallel jobs when scattering over intervals
 #  pon_name: the resulting panel of normals is {pon_name}.vcf
@@ -18,22 +18,24 @@
 import "mutect2.wdl" as m2
 
 workflow Mutect2_Panel {
-    # gatk4_jar needs to be a String input to the workflow in order to work in a Docker image
-	String gatk4_jar
+    # inputs
+    File picard
+	File? intervals
+	File ref_fasta
+	File ref_fai
+	File ref_dict
 	Int scatter_count
 	Array[File] normal_bams
 	Array[File] normal_bais
-	File? intervals
-	File ref_fasta
-	File ref_fasta_index
-	File ref_dict
-    String gatk_docker
-    File? gatk4_jar_override
-    Int? preemptible_attempts
-    File picard_jar
     String? m2_extra_args
     String? duplicate_sample_strategy
     String pon_name
+
+    File? gatk_override
+
+    # runtime
+    String gatk_docker
+    Int? preemptible_attempts
 
     Array[Pair[File,File]] normal_bam_pairs = zip(normal_bams, normal_bais)
 
@@ -43,34 +45,32 @@ workflow Mutect2_Panel {
 
         call m2.Mutect2 {
             input:
-                gatk4_jar = gatk4_jar,
                 intervals = intervals,
                 ref_fasta = ref_fasta,
-                ref_fasta_index = ref_fasta_index,
+                ref_fai = ref_fai,
                 ref_dict = ref_dict,
                 tumor_bam = normal_bam,
-                tumor_bam_index = normal_bai,
+                tumor_bai = normal_bai,
                 scatter_count = scatter_count,
-                gatk_docker = gatk_docker,
-                gatk4_jar_override = gatk4_jar_override,
-                preemptible_attempts = preemptible_attempts,
                 m2_extra_args = m2_extra_args,
                 is_run_orientation_bias_filter = false,
                 is_run_oncotator = false,
-                picard_jar = picard_jar,
+                picard = picard,
                 oncotator_docker = gatk_docker,
-                artifact_modes = [""]
+                artifact_modes = [""],
+                gatk_override = gatk_override,
+                gatk_docker = gatk_docker,
+                preemptible_attempts = preemptible_attempts
         }
     }
 
     call CreatePanel {
         input:
-            gatk4_jar = gatk4_jar,
             input_vcfs = Mutect2.unfiltered_vcf,
             input_vcfs_idx = Mutect2.unfiltered_vcf_index,
             duplicate_sample_strategy = duplicate_sample_strategy,
             output_vcf_name = pon_name,
-            gatk4_jar_override = gatk4_jar_override,
+            gatk_override = gatk_override,
             preemptible_attempts = preemptible_attempts,
             gatk_docker = gatk_docker
     }
@@ -84,33 +84,41 @@ workflow Mutect2_Panel {
 }
 
 task CreatePanel {
-      String gatk4_jar
-      Array[File] input_vcfs
-      Array[File] input_vcfs_idx
-      String? duplicate_sample_strategy
-      String output_vcf_name
-      File? gatk4_jar_override
-      Int? preemptible_attempts
-      String gatk_docker
+    # inputs
+    Array[File] input_vcfs
+    Array[File] input_vcfs_idx
+    String? duplicate_sample_strategy
+    String output_vcf_name
 
-      String gatk_local_jar = select_first([gatk4_jar_override, gatk4_jar])
+    File? gatk_override
 
-      command {
-            # Use GATK Jar override if specified
-            export GATK_LOCAL_JAR=${gatk_local_jar}
+    # runtime
+    String gatk_docker
+    Int? mem
+    Int? preemptible_attempts
+    Int? disk_space
+    Int? cpu
+    Boolean use_ssd = false
 
-            gatk --java-options "-Xmx2g"  CreateSomaticPanelOfNormals -vcfs ${sep=' -vcfs ' input_vcfs} ${"-duplicate-sample-strategy " + duplicate_sample_strategy} -O ${output_vcf_name}.vcf
-      }
+    Int machine_mem = select_first([mem, 3])
+    Int command_mem = machine_mem - 1
 
-      runtime {
-            docker: "${gatk_docker}"
-            memory: "5 GB"
-            disks: "local-disk " + 300 + " HDD"
-            preemptible: select_first([preemptible_attempts, 2])
-      }
+    command {
+        set -e
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        gatk --java-options "-Xmx${command_mem}g"  CreateSomaticPanelOfNormals -vcfs ${sep=' -vcfs ' input_vcfs} ${"-duplicate-sample-strategy " + duplicate_sample_strategy} -O ${output_vcf_name}.vcf
+    }
 
-      output {
-            File output_vcf = "${output_vcf_name}.vcf"
-            File output_vcf_index = "${output_vcf_name}.vcf.idx"
-      }
+    runtime {
+        docker: gatk_docker
+        memory: machine_mem + " GB"
+        disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
+        preemptible: select_first([preemptible_attempts, 3])
+        cpu: select_first([cpu, 1])
+    }
+
+    output {
+        File output_vcf = "${output_vcf_name}.vcf"
+        File output_vcf_index = "${output_vcf_name}.vcf.idx"
+    }
 }

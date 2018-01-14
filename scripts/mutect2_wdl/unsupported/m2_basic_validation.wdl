@@ -18,18 +18,16 @@ import "mutect2.wdl" as m2
 # The output is a tar file of validation reports (tsv) for the
 #
 workflow m2_validation {
-
     #### M2 parameters
-    String gatk4_jar
     File? intervals
     File ref_fasta
-    File ref_fasta_index
+    File ref_fai
     File ref_dict
     File tumor_bam
-    File tumor_bam_index
+    File tumor_bai
     String tumor_sample_name
     File? normal_bam
-    File? normal_bam_index
+    File? normal_bai
     String? normal_sample_name
     File? pon
     File? pon_index
@@ -40,21 +38,23 @@ workflow m2_validation {
     File? variants_for_contamination_index
     Boolean is_run_orientation_bias_filter
     Boolean is_run_oncotator
-    String m2_docker
-    String basic_bash_docker = "ubuntu:16.04"
-    String oncotator_docker
-    File? gatk4_jar_override
     Int preemptible_attempts
     File? onco_ds_tar_gz
     String? onco_ds_local_db_dir
     Array[String] artifact_modes
-    File picard_jar
+    File picard
     String? m2_extra_args
     String? m2_extra_filtering_args
     String? sequencing_center
     String? sequence_source
     File? default_config_file
     Boolean is_bamOut = false
+
+    File? gatk_override
+
+    String gatk_docker
+    String basic_bash_docker = "ubuntu:16.04"
+    String oncotator_docker
     #####
 
     ### parameter-fu
@@ -96,16 +96,19 @@ workflow m2_validation {
     scatter (i in range(length(tumor_bam_files))) {
         call m2.Mutect2 as m2_tn {
             input:
-                gatk4_jar = gatk4_jar,
-                gatk4_jar_override = gatk4_jar_override,
+                gatk_override = gatk_override,
+                picard = picard,
+                gatk_docker = gatk_docker,
+                basic_bash_docker = basic_bash_docker,
+                oncotator_docker = oncotator_docker,
                 intervals = intervals,
                 ref_fasta = ref_fasta,
-                ref_fasta_index = ref_fasta_index,
+                ref_fai = ref_fai,
                 ref_dict = ref_dict,
                 tumor_bam = tumor_bam_files[i],
-                tumor_bam_index = tumor_bam_indices[i],
+                tumor_bai = tumor_bam_indices[i],
                 normal_bam = normal_bam_files[i],
-                normal_bam_index = normal_bam_indices[i],
+                normal_bai = normal_bam_indices[i],
                 scatter_count = scatter_count,
                 pon = pon,
                 pon_index = pon_index,
@@ -113,15 +116,11 @@ workflow m2_validation {
                 gnomad_index = gnomad_index,
                 is_run_orientation_bias_filter = is_run_orientation_bias_filter,
                 is_run_oncotator = is_run_oncotator,
-                oncotator_docker = oncotator_docker,
-                m2_docker = m2_docker,
                 preemptible_attempts = select_first([preemptible_attempts, 2]),
                 onco_ds_local_db_dir = onco_ds_local_db_dir,
                 artifact_modes = artifact_modes,
-                picard_jar = picard_jar,
                 variants_for_contamination = variants_for_contamination,
                 variants_for_contamination_index = variants_for_contamination_index,
-                basic_bash_docker = basic_bash_docker,
                 m2_extra_args = m2_extra_args,
                 m2_extra_filtering_args = m2_extra_filtering_args,
                 is_bamOut = true
@@ -129,16 +128,19 @@ workflow m2_validation {
 
         call m2.Mutect2 as m2_validation_bamout {
             input:
-                gatk4_jar = gatk4_jar,
-                gatk4_jar_override = gatk4_jar_override,
+                gatk_override = gatk_override,
+                picard = picard,
+                gatk_docker = gatk_docker,
+                basic_bash_docker = basic_bash_docker,
+                oncotator_docker = oncotator_docker,
                 intervals = intervals,
                 ref_fasta = ref_fasta,
-                ref_fasta_index = ref_fasta_index,
+                ref_fai = ref_fai,
                 ref_dict = ref_dict,
                 tumor_bam = validation_tumor_bam_files[i],
-                tumor_bam_index = validation_tumor_bam_indices[i],
+                tumor_bai = validation_tumor_bam_indices[i],
                 normal_bam = validation_normal_bam_files[i],
-                normal_bam_index = validation_normal_bam_indices[i],
+                normal_bai = validation_normal_bam_indices[i],
                 scatter_count = scatter_count,
                 pon = pon,
                 pon_index = pon_index,
@@ -146,15 +148,11 @@ workflow m2_validation {
                 gnomad_index = gnomad_index,
                 is_run_orientation_bias_filter = is_run_orientation_bias_filter,
                 is_run_oncotator = is_run_oncotator,
-                oncotator_docker = oncotator_docker,
-                m2_docker = m2_docker,
                 preemptible_attempts = preemptible_attempts,
                 onco_ds_local_db_dir = onco_ds_local_db_dir,
                 artifact_modes = artifact_modes,
-                picard_jar = picard_jar,
                 variants_for_contamination = variants_for_contamination,
                 variants_for_contamination_index = variants_for_contamination_index,
-                basic_bash_docker = basic_bash_docker,
                 m2_extra_args = m2_extra_args,
                 m2_extra_filtering_args = m2_extra_filtering_args,
                 is_bamOut = true
@@ -163,42 +161,42 @@ workflow m2_validation {
         # Delete the reads from the normal and HC sample from the bamout.
         call rewrite_bam_by_sample as m2_rewrite_bam_by_sample {
             input:
+                gatk_override = gatk_override,
+                gatk_docker = gatk_docker,
                 bam = m2_validation_bamout.bamout,
-                gatk_docker = m2_docker,
                 new_sample_name = m2_validation_bamout.tumor_bam_sample_name,
-                gatk4_jar_override = gatk4_jar_override,
                 output_bam_basename = m2_validation_bamout.tumor_bam_sample_name
         }
 
         call basic_validator as m2_basic_validator {
             input:
-                gatk4_jar_override = gatk4_jar_override,
+                gatk_override = gatk_override,
+                gatk_docker = gatk_docker,
+                call_intervals = m2_tn.filtered_vcf,
+                ref_fasta = ref_fasta,
+                ref_fai = ref_fai,
+                ref_dict = ref_dict,
                 discovery_tumor_sample_name = m2_tn.tumor_bam_sample_name,
                 discovery_normal_sample_name = m2_tn.normal_bam_sample_name,
                 validation_tumor_bam = m2_rewrite_bam_by_sample.sample_bam,
-                validation_tumor_bai = m2_rewrite_bam_by_sample.sample_bam_index,
+                validation_tumor_bai = m2_rewrite_bam_by_sample.sample_bai,
                 validation_normal_bam = validation_normal_bam_files[i],
                 validation_normal_bai = validation_normal_bam_indices[i],
                 vcf_calls = m2_tn.filtered_vcf,
                 vcf_calls_idx = m2_tn.filtered_vcf_index,
-                ref_fasta = ref_fasta,
-                ref_fasta_index = ref_fasta_index,
-                ref_dict = ref_dict,
-                call_intervals = m2_tn.filtered_vcf,
                 entity_id = "m2_" + m2_tn.tumor_bam_sample_name,
-                gatk_docker = m2_docker,
                 base_quality_cutoff = base_quality_cutoff
         }
 
         call m2.CollectSequencingArtifactMetrics as validation_normal_CollectSequencingArtifactMetrics {
             input:
-                preemptible_attempts = preemptible_attempts,
-                m2_docker = m2_docker,
-                tumor_bam = validation_normal_bam_files[i],
-                tumor_bam_index = validation_normal_bam_indices[i],
+                picard = picard,
+                gatk_docker = gatk_docker,
                 ref_fasta = ref_fasta,
-                ref_fasta_index = ref_fasta_index,
-                picard_jar = picard_jar
+                ref_fai = ref_fai,
+                preemptible_attempts = preemptible_attempts,
+                tumor_bam = validation_normal_bam_files[i],
+                tumor_bai = validation_normal_bam_indices[i]
         }
     }
 
@@ -216,7 +214,14 @@ workflow m2_validation {
 
 # Validation bams should *not* be RNA.
 task basic_validator {
-    File? gatk4_jar_override
+    File? gatk_override
+    String gatk_docker
+    # Same calls as what is in the VCF
+    File call_intervals
+
+    File ref_fasta
+    File ref_fai
+    File ref_dict
 
     String discovery_tumor_sample_name
     String discovery_normal_sample_name
@@ -230,13 +235,6 @@ task basic_validator {
     File vcf_calls
     File vcf_calls_idx
 
-    File ref_fasta
-    File ref_fasta_index
-    File ref_dict
-
-    # Same calls as what is in the VCF
-    File call_intervals
-
     # Unique name for the entity.  Only used for naming output files.
     String entity_id
 
@@ -244,16 +242,14 @@ task basic_validator {
 
     # Runtime parameters
     Int? mem
-    String gatk_docker
     Int? preemptible_attempts
     Int? disk_space_gb
 
-    Int final_mem=select_first([mem, 7])
+    Int final_mem = select_first([mem, 7])
 
     command <<<
         set -e
-        # Use GATK Jar override if specified
-        GATK_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+        GATK_JAR=${default="/root/gatk.jar" gatk_override}
 
         echo "Getting sample names...."
         java -Xmx${final_mem-1}g -jar $GATK_JAR GetSampleName -I ${validation_normal_bam} -O validation_normal_name.txt
@@ -298,7 +294,6 @@ task tar_results {
     Int preemptible_attempts=2
 
     command <<<
-
     set -e
     python <<CODE
 	import shutil
@@ -312,41 +307,38 @@ task tar_results {
 			shutil.copy(f, "${group_id}_results/")
 	CODE
     tar zcvfh "${group_id}_results.tar.gz" "${group_id}_results"
-
     >>>
+
     runtime {
         docker: "${basic_python_docker}"
         preemptible: "${preemptible_attempts}"
         memory: "3 GB"
         disks: "local-disk " + 50 + " HDD"
     }
+
     output {
         File tar_file = "${group_id}_results.tar.gz"
     }
 }
 
 task rewrite_bam_by_sample {
+    File? gatk_override
+    String gatk_docker
 
     # Also, removes samples not in the list from the header
     String new_sample_name
     File bam
-
-    File? gatk4_jar_override
     String output_bam_basename
 
     # Runtime parameters
     Int? mem
-    String gatk_docker
     Int? preemptible_attempts
     Int? disk_space_gb
-
-    Int final_mem=select_first([mem, 3])
+    Int final_mem = select_first([mem, 3])
 
     command <<<
         set -e
-
-        # Use GATK Jar override if specified
-        GATK_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+        GATK_JAR=${default="/root/gatk.jar" gatk_override}
 
         java -Xmx${final_mem-1}g -jar $GATK_JAR PrintReads -I ${bam} -O ${output_bam_basename}.tmp.bam -RF SampleReadFilter -sample ${sep=" -sample " new_sample_name}
 
@@ -357,7 +349,6 @@ task rewrite_bam_by_sample {
 
         java -Xmx${final_mem-1}g -jar $GATK_JAR ReplaceSamHeader --HEADER new_header.txt -I ${output_bam_basename}.tmp.bam -O ${output_bam_basename}.bam
         samtools index ${output_bam_basename}.bam ${output_bam_basename}.bai
-
     >>>
 
     runtime {
@@ -369,6 +360,6 @@ task rewrite_bam_by_sample {
 
     output {
         File sample_bam = "${output_bam_basename}.bam"
-        File sample_bam_index = "${output_bam_basename}.bai"
+        File sample_bai = "${output_bam_basename}.bai"
     }
 }
