@@ -877,7 +877,11 @@ public final class MathUtils {
 
     /** Returns the sum of the elements in the array starting with start and ending before stop. */
     public static long sum(final long[] arr, final int start, final int stop) {
-        return sum(Arrays.copyOfRange(arr, start, stop));
+        long result = 0;
+        for (int n = start; n < stop; n++) {
+            result += arr[n];
+        }
+        return result;
     }
 
     /** Returns the sum of the elements in the array starting with start and ending before stop. */
@@ -886,7 +890,11 @@ public final class MathUtils {
         Utils.validateArg(start <= stop, () -> start + " > " + stop);
         Utils.validateArg(start >= 0, () -> start + " < " + 0);
         Utils.validateArg(stop <= arr.length, () -> stop + " >  " + arr.length);
-        return sum(Arrays.copyOfRange(arr, start, stop));
+        double result = 0.0;
+        for (int n = start; n < stop; n++) {
+            result += arr[n];
+        }
+        return result;
     }
 
     /**
