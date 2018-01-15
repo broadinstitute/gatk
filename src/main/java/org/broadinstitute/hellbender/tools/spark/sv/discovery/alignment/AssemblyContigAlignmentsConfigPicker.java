@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -192,7 +193,7 @@ public class AssemblyContigAlignmentsConfigPicker {
                                               final Set<String> canonicalChromosomes,
                                               final int maxCanonicalChrAlignerScore) {
 
-        final double tigExplainQual = computeTigExplainQualOfOneAlignment(configuration, canonicalChromosomes, maxCanonicalChrAlignerScore);
+        final double tigExplainQual = computeTigExplainQualOfOneConfiguration(configuration, canonicalChromosomes, maxCanonicalChrAlignerScore);
 
         int redundancy = 0;
         for (int i = 0; i < configuration.size() -1 ; ++i) {
@@ -205,9 +206,9 @@ public class AssemblyContigAlignmentsConfigPicker {
         return tigExplainQual - redundancy;
     }
 
-    private static double computeTigExplainQualOfOneAlignment(final List<AlignmentInterval> configuration,
-                                                              final Set<String> canonicalChromosomes,
-                                                              final int maxCanonicalChrAlignerScore) {
+    private static double computeTigExplainQualOfOneConfiguration(final List<AlignmentInterval> configuration,
+                                                                  final Set<String> canonicalChromosomes,
+                                                                  final int maxCanonicalChrAlignerScore) {
         double tigExplainedQual = 0;
         for (final AlignmentInterval alignmentInterval : configuration) {
             final int len = alignmentInterval.endInAssembledContig - alignmentInterval.startInAssembledContig + 1;
@@ -235,11 +236,11 @@ public class AssemblyContigAlignmentsConfigPicker {
     private static Iterator<AlignedContig> reConstructContigFromPickedConfiguration(
             final Tuple2<String, Tuple2<byte[], List<List<AlignmentInterval>>>> nameSeqAndBestConfigurationsOfOneRead) {
 
-        final int bestConfigCount = nameSeqAndBestConfigurationsOfOneRead._2._2.size();
         final String contigName = nameSeqAndBestConfigurationsOfOneRead._1;
         final byte[] contigSeq = nameSeqAndBestConfigurationsOfOneRead._2._1;
-        if (bestConfigCount > 1) { // more than one best configuration
-            return nameSeqAndBestConfigurationsOfOneRead._2._2.stream()
+        final List<List<AlignmentInterval>> bestConfigurations = nameSeqAndBestConfigurationsOfOneRead._2._2;
+        if (bestConfigurations.size() > 1) { // more than one best configuration
+            return bestConfigurations.stream()
                     .map(configuration ->
                             new AlignedContig(contigName, contigSeq, splitGaps(configuration),
                                     true))
@@ -247,7 +248,7 @@ public class AssemblyContigAlignmentsConfigPicker {
                     .collect(Collectors.toList()).iterator();
         } else {
             return Collections.singletonList(
-                    new AlignedContig(contigName, contigSeq, splitGaps(nameSeqAndBestConfigurationsOfOneRead._2._2.get(0)),
+                    new AlignedContig(contigName, contigSeq, splitGaps(bestConfigurations.get(0)),
                             false))
                     .iterator();
         }
@@ -266,11 +267,65 @@ public class AssemblyContigAlignmentsConfigPicker {
         return numFirst.thenComparing(mismatchSecond);
     }
 
-    private static List<AlignmentInterval> splitGaps(final List<AlignmentInterval> configuration) {
-        return configuration.stream()
-                .map(ai -> ContigAlignmentsModifier.splitGappedAlignment(ai, GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY,
-                        SvCigarUtils.getUnclippedReadLength(ai.cigarAlong5to3DirectionOfContig)))
+    @VisibleForTesting
+    static List<AlignmentInterval> splitGaps(final List<AlignmentInterval> configuration) {
+
+        // 1st pass, split gapped alignments when available
+        final List<Iterable<AlignmentInterval>> alignmentSplitChildren =
+                configuration.stream()
+                        .map(alignment -> {
+                            final Iterable<AlignmentInterval> split;
+                            if (alignmentContainsLargeGap(alignment)) {
+                                split = ContigAlignmentsModifier.splitGappedAlignment(alignment, GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY,
+                                        SvCigarUtils.getUnclippedReadLength(alignment.cigarAlong5to3DirectionOfContig));
+                            } else {
+                                split = Collections.singletonList(alignment);
+                            }
+                            return split;
+                        }).collect(Collectors.toList());
+
+        // 2nd pass make a choice between gapped and overlapping alignment (alignments that are not favored has its "2nd" set to null)
+        final int count = configuration.size();
+        for (int i = 0; i < count; ++i) {
+            final AlignmentInterval alignment = configuration.get(i);
+            final Iterable<AlignmentInterval> split = alignmentSplitChildren.get(i);
+            if ( split != null && Iterables.size(split) != 1 ) { // the split could be null (i.e. to be filtered out), or could contain no large gaps (i.e. should not check it)
+                for (int j = 0; j < count; ++j) {
+                    final AlignmentInterval other = configuration.get(j);
+                    if (j == i || AlignmentInterval.overlapOnContig(alignment, other) == 0)
+                        continue;
+
+                    if ( Utils.stream(split).anyMatch(other::containsOnRead) ) {
+                        if ( gappedAlignmentOffersBetterCoverage(alignment, other) ) {
+                            alignmentSplitChildren.set(j, null);
+                        } else {
+                            alignmentSplitChildren.set(i, null);
+                        }
+                    }
+                }
+            }
+        }
+
+        // filter out to-be-removed and done
+        return alignmentSplitChildren.stream()
+                .filter(Objects::nonNull)
                 .flatMap(Utils::stream).collect(Collectors.toList());
+    }
+
+    private static boolean alignmentContainsLargeGap(final AlignmentInterval alignment) {
+        return alignment.cigarAlong5to3DirectionOfContig.getCigarElements().stream()
+                .anyMatch(cigarElement ->
+                        cigarElement.getOperator().isIndel() && cigarElement.getLength() >= GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY);
+    }
+
+    private static boolean gappedAlignmentOffersBetterCoverage(final AlignmentInterval gapped,
+                                                               final AlignmentInterval overlappingNonGapped) {
+        final int diff = gapped.getSizeOnRead() - overlappingNonGapped.getSizeOnRead();
+        if ( diff == 0) {
+            return gapped.alnScore > overlappingNonGapped.alnScore;
+        } else {
+            return diff > 0;
+        }
     }
 
     /**

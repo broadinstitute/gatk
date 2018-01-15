@@ -4,6 +4,8 @@ import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.read.CigarUtils;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -85,5 +87,27 @@ public class AssemblyContigAlignmentsConfigPickerUnitTest extends GATKBaseTest {
                     tig.alignmentIntervals.stream().map(AlignmentInterval::toPackedString).collect(Collectors.toList()).toString());
         }
 
+    }
+
+
+    @DataProvider(name = "gapSplitFineTuning")
+    private Object[][] createTestDataForGapSplit() {
+        final List<Object[]> data = new ArrayList<>(20);
+
+        final AlignmentInterval alignmentOne = new AlignmentInterval(new SimpleInterval("chrUn_JTFH01000492v1_decoy", 501, 1597),
+                1, 1097, TextCigarCodec.decode("1097M6H"), true, 60, 1, 1092, ContigAlignmentsModifier.AlnModType.NONE);
+        final AlignmentInterval alignmentTwo = new AlignmentInterval(new SimpleInterval("chr17", 26962248, 26962806),
+                483, 1103, CigarUtils.invertCigar(TextCigarCodec.decode("121M1D142M1I165M62I130M482S")), false, 60, 97, 281, ContigAlignmentsModifier.AlnModType.NONE);
+
+        data.add(new Object[]{Arrays.asList(alignmentOne, alignmentTwo), Collections.singletonList(alignmentOne)});
+
+        return data.toArray(new Object[data.size()][]);
+    }
+
+    @Test(dataProvider = "gapSplitFineTuning", groups = "sv")
+    public void testGapSplit(final List<AlignmentInterval> inputConfiguration, final List<AlignmentInterval> expectedOutputConfiguration) {
+
+        final List<AlignmentInterval> alignmentIntervals = AssemblyContigAlignmentsConfigPicker.splitGaps(inputConfiguration);
+        Assert.assertEquals(alignmentIntervals, expectedOutputConfiguration);
     }
 }
