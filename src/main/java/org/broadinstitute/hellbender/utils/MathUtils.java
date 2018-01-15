@@ -74,7 +74,7 @@ public final class MathUtils {
      * Computes $\log(\sum_i e^{a_i})$ trying to avoid underflow issues by using the log-sum-exp trick.
      *
      * <p>
-     * This trick consists on shift all the log values by the maximum so that exponent values are
+     * This trick consists of shifting all the log values by the maximum so that exponent values are
      * much larger (close to 1) before they are summed. Then the result is shifted back down by
      * the same amount in order to obtain the correct value.
      * </p>
@@ -92,7 +92,7 @@ public final class MathUtils {
     }
 
     public static double logSumExp(final Collection<Double> values) {
-        double max = Collections.max(values);
+        double max = Collections.max(Utils.nonNull(values));
         double sum = 0.0;
         for (final double val : values) {
             if (val != Double.NEGATIVE_INFINITY) {
@@ -209,6 +209,9 @@ public final class MathUtils {
     // given a list of options and a function for calculating their probabilities (these must sum to 1 over the whole list)
     // randomly choose one option from the implied categorical distribution
     public static <E> E randomSelect(final List<E> choices, final Function<E, Double> probabilityFunction, final RandomGenerator rng) {
+        Utils.nonNull(choices);
+        Utils.nonNull(probabilityFunction);
+        Utils.nonNull(rng);
         final List<Pair<E, Double>> pmf = choices.stream()
                 .map(e -> new Pair<>(e, probabilityFunction.apply(e))).collect(Collectors.toList());
         return new EnumeratedDistribution<>(rng, pmf).sample();
@@ -255,7 +258,6 @@ public final class MathUtils {
                     result += daa;
                 }
             }
-
         }
         return result;
     }
@@ -309,13 +311,10 @@ public final class MathUtils {
      * Returns the smallest power of 2 that exceeds or equals {@code val}
      * @param val input value
      * @return power of 2 integer
-     * @throws IllegalArgumentException if an int overlow is encountered
+     * @throws IllegalArgumentException if an int overflow is encountered
      */
-    public static int smallestPowerOfTwoGreaterThan(final int val)
-            throws IllegalArgumentException {
-        if (val > Integer.MAX_VALUE/2 || val < 0)
-            throw new IllegalArgumentException("The mallest power of 2 greater than " + val + " is greater than Integer.MAX_VALUE" +
-                    " or negative input.");
+    public static int smallestPowerOfTwoGreaterThan(final int val) {
+        ParamUtils.inRange(val, 0, Integer.MAX_VALUE/2, "The smallest power of 2 greater than this value is greater than Integer.MAX_VALUE or negative input.");
         return val > 1 ? Integer.highestOneBit(val - 1) << 1 : 1;
     }
 
@@ -336,8 +335,8 @@ public final class MathUtils {
      * @return interpolated array
      * @throws IllegalArgumentException if the input array is empty
      */
-    public static double[] nearestNeighborUniform1DInterpolate(@Nonnull final double[] data, final int newLength)
-            throws IllegalArgumentException {
+    public static double[] nearestNeighborUniform1DInterpolate(@Nonnull final double[] data, final int newLength) {
+        Utils.nonNull(data);
         Utils.validateArg(data.length > 0, "The input array is empty.");
         Utils.validateArg(newLength >= 2, "The new length of the array must be >= 2");
         final double fact = (double)(data.length - 1)/(newLength - 1);
@@ -348,6 +347,8 @@ public final class MathUtils {
      * Find the maximum difference between entries of two arrays.  This is useful for testing convergence, for example
      */
     public static double maxDifference(final List<Double> array1, final List<Double> array2) {
+        Utils.nonNull(array1);
+        Utils.nonNull(array2);
         Utils.validateArg(array1.size() == array2.size(), "arrays must have same length.");
         Utils.validateArg(array1.size() > 0, "arrays must be non-empty");
         return IntStream.range(0, array1.size()).mapToDouble(n -> Math.abs(array1.get(n) - array2.get(n))).max().getAsDouble();
@@ -379,6 +380,7 @@ public final class MathUtils {
     }
 
     public static int median(final int[] values) {
+        Utils.nonNull(values);
         return (int) FastMath.round(new Median().evaluate(Arrays.stream(values).mapToDouble(n -> n).toArray()));
     }
 
