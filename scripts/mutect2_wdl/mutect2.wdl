@@ -40,6 +40,7 @@ workflow Mutect2 {
     File? variants_for_contamination_index
     Boolean is_run_orientation_bias_filter
     Array[String] artifact_modes
+    File? tumor_sequencing_artifact_metrics
     String? m2_extra_args
     String? m2_extra_filtering_args
     Boolean is_bamOut = false
@@ -119,7 +120,7 @@ workflow Mutect2 {
         }
     }
 
-    if (is_run_orientation_bias_filter) {
+    if (is_run_orientation_bias_filter && !defined(tumor_sequencing_artifact_metrics)) {
         call CollectSequencingArtifactMetrics {
             input:
                 gatk_docker = gatk_docker,
@@ -151,23 +152,33 @@ workflow Mutect2 {
             gatk_override = gatk_override,
             gatk_docker = gatk_docker,
             intervals = intervals,
-            ref_fasta = ref_fasta,
-            ref_fai = ref_fai,
             unfiltered_vcf = MergeVCFs.output_vcf,
             preemptible_attempts = preemptible_attempts,
-            pre_adapter_metrics = CollectSequencingArtifactMetrics.pre_adapter_metrics,
-            tumor_bam = tumor_bam,
-            tumor_bai = tumor_bai,
-            artifact_modes = artifact_modes,
             contamination_table = CalculateContamination.contamination_table,
             m2_extra_filtering_args = m2_extra_filtering_args
     }
 
+    if (is_run_orientation_bias_filter) {
+        # Get the metrics either from the workflow input or CollectSequencingArtifactMetrics if no workflow input is provided
+        File input_artifact_metrics = select_first([tumor_sequencing_artifact_metrics, CollectSequencingArtifactMetrics.pre_adapter_metrics])
+
+        call FilterByOrientationBias {
+            input:
+                gatk_override = gatk_override,
+                input_vcf = Filter.filtered_vcf,
+                gatk_docker = gatk_docker,
+                preemptible_attempts = preemptible_attempts,
+                pre_adapter_metrics = input_artifact_metrics,
+                artifact_modes = artifact_modes
+        }
+    }
+
 
     if (is_run_oncotator) {
+        File oncotate_vcf_input = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
         call oncotate_m2 {
             input:
-                m2_vcf = Filter.filtered_vcf,
+                m2_vcf = oncotate_vcf_input,
                 onco_ds_tar_gz = onco_ds_tar_gz,
                 onco_ds_local_db_dir = onco_ds_local_db_dir,
                 sequencing_center = sequencing_center,
@@ -183,8 +194,8 @@ workflow Mutect2 {
     output {
         File unfiltered_vcf = MergeVCFs.output_vcf
         File unfiltered_vcf_index = MergeVCFs.output_vcf_index
-        File filtered_vcf = Filter.filtered_vcf
-        File filtered_vcf_index = Filter.filtered_vcf_index
+        File filtered_vcf = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
+        File filtered_vcf_index = select_first([FilterByOrientationBias.filtered_vcf_index, Filter.filtered_vcf_index])
         File contamination_table = CalculateContamination.contamination_table
 
         # select_first() fails if nothing resolves to non-null, so putting in "null" for now.
@@ -390,14 +401,8 @@ task CalculateContamination {
 task Filter {
     # inputs
     File? intervals
-    File? ref_fasta
-    File? ref_fai
     File unfiltered_vcf
     String filtered_vcf_name = basename(unfiltered_vcf, ".vcf") + "-filtered.vcf"
-    File? pre_adapter_metrics
-    File? tumor_bam
-    File? tumor_bai
-    Array[String]? artifact_modes
     File? contamination_table
     String? m2_extra_filtering_args
 
@@ -419,18 +424,9 @@ task Filter {
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
         gatk --java-options "-Xmx${command_mem}g" FilterMutectCalls -V ${unfiltered_vcf} \
-      	    -O filtered.vcf \
+      	    -O ${filtered_vcf_name} \
       	    ${"--contamination-table " + contamination_table} \
       	    ${m2_extra_filtering_args}
-
-        # FilterByOrientationBias must come after all of the other filtering.
-        if [[ ! -z "${pre_adapter_metrics}" ]]; then
-            gatk --java-options "-Xmx${command_mem}g" FilterByOrientationBias -AM ${sep=" -AM " artifact_modes} \
-                -V filtered.vcf -P ${pre_adapter_metrics} --output ${filtered_vcf_name}
-        else
-            mv filtered.vcf ${filtered_vcf_name}
-            mv filtered.vcf.idx "${filtered_vcf_name}.idx"
-        fi
     }
 
     runtime {
@@ -438,6 +434,54 @@ task Filter {
         memory: machine_mem + " GB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 3])
+        cpu: select_first([cpu, 1])
+    }
+
+    output {
+        File filtered_vcf = "${filtered_vcf_name}"
+        File filtered_vcf_index = "${filtered_vcf_name}.idx"
+    }
+}
+
+task FilterByOrientationBias {
+    # input
+    File? gatk_override
+    File input_vcf
+    String filtered_vcf_name = basename(input_vcf, ".vcf") + "-ob-filtered.vcf"
+    File pre_adapter_metrics
+    Array[String]? artifact_modes
+
+    # runtime
+    Int? preemptible_attempts
+    String gatk_docker
+    Int? disk_space
+    Int? mem
+    Int? cpu
+    Boolean use_ssd = false
+
+    Int machine_mem = select_first([mem, 7])
+    Int command_mem = machine_mem - 1
+
+    command {
+        set -e
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+
+        # Convert to GATK format
+        sed -r "s/picard\.analysis\.artifacts\.SequencingArtifactMetrics\\\$PreAdapterDetailMetrics/org\.broadinstitute\.hellbender\.tools\.picard\.analysis\.artifacts\.SequencingArtifactMetrics\$PreAdapterDetailMetrics/g" \
+            "${pre_adapter_metrics}" > "gatk.pre_adapter_detail_metrics"
+
+        gatk --java-options "-Xmx${command_mem}g" FilterByOrientationBias \
+            -V ${input_vcf} \
+            -AM ${sep=" -AM " artifact_modes} \
+            -P gatk.pre_adapter_detail_metrics \
+            -O ${filtered_vcf_name}
+    }
+
+    runtime {
+        docker: gatk_docker
+        memory: command_mem + " GB"
+        disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
+        preemptible: select_first([preemptible_attempts, 10])
         cpu: select_first([cpu, 1])
     }
 
