@@ -396,8 +396,8 @@ public final class GenomicsDBImport extends GATKTool {
                 final String[] split = line.split("\\t",-1);
                 if (split.length != 2)
                     throw new UserException.BadInput("Expected a file of format\nSample\tFile\n but found line: " + line);
-                if(split[0].trim().isEmpty()
-                        || split[1].trim().isEmpty())
+                if ( !split[0].trim().equals(split[0]) || split[0].trim().isEmpty()
+                        || !split[1].trim().equals(split[1]) || split[1].trim().isEmpty())
                     throw new UserException.BadInput("Expected a file of format\nSample\tFile\n but found line: " + line);
 
                 final String sample = split[0];
@@ -427,15 +427,6 @@ public final class GenomicsDBImport extends GATKTool {
      */
     public static SortedMap<String, Path> loadSampleNameMapFileInSortedOrder(final Path sampleToFileMapPath){
         return new TreeMap<>(loadSampleNameMapFile(sampleToFileMapPath));
-    }
-
-    private static boolean containsWhitespace(final String s){
-        for ( final char c : s.toCharArray()){
-            if (Character.isWhitespace(c)){
-                return true;
-            }
-        }
-        return false;
     }
 
     /**

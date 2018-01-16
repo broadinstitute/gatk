@@ -41,7 +41,10 @@ public class GenomicsDBImportUnitTest extends GATKBaseTest {
                 {"Sample1\tfile1\t"},           // extra tab
                 {"Sample1\nfile"},              // newline instead of tab
                 {"\t"},                         // only tab
-                {"Sample1 file1"}               // non-tab whitespace
+                {"Sample1 file1"},              // 1 column
+                {" name\tfile1"},               // preceding whitespace
+                {"name \tfile1"},               // trailing whitespace
+                {"name\tfile1 "},               // trailing whitespace second column
         };
     }
 
