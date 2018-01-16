@@ -474,10 +474,11 @@ task bundle(type: Zip) {
 task createPythonPackageArchive(type: Zip) {
 
     doFirst {
+        logger.lifecycle("Creating GATK Python package archive...")
         assert file("src/main/python/org/broadinstitute/hellbender/").exists()
     }
 
-    logger.lifecycle("Creating GATK Python package archive...")
+
     destinationDir file("$buildDir")
     archiveName "gatkPythonPackageArchive.zip"
     from("src/main/python/org/broadinstitute/hellbender/")
