@@ -132,6 +132,20 @@ workflow Mutect2 {
         }
     }
 
+    if (defined(variants_for_contamination)) {
+        call CalculateContamination {
+            input:
+                gatk_override = gatk_override,
+                intervals = intervals,
+                preemptible_attempts = preemptible_attempts,
+                gatk_docker = gatk_docker,
+                tumor_bam = tumor_bam,
+                tumor_bai = tumor_bai,
+                variants_for_contamination = variants_for_contamination,
+                variants_for_contamination_index = variants_for_contamination_index
+        }
+    }
+
     call Filter {
         input:
             gatk_override = gatk_override,
@@ -145,8 +159,7 @@ workflow Mutect2 {
             tumor_bam = tumor_bam,
             tumor_bai = tumor_bai,
             artifact_modes = artifact_modes,
-            variants_for_contamination = variants_for_contamination,
-            variants_for_contamination_index = variants_for_contamination_index,
+            contamination_table = CalculateContamination.contamination_table,
             m2_extra_filtering_args = m2_extra_filtering_args
     }
 
@@ -172,7 +185,7 @@ workflow Mutect2 {
         File unfiltered_vcf_index = MergeVCFs.output_vcf_index
         File filtered_vcf = Filter.filtered_vcf
         File filtered_vcf_index = Filter.filtered_vcf_index
-        File contamination_table = Filter.contamination_table
+        File contamination_table = CalculateContamination.contamination_table
 
         # select_first() fails if nothing resolves to non-null, so putting in "null" for now.
         File? oncotated_m2_maf = select_first([oncotate_m2.oncotated_m2_maf, "null"])
@@ -335,6 +348,45 @@ task CollectSequencingArtifactMetrics {
     }
 }
 
+task CalculateContamination {
+    # inputs
+    File? intervals
+    String tumor_bam
+    String tumor_bai
+    File? variants_for_contamination
+    File? variants_for_contamination_index
+
+    File? gatk_override
+
+    # runtime
+    Int? preemptible_attempts
+    String gatk_docker
+    Int? disk_space
+    Int? mem
+
+    Int machine_mem = select_first([mem, 7])
+    Int command_mem = machine_mem - 1
+
+    command {
+        set -e
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        gatk --java-options "-Xmx${command_mem}g" GetPileupSummaries -I ${tumor_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O pileups.table
+        gatk --java-options "-Xmx${command_mem}g" CalculateContamination -I pileups.table -O contamination.table
+    }
+
+    runtime {
+    docker: gatk_docker
+    memory: command_mem + " GB"
+    disks: "local-disk " + select_first([disk_space, 100]) + " HDD"
+    preemptible: select_first([preemptible_attempts, 10])
+    }
+
+    output {
+        File pileups = "pileups.table"
+        File contamination_table = "contamination.table"
+    }
+}
+
 task Filter {
     # inputs
     File? intervals
@@ -346,8 +398,7 @@ task Filter {
     File? tumor_bam
     File? tumor_bai
     Array[String]? artifact_modes
-    File? variants_for_contamination
-    File? variants_for_contamination_index
+    File? contamination_table
     String? m2_extra_filtering_args
 
     File? gatk_override
@@ -367,15 +418,9 @@ task Filter {
         set -e
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
-        touch contamination.table
-        if [[ "${variants_for_contamination}" == *.vcf ]]; then
-            gatk --java-options "-Xmx${command_mem}g" GetPileupSummaries -I ${tumor_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O pileups.table
-            gatk --java-options "-Xmx${command_mem}g" CalculateContamination -I pileups.table -O contamination.table
-            contamination_cmd="--contamination-table contamination.table"
-        fi
-
         gatk --java-options "-Xmx${command_mem}g" FilterMutectCalls -V ${unfiltered_vcf} \
-      	    -O filtered.vcf $contamination_cmd \
+      	    -O filtered.vcf \
+      	    ${"--contamination-table " + contamination_table} \
       	    ${m2_extra_filtering_args}
 
         # FilterByOrientationBias must come after all of the other filtering.
@@ -399,7 +444,6 @@ task Filter {
     output {
         File filtered_vcf = "${filtered_vcf_name}"
         File filtered_vcf_index = "${filtered_vcf_name}.idx"
-        File contamination_table = "contamination.table"
     }
 }
 
