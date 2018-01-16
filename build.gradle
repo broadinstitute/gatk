@@ -549,7 +549,7 @@ task gatkDoc(type: Javadoc, dependsOn: classes) {
         options.addStringOption("output-file-extension", phpExtension)
         options.addStringOption("index-file-extension", phpExtension)
     }
-    options.addStringOption("absolute-version", getVersion())
+    options.addStringOption("absolute-version", gitVersion().replaceAll("-SNAPSHOT", "").replaceAll(".dirty", ""))
     options.addStringOption("build-timestamp", new Date().format("dd-mm-yyyy hh:mm:ss"))
 }
 
