@@ -213,6 +213,50 @@ workflow Mutect2 {
     }
 }
 
+task SplitIntervals {
+    # inputs
+    File? intervals
+    File ref_fasta
+    File ref_fai
+    File ref_dict
+    Int scatter_count
+
+    File? gatk_override
+
+    # runtime
+    String gatk_docker
+    Int? mem
+    Int? preemptible_attempts
+    Int? disk_space
+    Int? cpu
+    Boolean use_ssd = false
+
+    Int machine_mem = select_first([mem, 3])
+    Int command_mem = machine_mem - 1
+
+
+    command {
+        set -e
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+
+        mkdir interval-files
+        gatk --java-options "-Xmx${command_mem}g" SplitIntervals -R ${ref_fasta} ${"-L " + intervals} -scatter ${scatter_count} -O interval-files
+        cp interval-files/*.intervals .
+    }
+
+    runtime {
+        docker: gatk_docker
+        memory: machine_mem + " GB"
+        disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
+        preemptible: select_first([preemptible_attempts, 3])
+        cpu: select_first([cpu, 1])
+    }
+
+    output {
+        Array[File] interval_files = glob("*.intervals")
+    }
+}
+
 task M2 {
     # inputs
     File? intervals
@@ -334,6 +378,51 @@ task MergeVCFs {
     output {
         File output_vcf = "${output_vcf_name}"
         File output_vcf_index = "${output_vcf_name}.idx"
+    }
+}
+
+task MergeBamOuts {
+    # inputs
+    File ref_fasta
+    File ref_fai
+    File ref_dict
+    Array[File]+ bam_outs
+    String output_vcf_name
+
+    File? gatk_override
+
+    # runtime
+    String gatk_docker
+    Int? mem
+    Int? preemptible_attempts
+    Int? disk_space
+    Int? cpu
+    Boolean use_ssd = false
+
+    Int machine_mem = select_first([mem, 3])
+    Int command_mem = machine_mem - 1
+
+    command <<<
+        # This command block assumes that there is at least one file in bam_outs.
+        #  Do not call this task if len(bam_outs) == 0
+        set -e
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        gatk --java-options "-Xmx${command_mem}g" GatherBamFiles \
+            -I ${sep=" -I " bam_outs} -O ${output_vcf_name}.out.bam -R ${ref_fasta}
+        samtools index ${output_vcf_name}.out.bam ${output_vcf_name}.out.bam.bai
+    >>>
+
+    runtime {
+        docker: gatk_docker
+        memory: machine_mem + " GB"
+        disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
+        preemptible: select_first([preemptible_attempts, 3])
+        cpu: select_first([cpu, 1])
+    }
+
+    output {
+        File merged_bam_out = "${output_vcf_name}.out.bam"
+        File merged_bam_out_index = "${output_vcf_name}.out.bam.bai"
     }
 }
 
@@ -536,95 +625,6 @@ task FilterByOrientationBias {
     output {
         File filtered_vcf = "${filtered_vcf_name}"
         File filtered_vcf_index = "${filtered_vcf_name}.idx"
-    }
-}
-
-task SplitIntervals {
-    # inputs
-    File? intervals
-    File ref_fasta
-    File ref_fai
-    File ref_dict
-    Int scatter_count
-
-    File? gatk_override
-
-    # runtime
-    String gatk_docker
-    Int? mem
-    Int? preemptible_attempts
-    Int? disk_space
-    Int? cpu
-    Boolean use_ssd = false
-
-    Int machine_mem = select_first([mem, 3])
-    Int command_mem = machine_mem - 1
-
-
-    command {
-        set -e
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
-
-        mkdir interval-files
-        gatk --java-options "-Xmx${command_mem}g" SplitIntervals -R ${ref_fasta} ${"-L " + intervals} -scatter ${scatter_count} -O interval-files
-        cp interval-files/*.intervals .
-    }
-
-    runtime {
-        docker: gatk_docker
-        memory: machine_mem + " GB"
-        disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
-        preemptible: select_first([preemptible_attempts, 3])
-        cpu: select_first([cpu, 1])
-    }
-
-    output {
-        Array[File] interval_files = glob("*.intervals")
-    }
-}
-
-task MergeBamOuts {
-    # inputs
-    File ref_fasta
-    File ref_fai
-    File ref_dict
-    Array[File]+ bam_outs
-    String output_vcf_name
-
-    File? gatk_override
-
-    # runtime
-    String gatk_docker
-    Int? mem
-    Int? preemptible_attempts
-    Int? disk_space
-    Int? cpu
-    Boolean use_ssd = false
-
-    Int machine_mem = select_first([mem, 3])
-    Int command_mem = machine_mem - 1
-
-    command <<<
-        # This command block assumes that there is at least one file in bam_outs.
-        #  Do not call this task if len(bam_outs) == 0
-        set -e
-        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
-        gatk --java-options "-Xmx${command_mem}g" GatherBamFiles \
-            -I ${sep=" -I " bam_outs} -O ${output_vcf_name}.out.bam -R ${ref_fasta}
-        samtools index ${output_vcf_name}.out.bam ${output_vcf_name}.out.bam.bai
-    >>>
-
-    runtime {
-        docker: gatk_docker
-        memory: machine_mem + " GB"
-        disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
-        preemptible: select_first([preemptible_attempts, 3])
-        cpu: select_first([cpu, 1])
-    }
-
-    output {
-        File merged_bam_out = "${output_vcf_name}.out.bam"
-        File merged_bam_out_index = "${output_vcf_name}.out.bam.bai"
     }
 }
 
