@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
@@ -180,7 +181,7 @@ public class GencodeFuncotation implements Funcotation {
                 (codonChangeSerializedOverride != null ? codonChangeSerializedOverride : (codonChange != null ? codonChange : "")) + DELIMITER +
                 (proteinChangeSerializedOverride != null ? proteinChangeSerializedOverride : (proteinChange != null ? proteinChange : "")) + DELIMITER +
                 (gcContentSerializedOverride != null ? gcContentSerializedOverride : (gcContent != null ? gcContent : "")) + DELIMITER +
-                (referenceContext != null ? referenceContext : "") + DELIMITER +
+                (referenceContextSerializedOverride != null ? referenceContextSerializedOverride : (referenceContext != null ? referenceContext : "")) + DELIMITER +
                 (otherTranscriptsSerializedOverride != null ? otherTranscriptsSerializedOverride : (otherTranscripts != null ? otherTranscripts.stream().map(Object::toString).collect(Collectors.joining(VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER)) : ""));
     }
 
@@ -211,6 +212,96 @@ public class GencodeFuncotation implements Funcotation {
             case "Gencode_otherTranscripts": otherTranscriptsSerializedOverride = overrideValue; break;
             default: throw new UserException("Attempted to override invalid field in this GencodeFuncotation: " + fieldName + " (value was: " + overrideValue + ")");
         }
+    }
+
+    @Override
+    public LinkedHashSet<String> getFieldNames() {
+        return new LinkedHashSet<>(
+                Arrays.asList(
+                        "Gencode_hugoSymbol",
+                        "Gencode_ncbiBuild",
+                        "Gencode_chromosome",
+                        "Gencode_start",
+                        "Gencode_end",
+                        "Gencode_variantClassification",
+                        "Gencode_secondaryVariantClassification",
+                        "Gencode_variantType",
+                        "Gencode_refAllele",
+                        "Gencode_tumorSeqAllele1",
+                        "Gencode_tumorSeqAllele2",
+                        "Gencode_genomeChange",
+                        "Gencode_annotationTranscript",
+                        "Gencode_transcriptStrand",
+                        "Gencode_transcriptExon",
+                        "Gencode_transcriptPos",
+                        "Gencode_cDnaChange",
+                        "Gencode_codonChange",
+                        "Gencode_proteinChange",
+                        "Gencode_gcContent",
+                        "Gencode_referenceContext",
+                        "Gencode_otherTranscripts"
+                )
+        );
+    }
+
+    @Override
+    public String getField(final String fieldName) {
+
+        // Allow a user to specify the name of the field, or the fully-qualified name of the field
+        // with "Gencode_" at the start.
+        final String altFieldName = "Gencode_" + fieldName;
+        final LinkedHashSet<String> fieldNames = getFieldNames();
+
+        if ( fieldNames.contains(fieldName) || fieldNames.contains(altFieldName) ) {
+            switch(fieldName.replace("Gencode_", "")) {
+                case "hugoSymbol":
+                    return (hugoSymbolSerializedOverride != null ? hugoSymbolSerializedOverride : (hugoSymbol != null ? hugoSymbol : ""));
+                case "ncbiBuild":
+                    return (ncbiBuildSerializedOverride != null ? ncbiBuildSerializedOverride : (ncbiBuild != null ? ncbiBuild : ""));
+                case "chromosome":
+                    return (chromosomeSerializedOverride != null ? chromosomeSerializedOverride : (chromosome != null ? chromosome : ""));
+                case "start":
+                    return (startSerializedOverride != null ? startSerializedOverride : String.valueOf(start));
+                case "end":
+                    return (endSerializedOverride != null ? endSerializedOverride : String.valueOf(end));
+                case "variantClassification":
+                    return (variantClassificationSerializedOverride != null ? variantClassificationSerializedOverride : (variantClassification != null ? String.valueOf(variantClassification) : ""));
+                case "secondaryVariantClassification":
+                    return (secondaryVariantClassificationSerializedOverride != null ? secondaryVariantClassificationSerializedOverride : (secondaryVariantClassification != null ? String.valueOf(secondaryVariantClassification) : ""));
+                case "variantType":
+                    return (variantTypeSerializedOverride != null ? variantTypeSerializedOverride : (variantType != null ? String.valueOf(variantType) : ""));
+                case "refAllele":
+                    return (refAlleleSerializedOverride != null ? refAlleleSerializedOverride : (refAllele != null ? refAllele : ""));
+                case "tumorSeqAllele1":
+                    return (tumorSeqAllele1SerializedOverride != null ? tumorSeqAllele1SerializedOverride : (tumorSeqAllele1 != null ? tumorSeqAllele1 : ""));
+                case "tumorSeqAllele2":
+                    return (tumorSeqAllele2SerializedOverride != null ? tumorSeqAllele2SerializedOverride : (tumorSeqAllele2 != null ? tumorSeqAllele2 : ""));
+                case "genomeChange":
+                    return (genomeChangeSerializedOverride != null ? genomeChangeSerializedOverride : (genomeChange != null ? genomeChange : ""));
+                case "annotationTranscript":
+                    return (annotationTranscriptSerializedOverride != null ? annotationTranscriptSerializedOverride : (annotationTranscript != null ? annotationTranscript : ""));
+                case "transcriptStrand":
+                    return (transcriptStrandSerializedOverride != null ? transcriptStrandSerializedOverride : (transcriptStrand != null ? transcriptStrand : ""));
+                case "transcriptExon":
+                    return (transcriptExonSerializedOverride != null ? transcriptExonSerializedOverride : (transcriptExon != null ? String.valueOf(transcriptExon) : ""));
+                case "transcriptPos":
+                    return (transcriptPosSerializedOverride != null ? transcriptPosSerializedOverride : (transcriptPos != null ? String.valueOf(transcriptPos) : ""));
+                case "cDnaChange":
+                    return (cDnaChangeSerializedOverride != null ? cDnaChangeSerializedOverride : (cDnaChange != null ? cDnaChange : ""));
+                case "codonChange":
+                    return (codonChangeSerializedOverride != null ? codonChangeSerializedOverride : (codonChange != null ? codonChange : ""));
+                case "proteinChange":
+                    return (proteinChangeSerializedOverride != null ? proteinChangeSerializedOverride : (proteinChange != null ? proteinChange : ""));
+                case "gcContent":
+                    return (gcContentSerializedOverride != null ? gcContentSerializedOverride : (gcContent != null ? String.valueOf(gcContent) : ""));
+                case "referenceContext":
+                    return (referenceContextSerializedOverride != null ? referenceContextSerializedOverride : (referenceContext != null ? referenceContext : ""));
+                case "otherTranscripts":
+                    return (otherTranscriptsSerializedOverride != null ? otherTranscriptsSerializedOverride : (otherTranscripts != null ? otherTranscripts.stream().map(Object::toString).collect(Collectors.joining(VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER)) : ""));
+            }
+        }
+
+        throw new GATKException(this.getClass().getSimpleName() + ": Does not contain field: " + fieldName);
     }
 
     //==================================================================================================================
