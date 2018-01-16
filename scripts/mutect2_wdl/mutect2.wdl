@@ -22,7 +22,6 @@
 #
 workflow Mutect2 {
     # Mutect2 inputs
-    File picard
     File? intervals
     File ref_fasta
     File ref_fai
@@ -110,7 +109,6 @@ workflow Mutect2 {
     if (is_bamOut) {
         call MergeBamOuts {
             input:
-                picard = picard,
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
                 ref_dict = ref_dict,
@@ -124,13 +122,13 @@ workflow Mutect2 {
     if (is_run_orientation_bias_filter) {
         call CollectSequencingArtifactMetrics {
             input:
-                picard = picard,
                 gatk_docker = gatk_docker,
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
                 preemptible_attempts = preemptible_attempts,
                 tumor_bam = tumor_bam,
-                tumor_bai = tumor_bai
+                tumor_bai = tumor_bai,
+                gatk_override = gatk_override
         }
     }
 
@@ -278,6 +276,7 @@ task MergeVCFs {
     # using MergeVcfs instead of GatherVcfs so we can create indices
     # WARNING 2015-10-28 15:01:48 GatherVcfs  Index creation not currently supported when gathering block compressed VCFs.
     command {
+        set -e
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
         gatk --java-options "-Xmx${command_mem}g" MergeVcfs -I ${sep=' -I ' input_vcfs} -O ${output_vcf_name}
     }
@@ -298,11 +297,12 @@ task MergeVCFs {
 
 task CollectSequencingArtifactMetrics {
     # inputs
-    File picard
     File ref_fasta
     File ref_fai
     File tumor_bam
     File tumor_bai
+
+    File? gatk_override
 
     # runtime
     String gatk_docker
@@ -317,7 +317,9 @@ task CollectSequencingArtifactMetrics {
 
     command {
         set -e
-        java -Xmx4G -jar ${picard} CollectSequencingArtifactMetrics I=${tumor_bam} O="gatk" R=${ref_fasta} VALIDATION_STRINGENCY=LENIENT
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        gatk --java-options "-Xmx${command_mem}g" CollectSequencingArtifactMetrics \
+            -I ${tumor_bam} -O "gatk" R=${ref_fasta} -VALIDATION_STRINGENCY LENIENT
     }
 
     runtime {
@@ -447,7 +449,6 @@ task SplitIntervals {
 
 task MergeBamOuts {
     # inputs
-    File picard
     File ref_fasta
     File ref_fai
     File ref_dict
@@ -471,7 +472,9 @@ task MergeBamOuts {
         # This command block assumes that there is at least one file in bam_outs.
         #  Do not call this task if len(bam_outs) == 0
         set -e
-        java -Xmx4G -jar ${picard} GatherBamFiles I=${sep=" I=" bam_outs} O=${output_vcf_name}.out.bam R=${ref_fasta}
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        gatk --java-options "-Xmx${command_mem}g" GatherBamFiles \
+            -I ${sep=" -I " bam_outs} -O ${output_vcf_name}.out.bam -R ${ref_fasta}
         samtools index ${output_vcf_name}.out.bam ${output_vcf_name}.out.bam.bai
     >>>
 

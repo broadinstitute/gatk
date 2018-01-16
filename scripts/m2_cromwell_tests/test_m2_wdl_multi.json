@@ -1,5 +1,4 @@
 {
-  "Mutect2_Multi.picard": "/home/travis/picard.jar",
   "Mutect2_Multi.gatk_docker": "__GATK_DOCKER__",
   "Mutect2_Multi.oncotator_docker": "broadinstitute/oncotator:1.9.6.1",
   "Mutect2_Multi.intervals": "/home/travis/build/broadinstitute/gatk/scripts/m2_cromwell_tests/interval_list.interval_list",

@@ -42,7 +42,6 @@ workflow m2_validation {
     File? onco_ds_tar_gz
     String? onco_ds_local_db_dir
     Array[String] artifact_modes
-    File picard
     String? m2_extra_args
     String? m2_extra_filtering_args
     String? sequencing_center
@@ -97,7 +96,6 @@ workflow m2_validation {
         call m2.Mutect2 as m2_tn {
             input:
                 gatk_override = gatk_override,
-                picard = picard,
                 gatk_docker = gatk_docker,
                 basic_bash_docker = basic_bash_docker,
                 oncotator_docker = oncotator_docker,
@@ -129,7 +127,6 @@ workflow m2_validation {
         call m2.Mutect2 as m2_validation_bamout {
             input:
                 gatk_override = gatk_override,
-                picard = picard,
                 gatk_docker = gatk_docker,
                 basic_bash_docker = basic_bash_docker,
                 oncotator_docker = oncotator_docker,
@@ -190,7 +187,6 @@ workflow m2_validation {
 
         call m2.CollectSequencingArtifactMetrics as validation_normal_CollectSequencingArtifactMetrics {
             input:
-                picard = picard,
                 gatk_docker = gatk_docker,
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,

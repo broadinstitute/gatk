@@ -20,7 +20,6 @@
 import "hapmap_sensitivity.wdl" as single_plex
 
 workflow HapmapSensitivityAllPlexes {
-    File picard
     File? intervals
   	File ref_fasta
   	File ref_fai
@@ -55,7 +54,6 @@ workflow HapmapSensitivityAllPlexes {
   call single_plex.HapmapSensitivity as FivePlex {
       input:
           gatk_override = gatk_override,
-          picard = picard,
           gatk_docker = gatk_docker,
           intervals = intervals,
           ref_fasta = ref_fasta,
@@ -79,7 +77,6 @@ workflow HapmapSensitivityAllPlexes {
   call single_plex.HapmapSensitivity as TenPlex {
       input:
           gatk_override = gatk_override,
-          picard = picard,
           gatk_docker = gatk_docker,
           intervals = intervals,
           ref_fasta = ref_fasta,
@@ -103,7 +100,6 @@ workflow HapmapSensitivityAllPlexes {
   call single_plex.HapmapSensitivity as TwentyPlex {
       input:
           gatk_override = gatk_override,
-          picard = picard,
           gatk_docker = gatk_docker,
           intervals = intervals,
           ref_fasta = ref_fasta,

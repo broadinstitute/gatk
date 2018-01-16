@@ -4,7 +4,6 @@
 import "mutect2.wdl" as m2
 
 workflow Mutect2ReplicateValidation {
-	File picard
 	File? intervals
 	File ref_fasta
 	File ref_fai
@@ -44,7 +43,6 @@ workflow Mutect2ReplicateValidation {
 				scatter_count = scatter_count,
 				gnomad = gnomad,
 				gnomad_index = gnomad_index,
-				picard = picard,
                 is_run_orientation_bias_filter = is_run_orientation_bias_filter,
                 is_run_oncotator = false,
                 preemptible_attempts = preemptible_attempts,

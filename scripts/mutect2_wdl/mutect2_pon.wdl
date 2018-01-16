@@ -2,7 +2,6 @@
 #
 #  Description of inputs
 #  gatk: java jar file containing gatk 4
-#  picard: java jar file containing picard
 #  intervals: genomic intervals
 #  ref_fasta, ref_fai, ref_dict: reference genome, index, and dictionary
 #  normal_bams, normal_bais: arrays of normal bams and bam indices
@@ -19,7 +18,6 @@ import "mutect2.wdl" as m2
 
 workflow Mutect2_Panel {
     # inputs
-    File picard
 	File? intervals
 	File ref_fasta
 	File ref_fai
@@ -55,7 +53,6 @@ workflow Mutect2_Panel {
                 m2_extra_args = m2_extra_args,
                 is_run_orientation_bias_filter = false,
                 is_run_oncotator = false,
-                picard = picard,
                 oncotator_docker = gatk_docker,
                 artifact_modes = [""],
                 gatk_override = gatk_override,

@@ -8,7 +8,6 @@ import "mutect2_multi_sample.wdl" as m2_multi
 
 workflow Mutect2_Multi_Concordance {
     # inputs
-	File picard
 	File? intervals
     File ref_fasta
     File ref_fai
@@ -36,7 +35,6 @@ workflow Mutect2_Multi_Concordance {
 
     call m2_multi.Mutect2_Multi {
         input:
-            picard = picard,
             ref_fasta = ref_fasta,
             ref_fai = ref_fai,
             ref_dict = ref_dict,

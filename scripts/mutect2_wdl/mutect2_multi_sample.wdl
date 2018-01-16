@@ -36,7 +36,6 @@ workflow Mutect2_Multi {
 	Boolean is_run_orientation_bias_filter
 	Int scatter_count
 	Array[String] artifact_modes
-    File picard
 	String? m2_extra_args
     String? m2_extra_filtering_args
     Boolean? is_bamOut
@@ -83,7 +82,6 @@ workflow Mutect2_Multi {
                 variants_for_contamination_index = variants_for_contamination_index,
                 is_run_orientation_bias_filter = is_run_orientation_bias_filter,
                 artifact_modes = artifact_modes,
-                picard = picard,
                 m2_extra_args = m2_extra_args,
                 m2_extra_filtering_args = m2_extra_filtering_args,
                 is_run_oncotator = is_run_oncotator,

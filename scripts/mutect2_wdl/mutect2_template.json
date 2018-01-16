@@ -1,6 +1,4 @@
 {
-  "Mutect2.gatk": "/root/gatk.jar",
-  "Mutect2.picard": "$__picard_jar__",
   "Mutect2.gatk_docker": "broadinstitute/gatk:4.beta.5",
   "Mutect2.oncotator_docker": "broadinstitute/oncotator:1.9.6.1",
   "Mutect2.intervals": "$__intervals__",
