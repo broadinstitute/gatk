@@ -65,8 +65,7 @@ import java.util.stream.Collectors;
 public final class ExtractOriginalAlignmentRecordsByNameSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
-    @Argument(doc = "file containing list of read names", shortName = "names",
-            fullName = "read-name-file")
+    @Argument(doc = "file containing list of read names", fullName = "read-name-file")
     private String readNameFile;
 
     @Argument(doc = "file to write reads to", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,

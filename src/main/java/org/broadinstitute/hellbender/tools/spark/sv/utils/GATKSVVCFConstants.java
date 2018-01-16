@@ -50,12 +50,13 @@ public final class GATKSVVCFConstants {
     public static final String DUP_SEQ_CIGARS = "DUP_SEQ_CIGARS";
     public static final String DUPLICATION_NUMBERS = "DUP_NUM";
     public static final String DUP_ANNOTATIONS_IMPRECISE = "DUP_ANNOTATIONS_IMPRECISE";
+    public static final String DUP_IMPRECISE_AFFECTED_RANGE = "DUP_IMPRECISE_AFFECTED_RANGE";
 
     public static final String DUP_TAN_CONTRACTION_STRING = "CONTRACTION";
     public static final String DUP_TAN_EXPANSION_STRING = "EXPANSION";
 
     // type specific: inverted duplication
-    public static final String DUP_INV_ORIENTATIONS = "DUP_INV_ORIENTATIONS";
+    public static final String DUP_ORIENTATIONS = "DUP_ORIENTATIONS";
 
     // type specific: inversion
     public static final String INV33 = "INV33";
@@ -82,7 +83,7 @@ public final class GATKSVVCFConstants {
                     "CIPOS", "CIEND", "IMPRECISE", "READ_PAIR_SUPPORT", "SPLIT_READ_SUPPORT",
                     "CTG_NAMES", "TOTAL_MAPPINGS", "MAPPING_QUALITIES", "HQ_MAPPINGS", "ALIGN_LENGTHS", "MAX_ALIGN_LENGTH",
                     "SEQ_ALT_HAPLOTYPE", "INSSEQ", "INSSEQ_MAP", "HOMSEQ", "HOMLEN", "DUP_REPEAT_UNIT_REF_SPAN",
-                    "DUP_SEQ_CIGARS", "DUP_NUM", "DUP_ANNOTATIONS_IMPRECISE", "CONTRACTION", "EXPANSION", "DUP_INV_ORIENTATIONS",
-                    "INV33", "INV55", "EXTERNAL_CNV_CALLS")
+                    "DUP_SEQ_CIGARS", "DUP_NUM", "DUP_ANNOTATIONS_IMPRECISE", "CONTRACTION", "EXPANSION", "DUP_ORIENTATIONS",
+                    "INV33", "INV55", "EXTERNAL_CNV_CALLS", "DUP_IMPRECISE_AFFECTED_RANGE")
                     .sorted().collect(Collectors.toList());
 }

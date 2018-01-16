@@ -13,11 +13,9 @@ import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyReferenceLocations;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleNovelAdjacencyInterpreter;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.StrandedInterval;
@@ -34,6 +32,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.*;
 import static org.mockito.Mockito.when;
 
 
@@ -57,7 +56,7 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
      * Not an exhaustive test on all attributes, only tests:
      * MAPPING_QUALITIES, ALIGNMENT_LENGTH
      */
-    private static void seeIfItWorks_evidenceAnnotation(final Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData,
+    private static void seeIfItWorks_evidenceAnnotation(final Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyAndAltHaplotype, String> testData,
                                                         final String[] expectedMappingQualitiesAsStrings,
                                                         final String[] expectedAlignmentLengthsAsStrings) {
 
@@ -68,9 +67,9 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
         final Map<String, Object> attributeMap =
                 AnnotatedVariantProducer.getEvidenceRelatedAnnotations(Collections.singletonList(new ChimericAlignment(region1, region2, Collections.emptyList(), testData._4(), SVDiscoveryTestDataProvider.seqDict)));
 
-        Assert.assertEquals(((String)attributeMap.get(GATKSVVCFConstants.MAPPING_QUALITIES)).split(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR),
+        Assert.assertEquals(((String)attributeMap.get(MAPPING_QUALITIES)).split(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR),
                 expectedMappingQualitiesAsStrings);
-        Assert.assertEquals(((String)attributeMap.get(GATKSVVCFConstants.ALIGN_LENGTHS)).split(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR),
+        Assert.assertEquals(((String)attributeMap.get(ALIGN_LENGTHS)).split(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR),
                 expectedAlignmentLengthsAsStrings);
     }
 
@@ -78,7 +77,7 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
     public void testGetEvidenceRelatedAnnotations() {
 
         // inversion
-        Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData = SVDiscoveryTestDataProvider.forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint;
+        Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyAndAltHaplotype, String> testData = SVDiscoveryTestDataProvider.forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint;
 
         seeIfItWorks_evidenceAnnotation(testData, new String[]{"60"}, new String[]{String.valueOf(1984)});
 
@@ -141,7 +140,7 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
     // -----------------------------------------------------------------------------------------------
     // Integrative test
     // -----------------------------------------------------------------------------------------------
-    private static void seeIfItWorks_integrative(final Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData,
+    private static void seeIfItWorks_integrative(final Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyAndAltHaplotype, String> testData,
                                                  final List<String> expectedAttributeKeys, final String sampleId) throws IOException {
 
         final AlignmentInterval region1 = testData._1();
@@ -149,11 +148,11 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
 
         final Iterable<ChimericAlignment> evidence = Collections.singletonList(new ChimericAlignment(region1, region2, Collections.emptyList(), testData._4(), SVDiscoveryTestDataProvider.seqDict));
 
-        final NovelAdjacencyReferenceLocations breakpoints = testData._3();
+        final NovelAdjacencyAndAltHaplotype breakpoints = testData._3();
 
         final VariantContext variantContext =
-                AnnotatedVariantProducer.produceAnnotatedVcFromInferredTypeAndRefLocations(breakpoints.leftJustifiedLeftRefLoc,
-                        breakpoints.leftJustifiedRightRefLoc.getStart(), breakpoints.complication, SimpleNovelAdjacencyInterpreter.inferSimpleTypeFromNovelAdjacency(breakpoints),
+                AnnotatedVariantProducer.produceAnnotatedVcFromInferredTypeAndRefLocations(breakpoints.getLeftJustifiedLeftRefLoc(),
+                        breakpoints.getLeftJustifiedRightRefLoc().getStart(), breakpoints.getComplication(), DiscoverVariantsFromContigAlignmentsSAMSpark.inferSimpleTypeFromNovelAdjacency(breakpoints),
                         null, evidence, SparkContextFactory.getTestSparkContext().broadcast(SVDiscoveryTestDataProvider.reference),
                         SparkContextFactory.getTestSparkContext().broadcast(SVDiscoveryTestDataProvider.seqDict), null, sampleId);
 
@@ -165,17 +164,17 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
     @Test(groups = "sv")
     public void testIntegrative() throws IOException {
 
-        final Set<String> commonAttributes = Sets.newHashSet(VCFConstants.END_KEY, GATKSVVCFConstants.SVLEN, GATKSVVCFConstants.SVTYPE,
-                GATKSVVCFConstants.TOTAL_MAPPINGS, GATKSVVCFConstants.HQ_MAPPINGS, GATKSVVCFConstants.MAPPING_QUALITIES,
-                GATKSVVCFConstants.ALIGN_LENGTHS, GATKSVVCFConstants.MAX_ALIGN_LENGTH, GATKSVVCFConstants.CONTIG_NAMES);
+        final Set<String> commonAttributes = Sets.newHashSet(VCFConstants.END_KEY, SVLEN, SVTYPE,
+                TOTAL_MAPPINGS, HQ_MAPPINGS, MAPPING_QUALITIES,
+                ALIGN_LENGTHS, MAX_ALIGN_LENGTH, CONTIG_NAMES);
 
         final String sampleId = "sample";
         
         // inversion
-        Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyReferenceLocations, String> testData = SVDiscoveryTestDataProvider.forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint;
+        Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyAndAltHaplotype, String> testData = SVDiscoveryTestDataProvider.forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint;
 
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(GATKSVVCFConstants.INV33, GATKSVVCFConstants.HOMOLOGY, GATKSVVCFConstants.HOMOLOGY_LENGTH).stream()).sorted().collect(Collectors.toList()), sampleId);
+                Sets.newHashSet(INV33, HOMOLOGY, HOMOLOGY_LENGTH).stream()).sorted().collect(Collectors.toList()), sampleId);
 
         // simple deletion
         testData = SVDiscoveryTestDataProvider.forSimpleDeletion_minus;
@@ -186,70 +185,70 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
         testData = SVDiscoveryTestDataProvider.forSimpleInsertion_plus;
 
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(GATKSVVCFConstants.INSERTED_SEQUENCE).stream())
+                Sets.newHashSet(INSERTED_SEQUENCE).stream())
                 .sorted().collect(Collectors.toList()), sampleId);
 
         // long range substitution
         testData = SVDiscoveryTestDataProvider.forLongRangeSubstitution_minus;
 
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(GATKSVVCFConstants.INSERTED_SEQUENCE).stream())
+                Sets.newHashSet(INSERTED_SEQUENCE).stream())
                 .sorted().collect(Collectors.toList()), sampleId);
 
         // simple deletion with homology
         testData = SVDiscoveryTestDataProvider.forDeletionWithHomology_plus;
 
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(GATKSVVCFConstants.HOMOLOGY, GATKSVVCFConstants.HOMOLOGY_LENGTH).stream())
+                Sets.newHashSet(HOMOLOGY, HOMOLOGY_LENGTH).stream())
                 .sorted().collect(Collectors.toList()), sampleId);
 
         // simple tandem dup contraction from 2 units to 1 unit
         testData = SVDiscoveryTestDataProvider.forSimpleTanDupContraction_minus;
 
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(GATKSVVCFConstants.DUP_TAN_CONTRACTION_STRING, GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN, GATKSVVCFConstants.DUPLICATION_NUMBERS, GATKSVVCFConstants.HOMOLOGY, GATKSVVCFConstants.HOMOLOGY_LENGTH, GATKSVVCFConstants.DUP_INV_ORIENTATIONS).stream())
+                Sets.newHashSet(DUP_TAN_CONTRACTION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, HOMOLOGY, HOMOLOGY_LENGTH, DUP_ORIENTATIONS).stream())
                 .sorted().collect(Collectors.toList()), sampleId);
 
         // simple tandem dup expansion from 1 unit to 2 units
         testData = SVDiscoveryTestDataProvider.forSimpleTanDupExpansion_plus;
 
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(GATKSVVCFConstants.DUP_TAN_EXPANSION_STRING, GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN, GATKSVVCFConstants.DUP_SEQ_CIGARS, GATKSVVCFConstants.DUPLICATION_NUMBERS, GATKSVVCFConstants.DUP_INV_ORIENTATIONS).stream())
+                Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUP_SEQ_CIGARS, DUPLICATION_NUMBERS, DUP_ORIENTATIONS).stream())
                 .sorted().collect(Collectors.toList()), sampleId);
 
         // simple tandem dup expansion from 1 unit to 2 units and novel insertion
         testData = SVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_minus;
 
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(GATKSVVCFConstants.DUP_TAN_EXPANSION_STRING, GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN, GATKSVVCFConstants.DUP_SEQ_CIGARS, GATKSVVCFConstants.DUPLICATION_NUMBERS, GATKSVVCFConstants.INSERTED_SEQUENCE, GATKSVVCFConstants.DUP_INV_ORIENTATIONS).stream())
+                Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUP_SEQ_CIGARS, DUPLICATION_NUMBERS, INSERTED_SEQUENCE, DUP_ORIENTATIONS).stream())
                 .sorted().collect(Collectors.toList()), sampleId);
 
         // tandem dup expansion from 1 unit to 2 units with pseudo-homology
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_plus;
 
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(GATKSVVCFConstants.DUP_TAN_EXPANSION_STRING, GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN, GATKSVVCFConstants.DUPLICATION_NUMBERS, GATKSVVCFConstants.DUP_ANNOTATIONS_IMPRECISE, GATKSVVCFConstants.HOMOLOGY, GATKSVVCFConstants.HOMOLOGY_LENGTH, GATKSVVCFConstants.DUP_INV_ORIENTATIONS).stream())
+                Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_IMPRECISE_AFFECTED_RANGE, HOMOLOGY, HOMOLOGY_LENGTH, DUP_ORIENTATIONS).stream())
                 .sorted().collect(Collectors.toList()), sampleId);
 
         // tandem dup contraction from 2 units to 1 unit with pseudo-homology
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_2to1_pseudoHom_minus;
 
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(GATKSVVCFConstants.DUP_TAN_CONTRACTION_STRING, GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN, GATKSVVCFConstants.DUPLICATION_NUMBERS, GATKSVVCFConstants.DUP_ANNOTATIONS_IMPRECISE, GATKSVVCFConstants.HOMOLOGY, GATKSVVCFConstants.HOMOLOGY_LENGTH, GATKSVVCFConstants.DUP_INV_ORIENTATIONS).stream())
+                Sets.newHashSet(DUP_TAN_CONTRACTION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_IMPRECISE_AFFECTED_RANGE, HOMOLOGY, HOMOLOGY_LENGTH, DUP_ORIENTATIONS).stream())
                 .sorted().collect(Collectors.toList()), sampleId);
 
         // tandem dup contraction from 3 units to 2 units
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_3to2_noPseudoHom_plus;
 
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(GATKSVVCFConstants.DUP_TAN_CONTRACTION_STRING, GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN, GATKSVVCFConstants.DUPLICATION_NUMBERS, GATKSVVCFConstants.DUP_ANNOTATIONS_IMPRECISE, GATKSVVCFConstants.HOMOLOGY, GATKSVVCFConstants.HOMOLOGY_LENGTH, GATKSVVCFConstants.DUP_INV_ORIENTATIONS).stream())
+                Sets.newHashSet(DUP_TAN_CONTRACTION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_IMPRECISE_AFFECTED_RANGE, HOMOLOGY, HOMOLOGY_LENGTH, DUP_ORIENTATIONS).stream())
                 .sorted().collect(Collectors.toList()), sampleId);
 
         // tandem dup expansion from 2 units to 3 units
         testData = SVDiscoveryTestDataProvider.forComplexTanDup_2to3_noPseudoHom_minus;
 
         seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(GATKSVVCFConstants.DUP_TAN_EXPANSION_STRING, GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN, GATKSVVCFConstants.DUPLICATION_NUMBERS, GATKSVVCFConstants.DUP_ANNOTATIONS_IMPRECISE, GATKSVVCFConstants.HOMOLOGY, GATKSVVCFConstants.HOMOLOGY_LENGTH, GATKSVVCFConstants.DUP_INV_ORIENTATIONS).stream())
+                Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_IMPRECISE_AFFECTED_RANGE, HOMOLOGY, HOMOLOGY_LENGTH, DUP_ORIENTATIONS).stream())
                 .sorted().collect(Collectors.toList()), sampleId);
     }
 
@@ -290,19 +289,19 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
         final VariantContext unAnnotatedVC = new VariantContextBuilder()
                 .id("TESTID")
                 .chr("20").start(200).stop(300)
-                .alleles("N", SimpleSVType.ImpreciseDeletion.createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL))
+                .alleles("N", SimpleSVType.ImpreciseDeletion.createBracketedSymbAlleleString(SYMB_ALT_ALLELE_DEL))
                 .attribute(VCFConstants.END_KEY, 300)
-                .attribute(GATKSVVCFConstants.SVTYPE, SimpleSVType.TYPES.DEL.toString())
+                .attribute(SVTYPE, SimpleSVType.TYPES.DEL.toString())
                 .make();
 
         final VariantContext annotatedVC = new VariantContextBuilder()
                 .id("TESTID")
                 .chr("20").start(200).stop(300)
-                .alleles("N", SimpleSVType.ImpreciseDeletion.createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL))
+                .alleles("N", SimpleSVType.ImpreciseDeletion.createBracketedSymbAlleleString(SYMB_ALT_ALLELE_DEL))
                 .attribute(VCFConstants.END_KEY, 300)
-                .attribute(GATKSVVCFConstants.SVTYPE, SimpleSVType.TYPES.DEL.toString())
-                .attribute(GATKSVVCFConstants.READ_PAIR_SUPPORT, 7)
-                .attribute(GATKSVVCFConstants.SPLIT_READ_SUPPORT, 5)
+                .attribute(SVTYPE, SimpleSVType.TYPES.DEL.toString())
+                .attribute(READ_PAIR_SUPPORT, 7)
+                .attribute(SPLIT_READ_SUPPORT, 5)
                 .make();
 
         List<Object[]> tests = new ArrayList<>();

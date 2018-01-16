@@ -2,8 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyReferenceLocations;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleNovelAdjacencyInterpreter;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -29,13 +28,13 @@ public class SimpleSvTypeUnitTest extends GATKBaseTest {
     // -----------------------------------------------------------------------------------------------
     // Allele production
     // -----------------------------------------------------------------------------------------------
-    private static void worker(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations,
+    private static void worker(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype,
                                final String expectedSymbolicAltAlleleStringWithoutBracket,
                                final int expectedSvLen,
                                final String expectedFirstFieldInIdString) throws IOException {
 
-        final SvType SvType = SimpleNovelAdjacencyInterpreter.inferSimpleTypeFromNovelAdjacency(novelAdjacencyReferenceLocations);
-        final List<Allele> producedAlleles = AnnotatedVariantProducer.produceAlleles(novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc, SVDiscoveryTestDataProvider.reference, SvType);
+        final SvType SvType = DiscoverVariantsFromContigAlignmentsSAMSpark.inferSimpleTypeFromNovelAdjacency(novelAdjacencyAndAltHaplotype);
+        final List<Allele> producedAlleles = AnnotatedVariantProducer.produceAlleles(novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc(), SVDiscoveryTestDataProvider.reference, SvType);
 
         Assert.assertEquals(producedAlleles.size(), 2);
         Assert.assertTrue(producedAlleles.get(0).isReference() && producedAlleles.get(1).isNonReference());
@@ -48,9 +47,9 @@ public class SimpleSvTypeUnitTest extends GATKBaseTest {
         final String[] fields = variantId.split(GATKSVVCFConstants.INTERVAL_VARIANT_ID_FIELD_SEPARATOR);
         Assert.assertEquals(fields.length, 4);
         Assert.assertEquals(fields[0], expectedFirstFieldInIdString);
-        final String expectedSecondField = novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getContig(),
-                expectedThirdField  = String.valueOf(novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd()),
-                expectedFourthField = String.valueOf(novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc.getStart());
+        final String expectedSecondField = novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getContig(),
+                expectedThirdField  = String.valueOf(novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getEnd()),
+                expectedFourthField = String.valueOf(novelAdjacencyAndAltHaplotype.getLeftJustifiedRightRefLoc().getStart());
         Assert.assertEquals(fields[1], expectedSecondField);
         Assert.assertEquals(fields[2], expectedThirdField);
         Assert.assertEquals(fields[3], expectedFourthField);
