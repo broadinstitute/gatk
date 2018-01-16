@@ -385,7 +385,7 @@ public final class MathUtils {
     }
 
     public static double dotProduct(double[] a, double[] b){
-        return sum(MathArrays.ebeMultiply(a, b));
+        return sum(MathArrays.ebeMultiply(Utils.nonNull(a), Utils.nonNull(b)));
     }
 
     /**
@@ -619,6 +619,7 @@ public final class MathUtils {
      * @return true if vector is well-formed, false otherwise
      */
     public static boolean goodLog10ProbVector(final double[] vector, final int expectedSize, final boolean shouldSumToOne) {
+        Utils.nonNull(vector);
         return vector.length == expectedSize &&
                 allMatch(vector, MathUtils::goodLog10Probability) &&
                 !( shouldSumToOne && compareDoubles(sumLog10(vector), 1.0, 1e-4) != 0 );
@@ -628,7 +629,7 @@ public final class MathUtils {
      *  Returns the sum of values whose log10s we have. That is, returns sum(10^x_i).
      */
     public static double sumLog10(final double[] log10values) {
-        return Math.pow(10.0, log10SumLog10(log10values));
+        return Math.pow(10.0, log10SumLog10(Utils.nonNull(log10values)));
     }
 
     /** Compute Z=X-Y for two numeric vectors X and Y
@@ -665,14 +666,15 @@ public final class MathUtils {
     }
 
     public static double log10sumLog10(final double[] log10values) {
-        return log10sumLog10(log10values, 0);
+        return log10sumLog10(Utils.nonNull(log10values), 0);
     }
 
     public static double log10sumLog10(final double[] log10p, final int start) {
-        return log10sumLog10(log10p, start, log10p.length);
+        return log10sumLog10(Utils.nonNull(log10p), start, log10p.length);
     }
 
     public static double log10sumLog10(final double[] log10p, final int start, final int finish) {
+        Utils.nonNull(log10p);
         if (start >= finish) {
             return Double.NEGATIVE_INFINITY;
         }
@@ -784,10 +786,11 @@ public final class MathUtils {
     }
 
     public static double approximateLog10SumLog10(final double[] vals) {
-        return approximateLog10SumLog10(vals, vals.length);
+        return approximateLog10SumLog10(Utils.nonNull(vals), vals.length);
     }
 
     public static double approximateLog10SumLog10(final double[] vals, final int endIndex) {
+        Utils.nonNull(vals);
         final int maxElementIndex = MathUtils.maxElementIndex(vals, endIndex);
         double approxSum = vals[maxElementIndex];
 
@@ -834,6 +837,7 @@ public final class MathUtils {
      * the length of the input array or {@code fromIndex} is larger than {@code toIndex}.
      */
     public static double approximateLog10SumLog10(final double[] vals, final int fromIndex, final int toIndex) {
+        Utils.nonNull(vals);
         if (fromIndex == toIndex) return Double.NEGATIVE_INFINITY;
         final int maxElementIndex = MathUtils.maxElementIndex(vals,fromIndex,toIndex);
         double approxSum = vals[maxElementIndex];
@@ -850,6 +854,7 @@ public final class MathUtils {
     }
 
     public static double sum(final double[] values) {
+        Utils.nonNull(values);
         double s = 0.0;
         for (double v : values)
             s += v;
@@ -857,6 +862,7 @@ public final class MathUtils {
     }
 
     public static long sum(final int[] x) {
+        Utils.nonNull(x);
         long total = 0;
         for (int v : x)
             total += v;
@@ -864,6 +870,7 @@ public final class MathUtils {
     }
 
     public static int sum(final byte[] x) {
+        Utils.nonNull(x);
         int total = 0;
         for (byte v : x)
             total += (int)v;
@@ -871,6 +878,7 @@ public final class MathUtils {
     }
 
     public static long sum(final long[] x) {
+        Utils.nonNull(x);
         int total = 0;
         for (long v : x)
             total += v;
@@ -997,14 +1005,15 @@ public final class MathUtils {
     }
 
     public static double log10SumLog10(final double[] log10Values, final int start) {
-        return log10SumLog10(log10Values, start, log10Values.length);
+        return log10SumLog10(Utils.nonNull(log10Values), start, log10Values.length);
     }
 
     public static double log10SumLog10(final double[] log10Values) {
-        return log10SumLog10(log10Values, 0);
+        return log10SumLog10(Utils.nonNull(log10Values), 0);
     }
 
     public static double log10SumLog10(final double[] log10Values, final int start, final int finish) {
+        Utils.nonNull(log10Values);
         if (start >= finish) {
             return Double.NEGATIVE_INFINITY;
         }
@@ -1063,6 +1072,8 @@ public final class MathUtils {
     }
 
     public static double distanceSquared(final double[] x, final double[] y) {
+        Utils.nonNull(x);
+        Utils.nonNull(y);
         return new IndexRange(0, x.length).sum(n -> square(x[n] - y[n]));
     }
 
@@ -1073,7 +1084,7 @@ public final class MathUtils {
      * @return the normalized-in-place array
      */
     public static double[] normalizeFromLog10ToLinearSpace(final double[] array) {
-        return normalizeLog10(array, false, true);
+        return normalizeLog10(Utils.nonNull(array), false, true);
     }
 
     /**
@@ -1083,7 +1094,7 @@ public final class MathUtils {
      * @return the normalized-in-place array, maybe log transformed
      */
     public static double[] normalizeLog10(final double[] array) {
-        return normalizeLog10(array, true, true);
+        return normalizeLog10(Utils.nonNull(array), true, true);
     }
 
 
@@ -1097,7 +1108,7 @@ public final class MathUtils {
      * @return
      */
     public static double[] normalizeLog10(final double[] array, final boolean takeLog10OfOutput, final boolean inPlace) {
-        final double log10Sum = log10SumLog10(array);
+        final double log10Sum = log10SumLog10(Utils.nonNull(array));
         final double[] result = inPlace ? applyToArrayInPlace(array, x -> x - log10Sum) : applyToArray(array, x -> x - log10Sum);
         return takeLog10OfOutput ? result : applyToArrayInPlace(result, x -> Math.pow(10.0, x));
     }
@@ -1105,6 +1116,7 @@ public final class MathUtils {
 
     //TODO: delete after we are satisfied with the concordance of VQSR with GATK3
     public static double[] normalizeLog10DeleteMePlease(final double[] array, final boolean takeLog10OfOutput) {
+        Utils.nonNull(array);
         final double maxValue = arrayMax(array);
         final double[] normalized = applyToArray(array, x -> Math.pow(10.0, x - maxValue));
         final double sum = sum(normalized);
@@ -1125,6 +1137,7 @@ public final class MathUtils {
      * @return the scaled-in-place array
      */
     public static double[] scaleLogSpaceArrayForNumericalStability(final double[] array) {
+        Utils.nonNull(array);
         final double maxValue = arrayMax(array);
         return applyToArrayInPlace(array, x -> x - maxValue);
     }
@@ -1139,6 +1152,7 @@ public final class MathUtils {
      * @return a newly allocated array corresponding the normalized values in array
      */
     public static double[] normalizeFromRealSpace(final double[] array) {
+        Utils.nonNull(array);
         if ( array.length == 0 )
             return array;
 
@@ -1148,11 +1162,11 @@ public final class MathUtils {
     }
 
     public static int maxElementIndex(final double[] array) {
-        return maxElementIndex(array, array.length);
+        return maxElementIndex(Utils.nonNull(array), array.length);
     }
 
     public static int maxElementIndex(final double[] array, final int start, final int endIndex) {
-        Utils.nonNull(array, "array may not be null");
+        Utils.nonNull(array);
         Utils.validateArg(array.length > 0, "array may not be empty");
         Utils.validateArg(start <= endIndex, "Start cannot be after end.");
 
@@ -1165,10 +1179,11 @@ public final class MathUtils {
     }
 
     public static int maxElementIndex(final double[] array, final int endIndex) {
-        return maxElementIndex(array, 0, endIndex);
+        return maxElementIndex(Utils.nonNull(array), 0, endIndex);
     }
 
     public static double arrayMax(final double[] array) {
+        Utils.nonNull(array);
         return array[maxElementIndex(array)];
     }
 
@@ -1217,6 +1232,7 @@ public final class MathUtils {
      * @return
      */
     public static double[] toLog10(final double[] prRealSpace) {
+        Utils.nonNull(prRealSpace);
         return applyToArray(prRealSpace, Math::log10);
     }
 
@@ -1276,11 +1292,13 @@ public final class MathUtils {
 
     /** Calculate the mean of an array of doubles. */
     public static double mean(final double[] in, final int start, final int stop) {
+        Utils.nonNull(in);
         return stop <= start ? Double.NaN : Arrays.stream(in, start, stop).average().getAsDouble();
     }
 
     /** "Promotes" an int[] into a double array with the same values (or as close as precision allows). */
     public static double[] promote(final int[] is) {
+        Utils.nonNull(is);
         return new IndexRange(0, is.length).mapToDouble(n -> (double) is[n]);
     }
 
@@ -1337,6 +1355,8 @@ public final class MathUtils {
      * @return - associated likelihood
      */
     public static double dirichletMultinomial(double[] params, int[] counts) {
+        Utils.nonNull(params);
+        Utils.nonNull(counts);
         Utils.validateArg(params.length == counts.length, "The number of dirichlet parameters must match the number of categories");
         final double dirichletSum = sum(params);
         final int countSum = (int) sum(counts);
@@ -1354,8 +1374,8 @@ public final class MathUtils {
      * This method has been benchmarked and performs as well as array-only code.
      */
     public static double[] applyToArray(final double[] array, final DoubleUnaryOperator func) {
-        Utils.nonNull(func, "function may not be null");
-        Utils.nonNull(array, "array may not be null");
+        Utils.nonNull(func);
+        Utils.nonNull(array);
         final double[] result = new double[array.length];
         for (int m = 0; m < result.length; m++) {
             result[m] = func.applyAsDouble(array[m]);
@@ -1373,8 +1393,8 @@ public final class MathUtils {
      * This method has been benchmarked and performs as well as array-only code.
      */
     public static double[] applyToArrayInPlace(final double[] array, final DoubleUnaryOperator func) {
-        Utils.nonNull(array, "array may not be null");
-        Utils.nonNull(func, "function may not be null");
+        Utils.nonNull(array);
+        Utils.nonNull(func);
         for (int m = 0; m < array.length; m++) {
             array[m] = func.applyAsDouble(array[m]);
         }
@@ -1385,8 +1405,8 @@ public final class MathUtils {
      * Test whether all elements of a double[] array satisfy a double -> boolean predicate
      */
     public static boolean allMatch(final double[] array, final DoublePredicate pred) {
-        Utils.nonNull(array, "array may not be null");
-        Utils.nonNull(pred, "predicate may not be null");
+        Utils.nonNull(array);
+        Utils.nonNull(pred);
         for (final double x : array) {
             if (!pred.test(x)) {
                 return false;
