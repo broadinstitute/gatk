@@ -61,6 +61,9 @@ workflow Mutect2 {
     String oncotator_docker
     Int? preemptible_attempts
 
+    # Do not populate unless you know what you are doing...
+    File? auth
+
 
     call SplitIntervals {
         input:
@@ -94,7 +97,8 @@ workflow Mutect2 {
                 is_bamOut = is_bamOut,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
-                preemptible_attempts = preemptible_attempts
+                preemptible_attempts = preemptible_attempts,
+                auth = auth
         }
     }
 
@@ -143,7 +147,8 @@ workflow Mutect2 {
                 tumor_bam = tumor_bam,
                 tumor_bai = tumor_bai,
                 variants_for_contamination = variants_for_contamination,
-                variants_for_contamination_index = variants_for_contamination_index
+                variants_for_contamination_index = variants_for_contamination_index,
+                auth = auth
         }
     }
 
@@ -155,7 +160,8 @@ workflow Mutect2 {
             unfiltered_vcf = MergeVCFs.output_vcf,
             preemptible_attempts = preemptible_attempts,
             contamination_table = CalculateContamination.contamination_table,
-            m2_extra_filtering_args = m2_extra_filtering_args
+            m2_extra_filtering_args = m2_extra_filtering_args,
+            auth = auth
     }
 
     if (is_run_orientation_bias_filter) {
@@ -169,7 +175,8 @@ workflow Mutect2 {
                 gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts,
                 pre_adapter_metrics = input_artifact_metrics,
-                artifact_modes = artifact_modes
+                artifact_modes = artifact_modes,
+                auth = auth
         }
     }
 
@@ -236,7 +243,18 @@ task M2 {
     Int machine_mem = select_first([mem, 3])
     Int command_mem = machine_mem - 1
 
+    # Do not populate this unless you know what you are doing...
+    File? auth
+
     command <<<
+        set -e
+
+        if [[ "${auth}" == *.json ]]; then
+            gsutil cp ${auth} /root/.config/gcloud/application_default_credentials.json
+            GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+            export GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+        fi
+
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
         # We need to create these files regardless, even if they stay empty
@@ -378,8 +396,18 @@ task CalculateContamination {
     Int machine_mem = select_first([mem, 7])
     Int command_mem = machine_mem - 1
 
+    # Do not populate this unless you know what you are doing...
+    File? auth
+
     command {
         set -e
+
+        if [[ "${auth}" == *.json ]]; then
+            gsutil cp ${auth} /root/.config/gcloud/application_default_credentials.json
+            GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+            export GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+        fi
+
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
         gatk --java-options "-Xmx${command_mem}g" GetPileupSummaries -I ${tumor_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O pileups.table
         gatk --java-options "-Xmx${command_mem}g" CalculateContamination -I pileups.table -O contamination.table
@@ -419,8 +447,18 @@ task Filter {
     Int machine_mem = select_first([mem, 3])
     Int command_mem = machine_mem - 1
 
+    # Do not populate this unless you know what you are doing...
+    File? auth
+
     command {
         set -e
+
+        if [[ "${auth}" == *.json ]]; then
+            gsutil cp ${auth} /root/.config/gcloud/application_default_credentials.json
+            GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+            export GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+        fi
+
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
         gatk --java-options "-Xmx${command_mem}g" FilterMutectCalls -V ${unfiltered_vcf} \
@@ -462,8 +500,18 @@ task FilterByOrientationBias {
     Int machine_mem = select_first([mem, 7])
     Int command_mem = machine_mem - 1
 
+    # Do not populate this unless you know what you are doing...
+    File? auth
+
     command {
         set -e
+
+        if [[ "${auth}" == *.json ]]; then
+            gsutil cp ${auth} /root/.config/gcloud/application_default_credentials.json
+            GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+            export GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+        fi
+
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
         # Convert to GATK format
