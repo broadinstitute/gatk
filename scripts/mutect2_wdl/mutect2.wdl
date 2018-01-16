@@ -64,7 +64,30 @@ workflow Mutect2 {
     # Do not populate unless you know what you are doing...
     File? auth
 
+    # Use as a last resort to increase the disk given to every task in case of ill behaving data
+    Int? emergency_extra_disk
 
+    # Disk sizes used for dynamic sizing
+    Int ref_size = ceil(size(ref_fasta, "GB") + size(ref_dict, "GB") + size(ref_fai, "GB"))
+    Int tumor_bam_size = ceil(size(tumor_bam, "GB") + size(tumor_bai, "GB"))
+    Int gnomad_vcf_size = if defined(gnomad) then ceil(size(gnomad, "GB") + size(gnomad_index, "GB")) else 0
+    Int normal_bam_size = if defined(normal_bam) then ceil(size(normal_bam, "GB") + size(normal_bai, "GB")) else 0
+
+    # If no tar is provided, the task downloads one from broads ftp server
+    Int onco_tar_size = if defined(onco_ds_tar_gz) then ceil(size(onco_ds_tar_gz, "GB") * 3) else 100
+    Int gatk_override_size = if defined(gatk_override) then ceil(size(gatk_override, "GB")) else 0
+
+    # This is added to every task as padding, should increase if systematically you need more disk for every call
+    Int disk_pad = 10 + gatk_override_size + select_first([emergency_extra_disk,0])
+
+    # These are multipliers to multipler inputs by to make sure we have enough disk to accommodate for possible output sizes
+    # Large is for Bams/WGS vcfs
+    # Small is for metrics/other vcfs
+    Float large_input_to_output_mulitplier = 2.25
+    Float small_input_to_output_mulitplier = 2.0
+
+
+    Int split_interval_size = ref_size + ceil(size(intervals, "GB") * small_input_to_output_mulitplier) + disk_pad
     call SplitIntervals {
         input:
             intervals = intervals,
@@ -74,9 +97,12 @@ workflow Mutect2 {
             scatter_count = scatter_count,
             gatk_override = gatk_override,
             gatk_docker = gatk_docker,
-            preemptible_attempts = preemptible_attempts
+            preemptible_attempts = preemptible_attempts,
+            disk_space = split_interval_size
     }
 
+    Int m2_output_size = tumor_bam_size / scatter_count
+    Int m2_disk_size = tumor_bam_size + normal_bam_size + ref_size + gnomad_vcf_size + m2_output_size + disk_pad
     scatter (subintervals in SplitIntervals.interval_files ) {
         call M2 {
             input:
@@ -98,20 +124,40 @@ workflow Mutect2 {
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts,
+                disk_space = m2_disk_size,
                 auth = auth
         }
+
+        Float sub_vcf_size = size(M2.output_vcf, "GB")
+        Float sub_bamout_size = size(M2.output_bamOut, "GB")
     }
 
+    call SumFloats as SumSubVcfs {
+        input:
+            sizes = sub_vcf_size,
+            preemptible_attempts = preemptible_attempts
+    }
+
+    Int merge_vcf_size = ceil(SumSubVcfs.total_size * large_input_to_output_mulitplier) + disk_pad
     call MergeVCFs {
         input:
             input_vcfs = M2.output_vcf,
             output_vcf_name = output_vcf_name,
             gatk_override = gatk_override,
             gatk_docker = gatk_docker,
-            preemptible_attempts = preemptible_attempts
+            preemptible_attempts = preemptible_attempts,
+            disk_space = merge_vcf_size,
     }
 
     if (is_bamOut) {
+        call SumFloats as SumSubBamouts {
+            input:
+                sizes = sub_bamout_size,
+                preemptible_attempts = preemptible_attempts,
+        }
+
+        Int merge_bamout_size = ceil(SumSubBamouts.total_size * large_input_to_output_mulitplier) + disk_pad
+
         call MergeBamOuts {
             input:
                 ref_fasta = ref_fasta,
@@ -120,11 +166,13 @@ workflow Mutect2 {
                 bam_outs = M2.output_bamOut,
                 output_vcf_name = basename(MergeVCFs.output_vcf, ".vcf"),
                 gatk_override = gatk_override,
-                gatk_docker = gatk_docker
+                gatk_docker = gatk_docker,
+                disk_space = merge_bamout_size
         }
     }
 
     if (is_run_orientation_bias_filter && !defined(tumor_sequencing_artifact_metrics)) {
+        Int seq_artifact_metrcis_size = tumor_bam_size + ref_size + disk_pad
         call CollectSequencingArtifactMetrics {
             input:
                 gatk_docker = gatk_docker,
@@ -133,11 +181,13 @@ workflow Mutect2 {
                 preemptible_attempts = preemptible_attempts,
                 tumor_bam = tumor_bam,
                 tumor_bai = tumor_bai,
-                gatk_override = gatk_override
+                gatk_override = gatk_override,
+                disk_space = seq_artifact_metrcis_size
         }
     }
 
     if (defined(variants_for_contamination)) {
+        Int calculate_contamination_size = tumor_bam_size + ceil(size(variants_for_contamination, "GB") * small_input_to_output_mulitplier) + disk_pad
         call CalculateContamination {
             input:
                 gatk_override = gatk_override,
@@ -148,10 +198,12 @@ workflow Mutect2 {
                 tumor_bai = tumor_bai,
                 variants_for_contamination = variants_for_contamination,
                 variants_for_contamination_index = variants_for_contamination_index,
+                disk_space = calculate_contamination_size,
                 auth = auth
         }
     }
 
+    Int filter_size = ceil(size(MergeVCFs.output_vcf, "GB") * small_input_to_output_mulitplier) + disk_pad
     call Filter {
         input:
             gatk_override = gatk_override,
@@ -161,6 +213,7 @@ workflow Mutect2 {
             preemptible_attempts = preemptible_attempts,
             contamination_table = CalculateContamination.contamination_table,
             m2_extra_filtering_args = m2_extra_filtering_args,
+            disk_space = filter_size,
             auth = auth
     }
 
@@ -168,6 +221,7 @@ workflow Mutect2 {
         # Get the metrics either from the workflow input or CollectSequencingArtifactMetrics if no workflow input is provided
         File input_artifact_metrics = select_first([tumor_sequencing_artifact_metrics, CollectSequencingArtifactMetrics.pre_adapter_metrics])
 
+        Int filter_by_orientation_bias_size = ceil(size(Filter.filtered_vcf, "GB") * small_input_to_output_mulitplier) + ceil(size(input_artifact_metrics, "GB")) + disk_pad
         call FilterByOrientationBias {
             input:
                 gatk_override = gatk_override,
@@ -176,6 +230,7 @@ workflow Mutect2 {
                 preemptible_attempts = preemptible_attempts,
                 pre_adapter_metrics = input_artifact_metrics,
                 artifact_modes = artifact_modes,
+                disk_space = filter_by_orientation_bias_size,
                 auth = auth
         }
     }
@@ -183,6 +238,7 @@ workflow Mutect2 {
 
     if (is_run_oncotator) {
         File oncotate_vcf_input = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
+        Int oncotate_size = ceil(size(oncotate_vcf_input, "GB") * large_input_to_output_mulitplier) + onco_tar_size + disk_pad
         call oncotate_m2 {
             input:
                 m2_vcf = oncotate_vcf_input,
@@ -194,7 +250,8 @@ workflow Mutect2 {
                 case_id = M2.tumor_sample[0],
                 control_id = M2.normal_sample[0],
                 oncotator_docker = oncotator_docker,
-                preemptible_attempts = preemptible_attempts
+                preemptible_attempts = preemptible_attempts,
+                disk_space = oncotate_size
         }
     }
 
@@ -695,3 +752,26 @@ task oncotate_m2 {
         File oncotated_m2_maf="${case_id}.maf.annotated"
     }
 }
+
+# Calculates sum of a list of floats
+task SumFloats {
+    Array[Float] sizes
+
+    # Runtime parameters
+    Int? preemptible_attempts
+
+    command <<<
+        python -c "print ${sep="+" sizes}"
+    >>>
+
+    output {
+        Float total_size = read_float(stdout())
+    }
+
+    runtime {
+        docker: "python:2.7"
+        disks: "local-disk " + 10 + " HDD"
+        preemptible: select_first([preemptible_attempts, 10])
+    }
+}
+
