@@ -48,7 +48,7 @@ DEFAULT_SPARK_ARGS_PREFIX = '--conf'
 DEFAULT_SPARK_ARGS = {
     "spark.kryoserializer.buffer.max" : "512m",
     "spark.driver.maxResultSize" : "0",
-    "spark.driver.userClassPathFirst" : "true",
+    "spark.driver.userClassPathFirst" : "false",
     "spark.io.compression.codec" : "lzf",
     "spark.yarn.executor.memoryOverhead" : "600",
     "spark.driver.extraJavaOptions" : EXTRA_JAVA_OPTIONS_SPARK,
