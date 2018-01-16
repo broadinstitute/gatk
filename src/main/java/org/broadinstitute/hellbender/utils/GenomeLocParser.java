@@ -351,8 +351,10 @@ public final class GenomeLocParser {
         } else if (allResolvedIntervals.size() > 1) {
             throw new UserException.MalformedGenomeLoc(
                     String.format(
-                            "Query interval is ambiguous and has multiple valid interpretations: %s. Please report this as a GATK issue.",
-                            allResolvedIntervals.stream().map(f -> f.toString()).collect(Collectors.joining(" and "))
+                            "The query interval \"%s\" is ambiguous and can be interpreted as a query against more than one contig: \"%s\". " +
+                                    "The ambiguity can be resolved by providing the interval in a BED file (using zero-based, half-open coordinates).",
+                            intervalQueryString,
+                            allResolvedIntervals.stream().map(f -> f.getContig()).collect(Collectors.joining(" or "))
                     ));
         } else {
             return allResolvedIntervals.get(0);
