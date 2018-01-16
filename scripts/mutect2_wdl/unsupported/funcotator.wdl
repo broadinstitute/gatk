@@ -9,7 +9,8 @@
 #     ref_fasta_dict             -  Reference FASTA file sequence dictionary.
 #     variant_vcf_to_funcotate   -  Variant Context File (VCF) containing the variants to annotate.
 #     reference_version          -  Version of the reference being used.  Either `hg19` or `hg38`.
-#     output_vcf_name            -  Path to desired output file (`.out.vcf` will be appended to this value).
+#     output_file_name           -  Path to desired output file.
+#     output_format              -  Format of the output file (`VCF` or `MAF`).
 #
 #   Optional:
 #     data_sources_tar_gz        -  Path to tar.gz containing the data sources for Funcotator to create annotations.
@@ -30,7 +31,8 @@ workflow Funcotator {
     File ref_dict
     File variant_vcf_to_annotate
     String reference_version
-    String output_vcf_name
+    String output_file_name
+    String output_format
 
     String? data_sources_tar_gz
     String? transcript_selection_mode
@@ -44,9 +46,10 @@ workflow Funcotator {
             ref_fasta                 = ref_fasta,
             ref_fasta_index           = ref_fasta_index,
             ref_dict                  = ref_dict,
-            variant_vcf_to_annotate  = variant_vcf_to_annotate,
+            variant_vcf_to_annotate   = variant_vcf_to_annotate,
             reference_version         = reference_version,
-            output_vcf_name           = output_vcf_name,
+            output_file_name          = output_file_name,
+            output_format             = output_format,
             data_sources_tar_gz       = data_sources_tar_gz,
             transcript_selection_mode = transcript_selection_mode,
             transcript_selection_list = transcript_selection_list,
@@ -57,8 +60,8 @@ workflow Funcotator {
     }
 
     output {
-        File annotated_vcf_out = MakeItFunky.annotated_vcf_out
-        File annotated_vcf_out_idx = MakeItFunky.annotated_vcf_out_idx
+        File annotated_out = MakeItFunky.annotated_out
+        File annotated_out_idx = MakeItFunky.annotated_out_idx
     }
 }
 
@@ -70,7 +73,8 @@ task MakeItFunky {
     File ref_dict
     File variant_vcf_to_annotate
     String reference_version
-    String output_vcf_name
+    String output_file_name
+    String output_format
 
     File? data_sources_tar_gz
     String? transcript_selection_mode
@@ -130,7 +134,8 @@ command <<<
             --ref-version ${reference_version} \
             -R ${ref_fasta} \
             -V ${variant_vcf_to_annotate} \
-            -O ${output_vcf_name} \
+            -O ${output_file_name} \
+            --output-file-format ${output_format}
             ${"--transcript-selection-mode " + transcript_selection_mode} \
             ${transcript_selection_arg}${default="" sep=" --transcript-list " transcript_selection_list} \
             ${annotation_def_arg}${default="" sep=" --annotation-default " annotation_defaults} \
@@ -147,7 +152,7 @@ command <<<
   }
 
   output {
-    File annotated_vcf_out = "${output_vcf_name}"
-    File annotated_vcf_out_idx = "${output_vcf_name}.idx"
+    File annotated_out = "${output_file_name}"
+    File annotated_out_idx = "${output_file_name}.idx"
   }
 }

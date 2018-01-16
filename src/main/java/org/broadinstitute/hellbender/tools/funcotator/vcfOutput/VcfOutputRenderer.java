@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator.vcfOutput;
 
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -8,6 +9,7 @@ import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFacto
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotator;
 import org.broadinstitute.hellbender.tools.funcotator.OutputRenderer;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -42,7 +44,8 @@ public class VcfOutputRenderer extends OutputRenderer {
 
     private final VariantContextWriter vcfWriter;
     private final VCFHeader existingHeader;
-    private final List<DataSourceFuncotationFactory> dataSourceFactories;
+
+    private final LinkedHashSet<VCFHeaderLine> defaultToolVcfHeaderLines;
 
     //==================================================================================================================
 
@@ -57,6 +60,15 @@ public class VcfOutputRenderer extends OutputRenderer {
                              final List<DataSourceFuncotationFactory> dataSources,
                              final LinkedHashMap<String, String> unaccountedForDefaultAnnotations,
                              final LinkedHashMap<String, String> unaccountedForOverrideAnnotations) {
+        this(existingHeader, vcfWriter, dataSources, unaccountedForDefaultAnnotations, unaccountedForOverrideAnnotations, new LinkedHashSet<>());
+    }
+
+    public VcfOutputRenderer(final VCFHeader existingHeader,
+                             final VariantContextWriter vcfWriter,
+                             final List<DataSourceFuncotationFactory> dataSources,
+                             final LinkedHashMap<String, String> unaccountedForDefaultAnnotations,
+                             final LinkedHashMap<String, String> unaccountedForOverrideAnnotations,
+                             final Set<VCFHeaderLine> defaultToolVcfHeaderLines) {
 
         this.vcfWriter = vcfWriter;
         this.existingHeader = existingHeader;
@@ -67,6 +79,9 @@ public class VcfOutputRenderer extends OutputRenderer {
         manualAnnotations.putAll(unaccountedForDefaultAnnotations);
         manualAnnotations.putAll(unaccountedForOverrideAnnotations);
 
+        // Get our default tool VCF header lines:
+        this.defaultToolVcfHeaderLines = new LinkedHashSet<>(defaultToolVcfHeaderLines);
+
         // Cache the manual annotation string so we can pass it easily into any Funcotations:
         manualAnnotationSerializedString = (manualAnnotations.size() != 0 ? String.join( FIELD_DELIMITER, manualAnnotations.values() ) + FIELD_DELIMITER : "");
     }
@@ -75,9 +90,7 @@ public class VcfOutputRenderer extends OutputRenderer {
 
     @Override
     public void open() {
-        final VCFHeader newHeader = createVCFHeader(existingHeader,
-                                                    dataSourceFactories,
-                                                    manualAnnotations);
+        final VCFHeader newHeader = createVCFHeader();
         vcfWriter.writeHeader(newHeader);
     }
 
@@ -96,18 +109,44 @@ public class VcfOutputRenderer extends OutputRenderer {
 
         // Get the old VCF Annotation field and append the new information to it:
         final Object existingAnnotation = variant.getAttribute(FUNCOTATOR_VCF_FIELD_NAME, null);
+        final List<String> existingAlleleAnnotations;
         if ( existingAnnotation != null) {
-            funcotatorAnnotationStringBuilder.append( existingAnnotation.toString() );
-            funcotatorAnnotationStringBuilder.append( ',' );
+            existingAlleleAnnotations = Utils.split(existingAnnotation.toString(), ',');
+        }
+        else {
+            existingAlleleAnnotations = Collections.emptyList();
         }
 
-        funcotatorAnnotationStringBuilder.append(
-                funcotations.stream().map(f -> f.serializeToVcfString(manualAnnotationSerializedString)).collect(Collectors.joining(","))
-        );
+        // Go through each allele and add it to the writer separately:
+        final List<Allele> alternateAlleles = variant.getAlternateAlleles();
+        for ( int alleleIndex = 0; alleleIndex < alternateAlleles.size() ; ++alleleIndex ) {
 
-        // Add our new annotation and render the VariantContext:
+            final Allele altAllele = alternateAlleles.get(alleleIndex);
+
+            if ( alleleIndex < existingAlleleAnnotations.size() ) {
+                funcotatorAnnotationStringBuilder.append( existingAlleleAnnotations.get(alleleIndex) );
+                funcotatorAnnotationStringBuilder.append(FIELD_DELIMITER);
+            }
+
+            funcotatorAnnotationStringBuilder.append(
+                    funcotations.stream()
+                            .filter(f -> f.getAltAllele().equals(altAllele) )
+                            .map(f -> f.serializeToVcfString(manualAnnotationSerializedString))
+                            .collect(Collectors.joining(FIELD_DELIMITER))
+            );
+            funcotatorAnnotationStringBuilder.append(",");
+        }
+
+        // We have a trailing "," - we need to remove it:
+        funcotatorAnnotationStringBuilder.deleteCharAt(funcotatorAnnotationStringBuilder.length()-1);
+
+        // Add our new annotation:
         variantContextOutputBuilder.attribute(FUNCOTATOR_VCF_FIELD_NAME, funcotatorAnnotationStringBuilder.toString());
 
+        // Add the genotypes from the variant:
+        variantContextOutputBuilder.genotypes( variant.getGenotypes() );
+
+        // Render and add our VCF line:
         vcfWriter.add( variantContextOutputBuilder.make() );
     }
 
@@ -116,17 +155,12 @@ public class VcfOutputRenderer extends OutputRenderer {
     /**
      * Create a header for a VCF file.
      * Uses {@link VcfOutputRenderer#dataSourceFactories} to get a list of fields to report producing (preserving their order).
-     * Includes fields from the given annotation maps.
-     * @param existingHeader An existing {@link VCFHeader} from which to replicate fields in this new file.
-     * @param dataSourceFactories A {@link List} of {@link DataSourceFuncotationFactory} objects from which to pull field names.
-     * @param manualAnnotations A {@link LinkedHashMap} of manually specified values for annotations to include in the VCF output.
+     * Includes fields from the manual annotation maps.
      * @return The {@link VCFHeader} object with relevant information for {@link Funcotator}.
      */
-    private static VCFHeader createVCFHeader(final VCFHeader existingHeader,
-                                             final List<DataSourceFuncotationFactory> dataSourceFactories,
-                                             final LinkedHashMap<String, String> manualAnnotations) {
+    private VCFHeader createVCFHeader() {
 
-        final Set<VCFHeaderLine> headerLines = new HashSet<>();
+        final Set<VCFHeaderLine> headerLines = new LinkedHashSet<>();
 
         // Add all lines of our existing VCF header:
         headerLines.addAll( existingHeader.getMetaDataInInputOrder() );
@@ -134,13 +168,16 @@ public class VcfOutputRenderer extends OutputRenderer {
         final String dataSourceFields = getDataSourceFieldNamesForHeader(dataSourceFactories);
         final String manualAnnotationFields = String.join( HEADER_LISTED_FIELD_DELIMITER, manualAnnotations.keySet() );
 
-        // Add in the line about Funcotations:
+        // Add in the lines about Funcotations:
+        headerLines.addAll(defaultToolVcfHeaderLines);
+        headerLines.add(new VCFHeaderLine("Funcotator Version", Funcotator.VERSION + " | " + getDataSourceInfoString()));
         headerLines.add(new VCFInfoHeaderLine(FUNCOTATOR_VCF_FIELD_NAME, VCFHeaderLineCount.A,
                 VCFHeaderLineType.String, "Functional annotation from the Funcotator tool.  Funcotation fields are: " +
                 manualAnnotationFields + HEADER_LISTED_FIELD_DELIMITER + dataSourceFields)
         );
 
-        return new VCFHeader(headerLines);
+        // Create a new header and preserve the genotype sample names:
+        return new VCFHeader(headerLines, existingHeader.getGenotypeSamples());
     }
 
     /**

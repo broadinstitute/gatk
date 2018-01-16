@@ -1,10 +1,13 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -16,6 +19,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public final class FuncotatorUtils {
 
@@ -30,6 +34,10 @@ public final class FuncotatorUtils {
     private static final Map<String, AminoAcid> tableByCodon;
     private static final Map<String, AminoAcid> tableByCode;
     private static final Map<String, AminoAcid> tableByLetter;
+
+    private static final SAMSequenceDictionary B37_SEQUENCE_DICTIONARY;
+
+    private static final Map<String, String> B37_To_HG19_CONTIG_NAME_MAP;
 
     /**
      * Initialize our hashmaps of lookup tables:
@@ -51,6 +59,10 @@ public final class FuncotatorUtils {
         tableByCodon = Collections.unmodifiableMap(mapByCodon);
         tableByCode = Collections.unmodifiableMap(mapByCode);
         tableByLetter = Collections.unmodifiableMap(mapByLetter);
+
+        B37_SEQUENCE_DICTIONARY = initializeB37SequenceDict();
+
+        B37_To_HG19_CONTIG_NAME_MAP = initializeB37ToHg19ContigNameMap();
     }
 
     /**
@@ -755,12 +767,6 @@ public final class FuncotatorUtils {
                 }
                 else {
                     if ( isIndelBetweenCodons(seqComp.getCodingSequenceAlleleStart(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getReferenceAllele()) ) {
-//                        final String nextRefCodon = getNextReferenceCodon(seqComp.getTranscriptCodingSequence(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getAlignedReferenceAlleleStop(), seqComp.getStrand());
-//
-//                         Here we adjust everything "right" by 3 bases (1 codon) because of the leading base that is
-//                         required for indels:
-//                        return "p." + protChangeStartPos + "_" + protChangeEndPos +
-//                                createAminoAcidSequence(nextRefCodon) + ">" + createAminoAcidSequence(seqComp.getAlignedAlternateAllele().substring(3) + nextRefCodon);
                         return "p." + protChangeStartPos + "_" + (protChangeStartPos + 1) + "ins"+
                                 createAminoAcidSequence(seqComp.getAlignedAlternateAllele().substring(3));
                     }
@@ -939,23 +945,6 @@ public final class FuncotatorUtils {
         }
 
         return offset;
-    }
-
-    private static String collapseNonFrameshiftProteinChangeString(final int proteinChangeStartPosition, final int proteinChangeEndPosition,
-                                                                   final String refAaSeq, final String altAaSeq ) {
-        if ( proteinChangeStartPosition == proteinChangeEndPosition ) {
-            if ( altAaSeq.isEmpty() ) {
-                return "p." + refAaSeq + proteinChangeStartPosition + "del";
-            }
-            else {
-                return "p." + proteinChangeStartPosition + "_" + proteinChangeEndPosition + "ins"
-                        + altAaSeq;
-            }
-        }
-        else {
-            return "p." + proteinChangeStartPosition + "_" + proteinChangeEndPosition
-                    + refAaSeq + ">" + altAaSeq;
-        }
     }
 
     /**
@@ -1240,7 +1229,18 @@ public final class FuncotatorUtils {
      * @param codingSequence The coding sequence from which to create an amino acid sequence.  Must not be {@code null}.
      * @return A {@link String} containing a sequence of single-letter amino acids.
      */
-    public static String createAminoAcidSequence(final String codingSequence) {
+    public static String createAminoAcidSequence( final String codingSequence ) {
+        return createAminoAcidSequence(codingSequence, false);
+    }
+
+    /**
+     * Creates an amino acid sequence from a given coding sequence.
+     * If the coding sequence is not evenly divisible by 3, the remainder bases will not be included in the coding sequence.
+     * @param codingSequence The coding sequence from which to create an amino acid sequence.  Must not be {@code null}.
+     * @param isFrameshift Whether the given {@code codingSequence} was derived from a frameshift mutation.  In this case, no warning will be issued for incorrect sequence length.
+     * @return A {@link String} containing a sequence of single-letter amino acids.
+     */
+    public static String createAminoAcidSequence(final String codingSequence, final boolean isFrameshift) {
 
         Utils.nonNull(codingSequence);
 
@@ -1250,7 +1250,9 @@ public final class FuncotatorUtils {
         int maxIndex = codingSequence.length();
         if ( maxIndex % 3 != 0 ) {
             maxIndex = (int)Math.floor(maxIndex / 3) * 3;
-            logger.warn("createAminoAcidSequence given a coding sequence of length not divisible by 3.  Dropping bases from the end: " + (codingSequence.length() % 3));
+            if ( !isFrameshift ) {
+                logger.warn("createAminoAcidSequence given a coding sequence of length not divisible by 3.  Dropping bases from the end: " + (codingSequence.length() % 3));
+            }
         }
 
         for ( int i = 0; i < maxIndex; i += 3 ) {
@@ -1434,7 +1436,6 @@ public final class FuncotatorUtils {
         }
 
         return alignedReferenceAllele;
-
     }
 
     /**
@@ -1452,6 +1453,8 @@ public final class FuncotatorUtils {
                                                                 final Strand strand,
                                                                 final int referenceWindowInBases,
                                                                 final ReferenceContext referenceContext) {
+        // TODO: This is generating too long a string for INDELs because of VCF format alleles - see Issue #4407
+
         Utils.nonNull( refAllele );
         Utils.nonNull( altAllele );
         assertValidStrand( strand );
@@ -1533,33 +1536,56 @@ public final class FuncotatorUtils {
     }
 
     /**
-     * Gets the start position relative to the start of the coding sequence for a variant based on the given {@code variantGenomicStartPosition}.
-     * It is assumed:
-     *      {@code codingRegionGenomicStartPosition} <= {@code variantGenomicStartPosition} <= {@code codingRegionGenomicEndPosition}
-     * The transcript start position is the genomic position the transcript starts assuming `+` traversal.  That is, it is the lesser of start position and end position.
-     * This is important because we determine the relative positions based on which direction the transcript is read.
-     * @param variantGenomicStartPosition Start position (1-based, inclusive) of a variant in the genome.  Must be > 0.
-     * @param codingRegionGenomicStartPosition Start position (1-based, inclusive) of a transcript in the genome.  Must be > 0.
-     * @param codingRegionGenomicEndPosition End position (1-based, inclusive) of a transcript in the genome.  Must be > 0.
-     * @param strand {@link Strand} from which strand the associated transcript is read.  Must not be {@code null}.  Must not be {@link Strand#NONE}.
-     * @return The start position (1-based, inclusive) relative to the start of the coding sequence of a variant.
+     * Get the position (1-based, inclusive) of the given {@link VariantContext} start relative to the transcript it appears in.
+     * The transcript is specified by {@code sortedTranscriptExonList}.
+     * @param variant The {@link VariantContext} of which to find the start position in the given transcript (must not be {@code null}).
+     * @param exons {@link List} of {@Link Locatable}s representing the exons in the transcript in which the given {@code variant} occurs.
+     * @param strand The {@link Strand} on which the {@code variant} occurs.
+     * @return The start position (1-based, inclusive) of the given {@code variant} in the transcript in which it appears.
      */
-    public static int getTranscriptAlleleStartPosition(final int variantGenomicStartPosition,
-                                                       final int codingRegionGenomicStartPosition,
-                                                       final int codingRegionGenomicEndPosition,
+    public static int getTranscriptAlleleStartPosition(final VariantContext variant,
+                                                       final List<? extends Locatable> exons,
                                                        final Strand strand) {
+        Utils.nonNull(variant);
+        Utils.nonNull(exons);
+        assertValidStrand(strand);
 
-        ParamUtils.isPositive( variantGenomicStartPosition, "Genome positions must be > 0." );
-        ParamUtils.isPositive( codingRegionGenomicStartPosition, "Genome positions must be > 0." );
-        ParamUtils.isPositive( codingRegionGenomicEndPosition, "Genome positions must be > 0." );
-        assertValidStrand( strand );
+        // Set up our position variable:
+        int position;
 
-        if ( strand == Strand.POSITIVE ) {
-            return variantGenomicStartPosition - codingRegionGenomicStartPosition + 1;
+        // NOTE: We don't need to worry about UTRs in here - all UTRs occur somewhere in an exon in GENCODE.
+
+        // Filter the elements by whether they come before the variant in the transcript and
+        // then sort them by their order in the transcript:
+        final List<Locatable> sortedFilteredExons;
+        if ( strand == Strand.POSITIVE) {
+            sortedFilteredExons = exons.stream()
+                    .filter(e -> e.getStart() <= variant.getStart())
+                    .sorted(Comparator.comparingInt(Locatable::getStart))
+                    .collect(Collectors.toList());
+
+            // We are guaranteed that the variant occurs in the last element of sortedTranscriptElements because of the sorting.
+            // Add 1 to position to account for inclusive values:
+            position = variant.getStart() - sortedFilteredExons.get(sortedFilteredExons.size()-1).getStart() + 1;
         }
         else {
-            return codingRegionGenomicEndPosition - variantGenomicStartPosition + 1;
+            sortedFilteredExons = exons.stream()
+                    .filter(e -> e.getEnd() >= variant.getStart())
+                    .sorted(Comparator.comparingInt(Locatable::getStart).reversed())
+                    .collect(Collectors.toList());
+
+            // We are guaranteed that the variant occurs in the last element of sortedTranscriptElements because of the sorting.
+            // Add 1 to position to account for inclusive values:
+            position = sortedFilteredExons.get(sortedFilteredExons.size()-1).getEnd() - variant.getStart() + 1;
         }
+
+        // Add up the lengths of all exons before the last one:
+        for ( int i = 0; i < sortedFilteredExons.size() - 1; ++i ) {
+            // Add 1 to position to account for inclusive values:
+            position += sortedFilteredExons.get(i).getEnd() - sortedFilteredExons.get(i).getStart() + 1;
+        }
+
+        return position;
     }
 
     /**
@@ -1647,6 +1673,51 @@ public final class FuncotatorUtils {
     }
 
     /**
+     * Returns if the given {@link SAMSequenceDictionary} is for the B37 Human Genome Reference.
+     * @param sequenceDictionary The {@link SAMSequenceDictionary} to check for B37 Reference.
+     * @return {@code true} if {@code sequenceDictionary} is for the B37 Human Genome Reference; {@code false} otherwise.
+     */
+    public static boolean isSequenceDictionaryUsingB37Reference(final SAMSequenceDictionary sequenceDictionary) {
+        // Check to make sure all our sequences are accounted for in the given dictionary.
+
+        if ( sequenceDictionary == null ) {
+            return false;
+        }
+
+        for ( final SAMSequenceRecord b37SequenceRecord : B37_SEQUENCE_DICTIONARY.getSequences() ) {
+            // Now we check the Name, Length, and MD5Sum (if present) of all records:
+
+            final SAMSequenceRecord inputSequenceRecord = sequenceDictionary.getSequence(b37SequenceRecord.getSequenceName());
+            if ( inputSequenceRecord == null ) {
+                return false;
+            }
+
+            if ( inputSequenceRecord.getSequenceLength() != b37SequenceRecord.getSequenceLength() ) {
+                return false;
+            }
+
+            if ( (inputSequenceRecord.getMd5() != null) && (!inputSequenceRecord.getMd5().equals(b37SequenceRecord.getMd5())) ) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Converts a given B37 style contig name to the equivalent in hg19.
+     * @param b37Contig The contig name from the B37 Human Genome reference to convert to the equivalent contig from the HG19 Human Genome reference.
+     * @return The HG19 equivalent of the given B37 contig name, if such an equivalent name exists.  If no equivalent name exists, returns the given {@code b37Contig}.
+     */
+    public static String convertB37ContigToHg19Contig( final String b37Contig ) {
+        if ( B37_To_HG19_CONTIG_NAME_MAP.containsKey(b37Contig) ) {
+            return B37_To_HG19_CONTIG_NAME_MAP.get(b37Contig);
+        }
+        // Couldn't find it in our map, so we just return the original:
+        return b37Contig;
+    }
+
+    /**
      * Get the overlapping exon start/stop as a {@link SimpleInterval} for the given altAllele / reference.
      * @param refAllele {@link Allele} for the given {@code altAllele}.  Must not be {@code null}.
      * @param altAllele {@link Allele} to locate on an exon.  Must not be {@code null}.
@@ -1723,6 +1794,639 @@ public final class FuncotatorUtils {
             throw new GATKException("Unable to handle NONE strand.");
         }
 
+    }
+
+    /**
+     * Get the strand-corrected (reverse complemented) {@link Allele} for the given {@link Allele} and {@link Strand}.
+     * @param allele The {@link Allele} to correct for strandedness.
+     * @param strand The {@link Strand} on which the given {@code allele} lies.  Must be valid as per {@link #assertValidStrand(Strand)}
+     * @return The {@link Allele} with sequence corrected for strand.
+     */
+    public static Allele getStrandCorrectedAllele(final Allele allele, final Strand strand) {
+        assertValidStrand(strand);
+
+        if ( strand == Strand.POSITIVE ) {
+            return Allele.create(allele, false);
+        }
+        else {
+            return Allele.create(ReadUtils.getBasesReverseComplement(allele.getBases()), false);
+        }
+    }
+
+    /**
+     * @return An initialized {@link Map} of {@link String} to {@link String} with keys of contig names from the B37 Human Genome Reference and values of the corresponding contig name in the HG19 Human Genome reference.
+     */
+    private static final Map<String, String> initializeB37ToHg19ContigNameMap() {
+        final Map<String, String> b37ToHg19ContigNameMap = new HashMap<>();
+
+        b37ToHg19ContigNameMap.put( "1", "chr1" );
+        b37ToHg19ContigNameMap.put( "2", "chr2" );
+        b37ToHg19ContigNameMap.put( "3", "chr3" );
+        b37ToHg19ContigNameMap.put( "4", "chr4" );
+        b37ToHg19ContigNameMap.put( "5", "chr5" );
+        b37ToHg19ContigNameMap.put( "6", "chr6" );
+        b37ToHg19ContigNameMap.put( "7", "chr7" );
+        b37ToHg19ContigNameMap.put( "8", "chr8" );
+        b37ToHg19ContigNameMap.put( "9", "chr9" );
+        b37ToHg19ContigNameMap.put( "10", "chr10" );
+        b37ToHg19ContigNameMap.put( "11", "chr11" );
+        b37ToHg19ContigNameMap.put( "12", "chr12" );
+        b37ToHg19ContigNameMap.put( "13", "chr13" );
+        b37ToHg19ContigNameMap.put( "14", "chr14" );
+        b37ToHg19ContigNameMap.put( "15", "chr15" );
+        b37ToHg19ContigNameMap.put( "16", "chr16" );
+        b37ToHg19ContigNameMap.put( "17", "chr17" );
+        b37ToHg19ContigNameMap.put( "18", "chr18" );
+        b37ToHg19ContigNameMap.put( "19", "chr19" );
+        b37ToHg19ContigNameMap.put( "20", "chr20" );
+        b37ToHg19ContigNameMap.put( "21", "chr21" );
+        b37ToHg19ContigNameMap.put( "22", "chr22" );
+        b37ToHg19ContigNameMap.put( "X", "chrX" );
+        b37ToHg19ContigNameMap.put( "Y", "chrY" );
+        b37ToHg19ContigNameMap.put( "MT", "chrM" );
+
+        // These are included for completeness, but are not necessary as we default to the input contig name if the
+        // contig is not present in this map.  (Because they are the same between both.)
+        b37ToHg19ContigNameMap.put( "GL000202.1", "GL000202.1" );
+        b37ToHg19ContigNameMap.put( "GL000244.1", "GL000244.1" );
+        b37ToHg19ContigNameMap.put( "GL000235.1", "GL000235.1" );
+        b37ToHg19ContigNameMap.put( "GL000238.1", "GL000238.1" );
+        b37ToHg19ContigNameMap.put( "GL000226.1", "GL000226.1" );
+        b37ToHg19ContigNameMap.put( "GL000218.1", "GL000218.1" );
+        b37ToHg19ContigNameMap.put( "GL000249.1", "GL000249.1" );
+        b37ToHg19ContigNameMap.put( "GL000242.1", "GL000242.1" );
+        b37ToHg19ContigNameMap.put( "GL000221.1", "GL000221.1" );
+        b37ToHg19ContigNameMap.put( "GL000192.1", "GL000192.1" );
+        b37ToHg19ContigNameMap.put( "GL000223.1", "GL000223.1" );
+        b37ToHg19ContigNameMap.put( "GL000232.1", "GL000232.1" );
+        b37ToHg19ContigNameMap.put( "GL000206.1", "GL000206.1" );
+        b37ToHg19ContigNameMap.put( "GL000240.1", "GL000240.1" );
+        b37ToHg19ContigNameMap.put( "GL000214.1", "GL000214.1" );
+        b37ToHg19ContigNameMap.put( "GL000212.1", "GL000212.1" );
+        b37ToHg19ContigNameMap.put( "GL000199.1", "GL000199.1" );
+        b37ToHg19ContigNameMap.put( "GL000248.1", "GL000248.1" );
+        b37ToHg19ContigNameMap.put( "GL000195.1", "GL000195.1" );
+        b37ToHg19ContigNameMap.put( "GL000215.1", "GL000215.1" );
+        b37ToHg19ContigNameMap.put( "GL000225.1", "GL000225.1" );
+        b37ToHg19ContigNameMap.put( "GL000216.1", "GL000216.1" );
+        b37ToHg19ContigNameMap.put( "GL000194.1", "GL000194.1" );
+        b37ToHg19ContigNameMap.put( "GL000217.1", "GL000217.1" );
+        b37ToHg19ContigNameMap.put( "GL000197.1", "GL000197.1" );
+        b37ToHg19ContigNameMap.put( "GL000222.1", "GL000222.1" );
+        b37ToHg19ContigNameMap.put( "GL000200.1", "GL000200.1" );
+        b37ToHg19ContigNameMap.put( "GL000211.1", "GL000211.1" );
+        b37ToHg19ContigNameMap.put( "GL000247.1", "GL000247.1" );
+        b37ToHg19ContigNameMap.put( "GL000233.1", "GL000233.1" );
+        b37ToHg19ContigNameMap.put( "GL000210.1", "GL000210.1" );
+        b37ToHg19ContigNameMap.put( "GL000198.1", "GL000198.1" );
+        b37ToHg19ContigNameMap.put( "GL000245.1", "GL000245.1" );
+        b37ToHg19ContigNameMap.put( "GL000234.1", "GL000234.1" );
+        b37ToHg19ContigNameMap.put( "GL000203.1", "GL000203.1" );
+        b37ToHg19ContigNameMap.put( "GL000239.1", "GL000239.1" );
+        b37ToHg19ContigNameMap.put( "GL000213.1", "GL000213.1" );
+        b37ToHg19ContigNameMap.put( "GL000227.1", "GL000227.1" );
+        b37ToHg19ContigNameMap.put( "GL000208.1", "GL000208.1" );
+        b37ToHg19ContigNameMap.put( "GL000230.1", "GL000230.1" );
+        b37ToHg19ContigNameMap.put( "GL000231.1", "GL000231.1" );
+        b37ToHg19ContigNameMap.put( "GL000228.1", "GL000228.1" );
+        b37ToHg19ContigNameMap.put( "GL000243.1", "GL000243.1" );
+        b37ToHg19ContigNameMap.put( "GL000229.1", "GL000229.1" );
+        b37ToHg19ContigNameMap.put( "GL000205.1", "GL000205.1" );
+        b37ToHg19ContigNameMap.put( "GL000224.1", "GL000224.1" );
+        b37ToHg19ContigNameMap.put( "GL000191.1", "GL000191.1" );
+        b37ToHg19ContigNameMap.put( "GL000196.1", "GL000196.1" );
+        b37ToHg19ContigNameMap.put( "GL000193.1", "GL000193.1" );
+        b37ToHg19ContigNameMap.put( "GL000201.1", "GL000201.1" );
+        b37ToHg19ContigNameMap.put( "GL000237.1", "GL000237.1" );
+        b37ToHg19ContigNameMap.put( "GL000246.1", "GL000246.1" );
+        b37ToHg19ContigNameMap.put( "GL000241.1", "GL000241.1" );
+        b37ToHg19ContigNameMap.put( "GL000204.1", "GL000204.1" );
+        b37ToHg19ContigNameMap.put( "GL000207.1", "GL000207.1" );
+        b37ToHg19ContigNameMap.put( "GL000209.1", "GL000209.1" );
+        b37ToHg19ContigNameMap.put( "GL000219.1", "GL000219.1" );
+        b37ToHg19ContigNameMap.put( "GL000220.1", "GL000220.1" );
+        b37ToHg19ContigNameMap.put( "GL000236.1", "GL000236.1" );
+
+        return b37ToHg19ContigNameMap;
+    }
+
+    /**
+     * @return An initialized {@link SAMSequenceDictionary} containing the {@link SAMSequenceRecord}s from the B37 Human Genome Reference.
+     */
+    private static final SAMSequenceDictionary initializeB37SequenceDict() {
+        final SAMSequenceDictionary sequenceDictionary = new SAMSequenceDictionary();
+
+        final SAMSequenceRecord seq1 = new SAMSequenceRecord("1", 249250621);
+        seq1.setAssembly("GRCh37");
+        seq1.setMd5("1b22b98cdeb4a9304cb5d48026a85128");
+        seq1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seq1);
+        
+        final SAMSequenceRecord seq2 = new SAMSequenceRecord( "2", 243199373 );
+        seq2.setAssembly("GRCh37");
+        seq2.setMd5("a0d9851da00400dec1098a9255ac712e");
+        seq2.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seq2);
+        
+        final SAMSequenceRecord seq3 = new SAMSequenceRecord( "3", 198022430 );
+        seq3.setAssembly("GRCh37");
+        seq3.setMd5("fdfd811849cc2fadebc929bb925902e5");
+        seq3.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seq3);
+        
+        final SAMSequenceRecord seq4 = new SAMSequenceRecord( "4", 191154276 );
+        seq4.setAssembly("GRCh37");
+        seq4.setMd5("23dccd106897542ad87d2765d28a19a1");
+        seq4.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seq4);
+        
+        final SAMSequenceRecord seq5 = new SAMSequenceRecord( "5", 180915260 );
+        seq5.setAssembly("GRCh37");
+        seq5.setMd5("0740173db9ffd264d728f32784845cd7");
+        seq5.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seq5);
+        
+        final SAMSequenceRecord seq6 = new SAMSequenceRecord( "6", 171115067 );
+        seq6.setAssembly("GRCh37");
+        seq6.setMd5("1d3a93a248d92a729ee764823acbbc6b");
+        seq6.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seq6);
+        
+        final SAMSequenceRecord seq7 = new SAMSequenceRecord( "7", 159138663 );
+        seq7.setAssembly("GRCh37");
+        seq7.setMd5("618366e953d6aaad97dbe4777c29375e");
+        seq7.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seq7);
+        
+        final SAMSequenceRecord seq8 = new SAMSequenceRecord( "8", 146364022 );
+        seq8.setAssembly("GRCh37");
+        seq8.setMd5("96f514a9929e410c6651697bded59aec");
+        seq8.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seq8);
+        
+        final SAMSequenceRecord seq9 = new SAMSequenceRecord( "9", 141213431 );
+        seq9.setAssembly("GRCh37");
+        seq9.setMd5("3e273117f15e0a400f01055d9f393768");
+        seq9.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seq9);
+        
+        final SAMSequenceRecord seq10 = new SAMSequenceRecord( "10", 135534747 );
+        seq10.setAssembly("GRCh37");
+        seq10.setMd5("988c28e000e84c26d552359af1ea2e1d");
+        seq10.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seq10);
+        
+        final SAMSequenceRecord seq11 = new SAMSequenceRecord( "11", 135006516 );
+        seq11.setAssembly("GRCh37");
+        seq11.setMd5("98c59049a2df285c76ffb1c6db8f8b96");
+        seq11.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seq11);
+        
+        final SAMSequenceRecord seq12 = new SAMSequenceRecord( "12", 133851895 );
+        seq12.setAssembly("GRCh37");
+        seq12.setMd5("51851ac0e1a115847ad36449b0015864");
+        seq12.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seq12);
+        
+        final SAMSequenceRecord seq13 = new SAMSequenceRecord( "13", 115169878 );
+        seq13.setAssembly("GRCh37");
+        seq13.setMd5("283f8d7892baa81b510a015719ca7b0b");
+        seq13.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seq13);
+        
+        final SAMSequenceRecord seq14 = new SAMSequenceRecord( "14", 107349540 );
+        seq14.setAssembly("GRCh37");
+        seq14.setMd5("98f3cae32b2a2e9524bc19813927542e");
+        seq14.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seq14);
+        
+        final SAMSequenceRecord seq15 = new SAMSequenceRecord( "15", 102531392 );
+        seq15.setAssembly("GRCh37");
+        seq15.setMd5("e5645a794a8238215b2cd77acb95a078");
+        seq15.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seq15);
+        
+        final SAMSequenceRecord seq16 = new SAMSequenceRecord( "16", 90354753 );
+        seq16.setAssembly("GRCh37");
+        seq16.setMd5("fc9b1a7b42b97a864f56b348b06095e6");
+        seq16.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seq16);
+        
+        final SAMSequenceRecord seq17 = new SAMSequenceRecord( "17", 81195210 );
+        seq17.setAssembly("GRCh37");
+        seq17.setMd5("351f64d4f4f9ddd45b35336ad97aa6de");
+        seq17.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seq17);
+        
+        final SAMSequenceRecord seq18 = new SAMSequenceRecord( "18", 78077248 );
+        seq18.setAssembly("GRCh37");
+        seq18.setMd5("b15d4b2d29dde9d3e4f93d1d0f2cbc9c");
+        seq18.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seq18);
+        
+        final SAMSequenceRecord seq19 = new SAMSequenceRecord( "19", 59128983 );
+        seq19.setAssembly("GRCh37");
+        seq19.setMd5("1aacd71f30db8e561810913e0b72636d");
+        seq19.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seq19);
+        
+        final SAMSequenceRecord seq20 = new SAMSequenceRecord( "20", 63025520 );
+        seq20.setAssembly("GRCh37");
+        seq20.setMd5("0dec9660ec1efaaf33281c0d5ea2560f");
+        seq20.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seq20);
+        
+        final SAMSequenceRecord seq21 = new SAMSequenceRecord( "21", 48129895 );
+        seq21.setAssembly("GRCh37");
+        seq21.setMd5("2979a6085bfe28e3ad6f552f361ed74d");
+        seq21.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seq21);
+        
+        final SAMSequenceRecord seq22 = new SAMSequenceRecord( "22", 51304566 );
+        seq22.setAssembly("GRCh37");
+        seq22.setMd5("a718acaa6135fdca8357d5bfe94211dd");
+        seq22.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seq22);
+        
+        final SAMSequenceRecord seqX = new SAMSequenceRecord( "X", 155270560 );
+        seqX.setAssembly("GRCh37");
+        seqX.setMd5("7e0e2e580297b7764e31dbc80c2540dd");
+        seqX.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqX);
+        
+        final SAMSequenceRecord seqY = new SAMSequenceRecord( "Y", 59373566 );
+        seqY.setAssembly("GRCh37");
+        seqY.setMd5("1fa3474750af0948bdf97d5a0ee52e51");
+        seqY.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqY);
+        
+        final SAMSequenceRecord seqMT = new SAMSequenceRecord( "MT", 16569 );
+        seqMT.setAssembly("GRCh37");
+        seqMT.setMd5("c68f52674c9fb33aef52dcf399755519");
+        seqMT.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqMT);
+        
+        final SAMSequenceRecord seqGL000207_1 = new SAMSequenceRecord( "GL000207.1", 4262 );
+        seqGL000207_1.setAssembly("GRCh37");
+        seqGL000207_1.setMd5("f3814841f1939d3ca19072d9e89f3fd7");
+        seqGL000207_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000207_1);
+        
+        final SAMSequenceRecord seqGL000226_1 = new SAMSequenceRecord( "GL000226.1", 15008 );
+        seqGL000226_1.setAssembly("GRCh37");
+        seqGL000226_1.setMd5("1c1b2cd1fccbc0a99b6a447fa24d1504");
+        seqGL000226_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000226_1);
+        
+        final SAMSequenceRecord seqGL000229_1 = new SAMSequenceRecord( "GL000229.1", 19913 );
+        seqGL000229_1.setAssembly("GRCh37");
+        seqGL000229_1.setMd5("d0f40ec87de311d8e715b52e4c7062e1");
+        seqGL000229_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000229_1);
+        
+        final SAMSequenceRecord seqGL000231_1 = new SAMSequenceRecord( "GL000231.1", 27386 );
+        seqGL000231_1.setAssembly("GRCh37");
+        seqGL000231_1.setMd5("ba8882ce3a1efa2080e5d29b956568a4");
+        seqGL000231_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000231_1);
+        
+        final SAMSequenceRecord seqGL000210_1 = new SAMSequenceRecord( "GL000210.1", 27682 );
+        seqGL000210_1.setAssembly("GRCh37");
+        seqGL000210_1.setMd5("851106a74238044126131ce2a8e5847c");
+        seqGL000210_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000210_1);
+        
+        final SAMSequenceRecord seqGL000239_1 = new SAMSequenceRecord( "GL000239.1", 33824 );
+        seqGL000239_1.setAssembly("GRCh37");
+        seqGL000239_1.setMd5("99795f15702caec4fa1c4e15f8a29c07");
+        seqGL000239_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000239_1);
+        
+        final SAMSequenceRecord seqGL000235_1 = new SAMSequenceRecord( "GL000235.1", 34474 );
+        seqGL000235_1.setAssembly("GRCh37");
+        seqGL000235_1.setMd5("118a25ca210cfbcdfb6c2ebb249f9680");
+        seqGL000235_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000235_1);
+        
+        final SAMSequenceRecord seqGL000201_1 = new SAMSequenceRecord( "GL000201.1", 36148 );
+        seqGL000201_1.setAssembly("GRCh37");
+        seqGL000201_1.setMd5("dfb7e7ec60ffdcb85cb359ea28454ee9");
+        seqGL000201_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000201_1);
+        
+        final SAMSequenceRecord seqGL000247_1 = new SAMSequenceRecord( "GL000247.1", 36422 );
+        seqGL000247_1.setAssembly("GRCh37");
+        seqGL000247_1.setMd5("7de00226bb7df1c57276ca6baabafd15");
+        seqGL000247_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000247_1);
+        
+        final SAMSequenceRecord seqGL000245_1 = new SAMSequenceRecord( "GL000245.1", 36651 );
+        seqGL000245_1.setAssembly("GRCh37");
+        seqGL000245_1.setMd5("89bc61960f37d94abf0df2d481ada0ec");
+        seqGL000245_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000245_1);
+        
+        final SAMSequenceRecord seqGL000197_1 = new SAMSequenceRecord( "GL000197.1", 37175 );
+        seqGL000197_1.setAssembly("GRCh37");
+        seqGL000197_1.setMd5("6f5efdd36643a9b8c8ccad6f2f1edc7b");
+        seqGL000197_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000197_1);
+        
+        final SAMSequenceRecord seqGL000203_1 = new SAMSequenceRecord( "GL000203.1", 37498 );
+        seqGL000203_1.setAssembly("GRCh37");
+        seqGL000203_1.setMd5("96358c325fe0e70bee73436e8bb14dbd");
+        seqGL000203_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000203_1);
+        
+        final SAMSequenceRecord seqGL000246_1 = new SAMSequenceRecord( "GL000246.1", 38154 );
+        seqGL000246_1.setAssembly("GRCh37");
+        seqGL000246_1.setMd5("e4afcd31912af9d9c2546acf1cb23af2");
+        seqGL000246_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000246_1);
+        
+        final SAMSequenceRecord seqGL000249_1 = new SAMSequenceRecord( "GL000249.1", 38502 );
+        seqGL000249_1.setAssembly("GRCh37");
+        seqGL000249_1.setMd5("1d78abec37c15fe29a275eb08d5af236");
+        seqGL000249_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000249_1);
+        
+        final SAMSequenceRecord seqGL000196_1 = new SAMSequenceRecord( "GL000196.1", 38914 );
+        seqGL000196_1.setAssembly("GRCh37");
+        seqGL000196_1.setMd5("d92206d1bb4c3b4019c43c0875c06dc0");
+        seqGL000196_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000196_1);
+        
+        final SAMSequenceRecord seqGL000248_1 = new SAMSequenceRecord( "GL000248.1", 39786 );
+        seqGL000248_1.setAssembly("GRCh37");
+        seqGL000248_1.setMd5("5a8e43bec9be36c7b49c84d585107776");
+        seqGL000248_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000248_1);
+        
+        final SAMSequenceRecord seqGL000244_1 = new SAMSequenceRecord( "GL000244.1", 39929 );
+        seqGL000244_1.setAssembly("GRCh37");
+        seqGL000244_1.setMd5("0996b4475f353ca98bacb756ac479140");
+        seqGL000244_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000244_1);
+        
+        final SAMSequenceRecord seqGL000238_1 = new SAMSequenceRecord( "GL000238.1", 39939 );
+        seqGL000238_1.setAssembly("GRCh37");
+        seqGL000238_1.setMd5("131b1efc3270cc838686b54e7c34b17b");
+        seqGL000238_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000238_1);
+        
+        final SAMSequenceRecord seqGL000202_1 = new SAMSequenceRecord( "GL000202.1", 40103 );
+        seqGL000202_1.setAssembly("GRCh37");
+        seqGL000202_1.setMd5("06cbf126247d89664a4faebad130fe9c");
+        seqGL000202_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000202_1);
+        
+        final SAMSequenceRecord seqGL000234_1 = new SAMSequenceRecord( "GL000234.1", 40531 );
+        seqGL000234_1.setAssembly("GRCh37");
+        seqGL000234_1.setMd5("93f998536b61a56fd0ff47322a911d4b");
+        seqGL000234_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000234_1);
+        
+        final SAMSequenceRecord seqGL000232_1 = new SAMSequenceRecord( "GL000232.1", 40652 );
+        seqGL000232_1.setAssembly("GRCh37");
+        seqGL000232_1.setMd5("3e06b6741061ad93a8587531307057d8");
+        seqGL000232_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000232_1);
+        
+        final SAMSequenceRecord seqGL000206_1 = new SAMSequenceRecord( "GL000206.1", 41001 );
+        seqGL000206_1.setAssembly("GRCh37");
+        seqGL000206_1.setMd5("43f69e423533e948bfae5ce1d45bd3f1");
+        seqGL000206_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000206_1);
+        
+        final SAMSequenceRecord seqGL000240_1 = new SAMSequenceRecord( "GL000240.1", 41933 );
+        seqGL000240_1.setAssembly("GRCh37");
+        seqGL000240_1.setMd5("445a86173da9f237d7bcf41c6cb8cc62");
+        seqGL000240_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000240_1);
+        
+        final SAMSequenceRecord seqGL000236_1 = new SAMSequenceRecord( "GL000236.1", 41934 );
+        seqGL000236_1.setAssembly("GRCh37");
+        seqGL000236_1.setMd5("fdcd739913efa1fdc64b6c0cd7016779");
+        seqGL000236_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000236_1);
+        
+        final SAMSequenceRecord seqGL000241_1 = new SAMSequenceRecord( "GL000241.1", 42152 );
+        seqGL000241_1.setAssembly("GRCh37");
+        seqGL000241_1.setMd5("ef4258cdc5a45c206cea8fc3e1d858cf");
+        seqGL000241_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000241_1);
+        
+        final SAMSequenceRecord seqGL000243_1 = new SAMSequenceRecord( "GL000243.1", 43341 );
+        seqGL000243_1.setAssembly("GRCh37");
+        seqGL000243_1.setMd5("cc34279a7e353136741c9fce79bc4396");
+        seqGL000243_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000243_1);
+        
+        final SAMSequenceRecord seqGL000242_1 = new SAMSequenceRecord( "GL000242.1", 43523 );
+        seqGL000242_1.setAssembly("GRCh37");
+        seqGL000242_1.setMd5("2f8694fc47576bc81b5fe9e7de0ba49e");
+        seqGL000242_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000242_1);
+        
+        final SAMSequenceRecord seqGL000230_1 = new SAMSequenceRecord( "GL000230.1", 43691 );
+        seqGL000230_1.setAssembly("GRCh37");
+        seqGL000230_1.setMd5("b4eb71ee878d3706246b7c1dbef69299");
+        seqGL000230_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000230_1);
+        
+        final SAMSequenceRecord seqGL000237_1 = new SAMSequenceRecord( "GL000237.1", 45867 );
+        seqGL000237_1.setAssembly("GRCh37");
+        seqGL000237_1.setMd5("e0c82e7751df73f4f6d0ed30cdc853c0");
+        seqGL000237_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000237_1);
+        
+        final SAMSequenceRecord seqGL000233_1 = new SAMSequenceRecord( "GL000233.1", 45941 );
+        seqGL000233_1.setAssembly("GRCh37");
+        seqGL000233_1.setMd5("7fed60298a8d62ff808b74b6ce820001");
+        seqGL000233_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000233_1);
+        
+        final SAMSequenceRecord seqGL000204_1 = new SAMSequenceRecord( "GL000204.1", 81310 );
+        seqGL000204_1.setAssembly("GRCh37");
+        seqGL000204_1.setMd5("efc49c871536fa8d79cb0a06fa739722");
+        seqGL000204_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000204_1);
+        
+        final SAMSequenceRecord seqGL000198_1 = new SAMSequenceRecord( "GL000198.1", 90085 );
+        seqGL000198_1.setAssembly("GRCh37");
+        seqGL000198_1.setMd5("868e7784040da90d900d2d1b667a1383");
+        seqGL000198_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000198_1);
+        
+        final SAMSequenceRecord seqGL000208_1 = new SAMSequenceRecord( "GL000208.1", 92689 );
+        seqGL000208_1.setAssembly("GRCh37");
+        seqGL000208_1.setMd5("aa81be49bf3fe63a79bdc6a6f279abf6");
+        seqGL000208_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000208_1);
+        
+        final SAMSequenceRecord seqGL000191_1 = new SAMSequenceRecord( "GL000191.1", 106433 );
+        seqGL000191_1.setAssembly("GRCh37");
+        seqGL000191_1.setMd5("d75b436f50a8214ee9c2a51d30b2c2cc");
+        seqGL000191_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000191_1);
+        
+        final SAMSequenceRecord seqGL000227_1 = new SAMSequenceRecord( "GL000227.1", 128374 );
+        seqGL000227_1.setAssembly("GRCh37");
+        seqGL000227_1.setMd5("a4aead23f8053f2655e468bcc6ecdceb");
+        seqGL000227_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000227_1);
+        
+        final SAMSequenceRecord seqGL000228_1 = new SAMSequenceRecord( "GL000228.1", 129120 );
+        seqGL000228_1.setAssembly("GRCh37");
+        seqGL000228_1.setMd5("c5a17c97e2c1a0b6a9cc5a6b064b714f");
+        seqGL000228_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000228_1);
+        
+        final SAMSequenceRecord seqGL000214_1 = new SAMSequenceRecord( "GL000214.1", 137718 );
+        seqGL000214_1.setAssembly("GRCh37");
+        seqGL000214_1.setMd5("46c2032c37f2ed899eb41c0473319a69");
+        seqGL000214_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000214_1);
+        
+        final SAMSequenceRecord seqGL000221_1 = new SAMSequenceRecord( "GL000221.1", 155397 );
+        seqGL000221_1.setAssembly("GRCh37");
+        seqGL000221_1.setMd5("3238fb74ea87ae857f9c7508d315babb");
+        seqGL000221_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000221_1);
+        
+        final SAMSequenceRecord seqGL000209_1 = new SAMSequenceRecord( "GL000209.1", 159169 );
+        seqGL000209_1.setAssembly("GRCh37");
+        seqGL000209_1.setMd5("f40598e2a5a6b26e84a3775e0d1e2c81");
+        seqGL000209_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000209_1);
+        
+        final SAMSequenceRecord seqGL000218_1 = new SAMSequenceRecord( "GL000218.1", 161147 );
+        seqGL000218_1.setAssembly("GRCh37");
+        seqGL000218_1.setMd5("1d708b54644c26c7e01c2dad5426d38c");
+        seqGL000218_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000218_1);
+        
+        final SAMSequenceRecord seqGL000220_1 = new SAMSequenceRecord( "GL000220.1", 161802 );
+        seqGL000220_1.setAssembly("GRCh37");
+        seqGL000220_1.setMd5("fc35de963c57bf7648429e6454f1c9db");
+        seqGL000220_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000220_1);
+        
+        final SAMSequenceRecord seqGL000213_1 = new SAMSequenceRecord( "GL000213.1", 164239 );
+        seqGL000213_1.setAssembly("GRCh37");
+        seqGL000213_1.setMd5("9d424fdcc98866650b58f004080a992a");
+        seqGL000213_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000213_1);
+        
+        final SAMSequenceRecord seqGL000211_1 = new SAMSequenceRecord( "GL000211.1", 166566 );
+        seqGL000211_1.setAssembly("GRCh37");
+        seqGL000211_1.setMd5("7daaa45c66b288847b9b32b964e623d3");
+        seqGL000211_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000211_1);
+        
+        final SAMSequenceRecord seqGL000199_1 = new SAMSequenceRecord( "GL000199.1", 169874 );
+        seqGL000199_1.setAssembly("GRCh37");
+        seqGL000199_1.setMd5("569af3b73522fab4b40995ae4944e78e");
+        seqGL000199_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000199_1);
+        
+        final SAMSequenceRecord seqGL000217_1 = new SAMSequenceRecord( "GL000217.1", 172149 );
+        seqGL000217_1.setAssembly("GRCh37");
+        seqGL000217_1.setMd5("6d243e18dea1945fb7f2517615b8f52e");
+        seqGL000217_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000217_1);
+        
+        final SAMSequenceRecord seqGL000216_1 = new SAMSequenceRecord( "GL000216.1", 172294 );
+        seqGL000216_1.setAssembly("GRCh37");
+        seqGL000216_1.setMd5("642a232d91c486ac339263820aef7fe0");
+        seqGL000216_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000216_1);
+        
+        final SAMSequenceRecord seqGL000215_1 = new SAMSequenceRecord( "GL000215.1", 172545 );
+        seqGL000215_1.setAssembly("GRCh37");
+        seqGL000215_1.setMd5("5eb3b418480ae67a997957c909375a73");
+        seqGL000215_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000215_1);
+        
+        final SAMSequenceRecord seqGL000205_1 = new SAMSequenceRecord( "GL000205.1", 174588 );
+        seqGL000205_1.setAssembly("GRCh37");
+        seqGL000205_1.setMd5("d22441398d99caf673e9afb9a1908ec5");
+        seqGL000205_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000205_1);
+        
+        final SAMSequenceRecord seqGL000219_1 = new SAMSequenceRecord( "GL000219.1", 179198 );
+        seqGL000219_1.setAssembly("GRCh37");
+        seqGL000219_1.setMd5("f977edd13bac459cb2ed4a5457dba1b3");
+        seqGL000219_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000219_1);
+        
+        final SAMSequenceRecord seqGL000224_1 = new SAMSequenceRecord( "GL000224.1", 179693 );
+        seqGL000224_1.setAssembly("GRCh37");
+        seqGL000224_1.setMd5("d5b2fc04f6b41b212a4198a07f450e20");
+        seqGL000224_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000224_1);
+        
+        final SAMSequenceRecord seqGL000223_1 = new SAMSequenceRecord( "GL000223.1", 180455 );
+        seqGL000223_1.setAssembly("GRCh37");
+        seqGL000223_1.setMd5("399dfa03bf32022ab52a846f7ca35b30");
+        seqGL000223_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000223_1);
+        
+        final SAMSequenceRecord seqGL000195_1 = new SAMSequenceRecord( "GL000195.1", 182896 );
+        seqGL000195_1.setAssembly("GRCh37");
+        seqGL000195_1.setMd5("5d9ec007868d517e73543b005ba48535");
+        seqGL000195_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000195_1);
+        
+        final SAMSequenceRecord seqGL000212_1 = new SAMSequenceRecord( "GL000212.1", 186858 );
+        seqGL000212_1.setAssembly("GRCh37");
+        seqGL000212_1.setMd5("563531689f3dbd691331fd6c5730a88b");
+        seqGL000212_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000212_1);
+        
+        final SAMSequenceRecord seqGL000222_1 = new SAMSequenceRecord( "GL000222.1", 186861 );
+        seqGL000222_1.setAssembly("GRCh37");
+        seqGL000222_1.setMd5("6fe9abac455169f50470f5a6b01d0f59");
+        seqGL000222_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000222_1);
+        
+        final SAMSequenceRecord seqGL000200_1 = new SAMSequenceRecord( "GL000200.1", 187035 );
+        seqGL000200_1.setAssembly("GRCh37");
+        seqGL000200_1.setMd5("75e4c8d17cd4addf3917d1703cacaf25");
+        seqGL000200_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000200_1);
+        
+        final SAMSequenceRecord seqGL000193_1 = new SAMSequenceRecord( "GL000193.1", 189789 );
+        seqGL000193_1.setAssembly("GRCh37");
+        seqGL000193_1.setMd5("dbb6e8ece0b5de29da56601613007c2a");
+        seqGL000193_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000193_1);
+        
+        final SAMSequenceRecord seqGL000194_1 = new SAMSequenceRecord( "GL000194.1", 191469 );
+        seqGL000194_1.setAssembly("GRCh37");
+        seqGL000194_1.setMd5("6ac8f815bf8e845bb3031b73f812c012");
+        seqGL000194_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000194_1);
+        
+        final SAMSequenceRecord seqGL000225_1 = new SAMSequenceRecord( "GL000225.1", 211173 );
+        seqGL000225_1.setAssembly("GRCh37");
+        seqGL000225_1.setMd5("63945c3e6962f28ffd469719a747e73c");
+        seqGL000225_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000225_1);
+        
+        final SAMSequenceRecord seqGL000192_1 = new SAMSequenceRecord( "GL000192.1", 547496 );
+        seqGL000192_1.setAssembly("GRCh37");
+        seqGL000192_1.setMd5("325ba9e808f669dfeee210fdd7b470ac");
+        seqGL000192_1.setSpecies("Homo Sapiens");
+        sequenceDictionary.addSequence(seqGL000192_1);
+        
+        final SAMSequenceRecord seqNC_007605 = new SAMSequenceRecord( "NC_007605", 171823 );
+        seqNC_007605.setAssembly("NC_007605.1");
+        seqNC_007605.setMd5("6743bd63b3ff2b5b8985d8933c53290a");
+        seqNC_007605.setSpecies("Epstein-Barr virus");
+        sequenceDictionary.addSequence(seqNC_007605);
+
+        return sequenceDictionary;
     }
 
     // ========================================================================================

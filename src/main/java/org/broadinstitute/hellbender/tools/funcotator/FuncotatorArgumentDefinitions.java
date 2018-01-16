@@ -20,8 +20,13 @@ public class FuncotatorArgumentDefinitions {
 
     public static final String DATA_SOURCES_PATH_LONG_NAME = "data-sources-path";
 
+    public static final String OUTPUT_FORMAT_LONG_NAME = "output-file-format";
+
     // ------------------------------------------------------------
     // Definitions for optional arguments:
+
+    public static final String IGNORE_FILTERED_VARIANTS_LONG_NAME = "ignore-filtered-variants";
+    public static final boolean IGNORE_FILTERED_VARIANTS_DEFFAULT_VALUE = false;
 
     public static final String TRANSCRIPT_SELECTION_MODE_LONG_NAME = "transcript-selection-mode";
     public static final TranscriptSelectionMode TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE = TranscriptSelectionMode.CANONICAL;
@@ -34,6 +39,12 @@ public class FuncotatorArgumentDefinitions {
 
     public static final String ANNOTATION_OVERRIDES_LONG_NAME = "annotation-override";
     public static final List<String> ANNOTATION_OVERRIDES_DEFAULT_VALUE = new ArrayList<>();
+
+    public static final String ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME = "allow-hg19-gencode-b37-contig-matching";
+    public static final boolean ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_DEFAULT_VALUE = false;
+
+    public static final String HG19_REFERENCE_VERSION_STRING = "hg19";
+    public static final String HG38_REFERENCE_VERSION_STRING = "hg38";
 
     // ------------------------------------------------------------
     // Helper Types:
@@ -239,11 +250,10 @@ public class FuncotatorArgumentDefinitions {
     }
 
     /**
-     * An indicator of the reference version of the data sources to be used for the Funcotator annotations.
-     * This is used to determine from which folder to pull the config file for each data source.
+     * The file format of the output file.
      */
-    public enum ReferenceVersionType {
-        hg19,
-        hg38
+    public enum OutputFormatType {
+        VCF,
+        MAF
     }
 }

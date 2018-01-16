@@ -673,15 +673,15 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
         // We must consolidate these records through grouping by genomic position.
 
         // Loop through the Exons and put the correct leaf features into each:
-        for ( GencodeGtfExonFeature exon : exonStore ) {
-            for (Iterator<GencodeGtfFeature> iterator = leafFeatureStore.iterator(); iterator.hasNext(); ) {
+        for ( final GencodeGtfExonFeature exon : exonStore ) {
+            for (final Iterator<GencodeGtfFeature> iterator = leafFeatureStore.iterator(); iterator.hasNext(); ) {
 
-                GencodeGtfFeature feature = iterator.next();
+                final GencodeGtfFeature feature = iterator.next();
 
                 // Features that are within the extents of an exon belong in that exon:
                 if ( exon.contains(feature) ) {
 
-                    GencodeGtfFeature.FeatureType featureType = feature.getFeatureType();
+                    final GencodeGtfFeature.FeatureType featureType = feature.getFeatureType();
 
                     // Add the feature to the correct place in the exon:
                     switch (featureType) {

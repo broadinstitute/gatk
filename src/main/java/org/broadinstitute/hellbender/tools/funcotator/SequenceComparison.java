@@ -113,9 +113,9 @@ public class SequenceComparison {
     private Integer proteinChangeEndPosition             = null;
 
     /**
-     * A string representation of the reference allele.
+     * The {@link String} representation of the reference allele, correctly represented for the {@link Strand} on which it appears.
      */
-    private String  referenceAllele                      = null;
+    private String referenceAllele                      = null;
     /**
      * An in-frame sequence of bases that overlaps the given reference allele based on the raw reference genome.
      * (i.e. This includes INTRONS.)
@@ -141,7 +141,7 @@ public class SequenceComparison {
     private String  referenceAminoAcidSequence           = null;
 
     /**
-     * A string representation of the alternate allele.
+     * The {@link String} representation of the alternate allele, correctly represented for the {@link Strand} on which it appears.
      */
     private String  alternateAllele                      = null;
 
@@ -178,6 +178,10 @@ public class SequenceComparison {
     private Double gcContent                             = null;
 
     // =============================================================================================================
+
+    public boolean hasSequenceInfo() {
+        return this.transcriptCodingSequence != null;
+    }
 
     public String getReferenceBases() {
         return referenceBases;

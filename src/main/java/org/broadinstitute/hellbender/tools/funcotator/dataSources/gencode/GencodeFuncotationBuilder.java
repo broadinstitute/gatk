@@ -2,9 +2,9 @@ package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
-import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature;
 import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfGeneFeature;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.List;
 
@@ -35,26 +35,27 @@ public class GencodeFuncotationBuilder {
     //==================================================================================================================
 
     /**
-     * Set {@link GencodeFuncotation#refAllele} and {@link GencodeFuncotation#transcriptStrand} based on the strand and the allele itself.
-     *
-     * @param refAllele The reference {@link Allele} to set.  Assumed to be the FORWARD direction transcription (regardless of the value of {@code strand}).
-     * @param strand    The {@link Strand} on which the gene in this funcotation occurs.
-     * @return {@code this} {@link GencodeFuncotationBuilder}.
+     * Set the Reference Allele in the {@link GencodeFuncotation}.
+     * @param refAllele The reference {@link Allele} for the {@link GencodeFuncotation}.
+     * @return {@code this} {@link GencodeFuncotationBuilder}
      */
-    public GencodeFuncotationBuilder setRefAlleleAndStrand(final Allele refAllele, final Strand strand) {
+    public GencodeFuncotationBuilder setRefAllele( final Allele refAllele ) {
+        gencodeFuncotation.setRefAllele(refAllele.getBaseString());
+        return this;
+    }
 
-        FuncotatorUtils.assertValidStrand(strand);
-
-        if (strand == Strand.POSITIVE) {
-            gencodeFuncotation.setRefAllele(refAllele.getBaseString());
-            gencodeFuncotation.setTranscriptStrand("+");
-        } else {
-            gencodeFuncotation.setRefAllele(
-                    ReadUtils.getBasesReverseComplement(refAllele.getBases())
-            );
-            gencodeFuncotation.setTranscriptStrand("-");
+    /**
+     * Set the Strand in the {@link GencodeFuncotation}.
+     * @param strand The reference {@link Strand} for the {@link GencodeFuncotation}.
+     * @return {@code this} {@link GencodeFuncotationBuilder}
+     */
+    public GencodeFuncotationBuilder setStrand( final Strand strand ) {
+        switch(strand) {
+            case POSITIVE: gencodeFuncotation.setTranscriptStrand( "+" ); break;
+            case NEGATIVE: gencodeFuncotation.setTranscriptStrand( "-"); break;
+            default:
+                throw new GATKException.ShouldNeverReachHereException("An invalid Strand type was specified.  Strand must be POSITIVE or NEGATIVE.");
         }
-
         return this;
     }
 
@@ -163,7 +164,7 @@ public class GencodeFuncotationBuilder {
      * @param transcriptPos The position (1-based, inclusive) relative to the start of the transcript of a the variant in the {@link GencodeFuncotation}.
      * @return {@code this} {@link GencodeFuncotationBuilder}
      */
-    public GencodeFuncotationBuilder setTranscriptPos(final int transcriptPos) {
+    public GencodeFuncotationBuilder setTranscriptPos(final Integer transcriptPos) {
         gencodeFuncotation.setTranscriptPos(transcriptPos);
         return this;
     }
@@ -285,6 +286,26 @@ public class GencodeFuncotationBuilder {
      */
     public GencodeFuncotationBuilder setReferenceContext(final String referenceContext) {
         gencodeFuncotation.setReferenceContext( referenceContext );
+        return this;
+    }
+
+    /**
+     * Set the Version {@link String} in the {@link GencodeFuncotation}.
+     * @param version The {@link String} containing the Version for the {@link GencodeFuncotation}.
+     * @return {@code this} {@link GencodeFuncotationBuilder}
+     */
+    public GencodeFuncotationBuilder setVersion(final String version) {
+        gencodeFuncotation.setVersion( version );
+        return this;
+    }
+
+    /**
+     * Set the GeneTranscriptType {@link org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature.GeneTranscriptType} in the {@link GencodeFuncotation}.
+     * @param geneTranscriptType The {@link String} containing the GeneTranscriptType for the {@link GencodeFuncotation}.
+     * @return {@code this} {@link GencodeFuncotationBuilder}
+     */
+    public GencodeFuncotationBuilder setGeneTranscriptType(final GencodeGtfFeature.GeneTranscriptType geneTranscriptType) {
+        gencodeFuncotation.setGeneTranscriptType( geneTranscriptType );
         return this;
     }
  }

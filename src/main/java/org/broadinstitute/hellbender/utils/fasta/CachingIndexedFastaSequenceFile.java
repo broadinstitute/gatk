@@ -8,10 +8,6 @@ import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.StringUtil;
-import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -19,10 +15,10 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 
-import java.io.File;
 import java.io.FileNotFoundException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 /**
  * A caching version of the IndexedFastaSequenceFile that avoids going to disk as often as the raw indexer.
@@ -145,13 +141,12 @@ public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceF
     }
 
     /**
-     * Create reference data source from fasta file, after performing several preliminary checks on the file.
-     * This static utility was refactored from the constructor of ReferenceDataSource.
-     * Possibly may be better as an overloaded constructor.
+     * Performing several preliminary checks on the file path.
      * @param fastaPath Fasta file to be used as reference
-     * @return A new instance of a CachingIndexedFastaSequenceFile.
+     * @throws GATKException If the given {@code fastaPath} is not good.
      */
-    public static CachingIndexedFastaSequenceFile checkAndCreate(final Path fastaPath) {
+    private static void checkFastaPath(final Path fastaPath) {
+
         // does the fasta file exist? check that first...
         if (!Files.exists(fastaPath)) {
             throw new UserException.MissingReference("The specified fasta file (" + fastaPath.toUri() + ") does not exist.");
@@ -175,15 +170,57 @@ public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceF
         if (!Files.exists(dictPath)) {
             throw new UserException.MissingReferenceDictFile(dictPath, fastaPath);
         }
+    }
+
+    /**
+     * Create reference data source from fasta file, after performing several preliminary checks on the file.
+     * This static utility was refactored from the constructor of ReferenceDataSource.
+     * Possibly may be better as an overloaded constructor.
+     * @param fastaPath Fasta file to be used as reference
+     * @return A new instance of a CachingIndexedFastaSequenceFile.
+     */
+    public static CachingIndexedFastaSequenceFile checkAndCreate(final Path fastaPath) {
+
+        // Check the FASTA path:
+        checkFastaPath(fastaPath);
 
         // Read reference data by creating an IndexedFastaSequenceFile.
         try {
             return new CachingIndexedFastaSequenceFile(fastaPath);
         }
-        catch (IllegalArgumentException e) {
+        catch (final IllegalArgumentException e) {
             throw new UserException.CouldNotReadInputFile(fastaPath, "Could not read reference sequence.  The FASTA must have either a .fasta or .fa extension", e);
         }
-        catch (Exception e) {
+        catch (final Exception e) {
+            throw new UserException.CouldNotReadInputFile(fastaPath, e);
+        }
+    }
+
+    /**
+     * Create reference data source from fasta file, after performing several preliminary checks on the file.
+     * This static utility was refactored from the constructor of ReferenceDataSource.
+     * Possibly may be better as an overloaded constructor.
+     *
+     * NOTE: Most GATK tools do not support data created by setting {@code preserveFileBases} to {@code true}.
+     *
+     * @param fastaPath Fasta file to be used as reference
+     * @param preserveFileBases Whether to preserve the original bases in the given reference file path.
+     * @return A new instance of a CachingIndexedFastaSequenceFile.
+     */
+    public static CachingIndexedFastaSequenceFile checkAndCreate(final Path fastaPath,
+                                                                 final boolean preserveFileBases) {
+
+        // Check the FASTA path:
+        checkFastaPath(fastaPath);
+
+        // Read reference data by creating an IndexedFastaSequenceFile.
+        try {
+            return new CachingIndexedFastaSequenceFile(fastaPath, CachingIndexedFastaSequenceFile.DEFAULT_CACHE_SIZE, preserveFileBases, preserveFileBases);
+        }
+        catch (final IllegalArgumentException e) {
+            throw new UserException.CouldNotReadInputFile(fastaPath, "Could not read reference sequence.  The FASTA must have either a .fasta or .fa extension", e);
+        }
+        catch (final Exception e) {
             throw new UserException.CouldNotReadInputFile(fastaPath, e);
         }
     }

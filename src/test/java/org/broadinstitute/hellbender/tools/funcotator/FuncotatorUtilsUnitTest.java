@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.funcotator;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
@@ -10,6 +12,7 @@ import org.broadinstitute.hellbender.engine.ReferenceFileSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.testng.Assert;
@@ -18,10 +21,7 @@ import org.testng.annotations.Test;
 
 import java.io.*;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  * A unit test suite for the {@link FuncotatorUtils} class.
@@ -392,6 +392,7 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                 { new SimpleInterval("chr1", 99, 99),   exons_backward, Strand.NEGATIVE,  1 },
                 { new SimpleInterval("chr1", 50, 67),   exons_backward, Strand.NEGATIVE, -1 },
                 { new SimpleInterval("chr1", 67, 75),   exons_backward, Strand.NEGATIVE, 15 },
+
         };
     }
 
@@ -752,14 +753,106 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     @DataProvider
     Object[][] provideDataForGetTranscriptAlleleStartPosition() {
 
-        return new Object[][] {
-                { 1,  1, 10, Strand.POSITIVE,  1},
-                { 5,  1, 10, Strand.POSITIVE,  5},
-                { 10, 1, 10, Strand.POSITIVE, 10},
+        final VariantContext variant =
+                new VariantContextBuilder(
+                        "",
+                        "1",
+                        100,
+                        100,
+                        Arrays.asList( Allele.create("A", true), Allele.create("T") )
+                ).make();
 
-                { 1,  1, 10, Strand.NEGATIVE, 10},
-                { 5,  1, 10, Strand.NEGATIVE,  6},
-                { 10, 1, 10, Strand.NEGATIVE,  1},
+        return new Object[][] {
+                {
+                    variant,
+                    Collections.singletonList( new SimpleInterval("1", 100, 100) ),
+                    Strand.POSITIVE,
+                    1
+                },
+                {
+                    variant,
+                    Collections.singletonList( new SimpleInterval("1", 100, 100) ),
+                    Strand.NEGATIVE,
+                    1
+                },
+                {
+                    variant,
+                    Collections.singletonList( new SimpleInterval("1", 50, 200) ),
+                    Strand.POSITIVE,
+                    51
+                },
+                {
+                    variant,
+                    Collections.singletonList( new SimpleInterval("1", 50, 200) ),
+                    Strand.NEGATIVE,
+                    101
+                },
+                {
+                    variant,
+                    Arrays.asList( new SimpleInterval("1", 50, 100), new SimpleInterval("1", 101, 200) ),
+                    Strand.POSITIVE,
+                    51
+                },
+                {
+                    variant,
+                    Arrays.asList( new SimpleInterval("1", 50, 100), new SimpleInterval("1", 101, 200) ),
+                    Strand.NEGATIVE,
+                    101
+                },
+                {
+                    variant,
+                    Arrays.asList(
+                            new SimpleInterval("1",   1, 10),
+                            new SimpleInterval("1",  11, 20),
+                            new SimpleInterval("1",  21, 30),
+                            new SimpleInterval("1",  31, 40),
+                            new SimpleInterval("1",  41, 50),
+                            new SimpleInterval("1",  51, 60),
+                            new SimpleInterval("1",  61, 70),
+                            new SimpleInterval("1",  71, 80),
+                            new SimpleInterval("1",  81, 90),
+                            new SimpleInterval("1",  91, 100),
+                            new SimpleInterval("1", 101, 110),
+                            new SimpleInterval("1", 111, 120),
+                            new SimpleInterval("1", 121, 130),
+                            new SimpleInterval("1", 131, 140),
+                            new SimpleInterval("1", 141, 150),
+                            new SimpleInterval("1", 151, 160),
+                            new SimpleInterval("1", 161, 170),
+                            new SimpleInterval("1", 171, 180),
+                            new SimpleInterval("1", 181, 190),
+                            new SimpleInterval("1", 191, 200)
+                    ),
+                    Strand.POSITIVE,
+                    100
+                },
+                {
+                    variant,
+                        Arrays.asList(
+                                new SimpleInterval("1",   1, 10),
+                                new SimpleInterval("1",  11, 20),
+                                new SimpleInterval("1",  21, 30),
+                                new SimpleInterval("1",  31, 40),
+                                new SimpleInterval("1",  41, 50),
+                                new SimpleInterval("1",  51, 60),
+                                new SimpleInterval("1",  61, 70),
+                                new SimpleInterval("1",  71, 80),
+                                new SimpleInterval("1",  81, 90),
+                                new SimpleInterval("1",  91, 100),
+                                new SimpleInterval("1", 101, 110),
+                                new SimpleInterval("1", 111, 120),
+                                new SimpleInterval("1", 121, 130),
+                                new SimpleInterval("1", 131, 140),
+                                new SimpleInterval("1", 141, 150),
+                                new SimpleInterval("1", 151, 160),
+                                new SimpleInterval("1", 161, 170),
+                                new SimpleInterval("1", 171, 180),
+                                new SimpleInterval("1", 181, 190),
+                                new SimpleInterval("1", 191, 200)
+                        ),
+                    Strand.NEGATIVE,
+                    101
+                },
         };
     }
 
@@ -1022,6 +1115,26 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
         };
     }
 
+    @DataProvider
+    Object[][] provideForTestGetStrandCorrectedAllele() {
+        return new Object[][] {
+                { Allele.create("A"),       Strand.POSITIVE, Allele.create("A") },
+                { Allele.create("AA"),      Strand.POSITIVE, Allele.create("AA") },
+                { Allele.create("AAT"),     Strand.POSITIVE, Allele.create("AAT") },
+                { Allele.create("AATT"),    Strand.POSITIVE, Allele.create("AATT") },
+                { Allele.create("AATTG"),   Strand.POSITIVE, Allele.create("AATTG") },
+                { Allele.create("AATTGC"),  Strand.POSITIVE, Allele.create("AATTGC") },
+                { Allele.create("AATTGCG"), Strand.POSITIVE, Allele.create("AATTGCG") },
+                { Allele.create("A"),       Strand.NEGATIVE, Allele.create("T") },
+                { Allele.create("AA"),      Strand.NEGATIVE, Allele.create("TT") },
+                { Allele.create("AAT"),     Strand.NEGATIVE, Allele.create("ATT") },
+                { Allele.create("AATT"),    Strand.NEGATIVE, Allele.create("AATT") },
+                { Allele.create("AATTG"),   Strand.NEGATIVE, Allele.create("CAATT") },
+                { Allele.create("AATTGC"),  Strand.NEGATIVE, Allele.create("GCAATT") },
+                { Allele.create("AATTGCG"), Strand.NEGATIVE, Allele.create("CGCAATT") },
+        };
+    }
+
     //==================================================================================================================
     // Tests:
 
@@ -1207,8 +1320,8 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test (dataProvider = "provideDataForGetTranscriptAlleleStartPosition")
-    void testGetTranscriptAlleleStartPosition(final int variantStartPosition, final int codingStartPosition, final int codingEndPosition, final Strand strand, final int expected) {
-        Assert.assertEquals( FuncotatorUtils.getTranscriptAlleleStartPosition(variantStartPosition, codingStartPosition, codingEndPosition, strand), expected );
+    void testGetTranscriptAlleleStartPosition(final VariantContext variant, final List<Locatable> exons, final Strand strand, final int expected) {
+        Assert.assertEquals( FuncotatorUtils.getTranscriptAlleleStartPosition(variant, exons, strand), expected );
     }
 
     @Test (dataProvider = "provideDataForTestCreateSpliceSiteCodonChange")
@@ -1258,5 +1371,45 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
 
         final String basesInWindow = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(refAllele, altAllele, strand, referenceWindow, referenceContext);
         Assert.assertEquals( basesInWindow, expected );
+    }
+
+    @Test(enabled = false)
+    public void testSequenceDictionaryMD5Sums() {
+
+        final String refDir  = "/Users/jonn/Development/references" + File.separator;
+
+        final Map<String, List<String>> nameFilenameMap = new LinkedHashMap<>();
+
+        nameFilenameMap.put("BROAD REF", Arrays.asList("Homo_sapiens_assembly19.fasta", ""));
+        nameFilenameMap.put("B37",       Arrays.asList("human_g1k_v37.fasta", ""));
+        nameFilenameMap.put("GRCh37",    Arrays.asList("GRCh37.p13.genome.fasta", "chr"));
+        nameFilenameMap.put("HG19",      Arrays.asList("ucsc.hg19.fasta", "chr"));
+
+        final int chr3Length = 198022430;
+        final int chrYLength = 59373566;
+
+        for ( final Map.Entry<String, List<String>> entry : nameFilenameMap.entrySet() ) {
+
+            final String fileName = entry.getValue().get(0);
+            final String contigDecorator = entry.getValue().get(1);
+
+            final ReferenceDataSource referenceDataSource = ReferenceDataSource.of(IOUtils.getPath(refDir + fileName), true);
+
+            System.out.println();
+            System.out.println("================================================================================");
+            System.out.println("|                             " + entry.getKey() + " (" + fileName + ")");
+            System.out.println("================================================================================");
+
+            Assert.assertEquals(referenceDataSource.queryAndPrefetch(contigDecorator + "3", 1, chr3Length).getBases().length, chr3Length);
+            Assert.assertEquals(referenceDataSource.queryAndPrefetch(contigDecorator + "Y", 1, chrYLength).getBases().length, chrYLength);
+
+            System.out.println("CHR 3: " + Utils.calcMD5(referenceDataSource.queryAndPrefetch(contigDecorator + "3", 1, chr3Length).getBases()));
+            System.out.println("CHR Y: " + Utils.calcMD5(referenceDataSource.queryAndPrefetch(contigDecorator + "Y", 1, chrYLength).getBases()));
+        }
+    }
+
+    @Test(dataProvider = "provideForTestGetStrandCorrectedAllele")
+    public void testGetStrandCorrectedAllele(final Allele allele, final Strand strand, final Allele expected) {
+         Assert.assertEquals( FuncotatorUtils.getStrandCorrectedAllele(allele, strand), expected );
     }
 }

@@ -2,12 +2,11 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequence;
-import java.nio.file.Path;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.iterators.ByteArrayIterator;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
-import java.io.File;
+import java.nio.file.Path;
 import java.util.Iterator;
 
 /**
@@ -28,6 +27,21 @@ public interface ReferenceDataSource extends GATKDataSource<Byte>, AutoCloseable
         return new ReferenceFileSource(fastaPath);
     }
 
+    /**
+     * Initialize this data source using a fasta file.
+     *
+     * The provided fasta file must have companion .fai and .dict files.
+     *
+     * If {@code preserveFileBases} is {@code true}, will NOT convert IUPAC bases in the file to `N` and will NOT capitalize lower-case bases.
+     *
+     * NOTE: Most GATK tools do not support data created by setting {@code preserveFileBases} to {@code true}.
+     *
+     * @param fastaPath reference fasta Path
+     * @param preserveFileBases Whether to preserve the original bases in the given reference file path.
+     */
+    public static ReferenceDataSource of(final Path fastaPath, final boolean preserveFileBases) {
+        return new ReferenceFileSource(fastaPath, preserveFileBases);
+    }
 
     /**
      * Initialize this data source using ReferenceBases and corresponding sequence dictionary.

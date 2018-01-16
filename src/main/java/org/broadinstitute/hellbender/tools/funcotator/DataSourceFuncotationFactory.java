@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
@@ -20,10 +21,14 @@ public abstract class DataSourceFuncotationFactory implements AutoCloseable {
     /** Standard Logger.  */
     protected static final Logger logger = LogManager.getLogger(DataSourceFuncotationFactory.class);
 
+    /** Default version string for this {@link DataSourceFuncotationFactory}. */
+    @VisibleForTesting
+    public static final String DEFAULT_VERSION_STRING = "UNKNOWN_VERSION";
+
     /**
      * Version number of this {@link DataSourceFuncotationFactory}.
      */
-    protected String version = "UNKNOWN_VERSION";
+    protected String version = DEFAULT_VERSION_STRING;
 
     /**
      * Map of ANNOTATION_NAME -> OVERRIDE_VALUE.
@@ -48,6 +53,13 @@ public abstract class DataSourceFuncotationFactory implements AutoCloseable {
     }
 
     //==================================================================================================================
+
+    /**
+     * @return A {@link String} containing information about this {@link DataSourceFuncotationFactory}.
+     */
+    public String getInfoString() {
+        return getName() + " " + getVersion();
+    }
 
     /**
      * Perform cleanup tasks for this {@link DataSourceFuncotationFactory}.

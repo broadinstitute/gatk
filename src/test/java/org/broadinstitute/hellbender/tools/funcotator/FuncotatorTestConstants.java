@@ -56,4 +56,10 @@ public class FuncotatorTestConstants {
     public static final String SIMPLE_UNIPROT_HG19_TSV_PATH = DATA_SOURCES_FOLDER_PATH + "simple_uniprot" + File.separator + "hg19" + File.separator + "simple_uniprot_Dec012014.tsv";
 
     public static final String COSMIC_TEST_DB = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "cosmic" + File.separator + "hg19" + File.separator + "CosmicTest.db";
+
+    // ----------------------------------------------------------------------
+    // Integration Test Variables:
+    public static final String MUC16_MNP_FILE_BASE_NAME    = FUNCOTATOR_TEST_DIR + "MUC16_MNP";
+    public static final String PIK3CA_SNP_FILE_BASE_NAME   = FUNCOTATOR_TEST_DIR + "PIK3CA_SNPS";
+    public static final String PIK3CA_INDEL_FILE_BASE_NAME = FUNCOTATOR_TEST_DIR + "PIK3CA_INDELS";
 }

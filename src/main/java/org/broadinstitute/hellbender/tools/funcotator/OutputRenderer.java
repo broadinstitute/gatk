@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * An abstract class to allow for writing output for the Funcotator.
@@ -27,7 +28,22 @@ public abstract class OutputRenderer implements AutoCloseable {
      */
     protected String manualAnnotationSerializedString;
 
+    /**
+     * {@link List} of the {@link DataSourceFuncotationFactory} objects that are being used in this run of {@link Funcotator}.
+     */
+    protected List<DataSourceFuncotationFactory> dataSourceFactories;
+
     //==================================================================================================================
+
+    /**
+     * @return A {@link String} containing information about the data sources that are used to create the {@link Funcotation}s by this {@link OutputRenderer}.
+     */
+    public String getDataSourceInfoString() {
+
+        return dataSourceFactories.stream()
+                .map(DataSourceFuncotationFactory::getInfoString)
+                .collect(Collectors.joining(" | "));
+    }
 
     /**
      * Open the {@link OutputRenderer} for writing.

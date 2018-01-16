@@ -1,12 +1,16 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 
+import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
+import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature;
 import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfGeneFeature;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -39,7 +43,7 @@ public class GencodeFuncotation implements Funcotation {
     private String                  genomeChange;                       // TRIVIAL
     private String                  annotationTranscript;               // TRIVIAL
     private String                  transcriptStrand;                   // TRIVIAL
-    private Integer transcriptExon;                     //           CDS / UTRs
+    private Integer                 transcriptExon;                     //           CDS / UTRs
     private Integer                 transcriptPos;                      // TRIVIAL
     private String                  cDnaChange;                         //           CDS
     private String                  codonChange;                        //           CDS
@@ -57,6 +61,8 @@ public class GencodeFuncotation implements Funcotation {
     private Integer                             locusLevel;
     private GencodeGtfGeneFeature.FeatureTag    apprisRank;
     private Integer                             transcriptLength;
+    private String                              version;
+    private GencodeGtfFeature.GeneTranscriptType geneTranscriptType;
 
     //------------------------------------------------------------
     // Fields for overriding serialized values:
@@ -120,6 +126,8 @@ public class GencodeFuncotation implements Funcotation {
         this.locusLevel = that.locusLevel;
         this.apprisRank = that.apprisRank;
         this.transcriptLength = that.transcriptLength;
+        this.version = that.version;
+        this.geneTranscriptType = that.geneTranscriptType;
         this.hugoSymbolSerializedOverride = that.hugoSymbolSerializedOverride;
         this.ncbiBuildSerializedOverride = that.ncbiBuildSerializedOverride;
         this.chromosomeSerializedOverride = that.chromosomeSerializedOverride;
@@ -156,6 +164,11 @@ public class GencodeFuncotation implements Funcotation {
     //==================================================================================================================
 
     @Override
+    public Allele getAltAllele() {
+        return Allele.create(tumorSeqAllele2.getBytes(), false);
+    }
+
+    @Override
     public String serializeToVcfString() {
         // Alias for the FIELD_DELIMITER so we can have nicer looking code:
         final String DELIMITER = VcfOutputRenderer.FIELD_DELIMITER;
@@ -187,59 +200,68 @@ public class GencodeFuncotation implements Funcotation {
 
     @Override
     public void setFieldSerializationOverrideValue( final String fieldName, final String overrideValue ) {
-        switch (fieldName) {
-            case "Gencode_hugoSymbol": hugoSymbolSerializedOverride = overrideValue; break;
-            case "Gencode_ncbiBuild": ncbiBuildSerializedOverride = overrideValue; break;
-            case "Gencode_chromosome": chromosomeSerializedOverride = overrideValue; break;
-            case "Gencode_start": startSerializedOverride = overrideValue; break;
-            case "Gencode_end": endSerializedOverride = overrideValue; break;
-            case "Gencode_variantClassification": variantClassificationSerializedOverride = overrideValue; break;
-            case "Gencode_secondaryVariantClassification": secondaryVariantClassificationSerializedOverride = overrideValue; break;
-            case "Gencode_variantType": variantTypeSerializedOverride = overrideValue; break;
-            case "Gencode_refAllele": refAlleleSerializedOverride = overrideValue; break;
-            case "Gencode_tumorSeqAllele1": tumorSeqAllele1SerializedOverride = overrideValue; break;
-            case "Gencode_tumorSeqAllele2": tumorSeqAllele2SerializedOverride = overrideValue; break;
-            case "Gencode_genomeChange": genomeChangeSerializedOverride = overrideValue; break;
-            case "Gencode_annotationTranscript": annotationTranscriptSerializedOverride = overrideValue; break;
-            case "Gencode_transcriptStrand": transcriptStrandSerializedOverride = overrideValue; break;
-            case "Gencode_transcriptExon": transcriptExonSerializedOverride = overrideValue; break;
-            case "Gencode_transcriptPos": transcriptPosSerializedOverride = overrideValue; break;
-            case "Gencode_cDnaChange": cDnaChangeSerializedOverride = overrideValue; break;
-            case "Gencode_codonChange": codonChangeSerializedOverride = overrideValue; break;
-            case "Gencode_proteinChange": proteinChangeSerializedOverride = overrideValue; break;
-            case "Gencode_gcContent": gcContentSerializedOverride = overrideValue; break;
-            case "Gencode_referenceContext": referenceContextSerializedOverride = overrideValue; break;
-            case "Gencode_otherTranscripts": otherTranscriptsSerializedOverride = overrideValue; break;
+
+        // Cut off the "Gencode" and version number at the start of the string:
+        final String shortFieldName = fieldName.replaceAll("^" + GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_", "");
+
+        switch (shortFieldName) {
+            case "hugoSymbol": hugoSymbolSerializedOverride = overrideValue; break;
+            case "ncbiBuild": ncbiBuildSerializedOverride = overrideValue; break;
+            case "chromosome": chromosomeSerializedOverride = overrideValue; break;
+            case "start": startSerializedOverride = overrideValue; break;
+            case "end": endSerializedOverride = overrideValue; break;
+            case "variantClassification": variantClassificationSerializedOverride = overrideValue; break;
+            case "secondaryVariantClassification": secondaryVariantClassificationSerializedOverride = overrideValue; break;
+            case "variantType": variantTypeSerializedOverride = overrideValue; break;
+            case "refAllele": refAlleleSerializedOverride = overrideValue; break;
+            case "tumorSeqAllele1": tumorSeqAllele1SerializedOverride = overrideValue; break;
+            case "tumorSeqAllele2": tumorSeqAllele2SerializedOverride = overrideValue; break;
+            case "genomeChange": genomeChangeSerializedOverride = overrideValue; break;
+            case "annotationTranscript": annotationTranscriptSerializedOverride = overrideValue; break;
+            case "transcriptStrand": transcriptStrandSerializedOverride = overrideValue; break;
+            case "transcriptExon": transcriptExonSerializedOverride = overrideValue; break;
+            case "transcriptPos": transcriptPosSerializedOverride = overrideValue; break;
+            case "cDnaChange": cDnaChangeSerializedOverride = overrideValue; break;
+            case "codonChange": codonChangeSerializedOverride = overrideValue; break;
+            case "proteinChange": proteinChangeSerializedOverride = overrideValue; break;
+            case "gcContent": gcContentSerializedOverride = overrideValue; break;
+            case "referenceContext": referenceContextSerializedOverride = overrideValue; break;
+            case "otherTranscripts": otherTranscriptsSerializedOverride = overrideValue; break;
             default: throw new UserException("Attempted to override invalid field in this GencodeFuncotation: " + fieldName + " (value was: " + overrideValue + ")");
         }
+    }
+
+    @Override
+    public String getDataSourceName() {
+        return GencodeFuncotationFactory.DATA_SOURCE_NAME;
     }
 
     @Override
     public LinkedHashSet<String> getFieldNames() {
         return new LinkedHashSet<>(
                 Arrays.asList(
-                        "Gencode_hugoSymbol",
-                        "Gencode_ncbiBuild",
-                        "Gencode_chromosome",
-                        "Gencode_start",
-                        "Gencode_end",
-                        "Gencode_variantClassification",
-                        "Gencode_secondaryVariantClassification",
-                        "Gencode_variantType",
-                        "Gencode_refAllele",
-                        "Gencode_tumorSeqAllele1",
-                        "Gencode_tumorSeqAllele2",
-                        "Gencode_genomeChange",
-                        "Gencode_annotationTranscript",
-                        "Gencode_transcriptStrand",
-                        "Gencode_transcriptExon",
-                        "Gencode_transcriptPos",
-                        "Gencode_cDnaChange",
-                        "Gencode_codonChange",
-                        "Gencode_proteinChange",
-                        "Gencode_gcContent",
-                        "Gencode_referenceContext",
-                        "Gencode_otherTranscripts"
+                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_hugoSymbol",
+                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_ncbiBuild",
+                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_chromosome",
+                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_start",
+                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_end",
+                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_variantClassification",
+                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_secondaryVariantClassification",
+                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_variantType",
+                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_refAllele",
+                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_tumorSeqAllele1",
+                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_tumorSeqAllele2",
+                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_genomeChange",
+                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_annotationTranscript",
+                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_transcriptStrand",
+                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_transcriptExon",
+                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_transcriptPos",
+                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_cDnaChange",
+                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_codonChange",
+                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_proteinChange",
+                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_gcContent",
+                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_referenceContext",
+                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_otherTranscripts"
                 )
         );
     }
@@ -248,12 +270,12 @@ public class GencodeFuncotation implements Funcotation {
     public String getField(final String fieldName) {
 
         // Allow a user to specify the name of the field, or the fully-qualified name of the field
-        // with "Gencode_" at the start.
-        final String altFieldName = "Gencode_" + fieldName;
+        // with GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_" at the start.
+        final String altFieldName = GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_" + fieldName;
         final LinkedHashSet<String> fieldNames = getFieldNames();
 
         if ( fieldNames.contains(fieldName) || fieldNames.contains(altFieldName) ) {
-            switch(fieldName.replace("Gencode_", "")) {
+            switch(fieldName.replace(GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_", "")) {
                 case "hugoSymbol":
                     return (hugoSymbolSerializedOverride != null ? hugoSymbolSerializedOverride : (hugoSymbol != null ? hugoSymbol : ""));
                 case "ncbiBuild":
@@ -348,6 +370,8 @@ public class GencodeFuncotation implements Funcotation {
         if ( apprisRank != that.apprisRank ) return false;
         if ( transcriptLength != null ? !transcriptLength.equals(that.transcriptLength) : that.transcriptLength != null )
             return false;
+        if ( version != null ? !version.equals(that.version) : that.version != null ) return false;
+        if ( geneTranscriptType != that.geneTranscriptType ) return false;
         if ( hugoSymbolSerializedOverride != null ? !hugoSymbolSerializedOverride.equals(that.hugoSymbolSerializedOverride) : that.hugoSymbolSerializedOverride != null )
             return false;
         if ( ncbiBuildSerializedOverride != null ? !ncbiBuildSerializedOverride.equals(that.ncbiBuildSerializedOverride) : that.ncbiBuildSerializedOverride != null )
@@ -420,6 +444,8 @@ public class GencodeFuncotation implements Funcotation {
         result = 31 * result + (locusLevel != null ? locusLevel.hashCode() : 0);
         result = 31 * result + (apprisRank != null ? apprisRank.hashCode() : 0);
         result = 31 * result + (transcriptLength != null ? transcriptLength.hashCode() : 0);
+        result = 31 * result + (version != null ? version.hashCode() : 0);
+        result = 31 * result + (geneTranscriptType != null ? geneTranscriptType.hashCode() : 0);
         result = 31 * result + (hugoSymbolSerializedOverride != null ? hugoSymbolSerializedOverride.hashCode() : 0);
         result = 31 * result + (ncbiBuildSerializedOverride != null ? ncbiBuildSerializedOverride.hashCode() : 0);
         result = 31 * result + (chromosomeSerializedOverride != null ? chromosomeSerializedOverride.hashCode() : 0);
@@ -473,6 +499,8 @@ public class GencodeFuncotation implements Funcotation {
                 ", locusLevel=" + locusLevel +
                 ", apprisRank=" + apprisRank +
                 ", transcriptLength=" + transcriptLength +
+                ", version='" + version + '\'' +
+                ", geneTranscriptType=" + geneTranscriptType +
                 ", hugoSymbolSerializedOverride='" + hugoSymbolSerializedOverride + '\'' +
                 ", ncbiBuildSerializedOverride='" + ncbiBuildSerializedOverride + '\'' +
                 ", chromosomeSerializedOverride='" + chromosomeSerializedOverride + '\'' +
@@ -699,6 +727,18 @@ public class GencodeFuncotation implements Funcotation {
         this.referenceContext = referenceContext;
     }
 
+    public void setVersion(final String version) {
+        this.version = version;
+    }
+
+    public GencodeGtfFeature.GeneTranscriptType getGeneTranscriptType() {
+        return geneTranscriptType;
+    }
+
+    public void setGeneTranscriptType(final GencodeGtfFeature.GeneTranscriptType geneTranscriptType) {
+        this.geneTranscriptType = geneTranscriptType;
+    }
+
     //==================================================================================================================
 
     public enum VariantType {
@@ -728,59 +768,63 @@ public class GencodeFuncotation implements Funcotation {
      *     https://gatkforums.broadinstitute.org/gatk/discussion/8815/oncotator-variant-classification-and-secondary-variant-classification
      */
     public enum VariantClassification {
+
+        /** Variant classification could not be determined. */
+        COULD_NOT_DETERMINE("",99),
+
         // Only for Introns:
         /** Variant lies between exons within the bounds of the chosen transcript. */
-        INTRON(10),
+        INTRON("INTRON", 10),
 
         // Only for UTRs:
         /** Variant is on the 5'UTR for the chosen transcript. */
-        FIVE_PRIME_UTR(6),
+        FIVE_PRIME_UTR("FIVE_PRIME_UTR", 6),
         /** Variant is on the 3'UTR for the chosen transcript */
-        THREE_PRIME_UTR(6),
+        THREE_PRIME_UTR("THREE_PRIME_UTR", 6),
 
         // Only for IGRs:
         /** Intergenic region. Does not overlap any transcript. */
-        IGR(20),
+        IGR("IGR", 20),
         /** The variant is upstream of the chosen transcript (within 3kb) */
-        FIVE_PRIME_FLANK(15),
+        FIVE_PRIME_FLANK("FIVE_PRIME_FLANK", 15),
 
         // These can be in Coding regions or Introns (only SPLICE_SITE):
         /** The point mutation alters the protein structure by one amino acid. */
-        MISSENSE(1),
+        MISSENSE("MISSENSE", 1),
         /** A premature stop codon is created by the variant. */
-        NONSENSE(0),
+        NONSENSE("NONSENSE", 0),
         /** Variant removes stop codon. */
-        NONSTOP(0),
+        NONSTOP("NONSTOP", 0),
         /** Variant is in coding region of the chosen transcript, but protein structure is identical (i.e. a synonymous mutation). */
-        SILENT(5),
+        SILENT("SILENT", 5),
         /** The variant is within a configurable number of bases (default=2) of a splice site. See the secondary classification to determine if it lies on the exon or intron side. */
-        SPLICE_SITE(4),
+        SPLICE_SITE("SPLICE_SITE", 4),
         /** Deletion that keeps the sequence in frame (i.e. deletion of a length evenly divisible by 3). */
-        IN_FRAME_DEL(1),
+        IN_FRAME_DEL("IN_FRAME_DEL", 1),
         /** Insertion that keeps the sequence in frame (i.e. insertion of a length evenly divisible by 3). */
-        IN_FRAME_INS(1),
+        IN_FRAME_INS("IN_FRAME_INS", 1),
         /** Insertion that moves the coding sequence out of frame (i.e. insertion of a length not evenly divisible by 3). */
-        FRAME_SHIFT_INS(2),
+        FRAME_SHIFT_INS("FRAME_SHIFT_INS", 2),
         /** Deletion that moves the sequence out of frame (i.e. deletion of a length not evenly divisible by 3). */
-        FRAME_SHIFT_DEL(2),
+        FRAME_SHIFT_DEL("FRAME_SHIFT_DEL", 2),
         /** Point mutation that overlaps the start codon. */
-        START_CODON_SNP(3),
+        START_CODON_SNP("START_CODON_SNP", 3),
         /** Insertion that overlaps the start codon. */
-        START_CODON_INS(3),
+        START_CODON_INS("START_CODON_INS", 3),
         /** Deletion that overlaps the start codon. */
-        START_CODON_DEL(3),
+        START_CODON_DEL("START_CODON_DEL", 3),
 
         // These can only be in 5' UTRs:
         /** New start codon is created by the given variant using the chosen transcript. However, it is in frame relative to the coded protein. */
-        DE_NOVO_START_IN_FRAME(1),
+        DE_NOVO_START_IN_FRAME("DE_NOVO_START_IN_FRAME", 1),
         /** New start codon is created by the given variant using the chosen transcript. However, it is out of frame relative to the coded protein. */
-        DE_NOVO_START_OUT_FRAME(0),
+        DE_NOVO_START_OUT_FRAME("DE_NOVO_START_OUT_FRAME", 0),
 
         // These are special / catch-all cases:
         /** Variant lies on one of the RNA transcripts. */
-        RNA(4),
+        RNA("RNA", 4),
         /** Variant lies on one of the lincRNAs. */
-        LINCRNA(4);
+        LINCRNA("LINCRNA", 4);
 
         /**
          * The relative severity of each {@link VariantClassification}.
@@ -789,7 +833,11 @@ public class GencodeFuncotation implements Funcotation {
          */
         final private int relativeSeverity;
 
-        VariantClassification(final int sev) {
+        /** The serialized version of this {@link VariantClassification} */
+        final private String serialized;
+
+        VariantClassification(final String serialized, final int sev) {
+            this.serialized = serialized;
             relativeSeverity = sev;
         }
 
@@ -797,5 +845,10 @@ public class GencodeFuncotation implements Funcotation {
          * @return The {@link VariantClassification#relativeSeverity} of {@code this} {@link VariantClassification}.
          */
         public int getSeverity() { return relativeSeverity; }
+
+        @Override
+        public String toString() {
+            return serialized;
+        }
     }
 }
