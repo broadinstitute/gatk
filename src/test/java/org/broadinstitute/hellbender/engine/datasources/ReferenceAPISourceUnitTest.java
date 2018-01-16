@@ -19,6 +19,8 @@ import java.util.Map;
 
 import static org.broadinstitute.hellbender.engine.datasources.ReferenceAPISource.*;
 
+//TODO remove these tests instead of disabling them, https://github.com/broadinstitute/gatk/issues/4166
+@Test(enabled = false)
 public class ReferenceAPISourceUnitTest extends GATKBaseTest {
 
     private ReferenceBases queryReferenceAPI(final String referenceName, final SimpleInterval interval, int pageSize ) {
