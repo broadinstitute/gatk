@@ -248,7 +248,7 @@ task SplitIntervals {
         docker: gatk_docker
         memory: machine_mem + " GB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
-        preemptible: select_first([preemptible_attempts, 3])
+        preemptible: select_first([preemptible_attempts, 10])
         cpu: select_first([cpu, 1])
     }
 
@@ -329,7 +329,7 @@ task M2 {
         docker: gatk_docker
         memory: machine_mem + " GB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
-        preemptible: select_first([preemptible_attempts, 3])
+        preemptible: select_first([preemptible_attempts, 10])
         cpu: select_first([cpu, 1])
     }
 
@@ -371,7 +371,7 @@ task MergeVCFs {
         docker: gatk_docker
         memory: machine_mem + " GB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
-        preemptible: select_first([preemptible_attempts, 3])
+        preemptible: select_first([preemptible_attempts, 10])
         cpu: select_first([cpu, 1])
     }
 
@@ -416,7 +416,7 @@ task MergeBamOuts {
         docker: gatk_docker
         memory: machine_mem + " GB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
-        preemptible: select_first([preemptible_attempts, 3])
+        preemptible: select_first([preemptible_attempts, 10])
         cpu: select_first([cpu, 1])
     }
 
@@ -457,7 +457,7 @@ task CollectSequencingArtifactMetrics {
         docker: gatk_docker
         memory: machine_mem + " GB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
-        preemptible: select_first([preemptible_attempts, 3])
+        preemptible: select_first([preemptible_attempts, 10])
         cpu: select_first([cpu, 1])
     }
 
@@ -560,7 +560,7 @@ task Filter {
         docker: gatk_docker
         memory: machine_mem + " GB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
-        preemptible: select_first([preemptible_attempts, 3])
+        preemptible: select_first([preemptible_attempts, 10])
         cpu: select_first([cpu, 1])
     }
 
@@ -687,7 +687,7 @@ task oncotate_m2 {
         memory: machine_mem + " GB"
         bootDiskSizeGb: 12
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
-        preemptible: select_first([preemptible_attempts, 3])
+        preemptible: select_first([preemptible_attempts, 10])
         cpu: select_first([cpu, 1])
     }
 
