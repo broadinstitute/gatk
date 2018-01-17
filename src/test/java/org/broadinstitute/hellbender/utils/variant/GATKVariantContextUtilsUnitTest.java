@@ -2040,6 +2040,17 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         };
     }
 
+    @DataProvider
+    Object[][] provideDataForIsTransition() {
+        return new Object[][] {
+                { makeVC("source", Arrays.asList(Aref, C)), false},
+                { makeVC("source", Arrays.asList(Aref, G)), true},
+                { makeVC("source", Arrays.asList(Aref, T)), false},
+                { makeVC("source", Arrays.asList(Cref, G)), false},
+                { makeVC("source", Arrays.asList(Cref, T)), true}
+        };
+    }
+
 
     @Test(dataProvider = "provideAllelesAndFrameshiftResults")
     void testIsFrameshift(final Allele ref, final Allele alt, final boolean expected) {
@@ -2095,5 +2106,10 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
             Assert.assertEquals(ref.getBaseString(), expectedRef.getBaseString());
         }
         Assert.assertTrue(ref == expectedRef || ref.getBaseString().equals(expectedRef.getBaseString()));
+    }
+
+    @Test(dataProvider = "provideDataForIsTransition")
+    public void testIsTransition(final VariantContext vc, final boolean isTransition) {
+        Assert.assertEquals(GATKVariantContextUtils.isTransition(vc), isTransition);
     }
 }
