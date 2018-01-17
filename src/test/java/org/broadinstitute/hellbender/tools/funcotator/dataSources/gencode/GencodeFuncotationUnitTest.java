@@ -1,11 +1,14 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 /**
@@ -408,6 +411,308 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
         };
     }
 
+
+    @DataProvider
+    Object[][] provideForTestGetFieldNames() {
+        //final GencodeFuncotation gencodeFuncotation, final LinkedHashSet<String> expected
+        return new Object[][] {
+                {
+                        createGencodeFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
+                                GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
+                                "A", "T", "T", "big changes", "T1",
+                                "3'", 1, 1, "A", "ATC", "Lys", 1.0, null, Arrays.asList("ONE", "TWO", "THREE")),
+                        new LinkedHashSet<>(
+                                Arrays.asList("Gencode_hugoSymbol",
+                                        "Gencode_ncbiBuild",
+                                        "Gencode_chromosome",
+                                        "Gencode_start",
+                                        "Gencode_end",
+                                        "Gencode_variantClassification",
+                                        "Gencode_secondaryVariantClassification",
+                                        "Gencode_variantType",
+                                        "Gencode_refAllele",
+                                        "Gencode_tumorSeqAllele1",
+                                        "Gencode_tumorSeqAllele2",
+                                        "Gencode_genomeChange",
+                                        "Gencode_annotationTranscript",
+                                        "Gencode_transcriptStrand",
+                                        "Gencode_transcriptExon",
+                                        "Gencode_transcriptPos",
+                                        "Gencode_cDnaChange",
+                                        "Gencode_codonChange",
+                                        "Gencode_proteinChange",
+                                        "Gencode_gcContent",
+                                        "Gencode_referenceContext",
+                                        "Gencode_otherTranscripts")
+                        )
+                },
+        };
+    }
+
+    @DataProvider
+    Object[][] provideForTestGetField() {
+        //final GencodeFuncotation gencodeFuncotation, final String fieldName, final String expected
+
+        final GencodeFuncotation gencodeFuncotation = createGencodeFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
+                GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
+                "A", "T", "T", "big changes", "T1",
+                "3'", 1, 1, "A", "ATC", "Lys", 1.0, "ATGCGCAT", Arrays.asList("ONE", "TWO", "THREE"));
+
+        return new Object[][] {
+                {
+                        gencodeFuncotation,
+                        "Gencode_hugoSymbol",
+                        "TESTGENE"
+                },
+                {
+                        gencodeFuncotation,
+                        "hugoSymbol",
+                        "TESTGENE"
+                },
+                {
+                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_hugoSymbol", "GARBAGEDAY"),
+                        "hugoSymbol",
+                        "GARBAGEDAY"
+                },
+                {
+                        gencodeFuncotation,
+                        "ncbiBuild",
+                        "BUILD1"
+                },
+                {
+                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_ncbiBuild", "OVERRIDE"),
+                        "ncbiBuild",
+                        "OVERRIDE"
+                },
+                {
+                        gencodeFuncotation,
+                        "chromosome",
+                        "chr1"
+                },
+                {
+                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_chromosome", "OVERRIDE"),
+                        "chromosome",
+                        "OVERRIDE"
+                },
+                {
+                        gencodeFuncotation,
+                        "start",
+                        "1"
+                },
+                {
+                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_start", "OVERRIDE"),
+                        "start",
+                        "OVERRIDE"
+                },
+                {
+                        gencodeFuncotation,
+                        "end",
+                        "100"
+                },
+                {
+                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_end", "OVERRIDE"),
+                        "end",
+                        "OVERRIDE"
+                },
+                {
+                        gencodeFuncotation,
+                        "variantClassification",
+                        GencodeFuncotation.VariantClassification.NONSENSE.toString()
+                },
+                {
+                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_variantClassification", "OVERRIDE"),
+                        "variantClassification",
+                        "OVERRIDE"
+                },
+                {
+                        gencodeFuncotation,
+                        "secondaryVariantClassification",
+                        GencodeFuncotation.VariantClassification.INTRON.toString()
+                },
+                {
+                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_secondaryVariantClassification", "OVERRIDE"),
+                        "secondaryVariantClassification",
+                        "OVERRIDE"
+                },
+                {
+                        gencodeFuncotation,
+                        "variantType",
+                        GencodeFuncotation.VariantType.SNP.toString()
+                },
+                {
+                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_variantType", "OVERRIDE"),
+                        "variantType",
+                        "OVERRIDE"
+                },
+                {
+                        gencodeFuncotation,
+                        "refAllele",
+                        "A"
+                },
+                {
+                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_refAllele", "OVERRIDE"),
+                        "refAllele",
+                        "OVERRIDE"
+                },
+                {
+                        gencodeFuncotation,
+                        "tumorSeqAllele1",
+                        "T"
+                },
+                {
+                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_tumorSeqAllele1", "OVERRIDE"),
+                        "tumorSeqAllele1",
+                        "OVERRIDE"
+                },
+                {
+                        gencodeFuncotation,
+                        "tumorSeqAllele2",
+                        "T"
+                },
+                {
+                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_tumorSeqAllele2", "OVERRIDE"),
+                        "tumorSeqAllele2",
+                        "OVERRIDE"
+                },
+                {
+                        gencodeFuncotation,
+                        "genomeChange",
+                        "big changes"
+                },
+                {
+                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_genomeChange", "OVERRIDE"),
+                        "genomeChange",
+                        "OVERRIDE"
+                },
+                {
+                        gencodeFuncotation,
+                        "annotationTranscript",
+                        "T1"
+                },
+                {
+                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_annotationTranscript", "OVERRIDE"),
+                        "annotationTranscript",
+                        "OVERRIDE"
+                },
+                {
+                        gencodeFuncotation,
+                        "transcriptStrand",
+                        "3'"
+                },
+                {
+                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_transcriptStrand", "OVERRIDE"),
+                        "transcriptStrand",
+                        "OVERRIDE"
+                },
+                {
+                        gencodeFuncotation,
+                        "transcriptExon",
+                        "1"
+                },
+                {
+                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_transcriptExon", "OVERRIDE"),
+                        "transcriptExon",
+                        "OVERRIDE"
+                },
+                {
+                        gencodeFuncotation,
+                        "transcriptPos",
+                        "1"
+                },
+                {
+                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_transcriptPos", "OVERRIDE"),
+                        "transcriptPos",
+                        "OVERRIDE"
+                },
+                {
+                        gencodeFuncotation,
+                        "cDnaChange",
+                        "A"
+                },
+                {
+                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_cDnaChange", "OVERRIDE"),
+                        "cDnaChange",
+                        "OVERRIDE"
+                },
+                {
+                        gencodeFuncotation,
+                        "codonChange",
+                        "ATC"
+                },
+                {
+                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_codonChange", "OVERRIDE"),
+                        "codonChange",
+                        "OVERRIDE"
+                },
+                {
+                        gencodeFuncotation,
+                        "proteinChange",
+                        "Lys"
+                },
+                {
+                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_proteinChange", "OVERRIDE"),
+                        "proteinChange",
+                        "OVERRIDE"
+                },
+                {
+                        gencodeFuncotation,
+                        "gcContent",
+                        "1.0"
+                },
+                {
+                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_gcContent", "OVERRIDE"),
+                        "gcContent",
+                        "OVERRIDE"
+                },
+                {
+                        gencodeFuncotation,
+                        "referenceContext",
+                        "ATGCGCAT"
+                },
+                {
+                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_referenceContext", "OVERRIDE"),
+                        "referenceContext",
+                        "OVERRIDE"
+                },
+                {
+                        gencodeFuncotation,
+                        "otherTranscripts",
+                        "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
+                },
+                {
+                        setFuncotationFieldOverride(gencodeFuncotation, "Gencode_otherTranscripts", "OVERRIDE"),
+                        "otherTranscripts",
+                        "OVERRIDE"
+                }
+        };
+    }
+
+    @DataProvider
+    Object[][] provideForTestGetFieldFail() {
+        //final GencodeFuncotation gencodeFuncotation, final String fieldName, final String expected
+
+        final GencodeFuncotation gencodeFuncotation = createGencodeFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
+                GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
+                "A", "T", "T", "big changes", "T1",
+                "3'", 1, 1, "A", "ATC", "Lys", 1.0, "ATGCGCAT", Arrays.asList("ONE", "TWO", "THREE"));
+
+
+        return new Object[][] {
+                {
+                    gencodeFuncotation,
+                    "TESTFIELD_OMICRON"
+                },
+                {
+                        gencodeFuncotation,
+                        "hugoSymmbol"
+                },
+                {
+                        gencodeFuncotation,
+                        "GENCODE_hugoSymbol"
+                },
+        };
+    }
+
     //==================================================================================================================
     // Tests:
 
@@ -419,5 +724,20 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
     @Test(dataProvider = "createGencodeFuncotationsAndStringSerializations")
     void testSerializeToVcfString(final GencodeFuncotation gencodeFuncotation, final String manualAnnotationString, final String expected) {
         Assert.assertEquals(gencodeFuncotation.serializeToVcfString(manualAnnotationString), expected);
+    }
+
+    @Test(dataProvider = "provideForTestGetFieldNames")
+    public void testGetFieldNames(final GencodeFuncotation gencodeFuncotation, final LinkedHashSet<String> expected) {
+        Assert.assertEquals(gencodeFuncotation.getFieldNames(), expected);
+    }
+
+    @Test(dataProvider = "provideForTestGetField")
+    public void testGetField(final GencodeFuncotation gencodeFuncotation, final String fieldName, final String expected) {
+        Assert.assertEquals(gencodeFuncotation.getField(fieldName), expected);
+    }
+
+    @Test(dataProvider = "provideForTestGetFieldFail", expectedExceptions = GATKException.class)
+    public void testGetFieldFail(final GencodeFuncotation gencodeFuncotation, final String fieldName) {
+        gencodeFuncotation.getField(fieldName);
     }
 }

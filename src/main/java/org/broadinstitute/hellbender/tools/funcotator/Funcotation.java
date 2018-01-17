@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
+import java.util.LinkedHashSet;
 import java.util.Map;
 
 /**
@@ -21,6 +22,19 @@ public interface Funcotation {
      * @return a {@link String} representing this {@link Funcotation} suitable for insertion into a VCF file.
      */
     String serializeToVcfString();
+
+    /**
+     * Get the names of the fields in this {@link Funcotation}.
+     * @return The ordered set of fields in this {@link Funcotation} as a {@link LinkedHashSet} of {@link String}s.
+     */
+    LinkedHashSet<String> getFieldNames();
+
+    /**
+     * Get the value of a field in this {@link Funcotation}.
+     * @return The {@link String} value of a field in this {@link Funcotation}.
+     * @throws {@link org.broadinstitute.hellbender.exceptions.GATKException} if the given {@code fieldName} is not in this {@link Funcotation}.
+     */
+    String getField(final String fieldName);
 
     /**
      * Override fields with values as specified by the input map (for when it comes time to serialize and write this {@link Funcotation}).

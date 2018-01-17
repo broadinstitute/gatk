@@ -343,7 +343,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             // The names in the file are actually in a list with | between each sequence name.
             // We need to split the names and add them to the dictionary so we can resolve them to the full
             // sequence name as it appears in the file:
-            for ( final String transcriptId : sequence.getSequenceName().split("\\|") ) {
+            for ( final String transcriptId : Utils.split(sequence.getSequenceName(), "|") ) {
                 idMap.put(transcriptId, transcriptInfo);
             }
         }
@@ -369,7 +369,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         boolean has5pUtr = false;
 
         // Now let's go through the sequence name and pull out the salient features for each field:
-        for (final String field : sequence.getSequenceName().split("\\|")) {
+        for (final String field : Utils.split(sequence.getSequenceName(), "|")) {
             if ((field.length() > 4) && (field.substring(0, 5).equals("UTR5:"))) {
                 final Matcher m = utrPattern.matcher(field);
                 m.find();

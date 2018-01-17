@@ -8,10 +8,7 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyX
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvTableFeature;
 
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -85,6 +82,21 @@ public class TableFuncotation implements Funcotation {
         return fieldMap.values().stream()
                 .map(f -> (f == null ? "" : f))
                 .collect(Collectors.joining(VcfOutputRenderer.FIELD_DELIMITER));
+    }
+
+    @Override
+    public LinkedHashSet<String> getFieldNames() {
+        return new LinkedHashSet<>(fieldMap.keySet());
+    }
+
+    @Override
+    public String getField(final String fieldName) {
+        if ( fieldMap.containsKey(fieldName) ) {
+            return fieldMap.get(fieldName);
+        }
+        else {
+            throw new GATKException(this.getClass().getSimpleName() + ": Does not contain field: " + fieldName);
+        }
     }
 
     @Override

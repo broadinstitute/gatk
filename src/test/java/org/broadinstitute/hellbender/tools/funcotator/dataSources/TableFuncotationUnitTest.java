@@ -1,13 +1,14 @@
-package org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv;
+package org.broadinstitute.hellbender.tools.funcotator.dataSources;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -15,7 +16,7 @@ import java.util.stream.Collectors;
  * A Unit Test class for {@link TableFuncotation}
  * Created by jonn on 11/28/17.
  */
-public class XSVFuncotationUnitTest extends GATKBaseTest {
+public class TableFuncotationUnitTest extends GATKBaseTest {
 
     //==================================================================================================================
     // Private Static Members:
@@ -98,6 +99,85 @@ public class XSVFuncotationUnitTest extends GATKBaseTest {
         };
     }
 
+    @DataProvider
+    Object[][] provideForTestGetFieldNames() {
+        //final TableFuncotation tableFuncotation, final LinkedHashSet<String> expected
+        return new Object[][] {
+                {
+                    new TableFuncotation(Collections.emptyList(), Collections.emptyList()),
+                    new LinkedHashSet<>(Collections.emptyList())
+                },
+                {
+                    new TableFuncotation(Collections.singletonList("TESTFIELD"), Collections.singletonList("TESTVAL")),
+                    new LinkedHashSet<>(Collections.singletonList("TESTFIELD"))
+                },
+                {
+                    new TableFuncotation(Arrays.asList("TESTFIELD1", "TESTFIELD2"), Arrays.asList("TESTVAL1", "TESTVAL2")),
+                    new LinkedHashSet<>(Arrays.asList("TESTFIELD1", "TESTFIELD2"))
+                },
+        };
+    }
+
+    @DataProvider
+    Object[][] provideForTestGetField() {
+        //final TableFuncotation tableFuncotation, final String fieldName, final String expected
+        return new Object[][] {
+                {
+                    new TableFuncotation(Collections.singletonList("TESTFIELD"), Collections.singletonList("TESTVAL")),
+                    "TESTFIELD",
+                    "TESTVAL"
+                },
+                {
+                    new TableFuncotation(Arrays.asList("TESTFIELD1", "TESTFIELD2"), Arrays.asList("TESTVAL1", "TESTVAL2")),
+                    "TESTFIELD1",
+                    "TESTVAL1"
+                },
+                {
+                    new TableFuncotation(Arrays.asList("TESTFIELD1", "TESTFIELD2"), Arrays.asList("TESTVAL1", "TESTVAL2")),
+                    "TESTFIELD2",
+                    "TESTVAL2"
+                },
+                {
+                    new TableFuncotation(Arrays.asList("TESTFIELD1", "TESTFIELD2", "TESTFIELD3"), Arrays.asList("TESTVAL1", "TESTVAL2", "TESTVAL3")),
+                    "TESTFIELD1",
+                    "TESTVAL1"
+                },
+                {
+                    new TableFuncotation(Arrays.asList("TESTFIELD1", "TESTFIELD2", "TESTFIELD3"), Arrays.asList("TESTVAL1", "TESTVAL2", "TESTVAL3")),
+                    "TESTFIELD2",
+                    "TESTVAL2"
+                },
+                {
+                    new TableFuncotation(Arrays.asList("TESTFIELD1", "TESTFIELD2", "TESTFIELD3"), Arrays.asList("TESTVAL1", "TESTVAL2", "TESTVAL3")),
+                    "TESTFIELD3",
+                    "TESTVAL3"
+                },
+        };
+    }
+
+    @DataProvider
+    Object[][] provideForTestGetFieldFail() {
+        //final TableFuncotation tableFuncotation, final String fieldName, final String expected
+        return new Object[][] {
+                {
+                    new TableFuncotation(Collections.emptyList(), Collections.emptyList()),
+                    "TESTFIELD_OMICRON"
+                },
+                {
+                    new TableFuncotation(Collections.singletonList("TESTFIELD"), Collections.singletonList("TESTVAL")),
+                    "testfield"
+                },
+                {
+                    new TableFuncotation(Collections.singletonList("TESTFIELD"), Collections.singletonList("TESTVAL")),
+                    "table_TESTFIELD"
+                },
+                {
+                    new TableFuncotation(Arrays.asList("TESTFIELD1", "TESTFIELD2", "TESTFIELD3"), Arrays.asList("TESTVAL1", "TESTVAL2", "TESTVAL3")),
+                    "TESTFIELD4"
+                },
+        };
+    }
+
     //==================================================================================================================
     // Tests:
 
@@ -139,6 +219,21 @@ public class XSVFuncotationUnitTest extends GATKBaseTest {
     public void testValues(final List<String> kvNames) {
         final TableFuncotation funcotation = new TableFuncotation(kvNames.stream().map(s -> s + "KEY").collect(Collectors.toList()), kvNames);
         Assert.assertEquals( funcotation.values(), kvNames);
+    }
+
+    @Test(dataProvider = "provideForTestGetFieldNames")
+    public void testGetFieldNames(final TableFuncotation tableFuncotation, final LinkedHashSet<String> expected) {
+        Assert.assertEquals(tableFuncotation.getFieldNames(), expected);
+    }
+
+    @Test(dataProvider = "provideForTestGetField")
+    public void testGetField(final TableFuncotation tableFuncotation, final String fieldName, final String expected) {
+        Assert.assertEquals(tableFuncotation.getField(fieldName), expected);
+    }
+
+    @Test(dataProvider = "provideForTestGetFieldFail", expectedExceptions = GATKException.class)
+    public void testGetFieldFail(final TableFuncotation tableFuncotation, final String fieldName) {
+        tableFuncotation.getField(fieldName);
     }
 
 }
