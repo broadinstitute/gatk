@@ -1247,25 +1247,7 @@ public final class GATKVariantContextUtils {
     public static int calculateGQFromPLs(final int[] plValues) {
         Utils.nonNull(plValues);
         Utils.validateArg(plValues.length >= 2, () -> "Array of PL values must contain at least two elements.");
-
-        int first = plValues[0];
-        int second = plValues[1];
-        if (first > second) {
-            second = first;
-            first = plValues[1];
-        }
-        for (int i = 2; i < plValues.length; i++) {
-            final int candidate = plValues[i];
-            if (candidate >= second) {
-                continue;
-            }
-            if (candidate <= first) {
-                second = first;
-                first = candidate;
-            } else
-                second = candidate;
-        }
-        return second - first;
+        return GATKProtectedMathUtils.secondSmallestMinusSmallest(plValues, 0);
     }
 
     /**
