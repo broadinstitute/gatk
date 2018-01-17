@@ -39,12 +39,12 @@ final public class SomaticGVCFWriter extends GVCFWriter {
      * @param lodPartitions     a list of TLOD partitions, this list must be non-empty and every element must be larger than previous element
      */
     public SomaticGVCFWriter(final VariantContextWriter underlyingWriter, final List<Number> lodPartitions) {
-        super(underlyingWriter, ImmutableList.of(1, 10, 20), HomoSapiensConstants.DEFAULT_PLOIDY);
+        super(underlyingWriter, ImmutableList.of(1, 10, 20), HomoSapiensConstants.DEFAULT_PLOIDY, false);
         gvcfBlockCombiner = new SomaticGVCFBlockCombiner(lodPartitions, HomoSapiensConstants.DEFAULT_PLOIDY);
     }
 
     public SomaticGVCFWriter(final VariantContextWriter underlyingWriter, final List<Number> lodPartitions, final int partitionPrecision) {
-        super(underlyingWriter, ImmutableList.of(1, 10, 20), HomoSapiensConstants.DEFAULT_PLOIDY);
+        super(underlyingWriter, ImmutableList.of(1, 10, 20), HomoSapiensConstants.DEFAULT_PLOIDY, false);
         gvcfBlockCombiner = new SomaticGVCFBlockCombiner(lodPartitions, HomoSapiensConstants.DEFAULT_PLOIDY, partitionPrecision);
     }
 

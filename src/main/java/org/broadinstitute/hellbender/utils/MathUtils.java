@@ -354,7 +354,24 @@ public final class MathUtils {
         return result;
     }
 
+    /**
+     * Add two double arrays, modifying the first
+     * @param array the array to store the result
+     * @param summand   the array to be added
+     */
     public static void addToArrayInPlace(final double[] array, final double[] summand) {
+        Utils.validateArg(array.length == summand.length, "Arrays must have same length");
+        for (int n = 0; n < array.length; n++) {
+            array[n] += summand[n];
+        }
+    }
+
+    /**
+     * Add two int arrays, modifying the first
+     * @param array the array to store the result
+     * @param summand   the array to be added
+     */
+    public static void addToArrayInPlace(final int[] array, final int[] summand) {
         Utils.validateArg(array.length == summand.length, "Arrays must have same length");
         for (int n = 0; n < array.length; n++) {
             array[n] += summand[n];

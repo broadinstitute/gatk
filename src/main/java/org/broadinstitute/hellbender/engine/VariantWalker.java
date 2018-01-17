@@ -7,8 +7,10 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
+import java.nio.file.Path;
 import java.util.Spliterator;
 
 /**
@@ -52,15 +54,16 @@ public abstract class VariantWalker extends VariantWalkerBase {
     protected void initializeDrivingVariants() {
         drivingVariantsFeatureInput = new FeatureInput<>(drivingVariantFile, "drivingVariantFile");
 
+        //This is the data source for the driving source of variants, which uses a cache lookahead of FEATURE_CACHE_LOOKAHEAD
         // Create a FeatureDataSource for the driving variants FeatureInput, using the
         // cache lookahead value from getDrivingVariantCacheLookAheadBases()
         drivingVariants = new FeatureDataSource<>(drivingVariantsFeatureInput, getDrivingVariantCacheLookAheadBases(), VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                                                  referenceArguments.getReferencePath());
+                                                  getGenomicsDBOptions());
 
         // Also add the driving variants FeatureInput to FeatureManager as well so that it can be queried,
         // but use a lookahead value of 0 to avoid caching because of windowed queries that need to "look behind" as well.
         features.addToFeatureSources(0, drivingVariantsFeatureInput, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                                     referenceArguments.getReferencePath());
+                                     getGenomicsDBOptions());
 
         // Note: the intervals for the driving variants are set in onStartup()
     }
@@ -88,8 +91,6 @@ public abstract class VariantWalker extends VariantWalkerBase {
     }
 
     /**
-     * {@inheritDoc}
-     *
      * Implementation of variant-based traversal.
      *
      * NOTE: You should only override {@link #traverse()} if you are writing a new walker base class in the
@@ -144,5 +145,13 @@ public abstract class VariantWalker extends VariantWalkerBase {
 
         if ( drivingVariants != null )
             drivingVariants.close();
+    }
+
+    /**
+     * Does this tool need sample genotypes to be called if reading from a GenomicsDB?
+     * @return if false, GTs remain no-calls, as in CombineGVCFs
+     */
+    protected boolean doGenotypeCalling() {
+        return false;
     }
 }

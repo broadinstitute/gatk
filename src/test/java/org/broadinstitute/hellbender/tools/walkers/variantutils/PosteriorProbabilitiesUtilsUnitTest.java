@@ -12,7 +12,6 @@ import org.testng.annotations.Test;
 
 import java.util.*;
 
-
 @SuppressWarnings("unchecked")
 public final class PosteriorProbabilitiesUtilsUnitTest extends GATKBaseTest {
 

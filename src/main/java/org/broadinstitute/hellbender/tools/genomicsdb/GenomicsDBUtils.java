@@ -36,11 +36,12 @@ public class GenomicsDBUtils {
      * @param callsetJson path to the GenomicsDB callset JSON
      * @param vidmapJson path to the GenomicsDB vidmap JSON
      * @param vcfHeader VCF with header information to use for header lines on export
+     * @param genomicsDBOptions genotyping parameters to read from a GenomicsDB
      * @return a configuration to determine the output format when the GenomicsDB is queried
      */
     public static GenomicsDBExportConfiguration.ExportConfiguration createExportConfiguration(final File reference, final String workspace,
                                                                                                final String callsetJson, final String vidmapJson,
-                                                                                               final String vcfHeader) {
+                                                                                               final String vcfHeader, final GenomicsDBOptions genomicsDBOptions) {
         final GenomicsDBExportConfiguration.ExportConfiguration.Builder exportConfigurationBuilder =
                 GenomicsDBExportConfiguration.ExportConfiguration.newBuilder()
                         .setWorkspace(workspace)
@@ -52,6 +53,12 @@ public class GenomicsDBUtils {
                         .setProduceGTWithMinPLValueForSpanningDeletions(false)
                         .setSitesOnlyQuery(false)
                         .setMaxDiploidAltAllelesThatCanBeGenotyped(GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED);
+        if (genomicsDBOptions != null) {
+            exportConfigurationBuilder.setProduceGTField(genomicsDBOptions.doCallGenotypes()).
+                    setMaxDiploidAltAllelesThatCanBeGenotyped(genomicsDBOptions.getMaxAlternateAlleles());
+        }
+
+
         final Path arrayFolder = Paths.get(workspace, GenomicsDBConstants.DEFAULT_ARRAY_NAME).toAbsolutePath();
 
         // For the multi-interval support, we create multiple arrays (directories) in a single workspace -
@@ -90,6 +97,22 @@ public class GenomicsDBUtils {
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
                 GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, "element_wise_sum");
 
+        vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                "AS_RAW_MQ", "element_wise_float_sum");
+
+        //Update combine operations for GnarlyGenotyper
+        //Note that this MQ format is deprecated, but was used by the prototype version of ReblockGVCF
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.MAPPING_QUALITY_DEPTH, "sum");
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.RAW_QUAL_APPROX_KEY, "sum");
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.VARIANT_DEPTH_KEY, "sum");
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, "element_wise_sum");
+        vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, "element_wise_float_sum");
+
 
         if (vidMapPB != null) {
             //Use rebuilt vidMap in exportConfiguration
@@ -100,6 +123,12 @@ public class GenomicsDBUtils {
         }
 
         return exportConfigurationBuilder.build();
+    }
+
+    public static GenomicsDBExportConfiguration.ExportConfiguration createExportConfiguration(final File reference, final String workspace,
+                                                                                               final String callsetJson, final String vidmapJson,
+                                                                                               final String vcfHeader) {
+        return createExportConfiguration(reference, workspace, callsetJson, vidmapJson, vcfHeader, null);
     }
 
     /**
@@ -142,7 +171,7 @@ public class GenomicsDBUtils {
      * @param fieldNameToIndexInVidFieldsList name to index in list
      * @param fieldName                       INFO field name
      * @param newCombineOperation             combine op ("sum", "median")
-     * @return updated vid Protobuf object if field exists, else null
+     * @return updated vid Protobuf object if field exists, else return original vidmap object
      */
     public static GenomicsDBVidMapProto.VidMappingPB updateINFOFieldCombineOperation(
             final GenomicsDBVidMapProto.VidMappingPB vidMapPB,
@@ -163,7 +192,59 @@ public class GenomicsDBUtils {
             //Rebuild full vidMap
             return updatedVidMapBuilder.build();
         }
-        return null;
+        return vidMapPB;
+    }
+
+    /**
+     * Update vid Protobuf object with a new variable length descriptor, as for allele-specific annotations
+     * @param vidMapPB input vid object
+     * @param fieldNameToIndexInVidFieldsList name to index in list
+     * @param fieldName INFO field name
+     * @param newCombineOperation combine op ("histogram_sum", "element_wise_float_sum", "strand_bias_table")
+     * @return updated vid Protobuf object if field exists, else null
+     */
+    public static GenomicsDBVidMapProto.VidMappingPB updateAlleleSpecificINFOFieldCombineOperation(
+            final GenomicsDBVidMapProto.VidMappingPB vidMapPB,
+            final Map<String, Integer> fieldNameToIndexInVidFieldsList,
+            final String fieldName,
+            final String newCombineOperation)
+    {
+        int fieldIdx = fieldNameToIndexInVidFieldsList.containsKey(fieldName)
+                ? fieldNameToIndexInVidFieldsList.get(fieldName) : -1;
+        if(fieldIdx >= 0) {
+            //Would need to rebuild vidMapPB - so get top level builder first
+            GenomicsDBVidMapProto.VidMappingPB.Builder updatedVidMapBuilder = vidMapPB.toBuilder();
+            //To update the list element corresponding to fieldName, we get the builder for that specific list element
+            GenomicsDBVidMapProto.GenomicsDBFieldInfo.Builder infoBuilder =
+                    updatedVidMapBuilder.getFieldsBuilder(fieldIdx);
+
+            GenomicsDBVidMapProto.FieldLengthDescriptorComponentPB.Builder lengthDescriptorComponentBuilder =
+                    GenomicsDBVidMapProto.FieldLengthDescriptorComponentPB.newBuilder();
+            lengthDescriptorComponentBuilder.setVariableLengthDescriptor("R");
+            infoBuilder.addLength(lengthDescriptorComponentBuilder.build());
+            lengthDescriptorComponentBuilder.setVariableLengthDescriptor("var"); //ignored - can set anything here
+            infoBuilder.addLength(lengthDescriptorComponentBuilder.build());
+            infoBuilder.addVcfDelimiter("|");
+            infoBuilder.addVcfDelimiter(",");
+
+            if (newCombineOperation.equals("histogram_sum")) {
+                //Each element of the vector is a tuple <float, int>
+                infoBuilder.addType("float");
+                infoBuilder.addType("int");
+                infoBuilder.setVCFFieldCombineOperation("histogram_sum");
+            } else {
+                infoBuilder.setVCFFieldCombineOperation("element_wise_sum");
+                if (newCombineOperation.equals("element_wise_float_sum")) {
+                    infoBuilder.addType("float");
+                } else if (newCombineOperation.equals("strand_bias_table")) {
+                    infoBuilder.addType("int");
+                }
+            }
+
+            //Rebuild full vidMap
+            return updatedVidMapBuilder.build();
+        }
+        return vidMapPB;
     }
 
 }

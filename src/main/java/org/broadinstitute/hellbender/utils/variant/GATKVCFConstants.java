@@ -31,6 +31,7 @@ public final class GATKVCFConstants {
     public static final String ORIGINAL_AC_KEY =                    "AC_Orig"; //SelectVariants
     public static final String ORIGINAL_AF_KEY =                    "AF_Orig"; //SelectVariants
     public static final String ORIGINAL_AN_KEY =                    "AN_Orig"; //SelectVariants
+    public static final String AC_ADJUSTED_KEY =                    "AC_adj"; //GnarlyGenotyper
     public static final String BASE_COUNTS_KEY =                    "BaseCounts";
     public static final String BASE_QUAL_RANK_SUM_KEY =             "BaseQRankSum";
     public static final String AS_BASE_QUAL_RANK_SUM_KEY =          "AS_BaseQRankSum";
@@ -45,6 +46,7 @@ public final class GATKVCFConstants {
     public static final String FISHER_STRAND_KEY =                  "FS";
     public static final String AS_FISHER_STRAND_KEY =               "AS_FS";
     public static final String AS_SB_TABLE_KEY =                    "AS_SB_TABLE";
+    public static final String SB_TABLE_KEY =                       "SB_TABLE";
     public static final String GC_CONTENT_KEY =                     "GC";
     public static final String GQ_MEAN_KEY =                        "GQ_MEAN";
     public static final String GQ_STDEV_KEY =                       "GQ_STDDEV";
@@ -57,6 +59,7 @@ public final class GATKVCFConstants {
     public static final String INBREEDING_COEFFICIENT_KEY =         "InbreedingCoeff";
     public static final String AS_INBREEDING_COEFFICIENT_KEY =      "AS_InbreedingCoeff";
     public static final String EXCESS_HET_KEY =                     "ExcessHet";
+    public static final String RAW_GENOTYPE_COUNT_KEY =             "RAW_GT_COUNT";
     public static final String AS_HETEROZYGOSITY_KEY =              "AS_InbreedingCoeff";
     public static final String LIKELIHOOD_RANK_SUM_KEY =            "LikelihoodRankSum";
     public static final String LO_CONF_DENOVO_KEY =                 "loConfDeNovo";
@@ -83,7 +86,10 @@ public final class GATKVCFConstants {
     public static final String AS_QUAL_BY_DEPTH_KEY =               "AS_QD";
     public static final String AS_QUAL_KEY =                        "AS_QUAL";
     public static final String RAW_QUAL_APPROX_KEY =                "QUALapprox";
+    public static final String AS_RAW_QUAL_APPROX_KEY =             "AS_QUALapprox";
     public static final String VARIANT_DEPTH_KEY =                  "VarDP";
+    public static final String AS_VARIANT_DEPTH_KEY =               "AS_VarDP";
+    public static final String AS_ALT_ALLELE_DEPTH_KEY =            "AS_AltDP";
     public static final String READ_POS_RANK_SUM_KEY =              "ReadPosRankSum";
     public static final String AS_READ_POS_RANK_SUM_KEY =           "AS_ReadPosRankSum";
     public static final String AS_RAW_READ_POS_RANK_SUM_KEY =       "AS_RAW_ReadPosRankSum";
@@ -143,6 +149,8 @@ public final class GATKVCFConstants {
     public static final String HAPLOTYPE_CALLER_PHASING_ID_KEY =    "PID";
     public static final String PHRED_SCALED_POSTERIORS_KEY =        "PP"; //FamilyLikelihoodsUtils / PosteriorLikelihoodsUtils
     public static final String REFERENCE_GENOTYPE_QUALITY =         "RGQ";
+    public static final String GENOTYPE_QUALITY_BY_ALLELE_BALANCE = "ABGQ"; //GnarlyGenotyper
+    public static final String GENOTYPE_QUALITY_BY_ALT_CONFIDENCE = "ALTGQ"; //GnarlyGenotyper
     public static final String STRAND_COUNT_BY_SAMPLE_KEY =         "SAC";
     public static final String STRAND_BIAS_BY_SAMPLE_KEY =          "SB";
     public final static String TRANSMISSION_PROBABILITY_KEY =       "TP"; //PhaseByTransmission

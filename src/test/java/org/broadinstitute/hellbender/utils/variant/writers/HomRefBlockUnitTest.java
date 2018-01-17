@@ -154,7 +154,7 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
         block.add(vc.getEnd(), genotype1);
         block.add(vc.getEnd() + 1, genotype2);
 
-        final VariantContext newVc = block.toVariantContext(SAMPLE_NAME);
+        final VariantContext newVc = block.toVariantContext(SAMPLE_NAME, false);
         Assert.assertEquals(newVc.getGenotypes().size(), 1);
         final Genotype genotype = newVc.getGenotypes().get(0);
         Assert.assertEquals(genotype.getDP(),8); //dp should be median of the added DPs

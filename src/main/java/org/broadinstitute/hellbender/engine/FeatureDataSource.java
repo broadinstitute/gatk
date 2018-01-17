@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.IndexFeatureFile;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBConstants;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
 import org.broadinstitute.hellbender.utils.IndexUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -26,6 +27,7 @@ import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -228,7 +230,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
                              final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer) {
         this(featureInput, queryLookaheadBases, targetFeatureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                null);
+             new GenomicsDBOptions());
     }
 
     /**
@@ -241,19 +243,40 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      *                                 that produce this type of Feature. May be null, which results in an unrestricted search.
      * @param cloudPrefetchBuffer      MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
      * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
-     * @param reference                Path to a reference. May be null. Needed only for reading from GenomicsDB.
+     * @param reference                 the reference genome corresponding to the data to be read
      */
     public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
                              final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference) {
+        this(featureInput, queryLookaheadBases, targetFeatureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
+                new GenomicsDBOptions(reference));
+    }
+
+    /**
+     * Creates a FeatureDataSource backed by the provided FeatureInput. We will look ahead the specified number of bases
+     * during queries that produce cache misses.
+     *
+     * @param featureInput             a FeatureInput specifying a source of Features
+     * @param queryLookaheadBases      look ahead this many bases during queries that produce cache misses
+     * @param targetFeatureType        When searching for a {@link FeatureCodec} for this data source, restrict the search to codecs
+     *                                 that produce this type of Feature. May be null, which results in an unrestricted search.
+     * @param cloudPrefetchBuffer      MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
+     * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
+     * @param genomicsDBOptions         options and info for reading from a GenomicsDB; may be null
+     */
+    public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
+                             final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final GenomicsDBOptions genomicsDBOptions) {
         Utils.validateArg(queryLookaheadBases >= 0, "Query lookahead bases must be >= 0");
         this.featureInput = Utils.nonNull(featureInput, "featureInput must not be null");
+        if (IOUtils.isGenomicsDBPath(featureInput)) {
+            Utils.nonNull(genomicsDBOptions, "GenomicsDBOptions must not be null. Calling tool may not read from a GenomicsDB data source.");
+        }
 
         final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper = (cloudPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudPrefetchBuffer, is) : Function.identity());
         final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper = (cloudIndexPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudIndexPrefetchBuffer, is) : Function.identity());
 
         // Create a feature reader without requiring an index.  We will require one ourselves as soon as
         // a query by interval is attempted.
-        this.featureReader = getFeatureReader(featureInput, targetFeatureType, cloudWrapper, cloudIndexWrapper, reference);
+        this.featureReader = getFeatureReader(featureInput, targetFeatureType, cloudWrapper, cloudIndexWrapper, genomicsDBOptions);
 
         if (IOUtils.isGenomicsDBPath(featureInput)) {
             //genomics db uri's have no associated index file to read from, but they do support random access
@@ -285,16 +308,17 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     private static <T extends Feature> FeatureReader<T> getFeatureReader(final FeatureInput<T> featureInput, final Class<? extends Feature> targetFeatureType,
                                                                          final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper,
                                                                          final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper,
-                                                                         final Path reference) {
-        if (IOUtils.isGenomicsDBPath(featureInput)) {
+                                                                         final GenomicsDBOptions genomicsDBOptions) {
+        if (IOUtils.isGenomicsDBPath(featureInput.getFeaturePath())) {
+            Utils.nonNull(genomicsDBOptions);
             try {
-                if (reference == null) {
+                if (genomicsDBOptions.getReference() == null) {
                     throw new UserException.MissingReference("You must provide a reference if you want to load from GenomicsDB");
                 }
                 try {
-                    final File referenceAsFile = reference.toFile();
-                    return (FeatureReader<T>) getGenomicsDBFeatureReader(featureInput, referenceAsFile);
-                } catch (final UnsupportedOperationException e) {
+                    final File referenceAsFile = genomicsDBOptions.getReference().toFile();
+                    return (FeatureReader<T>)getGenomicsDBFeatureReader(featureInput, referenceAsFile, genomicsDBOptions);
+                } catch (final UnsupportedOperationException e){
                     throw new UserException.BadInput("GenomicsDB requires that the reference be a local file.", e);
                 }
             } catch (final ClassCastException e) {
@@ -354,7 +378,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         }
     }
 
-    protected static FeatureReader<VariantContext> getGenomicsDBFeatureReader(final GATKPathSpecifier path, final File reference) {
+    protected static FeatureReader<VariantContext> getGenomicsDBFeatureReader(final GATKPathSpecifier path, final File reference, final GenomicsDBOptions genomicsDBOptions) {
         final String workspace = IOUtils.getGenomicsDBAbsolutePath(path) ;
         if (workspace == null) {
             throw new IllegalArgumentException("Trying to create a GenomicsDBReader from  non-GenomicsDB inputpath " + path);
@@ -370,7 +394,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
 
         try {
             final GenomicsDBExportConfiguration.ExportConfiguration exportConfigurationBuilder =
-                    createExportConfiguration(reference, workspace, callsetJson, vidmapJson, vcfHeader);
+                    createExportConfiguration(reference, workspace, callsetJson, vidmapJson, vcfHeader, genomicsDBOptions);
             return new GenomicsDBFeatureReader<>(exportConfigurationBuilder, new BCF2Codec(), Optional.empty());
         } catch (final IOException e) {
             throw new UserException("Couldn't create GenomicsDBFeatureReader", e);

@@ -17,6 +17,9 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     public static final String SUPPORTING_CALLSET_LONG_NAME = "population-callset";
     public static final String SUPPORTING_CALLSET_SHORT_NAME = "population";
     public static final String NUM_REF_SAMPLES_LONG_NAME = "num-reference-samples-if-no-call";
+    public static final String MAX_ALTERNATE_ALLELES_LONG_NAME = "max-alternate-alleles";
+
+    public static final double DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING = 30.0;
 
     /**
      * Creates a GenotypeCalculationArgumentCollection with default values.
@@ -121,7 +124,7 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      * Note that the default was changed from 10.0 to 30.0 in version 4.1.0.0 to accompany the switch to use the the new quality score by default.
      */
     @Argument(fullName = "standard-min-confidence-threshold-for-calling", shortName = "stand-call-conf", doc = "The minimum phred-scaled confidence threshold at which variants should be called", optional = true)
-    public double STANDARD_CONFIDENCE_FOR_CALLING = 30.0;
+    public double STANDARD_CONFIDENCE_FOR_CALLING = DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING;
 
     /**
      * If there are more than this number of alternate alleles presented to the genotyper (either through discovery or GENOTYPE_GIVEN ALLELES),
@@ -132,7 +135,7 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      * See also {@link #MAX_GENOTYPE_COUNT}.
      */
     @Advanced
-    @Argument(fullName = "max-alternate-alleles", doc = "Maximum number of alternate alleles to genotype", optional = true)
+    @Argument(fullName = MAX_ALTERNATE_ALLELES_LONG_NAME, doc = "Maximum number of alternate alleles to genotype", optional = true)
     public int MAX_ALTERNATE_ALLELES = 6;
 
     /**
