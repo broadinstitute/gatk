@@ -83,11 +83,11 @@ workflow Mutect2 {
     # These are multipliers to multipler inputs by to make sure we have enough disk to accommodate for possible output sizes
     # Large is for Bams/WGS vcfs
     # Small is for metrics/other vcfs
-    Float large_input_to_output_mulitplier = 2.25
-    Float small_input_to_output_mulitplier = 2.0
+    Float large_input_to_output_multiplier = 2.25
+    Float small_input_to_output_multiplier = 2.0
 
 
-    Int split_interval_size = ref_size + ceil(size(intervals, "GB") * small_input_to_output_mulitplier) + disk_pad
+    Int split_interval_size = ref_size + ceil(size(intervals, "GB") * small_input_to_output_multiplier) + disk_pad
     call SplitIntervals {
         input:
             intervals = intervals,
@@ -138,7 +138,7 @@ workflow Mutect2 {
             preemptible_attempts = preemptible_attempts
     }
 
-    Int merge_vcf_size = ceil(SumSubVcfs.total_size * large_input_to_output_mulitplier) + disk_pad
+    Int merge_vcf_size = ceil(SumSubVcfs.total_size * large_input_to_output_multiplier) + disk_pad
     call MergeVCFs {
         input:
             input_vcfs = M2.output_vcf,
@@ -156,7 +156,7 @@ workflow Mutect2 {
                 preemptible_attempts = preemptible_attempts,
         }
 
-        Int merge_bamout_size = ceil(SumSubBamouts.total_size * large_input_to_output_mulitplier) + disk_pad
+        Int merge_bamout_size = ceil(SumSubBamouts.total_size * large_input_to_output_multiplier) + disk_pad
 
         call MergeBamOuts {
             input:
@@ -187,7 +187,7 @@ workflow Mutect2 {
     }
 
     if (defined(variants_for_contamination)) {
-        Int calculate_contamination_size = tumor_bam_size + ceil(size(variants_for_contamination, "GB") * small_input_to_output_mulitplier) + disk_pad
+        Int calculate_contamination_size = tumor_bam_size + ceil(size(variants_for_contamination, "GB") * small_input_to_output_multiplier) + disk_pad
         call CalculateContamination {
             input:
                 gatk_override = gatk_override,
@@ -203,7 +203,7 @@ workflow Mutect2 {
         }
     }
 
-    Int filter_size = ceil(size(MergeVCFs.output_vcf, "GB") * small_input_to_output_mulitplier) + disk_pad
+    Int filter_size = ceil(size(MergeVCFs.output_vcf, "GB") * small_input_to_output_multiplier) + disk_pad
     call Filter {
         input:
             gatk_override = gatk_override,
@@ -221,7 +221,7 @@ workflow Mutect2 {
         # Get the metrics either from the workflow input or CollectSequencingArtifactMetrics if no workflow input is provided
         File input_artifact_metrics = select_first([tumor_sequencing_artifact_metrics, CollectSequencingArtifactMetrics.pre_adapter_metrics])
 
-        Int filter_by_orientation_bias_size = ceil(size(Filter.filtered_vcf, "GB") * small_input_to_output_mulitplier) + ceil(size(input_artifact_metrics, "GB")) + disk_pad
+        Int filter_by_orientation_bias_size = ceil(size(Filter.filtered_vcf, "GB") * small_input_to_output_multiplier) + ceil(size(input_artifact_metrics, "GB")) + disk_pad
         call FilterByOrientationBias {
             input:
                 gatk_override = gatk_override,
@@ -238,7 +238,7 @@ workflow Mutect2 {
 
     if (is_run_oncotator) {
         File oncotate_vcf_input = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
-        Int oncotate_size = ceil(size(oncotate_vcf_input, "GB") * large_input_to_output_mulitplier) + onco_tar_size + disk_pad
+        Int oncotate_size = ceil(size(oncotate_vcf_input, "GB") * large_input_to_output_multiplier) + onco_tar_size + disk_pad
         call oncotate_m2 {
             input:
                 m2_vcf = oncotate_vcf_input,
