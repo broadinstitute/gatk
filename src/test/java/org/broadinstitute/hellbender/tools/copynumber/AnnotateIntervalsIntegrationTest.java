@@ -13,13 +13,11 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.records.Annotation
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.IntervalSetRule;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.nio.file.Path;
 import java.util.Arrays;
 
 /**

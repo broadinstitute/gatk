@@ -6,18 +6,13 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
-import org.broadinstitute.hellbender.utils.*;
-
-import java.util.Iterator;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AbstractLocatableCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
-import java.util.HashSet;
-import java.util.List;
-import java.util.OptionalInt;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 

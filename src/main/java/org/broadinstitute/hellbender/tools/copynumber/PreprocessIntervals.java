@@ -9,15 +9,11 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import picard.cmdline.programgroups.IntervalsManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
-import org.broadinstitute.hellbender.utils.IntervalMergingRule;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.Nucleotide;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.*;
+import picard.cmdline.programgroups.IntervalsManipulationProgramGroup;
 
 import java.io.File;
 import java.util.List;

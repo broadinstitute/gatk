@@ -4,6 +4,7 @@ import org.apache.commons.math3.exception.MaxCountExceededException;
 import org.apache.commons.math3.special.Beta;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberFormatsUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AllelicCount;
 import org.broadinstitute.hellbender.utils.OptimizationUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -70,8 +71,8 @@ final class AlleleFractionInitializer {
         minorFractions = calculateInitialMinorFractions(data);
         double previousIterationLogLikelihood;
         double nextIterationLogLikelihood = Double.NEGATIVE_INFINITY;
-        logger.info(String.format("Initializing allele-fraction model, iterating until log likelihood converges to within %.3f...",
-                LOG_LIKELIHOOD_CONVERGENCE_THRESHOLD));
+        logger.info(String.format("Initializing allele-fraction model, iterating until log likelihood converges to within %s...",
+                CopyNumberFormatsUtils.formatDouble(LOG_LIKELIHOOD_CONVERGENCE_THRESHOLD)));
         int iteration = 1;
         do {
             previousIterationLogLikelihood = nextIterationLogLikelihood;
@@ -80,7 +81,8 @@ final class AlleleFractionInitializer {
             minorFractions = estimateMinorFractions();
 
             nextIterationLogLikelihood = AlleleFractionLikelihoods.logLikelihood(globalParameters, minorFractions, data);
-            logger.info(String.format("Iteration %d, model log likelihood = %.3f...", iteration, nextIterationLogLikelihood));
+            logger.info(String.format("Iteration %d, model log likelihood = %s...", iteration,
+                    CopyNumberFormatsUtils.formatDouble(nextIterationLogLikelihood)));
             logger.info(globalParameters);
             iteration++;
         } while (iteration < MAX_ITERATIONS &&
@@ -98,8 +100,8 @@ final class AlleleFractionInitializer {
             logger.warn(String.format("The maximum-likelihood estimate for the global parameter %s (%s) was near its boundary (%s), " +
                             "the model is likely not a good fit to the data!  Consider changing parameters for filtering homozygous sites.",
                     parameterName,
-                    String.format(AlleleFractionGlobalParameters.DOUBLE_FORMAT, value),
-                    String.format(AlleleFractionGlobalParameters.DOUBLE_FORMAT, maxValue)));
+                    CopyNumberFormatsUtils.formatDouble(value),
+                    CopyNumberFormatsUtils.formatDouble(maxValue)));
         }
     }
 

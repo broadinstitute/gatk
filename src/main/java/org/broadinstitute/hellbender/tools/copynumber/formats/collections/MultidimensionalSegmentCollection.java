@@ -47,7 +47,7 @@ public final class MultidimensionalSegmentCollection extends AbstractSampleLocat
                     .append(alleleFractionSegment.getEnd())
                     .append(alleleFractionSegment.getNumPointsCopyRatio())
                     .append(alleleFractionSegment.getNumPointsAlleleFraction())
-                    .append(alleleFractionSegment.getMeanLog2CopyRatio());
+                    .append(formatDouble(alleleFractionSegment.getMeanLog2CopyRatio()));
 
     public MultidimensionalSegmentCollection(final File inputFile) {
         super(inputFile, MultidimensionalSegmentTableColumn.COLUMNS, MULTIDIMENSIONAL_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION, MULTIDIMENSIONAL_SEGMENT_RECORD_AND_DATA_LINE_BI_CONSUMER);

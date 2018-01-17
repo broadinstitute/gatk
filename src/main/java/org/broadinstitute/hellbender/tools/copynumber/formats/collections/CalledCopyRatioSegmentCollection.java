@@ -54,7 +54,7 @@ public final class CalledCopyRatioSegmentCollection extends AbstractSampleLocata
                     .append(calledCopyRatioSegment.getInterval().getStart())
                     .append(calledCopyRatioSegment.getInterval().getEnd())
                     .append(calledCopyRatioSegment.getNumPoints())
-                    .append(calledCopyRatioSegment.getMeanLog2CopyRatio())
+                    .append(formatDouble(calledCopyRatioSegment.getMeanLog2CopyRatio()))
                     .append(calledCopyRatioSegment.getCall().getOutputString());
 
     public CalledCopyRatioSegmentCollection(final File inputFile) {
