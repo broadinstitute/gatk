@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
@@ -27,12 +28,14 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
 
     Allele Aref, T, C, G, Cref, ATC, ATCATC;
     Allele ATCATCT;
     Allele ATref;
+    Allele ATCref;
     Allele Anoref;
     Allele GT;
 
@@ -45,6 +48,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         C = Allele.create("C");
         G = Allele.create("G");
         ATC = Allele.create("ATC");
+        ATCref = Allele.create("ATC", true);
         ATCATC = Allele.create("ATCATC");
         ATCATCT = Allele.create("ATCATCT");
         ATref = Allele.create("AT",true);
@@ -2016,6 +2020,26 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         };
     }
 
+    final static private Locatable START_AT_1 = new SimpleInterval("1",1,1);
+    final static private Locatable START_AT_2 = new SimpleInterval("1",2,2);
+
+    @DataProvider
+    Object[][] provideDataForDetermineReferenceAllele() {
+        return new Object[][] {
+                { Collections.emptyList(), Collections.emptyList(), null, null },
+                { Collections.emptyList(), Collections.emptyList(), START_AT_1, null },
+                { Arrays.asList(Arrays.asList(Aref)), Arrays.asList(1), START_AT_1, Aref },
+                { Arrays.asList(Arrays.asList(Aref)), Arrays.asList(1), START_AT_2, null },
+                { Arrays.asList(Arrays.asList(Aref), Arrays.asList(ATref)), Arrays.asList(1,1), START_AT_1, ATref },
+                { Arrays.asList(Arrays.asList(ATref), Arrays.asList(Aref)), Arrays.asList(1,1), START_AT_1, ATref },
+                { Arrays.asList(Arrays.asList(Aref), Arrays.asList(ATref)), Arrays.asList(1,2), START_AT_1, Aref },
+                { Arrays.asList(Arrays.asList(Aref), Arrays.asList(ATref)), Arrays.asList(1,1), START_AT_2, null },
+                { Arrays.asList(Arrays.asList(Aref), Arrays.asList(ATref)), Arrays.asList(1,1), null, ATref },
+                { Arrays.asList(Arrays.asList(Aref, C), Arrays.asList(ATref, ATCATC)), Arrays.asList(1,1), START_AT_1, ATref },
+                { Arrays.asList(Arrays.asList(Aref), Arrays.asList(ATCref), Arrays.asList(ATref)), Arrays.asList(1,1,1), START_AT_1, ATCref }
+        };
+    }
+
 
     @Test(dataProvider = "provideAllelesAndFrameshiftResults")
     void testIsFrameshift(final Allele ref, final Allele alt, final boolean expected) {
@@ -2050,5 +2074,26 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     void testIsIndel(final Allele ref, final Allele alt, final boolean expected ) {
         Assert.assertEquals( GATKVariantContextUtils.isIndel(ref, alt), expected );
         Assert.assertEquals( GATKVariantContextUtils.isIndel(ref.getBaseString(), alt.getBaseString()), expected );
+    }
+
+    @Test(dataProvider = "provideDataForDetermineReferenceAllele")
+    public void testDetermineReferenceAllele(final List<List<Allele>> alleleLists, final List<Integer> starts, final Locatable loc, final Allele expectedRef) {
+        final List<VariantContext> vcs = IntStream.range(0, alleleLists.size())
+                .mapToObj(n -> {
+                    final int start = starts.get(n);
+                    final int stop = starts.get(n) + alleleLists.get(n).get(0).length() - 1;
+                    return new VariantContextBuilder(Integer.toString(n), "1", start, stop, alleleLists.get(n)).make();
+                })
+                .collect(Collectors.toList());
+
+        final Allele ref = GATKVariantContextUtils.determineReferenceAllele(vcs, loc);
+
+        if (expectedRef == null) {
+            Assert.assertTrue(ref == null);
+        } else {
+            Assert.assertTrue(ref.isReference());
+            Assert.assertEquals(ref.getBaseString(), expectedRef.getBaseString());
+        }
+        Assert.assertTrue(ref == expectedRef || ref.getBaseString().equals(expectedRef.getBaseString()));
     }
 }
