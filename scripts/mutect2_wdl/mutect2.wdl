@@ -146,14 +146,14 @@ workflow Mutect2 {
             gatk_override = gatk_override,
             gatk_docker = gatk_docker,
             preemptible_attempts = preemptible_attempts,
-            disk_space = merge_vcf_size,
+            disk_space = merge_vcf_size
     }
 
     if (is_bamOut) {
         call SumFloats as SumSubBamouts {
             input:
                 sizes = sub_bamout_size,
-                preemptible_attempts = preemptible_attempts,
+                preemptible_attempts = preemptible_attempts
         }
 
         Int merge_bamout_size = ceil(SumSubBamouts.total_size * large_input_to_output_multiplier) + disk_pad
@@ -288,8 +288,9 @@ task SplitIntervals {
     Int? cpu
     Boolean use_ssd = false
 
-    Int machine_mem = select_first([mem, 3])
-    Int command_mem = machine_mem - 1
+    # Mem is in units of GB but our command and memory runtime values are in MB
+    Int machine_mem = if defined(mem) then mem * 1000 else 3500
+    Int command_mem = machine_mem - 500
 
 
     command {
@@ -297,13 +298,13 @@ task SplitIntervals {
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
         mkdir interval-files
-        gatk --java-options "-Xmx${command_mem}g" SplitIntervals -R ${ref_fasta} ${"-L " + intervals} -scatter ${scatter_count} -O interval-files
+        gatk --java-options "-Xmx${command_mem}m" SplitIntervals -R ${ref_fasta} ${"-L " + intervals} -scatter ${scatter_count} -O interval-files
         cp interval-files/*.intervals .
     }
 
     runtime {
         docker: gatk_docker
-        memory: machine_mem + " GB"
+        memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
         cpu: select_first([cpu, 1])
@@ -341,8 +342,9 @@ task M2 {
     Int? cpu
     Boolean use_ssd = false
 
-    Int machine_mem = select_first([mem, 3])
-    Int command_mem = machine_mem - 1
+    # Mem is in units of GB but our command and memory runtime values are in MB
+    Int machine_mem = if defined(mem) then mem * 1000 else 3500
+    Int command_mem = machine_mem - 500
 
     # Do not populate this unless you know what you are doing...
     File? auth
@@ -362,15 +364,15 @@ task M2 {
         touch bamout.bam
         echo "" > normal_name.txt
 
-        gatk --java-options "-Xmx${command_mem}g" GetSampleName -I ${tumor_bam} -O tumor_name.txt
+        gatk --java-options "-Xmx${command_mem}m" GetSampleName -I ${tumor_bam} -O tumor_name.txt
         tumor_command_line="-I ${tumor_bam} -tumor `cat tumor_name.txt`"
 
         if [[ "_${normal_bam}" == *.bam ]]; then
-            gatk --java-options "-Xmx${command_mem}g" GetSampleName -I ${normal_bam} -O normal_name.txt
+            gatk --java-options "-Xmx${command_mem}m" GetSampleName -I ${normal_bam} -O normal_name.txt
             normal_command_line="-I ${normal_bam} -normal `cat normal_name.txt`"
         fi
 
-        gatk --java-options "-Xmx${command_mem}g" Mutect2 \
+        gatk --java-options "-Xmx${command_mem}m" Mutect2 \
             -R ${ref_fasta} \
             $tumor_command_line \
             $normal_command_line \
@@ -413,7 +415,8 @@ task MergeVCFs {
     Int? cpu
     Boolean use_ssd = false
 
-    Int machine_mem = select_first([mem, 3])
+    # Mem is in units of GB but our command and memory runtime values are in MB
+    Int machine_mem = if defined(mem) then mem * 1000 else 3500
     Int command_mem = machine_mem - 1
 
     # using MergeVcfs instead of GatherVcfs so we can create indices
@@ -421,7 +424,7 @@ task MergeVCFs {
     command {
         set -e
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
-        gatk --java-options "-Xmx${command_mem}g" MergeVcfs -I ${sep=' -I ' input_vcfs} -O ${output_vcf_name}
+        gatk --java-options "-Xmx${command_mem}m" MergeVcfs -I ${sep=' -I ' input_vcfs} -O ${output_vcf_name}
     }
 
     runtime {
@@ -456,7 +459,8 @@ task MergeBamOuts {
     Int? cpu
     Boolean use_ssd = false
 
-    Int machine_mem = select_first([mem, 3])
+    # Mem is in units of GB but our command and memory runtime values are in MB
+    Int machine_mem = if defined(mem) then mem * 1000 else 7000
     Int command_mem = machine_mem - 1
 
     command <<<
@@ -464,7 +468,7 @@ task MergeBamOuts {
         #  Do not call this task if len(bam_outs) == 0
         set -e
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
-        gatk --java-options "-Xmx${command_mem}g" GatherBamFiles \
+        gatk --java-options "-Xmx${command_mem}m" GatherBamFiles \
             -I ${sep=" -I " bam_outs} -O ${output_vcf_name}.out.bam -R ${ref_fasta}
         samtools index ${output_vcf_name}.out.bam ${output_vcf_name}.out.bam.bai
     >>>
@@ -500,13 +504,14 @@ task CollectSequencingArtifactMetrics {
     Int? cpu
     Boolean use_ssd = false
 
-    Int machine_mem = select_first([mem, 3])
+    # Mem is in units of GB but our command and memory runtime values are in MB
+    Int machine_mem = if defined(mem) then mem * 1000 else 7000
     Int command_mem = machine_mem - 1
 
     command {
         set -e
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
-        gatk --java-options "-Xmx${command_mem}g" CollectSequencingArtifactMetrics \
+        gatk --java-options "-Xmx${command_mem}m" CollectSequencingArtifactMetrics \
             -I ${tumor_bam} -O "gatk" R=${ref_fasta} -VALIDATION_STRINGENCY LENIENT
     }
 
@@ -539,8 +544,9 @@ task CalculateContamination {
     Int? disk_space
     Int? mem
 
-    Int machine_mem = select_first([mem, 7])
-    Int command_mem = machine_mem - 1
+    # Mem is in units of GB but our command and memory runtime values are in MB
+    Int machine_mem = if defined(mem) then mem * 1000 else 7000
+    Int command_mem = machine_mem - 500
 
     # Do not populate this unless you know what you are doing...
     File? auth
@@ -555,13 +561,13 @@ task CalculateContamination {
         fi
 
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
-        gatk --java-options "-Xmx${command_mem}g" GetPileupSummaries -I ${tumor_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O pileups.table
-        gatk --java-options "-Xmx${command_mem}g" CalculateContamination -I pileups.table -O contamination.table
+        gatk --java-options "-Xmx${command_mem}m" GetPileupSummaries -I ${tumor_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O pileups.table
+        gatk --java-options "-Xmx${command_mem}m" CalculateContamination -I pileups.table -O contamination.table
     }
 
     runtime {
     docker: gatk_docker
-    memory: command_mem + " GB"
+    memory: command_mem + " MB"
     disks: "local-disk " + select_first([disk_space, 100]) + " HDD"
     preemptible: select_first([preemptible_attempts, 10])
     }
@@ -590,8 +596,9 @@ task Filter {
     Int? cpu
     Boolean use_ssd = false
 
-    Int machine_mem = select_first([mem, 3])
-    Int command_mem = machine_mem - 1
+    # Mem is in units of GB but our command and memory runtime values are in MB
+    Int machine_mem = if defined(mem) then mem * 1000 else 7000
+    Int command_mem = machine_mem - 500
 
     # Do not populate this unless you know what you are doing...
     File? auth
@@ -607,7 +614,7 @@ task Filter {
 
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
-        gatk --java-options "-Xmx${command_mem}g" FilterMutectCalls -V ${unfiltered_vcf} \
+        gatk --java-options "-Xmx${command_mem}m" FilterMutectCalls -V ${unfiltered_vcf} \
       	    -O ${filtered_vcf_name} \
       	    ${"--contamination-table " + contamination_table} \
       	    ${m2_extra_filtering_args}
@@ -643,8 +650,9 @@ task FilterByOrientationBias {
     Int? cpu
     Boolean use_ssd = false
 
-    Int machine_mem = select_first([mem, 7])
-    Int command_mem = machine_mem - 1
+    # Mem is in units of GB but our command and memory runtime values are in MB
+    Int machine_mem = if defined(mem) then mem * 1000 else 7000
+    Int command_mem = machine_mem - 500
 
     # Do not populate this unless you know what you are doing...
     File? auth
@@ -664,7 +672,7 @@ task FilterByOrientationBias {
         sed -r "s/picard\.analysis\.artifacts\.SequencingArtifactMetrics\\\$PreAdapterDetailMetrics/org\.broadinstitute\.hellbender\.tools\.picard\.analysis\.artifacts\.SequencingArtifactMetrics\$PreAdapterDetailMetrics/g" \
             "${pre_adapter_metrics}" > "gatk.pre_adapter_detail_metrics"
 
-        gatk --java-options "-Xmx${command_mem}g" FilterByOrientationBias \
+        gatk --java-options "-Xmx${command_mem}m" FilterByOrientationBias \
             -V ${input_vcf} \
             -AM ${sep=" -AM " artifact_modes} \
             -P gatk.pre_adapter_detail_metrics \
@@ -673,7 +681,7 @@ task FilterByOrientationBias {
 
     runtime {
         docker: gatk_docker
-        memory: command_mem + " GB"
+        memory: command_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
         cpu: select_first([cpu, 1])
@@ -705,8 +713,9 @@ task oncotate_m2 {
     Int? cpu
     Boolean use_ssd = false
 
-    Int machine_mem = select_first([mem, 3])
-    Int command_mem = machine_mem - 1
+    # Mem is in units of GB but our command and memory runtime values are in MB
+    Int machine_mem = if defined(mem) then mem * 1000 else 3500
+    Int command_mem = machine_mem - 500
 
     command <<<
 
