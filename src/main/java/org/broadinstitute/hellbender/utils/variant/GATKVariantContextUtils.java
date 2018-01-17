@@ -111,7 +111,7 @@ public final class GATKVariantContextUtils {
         }
         return VariantContextWriterBuilder.OutputType.UNSPECIFIED;
     }
-    
+
     private static boolean hasPLIncompatibleAlleles(final Collection<Allele> alleleSet1, final Collection<Allele> alleleSet2) {
         final Iterator<Allele> it1 = alleleSet1.iterator();
         final Iterator<Allele> it2 = alleleSet2.iterator();
@@ -141,7 +141,7 @@ public final class GATKVariantContextUtils {
         Allele ref = null;
 
         for ( final VariantContext vc : VCs ) {
-            if ( contextMatchesLoc(vc, loc) ) {
+            if (loc == null || loc.getStart() == vc.getStart()) {
                 final Allele myRef = vc.getReference();
                 if ( ref == null || ref.length() < myRef.length() )
                     ref = myRef;
@@ -825,10 +825,6 @@ public final class GATKVariantContextUtils {
 
     private static Allele determineReferenceAllele(final List<VariantContext> VCs) {
         return determineReferenceAllele(VCs, null);
-    }
-
-    public static boolean contextMatchesLoc(final VariantContext vc, final Locatable loc) {
-        return loc == null || loc.getStart() == vc.getStart();
     }
 
     private static AlleleMapper resolveIncompatibleAlleles(final Allele refAllele, final VariantContext vc, final LinkedHashSet<Allele> allAlleles) {
