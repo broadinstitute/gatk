@@ -33,9 +33,11 @@ public class Mutect2FilteringEngine {
         final double[] alleleFractions = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(tumorGenotype, VCFConstants.ALLELE_FREQUENCY_KEY,
                 () -> new double[] {1.0}, 1.0);
         final int maxFractionIndex = MathUtils.maxElementIndex(alleleFractions);
-        final int depth = tumorGenotype.getDP();
-        final int altCount = tumorGenotype.getAD()[maxFractionIndex + 1];   // AD is all alleles, while AF is alts only, hence the +1 offset
-        final double alleleFrequency = vc.getAttributeAsDouble(GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE, 0);
+        final int[] ADs = tumorGenotype.getAD();
+        final int altCount = ADs[maxFractionIndex + 1];   // AD is all alleles, while AF is alts only, hence the +1 offset
+        final int depth = (int) MathUtils.sum(ADs);
+        final double alleleFrequency = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc,
+                GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE, () -> new double[] {0.0, 0.0}, 0)[maxFractionIndex];
 
         final double somaticLikelihood = somaticPriorProb / (depth + 1);
 
@@ -43,7 +45,7 @@ public class Mutect2FilteringEngine {
                 + MathUtils.square(alleleFrequency) * MathUtils.binomialProbability(depth, altCount, contamination);
         final double manyContaminantLikelihood = MathUtils.binomialProbability(depth, altCount, contamination * alleleFrequency);
         final double contaminantLikelihood = Math.max(singleContaminantLikelihood, manyContaminantLikelihood);
-        final double posteriorProbOfContamination = (contaminantLikelihood + somaticLikelihood) / contaminantLikelihood;
+        final double posteriorProbOfContamination = contaminantLikelihood / (contaminantLikelihood + somaticLikelihood);
 
 
 

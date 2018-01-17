@@ -11,9 +11,11 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -35,6 +37,9 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     private static final String DREAM_VCFS_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/dream/vcfs/";
     private static final String DREAM_MASKS_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/dream/masks/";
 
+    private static final File NO_CONTAMINATION_TABLE = new File(publicTestDir, "org/broadinstitute/hellbender/tools/mutect/no-contamination.table");
+    private static final File FIVE_PCT_CONTAMINATION_TABLE = new File(publicTestDir, "org/broadinstitute/hellbender/tools/mutect/five-pct-contamination.table");
+    private static final File TEN_PCT_CONTAMINATION_TABLE = new File(publicTestDir, "org/broadinstitute/hellbender/tools/mutect/ten-pct-contamination.table");
     /**
      * Several DREAM challenge bams with synthetic truth data.  In order to keep file sizes manageable, bams are restricted
      * to chromosome 20, leaving ~100-200 variants, and then further restricted to 400-bp intervals centered around
@@ -211,6 +216,74 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         // every variant on this interval in this sample is in gnomAD
         Assert.assertTrue(numVariantsPassingFilters < 2);
+    }
+
+    @Test
+    public void testContaminationFilter() throws Exception {
+        Utils.resetRandomGenerator();
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+        final File filteredVcfNoContamination = createTempFile("filtered-zero", ".vcf");
+        final File filteredVcfFivePctContamination = createTempFile("filtered-five", ".vcf");
+        final File filteredVcfTenPctContamination = createTempFile("filtered-ten", ".vcf");
+
+        final String[] args = {
+                "-I", NA12878_20_21_WGS_bam,
+                "-tumor", "NA12878",
+                "-R", b37_reference_20_21,
+                "-L", "20:10000000-20010000",
+                "-germline-resource", GNOMAD.getAbsolutePath(),
+                "-O", unfilteredVcf.getAbsolutePath()
+        };
+
+        runCommandLine(args);
+
+        // run FilterMutectCalls
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcfNoContamination.getAbsolutePath(), "--contamination-table", NO_CONTAMINATION_TABLE.getAbsolutePath()), "FilterMutectCalls"));
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcfFivePctContamination.getAbsolutePath(), "--contamination-table", FIVE_PCT_CONTAMINATION_TABLE.getAbsolutePath()), "FilterMutectCalls"));
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcfTenPctContamination.getAbsolutePath(), "--contamination-table", TEN_PCT_CONTAMINATION_TABLE.getAbsolutePath()), "FilterMutectCalls"));
+
+
+        final Set<VariantContext> variantsFilteredAtZeroPct =
+                StreamSupport.stream(new FeatureDataSource<VariantContext>(filteredVcfNoContamination).spliterator(), false)
+                .filter(vc -> vc.getFilters().contains(GATKVCFConstants.CONTAMINATION_FILTER_NAME))
+                .collect(Collectors.toSet());
+
+        final Set<VariantContext> variantsFilteredAtFivePct =
+                StreamSupport.stream(new FeatureDataSource<VariantContext>(filteredVcfFivePctContamination).spliterator(), false)
+                        .filter(vc -> vc.getFilters().contains(GATKVCFConstants.CONTAMINATION_FILTER_NAME))
+                        .collect(Collectors.toSet());
+
+        final Set<VariantContext> variantsFilteredAtTenPct =
+                StreamSupport.stream(new FeatureDataSource<VariantContext>(filteredVcfTenPctContamination).spliterator(), false)
+                        .filter(vc -> vc.getFilters().contains(GATKVCFConstants.CONTAMINATION_FILTER_NAME))
+                        .collect(Collectors.toSet());
+
+        Assert.assertTrue(variantsFilteredAtZeroPct.isEmpty());
+        Assert.assertTrue(variantsFilteredAtFivePct.size() < variantsFilteredAtTenPct.size());
+
+        final List<VariantContext> missedObviousVariantsAtTenPercent = StreamSupport.stream(new FeatureDataSource<VariantContext>(filteredVcfTenPctContamination).spliterator(), false)
+                .filter(vc -> !vc.getFilters().contains(GATKVCFConstants.CONTAMINATION_FILTER_NAME))
+                .filter(VariantContext::isBiallelic)
+                .filter(vc -> {
+                    final int[] AD = vc.getGenotype(0).getAD();
+                    return AD[1] < 0.2 * AD[0];
+                }).collect(Collectors.toList());
+
+        Assert.assertTrue(missedObviousVariantsAtTenPercent.isEmpty());
+
+        // If the filter is smart, it won't filter variants with allele fraction much higher than the contamination
+        final List<VariantContext> highAlleleFractionFilteredVariantsAtFivePercent = StreamSupport.stream(new FeatureDataSource<VariantContext>(filteredVcfFivePctContamination).spliterator(), false)
+                .filter(vc -> vc.getFilters().contains(GATKVCFConstants.CONTAMINATION_FILTER_NAME))
+                .filter(VariantContext::isBiallelic)
+                .filter(vc -> {
+                    final int[] AD = vc.getGenotype(0).getAD();
+                    return MathUtils.sum(AD) > 20 && AD[1] > AD[0];
+                }).collect(Collectors.toList());
+
+        Assert.assertTrue(highAlleleFractionFilteredVariantsAtFivePercent.isEmpty());
+
+        int j = 4;
+
     }
 
     // test that ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT removes reads that consume zero reference bases
