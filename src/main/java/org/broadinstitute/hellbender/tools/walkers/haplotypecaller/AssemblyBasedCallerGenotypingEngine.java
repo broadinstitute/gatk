@@ -45,13 +45,6 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
         return configuration.outputMode == OutputMode.EMIT_ALL_SITES || configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES;
     }
 
-    @Override
-    protected boolean forceKeepAllele(final Allele allele) {
-        return allele == Allele.NON_REF_ALLELE ||
-                configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ||
-                configuration.emitReferenceConfidence != ReferenceConfidenceMode.NONE;
-    }
-
     /**
      * Carries the result of a call to #assignGenotypeLikelihoods
      */
