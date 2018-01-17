@@ -7,11 +7,15 @@ import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.Logger;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.BreakpointComplications;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyReferenceLocations;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
@@ -82,15 +86,15 @@ public class AnnotatedVariantProducer implements Serializable {
      * @param sampleId                          sample identifier of the current sample
      * @throws IOException                      due to read operations on the reference
      */
-    static VariantContext produceAnnotatedVcFromInferredTypeAndRefLocations(final SimpleInterval refLoc, final int end,
-                                                                            final BreakpointComplications breakpointComplications,
-                                                                            final SvType inferredType,
-                                                                            final byte[] altHaplotypeSeq,
-                                                                            final Iterable<ChimericAlignment> contigAlignments,
-                                                                            final Broadcast<ReferenceMultiSource> broadcastReference,
-                                                                            final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
-                                                                            final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls,
-                                                                            final String sampleId)
+    public static VariantContext produceAnnotatedVcFromInferredTypeAndRefLocations(final SimpleInterval refLoc, final int end,
+                                                                                   final BreakpointComplications breakpointComplications,
+                                                                                   final SvType inferredType,
+                                                                                   final byte[] altHaplotypeSeq,
+                                                                                   final Iterable<ChimericAlignment> contigAlignments,
+                                                                                   final Broadcast<ReferenceMultiSource> broadcastReference,
+                                                                                   final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
+                                                                                   final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls,
+                                                                                   final String sampleId)
             throws IOException {
 
         final int applicableEnd = end < 0 ? refLoc.getEnd() : end; // BND formatted variant shouldn't have END
@@ -107,7 +111,7 @@ public class AnnotatedVariantProducer implements Serializable {
 
         // attributes from complications
         inferredType.getTypeSpecificAttributes().forEach(vcBuilder::attribute);
-        parseComplicationsAndMakeThemAttributeMap(breakpointComplications).forEach(vcBuilder::attribute);
+        breakpointComplications.toVariantAttributes().forEach(vcBuilder::attribute);
 
         // evidence used for producing the novel adjacency
         getEvidenceRelatedAnnotations(contigAlignments).forEach(vcBuilder::attribute);
@@ -198,48 +202,31 @@ public class AnnotatedVariantProducer implements Serializable {
         return new ArrayList<>(Arrays.asList(Allele.create(new String(refBases), true), SvType.getAltAllele()));
     }
 
-    /**
-     * Not testing this because the complications are already tested in the NovelAdjacencyReferenceLocations class' own test,
-     * more testing here would be actually testing VCBuilder.
-     */
-    private static Map<String, Object> parseComplicationsAndMakeThemAttributeMap(final BreakpointComplications breakpointComplications) {
+    public static List<VariantContext> annotateBreakpointBasedCallsWithImpreciseEvidenceLinks(final List<VariantContext> assemblyDiscoveredVariants,
+                                                                                              final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
+                                                                                              final ReadMetadata metadata,
+                                                                                              final ReferenceMultiSource reference,
+                                                                                              final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection parameters,
+                                                                                              final Logger localLogger) {
 
-        final Map<String, Object> attributeMap = new HashMap<>();
-
-        if (!breakpointComplications.getInsertedSequenceForwardStrandRep().isEmpty()) {
-            attributeMap.put(GATKSVVCFConstants.INSERTED_SEQUENCE, breakpointComplications.getInsertedSequenceForwardStrandRep());
-        }
-
-        if (!breakpointComplications.getHomologyForwardStrandRep().isEmpty()) {
-            attributeMap.put(GATKSVVCFConstants.HOMOLOGY, breakpointComplications.getHomologyForwardStrandRep());
-            attributeMap.put(GATKSVVCFConstants.HOMOLOGY_LENGTH, breakpointComplications.getHomologyForwardStrandRep().length());
-        }
-
-        if (breakpointComplications.hasDuplicationAnnotation()) {
-            attributeMap.put(GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN, breakpointComplications.getDupSeqRepeatUnitRefSpan().toString());
-            if (!breakpointComplications.getCigarStringsForDupSeqOnCtg().isEmpty()) {
-                attributeMap.put(GATKSVVCFConstants.DUP_SEQ_CIGARS,
-                        StringUtils.join(breakpointComplications.getCigarStringsForDupSeqOnCtg(), VCFConstants.INFO_FIELD_ARRAY_SEPARATOR));
-            }
-            attributeMap.put(GATKSVVCFConstants.DUPLICATION_NUMBERS,
-                    new int[]{breakpointComplications.getDupSeqRepeatNumOnRef(), breakpointComplications.getDupSeqRepeatNumOnCtg()});
-            if (breakpointComplications.isDupAnnotIsFromOptimization()) {
-                attributeMap.put(GATKSVVCFConstants.DUP_ANNOTATIONS_IMPRECISE, "");
-            }
-
-            if (breakpointComplications.getDupSeqStrandOnCtg() != null) {
-                attributeMap.put(GATKSVVCFConstants.DUP_INV_ORIENTATIONS,
-                        breakpointComplications.getDupSeqStrandOnCtg().stream().map(Strand::toString).collect(Collectors.joining()));
-            }
-        }
-        return attributeMap;
+        final int originalEvidenceLinkSize = evidenceTargetLinks.size();
+        final List<VariantContext> result = assemblyDiscoveredVariants
+                .stream()
+                .map(variant -> annotateWithImpreciseEvidenceLinks(
+                        variant,
+                        evidenceTargetLinks,
+                        reference.getReferenceSequenceDictionary(null),
+                        metadata, parameters.assemblyImpreciseEvidenceOverlapUncertainty))
+                .collect(Collectors.toList());
+        localLogger.info("Used " + (originalEvidenceLinkSize - evidenceTargetLinks.size()) + " evidence target links to annotate assembled breakpoints");
+        return result;
     }
 
-    static VariantContext annotateWithImpreciseEvidenceLinks(final VariantContext variant,
-                                                             final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
-                                                             final SAMSequenceDictionary referenceSequenceDictionary,
-                                                             final ReadMetadata metadata,
-                                                             final int defaultUncertainty) {
+    private static VariantContext annotateWithImpreciseEvidenceLinks(final VariantContext variant,
+                                                                     final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
+                                                                     final SAMSequenceDictionary referenceSequenceDictionary,
+                                                                     final ReadMetadata metadata,
+                                                                     final int defaultUncertainty) {
         if (variant.getStructuralVariantType() == StructuralVariantType.DEL) {
             SVContext svc = SVContext.of(variant);
             final int padding = (metadata == null) ? defaultUncertainty : (metadata.getMaxMedianFragmentSize() / 2);
