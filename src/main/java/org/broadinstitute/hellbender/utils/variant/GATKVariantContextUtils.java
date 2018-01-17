@@ -172,7 +172,7 @@ public final class GATKVariantContextUtils {
     public static boolean isTransition(final VariantContext context) {
         Utils.nonNull(context);
         Utils.validateArg(context.isSNP() && context.isBiallelic(), () -> "Requested SNP substitution type for bialleic non-SNP " + context);
-        return BaseUtils.SNPSubstitutionType(context.getReference().getBases()[0], context.getAlternateAllele(0).getBases()[0]) == BaseUtils.BaseSubstitutionType.TRANSITION;
+        return BaseUtils.isTransition(context.getReference().getBases()[0], context.getAlternateAllele(0).getBases()[0]);
     }
 
 
