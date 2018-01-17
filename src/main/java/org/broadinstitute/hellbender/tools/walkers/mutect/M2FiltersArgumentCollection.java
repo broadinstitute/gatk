@@ -11,6 +11,16 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
     private static final long serialVersionUID = 9345L;
 
     /**
+     * Prior log-10 probability that any given site has a somatic allele. Impacts germline probability calculation.
+     *
+     * //TODO Note that Mutect2 uses this for the germline annotation while FilterMutectCalls uses this for the contamination filter.
+     * //TODO This duplication is awkward and can probably be addressed by moving some of the germline code into filtering
+     */
+    @Argument(fullName="log-somatic-prior",
+            doc="Prior probability that a given site has a somatic allele.", optional = true)
+    public double log10PriorProbOfSomaticEvent = -6.0;
+
+    /**
      * Only variants with tumor LODs exceeding this threshold can pass filtering.
      */
     @Argument(fullName = "tumor-lod", optional = true, doc = "LOD threshold for calling tumor variant")
@@ -56,6 +66,9 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
 
     @Argument(fullName = "contamination-table", optional = true, doc = "Table containing contamination information.")
     public File contaminationTable = null;
+
+    @Argument(fullName = "max-contamination-probability", optional = true, doc = "Filter variants with posterior probability to be due to contamination greater than this.")
+    public double maxContaminationProbability = 0.1;
 
     @Argument(fullName = "unique-alt-read-count", shortName = "unique", optional = true, doc = "Filter a variant if a site contains fewer than this many unique (i.e. deduplicated) reads supporting the alternate allele")
     public int uniqueAltReadCount = 0;
