@@ -235,7 +235,7 @@ public class GATKProtectedVariantContextUtils {
         if (!genotype.hasPL()) {
             return Double.NaN;
         } else {
-            final int GQ = GATKProtectedMathUtils.secondSmallestMinusSmallest(genotype.getPL(), -1);
+            final int GQ = MathUtils.secondSmallestMinusSmallest(genotype.getPL(), -1);
             return GQ < 0 ? Double.NaN : (double) GQ;
         }
     }

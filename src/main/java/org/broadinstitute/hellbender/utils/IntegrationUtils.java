@@ -5,7 +5,6 @@ import org.apache.commons.math3.analysis.integration.gauss.GaussIntegratorFactor
 
 import java.util.function.DoubleFunction;
 import java.util.function.ToDoubleBiFunction;
-import java.util.stream.IntStream;
 
 /**
  * Created by tsato on 5/1/17.
@@ -23,7 +22,7 @@ public class IntegrationUtils {
         final double[] gaussIntegrationAbscissas = new IndexRange(0, numPoints).mapToDouble(integrator::getPoint);
         final double[] integrands = MathUtils.applyToArrayInPlace(gaussIntegrationAbscissas,getIntegrand::apply);
 
-        return GATKProtectedMathUtils.dotProduct(gaussIntegrationWeights, integrands);
+        return MathUtils.dotProduct(gaussIntegrationWeights, integrands);
     }
 
     public static double integrate2d(final ToDoubleBiFunction<Double, Double> getIntegrand,

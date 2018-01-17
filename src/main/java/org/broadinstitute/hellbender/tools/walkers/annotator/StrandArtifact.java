@@ -131,7 +131,7 @@ public class StrandArtifact extends GenotypeAnnotation implements StandardMutect
         // For a fixed f, integrate the double integral over epsilons. This gives us the likelihood p(x^+, x^- | f, z) for a fixed f, which is proportional to
         // the posterior probability of p(f | x^+, x^-, z)
         final int numSamplePoints = 100;
-        final double[] samplePoints = GATKProtectedMathUtils.createEvenlySpacedPoints(0.0, 1.0, numSamplePoints);
+        final double[] samplePoints = MathUtils.createEvenlySpacedPoints(0.0, 1.0, numSamplePoints);
         double[] likelihoodsGivenForwardArtifact = new double[numSamplePoints];
         double[] likelihoodsGivenReverseArtifact = new double[numSamplePoints];
 
