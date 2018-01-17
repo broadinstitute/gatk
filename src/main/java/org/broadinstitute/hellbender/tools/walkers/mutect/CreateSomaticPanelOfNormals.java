@@ -19,7 +19,6 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -182,7 +181,7 @@ public class CreateSomaticPanelOfNormals extends CommandLineProgram {
     //TODO: we should refine this
     private static void processVariantsAtSamePosition(final List<VariantContext> variants, final VariantContextWriter writer) {
         if (variants.size() > 1){
-            final VariantContext mergedVc = AssemblyBasedCallerUtils.makeMergedVariantContext(variants);
+            final VariantContext mergedVc = GATKVariantContextUtils.makeMergedVariantContext(variants);
             final VariantContext outputVc = new VariantContextBuilder()
                     .source(mergedVc.getSource())
                     .loc(mergedVc.getContig(), mergedVc.getStart(), mergedVc.getEnd())

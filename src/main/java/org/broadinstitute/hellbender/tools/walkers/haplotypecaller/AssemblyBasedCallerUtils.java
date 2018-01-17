@@ -213,18 +213,6 @@ public final class AssemblyBasedCallerUtils {
         return result;
     }
 
-    // Contract: the List<Allele> alleles of the resulting VariantContext is the ref allele followed by alt alleles in the
-    // same order as in the input vcs
-    public static VariantContext makeMergedVariantContext(final List<VariantContext> vcs) {
-        if (vcs.isEmpty()) {
-            return null;
-        }
-        final List<String> haplotypeSources = vcs.stream().map(VariantContext::getSource).collect(Collectors.toList());
-        return GATKVariantContextUtils.simpleMerge(vcs, haplotypeSources,
-                GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
-                GATKVariantContextUtils.GenotypeMergeType.PRIORITIZE, false, false, null, false, false);
-    }
-
 
     /**
      * High-level function that runs the assembler on the given region's reads,

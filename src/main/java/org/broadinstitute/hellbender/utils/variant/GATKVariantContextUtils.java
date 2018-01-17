@@ -208,6 +208,7 @@ public final class GATKVariantContextUtils {
         }
     }
 
+
     public enum GenotypeMergeType {
         /**
          * Make all sample genotypes unique by file. Each sample shared across RODs gets named sample.ROD.
@@ -530,6 +531,18 @@ public final class GATKVariantContextUtils {
 
     public static Genotype removePLsAndAD(final Genotype g) {
         return ( g.hasLikelihoods() || g.hasAD() ) ? new GenotypeBuilder(g).noPL().noAD().make() : g;
+    }
+
+    // Contract: the List<Allele> alleles of the resulting VariantContext is the ref allele followed by alt alleles in the
+    // same order as in the input vcs
+    public static VariantContext makeMergedVariantContext(final List<VariantContext> vcs) {
+        if (vcs.isEmpty()) {
+            return null;
+        }
+        final List<String> haplotypeSources = vcs.stream().map(VariantContext::getSource).collect(Collectors.toList());
+        return simpleMerge(vcs, haplotypeSources,
+                FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
+                GenotypeMergeType.PRIORITIZE, false, false, null, false, false);
     }
 
     //TODO consider refactor variant-context merging code so that we share as much as possible between
