@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCo
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.FixedAFCalculatorProvider;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
@@ -340,6 +341,15 @@ public final class ReblockGVCF extends VariantWalker {
         //copy over info annotations
         for(final InfoFieldAnnotation annotation : annotationEngine.getInfoAnnotations()) {
             for (final String key : annotation.getKeyNames()) {
+                if (infoFieldAnnotationKeyNamesToRemove.contains(key)) {
+                    continue;
+                }
+                if (origMap.containsKey(key)) {
+                    attrMap.put(key, origMap.get(key));
+                }
+            }
+            if (annotation instanceof ReducibleAnnotation) {
+                final String key = ((ReducibleAnnotation)annotation).getRawKeyName();
                 if (infoFieldAnnotationKeyNamesToRemove.contains(key)) {
                     continue;
                 }

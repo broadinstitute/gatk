@@ -568,6 +568,8 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
             return false;
         } else if (vc.isBiallelic()) {
             return !(GATKVCFConstants.isSpanningDeletion(vc.getAlternateAllele(0)) || vc.isSymbolic());
+        } else if (GATKVCFConstants.isSpanningDeletion(vc.getAlternateAllele(0)) && vc.getAlternateAllele(1).equals(Allele.NON_REF_ALLELE)){
+            return false;
         } else {
             return true;
         }

@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.genomicsdb;
 import com.googlecode.protobuf.format.JsonFormat;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.GnarlyGenotyper;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.genomicsdb.model.GenomicsDBExportConfiguration;
@@ -36,11 +37,12 @@ public class GenomicsDBUtils {
      * @param callsetJson path to the GenomicsDB callset JSON
      * @param vidmapJson path to the GenomicsDB vidmap JSON
      * @param vcfHeader VCF with header information to use for header lines on export
+     * @param genomicsDBOptions genotyping parameters to read from a GenomicsDB
      * @return a configuration to determine the output format when the GenomicsDB is queried
      */
     public static GenomicsDBExportConfiguration.ExportConfiguration createExportConfiguration(final File reference, final String workspace,
                                                                                                final String callsetJson, final String vidmapJson,
-                                                                                               final String vcfHeader) {
+                                                                                               final String vcfHeader, final GenomicsDBOptions genomicsDBOptions) {
         final GenomicsDBExportConfiguration.ExportConfiguration.Builder exportConfigurationBuilder =
                 GenomicsDBExportConfiguration.ExportConfiguration.newBuilder()
                         .setWorkspace(workspace)
@@ -52,6 +54,12 @@ public class GenomicsDBUtils {
                         .setProduceGTWithMinPLValueForSpanningDeletions(false)
                         .setSitesOnlyQuery(false)
                         .setMaxDiploidAltAllelesThatCanBeGenotyped(GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED);
+        if (genomicsDBOptions != null) {
+            exportConfigurationBuilder.setProduceGTField(genomicsDBOptions.doCallGenotypes()).
+                    setMaxDiploidAltAllelesThatCanBeGenotyped(genomicsDBOptions.getMaxAlternateAlleles());
+        }
+
+
         final Path arrayFolder = Paths.get(workspace, GenomicsDBConstants.DEFAULT_ARRAY_NAME).toAbsolutePath();
 
         // For the multi-interval support, we create multiple arrays (directories) in a single workspace -
@@ -90,6 +98,15 @@ public class GenomicsDBUtils {
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
                 GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, "element_wise_sum");
 
+        //Update combine operations for GnarlyGenotyper
+        //Note that this MQ format is deprecated, but was used by the prototype version of ReblockGVCF
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.MAPPING_QUALITY_DEPTH, "sum");
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.RAW_QUAL_APPROX_KEY, "sum");
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.VARIANT_DEPTH_KEY, "sum");
+
 
         if (vidMapPB != null) {
             //Use rebuilt vidMap in exportConfiguration
@@ -100,6 +117,12 @@ public class GenomicsDBUtils {
         }
 
         return exportConfigurationBuilder.build();
+    }
+
+    public static GenomicsDBExportConfiguration.ExportConfiguration createExportConfiguration(final File reference, final String workspace,
+                                                                                               final String callsetJson, final String vidmapJson,
+                                                                                               final String vcfHeader) {
+        return createExportConfiguration(reference, workspace, callsetJson, vidmapJson, vcfHeader, null);
     }
 
     /**
@@ -142,7 +165,7 @@ public class GenomicsDBUtils {
      * @param fieldNameToIndexInVidFieldsList name to index in list
      * @param fieldName                       INFO field name
      * @param newCombineOperation             combine op ("sum", "median")
-     * @return updated vid Protobuf object if field exists, else null
+     * @return updated vid Protobuf object if field exists, else return original vidmap object
      */
     public static GenomicsDBVidMapProto.VidMappingPB updateINFOFieldCombineOperation(
             final GenomicsDBVidMapProto.VidMappingPB vidMapPB,
@@ -163,7 +186,7 @@ public class GenomicsDBUtils {
             //Rebuild full vidMap
             return updatedVidMapBuilder.build();
         }
-        return null;
+        return vidMapPB;
     }
 
 }
