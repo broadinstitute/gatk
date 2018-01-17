@@ -19,8 +19,12 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
@@ -57,7 +61,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         // Test for an exact match against past results
         IntegrationTestSpec.assertEqualTextFiles(output, expected);
     }
-
 
     /*
      * Test that in VCF mode we're consistent with past GATK4 results
@@ -497,6 +500,49 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
         IntegrationTestSpec.assertEqualTextFiles(assemblyRegionOut, expectedAssemblyRegionOut);
         IntegrationTestSpec.assertEqualTextFiles(activityProfileOut, expectedActivityProfileOut);
+    }
+
+    /*
+    * Test that the min_base_quality_score parameter works
+    */
+    @Test
+    public void testMinBaseQualityScore() throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File outputAtLowThreshold = createTempFile("output", ".vcf");
+        final File outputAtHighThreshold = createTempFile("output", ".vcf");
+
+        final String[] lowThresholdArgs = {
+                "-I", NA12878_20_21_WGS_bam,
+                "-R", b37_reference_20_21,
+                "-L", "20:10000000-10010000",
+                "-O", outputAtLowThreshold.getAbsolutePath(),
+                "--min-base-quality-score", "20"
+        };
+
+        runCommandLine(lowThresholdArgs);
+
+        final String[] highThresholdArgs = {
+                "-I", NA12878_20_21_WGS_bam,
+                "-R", b37_reference_20_21,
+                "-L", "20:10000000-10010000",
+                "-O", outputAtHighThreshold.getAbsolutePath(),
+                "--min-base-quality-score", "30"
+        };
+
+        runCommandLine(highThresholdArgs);
+
+        final List<VariantContext> variantsWithLowThreshold =
+                StreamSupport.stream(new FeatureDataSource<VariantContext>(outputAtLowThreshold).spliterator(), false).collect(Collectors.toList());
+
+        final List<VariantContext> variantsWithHighThreshold =
+                StreamSupport.stream(new FeatureDataSource<VariantContext>(outputAtHighThreshold).spliterator(), false).collect(Collectors.toList());
+
+        final Set<Integer> lowStarts = variantsWithLowThreshold.stream().map(VariantContext::getStart).collect(Collectors.toSet());
+        final Set<Integer> highStarts = variantsWithHighThreshold.stream().map(VariantContext::getStart).collect(Collectors.toSet());
+        lowStarts.removeAll(highStarts);
+        final List<Integer> diff = lowStarts.stream().sorted().collect(Collectors.toList());
+        Assert.assertEquals(diff, Arrays.asList(10002458, 10008758, 10009842));
     }
 
     /*
