@@ -339,12 +339,12 @@ public final class GenomicsDBImport extends GATKTool {
             sampleNameToVcfPath = loadSampleNameMapFileInSortedOrder(IOUtils.getPath(sampleNameMapFile));
             final Path firstHeaderPath = sampleNameToVcfPath.entrySet().iterator().next().getValue();
             final VCFHeader header = getHeaderFromPath(firstHeaderPath);
-	    //getMetaDataInInputOrder() returns an ImmutableSet - LinkedHashSet is mutable and preserves ordering
+            //getMetaDataInInputOrder() returns an ImmutableSet - LinkedHashSet is mutable and preserves ordering
             mergedHeaderLines = new LinkedHashSet<VCFHeaderLine>(header.getMetaDataInInputOrder());
             mergedHeaderSequenceDictionary = header.getSequenceDictionary();
         }
 
-	mergedHeaderLines.addAll(getDefaultToolVCFHeaderLines());
+        mergedHeaderLines.addAll(getDefaultToolVCFHeaderLines());
 
         if ( mergedHeaderSequenceDictionary == null) {
             throw new UserException("The merged vcf header has no sequence dictionary. Please provide a header that contains a sequence dictionary.");
@@ -449,11 +449,11 @@ public final class GenomicsDBImport extends GATKTool {
 
         vidMapJSONFile = new File(workspaceDir + "/" + GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
         callsetMapJSONFile = new File(workspaceDir + "/" + GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
-	vcfHeaderFile = new File(workspaceDir + "/" + GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
+        vcfHeaderFile = new File(workspaceDir + "/" + GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
 
         logger.info("Vid Map JSON file will be written to " + vidMapJSONFile);
         logger.info("Callset Map JSON file will be written to " + callsetMapJSONFile);
-	logger.info("Complete VCF Header will be written to " + vcfHeaderFile);
+        logger.info("Complete VCF Header will be written to " + vcfHeaderFile);
         logger.info("Importing to array - " + workspace + "/" + GenomicsDBConstants.DEFAULT_ARRAY_NAME);
 
         //Pass in true here to use the given ordering, since sampleNameToVcfPath is already sorted
@@ -499,8 +499,8 @@ public final class GenomicsDBImport extends GATKTool {
             final long variantContextBufferSize = vcfBufferSizePerSample * sampleToReaderMap.size();
             final GenomicsDBImportConfiguration.ImportConfiguration importConfiguration =
                     createImportConfiguration(workspace, GenomicsDBConstants.DEFAULT_ARRAY_NAME,
-                            GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME,variantContextBufferSize, segmentSize,
-                            i, (i+updatedBatchSize-1));
+                                              variantContextBufferSize, segmentSize,
+                                              i, (i+updatedBatchSize-1));
 
             try {
                 importer = new GenomicsDBImporter(sampleToReaderMap, mergedHeaderLines, intervals.get(0), validateSampleToReaderMap, importConfiguration);
@@ -539,7 +539,7 @@ public final class GenomicsDBImport extends GATKTool {
         } catch (final FileNotFoundException fe) {
             throw new UserException("Unable to write callset map JSON file " + callsetMapJSONFile.getAbsolutePath(), fe);
         }
-	try {
+        try {
             GenomicsDBImporter.writeVcfHeaderFile(vcfHeaderFile.getAbsolutePath(), mergedHeaderLines);
         } catch (final FileNotFoundException fe) {
             throw new UserException("Unable to write VCF Header file " + vcfHeaderFile.getAbsolutePath(), fe);
@@ -633,13 +633,12 @@ public final class GenomicsDBImport extends GATKTool {
      * @return  GenomicsDB import configuration object
      */
     private static GenomicsDBImportConfiguration.ImportConfiguration createImportConfiguration(
-        final String workspace,
-        final String arrayName,
-	final String vcfHeaderName,
-        final long variantContextBufferSize,
-        final long segmentSize,
-        final long lbSampleIndex,
-        final long ubSampleIndex) {
+            final String workspace,
+            final String arrayName,
+            final long variantContextBufferSize,
+            final long segmentSize,
+            final long lbSampleIndex,
+            final long ubSampleIndex) {
 
         final GenomicsDBImportConfiguration.Partition.Builder pBuilder =
             GenomicsDBImportConfiguration.Partition.newBuilder();
