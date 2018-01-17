@@ -105,14 +105,14 @@ task CreateReadCountPanelOfNormals {
     Int? preemptible_attempts
     Int? disk_space_gb
 
-    Int machine_mem = if defined(mem) then select_first([mem]) else 8
-    Float command_mem = machine_mem - 0.5
+    Int machine_mem = select_first([mem, 8]) * 1000
+    Int command_mem = machine_mem - 500
 
     command <<<
         set -e
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
-        gatk --java-options "-Xmx${machine_mem}g" CreateReadCountPanelOfNormals \
+        gatk --java-options "-Xmx${command_mem}m" CreateReadCountPanelOfNormals \
             --input ${sep=" --input " read_count_files} \
             --minimum-interval-median-percentile ${default="10.0" minimum_interval_median_percentile} \
             --maximum-zeros-in-sample-percentage ${default="5.0" maximum_zeros_in_sample_percentage} \
@@ -127,7 +127,7 @@ task CreateReadCountPanelOfNormals {
 
     runtime {
         docker: "${gatk_docker}"
-        memory: command_mem + " GB"
+        memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 150]) + " HDD"
         preemptible: select_first([preemptible_attempts, 2])
     }

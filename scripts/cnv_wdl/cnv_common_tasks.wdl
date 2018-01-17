@@ -92,6 +92,9 @@ task CollectCounts {
     Int? preemptible_attempts
     Int? disk_space_gb
 
+    Int machine_mem = select_first([mem, 8]) * 1000
+    Int command_mem = machine_mem - 1000
+
     # Sample name is derived from the bam filename
     String base_filename = basename(bam, ".bam")
     String counts_filename = if !defined(format) then "${base_filename}.counts.hdf5" else "${base_filename}.counts.tsv"
@@ -100,7 +103,7 @@ task CollectCounts {
         set -e
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
-        gatk --java-options "-Xmx${default="8" mem}g" CollectFragmentCounts \
+        gatk --java-options "-Xmx${command_mem}m" CollectFragmentCounts \
             --input ${bam} \
             -L ${intervals} \
             --format ${default="HDF5" format} \
@@ -110,7 +113,7 @@ task CollectCounts {
 
     runtime {
         docker: "${gatk_docker}"
-        memory: select_first([mem, 8]) + " GB"
+        memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space_gb, ceil(size(bam, "GB")) + 50]) + " HDD"
         preemptible: select_first([preemptible_attempts, 5])
     }
@@ -137,8 +140,7 @@ task CollectAllelicCounts {
     Int? preemptible_attempts
     Int? disk_space_gb
 
-    # Mem is in units of GB but our command and memory runtime values are in MB
-    Int machine_mem = if defined(mem) then mem * 1000 else 13000
+    Int machine_mem = select_first([mem, 13]) * 1000
     Int command_mem = machine_mem - 1000
 
     # Sample name is derived from the bam filename

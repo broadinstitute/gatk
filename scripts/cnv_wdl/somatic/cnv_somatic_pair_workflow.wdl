@@ -309,8 +309,7 @@ task DenoiseReadCounts {
     Int? preemptible_attempts
     Int disk_space_gb
 
-    # Mem is in units of GB but our command and memory runtime values are in MB
-    Int machine_mem = if defined(mem) then mem * 1000 else 13000
+    Int machine_mem = select_first([mem, 13]) * 1000
     Int command_mem = machine_mem - 1000
 
     command <<<
@@ -371,8 +370,7 @@ task ModelSegments {
     Int? preemptible_attempts
     Int disk_space_gb
 
-    # Mem is in units of GB but our command and memory runtime values are in MB
-    Int machine_mem = if defined(mem) then mem * 1000 else 13000
+    Int machine_mem = select_first([mem, 13]) * 1000
     # ModelSegments seems to need at least 3GB of overhead to run
     Int command_mem = machine_mem - 3000
 
@@ -449,8 +447,7 @@ task CallCopyRatioSegments {
     Int? preemptible_attempts
     Int disk_space_gb
 
-    # Mem is in units of GB but our command and memory runtime values are in MB
-    Int machine_mem = if defined(mem) then mem * 1000 else 7000
+    Int machine_mem = select_first([mem, 7]) * 1000
     Int command_mem = machine_mem - 1000
 
     command <<<
@@ -492,8 +489,7 @@ task PlotDenoisedCopyRatios {
     Int? preemptible_attempts
     Int disk_space_gb
 
-    # Mem is in units of GB but our command and memory runtime values are in MB
-    Int machine_mem = if defined(mem) then mem * 1000 else 7000
+    Int machine_mem = select_first([mem, 7]) * 1000
     Int command_mem = machine_mem - 1000
 
     # If optional output_dir not specified, use "out"
@@ -546,8 +542,7 @@ task PlotModeledSegments {
     Int? preemptible_attempts
     Int disk_space_gb
 
-    # Mem is in units of GB but our command and memory runtime values are in MB
-    Int machine_mem = if defined(mem) then mem * 1000 else 7000
+    Int machine_mem = select_first([mem, 7]) * 1000
     Int command_mem = machine_mem - 1000
 
     # If optional output_dir not specified, use "out"

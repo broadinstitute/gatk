@@ -202,8 +202,8 @@ task DetermineGermlineContigPloidyCaseMode {
 
     # We do not expose Hybrid ADVI parameters -- the default values are decent
 
-    Int machine_mem = if defined(mem) then select_first([mem]) else 8
-    Float command_mem = machine_mem - 0.5
+    Int machine_mem = select_first([mem, 8]) * 1000
+    Int command_mem = machine_mem - 500
 
     # If optional output_dir not specified, use "out"
     String output_dir_ = select_first([output_dir, "out"])
@@ -218,7 +218,7 @@ task DetermineGermlineContigPloidyCaseMode {
         mkdir input-contig-ploidy-model
         tar xzf ${contig_ploidy_model_tar} -C input-contig-ploidy-model
 
-        gatk --java-options "-Xmx${machine_mem}g" DetermineGermlineContigPloidy \
+        gatk --java-options "-Xmx${command_mem}m" DetermineGermlineContigPloidy \
             --input ${sep=" --input " read_count_files} \
             --model input-contig-ploidy-model \
             --output ${output_dir_} \
@@ -232,7 +232,7 @@ task DetermineGermlineContigPloidyCaseMode {
 
     runtime {
         docker: "${gatk_docker}"
-        memory: command_mem + " GB"
+        memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 150]) + " HDD"
         preemptible: select_first([preemptible_attempts, 2])
         cpu: select_first([cpu, 8])
@@ -293,8 +293,8 @@ task GermlineCNVCallerCaseMode {
     Float? caller_admixing_rate
     Boolean? disable_annealing
 
-    Int machine_mem = if defined(mem) then select_first([mem]) else 8
-    Float command_mem = machine_mem - 0.5
+    Int machine_mem = select_first([mem, 8]) * 1000
+    Int command_mem = machine_mem - 500
 
     # If optional output_dir not specified, use "out"
     String output_dir_ = select_first([output_dir, "out"])
@@ -312,7 +312,7 @@ task GermlineCNVCallerCaseMode {
         mkdir gcnv-model
         tar xzf ${gcnv_model_tar} -C gcnv-model
 
-        gatk --java-options "-Xmx${machine_mem}g"  GermlineCNVCaller \
+        gatk --java-options "-Xmx${command_mem}m"  GermlineCNVCaller \
             --run-mode CASE \
             --input ${sep=" --input " read_count_files} \
             --contig-ploidy-calls contig-ploidy-calls-dir \
@@ -353,7 +353,7 @@ task GermlineCNVCallerCaseMode {
 
     runtime {
         docker: "${gatk_docker}"
-        memory: command_mem + " GB"
+        memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 150]) + " HDD"
         preemptible: select_first([preemptible_attempts, 2])
         cpu: select_first([cpu, 8])

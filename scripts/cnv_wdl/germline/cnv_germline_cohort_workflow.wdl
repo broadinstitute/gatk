@@ -248,8 +248,8 @@ task DetermineGermlineContigPloidyCohortMode {
 
     # We do not expose Hybrid ADVI parameters -- the default values are decent
 
-    Int machine_mem = if defined(mem) then select_first([mem]) else 8
-    Float command_mem = machine_mem - 0.5
+    Int machine_mem = select_first([mem, 8]) * 1000
+    Int command_mem = machine_mem - 500
 
     # If optional output_dir not specified, use "out"
     String output_dir_ = select_first([output_dir, "out"])
@@ -261,7 +261,7 @@ task DetermineGermlineContigPloidyCohortMode {
         export MKL_NUM_THREADS=${default=8 cpu}
         export OMP_NUM_THREADS=${default=8 cpu}
 
-        gatk --java-options "-Xmx${machine_mem}g"  DetermineGermlineContigPloidy \
+        gatk --java-options "-Xmx${command_mem}m"  DetermineGermlineContigPloidy \
             --input ${sep=" --input " read_count_files} \
             --contig-ploidy-priors ${contig_ploidy_priors} \
             --output ${output_dir_} \
@@ -278,7 +278,7 @@ task DetermineGermlineContigPloidyCohortMode {
 
     runtime {
         docker: "${gatk_docker}"
-        memory: command_mem + " GB"
+        memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 150]) + " HDD"
         preemptible: select_first([preemptible_attempts, 2])
         cpu: select_first([cpu, 8])
@@ -349,8 +349,8 @@ task GermlineCNVCallerCohortMode {
     Float? caller_admixing_rate
     Boolean? disable_annealing
 
-    Int machine_mem = if defined(mem) then select_first([mem]) else 8
-    Float command_mem = machine_mem - 0.5
+    Int machine_mem = select_first([mem, 8]) * 1000
+    Int command_mem = machine_mem - 500
 
     # If optional output_dir not specified, use "out"
     String output_dir_ = select_first([output_dir, "out"])
@@ -365,7 +365,7 @@ task GermlineCNVCallerCohortMode {
         mkdir contig-ploidy-calls-dir
         tar xzf ${contig_ploidy_calls_tar} -C contig-ploidy-calls-dir
 
-        gatk --java-options "-Xmx${machine_mem}g"  GermlineCNVCaller \
+        gatk --java-options "-Xmx${command_mem}m"  GermlineCNVCaller \
             --run-mode COHORT \
             -L ${intervals} \
             --input ${sep=" --input " read_count_files} \
@@ -418,7 +418,7 @@ task GermlineCNVCallerCohortMode {
 
     runtime {
         docker: "${gatk_docker}"
-        memory: command_mem + " GB"
+        memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 150]) + " HDD"
         preemptible: select_first([preemptible_attempts, 2])
         cpu: select_first([cpu, 8])
