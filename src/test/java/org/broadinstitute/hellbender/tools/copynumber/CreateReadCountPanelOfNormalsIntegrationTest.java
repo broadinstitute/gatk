@@ -200,33 +200,35 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
                 inputHDF5Files.add(inputHDF5File);
             }
 
-            //counts for all samples as TSV files
-            data.add(Arrays.asList(
-                    inputTSVFiles,
-                    annotatedIntervalsFile,
-                    trueNumberOfEigenvalues));
+            for (final File inputAnnotatedIntervalsFile : Arrays.asList(annotatedIntervalsFile, null)) {
+                //counts for all samples as TSV files
+                data.add(Arrays.asList(
+                        inputTSVFiles,
+                        inputAnnotatedIntervalsFile,
+                        trueNumberOfEigenvalues));
 
-            //counts for all samples as HDF5 files
-            data.add(Arrays.asList(
-                    inputHDF5Files,
-                    annotatedIntervalsFile,
-                    trueNumberOfEigenvalues));
+                //counts for all samples as HDF5 files
+                data.add(Arrays.asList(
+                        inputHDF5Files,
+                        inputAnnotatedIntervalsFile,
+                        trueNumberOfEigenvalues));
 
-            //mix of TSV and HDF5 files
-            data.add(Arrays.asList(
-                    ListUtils.union(
-                            inputTSVFiles.subList(0, NUM_SAMPLES / 2),
-                            inputHDF5Files.subList(NUM_SAMPLES / 2, NUM_SAMPLES)),
-                    annotatedIntervalsFile,
-                    trueNumberOfEigenvalues));
+                //mix of TSV and HDF5 files
+                data.add(Arrays.asList(
+                        ListUtils.union(
+                                inputTSVFiles.subList(0, NUM_SAMPLES / 2),
+                                inputHDF5Files.subList(NUM_SAMPLES / 2, NUM_SAMPLES)),
+                        inputAnnotatedIntervalsFile,
+                        trueNumberOfEigenvalues));
+            }
         }
         return data.stream().map(List::toArray).toArray(Object[][]::new);
     }
 
     @Test(dataProvider = "dataPanelOfNormals")
-    public void testWithoutExplicitGCCorrection(final List<File> inputFiles,
-                                                final File annotatedIntervalsFile,    //ignored in this test
-                                                final int expectedNumberOfEigenvalues) {
+    public void test(final List<File> inputFiles,
+                     final File annotatedIntervalsFile,
+                     final int expectedNumberOfEigenvalues) {
         final File resultOutputFile = createTempFile("create-read-count-panel-of-normals-test", ".tsv");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addArgument(CreateReadCountPanelOfNormals.MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(MINIMUM_INTERVAL_MEDIAN_PERCENTILE))
@@ -235,27 +237,31 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
                 .addArgument(CreateReadCountPanelOfNormals.EXTREME_SAMPLE_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(EXTREME_SAMPLE_MEDIAN_PERCENTILE))
                 .addArgument(CopyNumberStandardArgument.NUMBER_OF_EIGENSAMPLES_LONG_NAME, Integer.toString(NUMBER_OF_EIGENVALUES_REQUESTED))
                 .addOutput(resultOutputFile);
-        inputFiles.forEach(argsBuilder::addInput);
-        runCommandLine(argsBuilder);
-        testPanelOfNormals(null, expectedNumberOfEigenvalues, resultOutputFile);
-    }
-
-    @Test(dataProvider = "dataPanelOfNormals")
-    public void testWithExplicitGCCorrection(final List<File> inputFiles,
-                                             final File annotatedIntervalsFile,
-                                             final int expectedNumberOfEigenvalues) {
-        final File resultOutputFile = createTempFile("create-read-count-panel-of-normals-test", ".tsv");
-        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .addArgument(CreateReadCountPanelOfNormals.MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(MINIMUM_INTERVAL_MEDIAN_PERCENTILE))
-                .addArgument(CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE_LONG_NAME, Double.toString(MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE))
-                .addArgument(CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE_LONG_NAME, Double.toString(MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE))
-                .addArgument(CreateReadCountPanelOfNormals.EXTREME_SAMPLE_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(EXTREME_SAMPLE_MEDIAN_PERCENTILE))
-                .addArgument(CopyNumberStandardArgument.NUMBER_OF_EIGENSAMPLES_LONG_NAME, Integer.toString(NUMBER_OF_EIGENVALUES_REQUESTED))
-                .addFileArgument(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME, annotatedIntervalsFile)
-                .addOutput(resultOutputFile);
+        if (annotatedIntervalsFile != null) {
+            argsBuilder.addFileArgument(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME, annotatedIntervalsFile);
+        }
         inputFiles.forEach(argsBuilder::addInput);
         runCommandLine(argsBuilder);
         testPanelOfNormals(annotatedIntervalsFile, expectedNumberOfEigenvalues, resultOutputFile);
+    }
+
+    @Test(dataProvider = "dataPanelOfNormals")
+    public void testSingleSample(final List<File> inputFiles,
+                                 final File annotatedIntervalsFile,
+                                 final int expectedNumberOfEigenvalues) {   //ignored in this test
+        final File resultOutputFile = createTempFile("create-read-count-panel-of-normals-test", ".tsv");
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
+                .addArgument(CreateReadCountPanelOfNormals.MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(MINIMUM_INTERVAL_MEDIAN_PERCENTILE))
+                .addArgument(CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE_LONG_NAME, Double.toString(MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE))
+                .addArgument(CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE_LONG_NAME, Double.toString(MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE))
+                .addArgument(CreateReadCountPanelOfNormals.EXTREME_SAMPLE_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(EXTREME_SAMPLE_MEDIAN_PERCENTILE))
+                .addArgument(CopyNumberStandardArgument.NUMBER_OF_EIGENSAMPLES_LONG_NAME, Integer.toString(NUMBER_OF_EIGENVALUES_REQUESTED))
+                .addOutput(resultOutputFile);
+        if (annotatedIntervalsFile != null) {
+            argsBuilder.addFileArgument(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME, annotatedIntervalsFile);
+        }
+        argsBuilder.addInput(inputFiles.get(NUM_BAD_SAMPLES_WITH_TOO_MANY_ZEROS));  //use only first good sample
+        runCommandLine(argsBuilder);                                                //just check that we can build the panel; no other assertions checked
     }
 
     private void testPanelOfNormals(final File annotatedIntervalsFile,
