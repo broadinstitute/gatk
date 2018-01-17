@@ -111,16 +111,7 @@ public final class GATKVariantContextUtils {
         }
         return VariantContextWriterBuilder.OutputType.UNSPECIFIED;
     }
-
-    /**
-     * Diploid NO_CALL allele list...
-     *
-     * @deprecated you should use {@link #noCallAlleles(int)} instead. It indicates the presence of a hardcoded diploid assumption which is bad.
-     */
-    @Deprecated
-    public final static List<Allele> NO_CALL_ALLELES = Arrays.asList(Allele.NO_CALL, Allele.NO_CALL);
-
-
+    
     private static boolean hasPLIncompatibleAlleles(final Collection<Allele> alleleSet1, final Collection<Allele> alleleSet2) {
         final Iterator<Allele> it1 = alleleSet1.iterator();
         final Iterator<Allele> it2 = alleleSet2.iterator();
