@@ -48,6 +48,22 @@ public class GATKProtectedVariantContextUtils {
     }
 
     /**
+     * Composes the int array from an INFO annotation.
+     *
+     * @param variantContext the target variant-context.
+     * @param key the name of the attribute containing the double array.
+     * @param defaultValue the double array to return in case there is no such an annotation.
+     * @param missingValue value to use to fill up positions with a missing value (e.g. '.').
+     * @return never {@code null}.
+     * @throws IllegalArgumentException if {@code variantContext} is {@code null} or {@code key} is {@code null}.
+     */
+    public static int[] getAttributeAsIntArray(final VariantContext variantContext, final String key,
+                                                     final Supplier<int[]> defaultValue, final int missingValue) {
+        Utils.nonNull(variantContext);
+        return attributeValueToIntArray(variantContext.getAttribute(key), key, defaultValue, missingValue);
+    }
+
+    /**
      * Composes the double array from a genotype annotation. Provides default and missing values.
      *
      * @param variantContext the target variant-context.
