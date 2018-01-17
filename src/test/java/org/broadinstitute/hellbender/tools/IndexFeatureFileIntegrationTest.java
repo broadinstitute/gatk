@@ -169,7 +169,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         checkIndex(index, Arrays.asList("1", "2", "3", "4"));
     }
 
-    @Test(expectedExceptions = UserException.MalformedFile.class)
+    @Test(expectedExceptions = UserException.CouldNotIndexFile.class)
     public void testVCFGZIPIndex() throws IOException {
         //This tests blows up because the input file is not blocked gzipped
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf.gzip.gz"); //made by gzip
@@ -181,7 +181,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final Object res = this.runCommandLine(args);
     }
 
-    @Test(expectedExceptions = UserException.MalformedFile.class)
+    @Test(expectedExceptions = UserException.CouldNotIndexFile.class)
     public void testVCFGZIPIndex_inferredName() throws IOException {
         //This tests blows up because the input file is not blocked gzipped
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf.gzip.gz"); //made by gzip
@@ -209,7 +209,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         checkIndex(index, Arrays.asList("1"));
     }
 
-    @Test(expectedExceptions = TribbleException.InvalidHeader.class)
+    @Test(expectedExceptions = UserException.CouldNotIndexFile.class)
     public void testUncompressedBCF2_2Index() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.BCF22uncompressed.bcf");
         final File outName = createTempFile("test_variants_for_index.BCF22uncompressed.bcf", ".idx");

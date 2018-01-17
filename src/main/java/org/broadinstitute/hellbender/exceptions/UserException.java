@@ -410,4 +410,13 @@ public class UserException extends RuntimeException {
             super(message, e);
         }
     }
+
+    public static final class CouldNotIndexFile extends UserException {
+        private static final long serialVersionUID = 0L;
+
+        public CouldNotIndexFile(final File file, final Exception e) {
+            super(String.format("Error while trying to create index for %s. Error was: %s: %s",
+                    file.getAbsolutePath(), e.getClass().getCanonicalName(), e.getMessage()), e);
+        }
+    }
 }

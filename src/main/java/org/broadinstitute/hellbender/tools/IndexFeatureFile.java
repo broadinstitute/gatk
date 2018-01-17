@@ -92,34 +92,32 @@ public final class IndexFeatureFile extends CommandLineProgram {
     }
 
     private Index createAppropriateIndexInMemory(final FeatureCodec<? extends Feature, ?> codec) {
-        // For block-compression files, write a Tabix index
-        if (AbstractFeatureReader.hasBlockCompressedExtension(featureFile)) {
-            // Creating tabix indices with a non standard extensions can cause problems so we disable it
-            if (outputFile != null && !outputFile.getAbsolutePath().endsWith(TabixUtils.STANDARD_INDEX_EXTENSION)) {
-                throw new UserException("The index for " + featureFile + " must be written to a file with a \"" + TabixUtils.STANDARD_INDEX_EXTENSION + "\" extension");
-            }
-            try {
+        try {
+            // For block-compression files, write a Tabix index
+            if (AbstractFeatureReader.hasBlockCompressedExtension(featureFile)) {
+                // Creating tabix indices with a non standard extensions can cause problems so we disable it
+                if (outputFile != null && !outputFile.getAbsolutePath().endsWith(TabixUtils.STANDARD_INDEX_EXTENSION)) {
+                    throw new UserException("The index for " + featureFile + " must be written to a file with a \"" + TabixUtils.STANDARD_INDEX_EXTENSION + "\" extension");
+                }
+
                 // TODO: this could benefit from provided sequence dictionary from reference
                 // TODO: this can be an optional parameter for the tool
-                return IndexFactory
-                        .createIndex(featureFile, codec, IndexFactory.IndexType.TABIX, null);
-            } catch (TribbleException.MalformedFeatureFile e) {
-                throw new UserException.MalformedFile(featureFile, e.getMessage(), e);
-            } catch (TribbleException e) {
-                // TODO: this TribbleException should be distinguished at the htsjdk level
-                // this exception is thrown if the codec does not implement getTabixFormat()
-                throw new UserException("This tool does not supports indexing of block-compressed files for "
-                        + codec.getClass().getSimpleName(), e);
+                return IndexFactory.createIndex(featureFile, codec, IndexFactory.IndexType.TABIX, null);
+
             }
-        }
-        // TODO: detection of GVCF files should not be file-extension-based. Need to come up with canonical
-        // TODO: way of detecting GVCFs based on the contents (may require changes to the spec!)
-        else if (featureFile.getName().endsWith(GVCF_FILE_EXTENSION)) {
-            // Optimize GVCF indices for the use case of having a large number of GVCFs open simultaneously
-            return IndexFactory.createLinearIndex(featureFile, codec, OPTIMAL_GVCF_INDEX_BIN_SIZE);
-        } else {
-            // Optimize indices for other kinds of files for seek time / querying
-            return IndexFactory.createDynamicIndex(featureFile, codec, IndexFactory.IndexBalanceApproach.FOR_SEEK_TIME);
+            // TODO: detection of GVCF files should not be file-extension-based. Need to come up with canonical
+            // TODO: way of detecting GVCFs based on the contents (may require changes to the spec!)
+            else if (featureFile.getName().endsWith(GVCF_FILE_EXTENSION)) {
+                // Optimize GVCF indices for the use case of having a large number of GVCFs open simultaneously
+                return IndexFactory.createLinearIndex(featureFile, codec, OPTIMAL_GVCF_INDEX_BIN_SIZE);
+            } else {
+                // Optimize indices for other kinds of files for seek time / querying
+                return IndexFactory.createDynamicIndex(featureFile, codec, IndexFactory.IndexBalanceApproach.FOR_SEEK_TIME);
+            }
+        } catch (TribbleException e) {
+            // Underlying cause here is usually a malformed file, but can also be things like
+            // "codec does not support tabix"
+            throw new UserException.CouldNotIndexFile(featureFile, e);
         }
     }
 }
