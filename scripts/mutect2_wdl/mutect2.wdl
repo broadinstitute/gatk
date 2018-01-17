@@ -260,7 +260,7 @@ workflow Mutect2 {
         File unfiltered_vcf_index = MergeVCFs.output_vcf_index
         File filtered_vcf = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
         File filtered_vcf_index = select_first([FilterByOrientationBias.filtered_vcf_index, Filter.filtered_vcf_index])
-        File contamination_table = CalculateContamination.contamination_table
+        File? contamination_table = CalculateContamination.contamination_table
 
         # select_first() fails if nothing resolves to non-null, so putting in "null" for now.
         File? oncotated_m2_maf = select_first([oncotate_m2.oncotated_m2_maf, "null"])
