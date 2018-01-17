@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceAPISource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.bqsr.BQSRTestData;
@@ -162,13 +163,14 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
                 // See RecalDatum for explanation of why the multiplier is needed.
 
                 // local input/computation, using the GA4GH reference API, SHUFFLE
-                {new BQSRTest(GRCh37RefCloud, hiSeqBam_1read, dbSNPb37_chr2021, "-indels --enable-baq " +" --join-strategy SHUFFLE", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1READ_RECAL)},
-                {new BQSRTest(GRCh37RefCloud, hiSeqBam_chr20, dbSNPb37_chr20, "-indels --enable-baq " +" --join-strategy SHUFFLE", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
-                {new BQSRTest(GRCh37RefCloud, hiSeqBam_chr20, dbSNPb37_chr20, " --join-strategy SHUFFLE", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_NOINDEL_NOBAQ_RECAL)},
-                {new BQSRTest(GRCh37RefCloud, hiSeqBam_chr20, dbSNPb37_chr20, "-indels --enable-baq " +" --join-strategy SHUFFLE --indels-context-size 4",  localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_INDELS_CONTEXT_SIZE_4_RECAL)},
-                {new BQSRTest(GRCh37RefCloud, hiSeqBam_chr20, dbSNPb37_chr20, "-indels --enable-baq " +" --join-strategy SHUFFLE --low-quality-tail 5",     localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_LOW_QUALITY_TAIL_5_RECAL)},
-                {new BQSRTest(GRCh37RefCloud, hiSeqBam_chr20, dbSNPb37_chr20, "-indels --enable-baq " +" --join-strategy SHUFFLE --quantizing-levels 6",    localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_QUANTIZING_LEVELS_6_RECAL)},
-                {new BQSRTest(GRCh37RefCloud, hiSeqBam_chr20, dbSNPb37_chr20, "-indels --enable-baq " +" --join-strategy SHUFFLE --mismatches-context-size 4", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_MISMATCHES_CONTEXT_SIZE_4_RECAL)},
+                //TODO remove these and replace them if necessary instead of disabling them, see https://github.com/broadinstitute/gatk/issues/4166
+                //{new BQSRTest(GRCh37RefCloud, hiSeqBam_1read, dbSNPb37_chr2021, "-indels --enable-baq " +" --join-strategy SHUFFLE", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1READ_RECAL)},
+                //{new BQSRTest(GRCh37RefCloud, hiSeqBam_chr20, dbSNPb37_chr20, "-indels --enable-baq " +" --join-strategy SHUFFLE", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
+                //{new BQSRTest(GRCh37RefCloud, hiSeqBam_chr20, dbSNPb37_chr20, " --join-strategy SHUFFLE", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_NOINDEL_NOBAQ_RECAL)},
+                //{new BQSRTest(GRCh37RefCloud, hiSeqBam_chr20, dbSNPb37_chr20, "-indels --enable-baq " +" --join-strategy SHUFFLE --indels-context-size 4",  localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_INDELS_CONTEXT_SIZE_4_RECAL)},
+                //{new BQSRTest(GRCh37RefCloud, hiSeqBam_chr20, dbSNPb37_chr20, "-indels --enable-baq " +" --join-strategy SHUFFLE --low-quality-tail 5",     localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_LOW_QUALITY_TAIL_5_RECAL)},
+                //{new BQSRTest(GRCh37RefCloud, hiSeqBam_chr20, dbSNPb37_chr20, "-indels --enable-baq " +" --join-strategy SHUFFLE --quantizing-levels 6",    localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_QUANTIZING_LEVELS_6_RECAL)},
+                //{new BQSRTest(GRCh37RefCloud, hiSeqBam_chr20, dbSNPb37_chr20, "-indels --enable-baq " +" --join-strategy SHUFFLE --mismatches-context-size 4", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_MISMATCHES_CONTEXT_SIZE_4_RECAL)},
 
                 // local input/computation, using a 2bit reference file in a GCS bucket, BROADCAST
                 {new BQSRTest(chr2021Reference2bit, hiSeqBam_1read, dbSNPb37_chr2021, "-indels --enable-baq " +" --join-strategy BROADCAST", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1READ_RECAL)},
@@ -287,11 +289,10 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
         final String localResources =  getResourceDir();
 
-        final String hg19Ref = ReferenceAPISource.URL_PREFIX + ReferenceAPISource.HG19_REF_ID;
         final String HiSeqBam_chr17 = resourceDir + "NA12878.chr17_69k_70k.dictFix.bam";
 
         final String dbSNPb37_chr2021 = resourceDir + DBSNP_138_B37_CH20_1M_1M1K_VCF;
-        final BQSRTest params = new BQSRTest(hg19Ref, HiSeqBam_chr17, dbSNPb37_chr2021, "", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL);
+        final BQSRTest params = new BQSRTest(GATKBaseTest.hg19MiniReference, HiSeqBam_chr17, dbSNPb37_chr2021, "", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL);
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 params.getCommandLine(),
                 1,
