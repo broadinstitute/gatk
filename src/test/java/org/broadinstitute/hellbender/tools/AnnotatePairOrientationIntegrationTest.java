@@ -5,8 +5,8 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.nd4j.linalg.io.StringUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -123,8 +123,8 @@ public class AnnotatePairOrientationIntegrationTest extends CommandLineProgramTe
             for (int j = 0; j < annotations.size(); j ++) {
                 final String annotation = annotations.get(j);
                 final String tumorF1r2 = tumorGenotype.getExtendedAttribute(annotation).toString();
-                Assert.assertNotNull(StringUtils.split(tumorF1r2, ","));
-                Assert.assertEquals(StringUtils.split(tumorF1r2, ",").length, 2);
+                Assert.assertNotNull(Utils.split(tumorF1r2, ","));
+                Assert.assertEquals(Utils.split(tumorF1r2, ",").size(), 2);
                 Assert.assertEquals(tumorF1r2, gtF1R2F2R1[i][j+annotations.size()]);
             }
         }
