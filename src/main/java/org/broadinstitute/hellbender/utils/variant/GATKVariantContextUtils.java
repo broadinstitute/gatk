@@ -167,22 +167,12 @@ public final class GATKVariantContextUtils {
     }
 
     /**
-     * Returns the type of the substitution (transition vs transversion) represented by this variant. Only applicable to bi allelic SNPs.
-     */
-    public static BaseUtils.BaseSubstitutionType getSNPSubstitutionType(final VariantContext context) {
-        Utils.nonNull(context);
-        if (!context.isSNP() || !context.isBiallelic()) {
-            throw new IllegalArgumentException("Requested SNP substitution type for bialleic non-SNP " + context);
-        }
-        return BaseUtils.SNPSubstitutionType(context.getReference().getBases()[0], context.getAlternateAllele(0).getBases()[0]);
-    }
-
-    /**
      * If this is a BiAllelic SNP, is it a transition?
      */
     public static boolean isTransition(final VariantContext context) {
         Utils.nonNull(context);
-        return getSNPSubstitutionType(context) == BaseUtils.BaseSubstitutionType.TRANSITION;
+        Utils.validateArg(context.isSNP() && context.isBiallelic(), () -> "Requested SNP substitution type for bialleic non-SNP " + context);
+        return BaseUtils.SNPSubstitutionType(context.getReference().getBases()[0], context.getAlternateAllele(0).getBases()[0]) == BaseUtils.BaseSubstitutionType.TRANSITION;
     }
 
 
