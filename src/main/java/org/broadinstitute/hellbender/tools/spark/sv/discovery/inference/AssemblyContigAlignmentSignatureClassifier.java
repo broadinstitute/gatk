@@ -275,7 +275,7 @@ public final class AssemblyContigAlignmentSignatureClassifier {
      * Note that "original" is meant to be possibly different from the returned configuration,
      * but DOES NOT mean the alignments of the contig as given by the aligner,
      * i.e. the configuration should be one of the best given by
-     * {@link FilterLongReadAlignmentsSAMSpark#pickBestConfigurations(AlignedContig, Set, Double)}.
+     * {@link AssemblyContigAlignmentsConfigPicker#pickBestConfigurations(AlignedContig, Set, Double)}.
      */
     static Tuple2<List<AlignmentInterval>, List<AlignmentInterval>> removeNonUniqueMappings(final List<AlignmentInterval> originalConfiguration,
                                                                                             final int mapQThresholdInclusive,

@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-@DefaultSerializer(Serializer.class)
+@DefaultSerializer(AssemblyContigWithFineTunedAlignments.Serializer.class)
 public final class AssemblyContigWithFineTunedAlignments {
     private static final AlignedContig.Serializer contigSerializer = new AlignedContig.Serializer();
     public static final List<String> emptyInsertionMappings = Collections.emptyList();
@@ -28,7 +28,7 @@ public final class AssemblyContigWithFineTunedAlignments {
     }
 
     public AssemblyContigWithFineTunedAlignments(final AlignedContig contig,
-                                          final List<String> insertionMappings) {
+                                                 final List<String> insertionMappings) {
         this.contig = contig;
         this.insertionMappings = Utils.nonNull(insertionMappings);
     }
