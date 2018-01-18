@@ -30,8 +30,6 @@ public class Mutect2FilteringEngine {
         final Genotype tumorGenotype = vc.getGenotype(tumorSample);
         final double[] alleleFractions = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(tumorGenotype, VCFConstants.ALLELE_FREQUENCY_KEY,
                 () -> new double[] {1.0}, 1.0);
-        final int maxIndex = MathUtils.maxElementIndex(alleleFractions);
-        //final int depth = GATKProtectedVariantContextUtils.getAttribute
         final double maxFraction = MathUtils.arrayMax(alleleFractions);
         if (maxFraction < contamination) {
             filters.add(GATKVCFConstants.CONTAMINATION_FILTER_NAME);

@@ -9,7 +9,7 @@
 ## Description of inputs:
 ##
 ## ** Runtime ** 
-## gatk_docker, oncotator_docker: docker images to use for GATK4 Mutect2 and for Oncotator
+## gatk_docker, oncotator_docker: docker images to use for GATK 4 Mutect2 and for Oncotator
 ## preemptible_attempts: how many preemptions to tolerate before switching to a non-preemptible machine (on Google)
 ## gatk_override: (optional) local file or Google bucket path to a GATK 4 java jar file to be used instead of the GATK 4 jar
 ##                in the docker image.  This must be supplied when running in an environment that does not support docker
@@ -33,7 +33,7 @@
 ## ** Primary resources ** (optional but strongly recommended)
 ## pon, pon_index: optional panel of normals in VCF format containing probable technical artifacts (false positves)
 ## gnomad, gnomad_index: optional database of known germline variants (see http://gnomad.broadinstitute.org/downloads)
-## variants_for_contamination, variants_for_contamination_index: VCF of common variants with allele frequencies fo calculating contamination
+## variants_for_contamination, variants_for_contamination_index: VCF of common variants with allele frequencies for calculating contamination
 ##
 ## ** Secondary resources ** (for optional tasks)
 ## onco_ds_tar_gz, default_config_file: Oncotator datasources and config file
