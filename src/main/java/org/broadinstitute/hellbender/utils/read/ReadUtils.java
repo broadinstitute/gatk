@@ -881,7 +881,7 @@ public final class ReadUtils {
     }
 
     /**
-     * Creates an "empty" read with the provided read's read group and mate
+     * Creates an "empty", unmapped read with the provided read's read group and mate
      * information, but empty (not-null) fields:
      *  - Cigar String
      *  - Read Bases

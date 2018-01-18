@@ -458,7 +458,9 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
     }
 
-    // test fix for https://github.com/broadinstitute/gatk/issues/3466
+    // Test fix for https://github.com/broadinstitute/gatk/issues/3466
+    // This specifically tests the case of a read that ends up as empty
+    // after a call to ReadClipper.hardClipSoftClippedBases()
     @Test
     public void testCompletelyClippedReadNearStartOfContig() throws Exception {
         final File testCaseFilesDir = new File(TEST_FILES_DIR, "issue3466_gatk_cigar_error");
@@ -468,6 +470,26 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final String[] args = {
                 "-I", new File(testCaseFilesDir, "culprit.bam").getAbsolutePath(),
                 "-R", new File(testCaseFilesDir, "GRCh37_MTonly.fa").getAbsolutePath(),
+                "-O", output.getAbsolutePath()
+        };
+        runCommandLine(args);
+
+        Assert.assertEquals(calculateConcordance(output, expected), 1.0);
+    }
+
+    // Test fix for https://github.com/broadinstitute/gatk/issues/3845
+    // This specifically tests the case of a read at the start of a contig (position == 1)
+    // that becomes completely clipped after a call to ReadClipper.revertSoftClippedBases()
+    @Test
+    public void testCompletelyClippedReadNearStartOfContig_revertSoftClipped() throws Exception {
+        final File testCaseFilesDir = new File(TEST_FILES_DIR, "issue3845_revertSoftClip_bug");
+        final File output = createTempFile("testCompletelyClippedReadNearStartOfContig_revertSoftClipped", ".vcf");
+        final File expected = new File(testCaseFilesDir, "expected_testCompletelyClippedReadNearStartOfContig_revertSoftClipped_gatk4.vcf");
+
+        final String[] args = {
+                "-I", new File(testCaseFilesDir, "issue3845_bug.bam").getAbsolutePath(),
+                "-R", new File(publicTestDir, "Homo_sapiens_assembly38_chrM_only.fasta").getAbsolutePath(),
+                "-L", "chrM",
                 "-O", output.getAbsolutePath()
         };
         runCommandLine(args);

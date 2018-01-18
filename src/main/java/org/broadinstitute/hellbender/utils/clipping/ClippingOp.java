@@ -11,8 +11,6 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.*;
 
-import static org.broadinstitute.hellbender.utils.read.ReadUtils.*;
-
 /**
  * Represents a clip on a read.  It has a type (see the enum) along with a start and stop in the bases
  * of the read, plus an option extraInfo (useful for carrying info where needed).
@@ -174,7 +172,13 @@ public final class ClippingOp {
             // that cache these values, such as SAMRecord), and again after the hard clip.
             unclipped.setPosition(unclipped.getContig(), 1);
             unclipped = applyHARDCLIP_BASES(unclipped, 0, - newStart);
-            unclipped.setPosition(unclipped.getContig(), 1);
+            
+            // Reset the position to 1 again only if we didn't end up with an empty, unmapped read after hard clipping.
+            // See https://github.com/broadinstitute/gatk/issues/3845
+            if ( ! unclipped.isUnmapped() ) {
+                unclipped.setPosition(unclipped.getContig(), 1);
+            }
+            
             return unclipped;
         } else {
             unclipped.setPosition(unclipped.getContig(), newStart);
@@ -390,13 +394,13 @@ public final class ClippingOp {
             hardClippedRead.setPosition(read.getContig(), read.getStart() + calculateAlignmentStartShift(cigar, cigarShift.cigar));
         }
 
-        if (hasBaseIndelQualities(read)) {
+        if (ReadUtils.hasBaseIndelQualities(read)) {
             final byte[] newBaseInsertionQuals = new byte[newLength];
             final byte[] newBaseDeletionQuals = new byte[newLength];
-            System.arraycopy(getBaseInsertionQualities(read), copyStart, newBaseInsertionQuals, 0, newLength);
-            System.arraycopy(getBaseDeletionQualities(read), copyStart, newBaseDeletionQuals, 0, newLength);
-            setInsertionBaseQualities(hardClippedRead, newBaseInsertionQuals);
-            setDeletionBaseQualities(hardClippedRead, newBaseDeletionQuals);
+            System.arraycopy(ReadUtils.getBaseInsertionQualities(read), copyStart, newBaseInsertionQuals, 0, newLength);
+            System.arraycopy(ReadUtils.getBaseDeletionQualities(read), copyStart, newBaseDeletionQuals, 0, newLength);
+            ReadUtils.setInsertionBaseQualities(hardClippedRead, newBaseInsertionQuals);
+            ReadUtils.setDeletionBaseQualities(hardClippedRead, newBaseDeletionQuals);
         }
 
         return hardClippedRead;
