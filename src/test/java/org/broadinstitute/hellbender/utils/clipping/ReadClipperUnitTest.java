@@ -460,4 +460,23 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
         Assert.assertEquals(clippedRead.numCigarElements(), 0);
         Assert.assertTrue(clippedRead.isUnmapped());
     }
+
+    // Test fix for https://github.com/broadinstitute/gatk/issues/3845
+    @Test
+    public void testRevertSoftClippedBasesDoesntExplodeOnCompletelyClippedRead() {
+        final GATKRead originalRead = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("41S59H"));
+        // It's important that the read be AT the start of the contig for this test, so that
+        // we clip away ALL of the reverted soft-clipped bases, resulting in an empty read.
+        originalRead.setPosition(originalRead.getContig(), 1);
+        
+        final GATKRead clippedRead = ReadClipper.revertSoftClippedBases(originalRead);
+
+        Assert.assertEquals(clippedRead.getLength(), 0);
+        Assert.assertTrue(clippedRead.isEmpty());
+        Assert.assertEquals(clippedRead.getBases().length, 0);
+        Assert.assertEquals(clippedRead.getBaseQualities().length, 0);
+        Assert.assertEquals(clippedRead.numCigarElements(), 0);
+        Assert.assertTrue(clippedRead.isUnmapped());
+    }
+
 }
