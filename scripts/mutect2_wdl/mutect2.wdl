@@ -502,7 +502,7 @@ task CollectSequencingArtifactMetrics {
         set -e
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
         gatk --java-options "-Xmx${command_mem}m" CollectSequencingArtifactMetrics \
-            -I ${tumor_bam} -O "gatk" R=${ref_fasta} -VALIDATION_STRINGENCY LENIENT
+            -I ${tumor_bam} -O "gatk" -R ${ref_fasta} -VALIDATION_STRINGENCY LENIENT
     }
 
     runtime {
