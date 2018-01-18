@@ -1,25 +1,58 @@
-#  Run Mutect 2 on a single tumor-normal pair or on a single tumor sample.
-#
-#  Description of inputs
-#  gatk: java jar file containing gatk 4
-#  intervals: genomic intervals
-#  ref_fasta, ref_fai, ref_dict: reference genome, index, and dictionary
-#  tumor_bam, tumor_bai: self-explanatory
-#  normal_bam, normal_bai: self-explanatory
-#  pon, pon_index: optional panel of normals and index in vcf format containing known false positves
-#  scatter_count: number of parallel jobs when scattering over intervals
-#  gnomad, gnomad_index: optional database of known germline variants, obtainable from http://gnomad.broadinstitute.org/downloads
-#  variants_for_contamination, variants_for_contamination_index: vcf of common variants with allele frequencies fo calculating contamination
-#  is_run_orientation_bias_filter: if true, run the orientation bias filter post-processing step
-#  is_run_oncotator: if true, annotate the M2 VCFs using oncotator (to produce a TCGA MAF).  Important:  This requires a docker image and should
-#   not be run in environments where docker is unavailable (e.g. SGE cluster on a Broad on-prem VM).  Access to docker
-#   hub is also required, since the task will download a public docker image.
-#
-#
-# This WDL needs to decide whether to use the ``gatk`` or ``gatk_override`` for the jar location.  As of cromwell-0.24,
-#   this logic *must* go into each task.  Therefore, there is a lot of duplicated code.  This allows users to specify a jar file
-#   independent of what is in the docker file.  See the README.md for more info.
-#
+## Copyright Broad Institute, 2017
+##
+## This WDL workflow runs GATK4 Mutect 2 on a single tumor-normal pair or on a single tumor sample,
+## and performs additional filtering and functional annotation tasks.
+##
+## Main requirements/expectations :
+## - One analysis-ready BAM file (and its index) for each sample
+##
+## Description of inputs:
+##
+## ** Runtime ** 
+## gatk_docker, oncotator_docker: docker images to use for GATK4 Mutect2 and for Oncotator
+## preemptible_attempts: how many preemptions to tolerate before switching to a non-preemptible machine (on Google)
+## gatk_override: (optional) local file or Google bucket path to a GATK 4 java jar file to be used instead of the GATK 4 jar
+##                in the docker image.  This must be supplied when running in an environment that does not support docker
+##                (e.g. SGE cluster on a Broad on-prem VM)
+##
+## ** Workflow options **
+## intervals: genomic intervals (will be used for scatter)
+## scatter_count: number of parallel jobs to generate when scattering over intervals
+## artifact_modes: types of artifacts to consider in the orientation bias filter
+## m2_extra_args, m2_extra_filtering_args: additional arguments for Mutect2 calling and filtering (optional)
+## is_run_orientation_bias_filter: if true, run the orientation bias filter post-processing step
+## is_run_oncotator: if true, annotate the M2 VCFs using oncotator (to produce a TCGA MAF).  Important:  This requires a
+##                   docker image and should  not be run in environments where docker is unavailable (e.g. SGE cluster on
+##                   a Broad on-prem VM).  Access to docker hub is also required, since the task downloads a public docker image.
+##
+## ** Primary inputs **
+## ref_fasta, ref_fai, ref_dict: reference genome, index, and dictionary
+## tumor_bam, tumor_bam_index: BAM and index for the tumor sample
+## normal_bam, normal_bam_index: BAM and index for the normal sample
+##
+## ** Primary resources ** (optional but strongly recommended)
+## pon, pon_index: optional panel of normals in VCF format containing probable technical artifacts (false positves)
+## gnomad, gnomad_index: optional database of known germline variants (see http://gnomad.broadinstitute.org/downloads)
+## variants_for_contamination, variants_for_contamination_index: VCF of common variants with allele frequencies fo calculating contamination
+##
+## ** Secondary resources ** (for optional tasks)
+## onco_ds_tar_gz, default_config_file: Oncotator datasources and config file
+## sequencing_center, sequence_source: metadata for Oncotator
+##
+## Outputs :
+## - One VCF file and its index with primary filtering applied; secondary filtering and functional annotation if requested; a bamout.bam
+##   file of reassembled reads if requested
+##
+## Cromwell version support
+## - Successfully tested on v29
+##
+## LICENSING :
+## This script is released under the WDL source code license (BSD-3) (see LICENSE in
+## https://github.com/broadinstitute/wdl). Note however that the programs it calls may
+## be subject to different licenses. Users are responsible for checking that they are
+## authorized to run all programs before running this script. Please see the docker
+## pages at https://hub.docker.com/r/broadinstitute/* for detailed licensing information
+## pertaining to the included programs.
 workflow Mutect2 {
     # Mutect2 inputs
     File? intervals
