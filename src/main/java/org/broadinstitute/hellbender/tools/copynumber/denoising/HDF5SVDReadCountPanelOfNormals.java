@@ -305,32 +305,41 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
             }
             logger.info(String.format("Performing SVD (truncated at %d eigensamples) of standardized counts (transposed to %d x %d)...",
                     numEigensamples, numPanelIntervals, numPanelSamples));
-            final SingularValueDecomposition<RowMatrix, Matrix> svd = SparkConverter.convertRealMatrixToSparkRowMatrix(
-                    ctx, preprocessedStandardizedResult.preprocessedStandardizedValues.transpose(), NUM_SLICES_FOR_SPARK_MATRIX_CONVERSION)
-                    .computeSVD(numEigensamples, true, EPSILON);
-            final double[] singularValues = svd.s().toArray();    //should be in decreasing order (with corresponding matrices below)
-            if (singularValues.length == 0 || Arrays.stream(singularValues).noneMatch(s -> s > EPSILON)) {
-                throw new UserException(String.format("No non-zero singular values were found.  It may be necessary to use stricter parameters for filtering.  " +
-                        "For example, use a larger value of %s.", CreateReadCountPanelOfNormals.MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME));
+            final double[] singularValues;
+            final double[][] eigensampleVectors;
+            if (numPanelSamples > 1) {
+                final SingularValueDecomposition<RowMatrix, Matrix> svd = SparkConverter.convertRealMatrixToSparkRowMatrix(
+                        ctx, preprocessedStandardizedResult.preprocessedStandardizedValues.transpose(), NUM_SLICES_FOR_SPARK_MATRIX_CONVERSION)
+                        .computeSVD(numEigensamples, true, EPSILON);
+                singularValues = svd.s().toArray();    //should be in decreasing order (with corresponding matrices below)
+                if (singularValues.length == 0 || Arrays.stream(singularValues).noneMatch(s -> s > EPSILON)) {
+                    //if the panel contains more than one sample, we require that at least one non-negligible singular value is found
+                    throw new UserException(String.format("No non-zero singular values were found.  It may be necessary to use stricter parameters for filtering.  " +
+                            "For example, use a larger value of %s.", CreateReadCountPanelOfNormals.MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME));
+                }
+                if (singularValues.length < numEigensamples) {
+                    logger.warn(String.format("Attempted to truncate at %d eigensamples, but only %d non-zero singular values were found...",
+                            numEigensamples, singularValues.length));
+                }
+                eigensampleVectors = SparkConverter.convertSparkRowMatrixToRealMatrix(svd.U(), numPanelIntervals).getData();
+            } else {
+                //if the panel only contains a single sample, take zero for singular value and zero vector for eigensample vector
+                singularValues = new double[numPanelSamples];
+                eigensampleVectors = new double[numPanelIntervals][numPanelSamples];
             }
-            if (singularValues.length < numEigensamples) {
-                logger.warn(String.format("Attempted to truncate at %d eigensamples, but only %d non-zero singular values were found...",
-                        numEigensamples, singularValues.length));
-            }
-            final double[][] eigensampleVectors = SparkConverter.convertSparkRowMatrixToRealMatrix(svd.U(), numPanelIntervals).getData();
 
             logger.info(String.format("Writing singular values (%d)...", singularValues.length));
             pon.writeSingularValues(singularValues);
 
             logger.info(String.format("Writing eigensample vectors (transposed to %d x %d)...", eigensampleVectors[0].length, eigensampleVectors.length));
             pon.writeEigensampleVectors(eigensampleVectors);
-        } catch (final RuntimeException e) {
+        } catch (final RuntimeException exception) {
             //if any exceptions encountered, delete partial output and rethrow
-            logger.warn(String.format("Exception encountered during creation of panel of normals.  Attempting to delete partial output in %s...",
-                    outFile.getAbsolutePath()));
+            logger.warn(String.format("Exception encountered during creation of panel of normals (%s).  Attempting to delete partial output in %s...",
+                    exception, outFile.getAbsolutePath()));
             IOUtils.tryDelete(outFile);
             throw new GATKException(String.format("Could not create panel of normals.  It may be necessary to use stricter parameters for filtering.  " +
-                    "For example, use a larger value of %s.", CreateReadCountPanelOfNormals.MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME),  e);
+                    "For example, use a larger value of %s.", CreateReadCountPanelOfNormals.MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME),  exception);
         }
         logger.info(String.format("Read-count panel of normals written to %s.", outFile));
     }
