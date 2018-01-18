@@ -29,6 +29,8 @@ task OncotateSegments {
     Int? preemptible_attempts
     Int? disk_space_gb
 
+    Int machine_mem_mb = select_first([mem_gb, 3]) * 1000
+
     command <<<
         set -e
 
@@ -50,7 +52,7 @@ task OncotateSegments {
 
     runtime {
         docker: select_first([oncotator_docker, "broadinstitute/oncotator:1.9.5.0-eval-gatk-protected"])
-        memory: select_first([mem_gb, 3]) + " GB"
+        memory: machine_mem_mb + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 50]) + " HDD"
         preemptible: select_first([preemptible_attempts, 2])
         bootDiskSizeGb: 50

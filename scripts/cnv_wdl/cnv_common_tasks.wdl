@@ -13,6 +13,9 @@ task PreprocessIntervals {
     Int? preemptible_attempts
     Int? disk_space_gb
 
+    Int machine_mem_mb = select_first([mem_gb, 2]) * 1000
+    Int command_mem_mb = machine_mem_mb - 500
+
     # Determine output filename
     String filename = select_first([intervals, "wgs"])
     String base_filename = basename(filename, ".interval_list")
@@ -21,7 +24,7 @@ task PreprocessIntervals {
         set -e
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
-        gatk --java-options "-Xmx${default="2" mem_gb}g" PreprocessIntervals \
+        gatk --java-options "-Xmx${command_mem_mb}m" PreprocessIntervals \
             ${"-L " + intervals} \
             --sequence-dictionary ${ref_fasta_dict} \
             --reference ${ref_fasta} \
@@ -33,7 +36,7 @@ task PreprocessIntervals {
 
     runtime {
         docker: "${gatk_docker}"
-        memory: select_first([mem_gb, 2]) + " GB"
+        memory: machine_mem_mb + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 40]) + " HDD"
         preemptible: select_first([preemptible_attempts, 5])
     }
@@ -56,11 +59,14 @@ task AnnotateIntervals {
     Int? preemptible_attempts
     Int? disk_space_gb
 
+    Int machine_mem_mb = select_first([mem_gb, 2]) * 1000
+    Int command_mem_mb = machine_mem_mb - 500
+
     command <<<
         set -e
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
-        gatk --java-options "-Xmx${default="4" mem_gb}g" AnnotateIntervals \
+        gatk --java-options "-Xmx${command_mem_mb}m" AnnotateIntervals \
             -L ${intervals} \
             --reference ${ref_fasta} \
             --interval-merging-rule OVERLAPPING_ONLY \
@@ -69,7 +75,7 @@ task AnnotateIntervals {
 
     runtime {
         docker: "${gatk_docker}"
-        memory: select_first([mem_gb, 5]) + " GB"
+        memory: machine_mem_mb + " MB"
         disks: "local-disk " + select_first([disk_space_gb, ceil(size(ref_fasta, "GB")) + 50]) + " HDD"
         preemptible: select_first([preemptible_attempts, 5])
     }
@@ -92,7 +98,7 @@ task CollectCounts {
     Int? preemptible_attempts
     Int? disk_space_gb
 
-    Int machine_mem_mb = select_first([mem_gb  * 1000, 7500])
+    Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
     Int command_mem_mb = machine_mem_mb - 1000
 
     # Sample name is derived from the bam filename
@@ -183,6 +189,8 @@ task ScatterIntervals {
     Int? preemptible_attempts
     Int? disk_space_gb
 
+    Int machine_mem_mb = select_first([mem_gb, 2]) * 1000
+
     String base_filename = basename(interval_list, ".interval_list")
 
     command <<<
@@ -196,7 +204,7 @@ task ScatterIntervals {
 
     runtime {
         docker: "${gatk_docker}"
-        memory: select_first([mem_gb, 2]) + " GB"
+        memory: machine_mem_mb + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 40]) + " HDD"
         preemptible: select_first([preemptible_attempts, 5])
     }
