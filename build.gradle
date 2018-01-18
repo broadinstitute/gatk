@@ -182,8 +182,6 @@ dependencies {
 
     compile 'com.github.wendykierp:JTransforms:3.1'
     compile 'org.broadinstitute:hdf5-java-bindings:1.1.0-hdf5_2.11.0'
-    compile 'org.nd4j:nd4j-native-platform:0.5.0'
-    compile 'org.nd4j:nd4j-kryo_2.11:0.5.0'
     compile 'org.broadinstitute:gatk-native-bindings:1.0.0'
 
     compile 'org.ojalgo:ojalgo:44.0.0'
@@ -345,10 +343,6 @@ test {
     systemProperty "samjdk.use_async_io_write_tribble", "false"
     systemProperty "samjdk.compression_level", "1"
     systemProperty "gatk.spark.debug", System.getProperty("gatk.spark.debug")
-
-    // Nd4j
-    systemProperty "dtype", "double"
-    environment "OMP_NUM_THREADS", "4"
 
     environment "SPARK_LOCAL_IP","127.0.0.1"
 
