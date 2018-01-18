@@ -1,13 +1,13 @@
 workflow CNVOncotatorWorkflow {
     File called_file
-    Int? mem
+    Int? mem_gb
     String? oncotator_docker
     String? additional_args
 
     call OncotateSegments {
         input:
             called_file = called_file,
-            mem = mem,
+            mem_gb = mem_gb,
             oncotator_docker = oncotator_docker,
             additional_args = additional_args
     }
@@ -24,7 +24,7 @@ task OncotateSegments {
     String basename_called_file = basename(called_file)
 
     # Runtime parameters
-    Int? mem
+    Int? mem_gb
     String? oncotator_docker
     Int? preemptible_attempts
     Int? disk_space_gb
@@ -50,7 +50,7 @@ task OncotateSegments {
 
     runtime {
         docker: select_first([oncotator_docker, "broadinstitute/oncotator:1.9.5.0-eval-gatk-protected"])
-        memory: select_first([mem, 3]) + " GB"
+        memory: select_first([mem_gb, 3]) + " GB"
         disks: "local-disk " + select_first([disk_space_gb, 50]) + " HDD"
         preemptible: select_first([preemptible_attempts, 2])
         bootDiskSizeGb: 50
