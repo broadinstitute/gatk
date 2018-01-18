@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
 
 /**
  * Collects fragment counts at specified intervals.  The count for each interval is calculated by counting
- * the number of fragment centers that lie in interval.  The start and end positions of fragments are
+ * the number of fragment centers that lie in the interval.  The start and end positions of fragments are
  * inferred from read information; only properly paired, first-of-pair reads that pass the specified read filters are
  * used.
  *
