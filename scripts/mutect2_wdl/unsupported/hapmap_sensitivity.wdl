@@ -21,7 +21,6 @@
 import "mutect2.wdl" as MutectSingleSample
 
 workflow HapmapSensitivity {
-    File picard
     File? intervals
   	File ref_fasta
   	File ref_fai
@@ -68,7 +67,6 @@ workflow HapmapSensitivity {
         call MutectSingleSample.Mutect2 {
             input:
                 gatk_override = gatk_override,
-                picard = picard,
                 gatk_docker = gatk_docker,
                 oncotator_docker = "ubuntu:16.04",
                 intervals = intervals,

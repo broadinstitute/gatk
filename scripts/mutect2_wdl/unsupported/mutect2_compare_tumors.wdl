@@ -8,7 +8,6 @@
 import "mutect2.wdl" as m2
 
 workflow Mutect2Trio {
-	File picard
 	File? intervals
 	File ref_fasta
 	File ref_fai
@@ -34,7 +33,6 @@ workflow Mutect2Trio {
 	scatter(trio in trios) {
 		call m2.Mutect2 as GoodTumor {
 			input:
-				picard = picard,
 				intervals = intervals,
 				ref_fasta = ref_fasta,
 				ref_fai = ref_fai,
@@ -59,7 +57,6 @@ workflow Mutect2Trio {
 
 		call m2.Mutect2 as BadTumor {
             input:
-        	    picard  =  picard,
         		intervals = intervals,
         		ref_fasta = ref_fasta,
        			ref_fai = ref_fai,

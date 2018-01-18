@@ -89,10 +89,6 @@ before_install:
 - if [[ $RUN_CNV_GERMLINE_WDL == true || $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true ]]; then
     wget -O ~/cromwell-0.29.jar https://github.com/broadinstitute/cromwell/releases/download/29/cromwell-29.jar;
   fi
-# Download Picard jar
-- if [[ $RUN_M2_WDL == true ]]; then
-    wget -O ~/picard.jar https://github.com/broadinstitute/picard/releases/download/2.9.0/picard.jar;
-  fi
 # Download git lfs files
 - git lfs version
 - git lfs install

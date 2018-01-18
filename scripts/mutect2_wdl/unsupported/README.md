@@ -23,7 +23,6 @@ The following resources:
 * Three preprocessed Hapmap vcfs -- one each for the 5-plex, 10-plex and 20-plex mixtures.  These are produced by preprocess_hapmap.wdl but as long as the sample composition of the mixtures remains the same they do not need to be generated again.  That is, the proportions need not be the same, but the same 5, 10, and 20 Hapmap samples must be present.
 * A reference .fasta file, along with accompanying .fasta.fai and .dict files.
 * A gatk4 java .jar file.
-* A Picard java .jar file.
 * Three lists of .bam files -- one each for 5-plex, 10-plex and 20-plex replicates -- where each row has the format <bam_file.bam></TAB><bam_index.bai>
 * A list of .bam files of the specificity validation's replicates, where each row has the format <replicate_i.bam></TAB><replicate_i.bai></TAB><replicate_j.bam></TAB><replicate_j.bai>, with one row for each *ordered* pair i, j eg (1,2), (1,3), (2,1), (2,3), (3,1), (3,2) if there are three replicates.
 * An intervals file.
@@ -36,7 +35,6 @@ In the same directory as your wdl scripts, fill in a file called sensitivity.jso
 ```
 {
   "HapmapSensitivityAllPlexes.gatk_override": "[Path to a gatk jar file.  Omitting this line uses the gatk jar in the docker image.]",
-  "HapmapSensitivityAllPlexes.picard": "[path to Picard .jar file]",
   "HapmapSensitivityAllPlexes.gatk_docker": "[gatk docker image eg broadinstitute/gatk:4.beta.3 -- this is not used in SGE but you still have to fill it in.]",
   "HapmapSensitivityAllPlexes.intervals": "[path to intervals file]",
   "HapmapSensitivityAllPlexes.ref_fasta": "[path to reference .fasta file]",
@@ -69,7 +67,6 @@ In the same directory as your wdl scripts, fill in a file called specificity.jso
 {
   "Mutect2ReplicateValidation.gatk_override": "[Path to a gatk jar file.  Omitting this line uses the gatk jar in the docker image.]",
   "Mutect2ReplicateValidation.gatk_docker": "[gatk docker image eg broadinstitute/gatk:4.beta.3 -- this is not used in SGE but you still have to fill it in.]",
-  "Mutect2ReplicateValidation.picard": "[path to Picard .jar file]",
   "Mutect2ReplicateValidation.ref_fasta": "[path to reference .fasta file]",
   "Mutect2ReplicateValidation.ref_fai": "[path to reference .fasta.fai file]",
   "Mutect2ReplicateValidation.ref_dict": "[path to reference .dict file]",
