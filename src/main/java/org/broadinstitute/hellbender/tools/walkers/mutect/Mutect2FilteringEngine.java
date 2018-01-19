@@ -27,7 +27,6 @@ public class Mutect2FilteringEngine {
         somaticPriorProb = Math.pow(10, MTFAC.log10PriorProbOfSomaticEvent);
     }
 
-    // very naive M1-style contamination filter -- remove calls with AF less than the contamination fraction
     private void applyContaminationFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
         final Genotype tumorGenotype = vc.getGenotype(tumorSample);
         final double[] alleleFractions = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(tumorGenotype, VCFConstants.ALLELE_FREQUENCY_KEY,
@@ -39,13 +38,13 @@ public class Mutect2FilteringEngine {
         final double alleleFrequency = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc,
                 GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE, () -> new double[] {0.0, 0.0}, 0)[maxFractionIndex];
 
-        final double somaticLikelihood = somaticPriorProb / (depth + 1);
+        final double somaticLikelihood = 1.0 / (depth + 1);
 
         final double singleContaminantLikelihood = 2 * alleleFrequency * (1 - alleleFrequency) * MathUtils.binomialProbability(depth, altCount, contamination/2)
                 + MathUtils.square(alleleFrequency) * MathUtils.binomialProbability(depth, altCount, contamination);
         final double manyContaminantLikelihood = MathUtils.binomialProbability(depth, altCount, contamination * alleleFrequency);
         final double contaminantLikelihood = Math.max(singleContaminantLikelihood, manyContaminantLikelihood);
-        final double posteriorProbOfContamination = contaminantLikelihood / (contaminantLikelihood + somaticLikelihood);
+        final double posteriorProbOfContamination = (1 - somaticPriorProb) * contaminantLikelihood / ((1 - somaticPriorProb) * contaminantLikelihood + somaticPriorProb * somaticLikelihood);
 
 
 
