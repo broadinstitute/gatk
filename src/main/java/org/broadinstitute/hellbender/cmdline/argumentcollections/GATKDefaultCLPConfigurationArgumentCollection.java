@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
-import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -67,7 +66,8 @@ public final class GATKDefaultCLPConfigurationArgumentCollection implements CLPC
         if (resolvedTmpDirectories.isEmpty()) {
             // Provide one temp directory if the caller didn't
             if (tmpDir == null || tmpDir.isEmpty()) {
-                resolvedTmpDirectories.add(IOUtil.getDefaultTmpDirPath());
+                // TODO - this should use the HTSJDK IOUtil.getDefaultTmpDirPath, which is somehow broken in the current HTSJDK version
+                resolvedTmpDirectories.add(IOUtils.getPath(System.getProperty("java.io.tmpdir")));
             } else {
                 tmpDir.forEach(s -> resolvedTmpDirectories.add(IOUtils.getPath(s)));
             }

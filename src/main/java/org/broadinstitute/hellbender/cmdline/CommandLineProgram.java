@@ -142,20 +142,25 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
                 }
             }
             try {
-                // TODO - not sure if this will work as before, because using File.setReadable(true, false) and
-                // TODO - f.setWritable(true, false) was done in two steps, so if one failed the other was done
-                // TODO - I don't know if the setPosixFilePermissions try to set all and then throws an exception
-                // TODO - if any of them fails, or just has an early termination
-                // TODO - an option to avoid this problem is iterate over a list of the permissions and set them
-                // TODO - one by one, ignoring possible errors (this was done in the original commit/PR)
-                Files.setPosixFilePermissions(p, new HashSet<>(Arrays.asList(
+                // add the READ/WRITE permissions to the actual permissions of the file
+                final Set<PosixFilePermission> permissions = Files.getPosixFilePermissions(p);
+                // only set the permissions if they change
+                if (permissions.addAll(Arrays.asList(
                         PosixFilePermission.OWNER_READ, PosixFilePermission.GROUP_READ, PosixFilePermission.OTHERS_READ,
-                        PosixFilePermission.OWNER_WRITE, PosixFilePermission.GROUP_WRITE, PosixFilePermission.OTHERS_WRITE)
-                ));
-            } catch (UnsupportedOperationException | IOException e) {
+                        PosixFilePermission.OWNER_WRITE, PosixFilePermission.GROUP_WRITE, PosixFilePermission.OTHERS_WRITE))) {
+                    Files.setPosixFilePermissions(p, permissions);
+                }
+            } catch (final UnsupportedOperationException | IOException e) {
                 // intentionally ignoring
+                // TODO - logging can be removed, but I think that it might be informative
+                // TODO - maybe it should be debug
+                logger.warn("Temp directory {}: unable to set permissions due to {}", p, e.getMessage());
             }
-            System.setProperty("java.io.tmpdir", p.toAbsolutePath().toUri().toString()); // in loop so that last one takes effect
+
+            // TODO - this should be p.toAbsolutePath().toUri().toString() to allow other FileSystems to be used
+            // TODO - but it did not work with the default FileSystem because it appends the file:// scheme
+            // TODO - maybe a method in IOUtils for converting a Path to String is required for handling this (and can be re-used in other places when it is required)
+            System.setProperty("java.io.tmpdir", p.toAbsolutePath().toString()); // in loop so that last one takes effect
         }
 
         //Set defaults (note: setting them here means they are not controllable by the user)
