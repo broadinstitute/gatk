@@ -74,6 +74,7 @@ public class ExtractSequence extends GATKTool {
 
     @Argument(
             fullName = START_ARG_LONG_NAME,
+            minValue = 1,
             doc = "Start position (1-based, inclusive) from which to extract a sub-sequence of bases.",
             optional = true
     )
@@ -81,6 +82,7 @@ public class ExtractSequence extends GATKTool {
 
     @Argument(
             fullName = END_ARG_LONG_NAME,
+            minValue = 1,
             doc = "End position (1-based, inclusive) from which to extract a sub-sequence of bases.",
             optional = true
     )

@@ -52,11 +52,11 @@ public class ExtractSequenceIntegrationTest extends CommandLineProgramTest {
         arguments.add("--" + ExtractSequence.CONTIG_ARG_LONG_NAME);
         arguments.add(contig);
         if ( start != null ) {
-            arguments.add("--" + ExtractSequence.CONTIG_ARG_LONG_NAME);
+            arguments.add("--" + ExtractSequence.START_ARG_LONG_NAME);
             arguments.add(start.toString());
         }
         if ( end != null ) {
-            arguments.add("--" + ExtractSequence.CONTIG_ARG_LONG_NAME);
+            arguments.add("--" + ExtractSequence.END_ARG_LONG_NAME);
             arguments.add(end.toString());
         }
 
@@ -69,19 +69,29 @@ public class ExtractSequenceIntegrationTest extends CommandLineProgramTest {
     @DataProvider
     Object[][] provideForTestExtractSequence() {
         return new Object[][] {
-                { TEST_FASTA_FILE, "22" , null , null },
-                { TEST_FASTA_FILE, "22" , null , 7855 },
-                { TEST_FASTA_FILE, "22" , null , null },
-                { TEST_FASTA_FILE, "22" , null , null },
+            { TEST_FASTA_FILE, "20" , null , null },
+            { TEST_FASTA_FILE, "20" , null , 7855 },
+            { TEST_FASTA_FILE, "20" , 1 , 7855 },
+            { TEST_FASTA_FILE, "20" , 1 , 10 },
+            { TEST_FASTA_FILE, "20" , 10 , 10 },
+
+            { TEST_FASTA_FILE, "21" , null , null },
+            { TEST_FASTA_FILE, "21" , null , 7855 },
+            { TEST_FASTA_FILE, "21" , 1 , 7855 },
+            { TEST_FASTA_FILE, "21" , 1 , 10 },
+            { TEST_FASTA_FILE, "21" , 10 , 10 },
         };
     }
 
     @DataProvider
-    Object[][] provideForTestExtractSequenceFailure() {
+    Object[][] provideForTestExtractSequenceFailures() {
         return new Object[][] {
-                {
-
-                },
+            { TEST_FASTA_FILE, "22" , null , null },
+            { TEST_FASTA_FILE, "20" , null , Integer.MAX_VALUE },
+            { TEST_FASTA_FILE, "20" , -1 , 7855 },
+            { TEST_FASTA_FILE, "20" , 10 , 1 },
+            { TEST_FASTA_FILE, "20" , 10 , -1 },
+            { TEST_FASTA_FILE, "20" , 0 , 10 },
         };
     }
 
@@ -95,7 +105,7 @@ public class ExtractSequenceIntegrationTest extends CommandLineProgramTest {
 
     @Test(
             dataProvider = "provideForTestExtractSequenceFailures",
-            expectedExceptions = UserException.class
+            expectedExceptions = { UserException.class, IllegalArgumentException.class }
     )
     public void testExtractSequenceFailures(final String refFilePath, final String contig, final Integer start, final Integer end) {
         runExtractSequence(refFilePath, contig, start, end);
