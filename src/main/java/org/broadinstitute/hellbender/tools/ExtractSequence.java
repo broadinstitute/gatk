@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.reference.FastaReferenceWriter;
 import picard.cmdline.programgroups.ReferenceProgramGroup;
 
@@ -104,6 +105,8 @@ public class ExtractSequence extends GATKTool {
             throw new UserException("Error: contig does not exist in the reference file: " + contig + " : " + referenceArguments.getReferencePath());
         }
 
+        final int sequenceLength = reference.getSequenceDictionary().getSequence(contig).getSequenceLength();
+
         final StringBuilder outputContigNameBuilder = new StringBuilder();
         outputContigNameBuilder.append( contig );
 
@@ -113,6 +116,13 @@ public class ExtractSequence extends GATKTool {
             start = 1;
         }
         else {
+
+            // Some simple bounds checking:
+            ParamUtils.isPositive(start, "Start must be >= 1.");
+            if ( start > sequenceLength ) {
+                throw new UserException("Start must be less than or equal to the contig length: " + start + " > " + sequenceLength);
+            }
+
             // Let the user know that because of the FASTA format, we need to relabel things with new start positions:
             logger.warn("Start position will be used, but not reflected in FASTA format.  Will append interval positions to contig name in resulting file.");
             outputContigNameBuilder.append("_");
@@ -121,12 +131,23 @@ public class ExtractSequence extends GATKTool {
 
         if ( end == null ) {
             // Default end to the last position in the given contig:
-            end = reference.getSequenceDictionary().getSequence(contig).getSequenceLength();
-
-            if ( start != 1 ) {
-                outputContigNameBuilder.append("-");
-                outputContigNameBuilder.append(end);
+            end = sequenceLength;
+        }
+        else {
+            // Some simple bounds checking:
+            ParamUtils.isPositive(end, "End must be >= 1.");
+            if ( end < start ) {
+                throw new UserException("End position must be greater than or equal to the start position: " + end + " < " + start);
             }
+            else if ( end > sequenceLength ) {
+                throw new UserException("End must be less than or equal to the contig length: " + end + " > " + sequenceLength);
+            }
+        }
+
+        // Check if we need to name the contig with the end:
+        if ( start != 1 ) {
+            outputContigNameBuilder.append("-");
+            outputContigNameBuilder.append(end);
         }
 
         // Create the interval to pull out:
