@@ -28,7 +28,7 @@ public class GenomicsDBImportUnitTest extends GATKBaseTest {
                                                         "Sample1\tfile1\n";
 
     @DataProvider
-    public Object[][] getBadTestFiles(){
+    public Object[][] getBadSampleNameMapFiles(){
         return new Object[][]{
                 {"Sample1\tsamplePath\n"
                 +"Sample1\tsamplePath"},        // duplicate sample name
@@ -42,16 +42,33 @@ public class GenomicsDBImportUnitTest extends GATKBaseTest {
                 {"Sample1\nfile"},              // newline instead of tab
                 {"\t"},                         // only tab
                 {"Sample1 file1"},              // 1 column
-                {" name\tfile1"},               // preceding whitespace
-                {"name \tfile1"},               // trailing whitespace
-                {"name\tfile1 "},               // trailing whitespace second column
+                {" name name\tfile1"},          // preceding whitespace
+                {"name name \tfile1"},          // trailing whitespace
         };
     }
 
-    @Test(dataProvider = "getBadTestFiles", expectedExceptions = UserException.BadInput.class)
+    @Test(dataProvider = "getBadSampleNameMapFiles", expectedExceptions = UserException.BadInput.class)
     public void testBadInputFiles(final String text){
         final File sampleFile = IOUtils.writeTempFile(text, "badSampleMapping", ".txt");
         GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath()  );
+    }
+
+    @DataProvider
+    public Object[][] getGoodSampleNameMapFileSyntax(){
+        return new Object[][]{
+                // Note: none of these files are real, these are just valid files syntactically
+                {"Sample1\tsamplePath\n"
+                +"Sample2\tsamplePath", 2},     // normal sample names
+                {"Sample1 001\tFile", 1},          // sample names with whitespace
+                {"name name\tfile1 ", 1},          // trailing whitespace second column
+                {"name name\t file1 ", 1},         // leading and trailing whitespace second column
+        };
+    }
+
+    @Test(dataProvider = "getGoodSampleNameMapFileSyntax")
+    public void testValidSampleFiles(final String text, final int numEntries){
+        final File sampleFile = IOUtils.writeTempFile(text, "badSampleMapping", ".txt");
+        Assert.assertEquals(GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath()).size(),numEntries);
     }
 
     @Test

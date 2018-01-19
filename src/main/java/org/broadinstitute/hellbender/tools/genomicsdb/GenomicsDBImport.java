@@ -95,7 +95,8 @@ import java.util.function.Function;
  *  </pre>
  *
  *  The sample map is a tab-delimited text file with sample_name--tab--path_to_sample_vcf per line. Using a sample map
- *  saves the tool from having to download the GVCF headers in order to determine the sample names.
+ *  saves the tool from having to download the GVCF headers in order to determine the sample names. Sample names in
+ *  the sample name map file may have non-tab whitespace, but may not begin or end with whitespace.
  *
  *  <pre>
  *  sample1      sample1.vcf.gz
@@ -394,12 +395,13 @@ public final class GenomicsDBImport extends GATKTool {
             final LinkedHashMap<String, Path> sampleToFilename = new LinkedHashMap<>();
             for ( final String line : lines) {
                 final String[] split = line.split("\\t",-1);
-                if (split.length != 2)
+                if (split.length != 2) {
                     throw new UserException.BadInput("Expected a file of format\nSample\tFile\n but found line: " + line);
+                }
                 if ( !split[0].trim().equals(split[0]) || split[0].trim().isEmpty()
-                        || !split[1].trim().equals(split[1]) || split[1].trim().isEmpty())
-                    throw new UserException.BadInput("Expected a file of format\nSample\tFile\n but found line: " + line);
-
+                        || split[1].trim().isEmpty()) {
+                    throw new UserException.BadInput("Expected a file of format\nSample\tFile\n but found line: '" + line + "'\nValid sample names must be non-empty strings that cannot begin or end with whitespace");
+                }
                 final String sample = split[0];
                 final String path = split[1];
                 final Path oldPath = sampleToFilename.put(sample, IOUtils.getPath(path));
@@ -490,9 +492,9 @@ public final class GenomicsDBImport extends GATKTool {
             final long variantContextBufferSize = vcfBufferSizePerSample * sampleToReaderMap.size();
             final GenomicsDBImportConfiguration.ImportConfiguration importConfiguration =
                     createImportConfiguration(workspace, GenomicsDBConstants.DEFAULT_ARRAY_NAME,
-                            variantContextBufferSize, segmentSize,
-                            i, (i+updatedBatchSize-1),
-                            (batchCount == 1)); //Fail if array exists and this is the first batch
+                                              variantContextBufferSize, segmentSize,
+                                              i, (i+updatedBatchSize-1),
+                                              (batchCount == 1)); //Fail if array exists and this is the first batch
 
             try {
                 importer = new GenomicsDBImporter(sampleToReaderMap, mergedHeaderLines, intervals.get(0), validateSampleToReaderMap, importConfiguration);
@@ -531,7 +533,7 @@ public final class GenomicsDBImport extends GATKTool {
         } catch (final FileNotFoundException fe) {
             throw new UserException("Unable to write callset map JSON file " + callsetMapJSONFile.getAbsolutePath(), fe);
         }
-	try {
+        try {
             GenomicsDBImporter.writeVcfHeaderFile(vcfHeaderFile.getAbsolutePath(), mergedHeaderLines);
         } catch (final FileNotFoundException fe) {
             throw new UserException("Unable to write VCF Header file " + vcfHeaderFile.getAbsolutePath(), fe);
