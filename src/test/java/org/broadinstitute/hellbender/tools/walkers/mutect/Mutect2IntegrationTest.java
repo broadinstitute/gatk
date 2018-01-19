@@ -278,17 +278,21 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         runCommandLine(highThresholdArgs);
 
-        final List<VariantContext> variantsWithLowThreshold =
-                StreamSupport.stream(new FeatureDataSource<VariantContext>(outputAtLowThreshold).spliterator(), false).collect(Collectors.toList());
+        try (final FeatureDataSource<VariantContext> lowThresholdSource = new FeatureDataSource<>(outputAtLowThreshold);
+        final FeatureDataSource<VariantContext> highThresholdSource = new FeatureDataSource<>(outputAtHighThreshold)) {
+            final List<VariantContext> variantsWithLowThreshold =
+                    StreamSupport.stream(lowThresholdSource.spliterator(), false).collect(Collectors.toList());
 
-        final List<VariantContext> variantsWithHighThreshold =
-                StreamSupport.stream(new FeatureDataSource<VariantContext>(outputAtHighThreshold).spliterator(), false).collect(Collectors.toList());
 
-        final Set<Integer> lowStarts = variantsWithLowThreshold.stream().map(VariantContext::getStart).collect(Collectors.toSet());
-        final Set<Integer> highStarts = variantsWithHighThreshold.stream().map(VariantContext::getStart).collect(Collectors.toSet());
-        lowStarts.removeAll(highStarts);
-        final List<Integer> diff = lowStarts.stream().sorted().collect(Collectors.toList());
-        Assert.assertEquals(diff, Arrays.asList(11000090, 11000515, 12753594));
+            final List<VariantContext> variantsWithHighThreshold =
+                    StreamSupport.stream(highThresholdSource.spliterator(), false).collect(Collectors.toList());
+
+            final Set<Integer> lowStarts = variantsWithLowThreshold.stream().map(VariantContext::getStart).collect(Collectors.toSet());
+            final Set<Integer> highStarts = variantsWithHighThreshold.stream().map(VariantContext::getStart).collect(Collectors.toSet());
+            lowStarts.removeAll(highStarts);
+            final List<Integer> diff = lowStarts.stream().sorted().collect(Collectors.toList());
+            Assert.assertEquals(diff, Arrays.asList(11000090, 11000515, 12753594));
+        }
     }
 
 
