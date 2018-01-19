@@ -50,7 +50,7 @@ public class UpdateVCFSequenceDictionaryIntegrationTest extends CommandLineProgr
         SAMSequenceDictionary sourceDictionary =
                 SAMSequenceDictionaryExtractor.extractDictionary(
                         inputSourceFile == null ?
-                                inputReferenceFile : inputSourceFile
+                                inputReferenceFile.toPath() : inputSourceFile.toPath()
                 );
 
         // Some sequence dictionary sources will contain optional attributes (i.e., if the source is a .dict file,

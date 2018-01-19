@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.File;
+import java.nio.file.Path;
 
 /**
  * Some common elements for target collection analysis tool unit and integration tests.
@@ -15,15 +16,15 @@ import java.io.File;
 public final class SimpleIntervalTestFactory {
 
     /** Initialize the reference file and dictionary to use for creating intervals. */
-    public SimpleIntervalTestFactory(final File referenceFile){
+    public SimpleIntervalTestFactory(final Path referenceFile){
         this.REFERENCE_FILE = referenceFile;
-        this.REFERENCE_DICTIONARY = SAMSequenceDictionaryExtractor.extractDictionary(REFERENCE_FILE);;
+        this.REFERENCE_DICTIONARY = SAMSequenceDictionaryExtractor.extractDictionary(REFERENCE_FILE);
     }
 
     /**
      * {@link File} pointing to the test toy reference used in targets analysis tool tests.
      */
-    public final File REFERENCE_FILE;
+    public final Path REFERENCE_FILE;
 
     /**
      * Sequence dictionary extracted from {@link #REFERENCE_FILE}.
