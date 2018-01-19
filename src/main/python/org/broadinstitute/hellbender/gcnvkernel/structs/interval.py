@@ -46,8 +46,11 @@ class Interval:
         else:
             return np.abs(self.get_midpoint() - other.get_midpoint())
 
-    def __eq__(self, other):
+    def __eq__(self, other: 'Interval'):
         return self.get_key() == other.get_key()
+
+    def __ne__(self, other: 'Interval'):
+        return self.get_key() != other.get_key()
 
     def __hash__(self):
         return self._hash

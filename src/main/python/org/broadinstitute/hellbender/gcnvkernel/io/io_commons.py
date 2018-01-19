@@ -7,6 +7,7 @@ import pymc3 as pm
 import os
 import json
 import re
+import filecmp
 
 from .._version import __version__ as gcnvkernel_version
 from . import io_consts
@@ -55,6 +56,12 @@ def get_sample_name_from_txt_file(input_path: str) -> str:
     with open(sample_name_file, 'r') as f:
         for line in f:
             return line.strip()
+
+
+def write_sample_name_to_txt_file(output_path: str, sample_name: str):
+    """Writes sample name to a text file."""
+    with open(os.path.join(output_path, io_consts.default_sample_name_txt_filename), 'w') as f:
+        f.write(sample_name + '\n')
 
 
 def assert_output_path_writable(output_path: str,
@@ -509,3 +516,11 @@ def assert_mandatory_columns(mandatory_columns_set: Set[str],
     not_found_set = mandatory_columns_set.difference(found_columns_set)
     assert len(not_found_set) == 0, "The following mandatory columns could not be found in \"{0}\"; " \
                                     "cannot continue: {1}".format(input_tsv_file, not_found_set)
+
+
+def assert_files_are_identical(input_file_1: str, input_file_2: str):
+    """Asserts that two given files are bit identical."""
+    assert os.path.isfile(input_file_1), "Cannot find {0}.".format(input_file_1)
+    assert os.path.isfile(input_file_2), "Cannot find {0}.".format(input_file_2)
+    assert filecmp.cmp(input_file_1, input_file_2, shallow=False), \
+        "The following two files are expected to be identical: {0}, {1}".format(input_file_1, input_file_2)

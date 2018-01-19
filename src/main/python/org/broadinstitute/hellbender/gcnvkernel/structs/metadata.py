@@ -15,7 +15,7 @@ class IntervalListMetadata:
         interval_list: the interval list itself
         num_intervals: number of intervals in the list
         contig_set: set of contigs spanned by the intervals
-        contig_list: sorted list of contigs
+        ordered_contig_list: list of contigs in the order that appears in the interval list
         num_contigs: number of contigs
         t_j: a 1d array representing the number of intervals for each contig (in the same order
             as `contig_list`)
@@ -25,8 +25,8 @@ class IntervalListMetadata:
         self.interval_list = interval_list
         self.num_intervals = len(interval_list)
         self.contig_set = self._get_contig_set_from_interval_list(interval_list)
-        self.contig_list = sorted(list(self.contig_set))
-        self.num_contigs = len(self.contig_list)
+        self.ordered_contig_list = list(dict.fromkeys([interval.contig for interval in interval_list]))
+        self.num_contigs = len(self.ordered_contig_list)
 
         # map from contig to indices in the interval list
         self.contig_interval_indices: Dict[str, List[int]] = \
@@ -35,7 +35,7 @@ class IntervalListMetadata:
              for contig in self.contig_set}
 
         # number of intervals per contig
-        self.t_j = np.asarray([len(self.contig_interval_indices[self.contig_list[j]])
+        self.t_j = np.asarray([len(self.contig_interval_indices[self.ordered_contig_list[j]])
                                for j in range(self.num_contigs)], dtype=types.big_uint)
 
     @staticmethod
@@ -82,10 +82,10 @@ class SampleCoverageMetadata:
     def generate_sample_coverage_metadata(sample_name,
                                           n_t: np.ndarray,
                                           interval_list_metadata: IntervalListMetadata):
-        n_j = np.zeros((len(interval_list_metadata.contig_list),), dtype=types.big_uint)
-        for j, contig in enumerate(interval_list_metadata.contig_list):
+        n_j = np.zeros((len(interval_list_metadata.ordered_contig_list),), dtype=types.big_uint)
+        for j, contig in enumerate(interval_list_metadata.ordered_contig_list):
             n_j[j] = np.sum(n_t[interval_list_metadata.contig_interval_indices[contig]])
-        return SampleCoverageMetadata(sample_name, n_j, interval_list_metadata.contig_list)
+        return SampleCoverageMetadata(sample_name, n_j, interval_list_metadata.ordered_contig_list)
 
 
 class SamplePloidyMetadata:
@@ -121,7 +121,7 @@ class SamplePloidyMetadata:
         assert contig in self._contig_map, \
             "Sample ({0}) does not have ploidy metadata for contig ({1})".format(self.sample_name, contig)
 
-    def get_contig_ploidy(self, contig: str):
+    def get_contig_ploidy(self, contig: str) -> int:
         self._assert_contig_exists(contig)
         return self.ploidy_j[self._contig_map[contig]]
 
@@ -213,7 +213,7 @@ class SampleReadDepthMetadata:
                                             sample_ploidy_metadata: SamplePloidyMetadata,
                                             interval_list_metadata: IntervalListMetadata) -> 'SampleReadDepthMetadata':
         assert sample_coverage_metadata.sample_name == sample_ploidy_metadata.sample_name
-        assert interval_list_metadata.contig_list == sample_ploidy_metadata.contig_list
+        assert interval_list_metadata.ordered_contig_list == sample_ploidy_metadata.contig_list
 
         sample_name = sample_ploidy_metadata.sample_name
         n_total = sample_coverage_metadata.n_total

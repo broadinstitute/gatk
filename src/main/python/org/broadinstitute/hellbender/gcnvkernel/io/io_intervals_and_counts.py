@@ -68,6 +68,29 @@ def load_interval_list_tsv_file(interval_list_tsv_file: str,
     return _convert_interval_list_pandas_to_gcnv_interval_list(interval_list_pd, interval_list_tsv_file)
 
 
+def extract_sam_sequence_dictionary_from_file(input_file: str):
+    """Extract SAM sequence dictionary from a file.
+
+    Notes:
+        Only contiguous SAM header lines (starting with '@') are considered. The parsing of the input file
+        stops as soon as a line starting with any other character is reached.
+
+    Returns:
+        a list of str
+    """
+    sam_seq_dict: List[str] = list()
+    with open(input_file, 'r') as f:
+        for line in f:
+            stripped_line = line.strip()
+            if len(stripped_line) == 0:
+                continue
+            elif stripped_line[0] == '@':
+                sam_seq_dict.append(stripped_line)
+            else:
+                break
+    return sam_seq_dict
+
+
 def load_counts_in_the_modeling_zone(read_count_file_list: List[str],
                                      modeling_interval_list: List[Interval]) -> Tuple[List[str], np.ndarray]:
     """Loads read counts for a given cohort corresponding to a provided list of intervals.
@@ -153,7 +176,8 @@ def _convert_interval_list_pandas_to_gcnv_interval_list(interval_list_pd: pd.Dat
     return interval_list
 
 
-def write_interval_list_to_tsv_file(output_file: str, interval_list: List[Interval]):
+def write_interval_list_to_tsv_file(output_file: str, interval_list: List[Interval],
+                                    sam_header_lines: Optional[List[str]] = None):
     """Write a list of interval list to .tsv file.
 
     Note:
@@ -164,6 +188,7 @@ def write_interval_list_to_tsv_file(output_file: str, interval_list: List[Interv
     Args:
         output_file: output .tsv file
         interval_list: list of intervals to write to .tsv file
+        sam_header_lines: (optional) SAM header lines
 
     Returns:
         None
@@ -182,6 +207,9 @@ def write_interval_list_to_tsv_file(output_file: str, interval_list: List[Interv
                             "Cannot write this annotation to a .tsv file; "
                             "Neglecting \"{0}\" and proceeding...".format(key))
     with open(output_file, 'w') as out:
+        if sam_header_lines is not None:
+            for sam_header_line in sam_header_lines:
+                out.write(sam_header_line + '\n')
         header = '\t'.join([io_consts.contig_column_name,
                             io_consts.start_column_name,
                             io_consts.end_column_name]

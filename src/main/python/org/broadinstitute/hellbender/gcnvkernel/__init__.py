@@ -23,6 +23,9 @@ from .io import io_commons, io_consts, io_ploidy, io_denoising_calling, \
     io_intervals_and_counts, io_metadata, io_adamax
 from .utils import cli_commons
 
+# post-processing
+from .postprocess.viterbi_segmentation import ViterbiSegmentationEngine
+
 # structs
 from .structs.interval import Interval
 
