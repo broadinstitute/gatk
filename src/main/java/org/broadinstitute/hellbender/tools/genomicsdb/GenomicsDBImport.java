@@ -403,7 +403,7 @@ public final class GenomicsDBImport extends GATKTool {
                     throw new UserException.BadInput("Expected a file of format\nSample\tFile\n but found line: '" + line + "'\nValid sample names must be non-empty strings that cannot begin or end with whitespace");
                 }
                 final String sample = split[0];
-                final String path = split[1];
+                final String path = split[1].trim();
                 final Path oldPath = sampleToFilename.put(sample, IOUtils.getPath(path));
                 if (oldPath != null){
                     throw new UserException.BadInput("Found two mappings for the same sample: " + sample + "\n" + path + "\n" + oldPath.toUri() );
