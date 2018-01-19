@@ -21,7 +21,6 @@ import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
@@ -132,7 +131,7 @@ public abstract class GATKTool extends CommandLineProgram {
     /**
      * Our source of reference data (null if no reference was provided)
      */
-    ReferenceDataSource reference;
+    protected ReferenceDataSource reference;
 
     /**
      * Our source of reads data (null if no source of reads was provided)
