@@ -4,15 +4,18 @@ import htsjdk.samtools.reference.ReferenceSequence;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.reference.FastaReferenceWriter;
+import picard.cmdline.programgroups.ReferenceProgramGroup;
 
+import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 
 /**
  * Tool to extract an interval from the given reference and create a new FASTA file that contains only data
@@ -33,6 +36,12 @@ import java.nio.file.Path;
  *     FASTA index
  *     FASTA sequence dictionary
  */
+@CommandLineProgramProperties(
+        summary = "Create a new FASTA file from the given reference and a contig / interval.",
+        oneLineSummary = "FASTA Sequence Extractor",
+        programGroup = ReferenceProgramGroup.class
+)
+@DocumentedFeature
 public class ExtractSequence extends GATKTool {
 
     private static final Logger logger = LogManager.getLogger(ExtractSequence.class);
@@ -53,8 +62,8 @@ public class ExtractSequence extends GATKTool {
     @Argument(
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName  = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            doc = "Path to output FASTA file to which sub-sequence should be written.")
-    protected Path outputFilePath;
+            doc = "Output FASTA file to which sub-sequence should be written.")
+    protected File outputFile;
 
     @Argument(
             fullName = CONTIG_ARG_LONG_NAME,
@@ -127,7 +136,7 @@ public class ExtractSequence extends GATKTool {
         final ReferenceSequence refSeq = reference.queryAndPrefetch(interval);
 
         // Create a FASTA writer:
-        try (final FastaReferenceWriter fastaReferenceWriter = new FastaReferenceWriter(outputFilePath, true, true)) {
+        try (final FastaReferenceWriter fastaReferenceWriter = new FastaReferenceWriter(outputFile.toPath(), true, true)) {
 
             // Start our contig:
             fastaReferenceWriter.startSequence(outputContigNameBuilder.toString());
@@ -136,7 +145,7 @@ public class ExtractSequence extends GATKTool {
             fastaReferenceWriter.appendBases(refSeq.getBases());
         }
         catch (final IOException ex) {
-            throw new GATKException("Error creating/writing to FASTA output writer: " + outputFilePath.toUri().toString(), ex);
+            throw new GATKException("Error creating/writing to FASTA output writer: " + outputFile.toPath().toUri().toString(), ex);
         }
     }
 
