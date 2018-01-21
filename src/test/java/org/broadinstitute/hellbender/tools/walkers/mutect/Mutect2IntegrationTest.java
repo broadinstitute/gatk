@@ -243,7 +243,59 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 false,
                 false
         );
+    }/*
+    * Test that the min_base_quality_score parameter works
+    */
+    @Test
+    public void testMinBaseQualityScore() throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File tumor = new File(DREAM_BAMS_DIR, "tumor_1.bam");
+        final String tumorSample = "synthetic.challenge.set1.tumor";
+
+        final File outputAtLowThreshold = createTempFile("output", ".vcf");
+        final File outputAtHighThreshold = createTempFile("output", ".vcf");
+
+        final String[] lowThresholdArgs = {
+                "-I", tumor.getAbsolutePath(),
+                "-tumor", tumorSample,
+                "-R", b37_reference_20_21,
+                "-L", "20:10000000-13000000",
+                "-O", outputAtLowThreshold.getAbsolutePath(),
+                "--min-base-quality-score", "20"
+        };
+
+        runCommandLine(lowThresholdArgs);
+
+        final String[] highThresholdArgs = {
+                "-I", tumor.getAbsolutePath(),
+                "-tumor", tumorSample,
+                "-R", b37_reference_20_21,
+                "-L", "20:10000000-13000000",
+                "-O", outputAtHighThreshold.getAbsolutePath(),
+                "--min-base-quality-score", "30"
+        };
+
+        runCommandLine(highThresholdArgs);
+
+        try (final FeatureDataSource<VariantContext> lowThresholdSource = new FeatureDataSource<>(outputAtLowThreshold);
+        final FeatureDataSource<VariantContext> highThresholdSource = new FeatureDataSource<>(outputAtHighThreshold)) {
+            final List<VariantContext> variantsWithLowThreshold =
+                    StreamSupport.stream(lowThresholdSource.spliterator(), false).collect(Collectors.toList());
+
+
+            final List<VariantContext> variantsWithHighThreshold =
+                    StreamSupport.stream(highThresholdSource.spliterator(), false).collect(Collectors.toList());
+
+            final Set<Integer> lowStarts = variantsWithLowThreshold.stream().map(VariantContext::getStart).collect(Collectors.toSet());
+            final Set<Integer> highStarts = variantsWithHighThreshold.stream().map(VariantContext::getStart).collect(Collectors.toSet());
+            lowStarts.removeAll(highStarts);
+            final List<Integer> diff = lowStarts.stream().sorted().collect(Collectors.toList());
+            Assert.assertEquals(diff, Arrays.asList(11000090, 11000515, 12753594));
+        }
     }
+
+
 
     @DataProvider(name="bamoutVariations")
     public Object[][] bamoutVariations() {
