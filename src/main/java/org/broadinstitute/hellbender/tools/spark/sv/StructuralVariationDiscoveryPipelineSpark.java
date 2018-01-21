@@ -18,7 +18,6 @@ import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDisc
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AnnotatedVariantProducer;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVariantsFromContigAlignmentsSAMSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoverFromLocalAssemblyContigAlignmentsSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryInputData;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
@@ -173,8 +172,10 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
 
         // TODO: 1/14/18 this is to be phased-out: old way of calling precise variants
         // assembled breakpoints
+        @SuppressWarnings("deprecation")
         List<VariantContext> assemblyBasedVariants =
-                DiscoverVariantsFromContigAlignmentsSAMSpark.discoverVariantsFromChimeras(svDiscoveryInputData, parsedAlignments);
+                org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVariantsFromContigAlignmentsSAMSpark
+                        .discoverVariantsFromChimeras(svDiscoveryInputData, parsedAlignments);
 
         final List<VariantContext> annotatedVariants = processEvidenceTargetLinks(assemblyBasedVariants, svDiscoveryInputData);
 

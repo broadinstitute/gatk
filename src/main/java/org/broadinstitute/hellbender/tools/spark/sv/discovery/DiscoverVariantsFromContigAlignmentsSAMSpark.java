@@ -15,18 +15,22 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.InsDelVariantDetector;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyReferenceLocations;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleNovelAdjacencyInterpreter;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import scala.Tuple2;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD;
@@ -139,6 +143,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
         SVVCFWriter.writeVCF(annotatedVariants, vcfOutputFileName, refSeqDictionary, localLogger);
     }
 
+    @Deprecated
     public static List<VariantContext> discoverVariantsFromChimeras(final SvDiscoveryInputData svDiscoveryInputData,
                                                                     final JavaRDD<AlignedContig> alignedContigs) {
         final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceSequenceDictionaryBroadcast;
@@ -151,7 +156,60 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                                                 true, DEFAULT_MIN_ALIGNMENT_LENGTH,
                                                 CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, true)));
 
-        return InsDelVariantDetector.produceVariantsFromSimpleChimeras(contigSeqAndChimeras, svDiscoveryInputData);
+        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputData.referenceBroadcast;
+        final List<SVInterval> assembledIntervals = svDiscoveryInputData.assembledIntervals;
+        final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast = svDiscoveryInputData.cnvCallsBroadcast;
+        final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs = svDiscoveryInputData.discoverStageArgs;
+        final String sampleId = svDiscoveryInputData.sampleId;
+        final Logger toolLogger = svDiscoveryInputData.toolLogger;
+
+        final JavaPairRDD<NovelAdjacencyReferenceLocations, Iterable<ChimericAlignment>> narlsAndSources =
+                contigSeqAndChimeras
+                        .flatMapToPair(tigSeqAndChimeras -> {
+                            final byte[] contigSeq = tigSeqAndChimeras._1;
+                            final List<ChimericAlignment> chimericAlignments = tigSeqAndChimeras._2;
+                            final Stream<Tuple2<NovelAdjacencyReferenceLocations, ChimericAlignment>> novelAdjacencyAndSourceChimera =
+                                    chimericAlignments.stream()
+                                            .map(ca -> new Tuple2<>(
+                                                    new NovelAdjacencyReferenceLocations(ca, contigSeq,
+                                                            referenceSequenceDictionaryBroadcast.getValue()), ca));
+                            return novelAdjacencyAndSourceChimera.iterator();
+                        })
+                        .groupByKey()   // group the same novel adjacency produced by different contigs together
+                        .cache();
+
+
+        try {
+            SvDiscoveryUtils.evaluateIntervalsAndNarls(assembledIntervals, narlsAndSources.map(Tuple2::_1).collect(),
+                    referenceSequenceDictionaryBroadcast.getValue(), discoverStageArgs, toolLogger);
+
+            List<VariantContext> annotatedVariants =
+                    narlsAndSources
+                            .mapToPair(noveltyAndEvidence -> new Tuple2<>(noveltyAndEvidence._1,
+                                    new Tuple2<>(SimpleNovelAdjacencyInterpreter.inferSimpleTypeFromNovelAdjacency(noveltyAndEvidence._1), noveltyAndEvidence._2)))       // type inference based on novel adjacency and evidence alignments
+                            .map(noveltyTypeAndEvidence ->
+                            {
+                                final NovelAdjacencyReferenceLocations novelAdjacency = noveltyTypeAndEvidence._1;
+                                final SimpleSVType inferredSimpleType = noveltyTypeAndEvidence._2._1;
+                                final Iterable<ChimericAlignment> evidence = noveltyTypeAndEvidence._2._2;
+                                return AnnotatedVariantProducer
+                                        .produceAnnotatedVcFromInferredTypeAndRefLocations(
+                                                novelAdjacency.leftJustifiedLeftRefLoc,
+                                                novelAdjacency.leftJustifiedRightRefLoc.getStart(),
+                                                novelAdjacency.complication,
+                                                inferredSimpleType,
+                                                null, // TODO: 1/21/18 implement this for InsDel
+                                                evidence,
+                                                referenceBroadcast,
+                                                referenceSequenceDictionaryBroadcast,
+                                                cnvCallsBroadcast,
+                                                sampleId);
+                            })
+                            .collect();
+            return annotatedVariants;
+        } finally {
+            narlsAndSources.unpersist();
+        }
     }
 
 }

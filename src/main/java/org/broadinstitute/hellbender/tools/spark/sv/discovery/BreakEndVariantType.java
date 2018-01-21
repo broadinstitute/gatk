@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyReferenceLocations;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import scala.Tuple2;
@@ -44,7 +45,7 @@ public abstract class BreakEndVariantType extends SvType {
 
 
     @Override
-    public final String toString() {
+    public String toString() {
         return BREAKEND_STR;
     }
 
@@ -80,10 +81,25 @@ public abstract class BreakEndVariantType extends SvType {
         private static final Map<String, String> INV55_FLAG = Collections.singletonMap(INV55, "");
         private static final Map<String, String> INV33_FLAG = Collections.singletonMap(INV33, "");
 
+        public static final String INV55_BND = BREAKEND_STR + "_" + INV55;
+        public static final String INV33_BND = BREAKEND_STR + "_" + INV33;
+
+        private final boolean indicatesInv55;
+
+        private static boolean indicatesInv55(boolean bracketPointsLeft, boolean basesFirst) {
+            return (bracketPointsLeft && basesFirst);
+        }
+
+        @Override
+        public String toString() {
+            return indicatesInv55 ? INV55_BND : INV33_BND;
+        }
+
         private InvSuspectBND(final String id, final byte[] bases, final SimpleInterval novelAdjRefLoc,
                               final boolean bracketPointsLeft, final boolean basesFirst, boolean isTheUpstreamMate) {
-            super(id, (bracketPointsLeft && basesFirst) ? INV55_FLAG: INV33_FLAG,
+            super(id, indicatesInv55(bracketPointsLeft, basesFirst) ? INV55_FLAG: INV33_FLAG,
                     bases, bracketPointsLeft, novelAdjRefLoc, basesFirst, isTheUpstreamMate);
+            indicatesInv55 = indicatesInv55(bracketPointsLeft, basesFirst);
         }
 
         public static Tuple2<BreakEndVariantType, BreakEndVariantType> getOrderedMates(final NovelAdjacencyReferenceLocations narl,
@@ -137,6 +153,13 @@ public abstract class BreakEndVariantType extends SvType {
      */
     public static final class TransLocBND extends BreakEndVariantType {
         private static Map<String, String> emptyMap = Collections.emptyMap();
+
+        public static final String STRANDSWITCHLESS_BND = BREAKEND_STR + "_NOSS";
+
+        @Override
+        public String toString() {
+            return STRANDSWITCHLESS_BND;
+        }
 
         private TransLocBND(final NovelAdjacencyReferenceLocations narl, final boolean forUpstreamLoc,
                             final ReferenceMultiSource reference, final SAMSequenceDictionary referenceDictionary,

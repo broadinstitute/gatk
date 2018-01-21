@@ -193,13 +193,8 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
                 (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e, attributesToIgnore));
 
         if ( experimentalOutputPath != null ) {
-            final String experimentalInsDelVcf;
-            if (onHDFS) {
-                experimentalInsDelVcf = IOUtils.getPath(experimentalOutputPath).resolve("InsDel.vcf").toUri().toString();
-            } else {
-                experimentalInsDelVcf = IOUtils.getPath(experimentalOutputPath).resolve("InsDel.vcf").toString();
-            }
-
+            final java.nio.file.Path path = IOUtils.getPath(experimentalOutputPath).resolve("nonComplex.vcf");
+            final String experimentalInsDelVcf = onHDFS ? path.toUri().toString() : path.toString();
             actualVcs = extractActualVCs(experimentalInsDelVcf, onHDFS);
 
             // TODO: 11/30/17 temporary solution to ignore these attributes before they can be brought back

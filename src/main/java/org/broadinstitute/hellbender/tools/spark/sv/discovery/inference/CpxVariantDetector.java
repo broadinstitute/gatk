@@ -44,11 +44,10 @@ import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConsta
  * paint the full picture we could decide to emit all BND records,
  * but that could be dealt with later.
  */
-public final class CpxVariantDetector implements VariantDetectorFromLocalAssemblyContigAlignments {
+public final class CpxVariantDetector {
     private static final boolean DEBUG_OUTPUT = false; // for debugging, once the prototyping code is merged, this and its usage will be deleted
 
 
-    @Override
     public void inferSvAndWriteVCF(final JavaRDD<AssemblyContigWithFineTunedAlignments> assemblyContigs,
                                    final SvDiscoveryInputData svDiscoveryInputData) {
 
