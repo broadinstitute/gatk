@@ -16,6 +16,7 @@ import java.util.*;
 public class Mutect2FilteringEngine {
     private M2FiltersArgumentCollection MTFAC;
     private final double contamination;
+    private final double somaticPriorProb;
     private final String tumorSample;
     public static final String FILTERING_STATUS_VCF_KEY = "filtering_status";
 
@@ -23,15 +24,31 @@ public class Mutect2FilteringEngine {
         this.MTFAC = MTFAC;
         contamination = MTFAC.contaminationTable == null ? 0.0 : ContaminationRecord.readFromFile(MTFAC.contaminationTable).get(0).getContamination();
         this.tumorSample = tumorSample;
+        somaticPriorProb = Math.pow(10, MTFAC.log10PriorProbOfSomaticEvent);
     }
 
-    // very naive M1-style contamination filter -- remove calls with AF less than the contamination fraction
     private void applyContaminationFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
         final Genotype tumorGenotype = vc.getGenotype(tumorSample);
         final double[] alleleFractions = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(tumorGenotype, VCFConstants.ALLELE_FREQUENCY_KEY,
                 () -> new double[] {1.0}, 1.0);
-        final double maxFraction = MathUtils.arrayMax(alleleFractions);
-        if (maxFraction < contamination) {
+        final int maxFractionIndex = MathUtils.maxElementIndex(alleleFractions);
+        final int[] ADs = tumorGenotype.getAD();
+        final int altCount = ADs[maxFractionIndex + 1];   // AD is all alleles, while AF is alts only, hence the +1 offset
+        final int depth = (int) MathUtils.sum(ADs);
+        final double alleleFrequency = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc,
+                GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE, () -> new double[] {0.0, 0.0}, 0)[maxFractionIndex];
+
+        final double somaticLikelihood = 1.0 / (depth + 1);
+
+        final double singleContaminantLikelihood = 2 * alleleFrequency * (1 - alleleFrequency) * MathUtils.binomialProbability(depth, altCount, contamination/2)
+                + MathUtils.square(alleleFrequency) * MathUtils.binomialProbability(depth, altCount, contamination);
+        final double manyContaminantLikelihood = MathUtils.binomialProbability(depth, altCount, contamination * alleleFrequency);
+        final double contaminantLikelihood = Math.max(singleContaminantLikelihood, manyContaminantLikelihood);
+        final double posteriorProbOfContamination = (1 - somaticPriorProb) * contaminantLikelihood / ((1 - somaticPriorProb) * contaminantLikelihood + somaticPriorProb * somaticLikelihood);
+
+
+
+        if (posteriorProbOfContamination > MTFAC.maxContaminationProbability) {
             filters.add(GATKVCFConstants.CONTAMINATION_FILTER_NAME);
         }
     }

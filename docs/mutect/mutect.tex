@@ -236,6 +236,26 @@ P({\rm germline}) = \frac{(1)}{(1) + (2) + (3)} = \frac{\left(2f(1-f) + f^2 \rig
 
 To filter, we set a threshold on this posterior probability.
 
+\section{Contamination Filter}\label{contamination-filter}
+Suppose our tumor bam has contamination fraction $\alpha$ and that at some site we have $a$ alt reads out of $d$ total reads.  Suppose further that the alt allele has population allele frequency $f$.  We will compute a simple estimate of the posterior probability that these alt reads came from a contaminating sample and not from a true somatic variant.  Let $\pi$ be the prior probability of somatic variation as above.  Our crude model for the alt count distribution of somatic variation is a uniform distribution.  That is, we assume that any value of $a$ from $0$ to $d$ is equally likely.  Then the likelihood of the data given a true somatic variant is
+\begin{equation}
+P(a | {\rm somatic})  = \frac{1}{d + 1}.
+\end{equation}
+
+We consider two models of contamination.  If there are multiple contaminants we approximate each contaminant read as independent.  Then the probability of any given read being an alt contaminant read is $\alpha f$, so we have
+\begin{equation}
+P(a | {\rm many~contaminant}) = {\rm Binom}(a | d, \alpha f).
+\end{equation}
+If there is a single contaminating sample it is heterozygous with probability $2f(1-f)$ and homozygous for the alt with probability $f^2$, in which cases fractions $\alpha/2$ and $\alpha$ of all reads to be alt contaminants.  The contaminant is homozygous for the ref with probability $(1-f)^2$, which yields no alt reads. Thus
+\begin{equation}
+P(a | {\rm one~contaminant}) = 2f(1-f) {\rm Binom}(a | d, \alpha /2) + f^2 {\rm Binom}(a | d, \alpha) + (1-f)^2 {\rm I}[a = 0].
+\end{equation}
+We take the likelihood $P(a | {\rm contamination})$ to be the maximum of these, which admittedly is not quite rigorous.  Usually one will be overwhelmingly larger than the other, however, so it's a decent approximation.  Our posterior probability of contamination is then
+\begin{equation}
+P({\rm contamination} | a) = \frac{  P(a, {\rm contamination}) } {P(a, {\rm contamination}) + P(a, {\rm somatic}) } = \frac{  (1-\pi)P(a | {\rm contamination}) } {(1-\pi)P(a | {\rm contamination}) + \pi P(a | {\rm somatic}) }
+\end{equation}
+We filter by setting a threshold on this posterior probability.
+
 \section{Finding Active Regions}
 Mutect triages sites based on their pileup at a single base locus.  If there is sufficient evidence of variation Mutect proceeds with local reassembly and realignment.  As in the downstream parts of Mutect we seek a likelihood ratio between the existence and non-existence of an alt allele.  Instead of obtaining read likelihoods via Pair-HMM, we assign each base a likelihood.  For substitutions we can simply use the base quality.  For indels we assign a heuristic effective quality that increases with length.  Supposing we have an effective quality for each element in the read pileup we can now estimate the likelihoods of no variation and of a true alt allele with allele fraction $f$.  Let $\mathcal{R}$ and $\mathcal{A}$ denote the sets of ref and alt reads.  The likelihood of no variation is the likelihood that every alt read was in error.  Letting $\epsilon_i$ be the error probability of pileup element $i$ we have:
 
