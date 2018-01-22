@@ -252,7 +252,7 @@ P(a | {\rm one~contaminant}) = 2f(1-f) {\rm Binom}(a | d, \alpha /2) + f^2 {\rm 
 \end{equation}
 We take the likelihood $P(a | {\rm contamination})$ to be the maximum of these, which admittedly is not quite rigorous.  Usually one will be overwhelmingly larger than the other, however, so it's a decent approximation.  Our posterior probability of contamination is then
 \begin{equation}
-P({\rm contamination} | a) = \frac{  P(a, {\rm contamination}) } {P(a, {\rm contamination}) + P(a, {\rm somatic}) } = \frac{  (1-\pi)P(a, {\rm contamination}) } {(1-\pi)P(a, {\rm contamination}) + \pi P(a, {\rm somatic}) }
+P({\rm contamination} | a) = \frac{  P(a, {\rm contamination}) } {P(a, {\rm contamination}) + P(a, {\rm somatic}) } = \frac{  (1-\pi)P(a | {\rm contamination}) } {(1-\pi)P(a | {\rm contamination}) + \pi P(a | {\rm somatic}) }
 \end{equation}
 We filter by setting a threshold on this posterior probability.
 
