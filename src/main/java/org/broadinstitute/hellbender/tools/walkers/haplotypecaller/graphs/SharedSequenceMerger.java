@@ -65,7 +65,7 @@ public final class SharedSequenceMerger {
      * @return true if we can safely merge incomingVertices
      */
     private static boolean canMerge(final SeqGraph graph, final SeqVertex v, final Collection<SeqVertex> incomingVertices) {
-        if ( incomingVertices.isEmpty() ) {
+        if ( incomingVertices.size()<=1 ) { 
             return false;
         }
 
