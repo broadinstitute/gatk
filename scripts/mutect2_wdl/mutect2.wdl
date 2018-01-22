@@ -21,8 +21,8 @@
 ## artifact_modes: types of artifacts to consider in the orientation bias filter
 ## m2_extra_args, m2_extra_filtering_args: additional arguments for Mutect2 calling and filtering (optional)
 ## split_intervals_extra_args: additional arguments for splitting intervals before scattering (optional)
-## is_run_orientation_bias_filter: if true, run the orientation bias filter post-processing step
-## is_run_oncotator: if true, annotate the M2 VCFs using oncotator (to produce a TCGA MAF).  Important:  This requires a
+## run_orientation_bias_filter: if true, run the orientation bias filter post-processing step
+## run_oncotator: if true, annotate the M2 VCFs using oncotator (to produce a TCGA MAF).  Important:  This requires a
 ##                   docker image and should  not be run in environments where docker is unavailable (e.g. SGE cluster on
 ##                   a Broad on-prem VM).  Access to docker hub is also required, since the task downloads a public docker image.
 ##
@@ -72,16 +72,19 @@ workflow Mutect2 {
     File? gnomad_index
     File? variants_for_contamination
     File? variants_for_contamination_index
-    Boolean is_run_orientation_bias_filter
+    Boolean? is_run_orientation_bias_filter
+    Boolean run_orientation_bias_filter = select_first([is_run_orientation_bias_filter, false])
     Array[String] artifact_modes
     File? tumor_sequencing_artifact_metrics
     String? m2_extra_args
     String? m2_extra_filtering_args
     String? split_intervals_extra_args
-    Boolean is_bamOut = false
+    Boolean? is_bamOut
+    Boolean make_bamout = select_first([is_bamOut, false])
 
     # oncotator inputs
-    Boolean is_run_oncotator
+    Boolean? is_run_oncotator
+    Boolean run_oncotator = select_first([is_run_oncotator, false])
     File? onco_ds_tar_gz
     String? onco_ds_local_db_dir
     String? sequencing_center
@@ -154,7 +157,7 @@ workflow Mutect2 {
                 gnomad_index = gnomad_index,
                 preemptible_attempts = preemptible_attempts,
                 m2_extra_args = m2_extra_args,
-                is_bamOut = is_bamOut,
+                make_bamout = make_bamout,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts,
@@ -182,7 +185,7 @@ workflow Mutect2 {
             disk_space = ceil(SumSubVcfs.total_size * large_input_to_output_multiplier) + disk_pad
     }
 
-    if (is_bamOut) {
+    if (make_bamout) {
         call SumFloats as SumSubBamouts {
             input:
                 sizes = sub_bamout_size,
@@ -202,7 +205,7 @@ workflow Mutect2 {
         }
     }
 
-    if (is_run_orientation_bias_filter && !defined(tumor_sequencing_artifact_metrics)) {
+    if (run_orientation_bias_filter && !defined(tumor_sequencing_artifact_metrics)) {
         call CollectSequencingArtifactMetrics {
             input:
                 gatk_docker = gatk_docker,
@@ -245,7 +248,7 @@ workflow Mutect2 {
             auth = auth
     }
 
-    if (is_run_orientation_bias_filter) {
+    if (run_orientation_bias_filter) {
         # Get the metrics either from the workflow input or CollectSequencingArtifactMetrics if no workflow input is provided
         File input_artifact_metrics = select_first([tumor_sequencing_artifact_metrics, CollectSequencingArtifactMetrics.pre_adapter_metrics])
 
@@ -263,7 +266,7 @@ workflow Mutect2 {
     }
 
 
-    if (is_run_oncotator) {
+    if (run_oncotator) {
         File oncotate_vcf_input = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
         call oncotate_m2 {
             input:
@@ -362,7 +365,7 @@ task M2 {
     File? gnomad
     File? gnomad_index
     String? m2_extra_args
-    Boolean? is_bamOut
+    Boolean? make_bamout
 
     File? gatk_override
 
@@ -412,7 +415,7 @@ task M2 {
             ${"-pon " + pon} \
             ${"-L " + intervals} \
             -O "output.vcf" \
-            ${true='--bam-output bamout.bam' false='' is_bamOut} \
+            ${true='--bam-output bamout.bam' false='' make_bamout} \
             ${m2_extra_args}
     >>>
 
