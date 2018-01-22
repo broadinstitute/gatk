@@ -401,7 +401,7 @@ task M2 {
         gatk --java-options "-Xmx${command_mem}m" GetSampleName -I ${tumor_bam} -O tumor_name.txt
         tumor_command_line="-I ${tumor_bam} -tumor `cat tumor_name.txt`"
 
-        if [[ "_${normal_bam}" == *.bam ]]; then
+        if [[ "${normal_bam}" == *.bam ]]; then
             gatk --java-options "-Xmx${command_mem}m" GetSampleName -I ${normal_bam} -O normal_name.txt
             normal_command_line="-I ${normal_bam} -normal `cat normal_name.txt`"
         fi
