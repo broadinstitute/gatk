@@ -56,8 +56,7 @@ public class VariantRecalibratorModelOutputUnitTest extends GATKBaseTest {
 
         GATKReport report = vqsr.writeModelReport(goodModel, badModel, annotationList);
         //this generates input data for testVQSRModelInput
-        try {
-            PrintStream modelReporter = new PrintStream(modelReportFile);
+        try(PrintStream modelReporter = new PrintStream(modelReportFile)) {
             report.print(modelReporter);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
