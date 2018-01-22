@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber.arguments;
 
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -133,7 +134,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             (Integer)getDefaultValue(HybridADVIArgument.MAX_ADVI_ITER_FIRST_EPOCH);
 
     @Argument(
-            doc="Maximum ADVI iterations in the subsequent epochs.",
+            doc="Maximum ADVI iterations in subsequent epochs.",
             fullName = MAX_ADVI_ITER_SUBSEQUENT_EPOCHS_LONG_NAME,
             optional = true,
             minValue = 0
@@ -178,7 +179,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             (Integer)getDefaultValue(HybridADVIArgument.NUM_THERMAL_EPOCHS);
 
     @Argument(
-            doc="Averaging window for calculating training SNR for evaluating convergence.",
+            doc="Averaging window for calculating training signal-to-noise ratio (SNR) for convergence checking.",
             fullName = CONVERGENCE_SNR_AVERAGING_WINDOW_LONG_NAME,
             optional = true,
             minValue = 0
@@ -187,7 +188,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             (Integer)getDefaultValue(HybridADVIArgument.CONVERGENCE_SNR_AVERAGING_WINDOW);
 
     @Argument(
-            doc="The SNR threshold to be reached for triggering convergence.",
+            doc="The SNR threshold to be reached before triggering the convergence countdown.",
             fullName = CONVERGENCE_SNR_TRIGGER_THRESHOLD_LONG_NAME,
             optional = true,
             minValue = 0
@@ -206,7 +207,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             (Integer)getDefaultValue(HybridADVIArgument.CONVERGENCE_SNR_COUNTDOWN_WINDOW);
 
     @Argument(
-            doc="Maximum number of calling internal self-consistency iterations.",
+            doc="Maximum number of internal self-consistency iterations within each calling step.",
             fullName = MAX_CALLING_ITERS_LONG_NAME,
             optional = true,
             minValue = 0
@@ -224,8 +225,8 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             (Double)getDefaultValue(HybridADVIArgument.CALLER_UPDATE_CONVERGENCE_THRESHOLD);
 
     @Argument(
-            doc="Admixing ratio of new and old caller posteriors (between 0 and 1; higher means using more " +
-                    "of the new posterior)",
+            doc="Admixing ratio of new and old called posteriors (between 0 and 1; larger values implies using " +
+                    "more of the new posterior and less of the old posterior).",
             fullName = CALLER_ADMIXING_RATE_LONG_NAME,
             optional = true,
             minValue = 0
@@ -257,9 +258,10 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
     private boolean disableAnnealing =
             (Boolean)getDefaultValue(HybridADVIArgument.DISABLE_ANNEALING);
 
-    /* todo */
     public void validate() {
-
+        Utils.validateArg(maxTrainingEpochs >= minTrainingEpochs,
+                "Maximum number of training epochs must be greater or equal to minimum number of training " +
+                        "epochs.");
     }
 
     public List<String> generatePythonArguments() {

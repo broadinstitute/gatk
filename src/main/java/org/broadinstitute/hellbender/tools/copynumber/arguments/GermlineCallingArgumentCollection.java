@@ -22,7 +22,8 @@ public final class GermlineCallingArgumentCollection implements Serializable {
     public static final String MAX_COPY_NUMBER_LONG_NAME = "max-copy-number";
 
     @Argument(
-            doc = "Prior probability of alt copy-number with respect to contig baseline state in the reference copy number.",
+            doc = "Total prior probability of alternative copy-number states (the reference copy-number " +
+                    "is set to the contig integer ploidy)",
             fullName = P_ALT_LONG_NAME,
             minValue = 0.,
             optional = true
@@ -30,7 +31,8 @@ public final class GermlineCallingArgumentCollection implements Serializable {
     private double pAlt = 1e-6;
 
     @Argument(
-            doc = "Prior probability of treating an interval as CNV-active",
+            doc = "Prior probability of treating an interval as CNV-active (in a CNV-active domains, all " +
+                    "copy-number states are equally likely to be called).",
             fullName = P_ACTIVE_LONG_NAME,
             minValue = 0.,
             optional = true
@@ -46,7 +48,7 @@ public final class GermlineCallingArgumentCollection implements Serializable {
     private double cnvCoherenceLength = 10000.0;
 
     @Argument(
-            doc = "Coherence length of CNV class domains (in the units of bp).",
+            doc = "Coherence length of CNV-active and CNV-silent domains (in the units of bp).",
             fullName = CLASS_COHERENCE_LENGTH_LONG_NAME,
             minValue = 0.,
             optional = true
@@ -54,7 +56,7 @@ public final class GermlineCallingArgumentCollection implements Serializable {
     private double classCoherenceLength = 10000.0;
 
     @Argument(
-            doc = "Highest considered copy-number.",
+            doc = "Highest allowed copy-number state.",
             fullName = MAX_COPY_NUMBER_LONG_NAME,
             minValue = 0,
             optional = true
@@ -76,7 +78,7 @@ public final class GermlineCallingArgumentCollection implements Serializable {
 
     public void validate() {
         ParamUtils.inRange(pAlt, 0.0, 1.0,
-                "Prior probability of alt copy-number must be between 0 and 1.");
+                "Prior probability of alternative copy-number states must be between 0 and 1.");
         ParamUtils.inRange(pActive, 0.0, 1.0,
                 "Prior probability of treating an interval as CNV-active must be between 0 and 1.");
         ParamUtils.isPositive(cnvCoherenceLength,
@@ -84,6 +86,6 @@ public final class GermlineCallingArgumentCollection implements Serializable {
         ParamUtils.isPositive(classCoherenceLength,
                 "Coherence length of CNV class domains must be positive.");
         ParamUtils.isPositive(maxCopyNumber,
-                "Highest considered copy-number must be positive.");
+                "Highest allowed copy-number must be positive.");
     }
 }

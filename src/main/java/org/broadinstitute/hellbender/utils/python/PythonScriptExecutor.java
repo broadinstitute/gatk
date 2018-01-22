@@ -187,4 +187,13 @@ public class PythonScriptExecutor extends PythonExecutorBase {
         return curatedCommandLineArgs.stream().collect(Collectors.joining(" "));
     }
 
+    public static void checkPythonEnvironmentForPackage(final String packageName) {
+        final PythonScriptExecutor pythonExecutor = new PythonScriptExecutor(true);
+        if (!pythonExecutor.executeCommand(String.format("import %s", packageName) + System.lineSeparator(), null, null)) {
+            throw new RuntimeException(String.format("Importing \"%s\" in the python environment failed. Please " +
+                    "assert that the python environment is properly set and activated (if using a virtual " +
+                    "environment), and \"%s\" is installed along with its dependencies. Please refer to " +
+                    "GATK README.md file for instructions on setting up the python environment.", packageName, packageName));
+        }
+    }
 }
