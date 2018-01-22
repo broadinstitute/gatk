@@ -291,11 +291,10 @@ workflow Mutect2 {
         File filtered_vcf_index = select_first([FilterByOrientationBias.filtered_vcf_index, Filter.filtered_vcf_index])
         File? contamination_table = CalculateContamination.contamination_table
 
-        # select_first() fails if nothing resolves to non-null, so putting in "null" for now.
-        File? oncotated_m2_maf = select_first([oncotate_m2.oncotated_m2_maf, "null"])
-        File? preadapter_detail_metrics = select_first([CollectSequencingArtifactMetrics.pre_adapter_metrics, "null"])
-        File? bamout = select_first([MergeBamOuts.merged_bam_out, "null"])
-        File? bamout_index = select_first([MergeBamOuts.merged_bam_out_index, "null"])
+        File? oncotated_m2_maf = oncotate_m2.oncotated_m2_maf
+        File? preadapter_detail_metrics = CollectSequencingArtifactMetrics.pre_adapter_metrics
+        File? bamout = MergeBamOuts.merged_bam_out
+        File? bamout_index = MergeBamOuts.merged_bam_out_index
     }
 }
 
