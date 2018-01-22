@@ -24,7 +24,7 @@ public class VariantRecalibratorModelOutputUnitTest extends GATKBaseTest {
     private final double dirichlet = 0.001;
     private final double priorCounts = 20.0;
     private final double epsilon = 1e-6;
-    private final String modelReportName = "vqsr_model.report";
+    private final File modelReportFile = createTempFile("vqsr_model", "report");
     private final int dataSize = 1000; //use this a placeholder so we can test model reading without data
 
     @Test
@@ -57,7 +57,7 @@ public class VariantRecalibratorModelOutputUnitTest extends GATKBaseTest {
         GATKReport report = vqsr.writeModelReport(goodModel, badModel, annotationList);
         //this generates input data for testVQSRModelInput
         try {
-            PrintStream modelReporter = new PrintStream(publicTestDir+"/"+this.modelReportName);
+            PrintStream modelReporter = new PrintStream(modelReportFile);
             report.print(modelReporter);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -103,8 +103,7 @@ public class VariantRecalibratorModelOutputUnitTest extends GATKBaseTest {
 
     @Test (dependsOnMethods = {"testVQSRModelOutput"})
     public void testVQSRModelInput(){
-        final File inputFile = new File(publicTestDir + "/" + this.modelReportName);
-        final GATKReport report = new GATKReport(inputFile);
+        final GATKReport report = new GATKReport(modelReportFile);
 
         // Now test model report reading
         // Read all the tables
