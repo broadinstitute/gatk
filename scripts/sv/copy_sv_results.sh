@@ -58,11 +58,13 @@ if [ -z "${RESULTS_DIR}" ]; then
     # directory is empty (presumably the job crashed). Use OUTPUT_DIR (without leading slash)
     RESULTS_DIR=$(echo "${OUTPUT_DIR}" | sed -e 's/^\///')
     echo "RESULTS_DIR=${RESULTS_DIR}" 2>&1 | tee -a ${LOCAL_LOG_FILE}
-    GCS_RESULTS_DIR="gs://${GCS_SAVE_PATH}/${RESULTS_DIR}"
+    GCS_RESULTS_DIR="${GCS_SAVE_PATH}/${RESULTS_DIR}"
+    if [[ "${GCS_RESULTS_DIR}" != gs://* ]]; then GCS_RESULTS_DIR="gs://${GCS_RESULTS_DIR}"; fi
 else
     # copy the latest results to google cloud
     echo "RESULTS_DIR=${RESULTS_DIR}" 2>&1 | tee -a ${LOCAL_LOG_FILE}
-    GCS_RESULTS_DIR="gs://${GCS_SAVE_PATH}/${RESULTS_DIR}"
+    GCS_RESULTS_DIR="${GCS_SAVE_PATH}/${RESULTS_DIR}"
+    if [[ "${GCS_RESULTS_DIR}" != gs://* ]]; then GCS_RESULTS_DIR="gs://${GCS_RESULTS_DIR}"; fi
     # chose semi-optimal parallel args for distcp
     # 1) count number of files to copy
     COUNT_FILES_CMD="hadoop fs -count /${RESULTS_DIR}/ | tr -s ' ' | cut -d ' ' -f 3"
