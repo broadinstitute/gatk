@@ -177,7 +177,7 @@ public class Mutect2FilteringEngine {
 
         final int maxZIndex = MathUtils.maxElementIndex(posteriorProbabilities);
 
-        if (maxZIndex == StrandArtifact.StrandArtifactZ.NO_ARTIFACT.ordinal()){
+        if (maxZIndex == StrandArtifact.ArtifactState.NO_ARTIFACT.ordinal()){
             return;
         }
 

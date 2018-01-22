@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifact;
-import org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifact.StrandArtifactZ;
+import org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifact.ArtifactState;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;
-
 
 import java.io.IOException;
 import java.util.*;
@@ -107,11 +106,11 @@ public class StrandArtifactUnitTest {
 
         final double epsilon = 1e-3;
         // Check that we correctly detect the artifact in reverse strands
-        Assert.assertEquals(MathUtils.maxElementIndex(posteriorProbabilities), StrandArtifactZ.ART_REV.ordinal());
-        Assert.assertEquals(posteriorProbabilities[StrandArtifactZ.ART_REV.ordinal()], 1.0, epsilon);
+        Assert.assertEquals(MathUtils.maxElementIndex(posteriorProbabilities), ArtifactState.ART_REV.ordinal());
+        Assert.assertEquals(posteriorProbabilities[ArtifactState.ART_REV.ordinal()], 1.0, epsilon);
 
         // Check that, having taken strand artifact into consideration, we estimate that the true allele fraction is 0
-        Assert.assertEquals(mapAlleleFractionEstimates[StrandArtifactZ.ART_REV.ordinal()], 0.0, epsilon);
+        Assert.assertEquals(mapAlleleFractionEstimates[ArtifactState.ART_REV.ordinal()], 0.0, epsilon);
     }
 
     // the underlying true allele fraction is non-zero
@@ -192,7 +191,7 @@ public class StrandArtifactUnitTest {
 
         final double epsilon = 0.1;
         // Check that, having taken strand artifact into consideration, we estimate that the true allele fraction is 0.2
-        Assert.assertEquals(mapAlleleFractionEstimates[StrandArtifactZ.ART_FWD.ordinal()], 0.2, epsilon);
+        Assert.assertEquals(mapAlleleFractionEstimates[ArtifactState.ART_FWD.ordinal()], 0.2, epsilon);
 
     }
 
