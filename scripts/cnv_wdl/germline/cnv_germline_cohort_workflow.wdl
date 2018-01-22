@@ -36,8 +36,8 @@ workflow CNVGermlineCohortWorkflow {
     #### optional basic arguments ####
     ##################################
     File? gatk4_jar_override
-    Int? mem_for_determine_germline_contig_ploidy
-    Int? mem_for_germline_cnv_caller
+    Int? mem_gb_for_determine_germline_contig_ploidy
+    Int? mem_gb_for_germline_cnv_caller
     Int? cpu_for_determine_germline_contig_ploidy
     Int? cpu_for_germline_cnv_caller
     Int? preemptible_attempts
@@ -147,7 +147,7 @@ workflow CNVGermlineCohortWorkflow {
             contig_ploidy_priors = contig_ploidy_priors,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            mem = mem_for_determine_germline_contig_ploidy,
+            mem_gb = mem_for_determine_germline_contig_ploidy,
             cpu = cpu_for_determine_germline_contig_ploidy,
             mean_bias_standard_deviation = ploidy_mean_bias_standard_deviation,
             mapping_error_rate = ploidy_mapping_error_rate,
@@ -175,7 +175,7 @@ workflow CNVGermlineCohortWorkflow {
                 annotated_intervals = AnnotateIntervals.annotated_intervals,
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
-                mem = mem_for_germline_cnv_caller,
+                mem_gb = mem_for_germline_cnv_caller,
                 cpu = cpu_for_germline_cnv_caller,
                 p_alt = gcnv_p_alt,
                 p_active = gcnv_p_active,
@@ -234,7 +234,7 @@ task DetermineGermlineContigPloidyCohortMode {
     File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem
+    Int? mem_gb
     Int? cpu
     String gatk_docker
     Int? preemptible_attempts
@@ -248,8 +248,8 @@ task DetermineGermlineContigPloidyCohortMode {
 
     # We do not expose Hybrid ADVI parameters -- the default values are decent
 
-    Int machine_mem = if defined(mem) then select_first([mem]) else 8
-    Float command_mem = machine_mem - 0.5
+    Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
+    Int command_mem_mb = machine_mem_mb - 500
 
     # If optional output_dir not specified, use "out"
     String output_dir_ = select_first([output_dir, "out"])
@@ -261,7 +261,7 @@ task DetermineGermlineContigPloidyCohortMode {
         export MKL_NUM_THREADS=${default=8 cpu}
         export OMP_NUM_THREADS=${default=8 cpu}
 
-        gatk --java-options "-Xmx${machine_mem}g"  DetermineGermlineContigPloidy \
+        gatk --java-options "-Xmx${command_mem_mb}m"  DetermineGermlineContigPloidy \
             --input ${sep=" --input " read_count_files} \
             --contig-ploidy-priors ${contig_ploidy_priors} \
             --output ${output_dir_} \
@@ -278,7 +278,7 @@ task DetermineGermlineContigPloidyCohortMode {
 
     runtime {
         docker: "${gatk_docker}"
-        memory: command_mem + " GB"
+        memory: machine_mem_mb + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 150]) + " HDD"
         preemptible: select_first([preemptible_attempts, 2])
         cpu: select_first([cpu, 8])
@@ -301,7 +301,7 @@ task GermlineCNVCallerCohortMode {
     File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem
+    Int? mem_gb
     Int? cpu
     String gatk_docker
     Int? preemptible_attempts
@@ -349,8 +349,8 @@ task GermlineCNVCallerCohortMode {
     Float? caller_admixing_rate
     Boolean? disable_annealing
 
-    Int machine_mem = if defined(mem) then select_first([mem]) else 8
-    Float command_mem = machine_mem - 0.5
+    Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
+    Int command_mem_mb = machine_mem_mb - 500
 
     # If optional output_dir not specified, use "out"
     String output_dir_ = select_first([output_dir, "out"])
@@ -365,7 +365,7 @@ task GermlineCNVCallerCohortMode {
         mkdir contig-ploidy-calls-dir
         tar xzf ${contig_ploidy_calls_tar} -C contig-ploidy-calls-dir
 
-        gatk --java-options "-Xmx${machine_mem}g"  GermlineCNVCaller \
+        gatk --java-options "-Xmx${command_mem_mb}m"  GermlineCNVCaller \
             --run-mode COHORT \
             -L ${intervals} \
             --input ${sep=" --input " read_count_files} \
@@ -418,7 +418,7 @@ task GermlineCNVCallerCohortMode {
 
     runtime {
         docker: "${gatk_docker}"
-        memory: command_mem + " GB"
+        memory: machine_mem_mb + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 150]) + " HDD"
         preemptible: select_first([preemptible_attempts, 2])
         cpu: select_first([cpu, 8])

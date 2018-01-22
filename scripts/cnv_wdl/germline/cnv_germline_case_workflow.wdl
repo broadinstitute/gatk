@@ -38,8 +38,8 @@ workflow CNVGermlineCaseWorkflow {
     #### optional basic arguments ####
     ##################################
     File? gatk4_jar_override
-    Int? mem_for_determine_germline_contig_ploidy
-    Int? mem_for_germline_cnv_caller
+    Int? mem_gb_for_determine_germline_contig_ploidy
+    Int? mem_gb_for_germline_cnv_caller
     Int? cpu_for_determine_germline_contig_ploidy
     Int? cpu_for_germline_cnv_caller
     Int? preemptible_attempts
@@ -116,7 +116,7 @@ workflow CNVGermlineCaseWorkflow {
             contig_ploidy_model_tar = contig_ploidy_model_tar,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            mem = mem_for_determine_germline_contig_ploidy,
+            mem_gb = mem_for_determine_germline_contig_ploidy,
             cpu = cpu_for_determine_germline_contig_ploidy,
             mapping_error_rate = ploidy_mapping_error_rate,
             sample_psi_scale = ploidy_sample_psi_scale,
@@ -141,7 +141,7 @@ workflow CNVGermlineCaseWorkflow {
                 intervals = ScatterIntervals.scattered_interval_lists[scatter_index],
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
-                mem = mem_for_germline_cnv_caller,
+                mem_gb = mem_for_germline_cnv_caller,
                 cpu = cpu_for_germline_cnv_caller,
                 p_alt = gcnv_p_alt,
                 cnv_coherence_length = gcnv_cnv_coherence_length,
@@ -190,7 +190,7 @@ task DetermineGermlineContigPloidyCaseMode {
     File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem
+    Int? mem_gb
     Int? cpu
     String gatk_docker
     Int? preemptible_attempts
@@ -202,8 +202,8 @@ task DetermineGermlineContigPloidyCaseMode {
 
     # We do not expose Hybrid ADVI parameters -- the default values are decent
 
-    Int machine_mem = if defined(mem) then select_first([mem]) else 8
-    Float command_mem = machine_mem - 0.5
+    Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
+    Int command_mem_mb = machine_mem_mb - 500
 
     # If optional output_dir not specified, use "out"
     String output_dir_ = select_first([output_dir, "out"])
@@ -218,7 +218,7 @@ task DetermineGermlineContigPloidyCaseMode {
         mkdir input-contig-ploidy-model
         tar xzf ${contig_ploidy_model_tar} -C input-contig-ploidy-model
 
-        gatk --java-options "-Xmx${machine_mem}g" DetermineGermlineContigPloidy \
+        gatk --java-options "-Xmx${command_mem_mb}m" DetermineGermlineContigPloidy \
             --input ${sep=" --input " read_count_files} \
             --model input-contig-ploidy-model \
             --output ${output_dir_} \
@@ -232,7 +232,7 @@ task DetermineGermlineContigPloidyCaseMode {
 
     runtime {
         docker: "${gatk_docker}"
-        memory: command_mem + " GB"
+        memory: machine_mem_mb + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 150]) + " HDD"
         preemptible: select_first([preemptible_attempts, 2])
         cpu: select_first([cpu, 8])
@@ -254,7 +254,7 @@ task GermlineCNVCallerCaseMode {
     File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem
+    Int? mem_gb
     Int? cpu
     String gatk_docker
     Int? preemptible_attempts
@@ -293,8 +293,8 @@ task GermlineCNVCallerCaseMode {
     Float? caller_admixing_rate
     Boolean? disable_annealing
 
-    Int machine_mem = if defined(mem) then select_first([mem]) else 8
-    Float command_mem = machine_mem - 0.5
+    Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
+    Int command_mem_mb = machine_mem_mb - 500
 
     # If optional output_dir not specified, use "out"
     String output_dir_ = select_first([output_dir, "out"])
@@ -312,7 +312,7 @@ task GermlineCNVCallerCaseMode {
         mkdir gcnv-model
         tar xzf ${gcnv_model_tar} -C gcnv-model
 
-        gatk --java-options "-Xmx${machine_mem}g"  GermlineCNVCaller \
+        gatk --java-options "-Xmx${command_mem_mb}m"  GermlineCNVCaller \
             --run-mode CASE \
             --input ${sep=" --input " read_count_files} \
             --contig-ploidy-calls contig-ploidy-calls-dir \
@@ -353,7 +353,7 @@ task GermlineCNVCallerCaseMode {
 
     runtime {
         docker: "${gatk_docker}"
-        memory: command_mem + " GB"
+        memory: machine_mem_mb + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 150]) + " HDD"
         preemptible: select_first([preemptible_attempts, 2])
         cpu: select_first([cpu, 8])

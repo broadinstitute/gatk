@@ -304,20 +304,19 @@ task DenoiseReadCounts {
     File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem
+    Int? mem_gb
     String gatk_docker
     Int? preemptible_attempts
     Int disk_space_gb
 
-    # Mem is in units of GB but our command and memory runtime values are in MB
-    Int machine_mem = if defined(mem) then mem * 1000 else 13000
-    Int command_mem = machine_mem - 1000
+    Int machine_mem_mb = select_first([mem_gb, 13]) * 1000
+    Int command_mem_mb = machine_mem_mb - 1000
 
     command <<<
         set -e
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
-        gatk --java-options "-Xmx${command_mem}m" DenoiseReadCounts \
+        gatk --java-options "-Xmx${command_mem_mb}m" DenoiseReadCounts \
             --input ${read_counts} \
             --count-panel-of-normals ${read_count_pon} \
             ${"--number-of-eigensamples " + number_of_eigensamples} \
@@ -327,7 +326,7 @@ task DenoiseReadCounts {
 
     runtime {
         docker: "${gatk_docker}"
-        memory: machine_mem + " MB"
+        memory: machine_mem_mb + " MB"
         disks: "local-disk " + disk_space_gb + " HDD"
         preemptible: select_first([preemptible_attempts, 5])
     }
@@ -366,15 +365,14 @@ task ModelSegments {
     File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem
+    Int? mem_gb
     String gatk_docker
     Int? preemptible_attempts
     Int disk_space_gb
 
-    # Mem is in units of GB but our command and memory runtime values are in MB
-    Int machine_mem = if defined(mem) then mem * 1000 else 13000
+    Int machine_mem_mb = select_first([mem_gb, 13]) * 1000
     # ModelSegments seems to need at least 3GB of overhead to run
-    Int command_mem = machine_mem - 3000
+    Int command_mem_mb = machine_mem_mb - 3000
 
     # If optional output_dir not specified, use "out"
     String output_dir_ = select_first([output_dir, "out"])
@@ -384,7 +382,7 @@ task ModelSegments {
         mkdir ${output_dir_}
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
-        gatk --java-options "-Xmx${command_mem}m" ModelSegments \
+        gatk --java-options "-Xmx${command_mem_mb}m" ModelSegments \
             --denoised-copy-ratios ${denoised_copy_ratios} \
             --allelic-counts ${allelic_counts} \
             ${"--normal-allelic-counts " + normal_allelic_counts} \
@@ -417,7 +415,7 @@ task ModelSegments {
 
     runtime {
         docker: "${gatk_docker}"
-        memory: machine_mem + " MB"
+        memory: machine_mem_mb + " MB"
         disks: "local-disk " + disk_space_gb + " HDD"
         preemptible: select_first([preemptible_attempts, 5])
     }
@@ -444,20 +442,19 @@ task CallCopyRatioSegments {
     File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem
+    Int? mem_gb
     String gatk_docker
     Int? preemptible_attempts
     Int disk_space_gb
 
-    # Mem is in units of GB but our command and memory runtime values are in MB
-    Int machine_mem = if defined(mem) then mem * 1000 else 7000
-    Int command_mem = machine_mem - 1000
+    Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
+    Int command_mem_mb = machine_mem_mb - 1000
 
     command <<<
         set -e
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
-        gatk --java-options "-Xmx${command_mem}m" CallCopyRatioSegments \
+        gatk --java-options "-Xmx${command_mem_mb}m" CallCopyRatioSegments \
             --input ${copy_ratio_segments} \
             --neutral-segment-copy-ratio-threshold ${default="0.1" neutral_segment_copy_ratio_threshold} \
             --outlier-neutral-segment-copy-ratio-z-score-threshold ${default="2.0" outlier_neutral_segment_copy_ratio_z_score_threshold} \
@@ -467,7 +464,7 @@ task CallCopyRatioSegments {
 
     runtime {
         docker: "${gatk_docker}"
-        memory: machine_mem + " MB"
+        memory: machine_mem_mb + " MB"
         disks: "local-disk " + disk_space_gb + " HDD"
         preemptible: select_first([preemptible_attempts, 5])
     }
@@ -487,14 +484,13 @@ task PlotDenoisedCopyRatios {
     File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem
+    Int? mem_gb
     String gatk_docker
     Int? preemptible_attempts
     Int disk_space_gb
 
-    # Mem is in units of GB but our command and memory runtime values are in MB
-    Int machine_mem = if defined(mem) then mem * 1000 else 7000
-    Int command_mem = machine_mem - 1000
+    Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
+    Int command_mem_mb = machine_mem_mb - 1000
 
     # If optional output_dir not specified, use "out"
     String output_dir_ = select_first([output_dir, "out"])
@@ -504,7 +500,7 @@ task PlotDenoisedCopyRatios {
         mkdir ${output_dir_}
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
-        gatk --java-options "-Xmx${command_mem}m" PlotDenoisedCopyRatios \
+        gatk --java-options "-Xmx${command_mem_mb}m" PlotDenoisedCopyRatios \
             --standardized-copy-ratios ${standardized_copy_ratios} \
             --denoised-copy-ratios ${denoised_copy_ratios} \
             --sequence-dictionary ${ref_fasta_dict} \
@@ -515,7 +511,7 @@ task PlotDenoisedCopyRatios {
 
     runtime {
         docker: "${gatk_docker}"
-        memory: machine_mem + " MB"
+        memory: machine_mem_mb + " MB"
         disks: "local-disk " + disk_space_gb + " HDD"
         preemptible: select_first([preemptible_attempts, 5])
     }
@@ -541,14 +537,13 @@ task PlotModeledSegments {
     File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem
+    Int? mem_gb
     String gatk_docker
     Int? preemptible_attempts
     Int disk_space_gb
 
-    # Mem is in units of GB but our command and memory runtime values are in MB
-    Int machine_mem = if defined(mem) then mem * 1000 else 7000
-    Int command_mem = machine_mem - 1000
+    Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
+    Int command_mem_mb = machine_mem_mb - 1000
 
     # If optional output_dir not specified, use "out"
     String output_dir_ = select_first([output_dir, "out"])
@@ -558,7 +553,7 @@ task PlotModeledSegments {
         mkdir ${output_dir_}
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
-        gatk --java-options "-Xmx${command_mem}m" PlotModeledSegments \
+        gatk --java-options "-Xmx${command_mem_mb}m" PlotModeledSegments \
             --denoised-copy-ratios ${denoised_copy_ratios} \
             --allelic-counts ${het_allelic_counts} \
             --segments ${modeled_segments} \
@@ -570,7 +565,7 @@ task PlotModeledSegments {
 
     runtime {
         docker: "${gatk_docker}"
-        memory: machine_mem + " MB"
+        memory: machine_mem_mb + " MB"
         disks: "local-disk " + disk_space_gb + " HDD"
         preemptible: select_first([preemptible_attempts, 5])
     }
