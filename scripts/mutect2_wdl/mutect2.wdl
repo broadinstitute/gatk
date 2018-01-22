@@ -228,6 +228,8 @@ workflow Mutect2 {
                 gatk_docker = gatk_docker,
                 tumor_bam = tumor_bam,
                 tumor_bai = tumor_bai,
+                normal_bam = normal_bam,
+                normal_bai = normal_bai,
                 variants_for_contamination = variants_for_contamination,
                 variants_for_contamination_index = variants_for_contamination_index,
                 disk_space = tumor_bam_size + ceil(size(variants_for_contamination, "GB") * small_input_to_output_multiplier) + disk_pad,
@@ -565,8 +567,10 @@ task CollectSequencingArtifactMetrics {
 task CalculateContamination {
     # inputs
     File? intervals
-    String tumor_bam
-    String tumor_bai
+    File tumor_bam
+    File tumor_bai
+    File? normal_bam
+    File? normal_bai
     File? variants_for_contamination
     File? variants_for_contamination_index
 
@@ -595,15 +599,21 @@ task CalculateContamination {
         fi
 
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+
+        if [[ "${normal_bam}" == *.bam ]]; then
+            gatk --java-options "-Xmx${command_mem}m" GetPileupSummaries -I ${normal_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O normal_pileups.table
+            NORMAL_CMD="-matched normal_pileups.table"
+        fi
+
         gatk --java-options "-Xmx${command_mem}m" GetPileupSummaries -I ${tumor_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O pileups.table
-        gatk --java-options "-Xmx${command_mem}m" CalculateContamination -I pileups.table -O contamination.table
+        gatk --java-options "-Xmx${command_mem}m" CalculateContamination -I pileups.table -O contamination.table $NORMAL_CMD
     }
 
     runtime {
-    docker: gatk_docker
-    memory: command_mem + " MB"
-    disks: "local-disk " + select_first([disk_space, 100]) + " HDD"
-    preemptible: select_first([preemptible_attempts, 10])
+        docker: gatk_docker
+        memory: command_mem + " MB"
+        disks: "local-disk " + select_first([disk_space, 100]) + " HDD"
+        preemptible: select_first([preemptible_attempts, 10])
     }
 
     output {
