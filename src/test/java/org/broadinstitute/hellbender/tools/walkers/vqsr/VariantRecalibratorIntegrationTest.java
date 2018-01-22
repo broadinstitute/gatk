@@ -187,7 +187,8 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
         spec.executeTest("testVariantRecalibratorIndel"+  inputFile, this);
     }
 
-    private final String modelReportFilename = publicTestDir + "/snpSampledModel.report";
+    private final String tmpDir = createTempDir(this.getTestedClassName()).getAbsolutePath();
+    private final String modelReportFilename = tmpDir + "/snpSampledModel.report";
     private final String modelReportRecal = getLargeVQSRTestDataDir() + "expected/snpSampledRecal.vcf";
     private final String modelReportTranches = getLargeVQSRTestDataDir() + "expected/snpSampledTranches.txt";
 
