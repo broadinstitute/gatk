@@ -61,6 +61,9 @@ public class ExtractSequenceIntegrationTest extends CommandLineProgramTest {
         }
 
         runCommandLine(arguments);
+
+        // TODO: FILL THIS OUT!
+//        IntegrationTestSpec.assertEqualTextFiles();
     }
 
     //==================================================================================================================
