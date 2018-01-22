@@ -33,9 +33,8 @@ import java.util.stream.Collectors;
  *
  * <h3>Introduction</h3>
  *
- * <p>Germline karyotyping is a frequently performed task in bioinformatics pipelines, an immediate application of which
- * is sex determination, as well as informing about expected SNP allele frequencies and copy-ratio plateaus. This
- * tool uses counts data for germline karyotyping. </p>
+ * <p>Germline karyotyping is a frequently performed task in bioinformatics pipelines, e.g. for sex determination and
+ * aneuploidy identification. This tool uses counts data for germline karyotyping. </p>
  *
  * <p>Performing germline karyotyping using counts data requires calibrating ("modeling") the technical coverage bias
  * and variance for each contig. The Bayesian model and the associated inference scheme implemented in
@@ -49,10 +48,10 @@ import java.util.stream.Collectors;
  * <h3>Python environment setup</h3>
  *
  * <p>The computation done by this tool, aside from input data parsing and validation, is performed outside of the Java
- * Virtual Machine and using the <em>gCNV computational python module</em> <code>"gcnvkernel"</code>. It is crucial that
- * the user has properly set up a python <code>conda</code> environment with <code>gcnvkernel</code> and its dependencies
- * installed. If the user intends to run {@link DetermineGermlineContigPloidy} using one the official GATK Docker images,
- * the python environment is already set. Otherwise, the environment must be created and activated as described in the
+ * Virtual Machine and using the <em>gCNV computational python module</em>, namely {@code gcnvkernel}. It is crucial that
+ * the user has properly set up a python conda environment with {@code gcnvkernel} and its dependencies
+ * installed. If the user intends to run {@link DetermineGermlineContigPloidy} using one of the official GATK Docker images,
+ * the python environment is already set up. Otherwise, the environment must be created and activated as described in the
  * main GATK README.md file.</p>
  *
  * <h3>Tool run modes</h3>
@@ -61,11 +60,11 @@ import java.util.stream.Collectors;
  * <dl>
  *     <dt>COHORT mode:</dt>
  *
- *     <dd>If a ploidy model parameter directory is not provided via the <code>--model &lt;path&gt;</code> argument,
- *     the tool will run in the COHORT mode. In this mode, ploidy model parameters (e.g. coverage bias and variance for
- *     each contig) are inferred, along with baseline contig ploidy states of each sample. A TSV file specifying prior
- *     probabilities for each integer ploidy state and for each contig is required in this mode and must be specified
- *     via the <code>--contig-ploidy-priors &lt;value&gt;</code> argument. The following shows an example of such a table:
+ *     <dd>If a ploidy model parameter path is not provided via the {@code model} argument, the tool will run in
+ *     the COHORT mode. In this mode, ploidy model parameters (e.g. coverage bias and variance for each contig) are
+ *     inferred, along with baseline contig ploidy states of each sample. A TSV file specifying prior probabilities
+ *     for each integer ploidy state and for each contig is required in this mode and must be specified via the
+ *     {@code contig-ploidy-priors} argument. The following shows an example of such a table:
  *     <br>
  *     <table border="1" width="80%">
  *         <tr>
@@ -100,10 +99,10 @@ import java.util.stream.Collectors;
  *     coverage variance estimates.</p></dd>
  *
  *     <dt>CASE mode:</dt>
- *     <dd>If a directory containing previously inferred ploidy model parameters is provided via the
- *     <code>--model &lt;path&gt;</code> argument, then the tool will run in the CASE mode. In this mode, the
- *     parameters of the ploidy model are loaded from the provided directory and only sample-specific quantities are
- *     inferred. Subsequently, the output directory will only contain the "-calls" subdirectory.
+ *     <dd>If a path containing previously inferred ploidy model parameters is provided via the
+ *     {@code model} argument, then the tool will run in the CASE mode. In this mode, the parameters of the ploidy
+ *     model are loaded from the provided directory and only sample-specific quantities are inferred. Subsequently,
+ *     the output directory will only contain the "-calls" subdirectory.
  *
  *      <p>In the CASE mode, the contig ploidy prior table is taken directly from the provided model parameters
  *      path and must be not provided again.</p></dd>
@@ -114,24 +113,24 @@ import java.util.stream.Collectors;
  *     <dt>Choice of hyperparameters:</dt>
  *     <dd><p>The quality of ploidy model parametrization and the sensitivity/precision of germline karyotyping are
  *     sensitive to the choice of model hyperparameters, including standard deviation of mean contig coverage bias
- *     (set by <code>--mean-bias-standard-deviation &lt;value&gt;</code>), mapping error rate
- *     (set by <code>--mapping-error-rate &lt;value&gt;</code>), and the typical scale of contig- and sample-specific
- *     unexplained variance (set by <code>--global-psi-scale &lt;value&gt;</code> and <code>--sample-psi-scale
- *     &lt;value&gt;</code>, respectively). It is crucial to note that these hyperparameters are <em>not</em> universal
+ *     (set using the {@code mean-bias-standard-deviation} argument), mapping error rate
+ *     (set using the {@code mapping-error-rate} argument), and the typical scale of contig- and sample-specific
+ *     unexplained variance (set using the {@code global-psi-scale} and {@code sample-psi-scale} arguments,
+ *     respectively). It is crucial to note that these hyperparameters are <em>not</em> universal
  *     and must be tuned for each sequencing protocol and properly set at runtime.</p></dd>
  *
  *     <dt>Mosaicism and fractional ploidies:</dt>
  *     <dd><p>The model underlying this tool assumes integer ploidy states (in contrast to fractional/variable ploidy
  *     states). Therefore, it is to be used strictly on germline samples and for the purpose of sex determination,
- *     autosomal aneuploidy detection, or as a part of GATK germline CNV calling pipeline. The presence of large somatic
- *     events and mosaicism (e.g. sex chromosome loss and somatic trisomy) will naturally lead to unreliable
+ *     autosomal aneuploidy detection, or as a part of the GATK germline CNV calling pipeline. The presence of large somatic
+ *     events and mosaicism (e.g., sex chromosome loss and somatic trisomy) will naturally lead to unreliable
  *     results. We strongly recommended inspecting genotyping qualities (GQ) from the tool output and considering to drop
  *     low-GQ contigs in downstream analyses. Finally, given the Bayesian status of this tool, we suggest including as many
  *     high-quality germline samples as possible for ploidy model parametrizaton in the COHORT mode. This will downplay
  *     the role of questionable samples and will yield a more reliable estimation of genuine sequencing biases.</p></dd>
  *
  *     <dt>Coverage-based germline karyotyping:</dt>
- *     <dd><p>Accurate germline karyotyping requires incorporating SNP allele frequencies and counts data in a
+ *     <dd><p>Accurate germline karyotyping requires incorporating SNP allele-fraction data and counts data in a
  *     unified probabilistic model and is beyond the scope of the present tool. The current implementation only uses
  *     counts data for karyotyping and while being fast, it may not provide the most reliable results.</p></dd>
  *
@@ -163,8 +162,8 @@ import java.util.stream.Collectors;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Determines the baseline contig ploidy for germline samples given counts data.",
-        oneLineSummary = "Determines the baseline contig ploidy for germline samples given counts data.",
+        summary = "Determines the baseline contig ploidy for germline samples given counts data",
+        oneLineSummary = "Determines the baseline contig ploidy for germline samples given counts data",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature

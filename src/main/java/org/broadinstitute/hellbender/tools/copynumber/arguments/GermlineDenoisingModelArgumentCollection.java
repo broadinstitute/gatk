@@ -99,7 +99,7 @@ public final class GermlineDenoisingModelArgumentCollection implements Serializa
     private double initARDRelUnexplainedVariance = 0.1;
 
     @Argument(
-            doc = "Number of knobs on GC curves.",
+            doc = "Number of bins used to represent the GC-bias curves.",
             fullName = NUM_GC_BINS_LONG_NAME,
             minValue = 1,
             optional = true
@@ -185,7 +185,7 @@ public final class GermlineDenoisingModelArgumentCollection implements Serializa
                 "Initial value of ARD prior precision relative to the scale of " +
                         "interval-specific unexplained variance must be positive.");
         Utils.validateArg(numGCBins >= 2,
-                "Number of knobs on GC curves must be at least 2.");
+                "Number of bins used to represent the GC-bias curves must be at least 2.");
         ParamUtils.isPositive(gcCurveStandardDeviation,
                 "Prior standard deviation of the GC curve from flat must be positive.");
         ParamUtils.isPositiveOrZero(activeClassPaddingHybridMode,
