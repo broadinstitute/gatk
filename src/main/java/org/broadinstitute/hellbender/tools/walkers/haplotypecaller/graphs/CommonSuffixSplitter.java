@@ -56,6 +56,7 @@ public final class CommonSuffixSplitter {
                     if ( prefixV == null ) {
                         // this node is entirely explained by suffix
                         incomingTarget = suffixV;
+                        edgesToRemove.add(out);
                     } else {
                         incomingTarget = prefixV;
                         graph.addVertex(prefixV);
