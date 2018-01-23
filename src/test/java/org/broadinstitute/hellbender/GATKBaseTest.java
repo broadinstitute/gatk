@@ -34,7 +34,8 @@ public abstract class GATKBaseTest extends BaseTest {
     public static final String GCS_GATK_TEST_RESOURCES = "gs://hellbender/test/resources/";
 
     public static final String GCS_b37_REFERENCE_2BIT = GCS_GATK_TEST_RESOURCES + "benchmark/human_g1k_v37.2bit";
-    public static final String GCS_b37_CHR20_21_REFERENCE_2BIT = GCS_GATK_TEST_RESOURCES + "human_g1k_v37.20.21.2bit";
+    public static final String GCS_b37_CHR20_21_REFERENCE_2BIT = GCS_GATK_TEST_RESOURCES + "large/human_g1k_v37.20.21.2bit";
+    public static final String GCS_b37_CHR20_21_REFERENCE = GCS_GATK_TEST_RESOURCES + "large/human_g1k_v37.20.21.fasta";
 
     /**
      * LARGE FILES FOR TESTING (MANAGED BY GIT LFS)

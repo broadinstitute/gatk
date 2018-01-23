@@ -165,7 +165,8 @@ dependencies {
     // provided by dataproc).
     compile 'org.broadinstitute:google-cloud-nio-GATK4-custom-patch:0.20.4-alpha-GCS-RETRY-FIX:shaded'
 
-    compile 'com.google.cloud.genomics:gatk-tools-java:1.1'
+    compile "gov.nist.math.jama:gov.nist.math.jama:1.1.1"
+
     // this comes built-in when running on Google Dataproc, but the library
     // allows us to read from GCS also when testing locally (or on non-Dataproc clusters,
     // should we want to)
@@ -180,9 +181,6 @@ dependencies {
     compile 'org.reflections:reflections:0.9.10'
 
     compile 'it.unimi.dsi:fastutil:7.0.6'
-
-    compile 'com.google.apis:google-api-services-genomics:v1-rev527-1.22.0'
-    compile 'com.google.cloud.genomics:google-genomics-utils:v1-0.10'
 
     compile 'com.github.wendykierp:JTransforms:3.1'
     compile 'org.broadinstitute:hdf5-java-bindings:1.1.0-hdf5_2.11.0'

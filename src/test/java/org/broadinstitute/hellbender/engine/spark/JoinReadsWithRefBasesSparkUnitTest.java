@@ -1,17 +1,16 @@
 package org.broadinstitute.hellbender.engine.spark;
 
-import com.google.api.services.genomics.model.Read;
 import htsjdk.samtools.SAMRecord;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.utils.KV;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.FakeReferenceSource;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -28,7 +27,7 @@ public class JoinReadsWithRefBasesSparkUnitTest extends GATKBaseTest {
     @DataProvider(name = "bases")
     public Object[][] bases(){
         Object[][] data = new Object[2][];
-        List<Class<?>> classes = Arrays.asList(Read.class, SAMRecord.class);
+        List<Class<?>> classes = Arrays.asList(SAMRecord.class, SAMRecord.class);
         for (int i = 0; i < classes.size(); ++i) {
             Class<?> c = classes.get(i);
             ReadsPreprocessingPipelineSparkTestData testData = new ReadsPreprocessingPipelineSparkTestData(c);

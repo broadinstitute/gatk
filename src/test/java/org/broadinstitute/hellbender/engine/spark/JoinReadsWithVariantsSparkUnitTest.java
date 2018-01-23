@@ -1,15 +1,14 @@
 package org.broadinstitute.hellbender.engine.spark;
 
-import com.google.api.services.genomics.model.Read;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMRecord;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.KV;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -23,7 +22,7 @@ public class JoinReadsWithVariantsSparkUnitTest extends GATKBaseTest {
         List<Object[]> testCases = new ArrayList<>();
 
         for ( JoinStrategy joinStrategy : JoinStrategy.values() ) {
-            for ( Class<?> readImplementation : Arrays.asList(Read.class, SAMRecord.class) ) {
+            for ( Class<?> readImplementation : Arrays.asList(SAMRecord.class, SAMRecord.class) ) {
                 ReadsPreprocessingPipelineSparkTestData testData = new ReadsPreprocessingPipelineSparkTestData(readImplementation);
                 List<GATKRead> reads = testData.getReads();
                 List<GATKVariant> variantList = testData.getVariants();

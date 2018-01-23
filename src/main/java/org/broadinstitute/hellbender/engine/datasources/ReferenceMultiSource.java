@@ -49,8 +49,9 @@ public class ReferenceMultiSource implements ReferenceSource, Serializable {
             } else {
                 referenceSource = new ReferenceFileSource(referenceURL);
             }
-        } else { // use the Google Genomics API
-            referenceSource = new ReferenceAPISource(referenceURL);
+        } else {
+            throw new UserException.CouldNotReadInputFile("Couldn't read the given reference, reference must be a .fasta or .2bit file.\n" +
+                                                                  " Reference provided was: " + referenceURL);
         }
         this.referenceWindowFunction = referenceWindowFunction;
     }

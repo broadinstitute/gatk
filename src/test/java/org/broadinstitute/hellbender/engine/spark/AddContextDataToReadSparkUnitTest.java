@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.engine.spark;
 
-import com.google.api.services.genomics.model.Read;
 import com.google.common.collect.Lists;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -9,15 +8,15 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReadContextData;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.utils.KV;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.FakeReferenceSource;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import org.testng.Assert;
@@ -33,7 +32,7 @@ import java.util.Map;
 public class AddContextDataToReadSparkUnitTest extends GATKBaseTest {
     @DataProvider(name = "bases")
     public Object[][] bases() {
-        List<Class<?>> classes = Arrays.asList(Read.class, SAMRecord.class);
+        List<Class<?>> classes = Arrays.asList(SAMRecord.class, SAMRecord.class);
         JoinStrategy[] strategies = JoinStrategy.values();
         Object[][] data = new Object[classes.size() * strategies.length][];
         for (int i = 0; i < classes.size(); ++i) {
