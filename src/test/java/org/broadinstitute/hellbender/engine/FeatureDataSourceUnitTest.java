@@ -76,7 +76,7 @@ public final class FeatureDataSourceUnitTest extends GATKBaseTest {
     // this test asserts that a helpful exception is thrown for blockZipped files lacking an index as they may not be fully supported
     //TODO this is a temporary fix until https://github.com/broadinstitute/gatk/issues/4224 has been resolved
     public void testUnindexedBZippedFile() {
-        FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(new File(toolsTestDir + "IndexFeatureFile/4featuresHG38Header.vcf.gz"));
+        new FeatureDataSource<>(new File(toolsTestDir + "IndexFeatureFile/4featuresHG38Header.unindexed.vcf.gz"));
     }
 
     @DataProvider(name = "CompleteIterationTestData")

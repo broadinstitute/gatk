@@ -1,17 +1,28 @@
 package org.broadinstitute.hellbender.tools;
 
 import com.google.common.collect.Lists;
+import htsjdk.tribble.AbstractFeatureReader;
+import htsjdk.tribble.CloseableTribbleIterator;
+import htsjdk.tribble.Feature;
+import htsjdk.tribble.FeatureCodec;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextUtils;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
+import org.broadinstitute.hellbender.utils.test.VariantContextTestUtilsUnitTest;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
@@ -19,10 +30,8 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
@@ -40,24 +49,24 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
     }
 
     @Test(groups = "bucket", dataProvider = "getGatherTypes")
-    public void testGatherOverNIO(final GatherVcfsCloud.GatherType gatherType){
+    public void testGatherOverNIO(final GatherVcfsCloud.GatherType gatherType) throws IOException {
         assertGatherProducesCorrectVariants(gatherType,
                                             new File(largeFileTestDir, "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf"),
                                             getTestFile("cloud-inputs.args"));
     }
 
     @Test(dataProvider = "getGatherTypes")
-    public void testLocalGathers(final GatherVcfsCloud.GatherType gatherType){
+    public void testLocalGathers(final GatherVcfsCloud.GatherType gatherType) throws IOException {
         assertGatherProducesCorrectVariants(gatherType,
                                             getTestFile("gzipped.vcf.gz"),
                                             getTestFile("bgzipped_shards.args"));
     }
 
-    private void assertGatherProducesCorrectVariants(GatherVcfsCloud.GatherType gatherType, File expected, File inputs) {
+    private void assertGatherProducesCorrectVariants(GatherVcfsCloud.GatherType gatherType, File expected, File inputs) throws IOException {
         assertGatherProducesCorrectVariants(gatherType, expected, Collections.singletonList(inputs));
     }
 
-    private void assertGatherProducesCorrectVariants(GatherVcfsCloud.GatherType gatherType, File expected, List<File> inputs) {
+    private void assertGatherProducesCorrectVariants(GatherVcfsCloud.GatherType gatherType, File expected, List<File> inputs) throws IOException {
         final File output = createTempFile("gathered", ".vcf.gz");
         final ArgumentsBuilder args = new ArgumentsBuilder();
         inputs.forEach(args::addInput);
@@ -65,15 +74,14 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
                 .addArgument(GatherVcfsCloud.GATHER_TYPE_LONG_NAME, gatherType.toString());
         runCommandLine(args);
 
-        final ArgumentsBuilder featureFileArgs = new ArgumentsBuilder();
-        featureFileArgs.addArgument("F", output.getAbsolutePath());
-        new Main().instanceMain(makeCommandLineArgs(featureFileArgs.getArgsList(), "IndexFeatureFile"));
+        try (final AbstractFeatureReader<? extends Feature, ?> actualReader = AbstractFeatureReader.getFeatureReader(output.getAbsolutePath(), null, FeatureManager.getCodecForFile(output, VariantContext.class), false, Function.identity(), Function.identity());
+             final AbstractFeatureReader<? extends Feature, ?> expectedReader = AbstractFeatureReader.getFeatureReader(expected.getAbsolutePath(), null, FeatureManager.getCodecForFile(expected, VariantContext.class), false, Function.identity(), Function.identity())){
 
-        try (  final FeatureDataSource<VariantContext> actualReader = new FeatureDataSource<>(output);
-               final FeatureDataSource<VariantContext> expectedReader = new FeatureDataSource<>(expected);){
 
-            final List<VariantContext> actualVariants = Lists.newArrayList(actualReader);
-            final List<VariantContext> expectedVariants = Lists.newArrayList(expectedReader);
+            final List<VariantContext> actualVariants = new ArrayList<>();
+            ((Iterator<VariantContext>)actualReader.iterator()).forEachRemaining(actualVariants::add);
+            final List<VariantContext> expectedVariants = new ArrayList<>();
+            ((Iterator<VariantContext>)expectedReader.iterator()).forEachRemaining(expectedVariants::add);
             VariantContextTestUtils.assertEqualVariants(actualVariants, expectedVariants);
 
             Assert.assertEquals(((VCFHeader) actualReader.getHeader()).getMetaDataInInputOrder(),
@@ -98,7 +106,7 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
     }
 
     @Test(dataProvider = "getHeaderOnlyCases")
-    public void testVcfsWithOnlyAHeader(List<File> inputs, final GatherVcfsCloud.GatherType gatherType, File expected){
+    public void testVcfsWithOnlyAHeader(List<File> inputs, final GatherVcfsCloud.GatherType gatherType, File expected) throws IOException {
         assertGatherProducesCorrectVariants(gatherType, expected, inputs);
     }
 
