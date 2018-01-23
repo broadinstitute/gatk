@@ -26,6 +26,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -575,6 +576,38 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
                     );
                 }
         );
+    }
+
+    @Test
+    public void testResolveAmbiguousIntervalQueryUsingBEDFormat() throws IOException {
+        // For the rare case where an interval query is ambiguous, make sure it can be resolved by using a bed file.
+        final SAMSequenceDictionary ambiguousSequenceDictionary = getAmbiguousSequenceDictionary();
+
+        // use a test interval that has more than one interpretation
+        // "HLA-A*01:02:03:04",
+        //      -> new SimpleInterval("HLA-A*01:02:03:04", 1, 99)
+        //      -> new SimpleInterval("HLA-A*01:02:03", 4, 4)
+        final File bedFile = createTempFile("testAmbiguousInterval", ".bed");
+
+        final int BED_START = 1;
+        final int BED_END = 99;
+        final String TARGET_CONTIG = "HLA-A*01:02:03:04";
+        try (FileWriter bedWriter = new FileWriter(bedFile)) {
+            bedWriter.write(String.format("%s\t%d\t%d", TARGET_CONTIG, BED_START, BED_END));
+        }
+        final GenomeLocParser genomeLocParser = new GenomeLocParser(ambiguousSequenceDictionary);
+
+        // first, make sure we're using a query that is actually ambiguous
+        Assert.assertThrows(UserException.MalformedGenomeLoc.class, () -> IntervalUtils.parseIntervalArguments(genomeLocParser, TARGET_CONTIG));
+
+        // now use the bed file
+        final List<GenomeLoc> intervalList = IntervalUtils.parseIntervalArguments(genomeLocParser, bedFile.getAbsolutePath());
+
+        // validate the (translated from Bed) interval coordinates
+        Assert.assertEquals(intervalList.size(), 1);
+        Assert.assertEquals(intervalList.get(0).getContig(), TARGET_CONTIG);
+        Assert.assertEquals(intervalList.get(0).getStart(), BED_START + 1);
+        Assert.assertEquals(intervalList.get(0).getEnd(), BED_END);
     }
 
     private void assertValidUniqueInterval(
