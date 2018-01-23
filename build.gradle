@@ -66,6 +66,8 @@ final testNGVersion = '6.11'
 final baseJarName = 'gatk'
 final secondaryBaseJarName = 'hellbender'
 
+final pythonPackageArchiveName = 'gatkPythonPackageArchive.zip'
+
 configurations.all {
     resolutionStrategy {
         // the snapshot folder contains a dev version of guava, we don't want to use that.
@@ -408,8 +410,6 @@ tasks.withType(ShadowJar) {
     }
 }
 
-
-
 shadowJar {
     configurations = [project.configurations.runtime]
     classifier = 'local'
@@ -455,9 +455,12 @@ task bundle(type: Zip) {
     from("gatk")
     from("README.md")
     from("build/docs/tabCompletion/gatk-completion.sh")
-    from("scripts/gatkcondaenv.yml")
-    from("$buildDir/gatkPythonPackageArchive.zip")
-
+    from("${buildDir}/${pythonPackageArchiveName}")
+    // When including gatkcondaenv.yml file in the release bundle, strip off the
+    // 'build/' prefix used for the location of the Python package archive.
+    from("scripts/gatkcondaenv.yml", {
+        filter { line -> line.replace("build/${pythonPackageArchiveName}", pythonPackageArchiveName) }
+    })
     into(baseName)
 
     doLast {
@@ -472,9 +475,8 @@ task createPythonPackageArchive(type: Zip) {
         assert file("src/main/python/org/broadinstitute/hellbender/").exists()
     }
 
-
     destinationDir file("$buildDir")
-    archiveName "gatkPythonPackageArchive.zip"
+    archiveName pythonPackageArchiveName
     from("src/main/python/org/broadinstitute/hellbender/")
     into("/")
 
