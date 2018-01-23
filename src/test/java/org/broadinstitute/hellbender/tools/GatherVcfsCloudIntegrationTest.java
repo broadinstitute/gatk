@@ -5,9 +5,11 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
@@ -62,6 +64,10 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
         args.addOutput(output)
                 .addArgument(GatherVcfsCloud.GATHER_TYPE_LONG_NAME, gatherType.toString());
         runCommandLine(args);
+
+        final ArgumentsBuilder featureFileArgs = new ArgumentsBuilder();
+        featureFileArgs.addArgument("F", output.getAbsolutePath());
+        new Main().instanceMain(makeCommandLineArgs(featureFileArgs.getArgsList(), "IndexFeatureFile"));
 
         try (  final FeatureDataSource<VariantContext> actualReader = new FeatureDataSource<>(output);
                final FeatureDataSource<VariantContext> expectedReader = new FeatureDataSource<>(expected);){
