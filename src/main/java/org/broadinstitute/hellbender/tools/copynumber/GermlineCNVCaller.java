@@ -387,8 +387,9 @@ public final class GermlineCNVCaller extends CommandLineProgram {
             logger.info(String.format("Aggregating read-count file %s (%d / %d)",
                     inputReadCountFile, sampleIndex + 1, numSamples));
             final SimpleCountCollection readCounts = SimpleCountCollection.read(inputReadCountFile);
-            Utils.validateArg(readCounts.getMetadata().getSequenceDictionary()
-                            .isSameDictionary(specifiedIntervals.getMetadata().getSequenceDictionary()),
+            Utils.validateArg(CopyNumberArgumentValidationUtils.isSameDictionary(
+                    readCounts.getMetadata().getSequenceDictionary(),
+                    specifiedIntervals.getMetadata().getSequenceDictionary()),
                     String.format("Sequence dictionary for read-count file %s does not match those in " +
                             "other read-count files.", inputReadCountFile));
             Utils.validateArg(new HashSet<>(readCounts.getIntervals()).containsAll(intervalSubset),

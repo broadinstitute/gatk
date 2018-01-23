@@ -14,7 +14,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
-public class SimpleAnnotatedGenomicRegionUnitTest extends GATKBaseTest {
+public final class SimpleAnnotatedGenomicRegionUnitTest extends GATKBaseTest {
     private static final File TEST_FILE = new File(toolsTestDir,
             "copynumber/utils/combine-segment-breakpoints-with-legacy-header-learning-combined-copy-number.tsv");
 

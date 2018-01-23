@@ -24,7 +24,7 @@ import java.util.stream.IntStream;
 /**
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public class CopyRatioKernelSegmenterUnitTest extends GATKBaseTest {
+public final class CopyRatioKernelSegmenterUnitTest extends GATKBaseTest {
     private static final int RANDOM_SEED = 1;   //reset seed before each simulated test case
 
     /**

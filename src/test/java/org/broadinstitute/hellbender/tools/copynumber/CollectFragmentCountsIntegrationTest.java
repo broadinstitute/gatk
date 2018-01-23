@@ -23,7 +23,7 @@ import java.util.List;
  *
  * @author Andrey Smirnov &lt;asmirnov@broadinstitute.org&gt;
  */
-public class CollectFragmentCountsIntegrationTest extends CommandLineProgramTest {
+public final class CollectFragmentCountsIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_SUB_DIR = new File(toolsTestDir, "copynumber");
 
     private static final File NA12878_BAM = new File(TEST_SUB_DIR, "collect-fragment-counts-NA12878.bam");
