@@ -39,7 +39,7 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         arguments.add(REFERENCE_FILE);
 
         columnSet.forEach(s -> {
-            arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
+            arguments.add("--" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_LONG_NAME);
             arguments.add(s);
         });
 
@@ -67,9 +67,9 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         arguments.add(INPUT_SEGMENTS_FILE);
         arguments.add("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
         arguments.add(INPUT_SEGMENTS_FILE);
-        arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
+        arguments.add("--" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_LONG_NAME);
         arguments.add("MEAN_LOG2_COPY_RATIO");
-        arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
+        arguments.add("--" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_LONG_NAME);
         arguments.add("CALL");
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.getAbsolutePath());
@@ -97,9 +97,9 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         arguments.add(INPUT_SEGMENTS_FILE_WITH_DIFFERENT_HEADERS);
         arguments.add("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
         arguments.add(GROUND_TRUTH_SEGMENTS_FILE);
-        arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
+        arguments.add("--" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_LONG_NAME);
         arguments.add("Segment_Mean");
-        arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
+        arguments.add("--" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_LONG_NAME);
         arguments.add("Segment_Call");
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.getAbsolutePath());
@@ -127,9 +127,9 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         arguments.add(INPUT_SEGMENTS_FILE_WITH_DIFFERENT_HEADERS);
         arguments.add("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
         arguments.add(GROUND_TRUTH_SEGMENTS_FILE);
-        arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
+        arguments.add("--" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_LONG_NAME);
         arguments.add("Segment_Mean_THAT_DOES_NOT_EXIST");
-        arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
+        arguments.add("--" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_LONG_NAME);
         arguments.add("Segment_Call");
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.getAbsolutePath());
@@ -181,13 +181,13 @@ public class CombineSegmentBreakpointsIntegrationTest extends CommandLineProgram
         arguments.add(INPUT_SEGMENTS_FILE_WITH_DIFFERENT_HEADERS);
         arguments.add("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
         arguments.add(GROUND_TRUTH_SEGMENTS_FILE);
-        arguments.add("-" + CombineSegmentBreakpoints.LABELS_SHORT_NAME);
+        arguments.add("--" + CombineSegmentBreakpoints.LABELS_LONG_NAME);
         arguments.add(TEST);
-        arguments.add("-" + CombineSegmentBreakpoints.LABELS_SHORT_NAME);
+        arguments.add("--" + CombineSegmentBreakpoints.LABELS_LONG_NAME);
         arguments.add(GT);
-        arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
+        arguments.add("--" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_LONG_NAME);
         arguments.add("Segment_Mean");
-        arguments.add("-" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_SHORT_NAME);
+        arguments.add("--" + CombineSegmentBreakpoints.COLUMNS_OF_INTEREST_LONG_NAME);
         arguments.add("Segment_Call");
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.getAbsolutePath());

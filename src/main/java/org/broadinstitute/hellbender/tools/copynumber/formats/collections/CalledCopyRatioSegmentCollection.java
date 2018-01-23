@@ -22,7 +22,7 @@ public final class CalledCopyRatioSegmentCollection extends AbstractSampleLocata
     /**
      * CONTIG, START, END, NUM_POINTS_COPY_RATIO, MEAN_LOG2_COPY_RATIO, CALL
      */
-    public enum CalledCopyRatioSegmentTableColumn {
+    enum CalledCopyRatioSegmentTableColumn {
         CONTIG,
         START,
         END,

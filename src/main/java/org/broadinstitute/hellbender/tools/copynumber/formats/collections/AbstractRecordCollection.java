@@ -184,7 +184,7 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
 
         @Override
         protected boolean isCommentLine(final String[] line) {
-            return line.length > 0 && (line[0].startsWith(COMMENT_PREFIX) || line[0].startsWith("#"));
+            return line.length > 0 && line[0].startsWith(COMMENT_PREFIX);
         }
     }
 
@@ -199,9 +199,5 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
             Utils.nonNull(dataLine);
             recordToDataLineEncoder.accept(record, dataLine);
         }
-    }
-
-    public TableColumnCollection getMandatoryColumns() {
-        return mandatoryColumns;
     }
 }

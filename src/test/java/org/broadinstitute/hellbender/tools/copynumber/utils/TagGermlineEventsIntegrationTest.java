@@ -32,7 +32,7 @@ public class TagGermlineEventsIntegrationTest extends CommandLineProgramTest {
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
         arguments.add(TAG_GERMLINE_TUMOR_MATCHED_NORMAL_SEG_FILE);
-        arguments.add("-" + TagGermlineEvents.MATCHED_NORMAL_SEGMENT_FILE_SHORT_NAME);
+        arguments.add("--" + TagGermlineEvents.MATCHED_NORMAL_SEGMENT_FILE_LONG_NAME);
         arguments.add(TAG_GERMLINE_NORMAL_SEG_FILE);
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
         arguments.add(REF);
@@ -60,7 +60,7 @@ public class TagGermlineEventsIntegrationTest extends CommandLineProgramTest {
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
         arguments.add(TAG_GERMLINE_TUMOR_ALMOST_MATCHED_NORMAL_SEG_FILE);
-        arguments.add("-" + TagGermlineEvents.MATCHED_NORMAL_SEGMENT_FILE_SHORT_NAME);
+        arguments.add("--" + TagGermlineEvents.MATCHED_NORMAL_SEGMENT_FILE_LONG_NAME);
         arguments.add(TAG_GERMLINE_NORMAL_SEG_FILE);
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
         arguments.add(REF);
@@ -88,7 +88,7 @@ public class TagGermlineEventsIntegrationTest extends CommandLineProgramTest {
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
         arguments.add(TAG_GERMLINE_TUMOR_SPLIT_ALMOST_MATCHED_NORMAL_SEG_FILE);
-        arguments.add("-" + TagGermlineEvents.MATCHED_NORMAL_SEGMENT_FILE_SHORT_NAME);
+        arguments.add("--" + TagGermlineEvents.MATCHED_NORMAL_SEGMENT_FILE_LONG_NAME);
         arguments.add(TAG_GERMLINE_NORMAL_SEG_FILE);
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
         arguments.add(REF);
@@ -117,7 +117,7 @@ public class TagGermlineEventsIntegrationTest extends CommandLineProgramTest {
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
         arguments.add(TAG_GERMLINE_TUMOR_NOT_MATCHED_NORMAL_SEG_FILE);
-        arguments.add("-" + TagGermlineEvents.MATCHED_NORMAL_SEGMENT_FILE_SHORT_NAME);
+        arguments.add("--" + TagGermlineEvents.MATCHED_NORMAL_SEGMENT_FILE_LONG_NAME);
         arguments.add(TAG_GERMLINE_NORMAL_SEG_FILE);
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
         arguments.add(REF);
@@ -157,7 +157,7 @@ public class TagGermlineEventsIntegrationTest extends CommandLineProgramTest {
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
         arguments.add(TAG_GERMLINE_TUMOR_SPLIT_NO_MATCHED_NORMAL_SEG_FILE);
-        arguments.add("-" + TagGermlineEvents.MATCHED_NORMAL_SEGMENT_FILE_SHORT_NAME);
+        arguments.add("--" + TagGermlineEvents.MATCHED_NORMAL_SEGMENT_FILE_LONG_NAME);
         arguments.add(TAG_GERMLINE_NORMAL_SEG_FILE);
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
         arguments.add(REF);

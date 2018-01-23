@@ -32,7 +32,7 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
         //  No variants should validate, since the validation bam is not the same one used for calling.
         final File outputFile = IOUtils.createTempFile("basicTest", ".txt");
         final List<String> arguments = new ArrayList<>();
-        arguments.add("-" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_DISCOVERY_VCF_SHORT_NAME);
+        arguments.add("--" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_DISCOVERY_VCF_LONG_NAME);
         arguments.add("synthetic.challenge.set1.tumor");
         arguments.add("-" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_VALIDATION_CASE);
         arguments.add("synthetic.challenge.set1.tumor");
@@ -87,7 +87,7 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
 
         final File outputFile = IOUtils.createTempFile("basicTest", ".txt");
         final List<String> arguments = new ArrayList<>();
-        arguments.add("-" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_DISCOVERY_VCF_SHORT_NAME);
+        arguments.add("--" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_DISCOVERY_VCF_LONG_NAME);
         arguments.add("IS3.snv.indel.sv");
         arguments.add("-" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_VALIDATION_CASE);
         arguments.add("IS3.snv.indel.sv");

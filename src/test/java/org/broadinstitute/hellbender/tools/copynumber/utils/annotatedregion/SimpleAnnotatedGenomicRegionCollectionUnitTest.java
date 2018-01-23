@@ -59,7 +59,7 @@ public class SimpleAnnotatedGenomicRegionCollectionUnitTest  extends GATKBaseTes
     public void testCreationFromList() {
         final Set<String> headersOfInterest = Sets.newHashSet(Arrays.asList("name", "learning_SAMPLE_0"));
         final List<SimpleAnnotatedGenomicRegion> simpleAnnotatedGenomicRegions =
-                SimpleAnnotatedGenomicRegion.readAnnotatedRegions(TEST_FILE, headersOfInterest);
+                SimpleAnnotatedGenomicRegionCollection.readAnnotatedRegions(TEST_FILE, headersOfInterest).getRecords();
         final SimpleAnnotatedGenomicRegionCollection collection = SimpleAnnotatedGenomicRegionCollection.create(simpleAnnotatedGenomicRegions,
                 ReferenceUtils.loadFastaDictionary(new File(hg19_chr1_1M_dict)), Lists.newArrayList("name", "learning_SAMPLE_0"));
 

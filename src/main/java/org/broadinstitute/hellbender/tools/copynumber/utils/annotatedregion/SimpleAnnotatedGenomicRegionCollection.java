@@ -43,13 +43,14 @@ public class SimpleAnnotatedGenomicRegionCollection extends AbstractLocatableCol
      *  {@link SimpleAnnotatedGenomicRegion::START_HEADER}, and
      *  {@link SimpleAnnotatedGenomicRegion::END_HEADER} for defining the genomic region.
      *
-     *  A sequence dictionary must be included above the column headers.
+     *  A sequence dictionary must be included above the column headers, unless the dictionary parameter is supplied.
      *
      * @param tsvRegionFile -- File containing tsv of genomic regions and annotations per line.  E.g. a segment file.
      * @param headersOfInterest -- should not include any headers that are used to define the region (e.g. contig, start, end)
      * @return annotated regions with one line in the input file for each entry of the list.  Never {@code null}
      */
-    public static SimpleAnnotatedGenomicRegionCollection readAnnotatedRegions(final File tsvRegionFile, final Set<String> headersOfInterest) {
+    public static SimpleAnnotatedGenomicRegionCollection readAnnotatedRegions(final File tsvRegionFile,
+                                                                              final Set<String> headersOfInterest) {
         IOUtils.canReadFile(tsvRegionFile);
         Utils.nonNull(headersOfInterest);
 
@@ -59,12 +60,13 @@ public class SimpleAnnotatedGenomicRegionCollection extends AbstractLocatableCol
 
         final Function<DataLine, SimpleAnnotatedGenomicRegion> datalineToRecord = getDataLineToRecordFunction(headersOfInterest);
 
-        final List<String> otherHeaders = new ArrayList<>(headersOfInterest);
-        otherHeaders.sort(String::compareTo);
+        final List<String> sortedHeadersOfInterest = new ArrayList<>(headersOfInterest);
+        sortedHeadersOfInterest.sort(String::compareTo);
 
-        final BiConsumer<SimpleAnnotatedGenomicRegion, DataLine> recordToDataLine = getRecordToDataLineBiConsumer(otherHeaders);
+        final BiConsumer<SimpleAnnotatedGenomicRegion, DataLine> recordToDataLine = getRecordToDataLineBiConsumer(sortedHeadersOfInterest);
 
         return new SimpleAnnotatedGenomicRegionCollection(tsvRegionFile, new TableColumnCollection(Lists.newArrayList(CONTIG_HEADER, START_HEADER, END_HEADER)), datalineToRecord, recordToDataLine);
+
     }
 
     private static Function<DataLine, SimpleAnnotatedGenomicRegion> getDataLineToRecordFunction(final Set<String> headersOfInterest) {
@@ -98,7 +100,7 @@ public class SimpleAnnotatedGenomicRegionCollection extends AbstractLocatableCol
     }
 
     /**
-     * Read in a collection of simple annotated genomic regions from a tsv.
+     * Read in a collection of simple annotated genomic regions from a tsv.  Assumes that all headers are of interest.
      *
      * Please see {@link SimpleAnnotatedGenomicRegion::CONTIG_HEADER},
      *  {@link SimpleAnnotatedGenomicRegion::START_HEADER}, and
@@ -113,6 +115,11 @@ public class SimpleAnnotatedGenomicRegionCollection extends AbstractLocatableCol
      */
     public static SimpleAnnotatedGenomicRegionCollection readAnnotatedRegions(final File tsvRegionFile) {
         IOUtils.canReadFile(tsvRegionFile);
+        final List<String> columnHeaders = extractColumnHeaders(tsvRegionFile);
+        return readAnnotatedRegions(tsvRegionFile, new HashSet<>(columnHeaders));
+    }
+
+    private static List<String> extractColumnHeaders(final File tsvRegionFile) {
         try (final TableReader<SimpleAnnotatedGenomicRegion> reader = new TableReader<SimpleAnnotatedGenomicRegion>(tsvRegionFile) {
 
                 @Override
@@ -126,20 +133,21 @@ public class SimpleAnnotatedGenomicRegionCollection extends AbstractLocatableCol
                     return null;
                 }
             }) {
-            return readAnnotatedRegions(tsvRegionFile, new HashSet<>(reader.columns().names()));
+            return reader.columns().names();
         } catch (final IOException ioe) {
             throw new UserException.CouldNotReadInputFile("Cannot read input file: " + tsvRegionFile.getAbsolutePath(), ioe);
         }
+
     }
 
     /** Creates a collection with the same metadata as the given collection, but with the regions specified
      * @param simpleAnnotatedGenomicRegions new regions to use
-     * @param collection existing collection to draw the metadata
+     * @param metadata metadata to use to create collection
      * @return a new collection.  Note that it is created with references to the
      */
     public static SimpleAnnotatedGenomicRegionCollection createCollectionFromExistingCollection(final List<SimpleAnnotatedGenomicRegion> simpleAnnotatedGenomicRegions,
-                                                                                                final SimpleAnnotatedGenomicRegionCollection collection, final List<String> annotations) {
-        return create(simpleAnnotatedGenomicRegions, collection.getMetadata().getSequenceDictionary(), annotations);
+                                                                                                final LocatableMetadata metadata, final List<String> annotations) {
+        return create(simpleAnnotatedGenomicRegions, metadata.getSequenceDictionary(), annotations);
     }
 
     /** Create a collection from a list of annotated regions, a sequence dictionary, and a list of annotations to be included in the collection.

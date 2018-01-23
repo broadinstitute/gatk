@@ -8,6 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.SimpleAnnotatedGenomicRegion;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayList;
@@ -96,15 +97,18 @@ public class SimpleGermlineTagger {
         while (normalSegmentsIterator.hasNext()) {
             SimpleAnnotatedGenomicRegion normalSegment = normalSegmentsIterator.next();
             SimpleAnnotatedGenomicRegion nextNormalSegment = normalSegmentsIterator.peek();
-            final SimpleAnnotatedGenomicRegion segmentToAddToResult = new SimpleAnnotatedGenomicRegion(normalSegment.getInterval(),
-                    ImmutableSortedMap.of(annotationToMerge, normalSegment.getAnnotationValue(annotationToMerge)));
+
+            int updatedEndPoint =  normalSegment.getEnd();
 
             // Merge (if any to merge)
             while (normalSegmentsIterator.hasNext() && isMergeableByAnnotation(annotationToMerge, normalSegment, nextNormalSegment)) {
-                segmentToAddToResult.setEnd(nextNormalSegment.getEnd());
+                updatedEndPoint = nextNormalSegment.getEnd();
                 normalSegmentsIterator.next();
                 nextNormalSegment = normalSegmentsIterator.peek();
             }
+            final SimpleAnnotatedGenomicRegion segmentToAddToResult = new SimpleAnnotatedGenomicRegion(
+                    new SimpleInterval(normalSegment.getContig(), normalSegment.getStart(), updatedEndPoint),
+                    ImmutableSortedMap.of(annotationToMerge, normalSegment.getAnnotationValue(annotationToMerge)));
             mergedSegments.add(segmentToAddToResult);
         }
         return mergedSegments;
@@ -115,5 +119,4 @@ public class SimpleGermlineTagger {
                 normalSegment.getContig().equals(nextNormalSegment.getContig()) &&
                 normalSegment.getAnnotationValue(annotationToMerge) != null;
     }
-
 }

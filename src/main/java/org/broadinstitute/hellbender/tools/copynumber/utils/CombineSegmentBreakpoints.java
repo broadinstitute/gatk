@@ -36,11 +36,8 @@ import java.util.stream.Collectors;
 @ExperimentalFeature
 public class CombineSegmentBreakpoints extends GATKTool {
 
-    public static final String COLUMNS_OF_INTEREST_LONG_NAME = "columnsOfInterest";
-    public static final String COLUMNS_OF_INTEREST_SHORT_NAME = "cols";
-
+    public static final String COLUMNS_OF_INTEREST_LONG_NAME = "columns-of-interest";
     public static final String LABELS_LONG_NAME = "labels";
-    public static final String LABELS_SHORT_NAME = "lbls";
 
     @Argument(
             doc = "Input segment files -- must be specified twice, but order does not matter.",
@@ -53,7 +50,6 @@ public class CombineSegmentBreakpoints extends GATKTool {
     @Argument(
             doc = "Input segment file labels -- these will appear as suffixes in case of collisions.  The specification order must correspond to the input segment files.",
             fullName = LABELS_LONG_NAME,
-            shortName = LABELS_SHORT_NAME,
             maxElements = 2,
             minElements = 2,
             optional = true
@@ -63,7 +59,6 @@ public class CombineSegmentBreakpoints extends GATKTool {
     @Argument(
             doc = "List of columns in either segment file that should be reported in the output file.  If the column header exists in both, it will have the appropriate label appended as a suffix.",
             fullName = COLUMNS_OF_INTEREST_LONG_NAME,
-            shortName = COLUMNS_OF_INTEREST_SHORT_NAME,
             minElements = 1
     )
     private Set<String> columnsOfInterest = new HashSet<>();
