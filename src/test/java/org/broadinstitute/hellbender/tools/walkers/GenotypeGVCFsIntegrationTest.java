@@ -277,6 +277,6 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addOutput(output)
                 .addReference(new File(b37_reference_20_21))
                 .addArgument("verbosity", "WARNING");
-        assertContains(captureStdout(() -> runCommandLine(args)), "-G Standard -G AS_Standard to the command");
+        assertContains(captureStderr(() -> runCommandLine(args)), "-G Standard -G AS_Standard to the command");
     }
 }
