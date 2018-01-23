@@ -66,6 +66,7 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
         assertGatherProducesCorrectVariants(gatherType, expected, Collections.singletonList(inputs));
     }
 
+    @SuppressWarnings({"unchecked"})
     private void assertGatherProducesCorrectVariants(GatherVcfsCloud.GatherType gatherType, File expected, List<File> inputs) throws IOException {
         final File output = createTempFile("gathered", ".vcf.gz");
         final ArgumentsBuilder args = new ArgumentsBuilder();
