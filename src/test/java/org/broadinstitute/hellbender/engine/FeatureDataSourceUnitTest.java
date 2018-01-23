@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -69,6 +70,13 @@ public final class FeatureDataSourceUnitTest extends GATKBaseTest {
             Assert.assertEquals(dict.size(), 4);
             Assert.assertEquals(dict.getSequences().stream().map(s->s.getSequenceName()).collect(Collectors.toList()), Arrays.asList("1", "2", "3", "4"));
         }
+    }
+
+    @Test (expectedExceptions = GATKException.class)
+    // this test asserts that a helpful exception is thrown for blockZipped files lacking an index as they may not be fully supported
+    //TODO this is a temporary fix until https://github.com/broadinstitute/gatk/issues/4224 has been resolved
+    public void testUnindexedBZippedFile() {
+        FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(new File(toolsTestDir + "IndexFeatureFile/4featuresHG38Header.vcf.gz"));
     }
 
     @DataProvider(name = "CompleteIterationTestData")

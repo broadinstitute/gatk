@@ -841,4 +841,16 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
 
         spec.executeTest("testSetFilteredGtoNocallUpdateInfo--" + testFile, this);
     }
+
+    @Test
+    public void dummyTestOfBug() throws IOException {
+        final String testFile = "testBrokenFile/gnomADaccuracyTest.SynDip.vcf.gz";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString("", testFile),
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_SetFilteredGtoNocallUpdateInfo.vcf")
+        );
+
+        spec.executeTest("testSetFilteredGtoNocallUpdateInfo--" + testFile, this);
+    }
 }
