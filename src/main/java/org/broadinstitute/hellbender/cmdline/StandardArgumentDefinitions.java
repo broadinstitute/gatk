@@ -50,16 +50,8 @@ public final class StandardArgumentDefinitions {
     public static final String LENIENT_SHORT_NAME = "LE";
     public static final String READ_VALIDATION_STRINGENCY_SHORT_NAME = "VS";
     public static final String SAMPLE_ALIAS_SHORT_NAME = "ALIAS";
-    public static final String LIBRARY_NAME_SHORT_NAME = "LIB";
-    public static final String EXPECTED_INSERT_SIZE_SHORT_NAME = "INSERT";
-    public static final String METRICS_FILE_SHORT_NAME = "M";
     public static final String ASSUME_SORTED_SHORT_NAME = "AS";
-    public static final String PF_READS_ONLY_SHORT_NAME = "PF";
-    public static final String MINIMUM_MAPPING_QUALITY_SHORT_NAME = "MQ";
-    public static final String READ_GROUP_ID_SHORT_NAME = "RG";
     public static final String PROGRAM_RECORD_ID_SHORT_NAME = "PG";
-    public static final String MINIMUM_LOD_SHORT_NAME = "LOD";
-    public static final String SORT_ORDER_SHORT_NAME = "SO";
     public static final String USE_ORIGINAL_QUALITIES_SHORT_NAME = "OQ";
     public static final String READ_FILTER_SHORT_NAME = "RF";
     public static final String DISABLE_READ_FILTER_SHORT_NAME = "DF";
