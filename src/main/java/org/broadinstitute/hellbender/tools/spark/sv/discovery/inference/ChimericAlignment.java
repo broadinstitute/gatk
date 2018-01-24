@@ -8,6 +8,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -466,5 +467,44 @@ public class ChimericAlignment {
         result = 31 * result + (isForwardStrandRepresentation ? 1 : 0);
         result = 31 * result + insertionMappings.hashCode();
         return result;
+    }
+
+    /**
+     * Roughly similar to {@link ChimericAlignment#nextAlignmentMayBeInsertion(AlignmentInterval, AlignmentInterval, Integer, Integer, boolean)}:
+     *  1) either alignment may have very low mapping quality (a more relaxed mapping quality threshold);
+     *  2) either alignment may consume only a "short" part of the contig, or if assuming that the alignment consumes
+     *     roughly the same amount of ref bases and read bases, has isAlignment that is too short
+     */
+    static boolean splitPairStrongEnoughEvidenceForCA(final AlignmentInterval intervalOne,
+                                                      final AlignmentInterval intervalTwo,
+                                                      final int mapQThresholdInclusive,
+                                                      final int alignmentLengthThresholdInclusive) {
+
+        if (intervalOne.mapQual < mapQThresholdInclusive || intervalTwo.mapQual < mapQThresholdInclusive)
+            return false;
+
+        final int overlap = AlignmentInterval.overlapOnContig(intervalOne, intervalTwo);
+
+        return Math.min(intervalOne.getSizeOnRead() - overlap, intervalTwo.getSizeOnRead() - overlap)
+                >= alignmentLengthThresholdInclusive;
+    }
+
+    /**
+     * @return a simple chimera indicated by the alignments of the input contig;
+     *         if the input chimeric alignments are not strong enough to support an CA, a {@code null} is returned
+     *
+     * @throws IllegalArgumentException if the input contig doesn't have exactly two good input alignments
+     */
+    static ChimericAlignment extractSimpleChimera(final AssemblyContigWithFineTunedAlignments contig,
+                                                  final SAMSequenceDictionary referenceDictionary) {
+        if ( ! contig.hasOnly2GoodAlignments() )
+            throw new IllegalArgumentException("assembly contig sent to the wrong path: assumption that contig has only 2 good alignments is violated for\n" +
+                    contig.toString());
+
+        final AlignmentInterval alignmentOne = contig.getSourceContig().alignmentIntervals.get(0);
+        final AlignmentInterval alignmentTwo = contig.getSourceContig().alignmentIntervals.get(1);
+
+        return new ChimericAlignment(alignmentOne, alignmentTwo, contig.getInsertionMappings(),
+                contig.getSourceContig().contigName, referenceDictionary);
     }
 }

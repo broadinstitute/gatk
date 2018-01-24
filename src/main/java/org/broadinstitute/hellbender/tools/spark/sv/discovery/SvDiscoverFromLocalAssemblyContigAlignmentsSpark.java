@@ -19,6 +19,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -29,6 +30,8 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFileUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -214,22 +217,67 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
 
         final String outputDir = svDiscoveryInputData.outputPath;
 
-        // TODO: 1/10/18 bring back imprecise variants calling (definitely not here) and read annotation
-        svDiscoveryInputData.updateOutputPath(outputDir+"/"+RawTypes.InsDel.name()+".vcf");
-        new InsDelVariantDetector()
-                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.InsDel), svDiscoveryInputData);
-
-        svDiscoveryInputData.updateOutputPath(outputDir+"/"+RawTypes.IntraChrStrandSwitch.name()+".vcf");
-        new SimpleStrandSwitchVariantDetector()
-                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.IntraChrStrandSwitch), svDiscoveryInputData);
-
-        svDiscoveryInputData.updateOutputPath(outputDir+"/"+RawTypes.MappedInsertionBkpt.name()+".vcf");
-        new SuspectedTransLocDetector()
-                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.MappedInsertionBkpt), svDiscoveryInputData);
+        // TODO: 1/10/18 bring back read annotation, see ticket 4228
+        forNonComplexVariants(contigsByPossibleRawTypes, svDiscoveryInputData);
 
         svDiscoveryInputData.updateOutputPath(outputDir+"/"+RawTypes.Cpx.name()+".vcf");
         new CpxVariantDetector()
                 .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.Cpx), svDiscoveryInputData);
+    }
+
+    private static void forNonComplexVariants(final EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> contigsByPossibleRawTypes,
+                                              final SvDiscoveryInputData svDiscoveryInputData) {
+
+        final String sampleId = svDiscoveryInputData.sampleId;
+        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputData.referenceBroadcast;
+        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceSequenceDictionaryBroadcast;
+        final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast = svDiscoveryInputData.cnvCallsBroadcast;
+        final String outputDir = svDiscoveryInputData.outputPath;
+
+        svDiscoveryInputData.updateOutputPath(outputDir + "/nonComplex.vcf");
+
+        final JavaRDD<AssemblyContigWithFineTunedAlignments> nonComplexSignatures =
+                contigsByPossibleRawTypes.get(RawTypes.InsDel)
+                        .union(contigsByPossibleRawTypes.get(RawTypes.IntraChrStrandSwitch))
+                        .union(contigsByPossibleRawTypes.get(RawTypes.MappedInsertionBkpt));
+
+        final List<VariantContext> annotatedSimpleVariants =
+                new SimpleNovelAdjacencyInterpreter()
+                        .inferTypeFromSingleContigSimpleChimera(nonComplexSignatures, svDiscoveryInputData)
+                        // this implementation is the 1st step going towards allowing re-interpretation,
+                        // below we simply take the inferred type and turn it to a VC,
+                        // future implementation may integrate other types of evidence and re-interpret if necessary
+                        .flatMap(pair -> {
+                            final List<SvType> svTypes = pair._2;
+                            final SimpleNovelAdjacency simpleNovelAdjacency = pair._1;
+                            if (svTypes.size() == 1) { // simple SV type
+                                final SvType inferredType = svTypes.get(0);
+                                final NovelAdjacencyReferenceLocations narl = simpleNovelAdjacency.getNovelAdjacencyReferenceLocations();
+                                final SimpleInterval variantPos = narl.leftJustifiedLeftRefLoc;
+                                final int end = narl.leftJustifiedRightRefLoc.getEnd();
+                                final VariantContext variantContext = AnnotatedVariantProducer
+                                        .produceAnnotatedVcFromInferredTypeAndRefLocations(variantPos, end, narl.complication,
+                                                inferredType, simpleNovelAdjacency.getAltHaplotypeSequence(), simpleNovelAdjacency.getAlignmentEvidence(),
+                                                referenceBroadcast, referenceSequenceDictionaryBroadcast, cnvCallsBroadcast, sampleId);
+                                return Collections.singletonList(variantContext).iterator();
+                            } else { // BND mate pair
+                                final BreakEndVariantType firstMate = (BreakEndVariantType) svTypes.get(0);
+                                final BreakEndVariantType secondMate = (BreakEndVariantType) svTypes.get(1);
+
+                                final Tuple2<BreakEndVariantType, BreakEndVariantType> bndMates = new Tuple2<>(firstMate, secondMate);
+                                final List<VariantContext> variantContexts = AnnotatedVariantProducer
+                                        .produceAnnotatedBNDmatesVcFromNovelAdjacency(
+                                                simpleNovelAdjacency.getNovelAdjacencyReferenceLocations(),
+                                                bndMates,
+                                                simpleNovelAdjacency.getAlignmentEvidence(),
+                                                referenceBroadcast, referenceSequenceDictionaryBroadcast, sampleId);
+                                return variantContexts.iterator();
+                            }
+                        })
+                        .collect();
+
+        SVVCFWriter.writeVCF(annotatedSimpleVariants, svDiscoveryInputData.outputPath,
+                svDiscoveryInputData.referenceSequenceDictionaryBroadcast.getValue(), svDiscoveryInputData.toolLogger);
     }
 
     //==================================================================================================================

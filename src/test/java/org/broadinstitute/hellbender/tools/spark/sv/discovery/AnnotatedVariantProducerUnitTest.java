@@ -13,8 +13,8 @@ import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.InsDelVariantDetector;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyReferenceLocations;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleNovelAdjacencyInterpreter;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
@@ -153,7 +153,7 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
 
         final VariantContext variantContext =
                 AnnotatedVariantProducer.produceAnnotatedVcFromInferredTypeAndRefLocations(breakpoints.leftJustifiedLeftRefLoc,
-                        breakpoints.leftJustifiedRightRefLoc.getStart(), breakpoints.complication, InsDelVariantDetector.inferTypeFromNovelAdjacency(breakpoints),
+                        breakpoints.leftJustifiedRightRefLoc.getStart(), breakpoints.complication, SimpleNovelAdjacencyInterpreter.inferSimpleTypeFromNovelAdjacency(breakpoints),
                         null, evidence, SparkContextFactory.getTestSparkContext().broadcast(SVDiscoveryTestDataProvider.reference),
                         SparkContextFactory.getTestSparkContext().broadcast(SVDiscoveryTestDataProvider.seqDict), null, sampleId);
 

@@ -2,8 +2,8 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.InsDelVariantDetector;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyReferenceLocations;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleNovelAdjacencyInterpreter;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -34,7 +34,7 @@ public class SimpleSvTypeUnitTest extends GATKBaseTest {
                                final int expectedSvLen,
                                final String expectedFirstFieldInIdString) throws IOException {
 
-        final SvType SvType = InsDelVariantDetector.inferTypeFromNovelAdjacency(novelAdjacencyReferenceLocations);
+        final SvType SvType = SimpleNovelAdjacencyInterpreter.inferSimpleTypeFromNovelAdjacency(novelAdjacencyReferenceLocations);
         final List<Allele> producedAlleles = AnnotatedVariantProducer.produceAlleles(novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc, SVDiscoveryTestDataProvider.reference, SvType);
 
         Assert.assertEquals(producedAlleles.size(), 2);
