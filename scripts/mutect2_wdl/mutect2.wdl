@@ -18,12 +18,14 @@
 ## ** Workflow options **
 ## intervals: genomic intervals (will be used for scatter)
 ## scatter_count: number of parallel jobs to generate when scattering over intervals
-## artifact_modes: types of artifacts to consider in the orientation bias filter
+## artifact_modes: types of artifacts to consider in the orientation bias filter (optional)
 ## m2_extra_args, m2_extra_filtering_args: additional arguments for Mutect2 calling and filtering (optional)
-## is_run_orientation_bias_filter: if true, run the orientation bias filter post-processing step
-## is_run_oncotator: if true, annotate the M2 VCFs using oncotator (to produce a TCGA MAF).  Important:  This requires a
+## split_intervals_extra_args: additional arguments for splitting intervals before scattering (optional)
+## run_orientation_bias_filter: if true, run the orientation bias filter post-processing step (optional, false by default)
+## run_oncotator: if true, annotate the M2 VCFs using oncotator (to produce a TCGA MAF).  Important:  This requires a
 ##                   docker image and should  not be run in environments where docker is unavailable (e.g. SGE cluster on
 ##                   a Broad on-prem VM).  Access to docker hub is also required, since the task downloads a public docker image.
+##                   (optional, false by default)
 ##
 ## ** Primary inputs **
 ## ref_fasta, ref_fai, ref_dict: reference genome, index, and dictionary
@@ -71,15 +73,18 @@ workflow Mutect2 {
     File? gnomad_index
     File? variants_for_contamination
     File? variants_for_contamination_index
-    Boolean is_run_orientation_bias_filter
-    Array[String] artifact_modes
+    Boolean? run_orientation_bias_filter
+    Boolean run_ob_filter = select_first([run_orientation_bias_filter, false])
+    Array[String]? artifact_modes
     File? tumor_sequencing_artifact_metrics
     String? m2_extra_args
     String? m2_extra_filtering_args
-    Boolean is_bamOut = false
+    String? split_intervals_extra_args
+    Boolean? make_bamout
+    Boolean generate_bamout = select_first([make_bamout, false])
 
     # oncotator inputs
-    Boolean is_run_oncotator
+    Boolean? run_oncotator
     File? onco_ds_tar_gz
     String? onco_ds_local_db_dir
     String? sequencing_center
@@ -91,7 +96,7 @@ workflow Mutect2 {
     # runtime
     String gatk_docker
     String basic_bash_docker = "ubuntu:16.04"
-    String oncotator_docker
+    String? oncotator_docker
     Int? preemptible_attempts
 
     # Do not populate unless you know what you are doing...
@@ -127,6 +132,7 @@ workflow Mutect2 {
             ref_fai = ref_fai,
             ref_dict = ref_dict,
             scatter_count = scatter_count,
+            split_intervals_extra_args = split_intervals_extra_args,
             gatk_override = gatk_override,
             gatk_docker = gatk_docker,
             preemptible_attempts = preemptible_attempts,
@@ -151,7 +157,7 @@ workflow Mutect2 {
                 gnomad_index = gnomad_index,
                 preemptible_attempts = preemptible_attempts,
                 m2_extra_args = m2_extra_args,
-                is_bamOut = is_bamOut,
+                generate_bamout = generate_bamout,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts,
@@ -179,7 +185,7 @@ workflow Mutect2 {
             disk_space = ceil(SumSubVcfs.total_size * large_input_to_output_multiplier) + disk_pad
     }
 
-    if (is_bamOut) {
+    if (generate_bamout) {
         call SumFloats as SumSubBamouts {
             input:
                 sizes = sub_bamout_size,
@@ -199,7 +205,7 @@ workflow Mutect2 {
         }
     }
 
-    if (is_run_orientation_bias_filter && !defined(tumor_sequencing_artifact_metrics)) {
+    if (run_ob_filter && !defined(tumor_sequencing_artifact_metrics)) {
         call CollectSequencingArtifactMetrics {
             input:
                 gatk_docker = gatk_docker,
@@ -222,6 +228,8 @@ workflow Mutect2 {
                 gatk_docker = gatk_docker,
                 tumor_bam = tumor_bam,
                 tumor_bai = tumor_bai,
+                normal_bam = normal_bam,
+                normal_bai = normal_bai,
                 variants_for_contamination = variants_for_contamination,
                 variants_for_contamination_index = variants_for_contamination_index,
                 disk_space = tumor_bam_size + ceil(size(variants_for_contamination, "GB") * small_input_to_output_multiplier) + disk_pad,
@@ -242,7 +250,7 @@ workflow Mutect2 {
             auth = auth
     }
 
-    if (is_run_orientation_bias_filter) {
+    if (run_ob_filter) {
         # Get the metrics either from the workflow input or CollectSequencingArtifactMetrics if no workflow input is provided
         File input_artifact_metrics = select_first([tumor_sequencing_artifact_metrics, CollectSequencingArtifactMetrics.pre_adapter_metrics])
 
@@ -260,7 +268,7 @@ workflow Mutect2 {
     }
 
 
-    if (is_run_oncotator) {
+    if (select_first([run_oncotator, false])) {
         File oncotate_vcf_input = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
         call oncotate_m2 {
             input:
@@ -272,7 +280,7 @@ workflow Mutect2 {
                 default_config_file = default_config_file,
                 case_id = M2.tumor_sample[0],
                 control_id = M2.normal_sample[0],
-                oncotator_docker = oncotator_docker,
+                oncotator_docker = select_first([oncotator_docker, "NO_ONCOTATOR_DOCKER_GIVEN"]),
                 preemptible_attempts = preemptible_attempts,
                 disk_space = ceil(size(oncotate_vcf_input, "GB") * large_input_to_output_multiplier) + onco_tar_size + disk_pad
         }
@@ -285,11 +293,10 @@ workflow Mutect2 {
         File filtered_vcf_index = select_first([FilterByOrientationBias.filtered_vcf_index, Filter.filtered_vcf_index])
         File? contamination_table = CalculateContamination.contamination_table
 
-        # select_first() fails if nothing resolves to non-null, so putting in "null" for now.
-        File? oncotated_m2_maf = select_first([oncotate_m2.oncotated_m2_maf, "null"])
-        File? preadapter_detail_metrics = select_first([CollectSequencingArtifactMetrics.pre_adapter_metrics, "null"])
-        File? bamout = select_first([MergeBamOuts.merged_bam_out, "null"])
-        File? bamout_index = select_first([MergeBamOuts.merged_bam_out_index, "null"])
+        File? oncotated_m2_maf = oncotate_m2.oncotated_m2_maf
+        File? preadapter_detail_metrics = CollectSequencingArtifactMetrics.pre_adapter_metrics
+        File? bamout = MergeBamOuts.merged_bam_out
+        File? bamout_index = MergeBamOuts.merged_bam_out_index
     }
 }
 
@@ -300,6 +307,7 @@ task SplitIntervals {
     File ref_fai
     File ref_dict
     Int scatter_count
+    String? split_intervals_extra_args
 
     File? gatk_override
 
@@ -321,7 +329,12 @@ task SplitIntervals {
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
         mkdir interval-files
-        gatk --java-options "-Xmx${command_mem}m" SplitIntervals -R ${ref_fasta} ${"-L " + intervals} -scatter ${scatter_count} -O interval-files
+        gatk --java-options "-Xmx${command_mem}m" SplitIntervals \
+            -R ${ref_fasta} \
+            ${"-L " + intervals} \
+            -scatter ${scatter_count} \
+            -O interval-files \
+            ${split_intervals_extra_args}
         cp interval-files/*.intervals .
     }
 
@@ -353,7 +366,7 @@ task M2 {
     File? gnomad
     File? gnomad_index
     String? m2_extra_args
-    Boolean? is_bamOut
+    Boolean? generate_bamout
 
     File? gatk_override
 
@@ -390,7 +403,7 @@ task M2 {
         gatk --java-options "-Xmx${command_mem}m" GetSampleName -I ${tumor_bam} -O tumor_name.txt
         tumor_command_line="-I ${tumor_bam} -tumor `cat tumor_name.txt`"
 
-        if [[ "_${normal_bam}" == *.bam ]]; then
+        if [[ "${normal_bam}" == *.bam ]]; then
             gatk --java-options "-Xmx${command_mem}m" GetSampleName -I ${normal_bam} -O normal_name.txt
             normal_command_line="-I ${normal_bam} -normal `cat normal_name.txt`"
         fi
@@ -403,7 +416,7 @@ task M2 {
             ${"-pon " + pon} \
             ${"-L " + intervals} \
             -O "output.vcf" \
-            ${true='--bam-output bamout.bam' false='' is_bamOut} \
+            ${true='--bam-output bamout.bam' false='' generate_bamout} \
             ${m2_extra_args}
     >>>
 
@@ -554,8 +567,10 @@ task CollectSequencingArtifactMetrics {
 task CalculateContamination {
     # inputs
     File? intervals
-    String tumor_bam
-    String tumor_bai
+    File tumor_bam
+    File tumor_bai
+    File? normal_bam
+    File? normal_bai
     File? variants_for_contamination
     File? variants_for_contamination_index
 
@@ -584,15 +599,21 @@ task CalculateContamination {
         fi
 
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+
+        if [[ "${normal_bam}" == *.bam ]]; then
+            gatk --java-options "-Xmx${command_mem}m" GetPileupSummaries -I ${normal_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O normal_pileups.table
+            NORMAL_CMD="-matched normal_pileups.table"
+        fi
+
         gatk --java-options "-Xmx${command_mem}m" GetPileupSummaries -I ${tumor_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O pileups.table
-        gatk --java-options "-Xmx${command_mem}m" CalculateContamination -I pileups.table -O contamination.table
+        gatk --java-options "-Xmx${command_mem}m" CalculateContamination -I pileups.table -O contamination.table $NORMAL_CMD
     }
 
     runtime {
-    docker: gatk_docker
-    memory: command_mem + " MB"
-    disks: "local-disk " + select_first([disk_space, 100]) + " HDD"
-    preemptible: select_first([preemptible_attempts, 10])
+        docker: gatk_docker
+        memory: command_mem + " MB"
+        disks: "local-disk " + select_first([disk_space, 100]) + " HDD"
+        preemptible: select_first([preemptible_attempts, 10])
     }
 
     output {

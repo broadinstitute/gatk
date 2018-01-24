@@ -30,8 +30,8 @@ workflow HapmapSensitivity {
   	Array[Array[String]] replicates = read_tsv(bam_list)
   	File? pon
   	File? pon_index
-  	Boolean is_run_orientation_bias_filter
-    Array[String] artifact_modes
+  	Boolean? run_orientation_bias_filter
+    Array[String]? artifact_modes
     String? m2_extra_args
     String? m2_extra_filtering_args
     String prefix   #a prefix string like "5plex"
@@ -68,7 +68,6 @@ workflow HapmapSensitivity {
             input:
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
-                oncotator_docker = "ubuntu:16.04",
                 intervals = intervals,
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
@@ -78,8 +77,7 @@ workflow HapmapSensitivity {
                 tumor_bai = index,
                 pon = pon,
                 pon_index = pon_index,
-                is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-                is_run_oncotator = false,
+                run_orientation_bias_filter = run_orientation_bias_filter,
                 artifact_modes = artifact_modes,
                 m2_extra_args = m2_extra_args,
                 m2_extra_filtering_args = m2_extra_filtering_args
