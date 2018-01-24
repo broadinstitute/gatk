@@ -18,13 +18,14 @@
 ## ** Workflow options **
 ## intervals: genomic intervals (will be used for scatter)
 ## scatter_count: number of parallel jobs to generate when scattering over intervals
-## artifact_modes: types of artifacts to consider in the orientation bias filter
+## artifact_modes: types of artifacts to consider in the orientation bias filter (optional)
 ## m2_extra_args, m2_extra_filtering_args: additional arguments for Mutect2 calling and filtering (optional)
 ## split_intervals_extra_args: additional arguments for splitting intervals before scattering (optional)
-## run_orientation_bias_filter: if true, run the orientation bias filter post-processing step
+## run_orientation_bias_filter: if true, run the orientation bias filter post-processing step (optional, false by default)
 ## run_oncotator: if true, annotate the M2 VCFs using oncotator (to produce a TCGA MAF).  Important:  This requires a
 ##                   docker image and should  not be run in environments where docker is unavailable (e.g. SGE cluster on
 ##                   a Broad on-prem VM).  Access to docker hub is also required, since the task downloads a public docker image.
+##                   (optional, false by default)
 ##
 ## ** Primary inputs **
 ## ref_fasta, ref_fai, ref_dict: reference genome, index, and dictionary
@@ -72,19 +73,18 @@ workflow Mutect2 {
     File? gnomad_index
     File? variants_for_contamination
     File? variants_for_contamination_index
-    Boolean? is_run_orientation_bias_filter
-    Boolean run_orientation_bias_filter = select_first([is_run_orientation_bias_filter, false])
-    Array[String] artifact_modes
+    Boolean? run_orientation_bias_filter
+    Boolean run_ob_filter = select_first([run_orientation_bias_filter, false])
+    Array[String]? artifact_modes
     File? tumor_sequencing_artifact_metrics
     String? m2_extra_args
     String? m2_extra_filtering_args
     String? split_intervals_extra_args
-    Boolean? is_bamOut
-    Boolean make_bamout = select_first([is_bamOut, false])
+    Boolean? make_bamout
+    Boolean bamout = select_first([make_bamout, false])
 
     # oncotator inputs
-    Boolean? is_run_oncotator
-    Boolean run_oncotator = select_first([is_run_oncotator, false])
+    Boolean? run_oncotator
     File? onco_ds_tar_gz
     String? onco_ds_local_db_dir
     String? sequencing_center
@@ -96,7 +96,7 @@ workflow Mutect2 {
     # runtime
     String gatk_docker
     String basic_bash_docker = "ubuntu:16.04"
-    String oncotator_docker
+    String? oncotator_docker
     Int? preemptible_attempts
 
     # Do not populate unless you know what you are doing...
@@ -157,7 +157,7 @@ workflow Mutect2 {
                 gnomad_index = gnomad_index,
                 preemptible_attempts = preemptible_attempts,
                 m2_extra_args = m2_extra_args,
-                make_bamout = make_bamout,
+                bamout = bamout,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts,
@@ -185,7 +185,7 @@ workflow Mutect2 {
             disk_space = ceil(SumSubVcfs.total_size * large_input_to_output_multiplier) + disk_pad
     }
 
-    if (make_bamout) {
+    if (bamout) {
         call SumFloats as SumSubBamouts {
             input:
                 sizes = sub_bamout_size,
@@ -205,7 +205,7 @@ workflow Mutect2 {
         }
     }
 
-    if (run_orientation_bias_filter && !defined(tumor_sequencing_artifact_metrics)) {
+    if (run_ob_filter && !defined(tumor_sequencing_artifact_metrics)) {
         call CollectSequencingArtifactMetrics {
             input:
                 gatk_docker = gatk_docker,
@@ -250,7 +250,7 @@ workflow Mutect2 {
             auth = auth
     }
 
-    if (run_orientation_bias_filter) {
+    if (run_ob_filter) {
         # Get the metrics either from the workflow input or CollectSequencingArtifactMetrics if no workflow input is provided
         File input_artifact_metrics = select_first([tumor_sequencing_artifact_metrics, CollectSequencingArtifactMetrics.pre_adapter_metrics])
 
@@ -268,7 +268,7 @@ workflow Mutect2 {
     }
 
 
-    if (run_oncotator) {
+    if (select_first([run_oncotator, false])) {
         File oncotate_vcf_input = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
         call oncotate_m2 {
             input:
@@ -280,7 +280,7 @@ workflow Mutect2 {
                 default_config_file = default_config_file,
                 case_id = M2.tumor_sample[0],
                 control_id = M2.normal_sample[0],
-                oncotator_docker = oncotator_docker,
+                oncotator_docker = select_first([oncotator_docker, "NO_ONCOTATOR_DOCKER_GIVEN"]),
                 preemptible_attempts = preemptible_attempts,
                 disk_space = ceil(size(oncotate_vcf_input, "GB") * large_input_to_output_multiplier) + onco_tar_size + disk_pad
         }
@@ -366,7 +366,7 @@ task M2 {
     File? gnomad
     File? gnomad_index
     String? m2_extra_args
-    Boolean? make_bamout
+    Boolean? bamout
 
     File? gatk_override
 
@@ -416,7 +416,7 @@ task M2 {
             ${"-pon " + pon} \
             ${"-L " + intervals} \
             -O "output.vcf" \
-            ${true='--bam-output bamout.bam' false='' make_bamout} \
+            ${true='--bam-output bamout.bam' false='' bamout} \
             ${m2_extra_args}
     >>>
 

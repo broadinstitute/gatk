@@ -17,8 +17,8 @@ workflow Mutect2ReplicateValidation {
 	File? pon_index
 	File? gnomad
 	File? gnomad_index
-	Boolean is_run_orientation_bias_filter
-	Array[String] artifact_modes
+	Boolean? run_orientation_bias_filter
+	Array[String]? artifact_modes
 	String? m2_extra_args
     String? m2_extra_filtering_args
 
@@ -43,15 +43,13 @@ workflow Mutect2ReplicateValidation {
 				scatter_count = scatter_count,
 				gnomad = gnomad,
 				gnomad_index = gnomad_index,
-                is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-                is_run_oncotator = false,
+                run_orientation_bias_filter = run_orientation_bias_filter,
                 preemptible_attempts = preemptible_attempts,
                 artifact_modes = artifact_modes,
                 m2_extra_args = m2_extra_args,
                 m2_extra_filtering_args = m2_extra_filtering_args,
                 gatk_override = gatk_override,
 				gatk_docker = gatk_docker,
-				oncotator_docker = gatk_docker
 		}
 
 		call CountFalsePositives {

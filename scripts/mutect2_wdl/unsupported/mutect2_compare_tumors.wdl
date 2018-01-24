@@ -21,8 +21,8 @@ workflow Mutect2Trio {
 	File? pon_index
 	File? gnomad
 	File? gnomad_index
-	Boolean is_run_orientation_bias_filter
-	Array[String] artifact_modes
+	Boolean? run_orientation_bias_filter
+	Array[String]? artifact_modes
 
     File? gatk_override
 
@@ -46,12 +46,10 @@ workflow Mutect2Trio {
 				scatter_count = scatter_count,
 				gnomad = gnomad,
 				gnomad_index = gnomad_index,
-                is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-                is_run_oncotator = false,
+                run_orientation_bias_filter = run_orientation_bias_filter,
                 artifact_modes = artifact_modes,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
-                oncotator_docker = "NO_ONCOTATOR",
                 preemptible_attempts = preemptible_attempts
 		}
 
@@ -70,12 +68,10 @@ workflow Mutect2Trio {
         		scatter_count = scatter_count,
         		gnomad = gnomad,
         		gnomad_index = gnomad_index,
-                is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-                is_run_oncotator = false,
+                run_orientation_bias_filter = run_orientation_bias_filter,
                 artifact_modes = artifact_modes,
                 gatk_override = gatk_override,
         	    gatk_docker = gatk_docker,
-        	    oncotator_docker = "NO_ONCOTATOR",
                 preemptible_attempts = preemptible_attempts
         }
 

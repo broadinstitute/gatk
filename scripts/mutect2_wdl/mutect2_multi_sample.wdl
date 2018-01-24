@@ -7,7 +7,7 @@
 #  scatter_count: number of parallel jobs when scattering over intervals
 #  gnomad, gnomad_index: optional database of known germline variants, obtainable from http://gnomad.broadinstitute.org/downloads
 #  variants_for_contamination, variants_for_contamination_index: vcf of common variants with allele frequencies fo calculating contamination
-#  is_run_orientation_bias_filter: if true, run the orientation bias filter post-processing step
+#  run_orientation_bias_filter: if true, run the orientation bias filter post-processing step
 #  pair_list: a tab-separated table with no header in the following format:
 #   TUMOR_1_BAM</TAB>TUMOR_1_bai</TAB>NORMAL_1_BAM</TAB>NORMAL_1_bai
 #   TUMOR_2_BAM</TAB>TUMOR_2_bai</TAB>NORMAL_2_BAM</TAB>NORMAL_2_bai
@@ -33,15 +33,15 @@ workflow Mutect2_Multi {
 	File? gnomad_index
 	File? variants_for_contamination
     File? variants_for_contamination_index
-	Boolean is_run_orientation_bias_filter
+	Boolean? run_orientation_bias_filter
 	Int scatter_count
-	Array[String] artifact_modes
+	Array[String]? artifact_modes
 	String? m2_extra_args
     String? m2_extra_filtering_args
-    Boolean? is_bamOut
+    Boolean? make_bamout
 
     # Oncotator inputs
-    Boolean is_run_oncotator
+    Boolean? run_oncotator
     File? onco_ds_tar_gz
     String? onco_ds_local_db_dir
     String? sequencing_center
@@ -52,7 +52,7 @@ workflow Mutect2_Multi {
 
     # runtime
     String gatk_docker
-    String oncotator_docker
+    String? oncotator_docker
     Int? preemptible_attempts
 
 	scatter( row in pairs ) {
@@ -80,17 +80,17 @@ workflow Mutect2_Multi {
                 gnomad_index = gnomad_index,
                 variants_for_contamination = variants_for_contamination,
                 variants_for_contamination_index = variants_for_contamination_index,
-                is_run_orientation_bias_filter = is_run_orientation_bias_filter,
+                run_orientation_bias_filter = run_orientation_bias_filter,
                 artifact_modes = artifact_modes,
                 m2_extra_args = m2_extra_args,
                 m2_extra_filtering_args = m2_extra_filtering_args,
-                is_run_oncotator = is_run_oncotator,
+                run_oncotator = run_oncotator,
                 onco_ds_tar_gz = onco_ds_tar_gz,
                 onco_ds_local_db_dir = onco_ds_local_db_dir,
                 sequencing_center = sequencing_center,
                 sequence_source = sequence_source,
                 default_config_file = default_config_file,
-                is_bamOut = select_first([is_bamOut, false]),
+                make_bamout = make_bamout,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 oncotator_docker = oncotator_docker,

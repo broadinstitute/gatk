@@ -36,24 +36,15 @@ workflow m2_validation {
     File? gnomad_index
     File? variants_for_contamination
     File? variants_for_contamination_index
-    Boolean is_run_orientation_bias_filter
-    Boolean is_run_oncotator
-    Int preemptible_attempts
-    File? onco_ds_tar_gz
-    String? onco_ds_local_db_dir
-    Array[String] artifact_modes
+    Boolean? run_orientation_bias_filter
+    Int? preemptible_attempts
+    Array[String]? artifact_modes
     String? m2_extra_args
     String? m2_extra_filtering_args
-    String? sequencing_center
-    String? sequence_source
-    File? default_config_file
-    Boolean is_bamOut = false
 
     File? gatk_override
 
     String gatk_docker
-    String basic_bash_docker = "ubuntu:16.04"
-    String oncotator_docker
     #####
 
     ### parameter-fu
@@ -97,8 +88,6 @@ workflow m2_validation {
             input:
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
-                basic_bash_docker = basic_bash_docker,
-                oncotator_docker = oncotator_docker,
                 intervals = intervals,
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
@@ -112,24 +101,20 @@ workflow m2_validation {
                 pon_index = pon_index,
                 gnomad = gnomad,
                 gnomad_index = gnomad_index,
-                is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-                is_run_oncotator = is_run_oncotator,
-                preemptible_attempts = select_first([preemptible_attempts, 2]),
-                onco_ds_local_db_dir = onco_ds_local_db_dir,
+                run_orientation_bias_filter = run_orientation_bias_filter,
+                preemptible_attempts = preemptible_attempts,
                 artifact_modes = artifact_modes,
                 variants_for_contamination = variants_for_contamination,
                 variants_for_contamination_index = variants_for_contamination_index,
                 m2_extra_args = m2_extra_args,
                 m2_extra_filtering_args = m2_extra_filtering_args,
-                is_bamOut = true
+                make_bamout = true
         }
 
         call m2.Mutect2 as m2_validation_bamout {
             input:
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
-                basic_bash_docker = basic_bash_docker,
-                oncotator_docker = oncotator_docker,
                 intervals = intervals,
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
@@ -143,16 +128,14 @@ workflow m2_validation {
                 pon_index = pon_index,
                 gnomad = gnomad,
                 gnomad_index = gnomad_index,
-                is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-                is_run_oncotator = is_run_oncotator,
+                run_orientation_bias_filter = run_orientation_bias_filter,
                 preemptible_attempts = preemptible_attempts,
-                onco_ds_local_db_dir = onco_ds_local_db_dir,
                 artifact_modes = artifact_modes,
                 variants_for_contamination = variants_for_contamination,
                 variants_for_contamination_index = variants_for_contamination_index,
                 m2_extra_args = m2_extra_args,
                 m2_extra_filtering_args = m2_extra_filtering_args,
-                is_bamOut = true
+                make_bamout = true
         }
 
         # Delete the reads from the normal and HC sample from the bamout.
