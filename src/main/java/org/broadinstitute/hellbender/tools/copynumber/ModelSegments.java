@@ -127,7 +127,7 @@ import java.util.stream.Collectors;
  *         and the final result after segmentation smoothing is output to the .modelFinal.cr.param file.
  *     </li>
  *     <li>
- *         Copy-ratio segment file (.cr.param).
+ *         Copy-ratio segment file (.cr.seg).
  *         This is a tab-separated values (TSV) file with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link CopyRatioSegmentCollection.CopyRatioSegmentTableColumn},
  *         and the corresponding entry rows.
