@@ -57,48 +57,30 @@ public final class HelpConstants {
 
     // End GATK Program groups
 
-    /**
-     * List of "supercategory" values used for doc purposes. Every doc group name can/should be put into
-     * one of the following super-categories.
-     */
-    private final static String DOC_SUPERCAT_TOOLS = "tools";
-    private final static String DOC_SUPERCAT_UTILITIES = "utilities";
-    private final static String DOC_SUPERCAT_EXCLUDE = "exclude";
-
     private static Map<String, String> groupToSuperCategory;
 
     private static Map<String, String> getSuperCategoryMap() {
         if (groupToSuperCategory == null) {
 
             // do this only on demand since we only need it during docgen
-            groupToSuperCategory = new HashMap<>();
+
+            // start with Picard program groups
+            groupToSuperCategory = picard.util.help.HelpConstants.getSuperCategoryMap();
 
             // supercat Tools
-
-            // start Picard program groups
-            groupToSuperCategory.put(new picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup().getName(), DOC_SUPERCAT_TOOLS);
-            groupToSuperCategory.put(new picard.cmdline.programgroups.IntervalsManipulationProgramGroup().getName(), DOC_SUPERCAT_TOOLS);
-            groupToSuperCategory.put(new picard.cmdline.programgroups.OtherProgramGroup().getName(), DOC_SUPERCAT_TOOLS);
-            groupToSuperCategory.put(new picard.cmdline.programgroups.ReadDataManipulationProgramGroup().getName(), DOC_SUPERCAT_TOOLS);
-            groupToSuperCategory.put(new picard.cmdline.programgroups.ReferenceProgramGroup().getName(), DOC_SUPERCAT_TOOLS);
-            groupToSuperCategory.put(new picard.cmdline.programgroups.VariantEvaluationProgramGroup().getName(), DOC_SUPERCAT_TOOLS);
-            groupToSuperCategory.put(new picard.cmdline.programgroups.VariantFilteringProgramGroup().getName(), DOC_SUPERCAT_TOOLS);
-            groupToSuperCategory.put(new picard.cmdline.programgroups.VariantManipulationProgramGroup().getName(), DOC_SUPERCAT_TOOLS);
-            // end Picard program groups
-
-            groupToSuperCategory.put(DOC_CAT_CNV, DOC_SUPERCAT_TOOLS);
-            groupToSuperCategory.put(DOC_CAT_COVERAGE_ANALYSIS, DOC_SUPERCAT_TOOLS);
-            groupToSuperCategory.put(DOC_CAT_METAGENOMICS, DOC_SUPERCAT_TOOLS);
-            groupToSuperCategory.put(DOC_CAT_SHORT_VARIANT_DISCOVERY, DOC_SUPERCAT_TOOLS);
-            groupToSuperCategory.put(DOC_CAT_SV_DISCOVERY, DOC_SUPERCAT_TOOLS);
+            groupToSuperCategory.put(DOC_CAT_CNV, picard.util.help.HelpConstants.DOC_SUPERCAT_TOOLS);
+            groupToSuperCategory.put(DOC_CAT_COVERAGE_ANALYSIS, picard.util.help.HelpConstants.DOC_SUPERCAT_TOOLS);
+            groupToSuperCategory.put(DOC_CAT_METAGENOMICS, picard.util.help.HelpConstants.DOC_SUPERCAT_TOOLS);
+            groupToSuperCategory.put(DOC_CAT_SHORT_VARIANT_DISCOVERY, picard.util.help.HelpConstants.DOC_SUPERCAT_TOOLS);
+            groupToSuperCategory.put(DOC_CAT_SV_DISCOVERY, picard.util.help.HelpConstants.DOC_SUPERCAT_TOOLS);
 
             // supercat Utilities
-            groupToSuperCategory.put(DOC_CAT_READFILTERS, DOC_SUPERCAT_UTILITIES);
-            groupToSuperCategory.put(DOC_CAT_ANNOTATORS, DOC_SUPERCAT_UTILITIES);
+            groupToSuperCategory.put(DOC_CAT_READFILTERS, picard.util.help.HelpConstants.DOC_SUPERCAT_UTILITIES);
+            groupToSuperCategory.put(DOC_CAT_ANNOTATORS, picard.util.help.HelpConstants.DOC_SUPERCAT_UTILITIES);
 
             // supercat Exclude
-            groupToSuperCategory.put(DOC_CAT_EXAMPLE, DOC_SUPERCAT_EXCLUDE);
-            groupToSuperCategory.put(DOC_CAT_TEST, DOC_SUPERCAT_EXCLUDE);
+            groupToSuperCategory.put(DOC_CAT_EXAMPLE, picard.util.help.HelpConstants.DOC_SUPERCAT_EXCLUDE);
+            groupToSuperCategory.put(DOC_CAT_TEST, picard.util.help.HelpConstants.DOC_SUPERCAT_EXCLUDE);
         }
         return groupToSuperCategory;
     }
