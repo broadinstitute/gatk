@@ -53,7 +53,7 @@ public final class HelpConstants {
 
     private static Map<String, String> groupToSuperCategory;
 
-    private static Map<String, String> getSuperCategoryMap() {
+    public static Map<String, String> getSuperCategoryMap() {
         if (groupToSuperCategory == null) {
 
             // do this only on demand since we only need it during docgen
