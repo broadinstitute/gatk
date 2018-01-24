@@ -1,8 +1,10 @@
 package org.broadinstitute.hellbender.utils.reference;
 
+import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.Serializable;
 import java.util.Arrays;
@@ -83,6 +85,48 @@ public final class ReferenceBases implements Serializable {
         Utils.validateArg(end <= intervalEnd, "the end of the subset must be within this reference bases interval");
         Utils.validateArg(start <= end, "the start must be less or equal to the end");
         return Arrays.copyOfRange(bases, start - intervalStart, bases.length  + end - intervalEnd);
+    }
+
+    /**
+     * Copies the base into an existing array.
+     * <p>
+     *     This method accepts a {@code end} smaller than start in which case copies the bases in the reverse order.
+     * </p>
+     *
+     *
+     * @param dest the destination array.
+     * @param offset the offset in the destination array of the first base copied.
+     * @param start the absolute position in the enclosing contig of the first base to be copied.
+     * @param end the absolute position in the enclosing contig of the last base to be copied.
+     * @param complement whether to copy the complement bases rather than the actual bases.
+     * @throws IllegalArgumentException if {@code dest} is {@code null}, it is not large enough to contain the requested
+     * bases given the input {@code offset} or if the requested sub-interval and offset values are invalid (negative or outside this reference-bases interval) otherwise.
+     */
+    public void copyBases(final byte[] dest, final int offset, final int start, final int end, final boolean complement) {
+        ParamUtils.inRange(offset, 0, dest.length, "the offset must be a valid index");
+        Utils.validateArg(offset + end - start + 1 <= dest.length, "the destination array must be large enough to contain the requested bases");
+        final int intervalStart = interval.getStart();
+        final int intervalEnd = interval.getEnd();
+        Utils.validateArg(start >= intervalStart, "the requested start must be part of this reference base interval");
+        Utils.validateArg(end <= intervalEnd, "the requested end must be part of this reference base interval");
+        final boolean reverse = start > end;
+        final int actualStart = !reverse ? start : end;
+        final int actualEnd = !reverse ? end : start;
+        final int length = actualEnd - actualStart + 1;
+        System.arraycopy(bases, actualStart - intervalStart, dest, offset, length);
+        if (reverse) {
+            if (complement) {
+                SequenceUtil.reverseComplement(dest, offset, length);
+            } else {
+                SequenceUtil.reverse(dest, offset, length);
+            }
+        } else {
+            //TODO submitted a PR to htjdk to add a complement(byte[]) method to SequenceUtil.
+            //TODO once accepted this loop should be subtituted to a call to that method.
+            for (int i = 0; i < length; i++) {
+                dest[offset + i] = SequenceUtil.complement(dest[offset + i]);
+            }
+        }
     }
 
     public SimpleInterval getInterval() {

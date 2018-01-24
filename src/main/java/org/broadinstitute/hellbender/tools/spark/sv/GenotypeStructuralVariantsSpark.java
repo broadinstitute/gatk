@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
-import com.google.common.base.Functions;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
@@ -19,7 +18,6 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLineCount;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
-import org.apache.avro.generic.GenericData;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -63,8 +61,6 @@ import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
-import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
-import org.broadinstitute.hellbender.utils.iterators.ArrayUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
@@ -102,8 +98,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
     public static final String INSERT_SIZE_DISTR_FULL_NAME = "insertSizeDistribution";
 
     private static final long serialVersionUID = 1L;
-
-
+    
     private final boolean ignoreReadsThatDontOverlapBreakingPoint = true;
 
     @ArgumentCollection
@@ -210,7 +205,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final JavaRDD<SVHaplotype> haplotypeAndContigs = haplotypesAndContigsSource
                 .getParallelReads(haplotypesAndContigsFile, referenceArguments.getReferenceFileName(), traversalParameters)
                 .repartition(parallelism)
-                .map(r -> r.getReadGroup().equals("CTG") ? SVContig.of(r) : ArraySVHaplotype.of(r));
+                .map(r -> r.getReadGroup().equals("CTG") ? SVAssembledContig.of(r) : ArraySVHaplotype.of(r));
         final JavaRDD<SVContext> variants = variantsSource.getParallelVariantContexts(
                 variantArguments.variantFiles.get(0).getFeaturePath(), getIntervals())
                 .repartition(parallelism)
@@ -233,7 +228,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                             if (haplotype.getName().equals("ref") || haplotype.getName().equals("alt")) {
                                 result.add(haplotype);
                             } else {
-                                final SVContig contig = (SVContig) haplotype;
+                                final SVAssembledContig contig = (SVAssembledContig) haplotype;
                                 if (contig.isPerfectAlternativeMap() || contig.isPerfectReferenceMap()) {
                                     continue;
                                 }
@@ -263,12 +258,12 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                                 final SVIntervalLocator locator = locatorBroadcast.getValue();
                                 final InsertSizeDistribution insertSizeDistribution = insertSizeDistributionBroadcast.getValue();
                                 final SVIntervalTree<SimpleInterval> coveredReference = Utils.stream(t._2())
-                                        .filter(h -> !h.isContig())
+                                        .filter(h -> !h.isNeitherReferenceNorAlternative())
                                         .flatMap(h -> h.getReferenceAlignmentIntervals().stream())
                                         .flatMap(ai -> ai.referenceCoveredIntervals().stream())
                                         .collect(locator.toTreeCollector(si -> si));
                                 final IntStream assemblyNumbers = Utils.stream(t._2())
-                                        .filter(SVHaplotype::isContig)
+                                        .filter(SVHaplotype::isNeitherReferenceNorAlternative)
                                         .map(SVHaplotype::getName)
                                         .map(n -> n.substring(0, n.indexOf(":")))
                                         .map(a -> ASSEMBLY_NAME_ALPHAS.matcher(a).replaceAll("0"))
@@ -430,7 +425,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                   for (int h = 0; h < haplotypes.size(); h++) {
                     final SVHaplotype haplotype = haplotypes.get(h);
 
-                    final boolean isContig = haplotype.isContig();
+                    final boolean isContig = haplotype.isNeitherReferenceNorAlternative();
                     final String imageName = isContig
                             ? haplotype.getName()
                             : haplotype.getVariantId() + "/" + haplotype.getName();
@@ -514,7 +509,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                         sampleLikelihoods.fill(Double.NEGATIVE_INFINITY);
                 final int refIdx = likelihoods.indexOfAllele(refAllele);
                 final int altIdx = likelihoods.indexOfAllele(altAllele);
-                final List<SVContig> contigs = haplotypes.stream().filter(SVHaplotype::isContig).map(SVContig.class::cast)
+                final List<SVAssembledContig> contigs = haplotypes.stream().filter(SVHaplotype::isNeitherReferenceNorAlternative).map(SVAssembledContig.class::cast)
                         .collect(Collectors.toList());
                 for (int t = 0; t < templates.size(); t++) {
                     sampleLikelihoodsFirst.set(refIdx, t,
@@ -527,7 +522,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                             scoreTable.getMappingInfo(altHaplotypeIndex, t).secondAlignmentScore.orElse(0));
                 }
                 for (int h = 0; h < contigs.size(); h++) {
-                    final SVContig contig = contigs.get(h);
+                    final SVAssembledContig contig = contigs.get(h);
                     final int mappingInfoIndex = haplotypes.indexOf(contig);
                     double haplotypeAltScore = AlignmentScore.calculate(haplotypes.get(altHaplotypeIndex).getBases(), contig.getBases(), contig.getAlternativeAlignment()).getValue();
                     double haplotypeRefScore = AlignmentScore.calculate(haplotypes.get(refHaplotypeIndex).getBases(), contig.getBases(), contig.getReferenceAlignment()).getValue();
@@ -762,7 +757,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         return result.stream().mapToInt(i -> i).toArray();
     }
 
-    private static List<AlignmentInterval> composeAlignmentIntervals(final SVContig haplotype, final Template template, final int fragmentIndex, final List<BwaMemAlignment> alignerOutput) {
+    private static List<AlignmentInterval> composeAlignmentIntervals(final SVAssembledContig haplotype, final Template template, final int fragmentIndex, final List<BwaMemAlignment> alignerOutput) {
         if (alignerOutput.isEmpty() || alignerOutput.size() == 1 && SAMFlag.READ_UNMAPPED.isSet(alignerOutput.get(0).getSamFlag())) {
             return Collections.emptyList();
         } else {
@@ -814,12 +809,10 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
 
         private static final long serialVersionUID = 1L;
 
-        private final SVHaplotype haplotype;
-
         private static GenotypingAllele of(final SVHaplotype haplotype, final SVContext context) {
-            if (haplotype.isContig()) {
+            if (haplotype.isNeitherReferenceNorAlternative()) {
                 return new GenotypingAllele(haplotype, "<" + haplotype.getName() + ">", false);
-            } else if (haplotype.getName().equals(SVHaplotype.REF_HAPLOTYPE_NAME)) {
+            } else if (haplotype.isReference()) {
                 return new GenotypingAllele(haplotype, context.getReference().getBaseString(), true);
             } else { // assume is "alt".
                 return new GenotypingAllele(haplotype, context.getAlternateAlleles().get(0).getDisplayString(), false);
@@ -828,7 +821,6 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
 
         protected GenotypingAllele(final SVHaplotype haplotype, final String basesString, final boolean isRef) {
             super(basesString, isRef);
-            this.haplotype = haplotype;
         }
 
         private boolean isReference(final SVHaplotype haplotype) {

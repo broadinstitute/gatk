@@ -30,24 +30,84 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Created by valentin on 10/11/17.
+ * Common class of all haplotypes.
+ * <h3>Naming conventions</h3>
+ *
+ * <p>
+ *     By convention reference haplotypes (those that coincide with the reference sequence) are named as
+ *     <code>ref[:XXX]</code>, where <code>XXX</code> indicates what reference haplotype this is when there is more than one
+ *     contigouous sequence. Notice that <code>XXX</code> could contain further sub-sections using the ":" separator.
+ *     For example an alternative translocation from somewhere on <code>chr1</code> to somwhere else in <code>chr17</code> would
+ *     result in two reference haplotypes that could be named as: <code>ref:chr1, ref:chr17</code>.
+ *     In the case of a long deletion or inversion on the same chromosome we might just use the break-point positions or
+ *     relative locations on the genome: <code>ref:chr1:121211, ref:chr1:150000112</code>, or <code>ref:chr1:upstream, ref:chr1:downstream</code>.
+ * </p>
+ * <p>
+ *     In contrast, those haplotypes that represent an alternative haplotypes would be formatted as <code>alt[:IDX][:XXX]</code>
+ *     where <code>IDX</code> makes reference to the haplotype's index in multi-allelic variants (0-based) or another way to discern them
+ *     (e.g. <code>alt:-101, alt:-100</code> for two alternative deletions of 101 and 100bp respectively). As with
+ *     reference haplotypes <code>XXX</code> would be use to designate separate sequences within the same alternative allele.
+ * </p>
+ * <p>
+ *     Those haplotypes that are neither reference or alternative but rather some arbitrary homologous sequence can have any name.
+ *     For example this would included assembled contigs.
+ * </p>
+ *
+ * </p>
+ *
  */
 public interface SVHaplotype {
 
+    /**
+     * Standard name for the haplotype that represents the reference.
+     */
     String REF_HAPLOTYPE_NAME = "ref";
+
+    /**
+     * Standard name for the haplotype that represents the alternative allele.
+     */
     String ALT_HAPLOTYPE_NAME = "alt";
 
     /**
-     * Returns the cigar of this haplotype versus the reference
-     * @return
+     * Checks whether this haplotype is the reference haplotype.
+     * @return true iff so.
+     */
+    default boolean isReference() {
+        return getName().startsWith(REF_HAPLOTYPE_NAME);
+    }
+
+    /**
+     * Checks whether this haplotype is part of an alternative allele.
+     * @return true iff so.
+     */
+    default boolean isAlternative() {
+        return getName().startsWith(ALT_HAPLOTYPE_NAME);
+    }
+
+    /**
+     * Check whether this is reference nor alternative.
+     * @return never {@code null}.
+     */
+    default boolean isNeitherReferenceNorAlternative() {
+        return !isReference() && !isAlternative();
+    }
+
+    /**
+     * Returns list of alignment intervals of this haplotype vs the reference.
      */
     List<AlignmentInterval> getReferenceAlignmentIntervals();
 
     String getName();
 
+    /**
+     * Length of the haplotype.
+     * @return
+     */
     int getLength();
 
-    boolean isContig();
+    default boolean isContig() {
+        return !isReference() && !isAlternative();
+    }
 
     SimpleInterval getVariantLocation();
 

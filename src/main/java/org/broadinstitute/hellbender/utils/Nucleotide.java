@@ -68,7 +68,7 @@ public enum Nucleotide {
     Nucleotide(final boolean a, final boolean c, final boolean g, final boolean t) {
         acgtMask = (a ? A_MASK : 0) | (c ? C_MASK : 0) | (g ? G_MASK : 0) | (t ? T_MASK : 0);
         isConcrete = acgtMask == A_MASK || acgtMask == C_MASK || acgtMask == G_MASK || acgtMask == T_MASK;
-        lowerCaseByteEncoding = acgtMask == 0 ? (byte) 0 : (byte) name().charAt(0);
+        lowerCaseByteEncoding = acgtMask == 0 ? (byte) 0 : (byte) Character.toLowerCase(name().charAt(0));
         upperCaseByteEncoding = acgtMask == 0 ? (byte) 0 : (byte) Character.toUpperCase(name().charAt(0));
     }
 

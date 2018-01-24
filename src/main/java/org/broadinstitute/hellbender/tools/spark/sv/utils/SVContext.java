@@ -7,13 +7,17 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.hadoop.io.MD5Hash;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.AlnModType;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
+import org.broadinstitute.hellbender.utils.report.GATKReportColumnFormat;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -179,16 +183,94 @@ public final class SVContext extends VariantContext {
         result.add(referenceHaplotype);
         switch (getStructuralVariantType()) {
             case INS:
+                    result.add(composeInsertionHaplotype(reference, paddingSize));
+                    break;
             case DUP:
-                    result.add(composeInsertionHaplotype(referenceBases));
+                    result.add(composeTandemDuplicationHaplotype(reference, paddingSize));
                     break;
             case DEL:
-                    result.add(composeDeletionHaplotype(referenceBases));
+                    result.add(composeDeletionHaplotype(reference, paddingSize));
                     break;
-            default: // not jet supported. Please add more types as needed.
+            case INV:
+                    result.add(composeInversionHaplotype(reference, paddingSize));
+                    break;
+            default:
                     throw new UnsupportedOperationException("not supported yet");
         }
         return result;
+    }
+
+    private SVHaplotype composeInversionHaplotype(final ReferenceMultiSource reference, final int paddingSize) {
+        final ReferenceBases startReferenceBases = getReferenceBases(reference, getContig(), getStart(), paddingSize);
+        final ReferenceBases endReferenceBases = getReferenceBases(reference, getContig(), getEnd(), paddingSize);
+        final byte[] insertedBases = getInsertedSequence();
+        final int insertedBasesLength = insertedBases == null ? 0 : insertedBases.length;
+
+        if (is55Inversion()) {
+            return compose55InversionHaplotype(startReferenceBases, endReferenceBases, insertedBases, insertedBasesLength);
+        } else {
+            return compose33InversionHaplotype(startReferenceBases, endReferenceBases, insertedBases, insertedBasesLength);
+        }
+    }
+
+    private SVHaplotype compose55InversionHaplotype(final ReferenceBases startReferenceBases,
+                                                    final ReferenceBases endReferenceBases,
+                                                    final byte[] insertedBases,
+                                                    final int insertedBasesLength) {
+        final SequenceBuilder sequence = new SequenceBuilder(insertedBasesLength +
+                startReferenceBases.getInterval().size() + endReferenceBases.getInterval().size());
+        sequence.append(startReferenceBases, startReferenceBases.getInterval().getStart(), getStart(), false);
+        final int basesBeforeInversion = sequence.getLength();
+        if (insertedBasesLength > 0) {
+            sequence.append(insertedBases);
+        }
+        final int threeEndStart = Math.max(endReferenceBases.getInterval().getStart(), getStart() + 1);
+        sequence.append(endReferenceBases, threeEndStart, getEnd(), true);
+
+        final AlignmentInterval firstInterval = new AlignmentInterval(
+                new SimpleInterval(startReferenceBases.getInterval().getContig(), startReferenceBases.getInterval().getStart(), getStart()),
+                1, basesBeforeInversion, new Cigar(Collections.singletonList(new CigarElement(basesBeforeInversion, CigarOperator.M))), true,
+                SAMRecord.UNKNOWN_MAPPING_QUALITY, AlignmentInterval.NO_AS, AlignmentInterval.NO_NM, AlnModType.NONE);
+
+        final AlignmentInterval secondInterval = new AlignmentInterval(
+                new SimpleInterval(startReferenceBases.getInterval().getContig(), threeEndStart, getEnd()),
+                basesBeforeInversion + insertedBasesLength + 1, sequence.getLength(),
+                new Cigar(Collections.singletonList(new CigarElement(sequence.getLength() - basesBeforeInversion - insertedBasesLength, CigarOperator.M))), false,
+                SAMRecord.UNKNOWN_MAPPING_QUALITY, AlignmentInterval.NO_AS, AlignmentInterval.NO_NM, AlnModType.NONE);
+
+        final List<AlignmentInterval> intervals = Arrays.asList(firstInterval, secondInterval);
+        return new ArraySVHaplotype(SVHaplotype.ALT_HAPLOTYPE_NAME, intervals, sequence.toArray(), getID(), getStartPositionInterval(), false);
+    }
+
+    private SVHaplotype compose33InversionHaplotype(final ReferenceBases startReferenceBases,
+                                                    final ReferenceBases endReferenceBases,
+                                                    final byte[] insertedBases, final int insertedBasesLength) {
+        final int invertedBasesEnd = Math.min(startReferenceBases.getInterval().getEnd(), getEnd());
+        final int basesBeforeInversionEnd = Math.min(startReferenceBases.getInterval().getEnd(), getEnd());
+
+        final SequenceBuilder sequence = new SequenceBuilder(startReferenceBases.getInterval().size()
+                + endReferenceBases.getInterval().size() + insertedBasesLength);
+        final int numberOfInvertedBases = sequence.getLength();
+
+                sequence.append(startReferenceBases, getStart() + 1, invertedBasesEnd, true);
+        if (insertedBasesLength > 0) {
+            sequence.append(insertedBases);
+        }
+        sequence.append(endReferenceBases, getEnd() + 1, endReferenceBases.getInterval().getEnd(), false);
+
+        final AlignmentInterval firstInterval = new AlignmentInterval(
+                new SimpleInterval(startReferenceBases.getInterval().getContig(), getStart() + 1, invertedBasesEnd),
+                1, numberOfInvertedBases, new Cigar(Collections.singletonList(new CigarElement(numberOfInvertedBases, CigarOperator.M))), false,
+                SAMRecord.UNKNOWN_MAPPING_QUALITY, AlignmentInterval.NO_AS, AlignmentInterval.NO_NM, AlnModType.NONE);
+
+        final AlignmentInterval secondInterval = new AlignmentInterval(
+                new SimpleInterval(startReferenceBases.getInterval().getContig(), getEnd() + 1, endReferenceBases.getInterval().getEnd()),
+                numberOfInvertedBases + insertedBasesLength + 1, sequence.getLength(),
+                new Cigar(Collections.singletonList(new CigarElement(sequence.getLength() - numberOfInvertedBases - insertedBasesLength, CigarOperator.M))), true,
+                SAMRecord.UNKNOWN_MAPPING_QUALITY, AlignmentInterval.NO_AS, AlignmentInterval.NO_NM, AlnModType.NONE);
+
+        final List<AlignmentInterval> intervals = Arrays.asList(firstInterval, secondInterval);
+        return new ArraySVHaplotype(SVHaplotype.ALT_HAPLOTYPE_NAME, intervals, sequence.toArray(), getID(), getStartPositionInterval(), false);
     }
 
     private SVHaplotype composeReferenceHaplotype(final List<ReferenceBases> referenceBases) {
@@ -203,6 +285,7 @@ public final class SVContext extends VariantContext {
             cigarElements.add(new CigarElement(nextInterval.getLengthOnReference(), CigarOperator.M));
             previousInterval = nextInterval;
         }
+        List<?> x;
         final Cigar cigar = new Cigar(cigarElements);
         final SimpleInterval startInterval = referenceBases.get(0).getInterval();
         return new ArraySVHaplotype(SVHaplotype.REF_HAPLOTYPE_NAME,
@@ -266,36 +349,55 @@ public final class SVContext extends VariantContext {
                 .distinct().collect(Collectors.toList());
     }
 
-    private SVHaplotype composeDeletionHaplotype(final List<ReferenceBases> allReferenceBases) {
-        final ReferenceBases leftReferenceBases = allReferenceBases.stream()
-                .filter(rb -> rb.getInterval().contains(getStartPositionInterval()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("input reference bases does not contain the variant position"));
-        final ReferenceBases rightReferenceBases = allReferenceBases.stream()
-                .filter(rb -> rb.getInterval().contains(getStopPositionInterval()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("input reference bases does not contain the stop position"));
+    private SVHaplotype composeDeletionHaplotype(final ReferenceMultiSource reference, final int paddingSize) {
+        final ReferenceBases beforeBases = getReferenceBases(reference, getContig(), getStart(), paddingSize);
+        final ReferenceBases afterBases = getReferenceBases(reference, getContig(), getEnd(), paddingSize);
+        final SequenceBuilder sequence = new SequenceBuilder(paddingSize * 3);
+        sequence.append(beforeBases, beforeBases.getInterval().getStart(), getStart(), false);
+        final int beforeBasesLength = sequence.getLength();
+        sequence.append(afterBases, getEnd() + 1, afterBases.getInterval().getEnd(), false);
 
-        final int deletionSize = getStructuralVariantLength();
-        final byte[] leftBases = leftReferenceBases.getSubsetBases(leftReferenceBases.getInterval().getStart(), getStart());
-        final byte[] rightBases = rightReferenceBases.getSubsetBases(getStart() + getStructuralVariantLength() + 1, rightReferenceBases.getInterval().getEnd());
-        final byte[] resultBases = Utils.concat(leftBases, rightBases);
-        final Cigar cigar = new Cigar(Arrays.asList(new CigarElement(leftBases.length, CigarOperator.M),
-                new CigarElement(deletionSize, CigarOperator.D),
-                new CigarElement(rightBases.length, CigarOperator.M)));
+        final Cigar cigar = new Cigar(Arrays.asList(new CigarElement(beforeBasesLength, CigarOperator.M),
+                new CigarElement(getEnd() - getStart() - 1, CigarOperator.D),
+                new CigarElement(sequence.getLength() - beforeBasesLength, CigarOperator.M)));
         return new ArraySVHaplotype(SVHaplotype.ALT_HAPLOTYPE_NAME,
-                Collections.singletonList(new AlignmentInterval(leftReferenceBases.getInterval().getContig(),
-                        leftReferenceBases.getInterval().getStart(), true, cigar, SAMRecord.UNKNOWN_MAPPING_QUALITY, 0,
+                Collections.singletonList(new AlignmentInterval(getContig(),
+                        beforeBases.getInterval().getStart(), true, cigar, SAMRecord.UNKNOWN_MAPPING_QUALITY, 0,
                         AlignmentInterval.NO_AS)),
-                resultBases, getUniqueID(), getStartPositionInterval(), false);
+                sequence.toArray(), getUniqueID(), getStartPositionInterval(), false);
     }
 
-    private SVHaplotype composeInsertionHaplotype(final List<ReferenceBases> allReferenceBases) {
-        final ReferenceBases referenceBases = allReferenceBases.stream()
-                .filter(rb -> rb.getInterval().contains(getStartPositionInterval()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("input reference bases does not contain the variant position"));
+    private SVHaplotype composeTandemDuplicationHaplotype(final ReferenceMultiSource reference, final int paddingSize) {
+        final ReferenceBases referenceBases = getReferenceBases(reference, getContig(), getStart(), paddingSize);
+        final SimpleInterval duplicatedUnitSpan = getDuplicatedUnitSpan();
+        final ReferenceBases duplicatedUnitBases = referenceBases.getInterval().contains(duplicatedUnitSpan) ?
+                referenceBases : getReferenceBases(reference, getDuplicatedUnitSpan());
+        final byte[] insertedSequence = getInsertedSequence();
+        final byte[] homologySequence = getHomologySequence();
+        final int insertedSequenceLength = insertedSequence == null ? 0 : insertedSequence.length;
+        final int homologySequenceLength = homologySequence == null ? 0 : homologySequence.length;
+        final SequenceBuilder sequenceBuilder = new SequenceBuilder(referenceBases.getInterval().size() + duplicatedUnitSpan.size() + insertedSequenceLength - homologySequenceLength);
+        sequenceBuilder.append(referenceBases, referenceBases.getInterval().getStart(), getStart(), false);
+        final int prefixLength = sequenceBuilder.getLength();.
+        sequenceBuilder.append(duplicatedUnitBases, duplicatedUnitBases.getInterval().getStart(), duplicatedUnitBases.getInterval().getEnd() - homologySequenceLength, false);
+        if (insertedSequenceLength > 0) {
+            sequenceBuilder.append(insertedSequence, false);
+        }
+        final int prefixPlusInsertLength = sequenceBuilder.getLength();
+        sequenceBuilder.append(referenceBases, getStart() + 1, referenceBases.getInterval().getEnd(), false);
+        final Cigar cigar = new Cigar(Arrays.asList(
+                new CigarElement(prefixLength, CigarOperator.M),
+                new CigarElement(prefixPlusInsertLength - prefixLength, CigarOperator.I),
+                new CigarElement(sequenceBuilder.getLength() - prefixPlusInsertLength, CigarOperator.M)));
+        final AlignmentInterval alignmentInterval = new AlignmentInterval(referenceBases.getInterval(), 1, sequenceBuilder.getLength(),
+                cigar, true, SAMRecord.UNKNOWN_MAPPING_QUALITY, AlignmentInterval.NO_AS, AlignmentInterval.NO_NM, AlnModType.NONE);
 
+        return new ArraySVHaplotype(SVHaplotype.ALT_HAPLOTYPE_NAME,
+                Collections.singletonList(alignmentInterval), sequenceBuilder.toArray(), getUniqueID(), getStartPositionInterval(), false);
+    }
+
+    private SVHaplotype composeInsertionHaplotype(final ReferenceMultiSource reference, final int paddingSize) {
+        final ReferenceBases referenceBases = getReferenceBases(reference, getContig(), getStart(), paddingSize);
         final byte[] insertedSequence = getInsertedSequence();
         final byte[] referenceBaseBytes = referenceBases.getBases();
         final byte[] resultBases = new byte[referenceBases.getInterval().size() + insertedSequence.length];
@@ -316,13 +418,22 @@ public final class SVContext extends VariantContext {
     /**
      * Returns the inserted sequence.
      * <p>
-     *     Currently this method relies on the annotation {@value GATKSVVCFConstants#INSERTED_SEQUENCE}.
+     *     If defined, the inserted sequence is determined by the content of the INFO annotation {@value GATKSVVCFConstants#INSERTED_SEQUENCE}.
      * </p>
      * @return {@code null} if there is no inserted sequence.
      */
     public byte[] getInsertedSequence() {
         if (hasAttribute("INSERTED_SEQUENCE")) {
             final String asString = getAttributeAsString("INSERTED_SEQUENCE", null);
+            return asString == null ? null : asString.getBytes();
+        } else  {
+            return null;
+        }
+    }
+
+    public byte[] getHomologySequence() {
+        if (hasAttribute("HOMOLOGY")) {
+            final String asString = getAttributeAsString("HOMOLOGY", null);
             return asString == null ? null : asString.getBytes();
         } else {
             return null;
@@ -386,7 +497,7 @@ public final class SVContext extends VariantContext {
         final int contigLength = dictionary.getSequence(contigName).getSequenceLength();
         final StructuralVariantType type = getStructuralVariantType();
         final int start = getStart();
-        if (type == StructuralVariantType.INS) {
+        if (type == StructuralVariantType.INS || type == StructuralVariantType.DUP) {
             return Collections.singletonList(
                     composePaddedInterval(contigName, contigLength, start, start, padding));
         } else if (type == StructuralVariantType.DEL) {
@@ -397,6 +508,14 @@ public final class SVContext extends VariantContext {
                             start + 1 + homologyPadding, padding),
                     composePaddedInterval(contigName, contigLength, end,
                             end + homologyPadding, padding));
+        } else if (type == StructuralVariantType.INV) {
+            if (is55Inversion()) {
+                return Collections.singletonList(composePaddedInterval(contigName, contigLength, start, start + 1, padding));
+            } else if (is33Inversion()) {
+                return Collections.singletonList(composePaddedInterval(contigName, contigLength, end, end + 1, padding));
+            } else {
+                throw new IllegalStateException("inversion must be either 3to3 or 5to5");
+            }
         } else {
             // Please, add more types as needed!
             throw new UnsupportedOperationException("currently only supported for INS and DELs");
@@ -465,7 +584,7 @@ public final class SVContext extends VariantContext {
         return new SimpleInterval(getContig(), getStart(), getStart());
     }
 
-    public Locatable getStopPositionInterval() {
+    public SimpleInterval getStopPositionInterval() {
         return new SimpleInterval(getContig(), getEnd(), getEnd());
     }
 
@@ -477,5 +596,37 @@ public final class SVContext extends VariantContext {
     @Override
     public boolean equals(final Object other) {
         return other != null && other instanceof SVContext && ((SVContext) other).getUniqueID().equals(getUniqueID());
+    }
+
+    public boolean is55Inversion() {
+        return hasAttribute(GATKSVVCFConstants.INV55);
+    }
+
+    public boolean is33Inversion() {
+        return hasAttribute(GATKSVVCFConstants.INV33);
+    }
+
+    private ReferenceBases getReferenceBases(final ReferenceMultiSource reference, final String contig, final int position, final int padding) {
+        try {
+            final int start = Math.max(1, position - padding);
+            final int end = Math.min(position + padding, reference.getReferenceSequenceDictionary().getSequence(contig).getSequenceLength());
+            return getReferenceBases(reference, new SimpleInterval(contig, start, end));
+        } catch (final IOException e) {
+            throw new GATKException("Exception trying to access the reference: " + e.getMessage(), e);
+        }
+    }
+
+    private ReferenceBases getReferenceBases(final ReferenceMultiSource reference, final SimpleInterval interval) {
+        try {
+            return reference.getReferenceBases(null, interval);
+        } catch (final IOException e) {
+            throw new GATKException(
+                    String.format("Exception trying to access the reference at %s: %s", interval, e.getMessage()), e);
+        }
+    }
+
+    public SimpleInterval getDuplicatedUnitSpan() {
+        final String asString  = getAttributeAsString("DUP_REPEAT_UNIT_REF_SPAN", null);
+        return asString != null && !asString.isEmpty() ? new SimpleInterval(asString) : null;
     }
 }

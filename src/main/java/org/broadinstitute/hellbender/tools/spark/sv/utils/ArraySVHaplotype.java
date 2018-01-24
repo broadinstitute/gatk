@@ -7,6 +7,7 @@ import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.SAMFlag;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
+import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
@@ -37,6 +38,11 @@ public class ArraySVHaplotype extends AbstractSVHaplotype {
     public ArraySVHaplotype(final String name, final List<AlignmentInterval> intervals, final byte[] bases, final String variantId, final SimpleInterval variantLocation, final boolean isContig) {
         super(name, intervals, variantId, variantLocation);
         this.bases = bases;
+        for (int i = 0; i < bases.length; i++) {
+            if (Nucleotide.decode(bases[i]) == Nucleotide.INVALID) {
+                throw new IllegalArgumentException("invalid base at " + i + " " + bases[i]);
+            }
+        }
         this.isContig = isContig;
     }
 

@@ -45,7 +45,7 @@ public final class AlignedContig {
         if (read.isUnmapped()) {
             throw new IllegalArgumentException("the input read cannot be unmapped");
         } else if (read.getCigar().isEmpty() || read.getCigar().containsOperator(CigarOperator.H)) {
-            throw new IllegalArgumentException("the input read must have a cigar and cannot have hard-clips");
+            throw new IllegalArgumentException("the input read must have a cigar and cannot have hard-clips: " + read.getName() + " " + read.getCigar() + " " + read.getBases().length);
         } else {
             final byte[] bases = read.getBases();
             if (read.isReverseStrand()) {
@@ -141,7 +141,7 @@ public final class AlignedContig {
                     next = reads.hasNext() ? reads.next() : null;
                 } while (next != null);
                 if (basesDefined < length) {
-                    throw new IllegalArgumentException("missing bases when looking across all the record provided");
+                    throw new IllegalArgumentException("missing bases when looking across all the record provided: " + name + " " + basesDefined + " " + length + " " + AlignmentInterval.encode(alignmentIntervals));
                 }
                 return new AlignedContig(name, bases, alignmentIntervals, false);
             }

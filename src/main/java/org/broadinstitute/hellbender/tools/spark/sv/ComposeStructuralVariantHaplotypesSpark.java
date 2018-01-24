@@ -46,6 +46,7 @@ import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
 import org.broadinstitute.hellbender.utils.collections.IntervalsSkipList;
 import org.broadinstitute.hellbender.utils.gcs.BamBucketIoUtils;
+import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.FastaReferenceWriter;
 import scala.Tuple2;
@@ -303,17 +304,75 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
     private static List<GATKRead> removeRepeatedReads(final List<GATKRead> original) {
         if (original.size() < 1) {
             return original;
-        } else if (original.size() == 2 && GATK_WITHIN_READ_RECORD_COMPARATOR.compare(original.get(0), original.get(1)) == 0) {
+        } else if (original.size() == 2 && sameRead(original.get(0), original.get(1))) {
             return Collections.singletonList(original.get(0));
         } else {
+
             final List<GATKRead> result = new ArrayList<>(original.size());
             original.stream().sorted(GATK_WITHIN_READ_RECORD_COMPARATOR).forEach(r -> {
-                if (result.isEmpty() || GATK_WITHIN_READ_RECORD_COMPARATOR.compare(result.get(result.size() - 1), r) != 0) {
+                if (result.isEmpty() || !sameRead(result.get(result.size() - 1), r)) {
                     result.add(r);
                 }
             });
             return result;
         }
+    }
+
+
+    private static boolean sameRead(final GATKRead r1, final GATKRead r2) {
+        if (r1 == r2) {
+            return true;
+        } else if (!r1.getName().equals(r2.getName())) {
+            return false;
+        } else if (!r1.getContig().equals(r2.getContig())) {
+            return false;
+        } else if (r1.isUnmapped() != r2.isUnmapped()) {
+            return false;
+        } else if (r1.isPaired() != r2.isPaired()) {
+            return false;
+        } else if (Objects.equals(r1.getReadGroup(), r2.getReadGroup())) {
+            return false;
+        }
+        if (!r1.isUnmapped()) {
+            if (r1.getStart() != r2.getStart()) {
+                return false;
+            } else if (r1.getUnclippedStart() != r2.getUnclippedStart()) {
+                return false;
+            } else if (r1.getEnd() != r2.getEnd()) {
+                return false;
+            } else if (r1.getUnclippedEnd() != r2.getUnclippedEnd()) {
+                return false;
+            } else if (r1.getMappingQuality() != r2.getMappingQuality()) {
+                return false;
+            } else if (r1.isReverseStrand() != r2.isReverseStrand()) {
+                return false;
+            } else if (r1.isSecondaryAlignment() != r2.isSecondaryAlignment()) {
+                return false;
+            } else if (r1.isSupplementaryAlignment() != r2.isSupplementaryAlignment()) {
+                return false;
+            } else if (!CigarUtils.equals(r1.getCigar(), r2.getCigar())) {
+                return false;
+            }
+        }
+        if (r1.isPaired()) {
+            if (r1.mateIsUnmapped() != r2.mateIsUnmapped()) {
+                return false;
+            } else if (!r1.mateIsUnmapped()) {
+              if (r1.mateIsReverseStrand() != r2.mateIsReverseStrand()) {
+                  return false;
+              } else if (!r1.getMateContig().equals(r2.getMateContig())) {
+                  return false;
+              } else if (r1.getMateStart() != r2.getMateStart()) {
+                  return false;
+              }
+            }
+        }
+        if (r1.getBases() != r2.getBases()) {
+            return false;
+        } else if (r1.getBases() != null && !Arrays.equals(r1.getBases(), r2.getBases())) {
+            return false;
+        }
+        return true;
     }
 
     private static final Comparator<GATKRead> GATK_WITHIN_READ_RECORD_COMPARATOR =
@@ -328,7 +387,11 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
             return false;
         } else if (type == StructuralVariantType.INS || type == StructuralVariantType.DEL) {
             return vc.hasAttribute(GATKSVVCFConstants.SVLEN); // for now we skip indels without SVLEN... there are some, perhaps a bug
-        } else  {
+        } else if (type == StructuralVariantType.DUP) {
+            return true;
+        } else if (type == StructuralVariantType.INV) {
+            return true;
+        } else {
             return false;
         }
     }
