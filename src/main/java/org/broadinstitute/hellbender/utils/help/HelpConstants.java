@@ -49,9 +49,6 @@ public final class HelpConstants {
     public final static String DOC_CAT_SV_DISCOVERY = "Structural Variant Discovery";
     public final static String DOC_CAT_SV_DISCOVERY_SUMMARY = "Tools that detect structural variants";
 
-    public final static String DOC_CAT_TEST = "Test Tools";
-    public final static String DOC_CAT_TEST_SUMMARY = "Tools for internal test purposes";
-
     public final static String DOC_CAT_RNA = "RNA-Specific Tools";
     public final static String DOC_CAT_RNA_SUMMARY = "Tools intended to be used for processing RNA data.";
 
@@ -80,7 +77,6 @@ public final class HelpConstants {
 
             // supercat Exclude
             groupToSuperCategory.put(DOC_CAT_EXAMPLE, picard.util.help.HelpConstants.DOC_SUPERCAT_EXCLUDE);
-            groupToSuperCategory.put(DOC_CAT_TEST, picard.util.help.HelpConstants.DOC_SUPERCAT_EXCLUDE);
         }
         return groupToSuperCategory;
     }

@@ -1,9 +1,8 @@
 package org.broadinstitute.hellbender.engine;
 
 
-import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
+import picard.cmdline.programgroups.Testing;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
@@ -18,7 +17,7 @@ public class TwoPassReadsWalkerUnitTest extends CommandLineProgramTest{
     @CommandLineProgramProperties(
             summary = "Dummy that reads file and counts it twice",
             oneLineSummary = "empty class",
-            programGroup = TestProgramGroup.class
+            programGroup = Testing.class
     )
     private static class dummyTwoPassReadsWalker extends TwoPassReadWalker {
         public int firstPass = 0;

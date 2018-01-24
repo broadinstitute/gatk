@@ -22,7 +22,7 @@ import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
+import picard.cmdline.programgroups.Testing;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
@@ -54,7 +54,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
     @CommandLineProgramProperties(
             summary = "TestGATKToolWithSequenceDictionary",
             oneLineSummary = "TestGATKToolWithSequenceDictionary",
-            programGroup = TestProgramGroup.class
+            programGroup = Testing.class
     )
     private static final class TestGATKToolWithSequenceDictionary extends GATKTool {
 
@@ -67,7 +67,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
     @CommandLineProgramProperties(
             summary = "TestGATKToolWithReads",
             oneLineSummary = "TestGATKToolWithReads",
-            programGroup = TestProgramGroup.class
+            programGroup = Testing.class
     )
     private static final class TestGATKToolWithReads extends GATKTool{
 
@@ -89,7 +89,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
     @CommandLineProgramProperties(
             summary = "TestGATKToolWithFeatures",
             oneLineSummary = "TestGATKToolWithFeatures",
-            programGroup = TestProgramGroup.class
+            programGroup = Testing.class
     )
     private static final class TestGATKToolWithFeatures extends GATKTool{
 
@@ -110,7 +110,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
     @CommandLineProgramProperties(
             summary = "TestGATKToolValidationStringency",
             oneLineSummary = "TestGATKToolValidationStringency",
-            programGroup = TestProgramGroup.class
+            programGroup = Testing.class
     )
     private static final class TestGATKToolValidationStringency extends GATKTool {
         private int count = 0;
@@ -135,7 +135,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
     @CommandLineProgramProperties(
             summary = "TestGATKToolWithNothing",
             oneLineSummary = "TestGATKToolWithNothing",
-            programGroup = TestProgramGroup.class
+            programGroup = Testing.class
     )
     private static final class TestGATKToolWithNothing extends GATKTool{
 
@@ -148,7 +148,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
     @CommandLineProgramProperties(
             summary = "TestGATKToolWithVariants",
             oneLineSummary = "TestGATKToolWithVariants",
-            programGroup = TestProgramGroup.class
+            programGroup = Testing.class
     )
     private static final class TestGATKToolWithVariants extends GATKTool{
 
@@ -655,7 +655,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
     @CommandLineProgramProperties(
             summary = "TestGATKVariantToolWithNoSequenceDictionary",
             oneLineSummary = "TestGATKVariantToolWithNoSequenceDictionary",
-            programGroup = TestProgramGroup.class
+            programGroup = Testing.class
     )
     private static final class TestGATKVariantToolWithNoSequenceDictionary extends GATKTool{
         @Argument(fullName="output", shortName="out", doc="Input variants", optional=true)

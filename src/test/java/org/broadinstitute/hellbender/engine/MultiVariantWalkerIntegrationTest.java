@@ -4,7 +4,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
+import picard.cmdline.programgroups.Testing;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -31,7 +31,7 @@ public final class MultiVariantWalkerIntegrationTest extends CommandLineProgramT
     @CommandLineProgramProperties(
             summary = "TestGATKToolWithFeatures",
             oneLineSummary = "TestGATKToolWithFeatures",
-            programGroup = TestProgramGroup.class
+            programGroup = Testing.class
     )
     private static final class TestMultiVariantWalker extends MultiVariantWalker {
 
@@ -118,7 +118,7 @@ public final class MultiVariantWalkerIntegrationTest extends CommandLineProgramT
     @CommandLineProgramProperties(
             summary = "TestGATKToolWithFeatures",
             oneLineSummary = "TestGATKToolWithFeatures",
-            programGroup = TestProgramGroup.class
+            programGroup = Testing.class
     )
     private static final class TestMultiVariantWalkerIterator extends MultiVariantWalker {
         String expectedIDOrder[];

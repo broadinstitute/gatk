@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
+import picard.cmdline.programgroups.Testing;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
@@ -20,7 +20,7 @@ public class ReadWalkerUnitTest extends CommandLineProgramTest {
     @CommandLineProgramProperties(
             summary = "Dummy that reads file and count how many reads are transformed",
             oneLineSummary = "empty class",
-            programGroup = TestProgramGroup.class
+            programGroup = Testing.class
     )
     private static class TestTransformedReadWalker extends ReadWalker {
         public int preTransformed = 0;

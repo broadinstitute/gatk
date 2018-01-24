@@ -8,7 +8,7 @@ import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
+import picard.cmdline.programgroups.Testing;
 import org.broadinstitute.hellbender.engine.filters.ReadNameReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.examples.ExampleVariantWalker;
@@ -66,7 +66,7 @@ public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
     @CommandLineProgramProperties(
             summary = "TestGATKToolWithFeatures",
             oneLineSummary = "TestGATKToolWithFeatures",
-            programGroup = TestProgramGroup.class
+            programGroup = Testing.class
     )
     private static final class TestGATKToolWithFeatures extends VariantWalker{
 
