@@ -81,7 +81,7 @@ workflow Mutect2 {
     String? m2_extra_filtering_args
     String? split_intervals_extra_args
     Boolean? make_bamout
-    Boolean bamout = select_first([make_bamout, false])
+    Boolean generate_bamout = select_first([make_bamout, false])
 
     # oncotator inputs
     Boolean? run_oncotator
@@ -157,7 +157,7 @@ workflow Mutect2 {
                 gnomad_index = gnomad_index,
                 preemptible_attempts = preemptible_attempts,
                 m2_extra_args = m2_extra_args,
-                bamout = bamout,
+                generate_bamout = generate_bamout,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts,
@@ -185,7 +185,7 @@ workflow Mutect2 {
             disk_space = ceil(SumSubVcfs.total_size * large_input_to_output_multiplier) + disk_pad
     }
 
-    if (bamout) {
+    if (generate_bamout) {
         call SumFloats as SumSubBamouts {
             input:
                 sizes = sub_bamout_size,
@@ -366,7 +366,7 @@ task M2 {
     File? gnomad
     File? gnomad_index
     String? m2_extra_args
-    Boolean? bamout
+    Boolean? generate_bamout
 
     File? gatk_override
 
@@ -416,7 +416,7 @@ task M2 {
             ${"-pon " + pon} \
             ${"-L " + intervals} \
             -O "output.vcf" \
-            ${true='--bam-output bamout.bam' false='' bamout} \
+            ${true='--bam-output bamout.bam' false='' generate_bamout} \
             ${m2_extra_args}
     >>>
 
