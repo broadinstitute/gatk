@@ -49,9 +49,6 @@ public final class HelpConstants {
     public final static String DOC_CAT_SV_DISCOVERY = "Structural Variant Discovery";
     public final static String DOC_CAT_SV_DISCOVERY_SUMMARY = "Tools that detect structural variants";
 
-    public final static String DOC_CAT_RNA = "RNA-Specific Tools";
-    public final static String DOC_CAT_RNA_SUMMARY = "Tools intended to be used for processing RNA data.";
-
     // End GATK Program groups
 
     private static Map<String, String> groupToSuperCategory;
