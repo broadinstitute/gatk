@@ -65,7 +65,6 @@ workflow Mutect2 {
     File tumor_bai
     File? normal_bam
     File? normal_bai
-    String output_vcf_name = basename(tumor_bam, ".bam") + ".vcf"
     File? pon
     File? pon_index
     Int scatter_count
@@ -82,6 +81,8 @@ workflow Mutect2 {
     String? split_intervals_extra_args
     Boolean? make_bamout
     Boolean generate_bamout = select_first([make_bamout, false])
+    Boolean? compress_vcfs
+    Boolean compress = select_first([compress_vcfs, false])
 
     # oncotator inputs
     Boolean? run_oncotator
@@ -123,6 +124,14 @@ workflow Mutect2 {
     # Small is for metrics/other vcfs
     Float large_input_to_output_multiplier = 2.25
     Float small_input_to_output_multiplier = 2.0
+
+    # logic about output file names -- these are the names *without* .vcf extensions
+    String output_basename = basename(tumor_bam, ".bam")
+    String unfiltered_name = output_basename + "-unfiltered"
+    String filtered_name = output_basename + "-filtered"
+
+
+    String output_vcf_name = basename(tumor_bam, ".bam") + ".vcf"
 
 
     call SplitIntervals {
@@ -178,7 +187,8 @@ workflow Mutect2 {
     call MergeVCFs {
         input:
             input_vcfs = M2.output_vcf,
-            output_vcf_name = output_vcf_name,
+            output_name = unfiltered_name,
+            compress = compress,
             gatk_override = gatk_override,
             gatk_docker = gatk_docker,
             preemptible_attempts = preemptible_attempts,
@@ -198,7 +208,7 @@ workflow Mutect2 {
                 ref_fai = ref_fai,
                 ref_dict = ref_dict,
                 bam_outs = M2.output_bamOut,
-                output_vcf_name = basename(MergeVCFs.output_vcf, ".vcf"),
+                output_vcf_name = basename(MergeVCFs.merged_vcf, ".vcf"),
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 disk_space = ceil(SumSubBamouts.total_size * large_input_to_output_multiplier) + disk_pad
@@ -242,11 +252,13 @@ workflow Mutect2 {
             gatk_override = gatk_override,
             gatk_docker = gatk_docker,
             intervals = intervals,
-            unfiltered_vcf = MergeVCFs.output_vcf,
+            unfiltered_vcf = MergeVCFs.merged_vcf,
+            output_name = filtered_name,
+            compress = compress,
             preemptible_attempts = preemptible_attempts,
             contamination_table = CalculateContamination.contamination_table,
             m2_extra_filtering_args = m2_extra_filtering_args,
-            disk_space = ceil(size(MergeVCFs.output_vcf, "GB") * small_input_to_output_multiplier) + disk_pad,
+            disk_space = ceil(size(MergeVCFs.merged_vcf, "GB") * small_input_to_output_multiplier) + disk_pad,
             auth = auth
     }
 
@@ -258,6 +270,8 @@ workflow Mutect2 {
             input:
                 gatk_override = gatk_override,
                 input_vcf = Filter.filtered_vcf,
+                output_name = filtered_name,
+                compress = compress,
                 gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts,
                 pre_adapter_metrics = input_artifact_metrics,
@@ -287,8 +301,8 @@ workflow Mutect2 {
     }
 
     output {
-        File unfiltered_vcf = MergeVCFs.output_vcf
-        File unfiltered_vcf_index = MergeVCFs.output_vcf_index
+        File unfiltered_vcf = MergeVCFs.merged_vcf
+        File unfiltered_vcf_index = MergeVCFs.merged_vcf_index
         File filtered_vcf = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
         File filtered_vcf_index = select_first([FilterByOrientationBias.filtered_vcf_index, Filter.filtered_vcf_index])
         File? contamination_table = CalculateContamination.contamination_table
@@ -415,7 +429,7 @@ task M2 {
             ${"--germline-resource " + gnomad} \
             ${"-pon " + pon} \
             ${"-L " + intervals} \
-            -O "output.vcf" \
+            -O "output.vcf.gz" \
             ${true='--bam-output bamout.bam' false='' generate_bamout} \
             ${m2_extra_args}
     >>>
@@ -429,7 +443,7 @@ task M2 {
     }
 
     output {
-        File output_vcf = "output.vcf"
+        File output_vcf = "output.vcf.gz"
         File output_bamOut = "bamout.bam"
         String tumor_sample = read_string("tumor_name.txt")
         String normal_sample = read_string("normal_name.txt")
@@ -439,7 +453,11 @@ task M2 {
 task MergeVCFs {
     # inputs
     Array[File] input_vcfs
-    String output_vcf_name
+    String output_name
+    Boolean compress
+    String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
+    String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
+
 
     File? gatk_override
 
@@ -460,7 +478,7 @@ task MergeVCFs {
     command {
         set -e
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
-        gatk --java-options "-Xmx${command_mem}m" MergeVcfs -I ${sep=' -I ' input_vcfs} -O ${output_vcf_name}
+        gatk --java-options "-Xmx${command_mem}m" MergeVcfs -I ${sep=' -I ' input_vcfs} -O ${output_vcf}
     }
 
     runtime {
@@ -472,8 +490,8 @@ task MergeVCFs {
     }
 
     output {
-        File output_vcf = "${output_vcf_name}"
-        File output_vcf_index = "${output_vcf_name}.idx"
+        File merged_vcf = "${output_vcf}"
+        File merged_vcf_index = "${output_vcf_index}"
     }
 }
 
@@ -626,7 +644,10 @@ task Filter {
     # inputs
     File? intervals
     File unfiltered_vcf
-    String filtered_vcf_name = basename(unfiltered_vcf, ".vcf") + "-filtered.vcf"
+    String output_name
+    Boolean compress
+    String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
+    String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
     File? contamination_table
     String? m2_extra_filtering_args
 
@@ -659,7 +680,7 @@ task Filter {
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
         gatk --java-options "-Xmx${command_mem}m" FilterMutectCalls -V ${unfiltered_vcf} \
-      	    -O ${filtered_vcf_name} \
+      	    -O ${output_vcf} \
       	    ${"--contamination-table " + contamination_table} \
       	    ${m2_extra_filtering_args}
     }
@@ -673,8 +694,8 @@ task Filter {
     }
 
     output {
-        File filtered_vcf = "${filtered_vcf_name}"
-        File filtered_vcf_index = "${filtered_vcf_name}.idx"
+        File filtered_vcf = "${output_vcf}"
+        File filtered_vcf_index = "${output_vcf_index}"
     }
 }
 
@@ -682,7 +703,10 @@ task FilterByOrientationBias {
     # input
     File? gatk_override
     File input_vcf
-    String filtered_vcf_name = basename(input_vcf, ".vcf") + "-ob-filtered.vcf"
+    String output_name
+    Boolean compress
+    String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
+    String output_vcf_index = output_vcf +  if compress then ".tbi" else ".idx"
     File pre_adapter_metrics
     Array[String]? artifact_modes
 
@@ -716,7 +740,7 @@ task FilterByOrientationBias {
             -V ${input_vcf} \
             -AM ${sep=" -AM " artifact_modes} \
             -P ${pre_adapter_metrics} \
-            -O ${filtered_vcf_name}
+            -O ${output_vcf}
     }
 
     runtime {
@@ -728,8 +752,8 @@ task FilterByOrientationBias {
     }
 
     output {
-        File filtered_vcf = "${filtered_vcf_name}"
-        File filtered_vcf_index = "${filtered_vcf_name}.idx"
+        File filtered_vcf = "${output_vcf}"
+        File filtered_vcf_index = "${output_vcf_index}"
     }
 }
 

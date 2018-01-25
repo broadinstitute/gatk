@@ -7,11 +7,10 @@
   "Mutect2_Multi.ref_dict": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/human_g1k_v37.20.21.dict",
   "Mutect2_Multi.pair_list": "/home/travis/build/broadinstitute/gatk/scripts/m2_cromwell_tests/pair_list",
   "Mutect2_Multi.scatter_count": 2,
-  "Mutect2_Multi.dbsnp": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/dbsnp_138.b37.20.21.vcf",
-  "Mutect2_Multi.dbsnp_index": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/dbsnp_138.b37.20.21.vcf.idx",
-  "Mutect2_Multi.is_run_orientation_bias_filter": true,
-  "Mutect2_Multi.is_run_oncotator": true,
+  "Mutect2_Multi.run_orientation_bias_filter": true,
+  "Mutect2_Multi.run_oncotator": true,
   "Mutect2_Multi.preemptible_attempts": 2,
   "Mutect2_Multi.artifact_modes": ["G/T", "C/T"],
+  "Mutect2_Multi.compress_vcfs": false,
   "Mutect2_Multi.onco_ds_local_db_dir": "/root/"
 }

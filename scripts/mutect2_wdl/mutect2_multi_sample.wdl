@@ -38,6 +38,7 @@ workflow Mutect2_Multi {
 	Array[String]? artifact_modes
 	String? m2_extra_args
     String? m2_extra_filtering_args
+    Boolean? compress_vcfs
     Boolean? make_bamout
 
     # Oncotator inputs
@@ -91,6 +92,7 @@ workflow Mutect2_Multi {
                 sequence_source = sequence_source,
                 default_config_file = default_config_file,
                 make_bamout = make_bamout,
+                compress_vcfs = compress_vcfs,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 oncotator_docker = oncotator_docker,
