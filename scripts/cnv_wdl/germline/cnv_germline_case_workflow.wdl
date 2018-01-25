@@ -105,6 +105,9 @@ workflow CNVGermlineCaseWorkflow {
             intervals = PreprocessIntervals.preprocessed_intervals,
             bam = bam,
             bam_idx = bam_idx,
+            ref_fasta = ref_fasta,
+            ref_fasta_fai = ref_fasta_fai,
+            ref_fasta_dict = ref_fasta_dict,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
             preemptible_attempts = preemptible_attempts

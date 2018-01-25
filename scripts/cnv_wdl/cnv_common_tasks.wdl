@@ -89,6 +89,9 @@ task CollectCounts {
     File intervals
     File bam
     File bam_idx
+    File ref_fasta
+    File ref_fasta_fai
+    File ref_fasta_dict
     String? format
     File? gatk4_jar_override
 
@@ -110,8 +113,9 @@ task CollectCounts {
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
         gatk --java-options "-Xmx${command_mem_mb}m" CollectFragmentCounts \
-            --input ${bam} \
             -L ${intervals} \
+            --input ${bam} \
+            --reference ${ref_fasta} \
             --format ${default="HDF5" format} \
             --interval-merging-rule OVERLAPPING_ONLY \
             --output ${counts_filename}

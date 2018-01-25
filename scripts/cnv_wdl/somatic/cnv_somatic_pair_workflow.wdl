@@ -74,6 +74,9 @@ workflow CNVSomaticPairWorkflow {
             intervals = PreprocessIntervals.preprocessed_intervals,
             bam = tumor_bam,
             bam_idx = tumor_bam_idx,
+            ref_fasta = ref_fasta,
+            ref_fasta_fai = ref_fasta_fai,
+            ref_fasta_dict = ref_fasta_dict,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
             disk_space_gb = collect_counts_tumor_disk
@@ -85,6 +88,9 @@ workflow CNVSomaticPairWorkflow {
             intervals = PreprocessIntervals.preprocessed_intervals,
             bam = normal_bam,
             bam_idx = normal_bam_idx,
+            ref_fasta = ref_fasta,
+            ref_fasta_fai = ref_fasta_fai,
+            ref_fasta_dict = ref_fasta_dict,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
             disk_space_gb = collect_counts_normal_disk
