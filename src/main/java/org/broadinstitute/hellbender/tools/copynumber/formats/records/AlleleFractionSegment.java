@@ -50,7 +50,6 @@ public class AlleleFractionSegment implements Locatable {
         return numPoints;
     }
 
-
     @Override
     public boolean equals(Object o) {
         if (this == o) {

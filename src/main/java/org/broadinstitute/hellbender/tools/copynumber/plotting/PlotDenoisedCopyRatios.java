@@ -204,5 +204,4 @@ public final class PlotDenoisedCopyRatios extends CommandLineProgram {
                 "--output_prefix=" + outputPrefix);
         executor.exec();
     }
-
 }
