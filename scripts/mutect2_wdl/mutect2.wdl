@@ -92,6 +92,15 @@ workflow Mutect2 {
     String? sequence_source
     File? default_config_file
 
+    # funcotator inputs
+    Boolean? run_funcotator
+    String? reference_version
+    String? data_sources_tar_gz
+    String? transcript_selection_mode
+    Array[String]? transcript_selection_list
+    Array[String]? annotation_defaults
+    Array[String]? annotation_overrides
+
     File? gatk_override
 
     # runtime
@@ -129,6 +138,7 @@ workflow Mutect2 {
     String output_basename = basename(tumor_bam, ".bam")
     String unfiltered_name = output_basename + "-unfiltered"
     String filtered_name = output_basename + "-filtered"
+    String funcotated_name = output_basename + "-funcotated"
 
 
     String output_vcf_name = basename(tumor_bam, ".bam") + ".vcf"
@@ -300,6 +310,27 @@ workflow Mutect2 {
         }
     }
 
+    if (select_first([run_funcotator, false])) {
+        File funcotate_vcf_input = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
+        call Funcotate {
+            input:
+                m2_vcf = funcotate_vcf_input,
+                ref_fasta = ref_fasta,
+                ref_fai = ref_fai,
+                ref_dict = ref_dict,
+                reference_version = select_first([reference_version, "NO_REFERENCE_VERSION_GIVEN"]),
+                output_name = funcotated_name,
+                compress = compress,
+                data_sources_tar_gz = data_sources_tar_gz,
+                transcript_selection_mode = transcript_selection_mode,
+                transcript_selection_list = transcript_selection_list,
+                annotation_defaults = annotation_defaults,
+                annotation_overrides = annotation_overrides,
+                gatk_docker = gatk_docker,
+                gatk_override = gatk_override
+        }
+    }
+
     output {
         File unfiltered_vcf = MergeVCFs.merged_vcf
         File unfiltered_vcf_index = MergeVCFs.merged_vcf_index
@@ -308,6 +339,8 @@ workflow Mutect2 {
         File? contamination_table = CalculateContamination.contamination_table
 
         File? oncotated_m2_maf = oncotate_m2.oncotated_m2_maf
+        File? funcotated_vcf = Funcotate.funcotated_vcf
+        File? funcotated_vcf_index = Funcotate.funcotated_vcf_index
         File? preadapter_detail_metrics = CollectSequencingArtifactMetrics.pre_adapter_metrics
         File? bamout = MergeBamOuts.merged_bam_out
         File? bamout_index = MergeBamOuts.merged_bam_out_index
@@ -845,6 +878,96 @@ task SumFloats {
         docker: "python:2.7"
         disks: "local-disk " + 10 + " HDD"
         preemptible: select_first([preemptible_attempts, 10])
+    }
+}
+
+task Funcotate {
+    # inputs
+    File ref_fasta
+    File ref_fai
+    File ref_dict
+    File m2_vcf
+    String reference_version
+    String output_name
+    Boolean compress
+    String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
+    String output_vcf_index = output_vcf +  if compress then ".tbi" else ".idx"
+
+    File? data_sources_tar_gz
+    String? transcript_selection_mode
+    Array[String]? transcript_selection_list
+    Array[String]? annotation_defaults
+    Array[String]? annotation_overrides
+
+    # ==============
+    # Process input args:
+    String transcript_selection_arg = if defined(transcript_selection_list) then " --transcript-list " else ""
+    String annotation_def_arg = if defined(annotation_defaults) then " --annotation-default " else ""
+    String annotation_over_arg = if defined(annotation_overrides) then " --annotation-override " else ""
+    # ==============
+
+    # runtime
+
+    String gatk_docker
+    File? gatk_override
+    Int? mem
+    Int? preemptible_attempts
+    Int? disk_space_gb
+    Int? cpu
+
+    Boolean use_ssd = false
+
+    # You may have to change the following two parameter values depending on the task requirements
+    Int default_ram_mb = 3000
+    # WARNING: In the workflow, you should calculate the disk space as an input to this task (disk_space_gb).  Please see [TODO: Link from Jose] for examples.
+    Int default_disk_space_gb = 100
+
+    # Mem is in units of GB but our command and memory runtime values are in MB
+    Int machine_mem = if defined(mem) then mem *1000 else default_ram_mb
+    Int command_mem = machine_mem - 1000
+
+    command <<<
+        set -e
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+
+        DATA_SOURCES_TAR_GZ=${data_sources_tar_gz}
+        if [[ ! -e $DATA_SOURCES_TAR_GZ ]] ; then
+            # We have to download the data sources:
+            echo "Data sources gzip does not exist: $DATA_SOURCES_TAR_GZ"
+            echo "Downloading default data sources..."
+            wget ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/funcotator_dataSources.v1.0.20180105.tar.gz
+            tar -zxf funcotator_dataSources.v1.0.20180105.tar.gz
+            DATA_SOURCES_FOLDER=funcotator_dataSources.v1.0.20180105
+        else
+            # Extract the tar.gz:
+            mkdir datasources_dir
+            tar zxvf ${data_sources_tar_gz} -C datasources_dir --strip-components 1
+            DATA_SOURCES_FOLDER="$PWD/datasources_dir"
+        fi
+
+        gatk --java-options "-Xmx${command_mem}m" Funcotator \
+            --data-sources-path $DATA_SOURCES_FOLDER \
+            --ref-version ${reference_version} \
+            -R ${ref_fasta} \
+            -V ${m2_vcf} \
+            -O ${output_vcf} \
+            ${"--transcript-selection-mode " + transcript_selection_mode} \
+            ${transcript_selection_arg}${default="" sep=" --transcript-list " transcript_selection_list} \
+            ${annotation_def_arg}${default="" sep=" --annotation-default " annotation_defaults} \
+            ${annotation_over_arg}${default="" sep=" --annotation-override " annotation_overrides}
+    >>>
+
+    runtime {
+        docker: gatk_docker
+        memory: machine_mem + " MB"
+        disks: "local-disk " + select_first([disk_space_gb, default_disk_space_gb]) + if use_ssd then " SSD" else " HDD"
+        preemptible: select_first([preemptible_attempts, 3])
+        cpu: select_first([cpu, 1])
+    }
+
+    output {
+        File funcotated_vcf = "${output_vcf}"
+        File funcotated_vcf_index = "${output_vcf_index}"
     }
 }
 
