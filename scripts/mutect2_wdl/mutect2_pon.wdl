@@ -1,7 +1,6 @@
 #  Create a Mutect2 panel of normals
 #
 #  Description of inputs
-#  gatk: java jar file containing gatk 4
 #  intervals: genomic intervals
 #  ref_fasta, ref_fai, ref_dict: reference genome, index, and dictionary
 #  normal_bams, normal_bais: arrays of normal bams and bam indices
@@ -51,8 +50,8 @@ workflow Mutect2_Panel {
                 tumor_bai = normal_bai,
                 scatter_count = scatter_count,
                 m2_extra_args = m2_extra_args,
-                is_run_orientation_bias_filter = false,
-                is_run_oncotator = false,
+                run_orientation_bias_filter = false,
+                run_oncotator = false,
                 oncotator_docker = gatk_docker,
                 artifact_modes = [""],
                 gatk_override = gatk_override,
