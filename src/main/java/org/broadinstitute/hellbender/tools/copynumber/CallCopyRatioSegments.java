@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGrou
 import org.broadinstitute.hellbender.tools.copynumber.caller.SimpleCopyRatioCaller;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CalledCopyRatioSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioSegmentCollection;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 
@@ -70,7 +71,8 @@ import java.io.File;
 @DocumentedFeature
 @BetaFeature
 public final class CallCopyRatioSegments extends CommandLineProgram {
-    public static final String NEUTRAL_SEGMENT_COPY_RATIO_THRESHOLD_LONG_NAME = "neutral-segment-copy-ratio-threshold";
+    public static final String NEUTRAL_SEGMENT_COPY_RATIO_LOWER_BOUND_LONG_NAME = "neutral-segment-copy-ratio-lower-bound";
+    public static final String NEUTRAL_SEGMENT_COPY_RATIO_UPPER_BOUND_LONG_NAME = "neutral-segment-copy-ratio-upper-bound";
     public static final String OUTLIER_NEUTRAL_SEGMENT_COPY_RATIO_Z_SCORE_THRESHOLD_LONG_NAME = "outlier-neutral-segment-copy-ratio-z-score-threshold";
     public static final String CALLING_COPY_RATIO_Z_SCORE_THRESHOLD_LONG_NAME = "calling-copy-ratio-z-score-threshold";
 
@@ -89,12 +91,20 @@ public final class CallCopyRatioSegments extends CommandLineProgram {
     private File outputCalledCopyRatioSegmentsFile;
 
     @Argument(
-            doc = "Threshold on non-log2 copy ratio used for determining copy-neutral segments.  " +
-                    "If non-log2 copy ratio is within 1 +/- this threshold, a segment is considered copy-neutral.",
-            fullName = NEUTRAL_SEGMENT_COPY_RATIO_THRESHOLD_LONG_NAME,
-            optional = true
+            doc = "Lower bound on non-log2 copy ratio used for determining copy-neutral segments.",
+            fullName = NEUTRAL_SEGMENT_COPY_RATIO_LOWER_BOUND_LONG_NAME,
+            optional = true,
+            minValue = 0.
     )
-    private double neutralSegmentCopyRatioThreshold = 0.1;
+    private double neutralSegmentCopyRatioLowerBound = 0.9;
+
+    @Argument(
+            doc = "Upper bound on non-log2 copy ratio used for determining copy-neutral segments.",
+            fullName = NEUTRAL_SEGMENT_COPY_RATIO_UPPER_BOUND_LONG_NAME,
+            optional = true,
+            minValue = 0.
+    )
+    private double neutralSegmentCopyRatioUpperBound = 1.1;
 
     @Argument(
             doc = "Threshold on z-score of non-log2 copy ratio used for determining outlier copy-neutral segments.  " +
@@ -117,10 +127,14 @@ public final class CallCopyRatioSegments extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
+        Utils.validateArg(neutralSegmentCopyRatioLowerBound < neutralSegmentCopyRatioUpperBound,
+                "Copy-neutral lower bound must be less than upper bound.");
+
         final CopyRatioSegmentCollection copyRatioSegments = new CopyRatioSegmentCollection(inputCopyRatioSegmentsFile);
         final CalledCopyRatioSegmentCollection calledCopyRatioSegments =
                 new SimpleCopyRatioCaller(copyRatioSegments,
-                        neutralSegmentCopyRatioThreshold, outlierNeutralSegmentCopyRatioZScoreThreshold, callingCopyRatioZScoreThreshold)
+                        neutralSegmentCopyRatioLowerBound, neutralSegmentCopyRatioUpperBound,
+                        outlierNeutralSegmentCopyRatioZScoreThreshold, callingCopyRatioZScoreThreshold)
                         .makeCalls();
         calledCopyRatioSegments.write(outputCalledCopyRatioSegmentsFile);
 

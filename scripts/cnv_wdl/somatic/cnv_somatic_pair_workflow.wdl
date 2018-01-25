@@ -442,7 +442,8 @@ task ModelSegments {
 task CallCopyRatioSegments {
     String entity_id
     File copy_ratio_segments
-    Float? neutral_segment_copy_ratio_threshold
+    Float? neutral_segment_copy_ratio_lower_bound
+    Float? neutral_segment_copy_ratio_upper_bound
     Float? outlier_neutral_segment_copy_ratio_z_score_threshold
     Float? calling_copy_ratio_z_score_threshold
     File? gatk4_jar_override
@@ -462,7 +463,8 @@ task CallCopyRatioSegments {
 
         gatk --java-options "-Xmx${command_mem_mb}m" CallCopyRatioSegments \
             --input ${copy_ratio_segments} \
-            --neutral-segment-copy-ratio-threshold ${default="0.1" neutral_segment_copy_ratio_threshold} \
+            --neutral-segment-copy-ratio-lower-bound ${default="0.9" neutral_segment_copy_ratio_lower_bound} \
+            --neutral-segment-copy-ratio-upper-bound ${default="1.1" neutral_segment_copy_ratio_upper_bound} \
             --outlier-neutral-segment-copy-ratio-z-score-threshold ${default="2.0" outlier_neutral_segment_copy_ratio_z_score_threshold} \
             --calling-copy-ratio-z-score-threshold ${default="2.0" calling_copy_ratio_z_score_threshold} \
             --output ${entity_id}.called.seg

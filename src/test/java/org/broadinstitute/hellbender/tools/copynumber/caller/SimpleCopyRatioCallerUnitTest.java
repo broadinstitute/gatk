@@ -27,7 +27,8 @@ import java.util.stream.IntStream;
 import static org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment.Call.*;
 
 public final class SimpleCopyRatioCallerUnitTest extends GATKBaseTest {
-    private static final double NEUTRAL_SEGMENT_COPY_RATIO_THRESHOLD = 0.1;
+    private static final double NEUTRAL_SEGMENT_COPY_RATIO_LOWER_BOUND = 0.9;
+    private static final double NEUTRAL_SEGMENT_COPY_RATIO_UPPER_BOUND = 1.1;
     private static final double OUTLIER_NEUTRAL_SEGMENT_COPY_RATIO_Z_SCORE_THRESHOLD = 2.;
     private static final double CALLING_COPY_RATIO_Z_SCORE_THRESHOLD = 2.;
 
@@ -67,7 +68,8 @@ public final class SimpleCopyRatioCallerUnitTest extends GATKBaseTest {
 
         final CalledCopyRatioSegmentCollection calledCopyRatioSegments =
                 new SimpleCopyRatioCaller(copyRatioSegments,
-                        NEUTRAL_SEGMENT_COPY_RATIO_THRESHOLD, OUTLIER_NEUTRAL_SEGMENT_COPY_RATIO_Z_SCORE_THRESHOLD, CALLING_COPY_RATIO_Z_SCORE_THRESHOLD)
+                        NEUTRAL_SEGMENT_COPY_RATIO_LOWER_BOUND, NEUTRAL_SEGMENT_COPY_RATIO_UPPER_BOUND,
+                        OUTLIER_NEUTRAL_SEGMENT_COPY_RATIO_Z_SCORE_THRESHOLD, CALLING_COPY_RATIO_Z_SCORE_THRESHOLD)
                         .makeCalls();
 
         Assert.assertEquals(copyRatioSegments.getMetadata(), calledCopyRatioSegments.getMetadata());

@@ -30,7 +30,8 @@ import java.util.stream.IntStream;
 public final class SimpleCopyRatioCaller {
     private static final Logger logger = LogManager.getLogger(SimpleCopyRatioCaller.class);
 
-    private final double neutralSegmentCopyRatioThreshold;
+    private final double neutralSegmentCopyRatioLowerBound;
+    private final double neutralSegmentCopyRatioUpperBound;
     private final double outlierNeutralSegmentCopyRatioZScoreThreshold;
     private final double callingCopyRatioZScoreThreshold;
     private final Statistics callingStatistics;
@@ -38,7 +39,8 @@ public final class SimpleCopyRatioCaller {
     private final CopyRatioSegmentCollection copyRatioSegments;
 
     /**
-     * @param neutralSegmentCopyRatioThreshold              non-log2 copy ratio must be within 1 +/- this threshold for a segment to be copy neutral
+     * @param neutralSegmentCopyRatioLowerBound             non-log2 copy ratio must be within [lower bound, upper bound] for a segment to be copy neutral
+     * @param neutralSegmentCopyRatioUpperBound             non-log2 copy ratio must be within [lower bound, upper bound] for a segment to be copy neutral
      * @param outlierNeutralSegmentCopyRatioZScoreThreshold z-score on non-log2 copy ratio above which a copy-neutral segment is assumed to be an outlier
      *                                                      and not included in the calculation of the length-weighted standard deviation of
      *                                                      non-log2 copy ratio in copy-neutral segments
@@ -46,14 +48,17 @@ public final class SimpleCopyRatioCaller {
      *                                                      in non-outlier copy-neutral segments used for calling segments
      */
     public SimpleCopyRatioCaller(final CopyRatioSegmentCollection copyRatioSegments,
-                                 final double neutralSegmentCopyRatioThreshold,
+                                 final double neutralSegmentCopyRatioLowerBound,
+                                 final double neutralSegmentCopyRatioUpperBound,
                                  final double outlierNeutralSegmentCopyRatioZScoreThreshold,
                                  final double callingCopyRatioZScoreThreshold) {
-        ParamUtils.isPositive(neutralSegmentCopyRatioThreshold, "Copy-neutral threshold must be positive.");
+        ParamUtils.isPositiveOrZero(neutralSegmentCopyRatioLowerBound, "Copy-neutral lower bound must be non-negative.");
+        Utils.validateArg(neutralSegmentCopyRatioLowerBound < neutralSegmentCopyRatioUpperBound, "Copy-neutral lower bound must be less than upper bound.");
         ParamUtils.isPositive(outlierNeutralSegmentCopyRatioZScoreThreshold, "Outlier z-score threshold must be positive.");
         ParamUtils.isPositive(callingCopyRatioZScoreThreshold, "Calling z-score threshold must be positive.");
         this.copyRatioSegments = Utils.nonNull(copyRatioSegments);
-        this.neutralSegmentCopyRatioThreshold = neutralSegmentCopyRatioThreshold;
+        this.neutralSegmentCopyRatioLowerBound = neutralSegmentCopyRatioLowerBound;
+        this.neutralSegmentCopyRatioUpperBound = neutralSegmentCopyRatioUpperBound;
         this.outlierNeutralSegmentCopyRatioZScoreThreshold = outlierNeutralSegmentCopyRatioZScoreThreshold;
         this.callingCopyRatioZScoreThreshold = callingCopyRatioZScoreThreshold;
         callingStatistics = calculateCallingStatistics();
@@ -64,7 +69,7 @@ public final class SimpleCopyRatioCaller {
         final List<CalledCopyRatioSegment> calledSegments = new ArrayList<>(segments.size());
         for (final CopyRatioSegment segment : segments) {
             final double copyRatioMean = Math.pow(2., segment.getMeanLog2CopyRatio());
-            if (Math.abs(1. - copyRatioMean) < neutralSegmentCopyRatioThreshold) {
+            if (neutralSegmentCopyRatioLowerBound <= copyRatioMean && copyRatioMean <= neutralSegmentCopyRatioUpperBound) {
                 calledSegments.add(new CalledCopyRatioSegment(segment, CalledCopyRatioSegment.Call.NEUTRAL));
             } else {
                 final double copyRatioDeviation = copyRatioMean - callingStatistics.mean;
@@ -83,11 +88,13 @@ public final class SimpleCopyRatioCaller {
     private Statistics calculateCallingStatistics() {
         //get the segments that fall within the copy-neutral region
         final List<CopyRatioSegment> copyNeutralSegments = copyRatioSegments.getRecords().stream()
-                .filter(s -> Math.abs(1. - Math.pow(2., s.getMeanLog2CopyRatio())) < neutralSegmentCopyRatioThreshold)
+                .filter(s -> {
+                    final double copyRatioMean = Math.pow(2., s.getMeanLog2CopyRatio());
+                    return neutralSegmentCopyRatioLowerBound <= copyRatioMean && copyRatioMean <= neutralSegmentCopyRatioUpperBound;})
                 .collect(Collectors.toList());
         logger.info(String.format("%d segments in copy-neutral region [%s, %s]...", copyNeutralSegments.size(),
-                CopyNumberFormatsUtils.formatDouble(1. - neutralSegmentCopyRatioThreshold),
-                CopyNumberFormatsUtils.formatDouble(1. + neutralSegmentCopyRatioThreshold)));
+                CopyNumberFormatsUtils.formatDouble(neutralSegmentCopyRatioLowerBound),
+                CopyNumberFormatsUtils.formatDouble(neutralSegmentCopyRatioUpperBound)));
 
         //calculate length-weighted statistics of unfiltered copy-neutral segments
         final Statistics unfilteredStatistics = calculateLengthWeightedStatistics(copyNeutralSegments);
