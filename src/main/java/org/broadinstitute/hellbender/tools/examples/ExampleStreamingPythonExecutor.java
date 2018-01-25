@@ -27,10 +27,13 @@ import java.util.concurrent.TimeUnit;
  *
  * <ol>
  * <li>Opens a FIFO for writing.</li>
- * <li>Creates an AsynchronousWriterServiceto allow writing to the FIFO in batches on a background thread</li>
+ * <li>Creates an AsynchronousWriterService to allow writing to the FIFO in batches on a background thread</li>
  * <li>Writes a string of attributes for each read to the List until the batchSize threshold is reached.</li>
  * <li>Uses Python to read each attribute line from the FIFO, and write it to the output file.</li>
  * </ol>
+ *
+ * See https://github.com/broadinstitute/gatk/wiki/Writing-GATK-Tools-that-use-Python for more information
+ * on using Python with GATK.
  */
 @CommandLineProgramProperties(
         summary = "Example/toy program that uses a Python script.",
@@ -78,6 +81,8 @@ public class ExampleStreamingPythonExecutor extends ReadWalker {
         } catch ( IOException e ) {
             throw new GATKException("Failure opening FIFO for writing", e);
         }
+        // synchronize on the output prompt before executing the next statement
+        pythonExecutor.getAccumulatedOutput();
 
         // Also, ask Python to open our output file, where it will write the contents of everything it reads
         // from the FIFO. <code sendSynchronousCommand/>
@@ -108,6 +113,9 @@ public class ExampleStreamingPythonExecutor extends ReadWalker {
         }
         // make sure the final batch has completed
         asyncWriter.waitForPreviousBatchCompletion(1000, TimeUnit.MILLISECONDS);
+
+        // synchronize on the output prompt before executing the next statement
+        pythonExecutor.getAccumulatedOutput();
 
         // Send synchronous commands to Python to close the temp file and the FIFO file
         // Terminate the async writer and Python executor in closeTool, since this always gets called.
