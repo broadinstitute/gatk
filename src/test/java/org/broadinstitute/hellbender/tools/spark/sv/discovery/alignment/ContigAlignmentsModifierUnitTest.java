@@ -302,6 +302,31 @@ public class ContigAlignmentsModifierUnitTest extends GATKBaseTest {
         refSpan = new SimpleInterval("chr2", 91421560, 91421734);
         data.add(new Object[]{alignment, 32, false, refSpan, TextCigarCodec.decode("270H32S175M")});
 
+        final SimpleInterval originalRefSpan = new SimpleInterval("chr2", 128791173, 128792506);
+        alignment = new AlignmentInterval(originalRefSpan,
+                1, 1332, TextCigarCodec.decode("1190M4D53M2I26M2I31M2D28M1422S"),
+                true, 60, 13, 1239, ContigAlignmentsModifier.AlnModType.NONE);
+        refSpan = new SimpleInterval("chr2", 128791173, 128792476);
+        data.add(new Object[]{alignment, 28, true, refSpan, TextCigarCodec.decode("1190M4D53M2I26M2I31M1450S")});
+
+        alignment = new AlignmentInterval(originalRefSpan,
+                1, 1334, TextCigarCodec.decode("1190M4D53M2I26M2I31M2I28M1422S"),
+                true, 60, 13, 1239, ContigAlignmentsModifier.AlnModType.NONE);
+        refSpan = new SimpleInterval("chr2", 128791173, 128792476);
+        data.add(new Object[]{alignment, 28, true, refSpan, TextCigarCodec.decode("1190M4D53M2I26M2I31M1452S")});
+
+        alignment = new AlignmentInterval(originalRefSpan,
+                1, 1332, TextCigarCodec.decode("1190M4D53M2I26M2I31M2D28M1422S"),
+                true, 60, 13, 1239, ContigAlignmentsModifier.AlnModType.NONE);
+        refSpan = new SimpleInterval("chr2", 128792367, 128792506);
+        data.add(new Object[]{alignment, 1190, false, refSpan, TextCigarCodec.decode("1190S53M2I26M2I31M2D28M1422S")});
+
+        alignment = new AlignmentInterval(originalRefSpan,
+                1, 1334, TextCigarCodec.decode("1190M4I53M2I26M2I31M2I28M1422S"),
+                true, 60, 13, 1239, ContigAlignmentsModifier.AlnModType.NONE);
+        refSpan = new SimpleInterval("chr2", 128792367, 128792506);
+        data.add(new Object[]{alignment, 1190, false, refSpan, TextCigarCodec.decode("1194S53M2I26M2I31M2I28M1422S")});
+
         return data.toArray(new Object[data.size()][]);
     }
 

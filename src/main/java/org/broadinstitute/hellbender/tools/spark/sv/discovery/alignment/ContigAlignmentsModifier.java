@@ -208,18 +208,54 @@ public final class ContigAlignmentsModifier {
                 refBasesConsumed += ce.getLength();
             }
         }
+
+        final String messageWhenErred = input.toPackedString() + "\tclip length: " + clipLengthOnRead + "\tclip from end: " + (clipFrom3PrimeEnd? "3":"5") + " of read";
+        if ( newMiddleSection.size() < 2 ){
+            throw new GATKException("The input alignment after clipping contains no or only one operation. " +
+                    "This indicates a logic error or too large a clipping length (whole alignment being clipped away) or invalid input cigar.\n" +
+                    messageWhenErred);
+        }
+
+        // guard against edge case where the requested clipping removes a whole alignment block that neighbors an indel operation
+        // e.g. "30M5I..." and user requests 30 bases to be chipped away hence leading to "...S5I", which we consider to be invalid,
+        // so we pack the "30S5I" into a single "35S", or for another example, "25M3D...", with 25 bases to be clipped, we turn it to "25S"
+        // for both cases we take of the the correct reference span too
+        final CigarElement firstOp = newMiddleSection.get(0);
+        final CigarElement secondOp = newMiddleSection.get(1);
+        if ( firstOp.getOperator().equals(CigarOperator.S) && secondOp.getOperator().isIndel() ) {
+            if (newMiddleSection.size() < 3) {
+                throw new GATKException(
+                        "After clipping, the new cigar would contain NO aligned bases (i.e. either clipped or gap or mix), " +
+                        "This indicates a logic error or too large a clipping length (whole alignment being clipped away) or invalid input cigar.\n" +
+                        messageWhenErred);
+            }
+
+            refBasesConsumed += secondOp.getLength();
+            if (secondOp.getOperator().equals(CigarOperator.D)) {
+                newMiddleSection.remove( 1 );
+            } else {
+                // remove first cigar operation, THEN update the new head with the total clipping
+                newMiddleSection.remove( 0);
+                newMiddleSection.set(0,
+                        new CigarElement(firstOp.getLength() + secondOp.getLength(), CigarOperator.S));
+            }
+        }
+
         if (clipFrom3PrimeEnd) Collections.reverse(newMiddleSection);
         final Cigar newCigar = constructNewCigar(leftClippings, newMiddleSection, rightClippings);
-        if (newCigar.getCigarElements().isEmpty())
-            throw new GATKException("Logic error: new cigar is empty.\t" + input.toPackedString() + "\tclip length " +
-                    clipLengthOnRead + "\tclip from end " + (clipFrom3PrimeEnd? "3":"5"));
+        if (newCigar.getCigarElements().isEmpty()) {
+            throw new GATKException("Logic error: new cigar after the clipping is empty, with:\n" + messageWhenErred);
+        }
+        SvCigarUtils.validateCigar(newCigar.getCigarElements());
 
         final SimpleInterval newRefSpan;
         if (clipFrom3PrimeEnd == input.forwardStrand) {
-            newRefSpan = new SimpleInterval(input.referenceSpan.getContig(), input.referenceSpan.getStart(),
-                    input.referenceSpan.getEnd() - refBasesConsumed);
+            newRefSpan = new SimpleInterval(input.referenceSpan.getContig(),
+                    input.referenceSpan.getStart(),
+                    input.referenceSpan.getEnd() - refBasesConsumed );
         } else {
-            newRefSpan = new SimpleInterval(input.referenceSpan.getContig(), input.referenceSpan.getStart() + refBasesConsumed,
+            newRefSpan = new SimpleInterval(input.referenceSpan.getContig(),
+                    input.referenceSpan.getStart() + refBasesConsumed ,
                     input.referenceSpan.getEnd());
         }
 

@@ -192,8 +192,8 @@ public final class CpxVariantDetector {
                                 eventPrimaryChromosomeSegmentingLocations);
 
                 altSeq = extractAltHaplotypeSeq(tigWithInsMappings, referenceSegmentsAndEventDescription.referenceSegments, basicInfo);
-            } catch (final GATKException ex) {
-                throw new GATKException(toString(), ex);
+            } catch (final GATKException | IllegalArgumentException likelyNewEdgeCase) {
+                throw new GATKException(toString(), likelyNewEdgeCase);
             }
         }
 
