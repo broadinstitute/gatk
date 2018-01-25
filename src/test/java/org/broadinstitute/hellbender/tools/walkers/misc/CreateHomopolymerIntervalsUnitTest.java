@@ -9,8 +9,6 @@ import org.testng.annotations.Test;
 
 import java.nio.file.Paths;
 
-import static org.testng.Assert.*;
-
 /**
  * Created by tsato on 1/25/18.
  */
