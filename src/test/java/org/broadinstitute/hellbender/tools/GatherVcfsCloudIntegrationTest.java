@@ -20,12 +20,11 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
 
@@ -71,8 +70,8 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
         try (final AbstractFeatureReader<VariantContext, ?> actualReader = AbstractFeatureReader.getFeatureReader(output.getAbsolutePath(), null, new VCFCodec(), false, Function.identity(), Function.identity());
              final AbstractFeatureReader<VariantContext, ?> expectedReader = AbstractFeatureReader.getFeatureReader(expected.getAbsolutePath(), null, new VCFCodec(), false, Function.identity(), Function.identity())) {
 
-            final List<VariantContext> actualVariants = Lists.newArrayList((Iterable<? extends VariantContext>) actualReader);
-            final List<VariantContext> expectedVariants = Lists.newArrayList((Iterable<? extends VariantContext>) actualReader);
+            final List<VariantContext> actualVariants = StreamSupport.stream(Spliterators.spliteratorUnknownSize(actualReader.iterator(),Spliterator.ORDERED), false).collect(Collectors.toList());
+            final List<VariantContext> expectedVariants = StreamSupport.stream(Spliterators.spliteratorUnknownSize(expectedReader.iterator(),Spliterator.ORDERED), false).collect(Collectors.toList());
             VariantContextTestUtils.assertEqualVariants(actualVariants, expectedVariants);
 
             Assert.assertEquals(((VCFHeader) actualReader.getHeader()).getMetaDataInInputOrder(),
