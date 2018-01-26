@@ -23,12 +23,12 @@ public final class ReadFilterArgumentDefinitions {
 
     public static final String BLACK_LISTED_LANES_LONG_NAME = "black-listed-lanes";
 
-    public static final String BLACK_LIST_LONG_NAME = "read-group-black-list";
+    public static final String READ_GROUP_BLACK_LIST_LONG_NAME = "read-group-black-list";
 
     public static final String KEEP_READ_GROUP_LONG_NAME = "keep-read-group";
 
-    public static final String MAX_LENGTH_ARG_NAME = "max-read-length";
-    public static final String MIN_LENGTH_ARG = "min-read-length";
+    public static final String MAX_READ_LENGTH_ARG_NAME = "max-read-length";
+    public static final String MIN_READ_LENGTH_ARG_NAME = "min-read-length";
 
     public static final String READ_NAME_LONG_NAME = "read-name";
 

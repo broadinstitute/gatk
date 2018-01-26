@@ -15,12 +15,12 @@ import java.io.Serializable;
 public final class ReadLengthReadFilter extends ReadFilter implements Serializable{
     private static final long serialVersionUID = 1L;
 
-    @Argument(fullName = ReadFilterArgumentDefinitions.MAX_LENGTH_ARG_NAME,
+    @Argument(fullName = ReadFilterArgumentDefinitions.MAX_READ_LENGTH_ARG_NAME,
             doc="Keep only reads with length at most equal to the specified value",
             optional=false)
     public Integer maxReadLength;
 
-    @Argument(fullName = ReadFilterArgumentDefinitions.MIN_LENGTH_ARG,
+    @Argument(fullName = ReadFilterArgumentDefinitions.MIN_READ_LENGTH_ARG_NAME,
             doc="Keep only reads with length at least equal to the specified value",
             optional=true)
     public int minReadLength = 1;

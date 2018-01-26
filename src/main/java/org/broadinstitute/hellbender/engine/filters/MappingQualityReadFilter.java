@@ -21,10 +21,10 @@ import java.io.Serializable;
 public final class MappingQualityReadFilter extends ReadFilter implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @Argument(fullName=ReadFilterArgumentDefinitions.MAXIMUM_MAPPING_QUALITY_NAME, doc = "Minimum mapping quality to keep (inclusive)", optional=true)
+    @Argument(fullName=ReadFilterArgumentDefinitions.MINIMUM_MAPPING_QUALITY_NAME, doc = "Minimum mapping quality to keep (inclusive)", optional=true)
     public int minMappingQualityScore = 10;
 
-    @Argument(fullName=ReadFilterArgumentDefinitions.MINIMUM_MAPPING_QUALITY_NAME, doc = "Maximum mapping quality to keep (inclusive)", optional=true)
+    @Argument(fullName=ReadFilterArgumentDefinitions.MAXIMUM_MAPPING_QUALITY_NAME, doc = "Maximum mapping quality to keep (inclusive)", optional=true)
     public Integer maxMappingQualityScore = null;
 
     // Command line parser requires a no-arg constructor
