@@ -103,6 +103,12 @@ public class UserException extends RuntimeException {
         public MissingReference(String message) { super(message); }
     }
 
+    public static class MissingIndex extends UserException {
+        private static final long serialVersionUID = 0L;
+
+        public MissingIndex(String message) { super(message); }
+    }
+
     public static class CannotHandleGzippedRef extends UserException {
         private static final long serialVersionUID = 0L;
 

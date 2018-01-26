@@ -253,8 +253,10 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         } else {
             throw new GATKException("Found a feature input that was neither GenomicsDB or a Tribble AbstractFeatureReader.  Input was " + featureInput.toString() + ".");
         }
+        // Due to a bug in HTSJDK, unindexed block compressed input files may fail to parse completely. For safety,
+        // these files have been disabled. See https://github.com/broadinstitute/gatk/issues/4224 for discussion
         if (!hasIndex && TribbleIndexedFeatureReader.hasBlockCompressedExtension(featureInput.getFeaturePath())) {
-            throw new GATKException("Found a feature input that was block compressed but lacked an index file.  Input was " + featureInput.toString() + ".");
+            throw new UserException.MissingIndex("Found a feature input that was block compressed but lacked an index file, support for unindexed feature files has temporarily been removed.  Input was " + featureInput.toString() + ".");
         }
 
         this.currentIterator = null;

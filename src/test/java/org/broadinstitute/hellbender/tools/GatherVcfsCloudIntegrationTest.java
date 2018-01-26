@@ -2,34 +2,25 @@ package org.broadinstitute.hellbender.tools;
 
 import com.google.common.collect.Lists;
 import htsjdk.tribble.AbstractFeatureReader;
-import htsjdk.tribble.CloseableTribbleIterator;
 import htsjdk.tribble.Feature;
-import htsjdk.tribble.FeatureCodec;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextUtils;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
-import org.broadinstitute.hellbender.utils.test.VariantContextTestUtilsUnitTest;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -76,8 +67,7 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
         runCommandLine(args);
 
         try (final AbstractFeatureReader<? extends Feature, ?> actualReader = AbstractFeatureReader.getFeatureReader(output.getAbsolutePath(), null, FeatureManager.getCodecForFile(output, VariantContext.class), false, Function.identity(), Function.identity());
-             final AbstractFeatureReader<? extends Feature, ?> expectedReader = AbstractFeatureReader.getFeatureReader(expected.getAbsolutePath(), null, FeatureManager.getCodecForFile(expected, VariantContext.class), false, Function.identity(), Function.identity())){
-
+             final AbstractFeatureReader<? extends Feature, ?> expectedReader = AbstractFeatureReader.getFeatureReader(expected.getAbsolutePath(), null, FeatureManager.getCodecForFile(expected, VariantContext.class), false, Function.identity(), Function.identity())) {
 
             final List<VariantContext> actualVariants = new ArrayList<>();
             ((Iterator<VariantContext>)actualReader.iterator()).forEachRemaining(actualVariants::add);
