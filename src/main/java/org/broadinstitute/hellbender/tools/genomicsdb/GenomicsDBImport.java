@@ -396,11 +396,12 @@ public final class GenomicsDBImport extends GATKTool {
             for ( final String line : lines) {
                 final String[] split = line.split("\\t",-1);
                 if (split.length != 2) {
-                    throw new UserException.BadInput("Expected a file of format\nSample\tFile\n but found line: " + line);
+                    throw new UserException.BadInput("Expected a file with 2 fields per line in the format\nSample\tFile\n but found line: \""
+                            + line +"\" with "+split.length+" fields");
                 }
                 if ( !split[0].trim().equals(split[0]) || split[0].trim().isEmpty()
                         || split[1].trim().isEmpty()) {
-                    throw new UserException.BadInput("Expected a file of format\nSample\tFile\n but found line: '" + line + "'\nValid sample names must be non-empty strings that cannot begin or end with whitespace");
+                    throw new UserException.BadInput("Expected a file of format\nSample\tFile\n but found line: '" + line + "'\nValid sample names must be non-empty strings that cannot begin or end with whitespace and valid file names must be non-empty and not all whitespace");
                 }
                 final String sample = split[0];
                 final String path = split[1].trim();
@@ -633,7 +634,7 @@ public final class GenomicsDBImport extends GATKTool {
             final long segmentSize,
             final long lbSampleIndex,
             final long ubSampleIndex,
-        final boolean failIfArrayExists) {
+            final boolean failIfArrayExists) {
 
         final GenomicsDBImportConfiguration.Partition.Builder pBuilder =
             GenomicsDBImportConfiguration.Partition.newBuilder();

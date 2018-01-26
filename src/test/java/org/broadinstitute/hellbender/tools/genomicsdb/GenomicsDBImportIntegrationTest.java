@@ -53,10 +53,10 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String COMBINEGVCFS_TEST_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/walkers/CombineGVCFs/";
 
     private static final String COMBINED = largeFileTestDir + "gvcfs/combined.gatk3.7.g.vcf.gz";
-    private static final String COMBINED_WITHSPACES = largeFileTestDir + "gvcfs/combined.gatk3.7.truncated.g.vcf";
+    private static final String COMBINED_WITHSPACES = largeFileTestDir + "gvcfs/combined.gatk3.7.smaller_interval.g.vcf";
     private static final SimpleInterval INTERVAL = new SimpleInterval("chr20", 17960187, 17981445);
     private static final SimpleInterval INTERVAL_NONDIPLOID = new SimpleInterval("20", 10000000, 10100000);
-    private static final SimpleInterval TRUNCATED_INTERVAL = new SimpleInterval("chr20", 17960187, 17961973);
+    private static final SimpleInterval SMALLER_INTERVAL = new SimpleInterval("chr20", 17960187, 17961973);
     private static final VCFHeader VCF_HEADER = VariantContextTestUtils.getCompleteHeader();
 
 
@@ -358,12 +358,12 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
         ArgumentsBuilder args = new ArgumentsBuilder()
                 .addArgument(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, String.valueOf(2))
-                .addFileArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, outOfOrderSampleMap).addArgument("L", IntervalUtils.locatableToString(TRUNCATED_INTERVAL))
+                .addFileArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, outOfOrderSampleMap).addArgument("L", IntervalUtils.locatableToString(SMALLER_INTERVAL))
                 .addArgument(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, workspace);
 
         runCommandLine(args);
         checkJSONFilesAreWritten(workspace);
-        checkGenomicsDBAgainstExpected(workspace, TRUNCATED_INTERVAL, COMBINED_WITHSPACES, b38_reference_20_21, true);
+        checkGenomicsDBAgainstExpected(workspace, SMALLER_INTERVAL, COMBINED_WITHSPACES, b38_reference_20_21, true);
     }
 
     @Test(dataProvider = "getOrderingTests")
