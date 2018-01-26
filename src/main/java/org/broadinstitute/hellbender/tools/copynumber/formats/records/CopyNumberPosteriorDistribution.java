@@ -51,26 +51,27 @@ public class CopyNumberPosteriorDistribution {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof CopyNumberPosteriorDistribution)) {
+        if (o == null || getClass() != o.getClass()) {
             return false;
         }
 
-        final CopyNumberPosteriorDistribution distribution = (CopyNumberPosteriorDistribution) o;
-        return this.copyNumberPosteriorDistribution.equals(distribution.copyNumberPosteriorDistribution);
+        final CopyNumberPosteriorDistribution that = (CopyNumberPosteriorDistribution) o;
+
+        return copyNumberPosteriorDistribution != null
+                ? copyNumberPosteriorDistribution.equals(that.copyNumberPosteriorDistribution)
+                : that.copyNumberPosteriorDistribution == null;
+
     }
 
     @Override
     public int hashCode() {
-        return copyNumberPosteriorDistribution.values().stream()
-                .map(p -> Double.hashCode(p)).reduce(1, (a, b) -> a * 31 + b);
+        return copyNumberPosteriorDistribution != null ? copyNumberPosteriorDistribution.hashCode() : 0;
     }
 
     @Override
     public String toString() {
-        final StringBuilder strBuilder = new StringBuilder();
-        copyNumberPosteriorDistribution.keySet().stream()
-                .forEach(state -> strBuilder.append(state.toString() + ":" +
-                        copyNumberPosteriorDistribution.get(state).toString() + ";"));
-        return strBuilder.toString();
+        return "CopyNumberPosteriorDistribution{" +
+                "copyNumberPosteriorDistribution=" + copyNumberPosteriorDistribution +
+                '}';
     }
 }

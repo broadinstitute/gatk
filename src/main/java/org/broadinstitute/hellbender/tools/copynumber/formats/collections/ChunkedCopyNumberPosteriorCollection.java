@@ -42,7 +42,7 @@ public final class ChunkedCopyNumberPosteriorCollection extends AbstractSampleRe
                                     .collect(Collectors.toMap(
                                             Function.identity(),
                                             state -> dataLine.getDouble(state.getCopyNumber()))));
-                } catch (Exception ex) {
+                } catch (final IllegalArgumentException ex) {
                     throw new UserException.BadInput("Validation error occurred on line %d of the posterior file: "
                             + String.format(ex.getMessage(), dataLine.getLineNumber()));
                 }

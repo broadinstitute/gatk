@@ -11,14 +11,14 @@ import java.util.stream.Collectors;
 
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.copynumber.GenerateVCFFromPosteriors;
+import org.broadinstitute.hellbender.tools.copynumber.PostProcessGermlineCNVCalls;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.annotations.Test;
 
 /**
- * Integration test for {@link GenerateVCFFromPosteriors}
+ * Integration test for {@link PostProcessGermlineCNVCalls}
  */
-public class GenerateVCFFromPosteriorsIntegrationTest extends CommandLineProgramTest {
+public class PostProcessGermlineCNVCallsIntegrationTest extends CommandLineProgramTest {
 
     // Test directory
     private static final File TEST_DIR = new File(toolsTestDir, "copynumber/gcnv/");
@@ -37,9 +37,9 @@ public class GenerateVCFFromPosteriorsIntegrationTest extends CommandLineProgram
 
         final List<String> arguments = new ArrayList<>();
         chunkDirectoriesFileList.forEach(dir -> {
-            arguments.add("-" + GenerateVCFFromPosteriors.POSTERIOR_CALL_DIRECTORY_FULL_NAME); arguments.add(dir);
+            arguments.add("-" + PostProcessGermlineCNVCalls.CHUNK_PATH_LONG_NAME); arguments.add(dir);
         });
-        arguments.add("-" + GenerateVCFFromPosteriors.SAMPLE_DIRECTORY_NAME_FULL_NAME);
+        arguments.add("-" + PostProcessGermlineCNVCalls.SAMPLE_DIRECTORY_LONG_NAME);
         arguments.add(SAMPLE_NAME);
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
         arguments.add(outputVCF.getAbsolutePath());
@@ -57,9 +57,9 @@ public class GenerateVCFFromPosteriorsIntegrationTest extends CommandLineProgram
 
         final List<String> arguments = new ArrayList<>();
         chunkDirectoriesFileList.forEach(dir -> {
-            arguments.add("-" + GenerateVCFFromPosteriors.POSTERIOR_CALL_DIRECTORY_FULL_NAME); arguments.add(dir);
+            arguments.add("-" + PostProcessGermlineCNVCalls.CHUNK_PATH_LONG_NAME); arguments.add(dir);
         });
-        arguments.add("-" + GenerateVCFFromPosteriors.SAMPLE_DIRECTORY_NAME_FULL_NAME);
+        arguments.add("-" + PostProcessGermlineCNVCalls.SAMPLE_DIRECTORY_LONG_NAME);
         arguments.add(SAMPLE_NAME);
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
         arguments.add(outputVCF.getAbsolutePath());

@@ -7,7 +7,7 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.copynumber.GenerateVCFFromPosteriors;
+import org.broadinstitute.hellbender.tools.copynumber.PostProcessGermlineCNVCalls;
 import org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.LocatableCopyNumberPosteriorDistribution;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -18,7 +18,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Helper class for {@link GenerateVCFFromPosteriors} for single sample postprocessing
+ * Helper class for {@link PostProcessGermlineCNVCalls} for single sample postprocessing
  * of {@link GermlineCNVCaller} calls.
  *
  * This class takes in a {@link IntegerCopyNumberStateCollection} a sample name, and a sequence dictionary for
@@ -56,7 +56,7 @@ public final class GermlineCNVPostProcessingEngine {
     private LocatableCopyNumberPosteriorDistribution lastPosteriorRecord = null;
 
     /**
-     * gCNV postprocessor constructor
+     * Constructor for {@link PostProcessGermlineCNVCalls} postprocessor
      *
      * @param outputWriter variant context writer
      * @param integerCopyNumberStateCollection collection of copy number states considered by post processor

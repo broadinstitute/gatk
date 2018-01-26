@@ -1,7 +1,10 @@
 package org.broadinstitute.hellbender.tools.copynumber.gcnv;
 
+import org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller;
+
 /**
- * This class stores naming standards in the Germline CNV caller
+ * This class stores naming standards in the {@link GermlineCNVCaller}. These constants are also defined in
+ * python gcnvkernel package.
  */
 public final class GermlineCNVNamingConstants {
 

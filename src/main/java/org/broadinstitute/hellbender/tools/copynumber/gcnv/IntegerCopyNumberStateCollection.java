@@ -88,17 +88,17 @@ public class IntegerCopyNumberStateCollection {
         if (this == o) {
             return true;
         }
-        if (o == null || o.getClass() != this.getClass()) {
+        if (o == null || getClass() != o.getClass()) {
             return false;
         }
 
         final IntegerCopyNumberStateCollection that = (IntegerCopyNumberStateCollection) o;
 
-        return that.copyNumberStates.equals(this.copyNumberStates);
+        return copyNumberStates != null ? copyNumberStates.equals(that.copyNumberStates) : that.copyNumberStates == null;
     }
 
     @Override
     public int hashCode() {
-        return copyNumberStates.stream().map(IntegerCopyNumberState::hashCode).reduce(1, (a, b) -> a * 31 + b);
+        return copyNumberStates != null ? copyNumberStates.hashCode() : 0;
     }
 }

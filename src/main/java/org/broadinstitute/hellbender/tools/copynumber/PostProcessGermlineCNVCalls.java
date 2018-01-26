@@ -51,10 +51,10 @@ import java.util.stream.IntStream;
  * <h3>Usage example</h3>
  *
  * <pre>
- *   gatk GenerateVCFFromPosteriors \
- *     --called-chunk-directory path/to/chunk_1
- *     --called-chunk-directory path/to/chunk_2
- *     --sample-name-directory SAMPLE_1
+ *   gatk PostProcessGermlineCNVCalls \
+ *     --chunk-path path/to/chunk_1
+ *     --chunk-path path/to/chunk_2
+ *     --sample-directory SAMPLE_1
  *     --output output.vcf
  * </pre>
  */
@@ -63,24 +63,24 @@ import java.util.stream.IntStream;
         oneLineSummary = "Create a VCF given the output of GermlineCNVCaller.",
         programGroup = CopyNumberProgramGroup.class
 )
-public final class GenerateVCFFromPosteriors extends GATKTool {
-    private static final Logger logger = LogManager.getLogger(GenerateVCFFromPosteriors.class);
+public final class PostProcessGermlineCNVCalls extends GATKTool {
+    private static final Logger logger = LogManager.getLogger(PostProcessGermlineCNVCalls.class);
 
-    public static final String POSTERIOR_CALL_DIRECTORY_FULL_NAME = "chunk-path";
-    public static final String SAMPLE_DIRECTORY_NAME_FULL_NAME = "sample-directory";
+    public static final String CHUNK_PATH_LONG_NAME = "chunk-path";
+    public static final String SAMPLE_DIRECTORY_LONG_NAME = "sample-directory";
 
     private static final String COMMENT_PREFIX = "@";
 
     @Argument(
             doc = "List of paths to GermlineCNVCaller call directories, sorted in order of the intervals contained.",
-            fullName = POSTERIOR_CALL_DIRECTORY_FULL_NAME,
+            fullName = CHUNK_PATH_LONG_NAME,
             minElements = 1
     )
     private List<File> orderedChunkDirectoryList = null;
 
     @Argument(
             doc = "Name of the sample directory (must be contained in all call directories).",
-            fullName = SAMPLE_DIRECTORY_NAME_FULL_NAME
+            fullName = SAMPLE_DIRECTORY_LONG_NAME
     )
     private String sampleDirectoryName = null;
 
@@ -98,7 +98,7 @@ public final class GenerateVCFFromPosteriors extends GATKTool {
                         orderedChunkDirectoryList.get(0).getAbsolutePath()).getAbsolutePath()));
         final SAMSequenceDictionary samSequenceDictionary = firstChunkSimpleIntervalCollection
                 .getMetadata().getSequenceDictionary();
-        Triple<List<LocatableCopyNumberPosteriorDistribution>, IntegerCopyNumberStateCollection, String> firstCopyNumberPosteriorFileInfo =
+        final Triple<List<LocatableCopyNumberPosteriorDistribution>, IntegerCopyNumberStateCollection, String> firstCopyNumberPosteriorFileInfo =
                 readChunkedPosteriorFileFromDirectory(orderedChunkDirectoryList.get(0), samSequenceDictionary);
         final IntegerCopyNumberStateCollection copyNumberStateCollection = firstCopyNumberPosteriorFileInfo.getMiddle();
         final String sampleName = firstCopyNumberPosteriorFileInfo.getRight();
@@ -115,7 +115,7 @@ public final class GenerateVCFFromPosteriors extends GATKTool {
         germlineCNVPostProcessingEngine.composeVariantContextHeader(getDefaultToolVCFHeaderLines());
         int currentChunk = 0;
 
-        for(File chunkRootDirectory: orderedChunkDirectoryList) {
+        for (File chunkRootDirectory: orderedChunkDirectoryList) {
             currentChunk++;
             logger.info(String.format("Analyzing copy number posterior chunk %d", currentChunk));
 
