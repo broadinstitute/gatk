@@ -7,7 +7,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -89,7 +89,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
      * @return A short user-friendly name for this plugin.
      */
     @Override
-    public String getDisplayName() { return StandardArgumentDefinitions.READ_FILTER_LONG_NAME; }
+    public String getDisplayName() { return ReadFilterArgumentDefinitions.READ_FILTER_LONG_NAME; }
 
     /**
      * @return the class object for the base class of all plugins managed by this descriptor
@@ -223,10 +223,10 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
      */
     @Override
     public Set<String> getAllowedValuesForDescriptorHelp(final String longArgName) {
-        if (longArgName.equals(StandardArgumentDefinitions.READ_FILTER_LONG_NAME)) {
+        if (longArgName.equals(ReadFilterArgumentDefinitions.READ_FILTER_LONG_NAME)) {
             return allDiscoveredReadFilters.keySet();
         }
-        if (longArgName.equals(StandardArgumentDefinitions.DISABLE_READ_FILTER_LONG_NAME)) {
+        if (longArgName.equals(ReadFilterArgumentDefinitions.DISABLE_READ_FILTER_LONG_NAME)) {
             return toolDefaultReadFilters.keySet();
         }
         return null;

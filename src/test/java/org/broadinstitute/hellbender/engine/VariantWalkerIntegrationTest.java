@@ -8,9 +8,7 @@ import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
-import org.broadinstitute.hellbender.engine.filters.ReadNameReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.examples.ExampleVariantWalker;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -152,7 +150,7 @@ public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
                 "--variant", vcfFile.getCanonicalPath(),
                 "--input", bamFile.getCanonicalPath(),
                 "--" + TestGATKToolWithFeatures.HAS_BACKING_READ_SOURCE_LONG_NAME, "true",
-                "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, "ReadNameReadFilter",
+                "--" + ReadFilterArgumentDefinitions.READ_FILTER_LONG_NAME, "ReadNameReadFilter",
                 "--" + ReadFilterArgumentDefinitions.READ_NAME_LONG_NAME, "d",      // only retain reads named "d"
                 "--" + TestGATKToolWithFeatures.BACKING_READS_LONG_NAME, "d",  // name of reads we expect to see
         };

@@ -6,6 +6,16 @@ package org.broadinstitute.hellbender.cmdline;
 public final class ReadFilterArgumentDefinitions {
     private ReadFilterArgumentDefinitions(){}
 
+    // GATKReadFilterPluginDescriptor arguments
+
+    public static final String READ_FILTER_LONG_NAME = "read-filter";
+    public static final String DISABLE_READ_FILTER_LONG_NAME = "disable-read-filter";
+    public static final String DISABLE_TOOL_DEFAULT_READ_FILTERS = "disable-tool-default-read-filters";
+    public static final String READ_FILTER_SHORT_NAME = "RF";
+    public static final String DISABLE_READ_FILTER_SHORT_NAME = "DF";
+
+    // ReadFilter arguments
+
     public static final String AMBIGUOUS_FILTER_FRACTION_NAME = "ambig-filter-frac";
     public static final String AMBIGUOUS_FILTER_BASES_NAME = "ambig-filter-bases";
 
