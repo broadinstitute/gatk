@@ -47,13 +47,16 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String MULTIPLOID_DATA_HG37 = largeFileTestDir + "gvcfs/HapMap5plex.ploidy10.b37.g.vcf";
     private static final String NA12878_HG37 = " src/test/resources/org/broadinstitute/hellbender/tools/haplotypecaller/expected.testGVCFMode.gatk4.g.vcf";
     private static final String ARTIFICIAL_PHASED = getTestDataDir() + "/ArtificalPhasedData.1.g.vcf";
+    private static final String HG_00268_WITH_SPACES = largeFileTestDir + "gvcfs/HG00268.spaceInSampleName.g.vcf";
     private static final List<String> LOCAL_GVCFS = Arrays.asList(HG_00096, HG_00268, NA_19625);
     private static final String GENOMICSDB_TEST_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/GenomicsDBImport/";
     private static final String COMBINEGVCFS_TEST_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/walkers/CombineGVCFs/";
 
     private static final String COMBINED = largeFileTestDir + "gvcfs/combined.gatk3.7.g.vcf.gz";
+    private static final String COMBINED_WITHSPACES = largeFileTestDir + "gvcfs/combined.gatk3.7.smaller_interval.g.vcf";
     private static final SimpleInterval INTERVAL = new SimpleInterval("chr20", 17960187, 17981445);
     private static final SimpleInterval INTERVAL_NONDIPLOID = new SimpleInterval("20", 10000000, 10100000);
+    private static final SimpleInterval SMALLER_INTERVAL = new SimpleInterval("chr20", 17960187, 17961973);
     private static final VCFHeader VCF_HEADER = VariantContextTestUtils.getCompleteHeader();
 
 
@@ -342,6 +345,25 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                     .addArgument(GenomicsDBImport.VCF_INITIALIZER_THREADS_LONG_NAME, "2")});
         }
         return results.iterator();
+    }
+
+    @Test
+    public void testSampleNameWithSpaces() throws IOException {
+        final File outOfOrderSampleMap = getSampleMapFile(
+                "HG00268 withSpaces\t" + HG_00268_WITH_SPACES + "\n" +
+                        "NA19625\t" + NA_19625 + "\n" +
+                        "HG00096\t" + HG_00096 );
+
+        final String workspace = createTempDir("gendbtest").getAbsolutePath() + "/workspace";
+
+        ArgumentsBuilder args = new ArgumentsBuilder()
+                .addArgument(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, String.valueOf(2))
+                .addFileArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, outOfOrderSampleMap).addArgument("L", IntervalUtils.locatableToString(SMALLER_INTERVAL))
+                .addArgument(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, workspace);
+
+        runCommandLine(args);
+        checkJSONFilesAreWritten(workspace);
+        checkGenomicsDBAgainstExpected(workspace, SMALLER_INTERVAL, COMBINED_WITHSPACES, b38_reference_20_21, true);
     }
 
     @Test(dataProvider = "getOrderingTests")

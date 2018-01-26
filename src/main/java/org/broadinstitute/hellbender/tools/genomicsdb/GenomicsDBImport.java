@@ -95,7 +95,8 @@ import java.util.function.Function;
  *  </pre>
  *
  *  The sample map is a tab-delimited text file with sample_name--tab--path_to_sample_vcf per line. Using a sample map
- *  saves the tool from having to download the GVCF headers in order to determine the sample names.
+ *  saves the tool from having to download the GVCF headers in order to determine the sample names. Sample names in
+ *  the sample name map file may have non-tab whitespace, but may not begin or end with whitespace.
  *
  *  <pre>
  *  sample1      sample1.vcf.gz
@@ -394,14 +395,16 @@ public final class GenomicsDBImport extends GATKTool {
             final LinkedHashMap<String, Path> sampleToFilename = new LinkedHashMap<>();
             for ( final String line : lines) {
                 final String[] split = line.split("\\t",-1);
-                if (split.length != 2
-                        || split[0].isEmpty() || containsWhitespace(split[0])
-                        || split[1].isEmpty() || containsWhitespace(split[1])) {
-                    throw new UserException.BadInput("Expected a file of format\nSample\tFile\n but found line: " + line);
+                if (split.length != 2) {
+                    throw new UserException.BadInput("Expected a file with 2 fields per line in the format\nSample\tFile\n but found line: \""
+                            + line +"\" with "+split.length+" fields");
                 }
-
+                if ( !split[0].trim().equals(split[0]) || split[0].trim().isEmpty()
+                        || split[1].trim().isEmpty()) {
+                    throw new UserException.BadInput("Expected a file of format\nSample\tFile\n but found line: '" + line + "'\nValid sample names must be non-empty strings that cannot begin or end with whitespace and valid file names must be non-empty and not all whitespace");
+                }
                 final String sample = split[0];
-                final String path = split[1];
+                final String path = split[1].trim();
                 final Path oldPath = sampleToFilename.put(sample, IOUtils.getPath(path));
                 if (oldPath != null){
                     throw new UserException.BadInput("Found two mappings for the same sample: " + sample + "\n" + path + "\n" + oldPath.toUri() );
@@ -427,15 +430,6 @@ public final class GenomicsDBImport extends GATKTool {
      */
     public static SortedMap<String, Path> loadSampleNameMapFileInSortedOrder(final Path sampleToFileMapPath){
         return new TreeMap<>(loadSampleNameMapFile(sampleToFileMapPath));
-    }
-
-    private static boolean containsWhitespace(final String s){
-        for ( final char c : s.toCharArray()){
-            if (Character.isWhitespace(c)){
-                return true;
-            }
-        }
-        return false;
     }
 
     /**
@@ -500,7 +494,8 @@ public final class GenomicsDBImport extends GATKTool {
             final GenomicsDBImportConfiguration.ImportConfiguration importConfiguration =
                     createImportConfiguration(workspace, GenomicsDBConstants.DEFAULT_ARRAY_NAME,
                                               variantContextBufferSize, segmentSize,
-                                              i, (i+updatedBatchSize-1));
+                                              i, (i+updatedBatchSize-1),
+                                              (batchCount == 1)); //Fail if array exists and this is the first batch
 
             try {
                 importer = new GenomicsDBImporter(sampleToReaderMap, mergedHeaderLines, intervals.get(0), validateSampleToReaderMap, importConfiguration);
@@ -638,7 +633,8 @@ public final class GenomicsDBImport extends GATKTool {
             final long variantContextBufferSize,
             final long segmentSize,
             final long lbSampleIndex,
-            final long ubSampleIndex) {
+            final long ubSampleIndex,
+            final boolean failIfArrayExists) {
 
         final GenomicsDBImportConfiguration.Partition.Builder pBuilder =
             GenomicsDBImportConfiguration.Partition.newBuilder();
@@ -669,6 +665,7 @@ public final class GenomicsDBImport extends GATKTool {
                 .setGatk4IntegrationParameters(gatk4Parameters)
                 .setSizePerColumnPartition(variantContextBufferSize)
                 .setSegmentSize(segmentSize)
+                .setFailIfUpdating(failIfArrayExists)
                 .build();
     }
 
