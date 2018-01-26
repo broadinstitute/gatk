@@ -18,13 +18,20 @@ public class IntegerCopyNumberStateCollection {
     private final TableColumnCollection columnCollection;
     private final List<Allele> alleles;
 
-    IntegerCopyNumberStateCollection(final List<String> copyNumberStatesColumns) {
+    /**
+     * The state with this copy number represents a reference allele
+     */
+    private static final int REFERENCE_COPY_NUMBER_VALUE = 2;
+
+    public IntegerCopyNumberStateCollection(final List<String> copyNumberStatesColumns) {
         Utils.nonEmpty(copyNumberStatesColumns);
         this.columnCollection = new TableColumnCollection(copyNumberStatesColumns);
         this.copyNumberStates = new ArrayList<>();
-        copyNumberStatesColumns.stream().
-                forEach(copyNumberString -> copyNumberStates.add(parseIntegerCopyNumber(copyNumberString)));
-        this.alleles = copyNumberStates.stream().map(IntegerCopyNumberState::toAllele).collect(Collectors.toList());
+        copyNumberStatesColumns
+                .forEach(copyNumberString -> copyNumberStates.add(parseIntegerCopyNumber(copyNumberString)));
+        this.alleles = copyNumberStates.stream()
+                .map(state -> state.toAllele(REFERENCE_COPY_NUMBER_VALUE))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -56,15 +63,15 @@ public class IntegerCopyNumberStateCollection {
     }
 
     private IntegerCopyNumberState parseIntegerCopyNumber(final String copyNumberStateString) {
-        if (!copyNumberStateString.startsWith(GermlineCNVNamingConstants.COPY_NUMBER_STATE_STRING_START)) {
+        if (!copyNumberStateString.startsWith(GermlineCNVNamingConstants.COPY_NUMBER_TABLE_COLUMN_PREFIX)) {
             throw new UserException.BadInput(String.format("The column names of the copy number posterior file must " +
-                    "start with %s", GermlineCNVNamingConstants.COPY_NUMBER_STATE_STRING_START));
+                    "start with %s", GermlineCNVNamingConstants.COPY_NUMBER_TABLE_COLUMN_PREFIX));
         }
-        final String integerCopyNumberStateString = copyNumberStateString.substring(GermlineCNVNamingConstants.COPY_NUMBER_STATE_STRING_START.length());
+        final String integerCopyNumberStateString = copyNumberStateString.substring(GermlineCNVNamingConstants.COPY_NUMBER_TABLE_COLUMN_PREFIX.length());
         try {
             final int copyNumber = Integer.parseInt(integerCopyNumberStateString);
             return new IntegerCopyNumberState(copyNumber);
-        } catch (NumberFormatException e) {
+        } catch (final NumberFormatException e) {
             throw new UserException.BadInput(e.getMessage()); //TODO write a better exception message
         }
     }
@@ -87,7 +94,11 @@ public class IntegerCopyNumberStateCollection {
 
         final IntegerCopyNumberStateCollection that = (IntegerCopyNumberStateCollection) o;
 
-        return that.alleles.equals(this.alleles) && that.copyNumberStates.equals(this.copyNumberStates);
+        return that.copyNumberStates.equals(this.copyNumberStates);
     }
 
+    @Override
+    public int hashCode() {
+        return copyNumberStates.stream().map(IntegerCopyNumberState::hashCode).reduce(1, (a, b) -> a * 31 + b);
+    }
 }

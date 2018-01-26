@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.GenerateVCFFromPosteriors;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.annotations.Test;
 
@@ -35,7 +36,7 @@ public class GenerateVCFFromPosteriorsIntegrationTest extends CommandLineProgram
         final File outputVCF = createTempFile("test", ".vcf");
 
         final List<String> arguments = new ArrayList<>();
-        chunkDirectoriesFileList.stream().forEach(dir -> {
+        chunkDirectoriesFileList.forEach(dir -> {
             arguments.add("-" + GenerateVCFFromPosteriors.POSTERIOR_CALL_DIRECTORY_FULL_NAME); arguments.add(dir);
         });
         arguments.add("-" + GenerateVCFFromPosteriors.SAMPLE_DIRECTORY_NAME_FULL_NAME);
@@ -55,13 +56,15 @@ public class GenerateVCFFromPosteriorsIntegrationTest extends CommandLineProgram
         final File outputVCF = createTempFile("test", ".vcf");
 
         final List<String> arguments = new ArrayList<>();
-        chunkDirectoriesFileList.stream().forEach(dir -> {
+        chunkDirectoriesFileList.forEach(dir -> {
             arguments.add("-" + GenerateVCFFromPosteriors.POSTERIOR_CALL_DIRECTORY_FULL_NAME); arguments.add(dir);
         });
         arguments.add("-" + GenerateVCFFromPosteriors.SAMPLE_DIRECTORY_NAME_FULL_NAME);
         arguments.add(SAMPLE_NAME);
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
         arguments.add(outputVCF.getAbsolutePath());
+        arguments.add("--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE);
+        arguments.add("false");
 
         runCommandLine(arguments);
 

@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.copynumber.gcnv;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyNumberPosteriorDistribution;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.LocatableCopyNumberPosteriorDistribution;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
@@ -15,9 +17,9 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Unit tests for {@link GCNVPostProcessor}
+ * Unit tests for {@link GermlineCNVPostProcessingEngine}
  */
-public class GCNVPostProcessorUnitTest extends CommandLineProgramTest {
+public class GermlineCNVPostProcessingEngineUnitTest extends CommandLineProgramTest {
 
     //objects common to more than a single test in this class
     private final static SimpleInterval testInterval = new SimpleInterval("1", 1, 10000);
@@ -44,12 +46,12 @@ public class GCNVPostProcessorUnitTest extends CommandLineProgramTest {
         copyNumberPosteriorDistribution.put(testCopyNumberStateList.get(3), -8.6265377789688955);
         copyNumberPosteriorDistribution.put(testCopyNumberStateList.get(4), -21.918647174298602);
         copyNumberPosteriorDistribution.put(testCopyNumberStateList.get(5), -22.133276474165779);
-        final CopyNumberPosteriorRecord posteriorRecord = new CopyNumberPosteriorRecord(copyNumberPosteriorDistribution);
-        final CopyNumberPosteriorLocatableRecord locatablePosteriorRecord = new CopyNumberPosteriorLocatableRecord(testInterval, posteriorRecord);
+        final CopyNumberPosteriorDistribution posteriorRecord = new CopyNumberPosteriorDistribution(copyNumberPosteriorDistribution);
+        final LocatableCopyNumberPosteriorDistribution locatablePosteriorRecord = new LocatableCopyNumberPosteriorDistribution(testInterval, posteriorRecord);
         final List<Integer> PLs = new ArrayList<>(
-                Arrays.asList(new Integer[] {96, 19, 0, 37, 95, 96}));
+                Arrays.asList(new Integer[] {96, 18, 0, 37, 95, 96}));
         final int expectedMAPCopyNumber = 2;
-        final int expectedGQ = 19;
+        final int expectedGQ = 18;
 
         return new Object[][] {
             {locatablePosteriorRecord, testCopyNumberStateCollection, PLs, expectedMAPCopyNumber, expectedGQ}
@@ -67,8 +69,8 @@ public class GCNVPostProcessorUnitTest extends CommandLineProgramTest {
         copyNumberPosteriorDistribution.put(testCopyNumberStateList.get(3), -8.6265377789688955);
         copyNumberPosteriorDistribution.put(testCopyNumberStateList.get(4), -21.918647174298602);
         copyNumberPosteriorDistribution.put(testCopyNumberStateList.get(5), -22.133276474165779);
-        final CopyNumberPosteriorRecord posteriorRecord = new CopyNumberPosteriorRecord(copyNumberPosteriorDistribution);
-        final CopyNumberPosteriorLocatableRecord locatablePosteriorRecord = new CopyNumberPosteriorLocatableRecord(testInterval, posteriorRecord);
+        final CopyNumberPosteriorDistribution posteriorRecord = new CopyNumberPosteriorDistribution(copyNumberPosteriorDistribution);
+        final LocatableCopyNumberPosteriorDistribution locatablePosteriorRecord = new LocatableCopyNumberPosteriorDistribution(testInterval, posteriorRecord);
         test(locatablePosteriorRecord, testCopyNumberStateCollection, null, 0, 0);
     }
 
@@ -85,18 +87,18 @@ public class GCNVPostProcessorUnitTest extends CommandLineProgramTest {
         final IntegerCopyNumberStateCollection shortCopyNumberStateCollection =
                 new IntegerCopyNumberStateCollection(shortCopyNumberStateList.stream().map(s -> s.toString())
                         .collect(Collectors.toList()));
-        new GCNVPostProcessor(outputWriter, shortCopyNumberStateCollection, testSampleName, testSAMSequenceDictionary);
+        new GermlineCNVPostProcessingEngine(outputWriter, shortCopyNumberStateCollection, testSampleName, testSAMSequenceDictionary);
     }
 
     @Test(dataProvider = "examplePosteriorRecords")
-    public void test(final CopyNumberPosteriorLocatableRecord posteriorLocatableRecord,
+    public void test(final LocatableCopyNumberPosteriorDistribution posteriorLocatableRecord,
                      final IntegerCopyNumberStateCollection copyNumberStateCollection,
                      final List<Integer> expectedPLs,
                      final int expectedMAPCopyNumber,
                      final int expectedGQ) {
-        final List<Integer> actualPLs = GCNVPostProcessor.getCopyNumberPLVector(posteriorLocatableRecord, copyNumberStateCollection);
-        final int actualMAPCopyNumber = GCNVPostProcessor.calculateMAPCopyNumberState(posteriorLocatableRecord, copyNumberStateCollection);
-        final int actualGQ = GCNVPostProcessor.calculateGenotypeQuality(posteriorLocatableRecord, copyNumberStateCollection);
+        final List<Integer> actualPLs = GermlineCNVPostProcessingEngine.getCopyNumberPLVector(posteriorLocatableRecord, copyNumberStateCollection);
+        final int actualMAPCopyNumber = GermlineCNVPostProcessingEngine.calculateMAPCopyNumberState(posteriorLocatableRecord, copyNumberStateCollection);
+        final int actualGQ = GermlineCNVPostProcessingEngine.calculateGenotypeQuality(posteriorLocatableRecord, copyNumberStateCollection);
         Assert.assertEquals(actualMAPCopyNumber, expectedMAPCopyNumber);
         IntStream.range(0, expectedPLs.size())
                 .forEach(i -> Assert.assertEquals(actualPLs.get(i).intValue(), expectedPLs.get(i).intValue()));
