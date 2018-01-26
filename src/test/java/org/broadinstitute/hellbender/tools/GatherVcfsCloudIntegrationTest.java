@@ -70,10 +70,8 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
         try (final AbstractFeatureReader<VariantContext, ?> actualReader = AbstractFeatureReader.getFeatureReader(output.getAbsolutePath(), null, new VCFCodec(), false, Function.identity(), Function.identity());
              final AbstractFeatureReader<VariantContext, ?> expectedReader = AbstractFeatureReader.getFeatureReader(expected.getAbsolutePath(), null, new VCFCodec(), false, Function.identity(), Function.identity())) {
 
-            final List<VariantContext> actualVariants = new ArrayList<>();
-            (actualReader.iterator()).forEachRemaining(actualVariants::add);
-            final List<VariantContext> expectedVariants = new ArrayList<>();
-            (expectedReader.iterator()).forEachRemaining(expectedVariants::add);
+            final List<VariantContext> actualVariants = Lists.newArrayList((Iterable<? extends VariantContext>) actualReader);
+            final List<VariantContext> expectedVariants = Lists.newArrayList((Iterable<? extends VariantContext>) actualReader);
             VariantContextTestUtils.assertEqualVariants(actualVariants, expectedVariants);
 
             Assert.assertEquals(((VCFHeader) actualReader.getHeader()).getMetaDataInInputOrder(),
