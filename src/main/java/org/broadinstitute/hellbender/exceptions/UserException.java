@@ -103,6 +103,14 @@ public class UserException extends RuntimeException {
         public MissingReference(String message) { super(message); }
     }
 
+    public static class MissingIndex extends UserException {
+        private static final long serialVersionUID = 0L;
+
+        public MissingIndex(String file, String message) {
+            super(String.format("An index is required but was not found for file %s. %s", file, message));
+        }
+    }
+
     public static class CannotHandleGzippedRef extends UserException {
         private static final long serialVersionUID = 0L;
 
