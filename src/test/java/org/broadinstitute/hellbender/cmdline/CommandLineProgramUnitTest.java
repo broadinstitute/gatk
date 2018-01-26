@@ -1,11 +1,18 @@
 package org.broadinstitute.hellbender.cmdline;
 
 
-import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.barclay.argparser.SpecialArgumentsCollection;
+import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.junit.Assert;
+import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class CommandLineProgramUnitTest extends GATKBaseTest {
 
@@ -59,5 +66,83 @@ public class CommandLineProgramUnitTest extends GATKBaseTest {
                 return null;
             }
         };
+    }
+
+    @CommandLineProgramProperties(
+            summary = "TestGATKToolWithSuppressedFileExpansion",
+            oneLineSummary = "TestGATKToolWithSuppressedFileExpansion",
+            programGroup = TestProgramGroup.class
+    )
+    private static final class TestGATKToolWithSuppressedFileExpansion extends CommandLineProgram {
+
+        @Argument(fullName = "suppressedExpansionArg", suppressFileExpansion = true, optional = true)
+        List<String> suppressedExpansionArg = new ArrayList<>();
+
+        @Argument(fullName = "notSuppressedExpansionArg", optional = true)
+        List<String> notSuppressedExpansionArg = new ArrayList<>();
+
+        @Override
+        public Object doWork() {
+            //no op
+            return 1;
+        }
+
+        public List<String> getSuppressedExpansionArg() {
+            return suppressedExpansionArg;
+        }
+
+        public List<String> getNotSuppressedExpansionArg() {
+            return notSuppressedExpansionArg;
+        }
+    }
+
+    @DataProvider(name = "commandLineExpansionExtensions")
+    private Object[][] commandLineExpansionExtensions() throws IOException {
+        final String listFileContent = "this is a .list file";
+        final String argsFileContent = "this is a .args file";
+        return new Object[][]{
+                {createTempExpansionTestFile(".list", listFileContent), listFileContent},
+                {createTempExpansionTestFile(".args", argsFileContent), argsFileContent},
+        };
+    }
+
+    @Test(dataProvider = "commandLineExpansionExtensions")
+    public void testListExpansionSuppression(
+            final File testFile,
+            @SuppressWarnings("unused") String fileContents) throws IOException {
+        final TestGATKToolWithSuppressedFileExpansion tool = new TestGATKToolWithSuppressedFileExpansion();
+        final CommandLineParser clp = new CommandLineArgumentParser(tool);
+        final String[] args = {
+                "--suppressedExpansionArg", testFile.getCanonicalPath()
+        };
+        clp.parseArguments(System.out, args);
+
+        // for the arg with file expansion suppressed, the list should contain the actual file name, not the contents
+        Assert.assertEquals(
+                tool.getSuppressedExpansionArg(),
+                Collections.singletonList(testFile.getCanonicalPath()));
+    }
+
+    @Test(dataProvider = "commandLineExpansionExtensions")
+    public void testListExpansion(final File testFile, final String fileContents) throws IOException {
+        final TestGATKToolWithSuppressedFileExpansion tool = new TestGATKToolWithSuppressedFileExpansion();
+        final CommandLineParser clp = new CommandLineArgumentParser(tool);
+        final String[] args = {
+                "--notSuppressedExpansionArg", testFile.getCanonicalPath()
+        };
+        clp.parseArguments(System.out, args);
+
+        // for the arg with file expansion NOT suppressed (defualt case), the list should contain the file contents
+        Assert.assertEquals(
+                tool.getNotSuppressedExpansionArg(),
+                Collections.singletonList(fileContents));
+    }
+
+    private File createTempExpansionTestFile(final String extension, final String fileContentLine) throws IOException {
+        File tempFile = createTempFile("testExpansionSuppression", extension);
+        try (final FileWriter fileWriter = new FileWriter(tempFile)) {
+            fileWriter.write(fileContentLine);
+        }
+        return tempFile;
     }
 }

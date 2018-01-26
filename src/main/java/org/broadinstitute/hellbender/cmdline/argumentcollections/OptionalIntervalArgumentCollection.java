@@ -14,8 +14,10 @@ import java.util.List;
 public final class OptionalIntervalArgumentCollection extends IntervalArgumentCollection {
     private static final long serialVersionUID = 1L;
 
+    // Interval list files such as Picard interval lists are structured and require specialized parsing that
+    // is handled by IntervalUtils, so use suppressFileExpansion to bypass command line parser auto-expansion.
     @Argument(fullName = StandardArgumentDefinitions.INTERVALS_LONG_NAME, shortName = StandardArgumentDefinitions.INTERVALS_SHORT_NAME,
-            doc = "One or more genomic intervals over which to operate", optional = true)
+            suppressFileExpansion = true, doc = "One or more genomic intervals over which to operate", optional = true)
     protected final List<String> intervalStrings = new ArrayList<>();
 
     @Override

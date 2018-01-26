@@ -33,11 +33,8 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.Iterator;
+import java.util.*;
 import java.io.IOException;
-import java.util.List;
-import java.util.Set;
 
 public final class GATKToolUnitTest extends GATKBaseTest {
 
@@ -349,7 +346,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         tool.doWork();
 
         // ensure that the raw interval argument has not been expanded by Barclay, and that the post-merged
-        // intervals list contains 3 itervals (there are 4 in the file; 2 get merged)
+        // intervals list contains 3 intervals (there are 4 in the file; 2 get merged)
         Assert.assertEquals(tool.getIntervals().size(), 3);
 
         tool.onShutdown();
