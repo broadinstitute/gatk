@@ -381,16 +381,17 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
 
     private static boolean supportedVariant(final VariantContext vc, final int paddingSize) {
         final StructuralVariantType type = vc.getStructuralVariantType();
+
         if (type == null) {
             return false;
         } else if (vc.getAlternateAlleles().size() != 1) {
             return false;
         } else if (type == StructuralVariantType.INS || type == StructuralVariantType.DEL) {
             return vc.hasAttribute(GATKSVVCFConstants.SVLEN); // for now we skip indels without SVLEN... there are some, perhaps a bug
-        } else if (type == StructuralVariantType.DUP) {
-            return true;
-        } else if (type == StructuralVariantType.INV) {
-            return true;
+       // } else if (type == StructuralVariantType.DUP) {
+       //     return true;
+       // } else if (type == StructuralVariantType.INV) {
+       //     return true;
         } else {
             return false;
         }

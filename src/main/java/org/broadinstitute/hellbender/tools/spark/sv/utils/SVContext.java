@@ -378,7 +378,7 @@ public final class SVContext extends VariantContext {
         final int homologySequenceLength = homologySequence == null ? 0 : homologySequence.length;
         final SequenceBuilder sequenceBuilder = new SequenceBuilder(referenceBases.getInterval().size() + duplicatedUnitSpan.size() + insertedSequenceLength - homologySequenceLength);
         sequenceBuilder.append(referenceBases, referenceBases.getInterval().getStart(), getStart(), false);
-        final int prefixLength = sequenceBuilder.getLength();.
+        final int prefixLength = sequenceBuilder.getLength();
         sequenceBuilder.append(duplicatedUnitBases, duplicatedUnitBases.getInterval().getStart(), duplicatedUnitBases.getInterval().getEnd() - homologySequenceLength, false);
         if (insertedSequenceLength > 0) {
             sequenceBuilder.append(insertedSequence, false);
