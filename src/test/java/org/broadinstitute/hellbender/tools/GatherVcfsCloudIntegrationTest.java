@@ -2,14 +2,13 @@ package org.broadinstitute.hellbender.tools;
 
 import com.google.common.collect.Lists;
 import htsjdk.tribble.AbstractFeatureReader;
-import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
@@ -21,7 +20,10 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -33,31 +35,30 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
     @DataProvider
     public Object[][] getGatherTypes(){
         return new Object[][] {
-            { GatherVcfsCloud.GatherType.BLOCK },
-            { GatherVcfsCloud.GatherType.AUTOMATIC},
-            { GatherVcfsCloud.GatherType.CONVENTIONAL}
+                { GatherVcfsCloud.GatherType.BLOCK },
+                { GatherVcfsCloud.GatherType.AUTOMATIC},
+                { GatherVcfsCloud.GatherType.CONVENTIONAL}
         };
     }
 
     @Test(groups = "bucket", dataProvider = "getGatherTypes")
     public void testGatherOverNIO(final GatherVcfsCloud.GatherType gatherType) throws IOException {
         assertGatherProducesCorrectVariants(gatherType,
-                                            new File(largeFileTestDir, "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf"),
-                                            getTestFile("cloud-inputs.args"));
+                new File(largeFileTestDir, "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf"),
+                getTestFile("cloud-inputs.args"));
     }
 
     @Test(dataProvider = "getGatherTypes")
     public void testLocalGathers(final GatherVcfsCloud.GatherType gatherType) throws IOException {
         assertGatherProducesCorrectVariants(gatherType,
-                                            getTestFile("gzipped.vcf.gz"),
-                                            getTestFile("bgzipped_shards.args"));
+                getTestFile("gzipped.vcf.gz"),
+                getTestFile("bgzipped_shards.args"));
     }
 
     private void assertGatherProducesCorrectVariants(GatherVcfsCloud.GatherType gatherType, File expected, File inputs) throws IOException {
         assertGatherProducesCorrectVariants(gatherType, expected, Collections.singletonList(inputs));
     }
 
-    @SuppressWarnings({"unchecked"})
     private void assertGatherProducesCorrectVariants(GatherVcfsCloud.GatherType gatherType, File expected, List<File> inputs) throws IOException {
         final File output = createTempFile("gathered", ".vcf.gz");
         final ArgumentsBuilder args = new ArgumentsBuilder();
@@ -66,17 +67,17 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
                 .addArgument(GatherVcfsCloud.GATHER_TYPE_LONG_NAME, gatherType.toString());
         runCommandLine(args);
 
-        try (final AbstractFeatureReader<? extends Feature, ?> actualReader = AbstractFeatureReader.getFeatureReader(output.getAbsolutePath(), null, FeatureManager.getCodecForFile(output, VariantContext.class), false, Function.identity(), Function.identity());
-             final AbstractFeatureReader<? extends Feature, ?> expectedReader = AbstractFeatureReader.getFeatureReader(expected.getAbsolutePath(), null, FeatureManager.getCodecForFile(expected, VariantContext.class), false, Function.identity(), Function.identity())) {
+        try (final AbstractFeatureReader<VariantContext, ?> actualReader = AbstractFeatureReader.getFeatureReader(output.getAbsolutePath(), null, new VCFCodec(), false, Function.identity(), Function.identity());
+             final AbstractFeatureReader<VariantContext, ?> expectedReader = AbstractFeatureReader.getFeatureReader(expected.getAbsolutePath(), null, new VCFCodec(), false, Function.identity(), Function.identity())) {
 
             final List<VariantContext> actualVariants = new ArrayList<>();
-            ((Iterator<VariantContext>)actualReader.iterator()).forEachRemaining(actualVariants::add);
+            (actualReader.iterator()).forEachRemaining(actualVariants::add);
             final List<VariantContext> expectedVariants = new ArrayList<>();
-            ((Iterator<VariantContext>)expectedReader.iterator()).forEachRemaining(expectedVariants::add);
+            (expectedReader.iterator()).forEachRemaining(expectedVariants::add);
             VariantContextTestUtils.assertEqualVariants(actualVariants, expectedVariants);
 
             Assert.assertEquals(((VCFHeader) actualReader.getHeader()).getMetaDataInInputOrder(),
-                                ((VCFHeader) expectedReader.getHeader()).getMetaDataInInputOrder());
+                    ((VCFHeader) expectedReader.getHeader()).getMetaDataInInputOrder());
         }
     }
 
@@ -124,13 +125,13 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
                 {LARGE_VCF, 1000},
         };
     }
-    
+
     @Test(dataProvider = "getVcfsToShard", enabled = false)
     public void testBlockGather(final File vcf, final int numShards) throws IOException {
         try (final FeatureDataSource<VariantContext> input = new FeatureDataSource<>(vcf)) {
             final ArrayList<VariantContext> expected = Lists.newArrayList(input);
             final List<File> shards = scatterVariants(expected, (VCFHeader) input.getHeader(), numShards,
-                                                      createTempDir("vcfshards"));
+                    createTempDir("vcfshards"));
 
             final File output = createTempFile("testBlockGather_gathered", ".vcf.gz");
             final ArgumentsBuilder args = new ArgumentsBuilder();
@@ -148,7 +149,7 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
                 VariantContextTestUtils.assertEqualVariants(actual, expected);
 
                 Assert.assertEquals(((VCFHeader) outputDataSource.getHeader()).getMetaDataInInputOrder(),
-                                    ((VCFHeader) input.getHeader()).getMetaDataInInputOrder());
+                        ((VCFHeader) input.getHeader()).getMetaDataInInputOrder());
             }
 
             //test that the files have the same number of header lines as well as that the headers are identical
@@ -165,8 +166,8 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
             final List<String> actualHeaderLines = getHeaderLines(actualReader);
             final List<String> expectedHeaderLines = getHeaderLines(expectedReader);
             Assert.assertEquals(actualHeaderLines.size(), expectedHeaderLines.size(),
-                                "actual: " + String.join("\n", actualHeaderLines) +
-                                        "\nexpected: " + String.join("\n", expectedHeaderLines));
+                    "actual: " + String.join("\n", actualHeaderLines) +
+                            "\nexpected: " + String.join("\n", expectedHeaderLines));
         }
     }
 
