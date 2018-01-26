@@ -4,6 +4,7 @@ import htsjdk.samtools.util.OverlapDetector;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.SimpleAnnotatedGenomicRegion;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.SimpleAnnotatedGenomicRegionCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
@@ -31,7 +32,7 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
         //  No variants should validate, since the validation bam is not the same one used for calling.
         final File outputFile = IOUtils.createTempFile("basicTest", ".txt");
         final List<String> arguments = new ArrayList<>();
-        arguments.add("-" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_DISCOVERY_VCF_SHORT_NAME);
+        arguments.add("--" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_DISCOVERY_VCF_LONG_NAME);
         arguments.add("synthetic.challenge.set1.tumor");
         arguments.add("-" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_VALIDATION_CASE);
         arguments.add("synthetic.challenge.set1.tumor");
@@ -61,7 +62,7 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
         Assert.assertTrue(outputFile.exists());
 
         final List<SimpleAnnotatedGenomicRegion> variantValidationResults =
-                SimpleAnnotatedGenomicRegion.readAnnotatedRegions(outputFile, new HashSet<>(Arrays.asList(ValidateBasicSomaticShortMutations.headers)));
+                SimpleAnnotatedGenomicRegionCollection.readAnnotatedRegions(outputFile, new HashSet<>(Arrays.asList(ValidateBasicSomaticShortMutations.headers))).getRecords();
 
         Assert.assertEquals(variantValidationResults.size(), 2);
 
@@ -86,7 +87,7 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
 
         final File outputFile = IOUtils.createTempFile("basicTest", ".txt");
         final List<String> arguments = new ArrayList<>();
-        arguments.add("-" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_DISCOVERY_VCF_SHORT_NAME);
+        arguments.add("--" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_DISCOVERY_VCF_LONG_NAME);
         arguments.add("IS3.snv.indel.sv");
         arguments.add("-" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_VALIDATION_CASE);
         arguments.add("IS3.snv.indel.sv");
@@ -118,7 +119,7 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
         Assert.assertTrue(outputFile.exists());
 
         final List<SimpleAnnotatedGenomicRegion> variantValidationResults =
-                SimpleAnnotatedGenomicRegion.readAnnotatedRegions(outputFile, new HashSet<>(Arrays.asList(ValidateBasicSomaticShortMutations.headers)));
+                SimpleAnnotatedGenomicRegionCollection.readAnnotatedRegions(outputFile, new HashSet<>(Arrays.asList(ValidateBasicSomaticShortMutations.headers))).getRecords();
 
         Assert.assertEquals(variantValidationResults.size(), 336);
 
