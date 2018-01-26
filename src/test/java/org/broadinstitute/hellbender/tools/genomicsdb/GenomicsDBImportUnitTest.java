@@ -57,18 +57,22 @@ public class GenomicsDBImportUnitTest extends GATKBaseTest {
     public Object[][] getGoodSampleNameMapFileSyntax(){
         return new Object[][]{
                 // Note: none of these files are real, these are just valid files syntactically
-                {"Sample1\tsamplePath\n"
-                +"Sample2\tsamplePath", 2},     // normal sample names
-                {"Sample1 001\tFile", 1},          // sample names with whitespace
-                {"name name\tfile1 ", 1},          // trailing whitespace second column
-                {"name name\t file1 ", 1},         // leading and trailing whitespace second column
-        };
+                {"Sample1\tsamplePath \n"
+                +"Sample2\tsamplePath", new String[][] {{"Sample1","samplePath"},{"Sample1","samplePath"}}},     // normal sample names
+                {"Sample1 001\tFile", new String[][] {{"Sample1 001","File"}}},          // sample names with whitespace
+                {"name name\tfile1 ", new String[][] {{"name name","file1"}}},          // trailing whitespace second column
+                {"name name\t file1 ", new String[][] {{"name name","file1"}}}        // leading and trailing whitespace second colum
+                };
     }
 
     @Test(dataProvider = "getGoodSampleNameMapFileSyntax")
-    public void testValidSampleFiles(final String text, final int numEntries){
+    public void testValidSampleFiles(final String text, final String[][] expectedEntries){
         final File sampleFile = IOUtils.writeTempFile(text, "badSampleMapping", ".txt");
-        Assert.assertEquals(GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath()).size(),numEntries);
+        final LinkedHashMap<String, Path> outputMap = GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath());
+        Assert.assertEquals(outputMap.size(),expectedEntries.length);
+
+        Arrays.stream(expectedEntries).forEach(s -> { Assert.assertTrue(outputMap.containsKey(s[0]));
+                                                      Assert.assertEquals(outputMap.get(s[0]).toString(),s[1]);});
     }
 
     @Test
