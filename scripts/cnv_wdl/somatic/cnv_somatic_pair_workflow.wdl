@@ -249,10 +249,10 @@ workflow CNVSomaticPairWorkflow {
     output {
         File preprocessed_intervals = PreprocessIntervals.preprocessed_intervals
 
-        File read_counts_tumor = CollectCountsTumor.counts
         File read_counts_entity_id_tumor = CollectCountsTumor.entity_id
-        File allelic_counts_tumor = CollectAllelicCountsTumor.allelic_counts
+        File read_counts_tumor = CollectCountsTumor.counts
         File allelic_counts_entity_id_tumor = CollectAllelicCountsTumor.entity_id
+        File allelic_counts_tumor = CollectAllelicCountsTumor.allelic_counts
         File denoised_copy_ratios_tumor = DenoiseReadCountsTumor.denoised_copy_ratios
         File standardized_copy_ratios_tumor = DenoiseReadCountsTumor.standardized_copy_ratios
         File het_allelic_counts_tumor = ModelSegmentsTumor.het_allelic_counts
@@ -273,10 +273,10 @@ workflow CNVSomaticPairWorkflow {
         File scaled_delta_MAD_tumor = PlotDenoisedCopyRatiosTumor.scaled_delta_MAD
         File modeled_segments_plot_tumor = PlotModeledSegmentsTumor.modeled_segments_plot
 
-        File read_counts_normal = CollectCountsNormal.counts
         File read_counts_entity_id_normal = CollectCountsNormal.entity_id
-        File allelic_counts_normal = CollectAllelicCountsNormal.allelic_counts
+        File read_counts_normal = CollectCountsNormal.counts
         File allelic_counts_entity_id_normal = CollectAllelicCountsNormal.entity_id
+        File allelic_counts_normal = CollectAllelicCountsNormal.allelic_counts
         File denoised_copy_ratios_normal = DenoiseReadCountsNormal.denoised_copy_ratios
         File standardized_copy_ratios_normal = DenoiseReadCountsNormal.standardized_copy_ratios
         File het_allelic_counts_normal = ModelSegmentsNormal.het_allelic_counts
@@ -400,7 +400,7 @@ task ModelSegments {
             --kernel-variance-allele-fraction ${default="0.025" kernel_variance_allele_fraction} \
             --kernel-scaling-allele-fraction ${default="1.0" kernel_scaling_allele_fraction} \
             --kernel-approximation-dimension ${default="100" kernel_approximation_dimension} \
-            --window-size ${sep= " --window-size " window_sizes} \
+            --window-size ${sep=" --window-size " window_sizes} \
             --number-of-changepoints-penalty-factor ${default="1.0" num_changepoints_penalty_factor} \
             --minor-allele-fraction-prior-alpha ${default="25.0" minor_allele_fraction_prior_alpha} \
             --number-of-samples-copy-ratio ${default=100 num_samples_copy_ratio} \

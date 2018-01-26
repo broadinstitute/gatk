@@ -119,7 +119,7 @@ workflow CNVGermlineCaseWorkflow {
             contig_ploidy_model_tar = contig_ploidy_model_tar,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            mem_gb = mem_for_determine_germline_contig_ploidy,
+            mem_gb = mem_gb_for_determine_germline_contig_ploidy,
             cpu = cpu_for_determine_germline_contig_ploidy,
             mapping_error_rate = ploidy_mapping_error_rate,
             sample_psi_scale = ploidy_sample_psi_scale,
@@ -144,7 +144,7 @@ workflow CNVGermlineCaseWorkflow {
                 intervals = ScatterIntervals.scattered_interval_lists[scatter_index],
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
-                mem_gb = mem_for_germline_cnv_caller,
+                mem_gb = mem_gb_for_germline_cnv_caller,
                 cpu = cpu_for_germline_cnv_caller,
                 p_alt = gcnv_p_alt,
                 cnv_coherence_length = gcnv_cnv_coherence_length,
@@ -177,12 +177,26 @@ workflow CNVGermlineCaseWorkflow {
         }
     }
 
+    call CNVTasks.PostprocessGermlineCNVCalls {
+        input:
+            entity_id = CollectCounts.entity_id,
+            chunk_path_tars = GermlineCNVCallerCaseMode.gcnv_calls_tar,
+            sample_index = 0,
+            gatk4_jar_override = gatk4_jar_override,
+            gatk_docker = gatk_docker,
+            preemptible_attempts = preemptible_attempts
+    }
+
     output {
         File preprocessed_intervals = PreprocessIntervals.preprocessed_intervals
-        File read_counts = CollectCounts.counts
+
         File read_counts_entity_id = CollectCounts.entity_id
+        File read_counts = CollectCounts.counts
+
         File contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar
         Array[File] gcnv_calls_tars = GermlineCNVCallerCaseMode.gcnv_calls_tar
+
+        File vcf = PostprocessGermlineCNVCalls.vcf
     }
 }
 

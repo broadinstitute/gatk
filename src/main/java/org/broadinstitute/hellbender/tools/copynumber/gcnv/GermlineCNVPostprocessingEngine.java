@@ -7,7 +7,7 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.copynumber.PostProcessGermlineCNVCalls;
+import org.broadinstitute.hellbender.tools.copynumber.PostprocessGermlineCNVCalls;
 import org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.LocatableCopyNumberPosteriorDistribution;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -18,14 +18,14 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Helper class for {@link PostProcessGermlineCNVCalls} for single sample postprocessing
+ * Helper class for {@link PostprocessGermlineCNVCalls} for single sample Postprocessing
  * of {@link GermlineCNVCaller} calls.
  *
  * This class takes in a {@link IntegerCopyNumberStateCollection} a sample name, and a sequence dictionary for
  * validating order of the processed calls. It is used to write a VCF header and genotyping
  * {@link LocatableCopyNumberPosteriorDistribution} records.
  */
-public final class GermlineCNVPostProcessingEngine {
+public final class GermlineCNVPostprocessingEngine {
 
     private static final String VARIANT_PREFIX = "CNV";
 
@@ -56,14 +56,14 @@ public final class GermlineCNVPostProcessingEngine {
     private LocatableCopyNumberPosteriorDistribution lastPosteriorRecord = null;
 
     /**
-     * Constructor for {@link PostProcessGermlineCNVCalls} postprocessor
+     * Constructor for {@link PostprocessGermlineCNVCalls} Postprocessor
      *
      * @param outputWriter variant context writer
      * @param integerCopyNumberStateCollection collection of copy number states considered by post processor
      * @param sampleName sample name
      * @param samSequenceDictionary sequence dictionary used for interval order validation
      */
-    public GermlineCNVPostProcessingEngine(final VariantContextWriter outputWriter,
+    public GermlineCNVPostprocessingEngine(final VariantContextWriter outputWriter,
                                            final IntegerCopyNumberStateCollection integerCopyNumberStateCollection,
                                            final String sampleName,
                                            final SAMSequenceDictionary samSequenceDictionary) {
@@ -181,7 +181,7 @@ public final class GermlineCNVPostProcessingEngine {
         final List<Integer> unnormalizedPL = integerCopyNumberStateCollection.getCopyNumberStates().stream()
                 .mapToDouble(state -> locatableCopyNumberPosteriorDistribution.getCopyNumberPosteriors()
                         .getCopyNumberPosterior(state) - largestLogProb)
-                .mapToInt(GermlineCNVPostProcessingEngine::convertLogProbabilityToPhredScore)
+                .mapToInt(GermlineCNVPostprocessingEngine::convertLogProbabilityToPhredScore)
                 .boxed()
                 .collect(Collectors.toList());
         return unnormalizedPL;

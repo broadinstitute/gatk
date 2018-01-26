@@ -217,3 +217,54 @@ task ScatterIntervals {
         Array[File] scattered_interval_lists = glob("${base_filename}.scattered.*.interval_list")
     }
 }
+
+task PostprocessGermlineCNVCalls {
+    String entity_id
+    Array[File] chunk_path_tars
+    String sample_index
+    File? gatk4_jar_override
+
+    # Runtime parameters
+    Int? mem_gb
+    String gatk_docker
+    Int? preemptible_attempts
+    Int? disk_space_gb
+
+    Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
+    Int command_mem_mb = machine_mem_mb - 1000
+
+    String sample_directory = "SAMPLE_${sample_index}"  #this is a hardcoded convention in gcnvkernel
+    String vcf_filename = "${entity_id}.vcf.gz"
+
+    String dollar = "$" #WDL workaround for using array[@], see https://github.com/broadinstitute/cromwell/issues/1819
+    command <<<
+        set -e
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+
+        #untar chunk_path_tars to CHUNK_0, CHUNK_1, etc. directories and build chunk_paths_command_line="--chunk_path CHUNK_0 ..."
+        chunk_path_array=(${sep=" " chunk_path_tars})
+        chunk_paths_command_line=""
+        for index in ${dollar}{!chunk_path_array[@]}; do
+            chunk_path_tar=${dollar}{chunk_path_array[$index]}
+            mkdir CHUNK_$index
+            tar xzf $chunk_path_tar -C CHUNK_$index
+            chunk_paths_command_line="$chunk_paths_command_line --chunk-path CHUNK_$index"
+        done
+
+        gatk --java-options "-Xmx${command_mem_mb}m" PostprocessGermlineCNVCalls \
+            $chunk_paths_command_line \
+            --sample-directory ${sample_directory} \
+            --output ${vcf_filename}
+    >>>
+
+    runtime {
+        docker: "${gatk_docker}"
+        memory: machine_mem_mb + " MB"
+        disks: "local-disk " + select_first([disk_space_gb, 40]) + " HDD"
+        preemptible: select_first([preemptible_attempts, 5])
+    }
+
+    output {
+        File vcf = vcf_filename
+    }
+}
