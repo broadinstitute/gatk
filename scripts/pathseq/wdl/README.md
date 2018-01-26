@@ -20,7 +20,7 @@ Recommended default values (where possible) are found in ``pathseq_pipeline_temp
 - ``PathSeqPipelineWorkflow.input_bam`` -- sample BAM file
 - ``PathSeqPipelineWorkflow.is_host_aligned`` -- Set to true if the input has already been aligned to a host reference. *NOTE: common human references (e.g. GrCh38) contain decoy sequences such as the Epstein-Barr Virus genome. If this flag is set to true, reads aligning to these decoys will be misidentified as "host" and filtered out.*
 - ``PathSeqPipelineWorkflow.filter_bwa_image`` -- Path to host BWA index image. This corresponds to `pathseq_host.fa.img` in the Resource Bundle.
-- ``PathSeqPipelineWorkflow.kmer_file`` -- Path to host k-mer file.  This corresponds to `pathseq_host.bfi` in the Resource Bundle.
+- ``PathSeqPipelineWorkflow.kmer_file`` -- Path to host k-mer file. This corresponds to `pathseq_host.bfi` in the Resource Bundle.
 - ``PathSeqPipelineWorkflow.microbe_bwa_image`` -- Path to microbe BWA index image. This corresponds to `pathseq_microbe.fa.img` in the Resource Bundle.
 - ``PathSeqPipelineWorkflow.microbe_fasta`` -- Path to microbe reference FASTA file. This corresponds to `pathseq_microbe.fa` in the Resource Bundle.
 - ``PathSeqPipelineWorkflow.microbe_fasta_dict`` -- Path to microbe reference dictionary file.This corresponds to `pathseq_microbe.dict` in the Resource Bundle.
