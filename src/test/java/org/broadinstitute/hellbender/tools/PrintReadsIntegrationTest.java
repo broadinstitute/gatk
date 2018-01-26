@@ -5,6 +5,7 @@ import htsjdk.samtools.SamReader;
 import org.apache.commons.io.FileUtils;
 import htsjdk.samtools.SamReaderFactory;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.filters.ReadLengthReadFilter;
@@ -232,55 +233,55 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
                 {"print_reads.sorted.sam", null, ".sam",
                         Arrays.asList(
                                 "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadNameReadFilter.class.getSimpleName(),
-                                "--" + ReadNameReadFilter.READ_NAME_LONG_NAME, "both_reads_align_clip_adapter"),
+                                "--" + ReadFilterArgumentDefinitions.READ_NAME_LONG_NAME, "both_reads_align_clip_adapter"),
                         2},
                 {"print_reads.sorted.sam", null, ".sam",
                         Arrays.asList(
                                 "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadLengthReadFilter.class.getSimpleName(),
-                                "--" + ReadLengthReadFilter.minLengthArg, "100",
-                                "--" + ReadLengthReadFilter.maxLengthArgName, "200"),
+                                "--" + ReadFilterArgumentDefinitions.MIN_LENGTH_ARG, "100",
+                                "--" + ReadFilterArgumentDefinitions.MAX_LENGTH_ARG_NAME, "200"),
                         8},
                 {"print_reads.sorted.sam", null, ".sam",
                         Arrays.asList(
                                 "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadLengthReadFilter.class.getSimpleName(),
-                                "--" + ReadLengthReadFilter.minLengthArg, "1",
-                                "--" + ReadLengthReadFilter.maxLengthArgName, "10"),
+                                "--" + ReadFilterArgumentDefinitions.MIN_LENGTH_ARG, "1",
+                                "--" + ReadFilterArgumentDefinitions.MAX_LENGTH_ARG_NAME, "10"),
                         0},
                 {"print_reads.sorted.sam", null, ".sam",
                         Arrays.asList(
                                 "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadNameReadFilter.class.getSimpleName(),
-                                "--" + ReadNameReadFilter.READ_NAME_LONG_NAME, "both_reads_align_clip_adapter",
+                                "--" + ReadFilterArgumentDefinitions.READ_NAME_LONG_NAME, "both_reads_align_clip_adapter",
                                 "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadLengthReadFilter.class.getSimpleName(),
-                                "--" + ReadLengthReadFilter.minLengthArg, "100",
-                                "--" + ReadLengthReadFilter.maxLengthArgName, "101"),
+                                "--" + ReadFilterArgumentDefinitions.MIN_LENGTH_ARG, "100",
+                                "--" + ReadFilterArgumentDefinitions.MAX_LENGTH_ARG_NAME, "101"),
                         2},
                 {"print_reads.sorted.bam", null, ".sam", Arrays.asList("--" + StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_READ_FILTERS), 8},
                 {"print_reads.sorted.bam", null, ".sam",
                         Arrays.asList(
                                 "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadNameReadFilter.class.getSimpleName(),
-                                "--" + ReadNameReadFilter.READ_NAME_LONG_NAME, "both_reads_align_clip_adapter"),
+                                "--" + ReadFilterArgumentDefinitions.READ_NAME_LONG_NAME, "both_reads_align_clip_adapter"),
                         2},
                 {"print_reads.sorted.bam", null, ".sam",
                         Arrays.asList(
                                 "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadLengthReadFilter.class.getSimpleName(),
-                                "--" + ReadLengthReadFilter.minLengthArg, "100",
-                                "--" + ReadLengthReadFilter.maxLengthArgName, "101"),
+                                "--" + ReadFilterArgumentDefinitions.MIN_LENGTH_ARG, "100",
+                                "--" + ReadFilterArgumentDefinitions.MAX_LENGTH_ARG_NAME, "101"),
                         8},
                 {"print_reads.sorted.bam", null, ".sam",
                         Arrays.asList(
                                 "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadNameReadFilter.class.getSimpleName(),
-                                "--" + ReadNameReadFilter.READ_NAME_LONG_NAME, "both_reads_align_clip_adapter",
+                                "--" + ReadFilterArgumentDefinitions.READ_NAME_LONG_NAME, "both_reads_align_clip_adapter",
                                 "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadLengthReadFilter.class.getSimpleName(),
-                                "--" + ReadLengthReadFilter.minLengthArg, "100",
-                                "--" + ReadLengthReadFilter.maxLengthArgName, "101"),
+                                "--" + ReadFilterArgumentDefinitions.MIN_LENGTH_ARG, "100",
+                                "--" + ReadFilterArgumentDefinitions.MAX_LENGTH_ARG_NAME, "101"),
                         2},
                 {"print_reads.sorted.cram", "print_reads.fasta", ".sam",
                         Arrays.asList(
                                 "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadNameReadFilter.class.getSimpleName(),
-                                "--" + ReadNameReadFilter.READ_NAME_LONG_NAME, "both_reads_align_clip_adapter",
+                                "--" + ReadFilterArgumentDefinitions.READ_NAME_LONG_NAME, "both_reads_align_clip_adapter",
                                 "--" + StandardArgumentDefinitions.READ_FILTER_LONG_NAME, ReadLengthReadFilter.class.getSimpleName(),
-                                "--" + ReadLengthReadFilter.minLengthArg, "100",
-                                "--" + ReadLengthReadFilter.maxLengthArgName, "101"),
+                                "--" + ReadFilterArgumentDefinitions.MIN_LENGTH_ARG, "100",
+                                "--" + ReadFilterArgumentDefinitions.MAX_LENGTH_ARG_NAME, "101"),
                         2},
         };
     }
