@@ -54,7 +54,7 @@ import java.io.File;
  * <p>
  *     See comments for {@link CreateReadCountPanelOfNormals} regarding coverage on sex chromosomes.  If sex
  *     chromosomes are not excluded from coverage collection, it is strongly recommended that case samples are
- *     denoised only with panels containing only individuals of the same gender as the case samples.
+ *     denoised only with panels containing only individuals of the same sex as the case samples.
  * </p>
  *
  * <h3>Inputs</h3>

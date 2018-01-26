@@ -58,9 +58,9 @@ import java.util.stream.Collectors;
  *     Note that such SVD denoising cannot distinguish between variance due to systematic sequencing biases and that
  *     due to true common germline CNVs present in the panel; signal from the latter may thus be inadvertently denoised
  *     away.  Furthermore, variance arising from coverage on the sex chromosomes may also significantly contribute
- *     to the principal components if the panel contains samples of mixed gender.  Therefore, if sex chromosomes
+ *     to the principal components if the panel contains samples of mixed sex.  Therefore, if sex chromosomes
  *     are not excluded from coverage collection, it is strongly recommended that users avoid creating panels of
- *     mixed gender and take care to denoise case samples only with panels containing only individuals of the same gender
+ *     mixed sex and take care to denoise case samples only with panels containing only individuals of the same sex
  *     as the case samples.  (See {@link GermlineCNVCaller}, which avoids these issues by simultaneously learning
  *     a probabilistic model for systematic bias and calling rare and common germline CNVs for samples in the panel.)
  * </p>
