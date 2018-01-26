@@ -127,6 +127,18 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
         Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.8 in GVCF mode is < 99% (" +  concordance + ")");
     }
 
+    @Test(expectedExceptions = UserException.UnimplementedFeature.class)
+    public void testGVCF_GZ_isDisallowed() {
+
+        final String[] args = {
+                "-I", NA12878_20_21_WGS_bam,
+                "-R", b37_2bit_reference_20_21,
+                "-O", createTempFile("testGVCF_GZ_throw_exception", ".g.vcf.gz").getAbsolutePath(),
+                "-ERC", "GVCF",
+        };
+
+        runCommandLine(args);
+    }
 
     @Test
     public void testGVCFModeIsConcordantWithGATK3_8AlelleSpecificResults() throws Exception {

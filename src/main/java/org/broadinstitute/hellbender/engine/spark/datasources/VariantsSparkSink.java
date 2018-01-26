@@ -2,8 +2,8 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
@@ -21,6 +21,7 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
@@ -29,7 +30,6 @@ import org.seqdoop.hadoop_bam.util.BGZFCodec;
 import org.seqdoop.hadoop_bam.util.VCFFileMerger;
 import scala.Tuple2;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Comparator;
@@ -100,7 +100,7 @@ public final class VariantsSparkSink {
                     WRITE_HEADER_PROPERTY, true);
 
             switch (format) {
-                case BCF: return new KeyIgnoringBCFRecordWriter<NullWritable>(out,header,wh,ctx);
+                case BCF: return new KeyIgnoringBCFRecordWriter<NullWritable>(out, header, wh, ctx);
                 case VCF: return new GvcfKeyIgnoringVCFRecordWriter<NullWritable>(out,header,wh,ctx);
                 default: throw new IllegalStateException("Unrecognized variant format: " + format);
             }
@@ -178,6 +178,12 @@ public final class VariantsSparkSink {
             final VCFHeader header, final boolean writeGvcf, final List<Integer> gqPartitions, final int defaultPloidy, final int numReducers) throws IOException {
 
         final Configuration conf = ctx.hadoopConfiguration();
+
+        //TODO remove me when https://github.com/broadinstitute/gatk/issues/4274 is fixed
+        if (writeGvcf && (AbstractFeatureReader.hasBlockCompressedExtension(outputFile) || outputFile.endsWith(IOUtil.BCF_FILE_EXTENSION))) {
+            throw new UserException.UnimplementedFeature("It is currently not possible to write a compressed g.vcf or bcf.gz on spark.  See https://github.com/broadinstitute/gatk/issues/4274 for more details.");
+        }
+
         if (outputFile.endsWith(BGZFCodec.DEFAULT_EXTENSION) || outputFile.endsWith(".gz")) {
             conf.setBoolean(FileOutputFormat.COMPRESS, true);
             conf.setClass(FileOutputFormat.COMPRESS_CODEC, BGZFCodec.class, CompressionCodec.class);

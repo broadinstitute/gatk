@@ -5,6 +5,8 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -133,6 +135,13 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
+        //TODO remove me when https://github.com/broadinstitute/gatk/issues/4274 is fixed
+        if(hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF
+                && (AbstractFeatureReader.hasBlockCompressedExtension(output) || output.endsWith(IOUtil.BCF_FILE_EXTENSION))) {
+            throw new UserException.UnimplementedFeature("It is currently not possible to write a compressed g.vcf or bcf.gz from HaplotypeCallerSpark.  " +
+                                            "See https://github.com/broadinstitute/gatk/issues/4274 for more details.");
+        }
+
         logger.info("********************************************************************************");
         logger.info("The output of this tool DOES NOT match the output of HaplotypeCaller. ");
         logger.info("It is under development and should not be used for production work. ");

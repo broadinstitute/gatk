@@ -1,10 +1,15 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import com.google.common.io.Files;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.seekablestream.SeekablePathStream;
 import htsjdk.samtools.seekablestream.SeekableStream;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.vcf.*;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -27,11 +32,12 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
+import java.util.*;
 
 import static org.testng.Assert.assertEquals;
 
 public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
+    private static final String SAMPLE = "sample";
     private final String outputFileName = getClass().getSimpleName();
     private MiniDFSCluster cluster;
 
@@ -82,6 +88,59 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
     public void testWritingToFileURL(String vcf, String outputFileExtension) throws IOException {
         String outputUrl = "file://" + createTempFile(outputFileName, outputFileExtension).getAbsolutePath();
         assertSingleShardedWritingWorks(vcf, outputUrl);
+    }
+
+    @Test(expectedExceptions = UserException.UnimplementedFeature.class)
+    public void testGVCF_GZ_isDisallowed() throws IOException {
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        VariantsSparkSink.writeVariants(ctx, createTempFile("test",".g.vcf.gz").toString(), null,
+                                        new VCFHeader(), true, Arrays.asList(1, 2, 4, 5), 2, 1 );
+    }
+
+    @DataProvider
+    public Object[][] gvcfCases(){
+        //TODO enable disabled cases when https://github.com/broadinstitute/gatk/issues/4274 is resolved
+        return new Object[][]{
+                {true, ".g.vcf"},
+                {false, ".vcf"},
+            //    {true, "g.vcf.gz"},
+                {false, ".vcf.gz"},
+           //    {true, ".g.bcf"},
+                {false, ".bcf"},
+                {false, ".bcf.gz"},
+            //    {true, ".g.bcf.gz"}
+        };
+    }
+
+    @Test(dataProvider = "gvcfCases")
+    public void testEnableDisableGVCFWriting(boolean writeGvcf, String extension) throws IOException {
+        List<VariantContext> vcs = new ArrayList<>();
+        for(int i = 1; i <= 10; i++) {
+            final Allele A = Allele.create("A", true);
+            final VariantContext vc = new VariantContextBuilder("hand crafted", "1", i, i,
+                                                                Arrays.asList(A, Allele.NON_REF_ALLELE))
+                    .genotypes(new GenotypeBuilder(SAMPLE).alleles(Arrays.asList(A, A)).DP(10).GQ(10).PL(new int[]{0, 60, 10}).make())
+                    .make();
+            vcs.add(vc);
+        }
+
+        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        final File output = createTempFile(outputFileName, extension);
+        VariantsSparkSink.writeVariants(ctx, output.toString(), ctx.parallelize(vcs), getHeader(), writeGvcf, Arrays.asList(100), 2, 1 );
+        Assert.assertEquals(readVariants(output.toString()).size(), writeGvcf ? 1 : 10);
+    }
+
+    private static VCFHeader getHeader() {
+        final Set<VCFHeaderLine> headerlines = new LinkedHashSet<>();
+        VCFStandardHeaderLines.addStandardFormatLines(headerlines, true,
+                                                      VCFConstants.GENOTYPE_KEY,
+                                                      VCFConstants.GENOTYPE_QUALITY_KEY,
+                                                      VCFConstants.GENOTYPE_PL_KEY, VCFConstants.DEPTH_KEY);
+        final SAMSequenceDictionary dict = new SAMSequenceDictionary(
+                Collections.singletonList(new SAMSequenceRecord("1", 100)));
+        final VCFHeader header = new VCFHeader(headerlines, Collections.singleton(SAMPLE));
+        header.setSequenceDictionary(dict);
+        return header;
     }
 
     private void assertSingleShardedWritingWorks(String vcf, String outputPath) throws IOException {
