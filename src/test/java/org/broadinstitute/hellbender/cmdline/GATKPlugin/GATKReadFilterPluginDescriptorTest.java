@@ -70,6 +70,8 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                         (Consumer<SetupTest>) this::setupMappingQualityTest, "--minimum-mapping-quality", "255" },
                 { MappingQualityReadFilter.class.getSimpleName(),
                         (Consumer<SetupTest>) this::setupMappingQualityTest, "--minimum-mapping-quality", "60" },
+                { MappingQualityReadFilter.class.getSimpleName(),
+                        (Consumer<SetupTest>) this::setupMappingQualityTest, "--maximum-mapping-quality", "40"},
                 { ReadGroupReadFilter.class.getSimpleName(),
                         (Consumer<SetupTest>) this::setupReadGroupTest, "--keep-read-group", "fred" },
                 { ReadNameReadFilter.class.getSimpleName(),
