@@ -178,8 +178,10 @@ public final class PlotModeledSegments extends CommandLineProgram {
         //get sample name from input files (consistency check is performed)
         final String sampleName = getSampleName();
 
-        //check that the number of copy-ratio/allele-fraction points in each segment are correct
-        validateNumPoints();
+        //perform a basic check on the total number of copy-ratio intervals/allele-fraction sites per contig
+        //(we do not check the number of intervals/sites overlapping each segment, in order to be robust against future
+        //changes to the segmentation that might assign intervals to more than one segment)
+        validateNumPointsPerContig();
 
         //validate sequence dictionaries and load contig names and lengths into a LinkedHashMap
         final SAMSequenceDictionary sequenceDictionary = modeledSegments.getMetadata().getSequenceDictionary();
@@ -236,26 +238,25 @@ public final class PlotModeledSegments extends CommandLineProgram {
         return modeledSegments.getMetadata().getSampleName();
     }
 
-    private void validateNumPoints() {
+    private void validateNumPointsPerContig() {
         if (inputDenoisedCopyRatiosFile != null) {
             final Map<String, Integer> modeledSegmentsContigToNumPointsMap = modeledSegments.getRecords().stream()
                     .collect(Collectors.groupingBy(ModeledSegment::getContig, LinkedHashMap::new, Collectors.summingInt(ModeledSegment::getNumPointsCopyRatio)));
             final Map<String, Integer> denoisedCopyRatiosContigToNumPointsMap = denoisedCopyRatios.getRecords().stream()
                     .collect(Collectors.groupingBy(CopyRatio::getContig, LinkedHashMap::new, Collectors.summingInt(x -> 1)));
             Utils.validateArg(modeledSegmentsContigToNumPointsMap.keySet().stream()
-                    .allMatch(c -> (modeledSegmentsContigToNumPointsMap.get(c) == 0 && !denoisedCopyRatiosContigToNumPointsMap.containsKey(c)) ||
-                            (modeledSegmentsContigToNumPointsMap.get(c).equals(denoisedCopyRatiosContigToNumPointsMap.get(c)))),
+                            .allMatch(c -> (!denoisedCopyRatiosContigToNumPointsMap.containsKey(c) && modeledSegmentsContigToNumPointsMap.get(c) == 0) ||
+                                    (denoisedCopyRatiosContigToNumPointsMap.containsKey(c) && modeledSegmentsContigToNumPointsMap.get(c).equals(denoisedCopyRatiosContigToNumPointsMap.get(c)))),
                     "Number of denoised-copy-ratio points in input modeled-segments file is inconsistent with that in input denoised-copy-ratios file.");
         }
         if (inputAllelicCountsFile != null) {
             final Map<String, Integer> modeledSegmentsContigToNumPointsMap = modeledSegments.getRecords().stream()
                     .collect(Collectors.groupingBy(ModeledSegment::getContig, LinkedHashMap::new, Collectors.summingInt(ModeledSegment::getNumPointsAlleleFraction)));
             final Map<String, Integer> allelicCountsContigToNumPointsMap = allelicCounts.getRecords().stream()
-                    .filter(ac -> modeledSegmentsContigToNumPointsMap.get(ac.getContig()) != 0)
                     .collect(Collectors.groupingBy(AllelicCount::getContig, LinkedHashMap::new, Collectors.summingInt(x -> 1)));
             Utils.validateArg(modeledSegmentsContigToNumPointsMap.keySet().stream()
-                            .allMatch(c -> (modeledSegmentsContigToNumPointsMap.get(c) == 0 && !allelicCountsContigToNumPointsMap.containsKey(c)) ||
-                                    (modeledSegmentsContigToNumPointsMap.get(c).equals(allelicCountsContigToNumPointsMap.get(c)))),
+                            .allMatch(c -> (!allelicCountsContigToNumPointsMap.containsKey(c) && modeledSegmentsContigToNumPointsMap.get(c) == 0) ||
+                                    (allelicCountsContigToNumPointsMap.containsKey(c) && modeledSegmentsContigToNumPointsMap.get(c).equals(allelicCountsContigToNumPointsMap.get(c)))),
                     "Number of allelic-count points in input modeled-segments file is inconsistent with that in input heterozygous allelic-counts file.");
         }
     }

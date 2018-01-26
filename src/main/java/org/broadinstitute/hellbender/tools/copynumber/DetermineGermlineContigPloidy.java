@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.GermlineContigPloidyHybridADVIArgumentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.GermlineContigPloidyModelArgumentCollection;
@@ -315,8 +316,9 @@ public final class DetermineGermlineContigPloidy extends CommandLineProgram {
             logger.info(String.format("Aggregating read-count file %s (%d / %d)",
                     inputReadCountFile, sampleIndex + 1, numSamples));
             final SimpleCountCollection readCounts = SimpleCountCollection.read(inputReadCountFile);
-            Utils.validateArg(readCounts.getMetadata().getSequenceDictionary()
-                            .isSameDictionary(metadata.getSequenceDictionary()),
+            Utils.validateArg(CopyNumberArgumentValidationUtils.isSameDictionary(
+                    readCounts.getMetadata().getSequenceDictionary(),
+                    metadata.getSequenceDictionary()),
                     String.format("Sequence dictionary for read-count file %s does not match those " +
                             "in other read-count files.", inputReadCountFile));
             Utils.validateArg(readCounts.getIntervals().equals(intervals),

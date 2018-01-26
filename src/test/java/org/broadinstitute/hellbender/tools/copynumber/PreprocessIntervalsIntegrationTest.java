@@ -133,8 +133,7 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
     // Test for interval inputs given as -L command line arguments
     @Test(dataProvider = "intervalInputsFromCommandLine")
     public void testCommandLine(final int binLength, final int paddingLength, final List<Interval> inputIntervals, final List<Interval> binsExpected) {
-        final String[] outputFileName =  {"GATK-preprocess-intervals-test", ".tmp"};
-        final File outputFile = createTempFile(outputFileName[0], outputFileName[1]);
+        final File outputFile = createTempFile("GATK-preprocess-intervals-test", ".interval_list");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
                 .addArgument(PreprocessIntervals.BIN_LENGTH_LONG_NAME, Integer.toString(binLength))
@@ -153,7 +152,7 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
     public void singleFileTest() {
         final int binLength = 10_000;
         final int paddingLength = 5_000;
-        final File outputFile = createTempFile("preprocess-intervals-test", ".tsv");
+        final File outputFile = createTempFile("preprocess-intervals-test", ".interval_list");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
                 .addArgument(PreprocessIntervals.BIN_LENGTH_LONG_NAME, Integer.toString(binLength))
@@ -174,7 +173,7 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testIntervalSetRule() {
-        final File resultOutputFile = createTempFile("preprocess-intervals-test", ".tsv");
+        final File resultOutputFile = createTempFile("preprocess-intervals-test", ".interval_list");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
                 .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVAL_LIST_FILE.getAbsolutePath())
@@ -185,7 +184,7 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testIntervalExclusionPadding() {
-        final File resultOutputFile = createTempFile("preprocess-intervals-test", ".tsv");
+        final File resultOutputFile = createTempFile("preprocess-intervals-test", ".interval_list");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
                 .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVAL_LIST_FILE.getAbsolutePath())
@@ -196,7 +195,7 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testIntervalPadding() {
-        final File resultOutputFile = createTempFile("preprocess-intervals-test", ".tsv");
+        final File resultOutputFile = createTempFile("preprocess-intervals-test", ".interval_list");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
                 .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVAL_LIST_FILE.getAbsolutePath())
@@ -207,7 +206,7 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testIntervalMergingRule() {
-        final File resultOutputFile = createTempFile("preprocess-intervals-test", ".tsv");
+        final File resultOutputFile = createTempFile("preprocess-intervals-test", ".interval_list");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addReference(REFERENCE_FILE)
                 .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVAL_LIST_FILE.getAbsolutePath())

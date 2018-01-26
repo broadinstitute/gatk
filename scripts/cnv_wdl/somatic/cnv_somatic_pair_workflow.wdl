@@ -7,7 +7,7 @@
 #   and split into bins of length specified by PreprocessIntervals.bin_length (default 1000; specify 0 to skip binning,
 #   e.g. for WES).  For WGS, the intervals should simply cover the autosomal chromosomes (sex chromosomes may be
 #   included, but care should be taken to 1) avoid creating panels of mixed sex, and 2) denoise case samples only
-#   with panels containing individuals of the same sex as the case samples).
+#   with panels containing only individuals of the same sex as the case samples).
 #
 # - The sites file (common_sites) should be a Picard or GATK-style interval list.  This is a list of sites
 #   of known variation at which allelic counts will be collected for use in modeling minor-allele fractions.

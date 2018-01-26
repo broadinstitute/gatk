@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.utils.mcmc.ParameterEnum;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-enum CopyRatioParameter implements ParameterEnum {
+public enum CopyRatioParameter implements ParameterEnum {
     VARIANCE("CR_variance"),
     OUTLIER_PROBABILITY("CR_outlier_probability"),
     SEGMENT_MEANS("CR_segment_means"),

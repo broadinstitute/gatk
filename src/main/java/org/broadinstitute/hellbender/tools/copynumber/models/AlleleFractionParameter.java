@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.utils.mcmc.ParameterEnum;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-enum AlleleFractionParameter implements ParameterEnum {
+public enum AlleleFractionParameter implements ParameterEnum {
     MEAN_BIAS("AF_reference_bias_mean"),
     BIAS_VARIANCE("AF_reference_bias_variance"),
     OUTLIER_PROBABILITY("AF_outlier_probability"),
