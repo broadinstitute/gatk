@@ -94,6 +94,7 @@ public final class GATKVCFConstants {
     public static final String TRANSMISSION_DISEQUILIBRIUM_KEY =    "TDT";
     public static final String VARIANT_TYPE_KEY =                   "VariantType";
     public static final String VQS_LOD_KEY =                        "VQSLOD";
+    public static final String CNN_1D_KEY =                         "CNN_1D";
     public static final String F1R2_KEY =                           "F1R2";
     public static final String F2R1_KEY =                           "F2R1";
 
