@@ -2,12 +2,12 @@
 
 ### Setting up parameter json file for a run
 
-To get started, *copy* the ``*_template.json`` for the workflow you wish to run and modify the parameters accordingly.
+To get started, *copy* the ``pathseq_pipeline_template.json`` for the workflow and modify the parameters accordingly.
 DO NOT commit your json file to this repo. This file has reasonable default parameters.
 
-PathSeq reference files are available in the [GATK Resource Bundle](https://software.broadinstitute.org/gatk/download/bundle) (direct link [here](ftp://ftp.broadinstitute.org/bundle/beta/PathSeq)).
+PathSeq reference files are available in the [GATK Resource Bundle](https://software.broadinstitute.org/gatk/download/bundle) (located [here](ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/beta/PathSeq)).
 
-*Please note that there are optional parameters that do not appear in the template files, since we do not want to specify, by default*
+*Please note that there are optional parameters that do not appear in the template files, since we do not want to specify them by default*
 
 ### Docker image
 - "broadinstitute/gatk:4.0.0.0"
@@ -24,10 +24,22 @@ Recommended default values (where possible) are found in ``pathseq_pipeline_temp
 - ``PathSeqPipelineWorkflow.min_score_identity`` -- Fraction of bases aligned to count a microbe alignment in abundance scoring.
 - ``PathSeqPipelineWorkflow.identity_margin`` -- If a read maps to more than one microbe, the best alignment is counted. Any additional alignments are also counted if they are within this margin of the best alignment. 
 - ``PathSeqPipelineWorkflow.divide_by_genome_length`` -- If true, abundance scores are normalized by genome length.
-- ``PathSeqPipelineWorkflow.filter_bwa_image`` -- Path to host BWA index image
-- ``PathSeqPipelineWorkflow.kmer_file`` -- Path to host k-mer file
-- ``PathSeqPipelineWorkflow.microbe_bwa_image`` -- Path to microbe BWA index image
-- ``PathSeqPipelineWorkflow.microbe_fasta`` -- Path to microbe reference FASTA file
-- ``PathSeqPipelineWorkflow.microbe_fasta_dict`` -- Path to microbe reference dictionary file
-- ``PathSeqPipelineWorkflow.taxonomy_file`` -- Path to PathSeq taxonomy file
+- ``PathSeqPipelineWorkflow.filter_bwa_image`` -- Path to host BWA index image. This corresponds to `pathseq_host.fa.img` in the Resource Bundle.
+- ``PathSeqPipelineWorkflow.kmer_file`` -- Path to host k-mer file.  This corresponds to `pathseq_host.bfi` in the Resource Bundle.
+- ``PathSeqPipelineWorkflow.microbe_bwa_image`` -- Path to microbe BWA index image. This corresponds to `pathseq_microbe.fa.img` in the Resource Bundle.
+- ``PathSeqPipelineWorkflow.microbe_fasta`` -- Path to microbe reference FASTA file. This corresponds to `pathseq_microbe.fa` in the Resource Bundle.
+- ``PathSeqPipelineWorkflow.microbe_fasta_dict`` -- Path to microbe reference dictionary file.This corresponds to `pathseq_microbe.dict` in the Resource Bundle.
+- ``PathSeqPipelineWorkflow.taxonomy_file`` -- Path to PathSeq taxonomy file. This corresponds to `pathseq_taxonomy.db` in the Resource Bundle.
 - ``PathSeqPipelineWorkflow.gatk_docker`` -- GATK docker image
+
+Optional parameters:
+
+- ``PathSeqPipelineWorkflow.skip_quality_filters`` -- If true, skips quality filtering steps
+- ``PathSeqPipelineWorkflow.skip_pre_bwa_repartition`` -- Advanced tuning parameter; recommended if the sample contains a large number (e.g. >10M) microbial reads
+- ``PathSeqPipelineWorkflow.filter_bwa_seed_length`` -- Sets host alignment MEM length. Reducing this value (default 19) increases host read detection sensitivity but is slower
+- ``PathSeqPipelineWorkflow.host_min_identity`` -- Minimum identity score for reads to be classified as host (default 30)
+- ``PathSeqPipelineWorkflow.bam_partition_size`` -- Advanced tuning parameter; set size of Spark read partitions. Reducing this value (default 4000000) increases parallelism but may also increase overhead and affect host BWA alignment.
+- ``PathSeqPipelineWorkflow.mem_gb`` -- Virtual machine (VM) memory in GB
+- ``PathSeqPipelineWorkflow.preemptible_attempts`` -- Minimum number of attempts on preemtible VMs before the job will fail
+- ``PathSeqPipelineWorkflow.disk_space_gb`` -- VM disk space in GB
+- ``PathSeqPipelineWorkflow.cpu`` -- Number of VM virtual processor cores
