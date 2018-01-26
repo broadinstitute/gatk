@@ -57,8 +57,8 @@ public class GenomicsDBImportUnitTest extends GATKBaseTest {
     public Object[][] getGoodSampleNameMapFileSyntax(){
         return new Object[][]{
                 // Note: none of these files are real, these are just valid files syntactically
-                {"Sample1\tsamplePath \n"
-                +"Sample2\tsamplePath", new String[][] {{"Sample1","samplePath"},{"Sample1","samplePath"}}},     // normal sample names
+                {"Sample1\tsamplePath1 \n"
+                +"Sample2\tsamplePath2", new String[][] {{"Sample1","samplePath1"},{"Sample2","samplePath2"}}},     // normal sample names
                 {"Sample1 001\tFile", new String[][] {{"Sample1 001","File"}}},          // sample names with whitespace
                 {"name name\tfile1 ", new String[][] {{"name name","file1"}}},          // trailing whitespace second column
                 {"name name\t file1 ", new String[][] {{"name name","file1"}}}        // leading and trailing whitespace second colum
@@ -67,7 +67,7 @@ public class GenomicsDBImportUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "getGoodSampleNameMapFileSyntax")
     public void testValidSampleFiles(final String text, final String[][] expectedEntries){
-        final File sampleFile = IOUtils.writeTempFile(text, "badSampleMapping", ".txt");
+        final File sampleFile = IOUtils.writeTempFile(text, "goodSampleMapping", ".txt");
         final LinkedHashMap<String, Path> outputMap = GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath());
         Assert.assertEquals(outputMap.size(),expectedEntries.length);
 
