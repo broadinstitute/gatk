@@ -109,8 +109,6 @@ public class UserException extends RuntimeException {
         public MissingIndex(String file, String message) {
             super(String.format("An index is required but was not found for file %s. %s", file, message));
         }
-
-        public MissingIndex(String message) { super(message); }
     }
 
     public static class CannotHandleGzippedRef extends UserException {
