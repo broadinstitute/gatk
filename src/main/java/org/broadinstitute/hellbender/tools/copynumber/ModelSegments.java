@@ -61,10 +61,17 @@ import java.util.stream.Stream;
  *
  * <p>
  *     Next, we segment, if available, the denoised copy ratios and the alternate-allele fractions at the
- *     genotyped heterozygous sites.  This is done using kernel segmentation (see {@link KernelSegmenter});
- *     if both copy ratios and allele fractions are available, we use a combined kernel that is sensitive
- *     to changes that occur in only either of the two or in both.  Various segmentation parameters control
- *     the sensitivity of the segmentation and should be selected appropriately for each analysis.
+ *     genotyped heterozygous sites.  This is done using kernel segmentation (see {@link KernelSegmenter}).
+ *     Various segmentation parameters control the sensitivity of the segmentation and should be selected
+ *     appropriately for each analysis.
+ * </p>
+ *
+ * <p>
+ *     If both copy ratios and allele fractions are available, we perform segmentation using a combined kernel
+ *     that is sensitive to changes that occur not only in either of the two but also in both.  However, in this case,
+ *     we simply discard all allele fractions that lie outside of the available copy-ratio intervals
+ *     (rather than imputing the missing copy-ratio data).  This can have implications for analyses involving
+ *     the sex chromosomes; see comments in {@link CreateReadCountPanelOfNormals}.
  * </p>
  *
  * <p>

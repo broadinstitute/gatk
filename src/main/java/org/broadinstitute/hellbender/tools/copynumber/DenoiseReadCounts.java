@@ -51,6 +51,12 @@ import java.io.File;
  *     thus be used to control the amount of denoising, which will ultimately affect the sensitivity of the analysis.
  * </p>
  *
+ * <p>
+ *     See comments for {@link CreateReadCountPanelOfNormals} regarding coverage on sex chromosomes.  If sex
+ *     chromosomes are not excluded from coverage collection, it is strongly recommended that case samples are
+ *     denoised only with panels containing only individuals of the same gender as the case samples.
+ * </p>
+ *
  * <h3>Inputs</h3>
  *
  * <ul>
