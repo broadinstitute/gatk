@@ -483,10 +483,10 @@ public class ChimericAlignment {
         if (intervalOne.mapQual < mapQThresholdInclusive || intervalTwo.mapQual < mapQThresholdInclusive)
             return false;
 
-        final int overlap = AlignmentInterval.overlapOnContig(intervalOne, intervalTwo);
-
-        return Math.min(intervalOne.getSizeOnRead() - overlap, intervalTwo.getSizeOnRead() - overlap)
-                >= alignmentLengthThresholdInclusive;
+        // TODO: 2/2/18 improve annotation for alignment length: compared to #firstAlignmentIsTooShort(),
+        // we are not subtracting alignments' overlap on the read, i.e. we are not filtering alignments based on their unique read span size,
+        // but downstream analysis should have this information via an annotation, the current annotation is not up for this task
+        return Math.min(intervalOne.getSizeOnRead(), intervalTwo.getSizeOnRead()) >= alignmentLengthThresholdInclusive;
     }
 
     /**

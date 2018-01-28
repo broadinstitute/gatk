@@ -271,8 +271,6 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                 SvDiscoverFromLocalAssemblyContigAlignmentsSpark.preprocess(updatedSvDiscoveryInputData, nonCanonicalChromosomeNamesFile,true);
 
         SvDiscoverFromLocalAssemblyContigAlignmentsSpark.dispatchJobs(contigsByPossibleRawTypes, updatedSvDiscoveryInputData);
-
-        // TODO: 11/30/17 add EXTERNAL_CNV_CALLS annotation to the variants called here
     }
 
     /**

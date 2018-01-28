@@ -23,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -197,9 +198,9 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
             final String experimentalInsDelVcf = onHDFS ? path.toUri().toString() : path.toString();
             actualVcs = extractActualVCs(experimentalInsDelVcf, onHDFS);
 
-            // TODO: 11/30/17 temporary solution to ignore these attributes before they can be brought back
+            // TODO: 1/28/18 see ticket #4228
             final List<String> moreAttributesToIgnoreForNow = new ArrayList<>(attributesToIgnore);
-            moreAttributesToIgnoreForNow.addAll(Arrays.asList("HOMSEQ", "HOMLEN", "EXTERNAL_CNV_CALLS"));
+            moreAttributesToIgnoreForNow.addAll(Collections.singletonList("EXTERNAL_CNV_CALLS"));
             GATKBaseTest.assertCondition(actualVcs, expectedVcs,
                     (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e, moreAttributesToIgnoreForNow));
         }
