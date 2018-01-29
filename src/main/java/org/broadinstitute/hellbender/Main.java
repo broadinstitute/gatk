@@ -188,15 +188,16 @@ public class Main {
      * Note: this is the only method that is allowed to call System.exit (because gatk tools may be run from test harness etc)
      */
     protected final void mainEntry(final String[] args) {
-
-        final CommandLineProgram program = setupConfigAndExtractProgram(args, getPackageList(), getClassList(), getCommandLineName());
-
+        CommandLineProgram program = null;
         try {
+            program = setupConfigAndExtractProgram(args, getPackageList(), getClassList(), getCommandLineName());
             final Object result = runCommandLineProgram(program, args);
             handleResult(result);
             //no explicit System.exit(0) since that causes issues when running in Yarn containers
         } catch (final CommandLineException e){
-            System.err.println(program.getUsage());
+            if (program != null) {
+                System.err.println(program.getUsage());
+            }
             handleUserException(e);
             System.exit(COMMANDLINE_EXCEPTION_EXIT_VALUE);
         } catch (final UserException e){
