@@ -17,14 +17,12 @@ import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.IndexFeatureFile;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.seqdoop.hadoop_bam.util.VCFHeaderReader;
@@ -94,25 +92,34 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
         assertSingleShardedWritingWorks(vcf, outputUrl);
     }
 
-    @Test(expectedExceptions = UserException.UnimplementedFeature.class)
-    public void testGVCF_GZ_isDisallowed() throws IOException {
+
+    @DataProvider
+    public static Object[][] brokenGVCFCases() {
+        return new Object[][]{
+                {"g.vcf.gz"},
+                {"g.bcf"},
+                {"g.bcf.gz"}
+        };
+    }
+
+    @Test(dataProvider = "brokenGVCFCases", expectedExceptions = UserException.UnimplementedFeature.class)
+    public void testBrokenGVCFCasesAreDisallowed(String extension) throws IOException {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        VariantsSparkSink.writeVariants(ctx, createTempFile("test",".g.vcf.gz").toString(), null,
+        VariantsSparkSink.writeVariants(ctx, createTempFile("test", extension).toString(), null,
                                         new VCFHeader(), true, Arrays.asList(1, 2, 4, 5), 2, 1 );
     }
 
     @DataProvider
     public Object[][] gvcfCases(){
-        //TODO enable disabled cases when https://github.com/broadinstitute/gatk/issues/4274 is resolved
         return new Object[][]{
                 {true, ".g.vcf"},
                 {false, ".vcf"},
-            //    {true, "g.vcf.gz"},
                 {false, ".vcf.gz"},
-           //    {true, ".g.bcf"},
                 {false, ".bcf"},
                 {false, ".bcf.gz"},
-            //    {true, ".g.bcf.gz"}
+                //  {true, "g.vcf.gz"},  TODO enable this when https://github.com/broadinstitute/gatk/issues/4274 is resolved
+                //  {true, ".g.bcf"},    TODO enable these when https://github.com/broadinstitute/gatk/issues/4303 is resolved
+                //  {true, ".g.bcf.gz"}
         };
     }
 

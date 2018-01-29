@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.SparkTestUtils;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -127,13 +128,21 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
         Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.8 in GVCF mode is < 99% (" +  concordance + ")");
     }
 
-    @Test(expectedExceptions = UserException.UnimplementedFeature.class)
-    public void testGVCF_GZ_isDisallowed() {
-
+    @DataProvider
+    public static Object[][] brokenGVCFCases() {
+        return new Object[][]{
+                {"g.vcf.gz"},
+                {"g.bcf"},
+                {"g.bcf.gz"}
+        };
+    }
+    
+    @Test(dataProvider = "brokenGVCFCases", expectedExceptions = UserException.UnimplementedFeature.class)
+    public void testBrokenGVCFConfigurationsAreDisallowed(String extension) {
         final String[] args = {
                 "-I", NA12878_20_21_WGS_bam,
                 "-R", b37_2bit_reference_20_21,
-                "-O", createTempFile("testGVCF_GZ_throw_exception", ".g.vcf.gz").getAbsolutePath(),
+                "-O", createTempFile("testGVCF_GZ_throw_exception", extension).getAbsolutePath(),
                 "-ERC", "GVCF",
         };
 

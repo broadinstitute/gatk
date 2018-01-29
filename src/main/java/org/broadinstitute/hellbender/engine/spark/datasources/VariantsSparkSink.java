@@ -179,9 +179,9 @@ public final class VariantsSparkSink {
 
         final Configuration conf = ctx.hadoopConfiguration();
 
-        //TODO remove me when https://github.com/broadinstitute/gatk/issues/4274 is fixed
+        //TODO remove me when https://github.com/broadinstitute/gatk/issues/4274 and https://github.com/broadinstitute/gatk/issues/4303 are fixed
         if (writeGvcf && (AbstractFeatureReader.hasBlockCompressedExtension(outputFile) || outputFile.endsWith(IOUtil.BCF_FILE_EXTENSION))) {
-            throw new UserException.UnimplementedFeature("It is currently not possible to write a compressed g.vcf or bcf.gz on spark.  See https://github.com/broadinstitute/gatk/issues/4274 for more details.");
+            throw new UserException.UnimplementedFeature("It is currently not possible to write a compressed g.vcf or any g.bcf on spark.  See https://github.com/broadinstitute/gatk/issues/4274 and https://github.com/broadinstitute/gatk/issues/4303 for more details .");
         }
 
         if (outputFile.endsWith(BGZFCodec.DEFAULT_EXTENSION) || outputFile.endsWith(".gz")) {
