@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender;
 
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
+import picard.cmdline.programgroups.Testing;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -18,7 +18,7 @@ public final class MainTest extends CommandLineProgramTest {
     }
 
     @CommandLineProgramProperties(
-            programGroup = TestProgramGroup.class,
+            programGroup = Testing.class,
             summary = "OmitFromCommandLine test",
             oneLineSummary = "OmitFromCommandLine test",
             omitFromCommandLine = true)

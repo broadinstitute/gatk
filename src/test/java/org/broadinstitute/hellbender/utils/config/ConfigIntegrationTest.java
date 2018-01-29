@@ -4,7 +4,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
+import picard.cmdline.programgroups.Testing;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
@@ -29,7 +29,7 @@ public class ConfigIntegrationTest extends CommandLineProgramTest {
     @CommandLineProgramProperties(
             summary = "Dummy empty command line that requires a reference .",
             oneLineSummary = "empty class",
-            programGroup = TestProgramGroup.class
+            programGroup = Testing.class
     )
     public static class DummyGatkTool extends GATKTool {
 

@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.engine.spark;
 
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
+import picard.cmdline.programgroups.Testing;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -18,7 +18,7 @@ public class GATKSparkToolIntegrationTest extends CommandLineProgramTest {
     @CommandLineProgramProperties(
             summary = "Dummy empty command line that requires a reference .",
             oneLineSummary = "empty class",
-            programGroup = TestProgramGroup.class
+            programGroup = Testing.class
     )
     public static class DummySparkToolRequiresReference extends GATKSparkTool {
         private static final long serialVersionUID = 0L;
