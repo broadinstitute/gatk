@@ -81,10 +81,13 @@ workflow CNVSomaticPanelWorkflow {
             annotated_intervals = AnnotateIntervals.annotated_intervals,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            mem_gb = mem_for_create_read_count_pon
+            mem_gb = mem_gb_for_create_read_count_pon
     }
 
     output {
+        File preprocessed_intervals = PreprocessIntervals.preprocessed_intervals
+        Array[String] read_counts_entity_ids = CollectCounts.entity_id
+        Array[File] read_counts = CollectCounts.counts
         File read_count_pon = CreateReadCountPanelOfNormals.read_count_pon
     }
 }

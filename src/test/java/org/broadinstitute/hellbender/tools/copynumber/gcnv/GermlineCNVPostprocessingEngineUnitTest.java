@@ -17,9 +17,9 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Unit tests for {@link GermlineCNVPostProcessingEngine}
+ * Unit tests for {@link GermlineCNVPostprocessingEngine}
  */
-public class GermlineCNVPostProcessingEngineUnitTest extends CommandLineProgramTest {
+public class GermlineCNVPostprocessingEngineUnitTest extends CommandLineProgramTest {
 
     //objects common to more than a single test in this class
     private final static SimpleInterval testInterval = new SimpleInterval("1", 1, 10000);
@@ -87,7 +87,7 @@ public class GermlineCNVPostProcessingEngineUnitTest extends CommandLineProgramT
         final IntegerCopyNumberStateCollection shortCopyNumberStateCollection =
                 new IntegerCopyNumberStateCollection(shortCopyNumberStateList.stream().map(s -> s.toString())
                         .collect(Collectors.toList()));
-        new GermlineCNVPostProcessingEngine(outputWriter, shortCopyNumberStateCollection, testSampleName, testSAMSequenceDictionary);
+        new GermlineCNVPostprocessingEngine(outputWriter, shortCopyNumberStateCollection, testSampleName, testSAMSequenceDictionary);
     }
 
     @Test(dataProvider = "examplePosteriorRecords")
@@ -96,9 +96,9 @@ public class GermlineCNVPostProcessingEngineUnitTest extends CommandLineProgramT
                      final List<Integer> expectedPLs,
                      final int expectedMAPCopyNumber,
                      final int expectedGQ) {
-        final List<Integer> actualPLs = GermlineCNVPostProcessingEngine.getCopyNumberPLVector(posteriorLocatableRecord, copyNumberStateCollection);
-        final int actualMAPCopyNumber = GermlineCNVPostProcessingEngine.calculateMAPCopyNumberState(posteriorLocatableRecord, copyNumberStateCollection);
-        final int actualGQ = GermlineCNVPostProcessingEngine.calculateGenotypeQuality(posteriorLocatableRecord, copyNumberStateCollection);
+        final List<Integer> actualPLs = GermlineCNVPostprocessingEngine.getCopyNumberPLVector(posteriorLocatableRecord, copyNumberStateCollection);
+        final int actualMAPCopyNumber = GermlineCNVPostprocessingEngine.calculateMAPCopyNumberState(posteriorLocatableRecord, copyNumberStateCollection);
+        final int actualGQ = GermlineCNVPostprocessingEngine.calculateGenotypeQuality(posteriorLocatableRecord, copyNumberStateCollection);
         Assert.assertEquals(actualMAPCopyNumber, expectedMAPCopyNumber);
         IntStream.range(0, expectedPLs.size())
                 .forEach(i -> Assert.assertEquals(actualPLs.get(i).intValue(), expectedPLs.get(i).intValue()));

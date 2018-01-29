@@ -15,7 +15,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.ChunkedCopyNumberPosteriorCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.LocatableCopyNumberPosteriorDistribution;
-import org.broadinstitute.hellbender.tools.copynumber.gcnv.GermlineCNVPostProcessingEngine;
+import org.broadinstitute.hellbender.tools.copynumber.gcnv.GermlineCNVPostprocessingEngine;
 import org.broadinstitute.hellbender.tools.copynumber.gcnv.GermlineCNVNamingConstants;
 import org.broadinstitute.hellbender.tools.copynumber.gcnv.IntegerCopyNumberStateCollection;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
@@ -51,7 +51,7 @@ import java.util.stream.IntStream;
  * <h3>Usage example</h3>
  *
  * <pre>
- *   gatk PostProcessGermlineCNVCalls \
+ *   gatk PostprocessGermlineCNVCalls \
  *     --chunk-path path/to/chunk_1
  *     --chunk-path path/to/chunk_2
  *     --sample-directory SAMPLE_1
@@ -63,8 +63,8 @@ import java.util.stream.IntStream;
         oneLineSummary = "Create a VCF given the output of GermlineCNVCaller.",
         programGroup = CopyNumberProgramGroup.class
 )
-public final class PostProcessGermlineCNVCalls extends GATKTool {
-    private static final Logger logger = LogManager.getLogger(PostProcessGermlineCNVCalls.class);
+public final class PostprocessGermlineCNVCalls extends GATKTool {
+    private static final Logger logger = LogManager.getLogger(PostprocessGermlineCNVCalls.class);
 
     public static final String CHUNK_PATH_LONG_NAME = "chunk-path";
     public static final String SAMPLE_DIRECTORY_LONG_NAME = "sample-directory";
@@ -108,11 +108,11 @@ public final class PostProcessGermlineCNVCalls extends GATKTool {
         }
 
         final VariantContextWriter outputWriter = createVCFWriter(outputFile);
-        final GermlineCNVPostProcessingEngine germlineCNVPostProcessingEngine = new GermlineCNVPostProcessingEngine(
+        final GermlineCNVPostprocessingEngine germlineCNVPostprocessingEngine = new GermlineCNVPostprocessingEngine(
                 outputWriter, copyNumberStateCollection, sampleName, samSequenceDictionary);
 
         //TODO pass the command line invocation string to the header composer method
-        germlineCNVPostProcessingEngine.composeVariantContextHeader(getDefaultToolVCFHeaderLines());
+        germlineCNVPostprocessingEngine.composeVariantContextHeader(getDefaultToolVCFHeaderLines());
         int currentChunk = 0;
 
         for (File chunkRootDirectory: orderedChunkDirectoryList) {
@@ -133,7 +133,7 @@ public final class PostProcessGermlineCNVCalls extends GATKTool {
             final List<LocatableCopyNumberPosteriorDistribution> locatableRecordsList =
                     chunkedCopyNumberPosteriorFileInfo.getLeft();
 
-            germlineCNVPostProcessingEngine.writeChunkedVariantContext(locatableRecordsList);
+            germlineCNVPostprocessingEngine.writeChunkedVariantContext(locatableRecordsList);
         }
         outputWriter.close();
     }

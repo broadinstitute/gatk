@@ -150,7 +150,7 @@ workflow CNVGermlineCohortWorkflow {
             contig_ploidy_priors = contig_ploidy_priors,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            mem_gb = mem_for_determine_germline_contig_ploidy,
+            mem_gb = mem_gb_for_determine_germline_contig_ploidy,
             cpu = cpu_for_determine_germline_contig_ploidy,
             mean_bias_standard_deviation = ploidy_mean_bias_standard_deviation,
             mapping_error_rate = ploidy_mapping_error_rate,
@@ -178,7 +178,7 @@ workflow CNVGermlineCohortWorkflow {
                 annotated_intervals = AnnotateIntervals.annotated_intervals,
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
-                mem_gb = mem_for_germline_cnv_caller,
+                mem_gb = mem_gb_for_germline_cnv_caller,
                 cpu = cpu_for_germline_cnv_caller,
                 p_alt = gcnv_p_alt,
                 p_active = gcnv_p_active,
@@ -220,12 +220,27 @@ workflow CNVGermlineCohortWorkflow {
         }
     }
 
+    scatter (sample_index in range(length(CollectCounts.entity_id))) {
+        call CNVTasks.PostprocessGermlineCNVCalls {
+            input:
+                entity_id = CollectCounts.entity_id[sample_index],
+                chunk_path_tars = GermlineCNVCallerCohortMode.gcnv_calls_tar,
+                sample_index = sample_index,
+                gatk4_jar_override = gatk4_jar_override,
+                gatk_docker = gatk_docker,
+                preemptible_attempts = preemptible_attempts
+        }
+    }
+
     output {
+        File preprocessed_intervals = PreprocessIntervals.preprocessed_intervals
+        Array[File] read_counts_entity_ids = CollectCounts.entity_id
+        Array[File] read_counts = CollectCounts.counts
         File contig_ploidy_model_tar = DetermineGermlineContigPloidyCohortMode.contig_ploidy_model_tar
         File contig_ploidy_calls_tar = DetermineGermlineContigPloidyCohortMode.contig_ploidy_calls_tar
-
         Array[File] gcnv_model_tars = GermlineCNVCallerCohortMode.gcnv_model_tar
         Array[File] gcnv_calls_tars = GermlineCNVCallerCohortMode.gcnv_calls_tar
+        Array[File] vcfs = PostprocessGermlineCNVCalls.vcf
     }
 }
 

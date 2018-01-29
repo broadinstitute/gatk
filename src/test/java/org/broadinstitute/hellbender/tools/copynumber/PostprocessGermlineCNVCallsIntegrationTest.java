@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.copynumber.gcnv;
+package org.broadinstitute.hellbender.tools.copynumber;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 
@@ -11,14 +11,14 @@ import java.util.stream.Collectors;
 
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.copynumber.PostProcessGermlineCNVCalls;
+import org.broadinstitute.hellbender.tools.copynumber.PostprocessGermlineCNVCalls;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.annotations.Test;
 
 /**
- * Integration test for {@link PostProcessGermlineCNVCalls}
+ * Integration test for {@link PostprocessGermlineCNVCalls}
  */
-public class PostProcessGermlineCNVCallsIntegrationTest extends CommandLineProgramTest {
+public class PostprocessGermlineCNVCallsIntegrationTest extends CommandLineProgramTest {
 
     // Test directory
     private static final File TEST_DIR = new File(toolsTestDir, "copynumber/gcnv/");
@@ -37,9 +37,9 @@ public class PostProcessGermlineCNVCallsIntegrationTest extends CommandLineProgr
 
         final List<String> arguments = new ArrayList<>();
         chunkDirectoriesFileList.forEach(dir -> {
-            arguments.add("-" + PostProcessGermlineCNVCalls.CHUNK_PATH_LONG_NAME); arguments.add(dir);
+            arguments.add("-" + PostprocessGermlineCNVCalls.CHUNK_PATH_LONG_NAME); arguments.add(dir);
         });
-        arguments.add("-" + PostProcessGermlineCNVCalls.SAMPLE_DIRECTORY_LONG_NAME);
+        arguments.add("-" + PostprocessGermlineCNVCalls.SAMPLE_DIRECTORY_LONG_NAME);
         arguments.add(SAMPLE_NAME);
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
         arguments.add(outputVCF.getAbsolutePath());
@@ -57,9 +57,9 @@ public class PostProcessGermlineCNVCallsIntegrationTest extends CommandLineProgr
 
         final List<String> arguments = new ArrayList<>();
         chunkDirectoriesFileList.forEach(dir -> {
-            arguments.add("-" + PostProcessGermlineCNVCalls.CHUNK_PATH_LONG_NAME); arguments.add(dir);
+            arguments.add("-" + PostprocessGermlineCNVCalls.CHUNK_PATH_LONG_NAME); arguments.add(dir);
         });
-        arguments.add("-" + PostProcessGermlineCNVCalls.SAMPLE_DIRECTORY_LONG_NAME);
+        arguments.add("-" + PostprocessGermlineCNVCalls.SAMPLE_DIRECTORY_LONG_NAME);
         arguments.add(SAMPLE_NAME);
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
         arguments.add(outputVCF.getAbsolutePath());
