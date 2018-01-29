@@ -224,6 +224,9 @@ workflow Mutect2 {
             input:
                 gatk_override = gatk_override,
                 intervals = intervals,
+                ref_fasta = ref_fasta,
+                ref_fai = ref_fai,
+                ref_dict = ref_dict,
                 preemptible_attempts = preemptible_attempts,
                 gatk_docker = gatk_docker,
                 tumor_bam = tumor_bam,
@@ -400,11 +403,11 @@ task M2 {
         touch bamout.bam
         echo "" > normal_name.txt
 
-        gatk --java-options "-Xmx${command_mem}m" GetSampleName -I ${tumor_bam} -O tumor_name.txt
+        gatk --java-options "-Xmx${command_mem}m" GetSampleName -R ${ref_fasta} -I ${tumor_bam} -O tumor_name.txt
         tumor_command_line="-I ${tumor_bam} -tumor `cat tumor_name.txt`"
 
-        if [[ "${normal_bam}" == *.bam ]]; then
-            gatk --java-options "-Xmx${command_mem}m" GetSampleName -I ${normal_bam} -O normal_name.txt
+        if [[ -f "${normal_bam}" ]]; then
+            gatk --java-options "-Xmx${command_mem}m" GetSampleName -R ${ref_fasta} -I ${normal_bam} -O normal_name.txt
             normal_command_line="-I ${normal_bam} -normal `cat normal_name.txt`"
         fi
 
@@ -567,6 +570,9 @@ task CollectSequencingArtifactMetrics {
 task CalculateContamination {
     # inputs
     File? intervals
+    File ref_fasta
+    File ref_fai
+    File ref_dict
     File tumor_bam
     File tumor_bai
     File? normal_bam
@@ -600,12 +606,12 @@ task CalculateContamination {
 
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
-        if [[ "${normal_bam}" == *.bam ]]; then
+        if [[ -f "${normal_bam}" ]]; then
             gatk --java-options "-Xmx${command_mem}m" GetPileupSummaries -I ${normal_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O normal_pileups.table
             NORMAL_CMD="-matched normal_pileups.table"
         fi
 
-        gatk --java-options "-Xmx${command_mem}m" GetPileupSummaries -I ${tumor_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O pileups.table
+        gatk --java-options "-Xmx${command_mem}m" GetPileupSummaries -R ${ref_fasta} -I ${tumor_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O pileups.table
         gatk --java-options "-Xmx${command_mem}m" CalculateContamination -I pileups.table -O contamination.table $NORMAL_CMD
     }
 
