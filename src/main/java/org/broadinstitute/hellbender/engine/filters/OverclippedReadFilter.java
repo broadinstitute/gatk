@@ -24,12 +24,12 @@ public final class OverclippedReadFilter extends ReadFilter{
 
     static final long serialVersionUID = 1L;
 
-    @Argument(fullName = ReadFilterArgumentDefinitions.FILTER_TOO_SORT_NAME,
+    @Argument(fullName = ReadFilterArgumentDefinitions.FILTER_TOO_SHORT_NAME,
             doc = "Minimum number of aligned bases",
             optional = true)
     public int minimumSequenceLength = 30;
 
-    @Argument(fullName = ReadFilterArgumentDefinitions.DONT_REQUIRE_SOFT_CLIPS_BOTH_ENDS,
+    @Argument(fullName = ReadFilterArgumentDefinitions.DONT_REQUIRE_SOFT_CLIPS_BOTH_ENDS_NAME,
             doc = "Allow a read to be filtered out based on having only 1 soft-clipped block. By default, both ends must " +
                     "have a soft-clipped block, setting this flag requires only 1 soft-clipped block",
             optional = true)

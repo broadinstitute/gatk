@@ -26,8 +26,8 @@ public final class ReadFilterArgumentDefinitions {
     public static final String MINIMUM_MAPPING_QUALITY_NAME = "minimum-mapping-quality";
     public static final String MAXIMUM_MAPPING_QUALITY_NAME = "maximum-mapping-quality";
 
-    public static final String FILTER_TOO_SORT_NAME = "filter-too-short";
-    public static final String DONT_REQUIRE_SOFT_CLIPS_BOTH_ENDS = "dont-require-soft-clips-both-ends";
+    public static final String FILTER_TOO_SHORT_NAME = "filter-too-short";
+    public static final String DONT_REQUIRE_SOFT_CLIPS_BOTH_ENDS_NAME = "dont-require-soft-clips-both-ends";
 
     public static final String PL_FILTER_NAME_LONG_NAME = "platform-filter-name";
 
