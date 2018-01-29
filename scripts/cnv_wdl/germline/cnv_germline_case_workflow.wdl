@@ -38,37 +38,39 @@ workflow CNVGermlineCaseWorkflow {
     #### optional basic arguments ####
     ##################################
     File? gatk4_jar_override
-    Int? mem_gb_for_determine_germline_contig_ploidy
-    Int? mem_gb_for_germline_cnv_caller
-    Int? cpu_for_determine_germline_contig_ploidy
-    Int? cpu_for_germline_cnv_caller
     Int? preemptible_attempts
 
-    ###################################################
-    #### optional arguments for ploidy case caller ####
-    ###################################################
+    ####################################################
+    #### optional arguments for PreprocessIntervals ####
+    ####################################################
+    Int? padding
+    Int? bin_length
+
+    ######################################################################
+    #### optional arguments for DetermineGermlineContigPloidyCaseMode ####
+    ######################################################################
     Float? ploidy_mapping_error_rate
     Float? ploidy_sample_psi_scale
+    Int? mem_gb_for_determine_germline_contig_ploidy
+    Int? cpu_for_determine_germline_contig_ploidy
 
-    #########################################################
-    #### optional arguments for germline CNV case caller ####
-    #########################################################
+    ##########################################################
+    #### optional arguments for GermlineCNVCallerCaseMode ####
+    ##########################################################
     Float? gcnv_p_alt
     Float? gcnv_cnv_coherence_length
     Int? gcnv_max_copy_number
+    Int? mem_gb_for_germline_cnv_caller
+    Int? cpu_for_germline_cnv_caller
 
-    #############################################################
-    #### optional arguments for germline CNV denoising model ####
-    #############################################################
+    # optional arguments for germline CNV denoising model
     Float? gcnv_mapping_error_rate
     Float? gcnv_sample_psi_scale
     Float? gcnv_depth_correction_tau
     String? gcnv_copy_number_posterior_expectation_mode
     Int? gcnv_active_class_padding_hybrid_mode
 
-    #########################################################################
-    #### optional arguments for Hybrid ADVI for germline CNV case caller ####
-    #########################################################################
+    # optional arguments for Hybrid ADVI
     Float? gcnv_learning_rate
     Float? gcnv_adamax_beta_1
     Float? gcnv_adamax_beta_2
@@ -95,6 +97,8 @@ workflow CNVGermlineCaseWorkflow {
             ref_fasta = ref_fasta,
             ref_fasta_fai = ref_fasta_fai,
             ref_fasta_dict = ref_fasta_dict,
+            padding = padding,
+            bin_length = bin_length,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
             preemptible_attempts = preemptible_attempts
@@ -204,11 +208,12 @@ task DetermineGermlineContigPloidyCaseMode {
     File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem_gb
-    Int? cpu
     String gatk_docker
-    Int? preemptible_attempts
+    Int? mem_gb
     Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
+    Int? preemptible_attempts
 
     # Model parameters
     Float? mapping_error_rate
@@ -247,9 +252,9 @@ task DetermineGermlineContigPloidyCaseMode {
     runtime {
         docker: "${gatk_docker}"
         memory: machine_mem_mb + " MB"
-        disks: "local-disk " + select_first([disk_space_gb, 150]) + " HDD"
-        preemptible: select_first([preemptible_attempts, 2])
+        disks: "local-disk " + select_first([disk_space_gb, 150]) + if use_ssd then " SSD" else " HDD"
         cpu: select_first([cpu, 8])
+        preemptible: select_first([preemptible_attempts, 2])
     }
 
     output {
@@ -268,11 +273,12 @@ task GermlineCNVCallerCaseMode {
     File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem_gb
-    Int? cpu
     String gatk_docker
-    Int? preemptible_attempts
+    Int? mem_gb
     Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
+    Int? preemptible_attempts
 
     # Caller parameters
     Float? p_alt
@@ -368,9 +374,9 @@ task GermlineCNVCallerCaseMode {
     runtime {
         docker: "${gatk_docker}"
         memory: machine_mem_mb + " MB"
-        disks: "local-disk " + select_first([disk_space_gb, 150]) + " HDD"
-        preemptible: select_first([preemptible_attempts, 2])
+        disks: "local-disk " + select_first([disk_space_gb, 150]) + if use_ssd then " SSD" else " HDD"
         cpu: select_first([cpu, 8])
+        preemptible: select_first([preemptible_attempts, 2])
     }
 
     output {
