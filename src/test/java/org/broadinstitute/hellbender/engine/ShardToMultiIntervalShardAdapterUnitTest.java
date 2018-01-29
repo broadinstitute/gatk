@@ -1,6 +1,8 @@
-package org.broadinstitute.hellbender.engine.spark;
+package org.broadinstitute.hellbender.engine;
 
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.Shard;
+import org.broadinstitute.hellbender.engine.ShardToMultiIntervalShardAdapter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -9,7 +11,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-public class ShardToMultiIntervalShardAdapterUnitTest {
+public class ShardToMultiIntervalShardAdapterUnitTest extends GATKBaseTest {
     private static final SimpleInterval INTERVAL = new SimpleInterval("1", 10, 15);
     private static final SimpleInterval PADDED_INTERVAL = new SimpleInterval("1", 5, 22);
     private static final List<Integer> INTEGERS = Arrays.asList(1, 2, 3);
@@ -34,11 +36,13 @@ public class ShardToMultiIntervalShardAdapterUnitTest {
     @Test
     public void testGetIntervals() {
         Assert.assertEquals(shard.getIntervals().get(0), INTERVAL);
+        Assert.assertEquals(shard.getIntervals().size(), 1);
     }
 
     @Test
     public void testGetPaddedIntervals() {
         Assert.assertEquals(shard.getPaddedIntervals().get(0), PADDED_INTERVAL);
+        Assert.assertEquals(shard.getPaddedIntervals().size(), 1);
     }
 
     @Test

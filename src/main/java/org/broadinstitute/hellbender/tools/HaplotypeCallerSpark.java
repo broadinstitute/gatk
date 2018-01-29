@@ -22,7 +22,7 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.engine.spark.ShardToMultiIntervalShardAdapter;
+import org.broadinstitute.hellbender.engine.ShardToMultiIntervalShardAdapter;
 import org.broadinstitute.hellbender.engine.spark.SparkSharder;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -79,6 +79,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
     public static final int DEFAULT_READSHARD_SIZE = 5000;
+    private static final boolean INCLUDE_READS_WITH_DELETIONS_IN_IS_ACTIVE_PILEUPS = true;
 
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Single file to which variants should be written")
     public String output;
@@ -294,13 +295,14 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             final ReadsDownsampler readsDownsampler = assemblyArgs.maxReadsPerAlignmentStart > 0 ?
                 new PositionalDownsampler(assemblyArgs.maxReadsPerAlignmentStart, header) : null;
             return Utils.stream(shards)
+                    //TODO we've hacked multi interval shards here with a shim, but we should investigate as smarter approach https://github.com/broadinstitute/gatk/issues/4299
                 .map(shard -> new ShardToMultiIntervalShardAdapter<>(
                         new DownsampleableSparkReadShard(new ShardBoundary(shard.getInterval(), shard.getPaddedInterval()), shard, readsDownsampler)))
                 .flatMap(shardToRegion(assemblyArgs, header, referenceSource, hcEngine)).iterator();
         };
     }
 
-    private static Function<ShardToMultiIntervalShardAdapter<GATKRead>, Stream<? extends Tuple2<AssemblyRegion, SimpleInterval>>> shardToRegion(
+    private static Function<MultiIntervalShard<GATKRead>, Stream<? extends Tuple2<AssemblyRegion, SimpleInterval>>> shardToRegion(
             ShardingArgumentCollection assemblyArgs,
             SAMFileHeader header,
             ReferenceMultiSourceAdapter referenceSource,
@@ -309,10 +311,11 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             //TODO load features as a side input
             final FeatureManager featureManager = null;
 
-            final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, header, referenceSource, featureManager, evaluator, assemblyArgs.minAssemblyRegionSize, assemblyArgs.maxAssemblyRegionSize, assemblyArgs.assemblyRegionPadding, assemblyArgs.activeProbThreshold, assemblyArgs.maxProbPropagationDistance, true);
+            final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, header, referenceSource, featureManager, evaluator, assemblyArgs.minAssemblyRegionSize, assemblyArgs.maxAssemblyRegionSize, assemblyArgs.assemblyRegionPadding, assemblyArgs.activeProbThreshold, assemblyArgs.maxProbPropagationDistance,
+                                                                                           INCLUDE_READS_WITH_DELETIONS_IN_IS_ACTIVE_PILEUPS);
 
             return Utils.stream(assemblyRegionIter)
-                    .map(a -> new Tuple2<>(a, shard.getInterval()));
+                    .map(a -> new Tuple2<>(a, shard.getIntervals().get(0)));
         };
     }
 

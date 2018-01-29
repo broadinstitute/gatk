@@ -96,6 +96,11 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
      */
     protected abstract int defaultMaxProbPropagationDistance();
 
+    /**
+     * subclasses can override this to control if reads with deletions should be included in isActive pileups
+     */
+    protected abstract boolean includeReadsWithDeletionsInIsActivePileups();
+
     @Argument(doc = "whether to use the shuffle implementation or not", shortName = "shuffle", fullName = "shuffle", optional = true)
     public boolean shuffle = false;
 
@@ -149,7 +154,7 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
         Broadcast<ReferenceMultiSource> bReferenceSource = hasReference() ? ctx.broadcast(getReference()) : null;
         Broadcast<FeatureManager> bFeatureManager = features == null ? null : ctx.broadcast(features);
         return shardedReads.flatMap(getAssemblyRegionsFunction(bReferenceSource, bFeatureManager, sequenceDictionary, getHeaderForReads(),
-                assemblyRegionEvaluator(), minAssemblyRegionSize, maxAssemblyRegionSize, assemblyRegionPadding, activeProbThreshold, maxProbPropagationDistance));
+                assemblyRegionEvaluator(), minAssemblyRegionSize, maxAssemblyRegionSize, assemblyRegionPadding, activeProbThreshold, maxProbPropagationDistance, includeReadsWithDeletionsInIsActivePileups()));
     }
 
     private static FlatMapFunction<Shard<GATKRead>, AssemblyRegionWalkerContext> getAssemblyRegionsFunction(
@@ -162,7 +167,8 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
             final int maxAssemblyRegionSize,
             final int assemblyRegionPadding,
             final double activeProbThreshold,
-            final int maxProbPropagationDistance) {
+            final int maxProbPropagationDistance,
+            final boolean includeReadsWithDeletionsInIsActivePileups) {
         return (FlatMapFunction<Shard<GATKRead>, AssemblyRegionWalkerContext>) shardedRead -> {
             final SimpleInterval paddedInterval = shardedRead.getPaddedInterval();
             final SimpleInterval assemblyRegionPaddedInterval = paddedInterval.expandWithinContig(assemblyRegionPadding, sequenceDictionary);
@@ -175,7 +181,7 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
                     new ShardToMultiIntervalShardAdapter<>(shardedRead),
                     header, reference, features, evaluator,
                     minAssemblyRegionSize, maxAssemblyRegionSize, assemblyRegionPadding, activeProbThreshold,
-                    maxProbPropagationDistance, true);
+                    maxProbPropagationDistance, includeReadsWithDeletionsInIsActivePileups);
             final Iterable<AssemblyRegion> assemblyRegions = () -> assemblyRegionIter;
             return Utils.stream(assemblyRegions).map(assemblyRegion ->
                     new AssemblyRegionWalkerContext(assemblyRegion,
