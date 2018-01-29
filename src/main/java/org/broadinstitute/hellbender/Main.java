@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgramExecutor;
 import com.google.cloud.storage.StorageException;
@@ -65,7 +66,8 @@ public class Main {
     /**
      * exit value when an unrecoverable {@link UserException} occurs
      */
-    private static final int USER_EXCEPTION_EXIT_VALUE = 2;
+    @VisibleForTesting
+    static final int USER_EXCEPTION_EXIT_VALUE = 2;
 
     /**
      * exit value when any unrecoverable exception other than {@link UserException} occurs
