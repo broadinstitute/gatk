@@ -535,17 +535,17 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     @Test
     public void testGenomicsDBImportWithoutDBField() throws IOException {
-	//Test for https://github.com/broadinstitute/gatk/issues/3736
-	final List<String> vcfInputs = Arrays.asList(NA_24385);
+        //Test for https://github.com/broadinstitute/gatk/issues/3736
+        final List<String> vcfInputs = Arrays.asList(NA_24385);
         final String workspace = createTempDir("genomicsdb-tests").getAbsolutePath() + "/workspace";
 	writeToGenomicsDB(vcfInputs, INTERVAL_3736, workspace, 0, false, 0, 1);
     }
-    
+
     @Test
     public void testLongWorkspacePath() throws IOException {
-	//Test for https://github.com/broadinstitute/gatk/issues/4160
+        //Test for https://github.com/broadinstitute/gatk/issues/4160
         final List<String> vcfInputs = LOCAL_GVCFS;
-        final String workspace = createTempDir("long_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_genomicsdb").getAbsolutePath() + "/should_not_fail_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        final String workspace = createTempDir("long_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_genomicsdb").getAbsolutePath() + "/should_not_fail_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
         writeToGenomicsDB(vcfInputs, INTERVAL, workspace, 0, false, 0, 1);
     }
 
