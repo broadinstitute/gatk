@@ -84,6 +84,8 @@ public abstract class GATKBaseTest extends BaseTest {
     // Micro reference is the same as hg19mini, but contains only chromosomes 1 and 2
     public static final String hg19MicroReference = publicTestDir + "hg19micro.fasta";
 
+    public static final String hg19EndOfChromosome17 = publicTestDir + "hg19chr17end.fasta";
+
     public static final String exampleFASTA = publicTestDir + "exampleFASTA.fasta";
     public static final String exampleReference = hg19MiniReference;
     public static final String hg19MiniIntervalFile = publicTestDir + "hg19mini.interval_list";

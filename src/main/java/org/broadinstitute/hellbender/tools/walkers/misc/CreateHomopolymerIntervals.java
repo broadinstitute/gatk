@@ -116,14 +116,14 @@ public class CreateHomopolymerIntervals extends GATKTool {
 
 
     public static byte[] getTrailingBases(final ReferenceContext referenceContext, final int numberOfBases){
-        referenceContext.setWindow(0, MIN_HOMOPOLYMER_LENGTH);
-        return Arrays.copyOfRange(referenceContext.getBases(), 1, MIN_HOMOPOLYMER_LENGTH + 1);
+        referenceContext.setWindow(0, numberOfBases);
+        return Arrays.copyOfRange(referenceContext.getBases(), 1, numberOfBases + 1);
 
     }
 
     public static byte[] getPrecedingBases(final ReferenceContext referenceContext, final int numberOfBases){
         referenceContext.setWindow(numberOfBases, 0);
-        return Arrays.copyOf(referenceContext.getBases(), MIN_HOMOPOLYMER_LENGTH);
+        return Arrays.copyOf(referenceContext.getBases(), numberOfBases);
 
     }
 
@@ -135,9 +135,14 @@ public class CreateHomopolymerIntervals extends GATKTool {
             return false;
         }
 
-        final byte nucleotide = neighboringBases[0];
-        for (byte precedingBase : neighboringBases){
-            if (precedingBase != nucleotide || precedingBase == 'N'){
+        final byte representativeBase = neighboringBases[0];
+        if (representativeBase == 0){
+            // This happens at the end of chromosome 17, where the end of the chromosome is actually not an ocean of N's
+            return false;
+        }
+
+        for (byte neighbor : neighboringBases){
+            if (neighbor != representativeBase || neighbor == 'N'){
                 return false;
             }
         }
