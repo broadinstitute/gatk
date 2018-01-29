@@ -16,11 +16,15 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.IndexFeatureFile;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.seqdoop.hadoop_bam.util.VCFHeaderReader;
@@ -127,7 +131,20 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         final File output = createTempFile(outputFileName, extension);
         VariantsSparkSink.writeVariants(ctx, output.toString(), ctx.parallelize(vcs), getHeader(), writeGvcf, Arrays.asList(100), 2, 1 );
-        Assert.assertEquals(readVariants(output.toString()).size(), writeGvcf ? 1 : 10);
+
+        new CommandLineProgramTest(){
+            @Override
+            public String getTestedToolName(){
+                return IndexFeatureFile.class.getSimpleName();
+            }
+        }.runCommandLine(new String[]{"-F", output.getAbsolutePath()});
+
+        final List<VariantContext> writtenVcs = readVariants(output.toString());
+        //if we are actually writing a gvcf, all the variant blocks will be merged into a single homref block with
+        Assert.assertEquals(writtenVcs.size(), writeGvcf ? 1 : 10);
+        Assert.assertEquals(writtenVcs.stream().mapToInt(VariantContext::getStart).min().getAsInt(), 1);
+        Assert.assertEquals(writtenVcs.stream().mapToInt(VariantContext::getEnd).max().getAsInt(), 10);
+
     }
 
     private static VCFHeader getHeader() {
