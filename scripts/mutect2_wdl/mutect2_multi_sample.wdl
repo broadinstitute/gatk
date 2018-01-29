@@ -38,6 +38,7 @@ workflow Mutect2_Multi {
 	Array[String]? artifact_modes
 	String? m2_extra_args
     String? m2_extra_filtering_args
+    Boolean? compress_vcfs
     Boolean? make_bamout
 
     # Oncotator inputs
@@ -47,6 +48,15 @@ workflow Mutect2_Multi {
     String? sequencing_center
     String? sequence_source
     File? default_config_file
+
+    # funcotator inputs
+    Boolean? run_funcotator
+    String? reference_version
+    String? data_sources_tar_gz
+    String? transcript_selection_mode
+    Array[String]? transcript_selection_list
+    Array[String]? annotation_defaults
+    Array[String]? annotation_overrides
 
     File? gatk_override
 
@@ -90,7 +100,15 @@ workflow Mutect2_Multi {
                 sequencing_center = sequencing_center,
                 sequence_source = sequence_source,
                 default_config_file = default_config_file,
+                run_funcotator = run_funcotator,
+                reference_version = reference_version,
+                data_sources_tar_gz = data_sources_tar_gz,
+                transcript_selection_mode = transcript_selection_mode,
+                transcript_selection_list = transcript_selection_list,
+                annotation_defaults = annotation_defaults,
+                annotation_overrides = annotation_overrides,
                 make_bamout = make_bamout,
+                compress_vcfs = compress_vcfs,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 oncotator_docker = oncotator_docker,
