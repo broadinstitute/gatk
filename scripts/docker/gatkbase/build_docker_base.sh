@@ -6,7 +6,7 @@ set -e
 
 REPO=broadinstitute
 PROJECT=gatk
-VERSION=1.2.2
+VERSION=1.2.3
 FULL_PATH=${REPO}/${PROJECT}:gatkbase-${VERSION}
 
 #################################################
