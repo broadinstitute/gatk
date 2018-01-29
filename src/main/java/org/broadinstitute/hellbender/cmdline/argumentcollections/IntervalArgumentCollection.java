@@ -24,6 +24,7 @@ public abstract class IntervalArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
     public static final String EXCLUDE_INTERVALS_LONG_NAME = "exclude-intervals";
+    public static final String EXCLUDE_INTERVALS_SHORT_NAME = "XL";
     public static final String INTERVAL_SET_RULE_LONG_NAME = "interval-set-rule";
     public static final String INTERVAL_PADDING_LONG_NAME = "interval-padding";
     public static final String INTERVAL_EXCLUSION_PADDING_LONG_NAME = "interval-exclusion-padding";
@@ -55,7 +56,10 @@ public abstract class IntervalArgumentCollection implements Serializable {
      * (e.g. -XL myFile.intervals).
      * @return strings gathered from the command line -XL argument to be parsed into intervals to exclude
      */
-    @Argument(fullName = EXCLUDE_INTERVALS_LONG_NAME, shortName = "XL", doc = "One or more genomic intervals to exclude from processing", optional = true, common = true)
+    // Interval list files such as Picard interval lists are structured and require specialized parsing that
+    // is handled by IntervalUtils, so use suppressFileExpansion to bypass command line parser auto-expansion.
+    @Argument(fullName = EXCLUDE_INTERVALS_LONG_NAME, shortName = EXCLUDE_INTERVALS_SHORT_NAME, doc = "One or more genomic intervals to exclude from processing",
+            suppressFileExpansion = true, optional = true, common = true)
     protected final List<String> excludeIntervalStrings = new ArrayList<>();
 
     /**
