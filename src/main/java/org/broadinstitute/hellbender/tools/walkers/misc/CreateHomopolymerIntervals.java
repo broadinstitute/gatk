@@ -94,9 +94,9 @@ public class CreateHomopolymerIntervals extends GATKTool {
                                 MIN_HOMOPOLYMER_LENGTH, trailingBases.length));
 
                 if (neighboringBasesAreAHomopolymer(precedingBases, baseAtLocus)){
-                    outputStream.println(String.format("%s\t%s\t%s", locus.getContig(), locus.getStart(), locus.getEnd()));
+                    outputStream.println(String.format("%s\t%s\t%s", locus.getContig(), locus.getStart(), locus.getEnd() + 1));
                 } else if (neighboringBasesAreAHomopolymer(trailingBases, baseAtLocus)){
-                    outputStream.println(String.format("%s\t%s\t%s", locus.getContig(), locus.getStart(), locus.getEnd()));
+                    outputStream.println(String.format("%s\t%s\t%s", locus.getContig(), locus.getStart(), locus.getEnd() + 1));
                 }
             }
         }
