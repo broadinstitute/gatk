@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine.filters;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -19,9 +20,8 @@ import java.util.Set;
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only reads with matching Read Group platform")
 public final class PlatformReadFilter extends ReadFilter implements Serializable{
     private static final long serialVersionUID = 1L;
-    public static final String PL_FILTER_NAME_LONG_NAME = "platform-filter-name";
 
-    @Argument(fullName = PL_FILTER_NAME_LONG_NAME,
+    @Argument(fullName = ReadFilterArgumentDefinitions.PL_FILTER_NAME_LONG_NAME,
             doc="Platform attribute (PL) to match", optional=false)
     public Set<String> PLFilterNames = new LinkedHashSet<>();
 

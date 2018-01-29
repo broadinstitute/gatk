@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine.filters;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -20,10 +21,10 @@ import java.io.Serializable;
 public final class MappingQualityReadFilter extends ReadFilter implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @Argument(fullName="minimum-mapping-quality", doc = "Minimum mapping quality to keep (inclusive)", optional=true)
+    @Argument(fullName=ReadFilterArgumentDefinitions.MINIMUM_MAPPING_QUALITY_NAME, doc = "Minimum mapping quality to keep (inclusive)", optional=true)
     public int minMappingQualityScore = 10;
 
-    @Argument(fullName="maximum-mapping-quality", doc = "Maximum mapping quality to keep (inclusive)", optional=true)
+    @Argument(fullName=ReadFilterArgumentDefinitions.MAXIMUM_MAPPING_QUALITY_NAME, doc = "Maximum mapping quality to keep (inclusive)", optional=true)
     public Integer maxMappingQualityScore = null;
 
     // Command line parser requires a no-arg constructor
