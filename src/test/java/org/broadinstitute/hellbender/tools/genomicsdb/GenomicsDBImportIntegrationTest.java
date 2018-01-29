@@ -43,6 +43,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String HG_00096 = largeFileTestDir + "gvcfs/HG00096.g.vcf.gz";
     private static final String HG_00268 = largeFileTestDir + "gvcfs/HG00268.g.vcf.gz";
     private static final String NA_19625 = largeFileTestDir + "gvcfs/NA19625.g.vcf.gz";
+    private static final String NA_24385 = largeFileTestDir + "NA24385.vcf.gz";
     private static final String NA_12878_PHASED = largeFileTestDir + "NA12878.phasedData.Chr20.vcf"; //NOTE: this is not phased according to the vcf spec but it reflects phasing currently produced by haplotype caller
     private static final String MULTIPLOID_DATA_HG37 = largeFileTestDir + "gvcfs/HapMap5plex.ploidy10.b37.g.vcf";
     private static final String NA12878_HG37 = " src/test/resources/org/broadinstitute/hellbender/tools/haplotypecaller/expected.testGVCFMode.gatk4.g.vcf";
@@ -55,6 +56,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String COMBINED = largeFileTestDir + "gvcfs/combined.gatk3.7.g.vcf.gz";
     private static final String COMBINED_WITHSPACES = largeFileTestDir + "gvcfs/combined.gatk3.7.smaller_interval.g.vcf";
     private static final SimpleInterval INTERVAL = new SimpleInterval("chr20", 17960187, 17981445);
+    private static final SimpleInterval INTERVAL_3736 = new SimpleInterval("chr6",130365070,146544250);
     private static final SimpleInterval INTERVAL_NONDIPLOID = new SimpleInterval("20", 10000000, 10100000);
     private static final SimpleInterval SMALLER_INTERVAL = new SimpleInterval("chr20", 17960187, 17961973);
     private static final VCFHeader VCF_HEADER = VariantContextTestUtils.getCompleteHeader();
@@ -154,7 +156,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         checkGenomicsDBAgainstExpected(workspace2.getAbsolutePath() + "/workspace", INTERVAL, COMBINED, b38_reference_20_21, true);
     }
 
-    @Test (enabled = false)
+    @Test (enabled = true)
     public void testGenomicsDBAlleleSpecificAnnotations() throws IOException {
         testGenomicsDBAgainstCombineGVCFs(Arrays.asList(COMBINEGVCFS_TEST_DIR+"NA12878.AS.chr20snippet.g.vcf", COMBINEGVCFS_TEST_DIR+"NA12892.AS.chr20snippet.g.vcf"),
                 new SimpleInterval("20", 10433000, 10700000),
@@ -529,6 +531,22 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                 .addArgument("L", "1:1-10");
 
         runCommandLine(args);
+    }
+
+    @Test
+    public void testGenomicsDBImportWithoutDBField() throws IOException {
+	//Test for https://github.com/broadinstitute/gatk/issues/3736
+	final List<String> vcfInputs = Arrays.asList(NA_24385);
+        final String workspace = createTempDir("genomicsdb-tests").getAbsolutePath() + "/workspace";
+	writeToGenomicsDB(vcfInputs, INTERVAL_3736, workspace, 0, false, 0, 1);
+    }
+    
+    @Test
+    public void testLongWorkspacePath() throws IOException {
+	//Test for https://github.com/broadinstitute/gatk/issues/4160
+        final List<String> vcfInputs = LOCAL_GVCFS;
+        final String workspace = createTempDir("long_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_genomicsdb").getAbsolutePath() + "/should_not_fail_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        writeToGenomicsDB(vcfInputs, INTERVAL, workspace, 0, false, 0, 1);
     }
 
     @Test
