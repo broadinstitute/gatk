@@ -237,6 +237,7 @@ task PostprocessGermlineCNVCalls {
     String vcf_filename = "${entity_id}.vcf.gz"
 
     String dollar = "$" #WDL workaround for using array[@], see https://github.com/broadinstitute/cromwell/issues/1819
+
     command <<<
         set -e
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}

@@ -86,10 +86,8 @@ workflow CNVSomaticPanelWorkflow {
 
     output {
         File preprocessed_intervals = PreprocessIntervals.preprocessed_intervals
-
         Array[String] read_counts_entity_ids = CollectCounts.entity_id
         Array[File] read_counts = CollectCounts.counts
-
         File read_count_pon = CreateReadCountPanelOfNormals.read_count_pon
     }
 }
