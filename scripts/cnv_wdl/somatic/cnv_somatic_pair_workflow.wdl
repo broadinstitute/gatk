@@ -25,6 +25,10 @@ import "cnv_common_tasks.wdl" as CNVTasks
 import "cnv_somatic_oncotator_workflow.wdl" as CNVOncotator
 
 workflow CNVSomaticPairWorkflow {
+
+    ##################################
+    #### required basic arguments ####
+    ##################################
     File common_sites
     File intervals
     File tumor_bam
@@ -36,16 +40,79 @@ workflow CNVSomaticPairWorkflow {
     File ref_fasta_fai
     File ref_fasta
     String gatk_docker
-    File? gatk4_jar_override
 
-    # For running oncotator
+    ##################################
+    #### optional basic arguments ####
+    ##################################
+     # For running oncotator
     Boolean is_run_oncotator = false
+    File? gatk4_jar_override
+    Int? preemptible_attempts
+    # Use as a last resort to increase the disk given to every task in case of ill behaving data
+    Int? emergency_extra_disk
+
+    ####################################################
+    #### optional arguments for PreprocessIntervals ####
+    ####################################################
+    Int? padding
+    Int? bin_length
+
+    ##############################################
+    #### optional arguments for CollectCounts ####
+    ##############################################
+    String? format
+    Int? mem_gb_for_collect_counts
+
+    #####################################################
+    #### optional arguments for CollectAllelicCounts ####
+    #####################################################
+    String? minimum_base_quality
+    Int? mem_gb_for_collect_allelic_counts
+
+    ##################################################
+    #### optional arguments for DenoiseReadCounts ####
+    ##################################################
+    Int? number_of_eigensamples
+
+    ##############################################
+    #### optional arguments for ModelSegments ####
+    ##############################################
+    Int? max_num_segments_per_chromosome
+    Int? min_total_allele_count
+    Float? genotyping_homozygous_log_ratio_threshold
+    Float? genotyping_base_error_rate
+    Float? kernel_variance_copy_ratio
+    Float? kernel_variance_allele_fraction
+    Float? kernel_scaling_allele_fraction
+    Int? kernel_approximation_dimension
+    Array[Int]+? window_sizes = [8, 16, 32, 64, 128, 256]
+    Float? num_changepoints_penalty_factor
+    Float? minor_allele_fraction_prior_alpha
+    Int? num_samples_copy_ratio
+    Int? num_burn_in_copy_ratio
+    Int? num_samples_allele_fraction
+    Int? num_burn_in_allele_fraction
+    Float? smoothing_threshold_copy_ratio
+    Float? smoothing_threshold_allele_fraction
+    Int? max_num_smoothing_iterations
+    Int? num_smoothing_iterations_per_fit
+    Int? mem_gb_for_model_segments
+
+    ######################################################
+    #### optional arguments for CallCopyRatioSegments ####
+    ######################################################
+    Float? neutral_segment_copy_ratio_lower_bound
+    Float? neutral_segment_copy_ratio_upper_bound
+    Float? outlier_neutral_segment_copy_ratio_z_score_threshold
+    Float? calling_copy_ratio_z_score_threshold
+
+    #########################################
+    #### optional arguments for plotting ####
+    #########################################
+    Int? minimum_contig_length
 
     # Ignored if not running oncotator
     String oncotator_docker = "broadinstitute/oncotator:1.9.5.0-eval-gatk-protected"
-
-    # Use as a last resort to increase the disk given to every task in case of ill behaving data
-    Int? emergency_extra_disk
 
     Int ref_size = ceil(size(ref_fasta, "GB") + size(ref_fasta_dict, "GB") + size(ref_fasta_fai, "GB"))
     Int read_count_pon_size = ceil(size(read_count_pon, "GB"))
@@ -56,16 +123,19 @@ workflow CNVSomaticPairWorkflow {
     # This is added to every task as padding, should increase if systematically you need more disk for every call
     Int disk_pad = 20 + ceil(size(intervals, "GB")) + ceil(size(common_sites, "GB")) + gatk4_override_size + select_first([emergency_extra_disk,0])
 
-    Int process_disk = ref_size + disk_pad
+    Int preprocess_intervals_disk = ref_size + disk_pad
     call CNVTasks.PreprocessIntervals {
         input:
             intervals = intervals,
             ref_fasta = ref_fasta,
             ref_fasta_fai = ref_fasta_fai,
             ref_fasta_dict = ref_fasta_dict,
+            padding = padding,
+            bin_length = bin_length,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            disk_space_gb = process_disk
+            disk_space_gb = preprocess_intervals_disk,
+            preemptible_attempts = preemptible_attempts
     }
 
     Int collect_counts_tumor_disk = tumor_bam_size + ceil(size(PreprocessIntervals.preprocessed_intervals, "GB")) + disk_pad
@@ -77,9 +147,12 @@ workflow CNVSomaticPairWorkflow {
             ref_fasta = ref_fasta,
             ref_fasta_fai = ref_fasta_fai,
             ref_fasta_dict = ref_fasta_dict,
+            format = format,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            disk_space_gb = collect_counts_tumor_disk
+            mem_gb = mem_gb_for_collect_counts,
+            disk_space_gb = collect_counts_tumor_disk,
+            preemptible_attempts = preemptible_attempts
     }
 
     Int collect_counts_normal_disk = normal_bam_size + ceil(size(PreprocessIntervals.preprocessed_intervals, "GB")) + disk_pad
@@ -91,9 +164,12 @@ workflow CNVSomaticPairWorkflow {
             ref_fasta = ref_fasta,
             ref_fasta_fai = ref_fasta_fai,
             ref_fasta_dict = ref_fasta_dict,
+            format = format,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            disk_space_gb = collect_counts_normal_disk
+            mem_gb = mem_gb_for_collect_counts,
+            disk_space_gb = collect_counts_normal_disk,
+            preemptible_attempts = preemptible_attempts
     }
 
     Int collect_allelic_counts_tumor_disk = tumor_bam_size + ref_size + disk_pad
@@ -105,9 +181,12 @@ workflow CNVSomaticPairWorkflow {
             ref_fasta = ref_fasta,
             ref_fasta_dict = ref_fasta_dict,
             ref_fasta_fai = ref_fasta_fai,
+            minimum_base_quality =  minimum_base_quality,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            disk_space_gb = collect_allelic_counts_tumor_disk
+            mem_gb = mem_gb_for_collect_allelic_counts,
+            disk_space_gb = collect_allelic_counts_tumor_disk,
+            preemptible_attempts = preemptible_attempts
     }
 
     Int collect_allelic_counts_normal_disk = normal_bam_size + ref_size + disk_pad
@@ -119,9 +198,12 @@ workflow CNVSomaticPairWorkflow {
             ref_fasta = ref_fasta,
             ref_fasta_dict = ref_fasta_dict,
             ref_fasta_fai = ref_fasta_fai,
+            minimum_base_quality =  minimum_base_quality,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            disk_space_gb = collect_allelic_counts_normal_disk
+            mem_gb = mem_gb_for_collect_allelic_counts,
+            disk_space_gb = collect_allelic_counts_normal_disk,
+            preemptible_attempts = preemptible_attempts
     }
 
     Int denoise_read_counts_tumor_disk = read_count_pon_size + ceil(size(CollectCountsTumor.counts, "GB")) + disk_pad
@@ -130,9 +212,11 @@ workflow CNVSomaticPairWorkflow {
             entity_id = CollectCountsTumor.entity_id,
             read_counts = CollectCountsTumor.counts,
             read_count_pon = read_count_pon,
+            number_of_eigensamples = number_of_eigensamples,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            disk_space_gb = denoise_read_counts_tumor_disk
+            disk_space_gb = denoise_read_counts_tumor_disk,
+            preemptible_attempts = preemptible_attempts
     }
 
     Int denoise_read_counts_normal_disk = read_count_pon_size + ceil(size(CollectCountsNormal.counts, "GB")) + disk_pad
@@ -141,9 +225,11 @@ workflow CNVSomaticPairWorkflow {
             entity_id = CollectCountsNormal.entity_id,
             read_counts = CollectCountsNormal.counts,
             read_count_pon = read_count_pon,
+            number_of_eigensamples = number_of_eigensamples,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            disk_space_gb = denoise_read_counts_normal_disk
+            disk_space_gb = denoise_read_counts_normal_disk,
+            preemptible_attempts = preemptible_attempts
     }
 
     Int model_segments_disk = ceil(size(DenoiseReadCountsTumor.denoised_copy_ratios, "GB")) + ceil(size(CollectAllelicCountsTumor.allelic_counts, "GB")) + ceil(size(CollectAllelicCountsNormal.allelic_counts, "GB")) + disk_pad
@@ -153,9 +239,29 @@ workflow CNVSomaticPairWorkflow {
             denoised_copy_ratios = DenoiseReadCountsTumor.denoised_copy_ratios,
             allelic_counts = CollectAllelicCountsTumor.allelic_counts,
             normal_allelic_counts = CollectAllelicCountsNormal.allelic_counts,
+            max_num_segments_per_chromosome = max_num_segments_per_chromosome,
+            min_total_allele_count = min_total_allele_count,
+            genotyping_homozygous_log_ratio_threshold = genotyping_homozygous_log_ratio_threshold,
+            genotyping_base_error_rate = genotyping_base_error_rate,
+            kernel_variance_copy_ratio = kernel_variance_copy_ratio,
+            kernel_variance_allele_fraction = kernel_variance_allele_fraction,
+            kernel_scaling_allele_fraction = kernel_scaling_allele_fraction,
+            kernel_approximation_dimension = kernel_approximation_dimension,
+            window_sizes = window_sizes,
+            num_changepoints_penalty_factor = num_changepoints_penalty_factor,
+            minor_allele_fraction_prior_alpha = minor_allele_fraction_prior_alpha,
+            num_samples_copy_ratio = num_samples_copy_ratio,
+            num_burn_in_copy_ratio = num_burn_in_copy_ratio,
+            num_samples_allele_fraction = num_samples_allele_fraction,
+            num_burn_in_allele_fraction = num_burn_in_allele_fraction,
+            smoothing_threshold_copy_ratio = smoothing_threshold_copy_ratio,
+            smoothing_threshold_allele_fraction = smoothing_threshold_allele_fraction,
+            max_num_smoothing_iterations = max_num_smoothing_iterations,
+            num_smoothing_iterations_per_fit = num_smoothing_iterations_per_fit,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            disk_space_gb = model_segments_disk
+            disk_space_gb = model_segments_disk,
+            preemptible_attempts = preemptible_attempts
     }
 
     call ModelSegments as ModelSegmentsNormal {
@@ -163,9 +269,29 @@ workflow CNVSomaticPairWorkflow {
             entity_id = CollectCountsNormal.entity_id,
             denoised_copy_ratios = DenoiseReadCountsNormal.denoised_copy_ratios,
             allelic_counts = CollectAllelicCountsNormal.allelic_counts,
+            max_num_segments_per_chromosome = max_num_segments_per_chromosome,
+            min_total_allele_count = min_total_allele_count,
+            genotyping_homozygous_log_ratio_threshold = genotyping_homozygous_log_ratio_threshold,
+            genotyping_base_error_rate = genotyping_base_error_rate,
+            kernel_variance_copy_ratio = kernel_variance_copy_ratio,
+            kernel_variance_allele_fraction = kernel_variance_allele_fraction,
+            kernel_scaling_allele_fraction = kernel_scaling_allele_fraction,
+            kernel_approximation_dimension = kernel_approximation_dimension,
+            window_sizes = window_sizes,
+            num_changepoints_penalty_factor = num_changepoints_penalty_factor,
+            minor_allele_fraction_prior_alpha = minor_allele_fraction_prior_alpha,
+            num_samples_copy_ratio = num_samples_copy_ratio,
+            num_burn_in_copy_ratio = num_burn_in_copy_ratio,
+            num_samples_allele_fraction = num_samples_allele_fraction,
+            num_burn_in_allele_fraction = num_burn_in_allele_fraction,
+            smoothing_threshold_copy_ratio = smoothing_threshold_copy_ratio,
+            smoothing_threshold_allele_fraction = smoothing_threshold_allele_fraction,
+            max_num_smoothing_iterations = max_num_smoothing_iterations,
+            num_smoothing_iterations_per_fit = num_smoothing_iterations_per_fit,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            disk_space_gb = model_segments_disk
+            disk_space_gb = model_segments_disk,
+            preemptible_attempts = preemptible_attempts
     }
 
     Int copy_ratio_segments_tumor_disk = ceil(size(DenoiseReadCountsTumor.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsTumor.copy_ratio_only_segments, "GB")) + disk_pad
@@ -173,9 +299,14 @@ workflow CNVSomaticPairWorkflow {
         input:
             entity_id = CollectCountsTumor.entity_id,
             copy_ratio_segments = ModelSegmentsTumor.copy_ratio_only_segments,
+            neutral_segment_copy_ratio_lower_bound = neutral_segment_copy_ratio_lower_bound,
+            neutral_segment_copy_ratio_upper_bound = neutral_segment_copy_ratio_upper_bound,
+            outlier_neutral_segment_copy_ratio_z_score_threshold = outlier_neutral_segment_copy_ratio_z_score_threshold,
+            calling_copy_ratio_z_score_threshold = calling_copy_ratio_z_score_threshold,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            disk_space_gb = copy_ratio_segments_tumor_disk
+            disk_space_gb = copy_ratio_segments_tumor_disk,
+            preemptible_attempts = preemptible_attempts
     }
 
     Int copy_ratio_segments_normal_disk = ceil(size(DenoiseReadCountsNormal.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsNormal.copy_ratio_only_segments, "GB")) + disk_pad
@@ -183,9 +314,14 @@ workflow CNVSomaticPairWorkflow {
         input:
             entity_id = CollectCountsNormal.entity_id,
             copy_ratio_segments = ModelSegmentsNormal.copy_ratio_only_segments,
+            neutral_segment_copy_ratio_lower_bound = neutral_segment_copy_ratio_lower_bound,
+            neutral_segment_copy_ratio_upper_bound = neutral_segment_copy_ratio_upper_bound,
+            outlier_neutral_segment_copy_ratio_z_score_threshold = outlier_neutral_segment_copy_ratio_z_score_threshold,
+            calling_copy_ratio_z_score_threshold = calling_copy_ratio_z_score_threshold,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            disk_space_gb = copy_ratio_segments_normal_disk
+            disk_space_gb = copy_ratio_segments_normal_disk,
+            preemptible_attempts = preemptible_attempts
     }
 
     # The F=files from other tasks are small enough to just combine into one disk variable and pass to the tumor plotting tasks
@@ -196,9 +332,11 @@ workflow CNVSomaticPairWorkflow {
             standardized_copy_ratios = DenoiseReadCountsTumor.standardized_copy_ratios,
             denoised_copy_ratios = DenoiseReadCountsTumor.denoised_copy_ratios,
             ref_fasta_dict = ref_fasta_dict,
+            minimum_contig_length = minimum_contig_length,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            disk_space_gb = plot_tumor_disk
+            disk_space_gb = plot_tumor_disk,
+            preemptible_attempts = preemptible_attempts
     }
 
     # The files from other tasks are small enough to just combine into one disk variable and pass to the normal plotting tasks
@@ -209,9 +347,11 @@ workflow CNVSomaticPairWorkflow {
             standardized_copy_ratios = DenoiseReadCountsNormal.standardized_copy_ratios,
             denoised_copy_ratios = DenoiseReadCountsNormal.denoised_copy_ratios,
             ref_fasta_dict = ref_fasta_dict,
+            minimum_contig_length = minimum_contig_length,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            disk_space_gb = plot_normal_disk
+            disk_space_gb = plot_normal_disk,
+            preemptible_attempts = preemptible_attempts
     }
 
     call PlotModeledSegments as PlotModeledSegmentsTumor {
@@ -221,9 +361,11 @@ workflow CNVSomaticPairWorkflow {
             het_allelic_counts = ModelSegmentsTumor.het_allelic_counts,
             modeled_segments = ModelSegmentsTumor.modeled_segments,
             ref_fasta_dict = ref_fasta_dict,
+            minimum_contig_length = minimum_contig_length,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            disk_space_gb = plot_tumor_disk
+            disk_space_gb = plot_tumor_disk,
+            preemptible_attempts = preemptible_attempts
     }
 
     call PlotModeledSegments as PlotModeledSegmentsNormal {
@@ -233,16 +375,21 @@ workflow CNVSomaticPairWorkflow {
             het_allelic_counts = ModelSegmentsNormal.het_allelic_counts,
             modeled_segments = ModelSegmentsNormal.modeled_segments,
             ref_fasta_dict = ref_fasta_dict,
+            minimum_contig_length = minimum_contig_length,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            disk_space_gb = plot_normal_disk
+            disk_space_gb = plot_normal_disk,
+            preemptible_attempts = preemptible_attempts
     }
 
     if (is_run_oncotator) {
         call CNVOncotator.CNVOncotatorWorkflow as CNVOncotatorWorkflow {
             input:
                  called_file = CallCopyRatioSegmentsTumor.called_copy_ratio_segments,
-                 oncotator_docker = oncotator_docker
+                 additional_args = additional_args,
+                 oncotator_docker = oncotator_docker,
+                 mem_gb_for_oncotator = mem_gb_for_oncotator,
+                 preemptible_attempts = preemptible_attempts
         }
     }
 
@@ -310,10 +457,12 @@ task DenoiseReadCounts {
     File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem_gb
     String gatk_docker
+    Int? mem_gb
+    Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
     Int? preemptible_attempts
-    Int disk_space_gb
 
     Int machine_mem_mb = select_first([mem_gb, 13]) * 1000
     Int command_mem_mb = machine_mem_mb - 1000
@@ -333,7 +482,8 @@ task DenoiseReadCounts {
     runtime {
         docker: "${gatk_docker}"
         memory: machine_mem_mb + " MB"
-        disks: "local-disk " + disk_space_gb + " HDD"
+        disks: "local-disk " + disk_space_gb + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
         preemptible: select_first([preemptible_attempts, 5])
     }
 
@@ -371,10 +521,12 @@ task ModelSegments {
     File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem_gb
     String gatk_docker
+    Int? mem_gb
+    Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
     Int? preemptible_attempts
-    Int disk_space_gb
 
     Int machine_mem_mb = select_first([mem_gb, 13]) * 1000
     # ModelSegments seems to need at least 3GB of overhead to run
@@ -422,7 +574,8 @@ task ModelSegments {
     runtime {
         docker: "${gatk_docker}"
         memory: machine_mem_mb + " MB"
-        disks: "local-disk " + disk_space_gb + " HDD"
+        disks: "local-disk " + disk_space_gb + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
         preemptible: select_first([preemptible_attempts, 5])
     }
 
@@ -449,10 +602,12 @@ task CallCopyRatioSegments {
     File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem_gb
     String gatk_docker
+    Int? mem_gb
+    Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
     Int? preemptible_attempts
-    Int disk_space_gb
 
     Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
     Int command_mem_mb = machine_mem_mb - 1000
@@ -473,7 +628,8 @@ task CallCopyRatioSegments {
     runtime {
         docker: "${gatk_docker}"
         memory: machine_mem_mb + " MB"
-        disks: "local-disk " + disk_space_gb + " HDD"
+        disks: "local-disk " + disk_space_gb + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
         preemptible: select_first([preemptible_attempts, 5])
     }
 
@@ -492,10 +648,12 @@ task PlotDenoisedCopyRatios {
     File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem_gb
     String gatk_docker
+    Int? mem_gb
+    Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
     Int? preemptible_attempts
-    Int disk_space_gb
 
     Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
     Int command_mem_mb = machine_mem_mb - 1000
@@ -520,7 +678,8 @@ task PlotDenoisedCopyRatios {
     runtime {
         docker: "${gatk_docker}"
         memory: machine_mem_mb + " MB"
-        disks: "local-disk " + disk_space_gb + " HDD"
+        disks: "local-disk " + disk_space_gb + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
         preemptible: select_first([preemptible_attempts, 5])
     }
 
@@ -545,10 +704,12 @@ task PlotModeledSegments {
     File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem_gb
     String gatk_docker
+    Int? mem_gb
+    Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
     Int? preemptible_attempts
-    Int disk_space_gb
 
     Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
     Int command_mem_mb = machine_mem_mb - 1000
@@ -574,7 +735,8 @@ task PlotModeledSegments {
     runtime {
         docker: "${gatk_docker}"
         memory: machine_mem_mb + " MB"
-        disks: "local-disk " + disk_space_gb + " HDD"
+        disks: "local-disk " + disk_space_gb + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
         preemptible: select_first([preemptible_attempts, 5])
     }
 

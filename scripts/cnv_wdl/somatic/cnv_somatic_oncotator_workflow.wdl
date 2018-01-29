@@ -1,15 +1,25 @@
 workflow CNVOncotatorWorkflow {
+
+    ##################################
+    #### required basic arguments ####
+    ##################################
     File called_file
-    Int? mem_gb
-    String? oncotator_docker
+
+    ##################################
+    #### optional basic arguments ####
+    ##################################
     String? additional_args
+    String? oncotator_docker
+    Int? mem_gb_for_oncotator
+    Int? preemptible_attempts
 
     call OncotateSegments {
         input:
             called_file = called_file,
-            mem_gb = mem_gb,
+            additional_args = additional_args,
             oncotator_docker = oncotator_docker,
-            additional_args = additional_args
+            mem_gb = mem_gb_for_oncotator,
+            preemptible_attempts = preemptible_attempts
     }
 
     output {
@@ -21,15 +31,18 @@ workflow CNVOncotatorWorkflow {
 task OncotateSegments {
     File called_file
     String? additional_args
-    String basename_called_file = basename(called_file)
 
     # Runtime parameters
-    Int? mem_gb
     String? oncotator_docker
-    Int? preemptible_attempts
+    Int? mem_gb
     Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
+    Int? preemptible_attempts
 
     Int machine_mem_mb = select_first([mem_gb, 3]) * 1000
+
+    String basename_called_file = basename(called_file)
 
     command <<<
         set -e
@@ -53,7 +66,8 @@ task OncotateSegments {
     runtime {
         docker: select_first([oncotator_docker, "broadinstitute/oncotator:1.9.5.0-eval-gatk-protected"])
         memory: machine_mem_mb + " MB"
-        disks: "local-disk " + select_first([disk_space_gb, 50]) + " HDD"
+        disks: "local-disk " + select_first([disk_space_gb, 50]) + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
         preemptible: select_first([preemptible_attempts, 2])
         bootDiskSizeGb: 50
     }

@@ -8,10 +8,12 @@ task PreprocessIntervals {
     File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem_gb
     String gatk_docker
-    Int? preemptible_attempts
+    Int? mem_gb
     Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
+    Int? preemptible_attempts
 
     Int machine_mem_mb = select_first([mem_gb, 2]) * 1000
     Int command_mem_mb = machine_mem_mb - 500
@@ -37,7 +39,8 @@ task PreprocessIntervals {
     runtime {
         docker: "${gatk_docker}"
         memory: machine_mem_mb + " MB"
-        disks: "local-disk " + select_first([disk_space_gb, 40]) + " HDD"
+        disks: "local-disk " + select_first([disk_space_gb, 40]) + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
         preemptible: select_first([preemptible_attempts, 5])
     }
 
@@ -54,10 +57,12 @@ task AnnotateIntervals {
     File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem_gb
     String gatk_docker
-    Int? preemptible_attempts
+    Int? mem_gb
     Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
+    Int? preemptible_attempts
 
     Int machine_mem_mb = select_first([mem_gb, 2]) * 1000
     Int command_mem_mb = machine_mem_mb - 500
@@ -76,7 +81,8 @@ task AnnotateIntervals {
     runtime {
         docker: "${gatk_docker}"
         memory: machine_mem_mb + " MB"
-        disks: "local-disk " + select_first([disk_space_gb, ceil(size(ref_fasta, "GB")) + 50]) + " HDD"
+        disks: "local-disk " + select_first([disk_space_gb, ceil(size(ref_fasta, "GB")) + 50]) + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
         preemptible: select_first([preemptible_attempts, 5])
     }
 
@@ -96,10 +102,12 @@ task CollectCounts {
     File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem_gb
     String gatk_docker
-    Int? preemptible_attempts
+    Int? mem_gb
     Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
+    Int? preemptible_attempts
 
     Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
     Int command_mem_mb = machine_mem_mb - 1000
@@ -124,7 +132,8 @@ task CollectCounts {
     runtime {
         docker: "${gatk_docker}"
         memory: machine_mem_mb + " MB"
-        disks: "local-disk " + select_first([disk_space_gb, ceil(size(bam, "GB")) + 50]) + " HDD"
+        disks: "local-disk " + select_first([disk_space_gb, ceil(size(bam, "GB")) + 50]) + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
         preemptible: select_first([preemptible_attempts, 5])
     }
 
@@ -145,10 +154,12 @@ task CollectAllelicCounts {
     File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem_gb
     String gatk_docker
-    Int? preemptible_attempts
+    Int? mem_gb
     Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
+    Int? preemptible_attempts
 
     Int machine_mem_mb = select_first([mem_gb, 13]) * 1000
     Int command_mem_mb = machine_mem_mb - 1000
@@ -173,7 +184,8 @@ task CollectAllelicCounts {
     runtime {
         docker: "${gatk_docker}"
         memory: machine_mem_mb + " MB"
-        disks: "local-disk " + select_first([disk_space_gb, ceil(size(bam, "GB")) + 50]) + " HDD"
+        disks: "local-disk " + select_first([disk_space_gb, ceil(size(bam, "GB")) + 50]) + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
         preemptible: select_first([preemptible_attempts, 5])
     }
 
@@ -188,10 +200,12 @@ task ScatterIntervals {
     Int num_intervals_per_scatter
 
     # Runtime parameters
-    Int? mem_gb
     String gatk_docker
-    Int? preemptible_attempts
+    Int? mem_gb
     Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
+    Int? preemptible_attempts
 
     Int machine_mem_mb = select_first([mem_gb, 2]) * 1000
 
@@ -209,7 +223,8 @@ task ScatterIntervals {
     runtime {
         docker: "${gatk_docker}"
         memory: machine_mem_mb + " MB"
-        disks: "local-disk " + select_first([disk_space_gb, 40]) + " HDD"
+        disks: "local-disk " + select_first([disk_space_gb, 40]) + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
         preemptible: select_first([preemptible_attempts, 5])
     }
 
@@ -225,10 +240,12 @@ task PostprocessGermlineCNVCalls {
     File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem_gb
     String gatk_docker
-    Int? preemptible_attempts
+    Int? mem_gb
     Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
+    Int? preemptible_attempts
 
     Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
     Int command_mem_mb = machine_mem_mb - 1000
@@ -261,7 +278,8 @@ task PostprocessGermlineCNVCalls {
     runtime {
         docker: "${gatk_docker}"
         memory: machine_mem_mb + " MB"
-        disks: "local-disk " + select_first([disk_space_gb, 40]) + " HDD"
+        disks: "local-disk " + select_first([disk_space_gb, 40]) + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
         preemptible: select_first([preemptible_attempts, 5])
     }
 
