@@ -50,6 +50,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends GATKBaseTest {
                         { new ReadMetadata.PartitionBounds(0, 1, 1, 10000, 9999)},
                     100, 10, 30);
     private final Broadcast<ReadMetadata> broadcastMetadata = ctx.broadcast(readMetadataExpected);
+    private final Broadcast<SVIntervalTree<SVInterval>> broadcastRegionsToIgnore = ctx.broadcast(new SVIntervalTree<>());
     private final List<List<BreakpointEvidence>> externalEvidence =
             FindBreakpointEvidenceSpark.readExternalEvidence(null, readMetadataExpected,
                                                     params.externalEvidenceWeight, params.externalEvidenceUncertainty);
@@ -62,14 +63,14 @@ public final class FindBreakpointEvidenceSparkUnitTest extends GATKBaseTest {
     public void getIntervalsTest() {
         final List<SVInterval> actualIntervals =
                 FindBreakpointEvidenceSpark.getIntervalsAndEvidenceTargetLinks(params,broadcastMetadata,
-                        broadcastExternalEvidence,header,reads,filter,logger)._1();
+                        broadcastExternalEvidence,header,reads,filter,logger, broadcastRegionsToIgnore)._1();
         Assert.assertEquals(actualIntervals, expectedIntervalList);
     }
 
     @Test(groups = "sv")
     public void getQNamesTest() {
         final Set<String> actualQNames = new HashSet<>();
-        FindBreakpointEvidenceSpark.getQNames(params, ctx, broadcastMetadata, expectedIntervalList, reads, filter)
+        FindBreakpointEvidenceSpark.getQNames(params, ctx, broadcastMetadata, expectedIntervalList, reads, filter, broadcastRegionsToIgnore)
                 .stream()
                 .map(QNameAndInterval::getKey)
                 .forEach(actualQNames::add);

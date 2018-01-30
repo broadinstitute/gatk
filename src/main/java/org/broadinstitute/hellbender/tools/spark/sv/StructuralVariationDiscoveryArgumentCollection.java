@@ -42,10 +42,15 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
                 "fragment size statistics.", fullName = "max-tracked-fragment-length")
         public int maxTrackedFragmentLength = 2000;
 
-        @Argument(doc = "Intervals with more than this much coverage are filtered out, because the reads mapped to "+
-                "that interval are clearly not exclusively local to the interval.",
-                fullName = "max-interval-coverage")
-        public int maxIntervalCoverage = 1000;
+        @Argument(doc = "We filter out contiguous regions of the genome that have coverage of at least high-depth-coverage-factor * avg-coverage and a " +
+                "peak coverage of high-depth-coverage-peak-factor * avg-coverage, because the reads mapped to those regions tend to be non-local and high depth prevents accurate assembly.",
+                fullName = "high-depth-coverage-peak-factor")
+        public int highDepthCoveragePeakFactor = 7;
+
+        @Argument(doc = "We filter out contiguous regions of the genome that have coverage of at least high-depth-coverage-factor * avg-coverage and a " +
+                "peak coverage of high-depth-coverage-peak-factor * avg-coverage, because the reads mapped to those regions tend to be non-local and high depth prevents accurate assembly.",
+                fullName = "high-depth-coverage-factor")
+        public int highDepthCoverageFactor = 3;
 
         @Argument(doc = "Minimum weight of the corroborating read evidence to validate some single piece of evidence.",
                 fullName = "min-evidence-count")
@@ -122,6 +127,9 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
 
         @Argument(doc = "file for breakpoint intervals output", fullName = "breakpoint-intervals", optional = true)
         public String intervalFile;
+
+        @Argument(doc = "file for high-coverage intervals output", fullName = "high-coverage-intervals", optional = true)
+        public String highCoverageIntervalsFile;
 
         @Argument(doc = "file for mapped qname intervals output", fullName = "qname-intervals-mapped", optional = true)
         public String qNamesMappedFile;

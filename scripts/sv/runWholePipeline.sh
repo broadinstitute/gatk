@@ -65,6 +65,7 @@ case ${GATK_SV_TOOL} in
             --kmers-to-ignore ${KMER_KILL_LIST} \
             --cross-contigs-to-ignore ${ALTS_KILL_LIST} \
             --breakpoint-intervals ${PROJECT_OUTPUT_DIR}/intervals \
+            --high-coverage-intervals "${PROJECT_OUTPUT_DIR}/highCoverageIntervals.bed" \
             --fastq-dir ${PROJECT_OUTPUT_DIR}/fastq \
             --contig-sam-file ${PROJECT_OUTPUT_DIR}/assemblies.sam \
             --target-link-file ${PROJECT_OUTPUT_DIR}/target_links.bedpe \
@@ -80,6 +81,7 @@ case ${GATK_SV_TOOL} in
             --kmers-to-ignore ${KMER_KILL_LIST} \
             --cross-contigs-to-ignore ${ALTS_KILL_LIST} \
             --breakpoint-intervals ${PROJECT_OUTPUT_DIR}/intervals \
+            --high-coverage-intervals "${PROJECT_OUTPUT_DIR}/highCoverageIntervals.bed" \
             --fastq-dir ${PROJECT_OUTPUT_DIR}/fastq \
             --target-link-file ${PROJECT_OUTPUT_DIR}/target_links.bedpe"
         ;;
