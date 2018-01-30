@@ -1,8 +1,8 @@
 # given a gnomAD vcf, produce:
 # 1) a sites-only vcf where the only INFO field is allele frequency (AF)
-#   this is used as the gnomad input to mutect2_opt.wdl
+#   this is used as the gnomad input to mutect2.wdl
 # 2) this sites-only vcf further restricted to a given minimum allele frequency
-#   this is used as the variants_for_contamination input to mutect2_opt.wdl
+#   this is used as the variants_for_contamination input to mutect2.wdl
 
 workflow MutectResources {
     # inputs
