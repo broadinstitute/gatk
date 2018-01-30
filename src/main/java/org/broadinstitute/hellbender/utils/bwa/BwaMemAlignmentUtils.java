@@ -88,6 +88,7 @@ public class BwaMemAlignmentUtils {
             samRecord.setReadBases(SAMRecord.NULL_SEQUENCE);
             samRecord.setBaseQualities(SAMRecord.NULL_QUALS);
         }
+        //TODO: there ought to be a way to indicate a set of tag names that ought to be copied -- we're just doing RG
         if ( readGroup != null ) samRecord.setAttribute(SAMTag.RG.name(), readGroup);
         return samRecord;
     }
