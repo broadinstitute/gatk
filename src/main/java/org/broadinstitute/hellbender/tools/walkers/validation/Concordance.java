@@ -27,11 +27,17 @@ import java.util.EnumMap;
 import java.util.Set;
 
 /**
- * Evaluate concordance of an input VCF against a validated truth VCF
+ * Evaluate site-level concordance of an input VCF against a truth VCF.
  *
- * <p>This tool evaluates an input VCF against a VCF that has been validated and is considered to represent ground truth.
- * The summary statistics (# true positives, # false positives, # false negatives, sensitivity, precision) are reported
- * in a TSV file (--summary). Note that this tool assumes that the truth VCF only contains PASS variants.</p>
+ * <p>This tool evaluates two variant callsets against each other and produces a six-column summary metrics table. The summary:</p>
+ *
+ * <ul>
+ *     <li>stratifies SNP and INDEL calls,</li>
+ *     <li>tallies true-positive, false-positive and false-negative calls,</li>
+ *     <li>and calculates sensitivity and precision.</li>
+ * </ul>
+ *
+ * <p>The tool assumes all records in the --truth VCF are passing truth variants. For the -eval VCF, the tool uses only unfiltered passing calls.</p>
  *
  * <p>Optionally, the tool also produces VCFs of the following variant records, annotated with each variant's concordance status:</p>
  * <ul>
@@ -43,11 +49,11 @@ import java.util.Set;
  * <p>These output VCFs can be passed to {@link VariantsToTable} to produce a TSV file for statistical analysis in R
  * or Python.</p>
  *
- * <h3>Usage examples</h3>
+ * <h3>Usage example</h3>
  *
  * <pre>
- * gatk --java-options "-Xmx4g" Concordance \
- *   -R reference.fasta \
+ * gatk Concordance \
+ *   -R reference.fa \
  *   -eval eval.vcf \
  *   --truth truth.vcf \
  *   --summary summary.tsv    

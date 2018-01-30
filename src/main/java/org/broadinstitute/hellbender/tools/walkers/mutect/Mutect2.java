@@ -18,19 +18,68 @@ import java.io.File;
 import java.util.List;
 
 /**
- * Call somatic short variants, both SNVs and indels, via local assembly of haplotypes
- *
+ * <p>Call somatic short variants via local assembly of haplotypes.
+ * Short variants include single nucleotide (SNV) and insertion and deletion (indel) variants.
+ * </p>
  * <p>
- *     Mutect2 calls somatic single nucleotide (SNV) and insertion and deletion (indel) variants.
  *     The caller combines the DREAM challenge-winning somatic genotyping engine of the original MuTect
  *     (<a href='http://www.nature.com/nbt/journal/v31/n3/full/nbt.2514.html'>Cibulskis et al., 2013</a>) with the
  *     assembly-based machinery of <a href="https://www.broadinstitute.org/gatk/documentation/tooldocs/org_broadinstitute_gatk_tools_walkers_haplotypecaller_HaplotypeCaller.php">HaplotypeCaller</a>.
- *     Although we present the tool for somatic analyses, it may also apply to other contexts, such as mitochondrial variant calling.
+ * </p>
+ * <p>
+ *     This tool is featured in the Somatic Short Mutation calling Best Practice Workflow.
+ *     See <a href="https://software.broadinstitute.org/gatk/documentation/article?id=11136">Tutorial#11136</a> for a
+ *     step-by-step description of the workflow and <a href="https://software.broadinstitute.org/gatk/documentation/article?id=11127">Article#11127</a>
+ *     for an overview of what traditional somatic calling entails. For the latest pipeline scripts, see the
+ *     <a href="https://github.com/broadinstitute/gatk/tree/master/scripts/mutect2_wdl">Mutect2 WDL scripts directory</a>.
+ *     Although we present the tool for somatic calling, it may apply to other contexts, such as mitochondrial variant calling.
  * </p>
  *
- * <p>For how GATK4 Mutect2 differs from GATK3 MuTect2, see <a href='https://software.broadinstitute.org/gatk/documentation/article?id=10911'>GATK Article#10911</a>.</p>
+ * <h3>Usage examples</h3>
+ * <p>Example commands show how to run Mutect2 for typical scenerios. The two modes are (i) somatic mode where a tumor sample is matched with a normal sample in analysis and
+ * (ii) tumor-only mode where a single sample is provided for analysis. </p>
  *
- * <p>Here is an example of a known variants resource with population allele frequencies:</p>
+ * <h4>Tumor with matched normal</h4>
+ * <p>
+ *     Given a matched normal, Mutect2 is designed to call somatic variants only. The tool includes logic to skip
+ *     emitting variants that are clearly present in the germline based on provided evidence, e.g. in the matched normal.
+ *     This is done at an early stage to avoid spending computational resources on germline events. If the variant's germline status is
+ *     borderline, then Mutect2 will emit the variant to the callset for subsequent filtering and review.
+ * </p>
+ *
+ * <pre>
+ * gatk Mutect2 \
+ *   -R reference.fa \
+ *   -I tumor.bam \
+ *   -tumor tumor_sample_name \
+ *   -I normal.bam \
+ *   -normal normal_sample_name \
+ *   --germline-resource af-only-gnomad.vcf.gz \
+ *   --af-of-alleles-not-in-resource 0.00003125 \
+ *   --panel-of-normals pon.vcf.gz \
+ *   -O somatic.vcf.gz
+ * </pre>
+ *
+ * <p>The --af-of-alleles-not-in-resource argument value should match expectations for alleles not found in the provided germline resource.
+ * Note the tool does not require a germline resource nor a panel of normals to run.</p>
+ *
+ * <h4>Tumor-only mode</h4>
+ * <p>This mode runs on a single sample, e.g. single tumor or single normal sample.
+ * To create a panel of normals (PoN), call on each normal sample in this mode, then use {@link CreateSomaticPanelOfNormals} to generate the PoN. </p>
+ *
+ * <pre>
+ *  gatk Mutect2 \
+ *   -R reference.fa \
+ *   -I sample.bam \
+ *   -tumor sample_name \
+ *   --germline-resource af-only-gnomad.vcf.gz \
+ *   -O single_sample.vcf.gz
+ * </pre>
+ *
+ * <p>If analyzing a tumor sample in tumor-only mode, then consider adding a PoN to the calling with the --panel-of-normals argument.</p>
+ *
+ * <h4>Excerpt of a known variants resource with population allele frequencies</h4>
+ * <p>Multiallelic sites require corresponding multiple AF annotations.</p>
  *
  * <pre>
  *     #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO
@@ -44,31 +93,6 @@ import java.util.List;
  *      1       10131   .       CT      C,*     378.93  PASS    AC=7,5;AF=1.765E-4,1.261E-4
  *      1       10132   .       TAACCC  *,T     18025.11        PASS    AC=12,2;AF=3.03E-4,5.049E-5
  * </pre>
- *
- * <h3>How Mutect2 works compared to HaplotypeCaller</h3>
- * <p>Overall, Mutect2 works similarly to HaplotypeCaller, but with a few key differences. </p>
- * <p>
- *     <dl>
- *     <dd>(i) GVCF calling is not a feature of Mutect2.</dd>
- *     <dd>(ii) While HaplotypeCaller relies on a fixed ploidy assumption to inform its genotype likelihoods that are the basis for genotype probabilities (PL),
- *     Mutect2 allows for varying ploidy in the form of allele fractions for each variant.</dd>
- *     Varying allele fractions is often seen within a tumor sample due to fractional purity, multiple subclones and/or copy number variation.
- *     <dd>(iii) Mutect2 also differs from the HaplotypeCaller in that it can apply various prefilters to sites and variants depending on the use of
- *     a matched normal (--normal-sample), a panel of normals (PoN; --panel-of-normals) and/or a common population variant resource containing allele-specific frequencies (--germline-resource).
- *     If provided, Mutect2 uses the PoN to filter sites and the germline resource and matched normal to filter alleles.</dd>
- *     <dd>(iv) Mutect2's default variant site annotations differ from those of HaplotypeCaller. See the --annotation parameter description for a list.</dd>
- *     <dd>(v) Finally, Mutect2 has additional parameters not available to HaplotypeCaller that factor in the decision to reassemble a genomic region,
- *     factor in likelihood calculations that then determine whether to emit a variant, or factor towards filtering.
- *     These parameters include the following and are each described further in the arguments section.</dd>
- *     </dl>
- * </p>
- *
- * <dl>
- *     <dd>--af-of-alleles-not-in-resource ==> germline variant prior</dd>
- *     <dd>--log-somatic-prior ==> somatic variant prior</dd>
- *     <dd>--normal-lod ==> filter threshold for variants in tumor not being in the normal, i.e. germline-risk filter</dd>
- *     <dd>--tumor-lod-to-emit ==> cutoff for tumor variants to appear in callset</dd>
- * </dl>
  *
  * <h3>Further points of interest</h3>
  * <p>
@@ -90,60 +114,6 @@ import java.util.List;
  *     For example, gnomAD's 16,000 samples (~32,000 homologs per locus) becomes a probability of one in 32,000 or less.
  *     Thus, an allele's absence from the germline resource becomes evidence that it is not a germline variant.
  * </p>
- *
- * <h3>Examples</h3>
- *
- * <p>Example commands show how to run Mutect2 for typical scenerios.</p>
- *
- * <h4>Tumor with matched normal</h4>
- * <p>
- *     Given a matched normal, Mutect2 is designed to call somatic variants only. The tool includes logic to skip
- *     emitting variants that are clearly present in the germline based on the evidence present in the matched normal. This is done at
- *     an early stage to avoid spending computational resources on germline events. If the variant's germline status is
- *     borderline, then Mutect2 will emit the variant to the callset with a germline-risk filter. Such filtered
- *     emissions enable manual review.
- * </p>
- * <pre>
- * gatk Mutect2 \
- *   -R ref_fasta.fa \
- *   -I tumor.bam \
- *   -tumor tumor_sample_name \
- *   -I normal.bam \
- *   -normal normal_sample_name \
- *   --germline-resource af-only-gnomad.vcf.gz \
- *   --panel-of-normals pon.vcf.gz \
- *   -L intervals.list \
- *   -O tumor_matched_m2_snvs_indels.vcf.gz
- * </pre>
- *
- * <h4>Single tumor sample</h4>
- * <pre>
- *  gatk Mutect2 \
- *   -R ref_fasta.fa \
- *   -I tumor.bam \
- *   -tumor tumor_sample_name \
- *   --germline-resource af-only-gnomad.vcf.gz \
- *   --panel-of-normals pon.vcf.gz \
- *   -L intervals.list \
- *   -O tumor_unmatched_m2_snvs_indels.vcf.gz
- * </pre>
- *
- * <h4>Single normal sample for panel of normals (PoN) creation</h4>
- * <p>
- *    To create a panel of normals (PoN), call on each normal sample as if a tumor sample. Then use
- *    {@link CreateSomaticPanelOfNormals} to output a PoN of germline and artifactual sites. This contrasts with the
- *    GATK3 workflow, which uses CombineVariants to retain variant sites called in at least two samples and then uses
- *    Picard MakeSitesOnlyVcf to simplify the callset for use as a PoN.
- * </p>
- * <pre>
- * gatk Mutect2 \
- *   -R ref_fasta.fa \
- *   -I normal1.bam \
- *   -tumor normal1_sample_name \
- *   --germline-resource af-only-gnomad.vcf.gz \
- *   -L intervals.list \
- *   -O normal1_for_pon.vcf.gz
- * </pre>
  *
  * <h3>Caveats</h3>
  * <p>

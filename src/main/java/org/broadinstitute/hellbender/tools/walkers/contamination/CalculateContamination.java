@@ -30,13 +30,19 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Given pileup data from {@link GetPileupSummaries}, calculates the fraction of reads coming from cross-sample contamination.
- *
  * <p>
+ *     Given pileup data from {@link GetPileupSummaries}, calculates the fraction of reads coming from cross-sample contamination.
  *     The resulting contamination table is used with {@link FilterMutectCalls}.
  * </p>
+ * <p>
+ *     This tool is featured in the Somatic Short Mutation calling Best Practice Workflow.
+ *     See <a href="https://software.broadinstitute.org/gatk/documentation/article?id=11136">Tutorial#11136</a> for a
+ *     step-by-step description of the workflow and <a href="https://software.broadinstitute.org/gatk/documentation/article?id=11127">Article#11127</a>
+ *     for an overview of what traditional somatic calling entails. For the latest pipeline scripts, see the
+ *     <a href="https://github.com/broadinstitute/gatk/tree/master/scripts/mutect2_wdl">Mutect2 WDL scripts directory</a>.
+ * </p>
  *
- * <p>This tool and GetPileupSummaries together replace GATK3's ContEst.  Like ContEst, this tool estimates contamination based on the signal
+ * <p>This tool and GetPileupSummaries together replace GATK3's ContEst. Like ContEst, this tool estimates contamination based on the signal
  * from ref reads at hom alt sites.  However, ContEst uses a probabilistic model that assumes a diploid genotype with no copy number
  * variation and independent contaminating reads.  That is, ContEst assumes that each contaminating read is drawn randomly and
  * independently from a different human.  This tool uses a simpler estimate of contamination that relaxes these assumptions.  In particular,
@@ -44,12 +50,9 @@ import java.util.stream.IntStream;
  * is designed to work well with no matched normal data.  However, one can run {@link GetPileupSummaries} on a matched normal bam file
  * and input the result to this tool.</p>
  *
- * <p>
- *     The resulting table provides the fraction contamination, one line per sample, e.g. SampleID--TAB--Contamination.
- *     The file has no header.
- * </p>
+ * <h3>Usage examples</h3>
  *
- * <h3>Example: tumor-only mode</h3>
+ * <h4>Tumor-only mode</h4>
  *
  * <pre>
  * gatk CalculateContamination \
@@ -57,7 +60,7 @@ import java.util.stream.IntStream;
  *   -O contamination.table
  * </pre>
  *
- * <h3>Example: matched normal mode</h3>
+ * <h4>Matched normal mode</h4>
  *
  * <pre>
  * gatk CalculateContamination \
@@ -65,6 +68,10 @@ import java.util.stream.IntStream;
  *   -matched normal-pileups.table \
  *   -O contamination.table
  * </pre>
+ * <p>
+ *     The resulting table provides the fraction contamination, one line per sample, e.g. SampleID--TAB--Contamination.
+ *     The file has no header.
+ * </p>
  *
  */
 @CommandLineProgramProperties(

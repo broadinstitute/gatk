@@ -35,26 +35,27 @@ import java.util.*;
  *     variant call format (VCF) file of false positive calls. The PoN captures common artifactual and germline variant sites.
  *     Mutect2 then uses the PoN to filter variants at the site-level.
  * </p>
- *
  * <p>
- *     This contrasts with the GATK3 workflow, which uses CombineVariants to retain variant sites called in at least
- *     two samples and then uses Picard MakeSitesOnlyVcf to simplify the callset for use as a PoN.
+ *     This tool is featured in the Somatic Short Mutation calling Best Practice Workflow.
+ *     See <a href="https://software.broadinstitute.org/gatk/documentation/article?id=11136">Tutorial#11136</a> for a
+ *     step-by-step description of the workflow and <a href="https://software.broadinstitute.org/gatk/documentation/article?id=11127">Article#11127</a>
+ *     for an overview of what traditional somatic calling entails. For the latest pipeline scripts, see the
+ *     <a href="https://github.com/broadinstitute/gatk/tree/master/scripts/mutect2_wdl">Mutect2 WDL scripts directory</a>.
  * </p>
+ * <h3>Example workflow</h3>
  *
- * <h3>Examples</h3>
- *
- * <p>Step 1. Run Mutect2 in tumor-only mode for each normal sample.</p>
+ * <h4>Step 1. Run Mutect2 in tumor-only mode for each normal sample.</h4>
  * <pre>
  * gatk Mutect2 \
- *   -R ref_fasta.fa \
+ *   -R reference.fa \
  *   -I normal1.bam \
  *   -tumor normal1_sample_name \
  *   --germline-resource af-only-gnomad.vcf.gz \
  *   -O normal1_for_pon.vcf.gz
  * </pre>
  *
- * <p>Step 2. Create a file ending with .args extension with the paths to the VCFs from step 1, one per line.
- * This approach is optional.  It will fail if a file with an extension other than .args is used. </p>
+ * <h4>Step 2. Create a file ending with .args extension with the paths to the VCFs from step 1, one per line.</h4>
+ * <p>This approach is optional.  It will fail if a file with an extension other than .args is used. </p>
  *
  * <pre>
  *     normal1_for_pon.vcf.gz
@@ -62,7 +63,7 @@ import java.util.*;
  *     normal3_for_pon.vcf.gz
  * </pre>
  *
- * <p>Step 3. Combine the normal calls using CreateSomaticPanelOfNormals.</p>
+ * <h4>Step 3. Combine the normal calls using CreateSomaticPanelOfNormals.</h4>
  *
  * <pre>
  * gatk CreateSomaticPanelOfNormals \
@@ -70,7 +71,8 @@ import java.util.*;
  *   -O pon.vcf.gz
  * </pre>
  *
- * <p>Alternatively, provide each normal's VCF as separate arguments.</p>
+ * <p>The tool also accepts multiple .args files. Pass each in with the -vcfs option.
+ * Alternatively, provide each normal's VCF as separate arguments.</p>
  * <pre>
  * gatk CreateSomaticPanelOfNormals \
  *   -vcfs normal1_for_pon_vcf.gz \
@@ -79,12 +81,9 @@ import java.util.*;
  *   -O pon.vcf.gz
  * </pre>
  *
- *  <p>The tool also accepts multiple .args files. Pass each in with the -vcfs option.</p>
- *
- *  <p>By default the tool fails if multiple vcfs have the same sample name, but the --duplicate-sample-strategy argument can be changed to
+ * <p>The resulting VCF will be an eight-column sites-only VCF without any annotations.
+ * By default the tool fails if multiple vcfs have the same sample name, but the --duplicate-sample-strategy argument can be changed to
  *  ALLOW_ALL to allow duplicates or CHOOSE_FIRST to use only the first vcf with a given sample name.</p>
- *
- *  <p>See {@link Mutect2} documentation for usage examples.</p>
  *
  */
 @CommandLineProgramProperties(
