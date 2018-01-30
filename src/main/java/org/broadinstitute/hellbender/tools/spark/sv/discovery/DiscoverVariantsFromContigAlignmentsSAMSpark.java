@@ -29,6 +29,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import scala.Tuple2;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -115,8 +116,8 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
     }
 
     @Override
-    public ReadFilter makeReadFilter() {
-        return ReadFilterLibrary.MAPPED;
+    public List<ReadFilter> getDefaultReadFilters() {
+        return Collections.singletonList(ReadFilterLibrary.MAPPED);
     }
 
     @Override
