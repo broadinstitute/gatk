@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
  *     FilterMutectCalls encapsulates GATK3 MuTect2's filtering functionality and adds additional filters.
  *     Thresholds for filters are contained in {@link M2FiltersArgumentCollection} and described in
  *     <a href='https://github.com/broadinstitute/gatk/tree/master/docs/mutect/mutect.pdf' target='_blank'>https://github.com/broadinstitute/gatk/tree/master/docs/mutect/mutect.pdf</a>.
- *     To filter further based on sequence context artifacts, additionally use {@link FilterByOrientationBias}.
+ *     To filter based on sequence context artifacts, see {@link FilterByOrientationBias}.
  * </p>
  * <p>
  *     Filtering thresholds for both normal-artifact-lod (default threshold 0.0) and tumor-lod (default threshold 5.3) can be set in this tool.
