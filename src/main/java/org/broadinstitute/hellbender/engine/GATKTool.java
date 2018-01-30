@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.SequenceDictionaryValidationArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
@@ -66,8 +67,8 @@ public abstract class GATKTool extends CommandLineProgram {
     @Argument(fullName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, shortName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, doc = "Output traversal statistics every time this many seconds elapse", optional = true, common = true)
     private double secondsBetweenProgressUpdates = ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES;
 
-    @Argument(fullName = StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, shortName = StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, doc = "If specified, do not check the sequence dictionaries from our inputs for compatibility. Use at your own risk!", optional = true, common = true)
-    private boolean disableSequenceDictionaryValidation = false;
+    @ArgumentCollection
+    private SequenceDictionaryValidationArgumentCollection seqValidationArguments = getSequenceDictionaryValidationArgumentCollection();
 
     @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME,
             shortName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_SHORT_NAME,
@@ -452,6 +453,17 @@ public abstract class GATKTool extends CommandLineProgram {
         return false;
     }
 
+
+    /**
+     * Get the {@link SequenceDictionaryValidationArgumentCollection} for the tool.
+     * Subclasses may override this method in order to customize validation options.
+     *
+     * @return a SequenceDictionaryValidationArgumentCollection
+     */
+    protected SequenceDictionaryValidationArgumentCollection getSequenceDictionaryValidationArgumentCollection() {
+        return new SequenceDictionaryValidationArgumentCollection.StandardValidationCollection();
+    }
+
     /**
      * Load the master sequence dictionary as specified in {@code masterSequenceDictionaryFilename}.
      * Will only load the master sequence dictionary if it has not already been loaded.
@@ -562,7 +574,7 @@ public abstract class GATKTool extends CommandLineProgram {
 
         initializeIntervals(); // Must be initialized after reference, reads and features, since intervals currently require a sequence dictionary from another data source
 
-        if ( ! disableSequenceDictionaryValidation ) {
+        if ( seqValidationArguments.performSequenceDictionaryValidation()) {
             validateSequenceDictionaries();
         }
 

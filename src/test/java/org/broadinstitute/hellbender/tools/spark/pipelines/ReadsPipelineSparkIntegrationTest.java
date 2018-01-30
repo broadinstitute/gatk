@@ -38,14 +38,6 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
             this.expectedVcfFileName = expectedVcfFileName;
         }
 
-        public String getCommandLine() {
-            return  " -R " + referenceURL +
-                    " -I " + bam +
-                    " " + args +
-                    (knownSites.isEmpty() ? "": " --known-sites " + knownSites) +
-                    " -O %s";
-        }
-
         @Override
         public String toString() {
             return String.format("ReadsPipeline(bam='%s', args='%s')", bam, args);
@@ -97,7 +89,7 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
                 {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--join-strategy OVERLAPS_PARTITIONER --read-shard-padding 1000 --known-sites " + more20Sites, getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedMultipleKnownSitesVcf)},
 
                 // BWA-MEM
-                {new PipelineTest(GRCh37Ref2bit_chr2021, unalignedBam, ".bam", dbSNPb37_20, "--align --bwa-mem-index-image " + GRCh37Ref_2021_img + " --disable-sequence-dictionary-validation true --join-strategy BROADCAST --known-sites " + more20Sites, null, largeFileTestDir + expectedMultipleKnownSitesFromUnalignedVcf)},
+                {new PipelineTest(GRCh37Ref2bit_chr2021, unalignedBam, ".bam", dbSNPb37_20, "--align --bwa-mem-index-image " + GRCh37Ref_2021_img + " --join-strategy BROADCAST --known-sites " + more20Sites, null, largeFileTestDir + expectedMultipleKnownSitesFromUnalignedVcf)},
         };
     }
 
