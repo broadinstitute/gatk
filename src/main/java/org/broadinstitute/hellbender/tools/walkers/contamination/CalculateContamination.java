@@ -31,7 +31,7 @@ import java.util.stream.IntStream;
 
 /**
  * <p>
- *     Given pileup data from {@link GetPileupSummaries}, calculates the fraction of reads coming from cross-sample contamination.
+ *     Calculates the fraction of reads coming from cross-sample contamination, given results from {@link GetPileupSummaries}.
  *     The resulting contamination table is used with {@link FilterMutectCalls}.
  * </p>
  * <p>

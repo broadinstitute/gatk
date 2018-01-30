@@ -39,7 +39,7 @@ import java.util.Set;
  *
  * <p>The tool assumes all records in the --truth VCF are passing truth variants. For the -eval VCF, the tool uses only unfiltered passing calls.</p>
  *
- * <p>Optionally, the tool also produces VCFs of the following variant records, annotated with each variant's concordance status:</p>
+ * <p>Optionally, the tool can be set to produce VCFs of the following variant records, annotated with each variant's concordance status:</p>
  * <ul>
  *     <li>True positives and false negatives (i.e. all variants in the truth VCF): useful for calculating sensitivity</li>
  *     <li>True positives and false positives (i.e. all variants in the eval VCF): useful for obtaining a training data

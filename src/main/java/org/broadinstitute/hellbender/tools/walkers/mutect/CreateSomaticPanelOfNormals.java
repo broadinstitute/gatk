@@ -31,8 +31,8 @@ import java.util.*;
  * Create a panel of normals (PoN) containing germline and artifactual sites for use with Mutect2.
  *
  * <p>
- *     The tool takes multiple normal sample callsets produced by {@link Mutect2}'s tumor-only mode and collates them into a single
- *     variant call format (VCF) file of false positive calls. The PoN captures common artifactual and germline variant sites.
+ *     The tool takes multiple normal sample callsets produced by {@link Mutect2}'s tumor-only mode and collates sites present in two or more samples
+ *     into a sites-only VCF. The PoN captures common artifactual and germline variant sites.
  *     Mutect2 then uses the PoN to filter variants at the site-level.
  * </p>
  * <p>
@@ -81,8 +81,9 @@ import java.util.*;
  *   -O pon.vcf.gz
  * </pre>
  *
- * <p>The resulting VCF will be an eight-column sites-only VCF without any annotations.
- * By default the tool fails if multiple vcfs have the same sample name, but the --duplicate-sample-strategy argument can be changed to
+ * <p>The resulting VCF will be an eight-column sites-only VCF lacking annotations.</p>
+ *
+ * <p>By default the tool fails if multiple vcfs have the same sample name, but the --duplicate-sample-strategy argument can be changed to
  *  ALLOW_ALL to allow duplicates or CHOOSE_FIRST to use only the first vcf with a given sample name.</p>
  *
  */

@@ -20,14 +20,12 @@ import java.util.List;
 /**
  * <p>Call somatic short variants via local assembly of haplotypes.
  * Short variants include single nucleotide (SNV) and insertion and deletion (indel) variants.
+ * The caller combines the DREAM challenge-winning somatic genotyping engine of the original MuTect
+ * (<a href='http://www.nature.com/nbt/journal/v31/n3/full/nbt.2514.html'>Cibulskis et al., 2013</a>) with the
+ * assembly-based machinery of <a href="https://www.broadinstitute.org/gatk/documentation/tooldocs/org_broadinstitute_gatk_tools_walkers_haplotypecaller_HaplotypeCaller.php">HaplotypeCaller</a>.
  * </p>
  * <p>
- *     The caller combines the DREAM challenge-winning somatic genotyping engine of the original MuTect
- *     (<a href='http://www.nature.com/nbt/journal/v31/n3/full/nbt.2514.html'>Cibulskis et al., 2013</a>) with the
- *     assembly-based machinery of <a href="https://www.broadinstitute.org/gatk/documentation/tooldocs/org_broadinstitute_gatk_tools_walkers_haplotypecaller_HaplotypeCaller.php">HaplotypeCaller</a>.
- * </p>
- * <p>
- *     This tool is featured in the Somatic Short Mutation calling Best Practice Workflow.
+ *     This tool is featured in the <i>Somatic Short Mutation calling Best Practice Workflow</i>.
  *     See <a href="https://software.broadinstitute.org/gatk/documentation/article?id=11136">Tutorial#11136</a> for a
  *     step-by-step description of the workflow and <a href="https://software.broadinstitute.org/gatk/documentation/article?id=11127">Article#11127</a>
  *     for an overview of what traditional somatic calling entails. For the latest pipeline scripts, see the
@@ -36,10 +34,10 @@ import java.util.List;
  * </p>
  *
  * <h3>Usage examples</h3>
- * <p>Example commands show how to run Mutect2 for typical scenerios. The two modes are (i) somatic mode where a tumor sample is matched with a normal sample in analysis and
- * (ii) tumor-only mode where a single sample is provided for analysis. </p>
+ * <p>Example commands show how to run Mutect2 for typical scenerios. The two modes are (i) <i>somatic mode</i> where a tumor sample is matched with a normal sample in analysis and
+ * (ii) <i>tumor-only mode</i> where a single sample's alignment data undergoes analysis. </p>
  *
- * <h4>Tumor with matched normal</h4>
+ * <h4>(i) Tumor with matched normal</h4>
  * <p>
  *     Given a matched normal, Mutect2 is designed to call somatic variants only. The tool includes logic to skip
  *     emitting variants that are clearly present in the germline based on provided evidence, e.g. in the matched normal.
@@ -61,26 +59,23 @@ import java.util.List;
  * </pre>
  *
  * <p>The --af-of-alleles-not-in-resource argument value should match expectations for alleles not found in the provided germline resource.
- * Note the tool does not require a germline resource nor a panel of normals to run.</p>
+ * Note the tool does not require a germline resource nor a panel of normals (PoN) to run.
+ * The tool prefilters sites for the matched normal and the PoN. For the germline resource, the tool prefilters on the allele.</p>
  *
- * <h4>Tumor-only mode</h4>
+ * <h4>(ii) Tumor-only mode</h4>
  * <p>This mode runs on a single sample, e.g. single tumor or single normal sample.
- * To create a panel of normals (PoN), call on each normal sample in this mode, then use {@link CreateSomaticPanelOfNormals} to generate the PoN. </p>
+ * To create a PoN, call on each normal sample in this mode, then use {@link CreateSomaticPanelOfNormals} to generate the PoN. </p>
  *
  * <pre>
  *  gatk Mutect2 \
  *   -R reference.fa \
  *   -I sample.bam \
  *   -tumor sample_name \
- *   --germline-resource af-only-gnomad.vcf.gz \
  *   -O single_sample.vcf.gz
  * </pre>
  *
- * <p>If analyzing a tumor sample in tumor-only mode, then consider adding a PoN to the calling with the --panel-of-normals argument.</p>
  *
  * <h4>Excerpt of a known variants resource with population allele frequencies</h4>
- * <p>Multiallelic sites require corresponding multiple AF annotations.</p>
- *
  * <pre>
  *     #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO
  *      1       10067   .       T       TAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCC      30.35   PASS    AC=3;AF=7.384E-5
@@ -103,9 +98,9 @@ import java.util.List;
  * </p>
  *
  * <dl>
- *     <dd>If the normal artifact log odds becomes large, then FilterMutectCalls applies the artifact-in-normal filter.
+ *     <dd>- If the normal artifact log odds becomes large, then FilterMutectCalls applies the artifact-in-normal filter.
  *     For matched normal samples with tumor contamination, consider increasing the normal-artifact-lod threshold.</dd>
- *     <dd>The tumor log odds, which is calculated independently of any matched normal, determines whether to filter a tumor
+ *     <dd>- The tumor log odds, which is calculated independently of any matched normal, determines whether to filter a tumor
  *     variant. Variants with tumor LODs exceeding the threshold pass filtering.</dd>
  * </dl>
  *

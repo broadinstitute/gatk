@@ -30,12 +30,9 @@ import java.util.stream.Collectors;
  *
  * <p>
  *     FilterMutectCalls encapsulates GATK3 MuTect2's filtering functionality and adds additional filters.
- *     GATK4 Mutect2 retains variant calling and some prefiltering.
  *     Thresholds for filters are contained in {@link M2FiltersArgumentCollection} and described in
  *     <a href='https://github.com/broadinstitute/gatk/tree/master/docs/mutect/mutect.pdf' target='_blank'>https://github.com/broadinstitute/gatk/tree/master/docs/mutect/mutect.pdf</a>.
- *     Separating calling and filtering into two tools better enables an iterative filtering process
- *     that allows for context-specific optimizations. To filter further based on sequence context artifacts,
- *     additionally use {@link FilterByOrientationBias}.
+ *     To filter further based on sequence context artifacts, additionally use {@link FilterByOrientationBias}.
  * </p>
  * <p>
  *     Filtering thresholds for both normal-artifact-lod (default threshold 0.0) and tumor-lod (default threshold 5.3) can be set in this tool.

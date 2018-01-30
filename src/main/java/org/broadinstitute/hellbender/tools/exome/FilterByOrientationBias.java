@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
  * <p>Additionally filter Mutect2 somatic variant calls for sequence context-dependent artifacts, e.g. OxoG or FFPE deamination.</p>
  *
  * <p>
- *     This tool is complementary to {@link FilterMutectCalls} and if run, should be run after FilterMutectCalls.
+ *     This tool is complementary to {@link FilterMutectCalls} and if run, should be run <i>after</i> FilterMutectCalls.
  *     The tool requires the pre-adapter detailed metrics calculated by Picard {@link CollectSequencingArtifactMetrics} and specification
  *     of the base substitution(s) to consider for orientation bias. For a given base substitution specified with
  *     the --artifact-modes argument, the tool considers both the forward and reverse complement for filtering.  That is, specifying
@@ -77,10 +77,10 @@ import java.util.stream.Collectors;
  *   --FILE_EXTENSION=.txt \
  *   O=tumor_artifact
  *</pre>
- * <p>This generates a number of metrics files, including 'tumor_artifact.pre_adapter_detail_metrics.txt'.</p>
+ * <p>This generates a number of metrics files, including tumor_artifact.pre_adapter_detail_metrics.txt.</p>
  *
  * <h4>Step 2. Run FilterByOrientationBias on Mutect2 calls that have been filtered by FilterMutectCalls.</h4>
- * <p>Here we specify the G to T OxoG artifact and provide the pre_adapter_detail_metrics.</p>
+ * <p>Here we specify the G to T OxoG artifact and provide the pre_adapter_detail_metrics from step 1.</p>
  * <pre>
  * gatk FilterByOrientationBias \
  *   -V filtered.vcf.gz \
@@ -89,8 +89,8 @@ import java.util.stream.Collectors;
  *   -O oxog_filtered.vcf.gz
  * </pre>
  *
- * <p>This produces variant calls filtered with the 'orientation_bias' filter and a summary 'oxog_filtered.vcf.gz.summary' file.
- * The summary tallies the number of calls for the sequence context(s) and the number of those that the tool filters.</p>
+ * <p>This produces variant calls filtered with the orientation_bias filter and a summary oxog_filtered.vcf.gz.summary file.
+ * The summary tallies the number of calls for the sequence context(s) and the number of those that the tool filtered.</p>
  *
  * <h3>Further points of interest</h3>
  * <ul>
