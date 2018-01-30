@@ -109,9 +109,6 @@ workflow Mutect2 {
     String? oncotator_docker
     Int? preemptible_attempts
 
-    # Do not populate unless you know what you are doing...
-    File? auth
-
     # Use as a last resort to increase the disk given to every task in case of ill behaving data
     Int? emergency_extra_disk
 
@@ -180,8 +177,7 @@ workflow Mutect2 {
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts,
-                disk_space = tumor_bam_size + normal_bam_size + ref_size + gnomad_vcf_size + m2_output_size + disk_pad,
-                auth = auth
+                disk_space = tumor_bam_size + normal_bam_size + ref_size + gnomad_vcf_size + m2_output_size + disk_pad
         }
 
         Float sub_vcf_size = size(M2.output_vcf, "GB")
@@ -255,8 +251,7 @@ workflow Mutect2 {
                 normal_bai = normal_bai,
                 variants_for_contamination = variants_for_contamination,
                 variants_for_contamination_index = variants_for_contamination_index,
-                disk_space = tumor_bam_size + ceil(size(variants_for_contamination, "GB") * small_input_to_output_multiplier) + disk_pad,
-                auth = auth
+                disk_space = tumor_bam_size + ceil(size(variants_for_contamination, "GB") * small_input_to_output_multiplier) + disk_pad
         }
     }
 
@@ -271,8 +266,7 @@ workflow Mutect2 {
             preemptible_attempts = preemptible_attempts,
             contamination_table = CalculateContamination.contamination_table,
             m2_extra_filtering_args = m2_extra_filtering_args,
-            disk_space = ceil(size(MergeVCFs.merged_vcf, "GB") * small_input_to_output_multiplier) + disk_pad,
-            auth = auth
+            disk_space = ceil(size(MergeVCFs.merged_vcf, "GB") * small_input_to_output_multiplier) + disk_pad
     }
 
     if (run_ob_filter) {
@@ -289,8 +283,7 @@ workflow Mutect2 {
                 preemptible_attempts = preemptible_attempts,
                 pre_adapter_metrics = input_artifact_metrics,
                 artifact_modes = artifact_modes,
-                disk_space = ceil(size(Filter.filtered_vcf, "GB") * small_input_to_output_multiplier) + ceil(size(input_artifact_metrics, "GB")) + disk_pad,
-                auth = auth
+                disk_space = ceil(size(Filter.filtered_vcf, "GB") * small_input_to_output_multiplier) + ceil(size(input_artifact_metrics, "GB")) + disk_pad
         }
     }
 
@@ -432,17 +425,9 @@ task M2 {
     Int machine_mem = if defined(mem) then mem * 1000 else 3500
     Int command_mem = machine_mem - 500
 
-    # Do not populate this unless you know what you are doing...
-    File? auth
 
     command <<<
         set -e
-
-        if [[ "${auth}" == *.json ]]; then
-            gsutil cp ${auth} /root/.config/gcloud/application_default_credentials.json
-            GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
-            export GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
-        fi
 
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
@@ -643,17 +628,8 @@ task CalculateContamination {
     Int machine_mem = if defined(mem) then mem * 1000 else 7000
     Int command_mem = machine_mem - 500
 
-    # Do not populate this unless you know what you are doing...
-    File? auth
-
     command {
         set -e
-
-        if [[ "${auth}" == *.json ]]; then
-            gsutil cp ${auth} /root/.config/gcloud/application_default_credentials.json
-            GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
-            export GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
-        fi
 
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
@@ -704,17 +680,8 @@ task Filter {
     Int machine_mem = if defined(mem) then mem * 1000 else 7000
     Int command_mem = machine_mem - 500
 
-    # Do not populate this unless you know what you are doing...
-    File? auth
-
     command {
         set -e
-
-        if [[ "${auth}" == *.json ]]; then
-            gsutil cp ${auth} /root/.config/gcloud/application_default_credentials.json
-            GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
-            export GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
-        fi
 
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
@@ -761,17 +728,8 @@ task FilterByOrientationBias {
     Int machine_mem = if defined(mem) then mem * 1000 else 7000
     Int command_mem = machine_mem - 500
 
-    # Do not populate this unless you know what you are doing...
-    File? auth
-
     command {
         set -e
-
-        if [[ "${auth}" == *.json ]]; then
-            gsutil cp ${auth} /root/.config/gcloud/application_default_credentials.json
-            GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
-            export GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
-        fi
 
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
