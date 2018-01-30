@@ -101,7 +101,7 @@ public class SparkSharder {
                 new MapFunction<Tuple2<ShardBoundary, Iterable<L>>, Shard<L>>() {
             private static final long serialVersionUID = 1L;
             @Override
-            public Shard<L> call(Tuple2<ShardBoundary, Iterable<L>> value) throws Exception {
+            public Shard<L> call(Tuple2<ShardBoundary, Iterable<L>> value) {
                 return new ShardBoundaryShard<>(value._1(), value._2());
             }
         });

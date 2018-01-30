@@ -15,12 +15,13 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 /**
  * A Spark version of {@link AssemblyRegionWalker}. Subclasses should implement {@link #processAssemblyRegions(JavaRDD, JavaSparkContext)}
@@ -95,6 +96,11 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
      */
     protected abstract int defaultMaxProbPropagationDistance();
 
+    /**
+     * subclasses can override this to control if reads with deletions should be included in isActive pileups
+     */
+    protected abstract boolean includeReadsWithDeletionsInIsActivePileups();
+
     @Argument(doc = "whether to use the shuffle implementation or not", shortName = "shuffle", fullName = "shuffle", optional = true)
     public boolean shuffle = false;
 
@@ -148,7 +154,7 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
         Broadcast<ReferenceMultiSource> bReferenceSource = hasReference() ? ctx.broadcast(getReference()) : null;
         Broadcast<FeatureManager> bFeatureManager = features == null ? null : ctx.broadcast(features);
         return shardedReads.flatMap(getAssemblyRegionsFunction(bReferenceSource, bFeatureManager, sequenceDictionary, getHeaderForReads(),
-                assemblyRegionEvaluator(), minAssemblyRegionSize, maxAssemblyRegionSize, assemblyRegionPadding, activeProbThreshold, maxProbPropagationDistance));
+                assemblyRegionEvaluator(), minAssemblyRegionSize, maxAssemblyRegionSize, assemblyRegionPadding, activeProbThreshold, maxProbPropagationDistance, includeReadsWithDeletionsInIsActivePileups()));
     }
 
     private static FlatMapFunction<Shard<GATKRead>, AssemblyRegionWalkerContext> getAssemblyRegionsFunction(
@@ -161,22 +167,23 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
             final int maxAssemblyRegionSize,
             final int assemblyRegionPadding,
             final double activeProbThreshold,
-            final int maxProbPropagationDistance) {
+            final int maxProbPropagationDistance,
+            final boolean includeReadsWithDeletionsInIsActivePileups) {
         return (FlatMapFunction<Shard<GATKRead>, AssemblyRegionWalkerContext>) shardedRead -> {
-            SimpleInterval paddedInterval = shardedRead.getPaddedInterval();
-            SimpleInterval assemblyRegionPaddedInterval = paddedInterval.expandWithinContig(assemblyRegionPadding, sequenceDictionary);
+            final SimpleInterval paddedInterval = shardedRead.getPaddedInterval();
+            final SimpleInterval assemblyRegionPaddedInterval = paddedInterval.expandWithinContig(assemblyRegionPadding, sequenceDictionary);
 
-            ReferenceDataSource reference = bReferenceSource == null ? null :
+            final ReferenceDataSource reference = bReferenceSource == null ? null :
                     new ReferenceMemorySource(bReferenceSource.getValue().getReferenceBases(assemblyRegionPaddedInterval), sequenceDictionary);
-            FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
-            ReferenceContext referenceContext = new ReferenceContext(reference, paddedInterval);
-            FeatureContext featureContext = new FeatureContext(features, paddedInterval);
+            final FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
 
-            final Iterable<AssemblyRegion> assemblyRegions = AssemblyRegion.createFromReadShard(shardedRead,
-                    header, referenceContext, featureContext, evaluator,
+            final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(
+                    new ShardToMultiIntervalShardAdapter<>(shardedRead),
+                    header, reference, features, evaluator,
                     minAssemblyRegionSize, maxAssemblyRegionSize, assemblyRegionPadding, activeProbThreshold,
-                    maxProbPropagationDistance);
-            return StreamSupport.stream(assemblyRegions.spliterator(), false).map(assemblyRegion ->
+                    maxProbPropagationDistance, includeReadsWithDeletionsInIsActivePileups);
+            final Iterable<AssemblyRegion> assemblyRegions = () -> assemblyRegionIter;
+            return Utils.stream(assemblyRegions).map(assemblyRegion ->
                     new AssemblyRegionWalkerContext(assemblyRegion,
                         new ReferenceContext(reference, assemblyRegion.getExtendedSpan()),
                         new FeatureContext(features, assemblyRegion.getExtendedSpan()))).iterator();

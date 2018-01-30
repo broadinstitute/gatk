@@ -22,6 +22,7 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.engine.ShardToMultiIntervalShardAdapter;
 import org.broadinstitute.hellbender.engine.spark.SparkSharder;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -47,7 +48,6 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 /**
  * ********************************************************************************
@@ -79,6 +79,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
     public static final int DEFAULT_READSHARD_SIZE = 5000;
+    private static final boolean INCLUDE_READS_WITH_DELETIONS_IN_IS_ACTIVE_PILEUPS = true;
 
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Single file to which variants should be written")
     public String output;
@@ -252,13 +253,8 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             final ReferenceMultiSource referenceMultiSource = referenceBroadcast.value();
             final ReferenceMultiSourceAdapter referenceSource = new ReferenceMultiSourceAdapter(referenceMultiSource);
             final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), false, false, header, referenceSource, annotatorEngineBroadcast.getValue());
-            return iteratorToStream(regionAndIntervals).flatMap(regionToVariants(hcEngine)).iterator();
+            return Utils.stream(regionAndIntervals).flatMap(regionToVariants(hcEngine)).iterator();
         };
-    }
-
-    private static <T> Stream<T> iteratorToStream(Iterator<T> iterator) {
-        Iterable<T> regionsIterable = () -> iterator;
-        return StreamSupport.stream(regionsIterable.spliterator(), false);
     }
 
     private static Function<Tuple2<AssemblyRegion, SimpleInterval>, Stream<? extends VariantContext>> regionToVariants(HaplotypeCallerEngine hcEngine) {
@@ -298,34 +294,28 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
 
             final ReadsDownsampler readsDownsampler = assemblyArgs.maxReadsPerAlignmentStart > 0 ?
                 new PositionalDownsampler(assemblyArgs.maxReadsPerAlignmentStart, header) : null;
-            return iteratorToStream(shards)
-                .map(shard -> new DownsampleableSparkReadShard(new ShardBoundary(shard.getInterval(), shard.getPaddedInterval()), shard, readsDownsampler))
+            return Utils.stream(shards)
+                    //TODO we've hacked multi interval shards here with a shim, but we should investigate as smarter approach https://github.com/broadinstitute/gatk/issues/4299
+                .map(shard -> new ShardToMultiIntervalShardAdapter<>(
+                        new DownsampleableSparkReadShard(new ShardBoundary(shard.getInterval(), shard.getPaddedInterval()), shard, readsDownsampler)))
                 .flatMap(shardToRegion(assemblyArgs, header, referenceSource, hcEngine)).iterator();
         };
     }
 
-    private static Function<Shard<GATKRead>, Stream<? extends Tuple2<AssemblyRegion, SimpleInterval>>> shardToRegion(
+    private static Function<MultiIntervalShard<GATKRead>, Stream<? extends Tuple2<AssemblyRegion, SimpleInterval>>> shardToRegion(
             ShardingArgumentCollection assemblyArgs,
             SAMFileHeader header,
             ReferenceMultiSourceAdapter referenceSource,
             HaplotypeCallerEngine evaluator) {
         return shard -> {
-            final ReferenceContext refContext = new ReferenceContext(referenceSource, shard.getPaddedInterval());
-
             //TODO load features as a side input
-            final FeatureContext features = new FeatureContext();
+            final FeatureManager featureManager = null;
 
-            // TODO: this should use the new AssemblyRegionIterator instead of AssemblyRegion.createFromReadShard(),
-            // TODO: since AssemblyRegion.createFromReadShard() slurps all reads in the shard into memory at once,
-            // TODO: whereas AssemblyRegionIterator loads the reads from the shard as lazily as possible.
-            final Iterable<AssemblyRegion> assemblyRegions = AssemblyRegion.createFromReadShard(
-                    shard, header, refContext, features, evaluator,
-                    assemblyArgs.minAssemblyRegionSize, assemblyArgs.maxAssemblyRegionSize,
-                    assemblyArgs.assemblyRegionPadding, assemblyArgs.activeProbThreshold,
-                    assemblyArgs.maxProbPropagationDistance);
+            final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, header, referenceSource, featureManager, evaluator, assemblyArgs.minAssemblyRegionSize, assemblyArgs.maxAssemblyRegionSize, assemblyArgs.assemblyRegionPadding, assemblyArgs.activeProbThreshold, assemblyArgs.maxProbPropagationDistance,
+                                                                                           INCLUDE_READS_WITH_DELETIONS_IN_IS_ACTIVE_PILEUPS);
 
-            return StreamSupport.stream(assemblyRegions.spliterator(), false)
-                    .map(a -> new Tuple2<>(a, shard.getInterval()));
+            return Utils.stream(assemblyRegionIter)
+                    .map(a -> new Tuple2<>(a, shard.getIntervals().get(0)));
         };
     }
 
