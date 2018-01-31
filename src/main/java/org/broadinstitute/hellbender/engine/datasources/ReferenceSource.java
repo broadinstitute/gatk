@@ -11,11 +11,11 @@ import java.io.IOException;
  * Internal interface to load a reference sequence.
  */
 public interface ReferenceSource {
-    ReferenceBases getReferenceBases(SimpleInterval interval) throws IOException;
+
     SAMSequenceDictionary getReferenceSequenceDictionary(SAMSequenceDictionary optReadSequenceDictionaryToMatch) throws IOException;
 
     default ReferenceBases getReferenceBases(final SimpleInterval interval) throws IOException {
-        return getReferenceBases(null, interval);
+        return getReferenceBases(interval);
     }
 
     default SAMSequenceDictionary getReferenceSequenceDictionary() throws IOException {
@@ -26,7 +26,7 @@ public interface ReferenceSource {
      * Returns whether this reference source can be used with Spark broadcast.
      * Currently, only {@link ReferenceTwoBitSource} is compatible with the Spark broadcast implementation.
      */
-    default public boolean isCompatibleWithSparkBroadcast(){
+    default boolean isCompatibleWithSparkBroadcast(){
         return this instanceof ReferenceTwoBitSource;
     }
 }

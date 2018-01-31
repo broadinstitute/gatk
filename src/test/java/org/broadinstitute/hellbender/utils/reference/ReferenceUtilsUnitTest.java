@@ -130,7 +130,7 @@ public class ReferenceUtilsUnitTest extends GATKBaseTest {
         index.write(TWO_CHR_10k_4k5_index.toPath());
         TWO_CHR_10k_4k5_index.deleteOnExit();
         return new Object[][] {
-                new Object[] { new ReferenceFileSource(TWO_CHR_10k_4k5) , 56 }
+                new Object[] { new ReferenceFileSource(TWO_CHR_10k_4k5.toPath()) , 56 }
         };
     }
 }

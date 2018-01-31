@@ -5,7 +5,8 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.AlnModType;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.ContigAlignmentsModifier;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
@@ -112,7 +113,7 @@ public final class GappedAlignmentSplitter {
 
                     final AlignmentInterval split = new AlignmentInterval(referenceInterval, contigIntervalStart, contigIntervalEnd,
                             cigarForNewAlignmentInterval, oneRegion.forwardStrand, originalMapQ,
-                            AlignmentInterval.NO_NM, oneRegion.alnScore, AlnModType.FROM_SPLIT_GAPPED_ALIGNMENT);
+                            AlignmentInterval.NO_NM, oneRegion.alnScore, ContigAlignmentsModifier.AlnModType.FROM_SPLIT_GAPPED_ALIGNMENT);
 
                     result.add(split);
 
@@ -155,7 +156,7 @@ public final class GappedAlignmentSplitter {
         result.add(new AlignmentInterval(lastReferenceInterval,
                 contigIntervalStart, unclippedContigLen-clippedNBasesFromEnd, lastForwardStrandCigar,
                 oneRegion.forwardStrand, originalMapQ,
-                AlignmentInterval.NO_NM, oneRegion.alnScore, AlnModType.FROM_SPLIT_GAPPED_ALIGNMENT));
+                AlignmentInterval.NO_NM, oneRegion.alnScore, ContigAlignmentsModifier.AlnModType.FROM_SPLIT_GAPPED_ALIGNMENT));
 
         return result;
     }

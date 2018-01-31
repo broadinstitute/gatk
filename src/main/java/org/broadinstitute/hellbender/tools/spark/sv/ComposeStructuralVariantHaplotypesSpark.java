@@ -4,7 +4,6 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.google.cloud.dataflow.sdk.transforms.SerializableComparator;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.StructuralVariantType;
@@ -21,7 +20,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.Shard;
 import org.broadinstitute.hellbender.engine.ShardBoundary;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
@@ -29,8 +28,8 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.FilterLongReadAlignmentsSAMSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVContext;
@@ -38,6 +37,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SVHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalLocator;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SerializableComparator;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -119,7 +119,7 @@ import java.util.stream.Stream;
         oneLineSummary = "composes contigs file for genotyping",
         usageExample = "--variant ins_and_dels.vcf --contigs assemblies.bam --reference my-ref.fa " +
                        "--shardSize 10000 --paddingSize 300 --output genotyping-contigs.bam",
-        programGroup = StructuralVariationSparkProgramGroup.class )
+        programGroup = StructuralVariantDiscoveryProgramGroup.class )
 @BetaFeature
 public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
 
@@ -137,7 +137,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
     public static final String SAMPLE_FULL_NAME = "sampleName";
 
     public static final int DEFAULT_SHARD_SIZE = 10_000;
-    public static final int DEFAULT_PADDING_SIZE = 150; // ideally a read length.
+    public static final int DEFAULT_PADDING_SIZE = 300; // ideally larger than a read length.
     public static final String DEFAULT_SAMPLE = "sample";
 
     public static final String HAPLOTYPE_READ_GROUP = "HAP";
@@ -641,7 +641,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
     }
 
     private <T extends Locatable> SerializableComparator<T> createLocatableSparkSorter(final Broadcast<SAMSequenceDictionary> broadcastDictionary) {
-        return (SerializableComparator<T>) (a, b) -> {
+        return (a, b) -> {
             final String aContig = a.getContig();
             final String bContig = b.getContig();
             if (aContig.equals(bContig)) {

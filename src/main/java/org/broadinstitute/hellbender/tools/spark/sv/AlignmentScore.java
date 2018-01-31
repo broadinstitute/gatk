@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
 import htsjdk.samtools.CigarElement;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -10,7 +10,6 @@ import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Class to represent and calculate the aligned contig score.

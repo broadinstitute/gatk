@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.SAMTag;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.AbstractList;

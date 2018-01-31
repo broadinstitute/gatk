@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils.reference;
 
-import com.google.cloud.dataflow.sdk.repackaged.com.google.common.io.CountingOutputStream;
+import com.google.common.io.CountingOutputStream;
 import htsjdk.samtools.SAMException;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriterFactory;
@@ -511,7 +511,7 @@ public final class FastaReferenceWriter implements AutoCloseable {
      * @param bases array containing the bases to be added.
      * @return this instance.
      * @throws IllegalArgumentException if {@bases} is {@code null} or
-     *              the input array contains invalid bases (as assessed by: {@link Nucleotide#valueOf(byte)}).
+     *              the input array contains invalid bases (as assessed by: {@link Nucleotide#decode(byte)}).
      * @throws IllegalStateException if no sequence was started or the writer is already closed.
      * @throws IOException if such exception is throw when writing in any of the outputs.
      */
@@ -530,7 +530,7 @@ public final class FastaReferenceWriter implements AutoCloseable {
      * @return this instance.
      * @throws IllegalArgumentException if {@bases} is {@code null} or
      *              {@code offset} and {@code length} do not entail a valid range in {@code bases} or
-     *              that range in {@base} contain invalid bases (as assessed by: {@link Nucleotide#valueOf(byte)}).
+     *              that range in {@base} contain invalid bases (as assessed by: {@link Nucleotide#decode(byte)}).
      * @throws IllegalStateException if no sequence was started or the writer is already closed.
      * @throws IOException if such exception is throw when writing in any of the outputs.
      */

@@ -22,10 +22,11 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.ChimericAlignment;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.GappedAlignmentSplitter;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoverFromLocalAssemblyContigAlignmentsSpark;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -42,7 +43,6 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.*;
-import static org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVariantsFromContigAlignmentsSAMSpark.SAMFormattedContigAlignmentParser;
 
 
 /**
@@ -155,7 +155,7 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
 
         // parse SAM records transform to AlignmentInterval format and split gapped alignment
         final JavaRDD<AlignedContig> parsedContigAlignmentsWithGapSplit =
-                new SAMFormattedContigAlignmentParser(longReads, header, true)
+                new SvDiscoverFromLocalAssemblyContigAlignmentsSpark.SAMFormattedContigAlignmentParser(longReads, header, true)
                         .getAlignedContigs()
                         .filter(contig -> contig.alignmentIntervals.size()>1).cache();
 
@@ -199,7 +199,7 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
                          longReads.map(GATKRead::getName).distinct().count() + " contigs.");
 
         final JavaRDD<AlignedContig> parsedContigAlignments =
-                new SAMFormattedContigAlignmentParser(longReads, header, false)
+                new SvDiscoverFromLocalAssemblyContigAlignmentsSpark.SAMFormattedContigAlignmentParser(longReads, header, false)
                         .getAlignedContigs()
                         .filter(FilterLongReadAlignmentsSAMSpark::contigFilter).cache();
         longReads.unpersist();

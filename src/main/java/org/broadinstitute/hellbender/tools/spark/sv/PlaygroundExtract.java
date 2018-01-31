@@ -2,9 +2,8 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 
 import avro.shaded.com.google.common.collect.Sets;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedAssembly;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import scala.Tuple2;
 
 import java.util.*;

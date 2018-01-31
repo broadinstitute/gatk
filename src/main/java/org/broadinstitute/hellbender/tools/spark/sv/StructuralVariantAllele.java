@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
-import com.google.cloud.dataflow.sdk.repackaged.com.google.common.base.Functions;
 import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.vcf.VCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.Map;
 import java.util.stream.Collectors;

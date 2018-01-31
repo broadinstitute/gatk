@@ -120,7 +120,7 @@ public final class ReferenceBases implements Serializable {
             } else {
                 SequenceUtil.reverse(dest, offset, length);
             }
-        } else {
+        } else if (complement) {
             //TODO submitted a PR to htjdk to add a complement(byte[]) method to SequenceUtil.
             //TODO once accepted this loop should be subtituted to a call to that method.
             for (int i = 0; i < length; i++) {

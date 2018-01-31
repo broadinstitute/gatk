@@ -80,14 +80,14 @@ public class SVContextUnitTest extends GATKBaseTest {
     }
 
     /**
-     * Tests {@link SVContext#getInsertedSequence(ReferenceMultiSource)}.
+     * Tests {@link SVContext#getInsertedSequence()}.
      * @param vc input variant context.
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"}, groups = "sv")
     public void testInsertedSequence(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
 
         final SVContext svc = SVContext.of(vc);
-        final byte[] actual = svc.getInsertedSequence(reference);
+        final byte[] actual = svc.getInsertedSequence();
         Assert.assertEquals(actual == null ? "<null>" : new String(actual), vc.getAttributeAsString(GATKSVVCFConstants.INSERTED_SEQUENCE, "<null>"));
     }
 

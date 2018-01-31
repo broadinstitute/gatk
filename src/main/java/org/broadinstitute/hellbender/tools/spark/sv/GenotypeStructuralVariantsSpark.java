@@ -27,15 +27,15 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredVariantInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.Shard;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.SparkSharder;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignedContig;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.FilterLongReadAlignmentsSAMSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.ArraySVHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
@@ -85,7 +85,7 @@ import java.util.stream.Stream;
  */
 @CommandLineProgramProperties(summary = "genotype SV variant call files",
         oneLineSummary = "genotype SV variant call files",
-        programGroup = StructuralVariationSparkProgramGroup.class)
+        programGroup = StructuralVariantDiscoveryProgramGroup.class)
 public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
 
     public static final String FASTQ_FILE_DIR_SHORT_NAME = "fastqDir";
@@ -295,8 +295,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         header.addMetaDataLine(new VCFFormatHeaderLine("ADI", VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "number of templates that support this allele based on insert length only"));
         header.addMetaDataLine(new VCFFormatHeaderLine("ADR", VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "number of templates that support this allele based on read-mapping likelihoods only"));
         header.addMetaDataLine(new VCFFormatHeaderLine("DPI", 1, VCFHeaderLineType.Integer, ""));
-        SVVCFWriter.writeVCF(getAuthenticatedGCSOptions(), outputFile,
-                referenceArguments.getReferenceFileName(), calls, header, logger);
+        SVVCFWriter.writeVCF(outputFile, referenceArguments.getReferenceFileName(), calls, header, logger);
         tearDown(ctx);
     }
 

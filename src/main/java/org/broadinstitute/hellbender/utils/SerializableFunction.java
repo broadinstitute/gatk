@@ -11,5 +11,4 @@ public interface SerializableFunction<T,R> extends Function<T, R>, Serializable 
 
     @Override
     R apply(T t);
-
 }

@@ -1,15 +1,11 @@
 package org.broadinstitute.hellbender.utils.reference;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
-import com.google.cloud.dataflow.sdk.repackaged.com.google.common.io.CountingOutputStream;
+import com.google.common.io.CountingOutputStream;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SAMTextHeaderCodec;
-import htsjdk.samtools.reference.FastaSequenceFile;
 import htsjdk.samtools.util.BufferedLineReader;
-import htsjdk.samtools.util.Locatable;
-import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceAPISource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceFileSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceHadoopSource;
@@ -18,20 +14,13 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
-import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
-import org.seqdoop.hadoop_bam.FastaInputFormat;
 
-import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.Writer;
@@ -163,7 +152,7 @@ public final class ReferenceUtils {
         fastaWriter.close();
         indexWriter.close();
         if (BucketUtils.isCloudStorageUrl(whereTo)) {
-            return new ReferenceAPISource(null, whereTo.toString());
+            return new ReferenceAPISource(whereTo.toString());
         } else if (BucketUtils.isHadoopUrl(whereTo.toString())) {
             return new ReferenceHadoopSource(whereTo.toString());
         } else if (BucketUtils.isFileUrl(whereTo.toString())) {

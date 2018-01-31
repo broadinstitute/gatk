@@ -5,29 +5,18 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.broadinstitute.hellbender.engine.AlignmentContext;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVContext;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVHaplotype;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.Strand;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
-import org.broadinstitute.hellbender.utils.report.GATKReportColumnFormat;
-import scala.Tuple2;
-import scala.Tuple3;
 
 import java.io.Serializable;
 import java.util.Comparator;
 import java.util.List;
 import java.util.OptionalDouble;
 import java.util.OptionalInt;
-import java.util.function.ToDoubleBiFunction;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Created by valentin on 6/9/17.
