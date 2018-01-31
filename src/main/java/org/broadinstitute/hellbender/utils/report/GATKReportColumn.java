@@ -66,7 +66,7 @@ public final class GATKReportColumn {
      * @return true if the value is a right alignable
      */
     protected static boolean isRightAlign(final String value) {
-        return value == null || RIGHT_ALIGN_STRINGS.contains(value) || NumberUtils.isNumber(value.trim());
+        return value == null || RIGHT_ALIGN_STRINGS.contains(value) || NumberUtils.isCreatable(value.trim());
     }
 
     /**
