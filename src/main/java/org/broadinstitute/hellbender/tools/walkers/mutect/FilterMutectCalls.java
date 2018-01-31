@@ -26,44 +26,37 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Filter SNVs and indels from a Mutect2 callset.
+ * <p>Filter variants in a Mutect2 VCF callset.</p>
  *
  * <p>
  *     FilterMutectCalls encapsulates GATK3 MuTect2's filtering functionality and adds additional filters.
- *     GATK4 Mutect2 retains variant calling and some prefiltering.
- *     Thresholds for filters are contained in {@link M2FiltersArgumentCollection} and described in <a href='https://github.com/broadinstitute/gatk/tree/master/docs/mutect/mutect.pdf' target='_blank'>https://github.com/broadinstitute/gatk/tree/master/docs/mutect/mutect.pdf</a>.
- *     Separating calling and filtering into two tools better enables an iterative filtering process
- *     that allows for context-specific optimizations. To filter further based on sequence context artifacts,
- *     additionally use {@link FilterByOrientationBias}.
+ *     Thresholds for filters are contained in {@link M2FiltersArgumentCollection} and described in
+ *     <a href='https://github.com/broadinstitute/gatk/tree/master/docs/mutect/mutect.pdf' target='_blank'>https://github.com/broadinstitute/gatk/tree/master/docs/mutect/mutect.pdf</a>.
+ *     To filter based on sequence context artifacts, see {@link FilterByOrientationBias}.
  * </p>
- *
  * <p>
  *     Filtering thresholds for both normal-artifact-lod (default threshold 0.0) and tumor-lod (default threshold 5.3) can be set in this tool.
  *     If the normal artifact log odds is larger than the threshold, then FilterMutectCalls applies the artifact-in-normal filter.
  *     For matched normal analyses with tumor contamination in the normal, consider increasing the normal-artifact-lod threshold.
  *     If the tumor log odds is smaller than the threshold, then FilterMutectCalls filters the variant.
  * </p>
- *
  * <p>
  *     If given a --contamination-table file, e.g. results from
  *     {@link CalculateContamination}, the tool will additionally
- *     filter on contamination fractions. Alternatively, provide a numerical fraction to filter with --contamination.
+ *     filter on contamination fractions. Alternatively, provide a numerical fraction to filter with the --contamination argument.
  * </p>
- *
- * <h3>Input</h3>
  * <p>
- * VCF of unfiltered Mutect2 SNV and indel calls.
+ *     This tool is featured in the Somatic Short Mutation calling Best Practice Workflow.
+ *     See <a href="https://software.broadinstitute.org/gatk/documentation/article?id=11136">Tutorial#11136</a> for a
+ *     step-by-step description of the workflow and <a href="https://software.broadinstitute.org/gatk/documentation/article?id=11127">Article#11127</a>
+ *     for an overview of what traditional somatic calling entails. For the latest pipeline scripts, see the
+ *     <a href="https://github.com/broadinstitute/gatk/tree/master/scripts/mutect2_wdl">Mutect2 WDL scripts directory</a>.
  * </p>
  *
- * <h3>Output</h3>
- * <p>
- * A VCF of filtered SNV and indel calls.
- * </p>
- *
- * <h3>Example</h3>
+ * <h3>Usage example</h3>
  * <pre>
  * gatk FilterMutectCalls \
- *   -V unfiltered.vcf.gz \
+ *   -V somatic.vcf.gz \
  *   -contamination-table contamination.table \
  *   -O filtered.vcf.gz
  * </pre>

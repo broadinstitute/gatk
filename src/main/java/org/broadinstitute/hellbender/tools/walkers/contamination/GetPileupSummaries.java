@@ -25,16 +25,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Summarizes counts of reads that support reference, alternate and other alleles for given sites. Results can be used with {@link CalculateContamination}.
+ * <p>Summarizes counts of reads that support reference, alternate and other alleles for given sites. Results can be used with {@link CalculateContamination}.</p>
  *
  * <p>
- * The tool requires a <i>common</i> germline variant sites VCF, e.g. the gnomAD resource, with population allele frequencies (AF) in the INFO field.
+ * The tool requires a <i>common</i> germline variant sites VCF, e.g. derived from the gnomAD resource, with population allele frequencies (AF) in the INFO field.
  * This resource must contain only biallelic SNPs and can be an eight-column sites-only VCF.
- * The tool ignores the filter status of the sites.
- * See the GATK Resource Bundle for an example human file.
- * The GATK repository provides a script to prepare the resource at <a href=https://github.com/broadinstitute/gatk/tree/master/scripts/mutect2_wdl/mutect_resources.wdl>
- *     https://github.com/broadinstitute/gatk/tree/master/scripts/mutect2_wdl/mutect_resources.wdl</a>.
- * An example excerpt is shown.
+ * The tool ignores the filter status of the variant calls in this germline resource.
+ * </p>
+ * <p>
+ *     This tool is featured in the Somatic Short Mutation calling Best Practice Workflow.
+ *     See <a href="https://software.broadinstitute.org/gatk/documentation/article?id=11136">Tutorial#11136</a> for a
+ *     step-by-step description of the workflow and <a href="https://software.broadinstitute.org/gatk/documentation/article?id=11127">Article#11127</a>
+ *     for an overview of what traditional somatic calling entails. For the latest pipeline scripts, see the
+ *     <a href="https://github.com/broadinstitute/gatk/tree/master/scripts/mutect2_wdl">Mutect2 WDL scripts directory</a>.
+ *     In particular, the mutect_resources.wdl script prepares a suitable resource from a larger dataset. An example excerpt is shown.
  * </p>
  *
  * <pre>
@@ -43,6 +47,23 @@ import java.util.List;
  * chr6	29942517	.	C	A	2975860	VQSRTrancheSNP99.80to99.90	AF=0.062
  * chr6	29942525	.	G	C	2975600	VQSRTrancheSNP99.60to99.80	AF=0.063
  * chr6	29942547	rs114945359	G	C	15667700	PASS	AF=0.077
+ * </pre>
+ *
+ * <h3>Usage examples</h3>
+ *
+ * <pre>
+ * gatk GetPileupSummaries \
+ *   -I tumor.bam \
+ *   -V common_biallelic.vcf.gz \
+ *   -O pileups.table
+ * </pre>
+ *
+ * <pre>
+ * gatk GetPileupSummaries \
+ *   -I normal.bam \
+ *   -V common_biallelic.vcf.gz \
+ *   -L chr1 \
+ *   -O pileups.table
  * </pre>
  *
  * <p>
@@ -65,24 +86,6 @@ import java.util.List;
  * or {@code -min-af}) is set to 0.01, which limits the sites the tool considers to those in the variants resource
  * file that have AF of 0.01 or more.
  * </p>
- *
- *
- * <h3>Usage examples</h3>
- *
- * <pre>
- * gatk GetPileupSummaries \
- *   -I tumor.bam \
- *   -V common_biallelic.vcf.gz \
- *   -O pileups.table
- * </pre>
- *
- * <pre>
- * gatk GetPileupSummaries \
- *   -I normal.bam \
- *   -V common_biallelic.vcf.gz \
- *   -L chr1 \
- *   -O pileups.table
- * </pre>
  *
  */
 @CommandLineProgramProperties(
