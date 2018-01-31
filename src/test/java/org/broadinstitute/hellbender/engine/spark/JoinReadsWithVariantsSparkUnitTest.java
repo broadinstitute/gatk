@@ -22,7 +22,7 @@ public class JoinReadsWithVariantsSparkUnitTest extends GATKBaseTest {
         List<Object[]> testCases = new ArrayList<>();
 
         for ( JoinStrategy joinStrategy : JoinStrategy.values() ) {
-            for ( Class<?> readImplementation : Arrays.asList(SAMRecord.class, SAMRecord.class) ) {
+            for ( Class<?> readImplementation : Collections.singletonList(SAMRecord.class)) {
                 ReadsPreprocessingPipelineSparkTestData testData = new ReadsPreprocessingPipelineSparkTestData(readImplementation);
                 List<GATKRead> reads = testData.getReads();
                 List<GATKVariant> variantList = testData.getVariants();

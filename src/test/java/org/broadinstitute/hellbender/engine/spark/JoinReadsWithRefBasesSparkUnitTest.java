@@ -18,6 +18,7 @@ import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -26,8 +27,8 @@ import static org.mockito.Mockito.*;
 public class JoinReadsWithRefBasesSparkUnitTest extends GATKBaseTest {
     @DataProvider(name = "bases")
     public Object[][] bases(){
-        Object[][] data = new Object[2][];
-        List<Class<?>> classes = Arrays.asList(SAMRecord.class, SAMRecord.class);
+        List<Class<?>> classes = Collections.singletonList(SAMRecord.class);
+        Object[][] data = new Object[classes.size()][];
         for (int i = 0; i < classes.size(); ++i) {
             Class<?> c = classes.get(i);
             ReadsPreprocessingPipelineSparkTestData testData = new ReadsPreprocessingPipelineSparkTestData(c);
