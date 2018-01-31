@@ -18,7 +18,7 @@ public class ReadClassifierTest extends GATKBaseTest {
                     60000000000L, 600000000L, 1200000000000L, 3000000000L);
 
     @Test(groups = "sv")
-    void restOfFragmentSizeTest() {
+    public void restOfFragmentSizeTest() {
         final FindBreakpointEvidenceSparkArgumentCollection params = new FindBreakpointEvidenceSparkArgumentCollection();
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeaderWithGroups(3, 1, 10000000, 1);
         final String groupName = header.getReadGroups().get(0).getReadGroupId();
@@ -78,6 +78,16 @@ public class ReadClassifierTest extends GATKBaseTest {
         read.setMateIsReverseStrand(true);
         read.setMatePosition(header.getSequenceDictionary().getSequence(2).getSequenceName(), read.getStart() - fragmentLen);
         checkClassification(classifier, read, Collections.emptyList());
+
+
+        read.setMatePosition(read.getContig(), read.getEnd() + 2000);
+        read.setFragmentLength(2000);
+        checkClassification(classifier, read, Collections.singletonList(new BreakpointEvidence.WeirdTemplateSize(read, readMetadata)));
+
+        read.setMatePosition(read.getContig(), read.getEnd() + 50000);
+        read.setFragmentLength(50000);
+        checkClassification(classifier, read, Collections.singletonList(new BreakpointEvidence.WeirdTemplateSize(read, readMetadata)));
+
     }
 
     private void checkClassification( final ReadClassifier classifier, final GATKRead read, final List<BreakpointEvidence> expectedEvidence ) {

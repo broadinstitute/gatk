@@ -222,7 +222,9 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
             // then also imprecise deletion
             final List<VariantContext> impreciseVariants = ImpreciseVariantDetector.
                     callImpreciseDeletionFromEvidenceLinks(evidenceTargetLinks, metadata, reference,
-                            discoverStageArgs.impreciseEvidenceVariantCallingThreshold, toolLogger);
+                            discoverStageArgs.impreciseVariantEvidenceThreshold,
+                            discoverStageArgs.maxCallableImpreciseVariantDeletionSize,
+                            toolLogger);
 
             annotatedVariants.addAll(impreciseVariants);
         } else {

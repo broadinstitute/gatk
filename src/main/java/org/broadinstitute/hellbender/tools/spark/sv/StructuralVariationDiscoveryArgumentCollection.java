@@ -182,8 +182,9 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         public static final int CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD = 60;
         public static final int DEFAULT_MIN_ALIGNMENT_LENGTH = 50; // Minimum flanking alignment length filters used when going through contig alignments.
         public static final int DEFAULT_ASSEMBLED_IMPRECISE_EVIDENCE_OVERLAP_UNCERTAINTY = 100;
-        public static final int DEFAULT_IMPRECISE_EVIDENCE_VARIANT_CALLING_THRESHOLD = 7;
+        public static final int DEFAULT_IMPRECISE_VARIANT_EVIDENCE_THRESHOLD = 7;
         public static final int DEFAULT_TRUTH_INTERVAL_PADDING = 50;
+        public static final int DEFAULT_MAX_CALLABLE_IMPRECISE_DELETION_SIZE = 15000;
 
         @Argument(doc = "Minimum flanking alignment length", fullName = "min-align-length")
         public Integer minAlignLength = DEFAULT_MIN_ALIGNMENT_LENGTH;
@@ -198,8 +199,8 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         public int assemblyImpreciseEvidenceOverlapUncertainty = DEFAULT_ASSEMBLED_IMPRECISE_EVIDENCE_OVERLAP_UNCERTAINTY;
 
         @Argument(doc = "Number of pieces of imprecise evidence necessary to call a variant in the absence of an assembled breakpoint.",
-                fullName = "imprecise-evidence-variant-calling-threshold")
-        public int impreciseEvidenceVariantCallingThreshold = DEFAULT_IMPRECISE_EVIDENCE_VARIANT_CALLING_THRESHOLD;
+                fullName = "imprecise-variant-evidence-threshold")
+        public int impreciseVariantEvidenceThreshold = DEFAULT_IMPRECISE_VARIANT_EVIDENCE_THRESHOLD;
 
         @Argument(doc = "External CNV calls file. Should be single sample VCF, and contain only confident autosomal non-reference CNV calls (for now).",
                 fullName = "cnv-calls", optional = true)
@@ -208,6 +209,10 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         @Argument(doc = "Breakpoint padding for evaluation against truth data.",
                 fullName = "truth-interval-padding", optional = true)
         public int truthIntervalPadding = DEFAULT_TRUTH_INTERVAL_PADDING;
+
+        @Argument(doc = "Maximum size deletion to call based on imprecise evidence without corroborating read depth evidence",
+                fullName = "max-callable-imprecise-deletion-size", optional=true)
+        public int maxCallableImpreciseVariantDeletionSize = DEFAULT_MAX_CALLABLE_IMPRECISE_DELETION_SIZE;
     }
 
 }

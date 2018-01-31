@@ -16,8 +16,7 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
     @VisibleForTesting static final int MIN_INDEL_LEN = 40; // minimum length of an interesting indel
     private static final byte MIN_QUALITY = 15; // minimum acceptable quality in a soft-clip window
     private static final int MAX_LOW_QUALITY_SCORES = 3; // maximum # of low quality base calls in soft-clip window
-    private static final float MAX_ZISH_SCORE = 6.f; // maximum fragment-length "z" score for a normal fragment
-    private static final float MIN_CRAZY_ZISH_SCORE = 100.f; // "z" score that's probably associated with a mapping error
+    private static final float MAX_NON_OUTLIER_ZISH_SCORE = 6.f; // maximum fragment-length "z" score for a normal fragment
     private final ReadMetadata readMetadata;
     private final GATKRead sentinel;
     private final int allowedShortFragmentOverhang;
@@ -146,7 +145,7 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
                     evidenceList.add(new BreakpointEvidence.OutiesPair(read, readMetadata));
                 } else {
                     final float zIshScore = readMetadata.getZishScore(read.getReadGroup(), Math.abs(read.getFragmentLength()));
-                    if ( zIshScore > MAX_ZISH_SCORE && zIshScore < MIN_CRAZY_ZISH_SCORE ) {
+                    if ( zIshScore > MAX_NON_OUTLIER_ZISH_SCORE) {
                         evidenceList.add(new BreakpointEvidence.WeirdTemplateSize(read, readMetadata));
                     }
                 }

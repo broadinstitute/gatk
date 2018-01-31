@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvType;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervalTree;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.List;
@@ -20,13 +21,16 @@ public class ImpreciseVariantDetector {
     public static List<VariantContext> callImpreciseDeletionFromEvidenceLinks(final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
                                                                               final ReadMetadata metadata,
                                                                               final ReferenceMultiSource reference,
-                                                                              final int impreciseEvidenceVariantCallingThreshold,
+                                                                              final int impreciseVariantEvidenceThreshold,
+                                                                              final int maxCallableImpreciseVariantDeletionSize,
                                                                               final Logger localLogger) {
         final List<VariantContext> impreciseVariants =
                 Utils.stream(evidenceTargetLinks)
                         .map(p -> p._2)
                         .filter(EvidenceTargetLink::isImpreciseDeletion)
-                        .filter(e -> e.getReadPairs() + e.getSplitReads() > impreciseEvidenceVariantCallingThreshold)
+                        // todo: for now, we set a limit on the size of deletion we can call solely based on imprecise evidence
+                        .filter(e -> e.getDistance() < maxCallableImpreciseVariantDeletionSize)
+                        .filter(e -> e.getReadPairs() + e.getSplitReads() > impreciseVariantEvidenceThreshold)
                         .map(e -> createImpreciseDeletionVariant(e, metadata, reference))
                         .collect(Collectors.toList());
 
