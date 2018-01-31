@@ -52,15 +52,16 @@ public final class MainTest extends CommandLineProgramTest {
     }
 
 
-    private static final class ExitNotAllowedExcepion extends SecurityException {
+    private static final class ExitNotAllowedException extends SecurityException {
+        private static final long serialVersionUID = 1L;
         final int status;
 
-        ExitNotAllowedExcepion(int status) {
+        ExitNotAllowedException(int status) {
             this.status = status;
         }
     }
 
-    private static final class NoAllowExitSecurityManager extends SecurityManager {
+    private static final class ThrowOnExitSecurityManager extends SecurityManager {
 
         @Override
         public void checkPermission(Permission perm) {
@@ -76,17 +77,17 @@ public final class MainTest extends CommandLineProgramTest {
         public void checkExit(int status) {
             super.checkExit(status);
             // always throw
-            throw new ExitNotAllowedExcepion(status);
+            throw new ExitNotAllowedException(status);
         }
     }
 
     @Test(singleThreaded = true)
     public void testMainErrorWithoutStackTrace() {
         final SecurityManager backup = System.getSecurityManager();
-        System.setSecurityManager(new NoAllowExitSecurityManager());
+        System.setSecurityManager(new ThrowOnExitSecurityManager());
         try {
             new Main().mainEntry(new String[]{"PrintReadsW"});
-        } catch (ExitNotAllowedExcepion e) {
+        } catch (ExitNotAllowedException e) {
             // does exist as if it is an user exception
             Assert.assertEquals(e.status, Main.USER_EXCEPTION_EXIT_VALUE);
         } finally {

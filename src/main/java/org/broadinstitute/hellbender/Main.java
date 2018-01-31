@@ -64,10 +64,9 @@ public class Main {
     private static final int COMMANDLINE_EXCEPTION_EXIT_VALUE = 1;
 
     /**
-     * exit value when an unrecoverable {@link UserException} occurs
+     * Exit value when an unrecoverable {@link UserException} occurs.
      */
-    @VisibleForTesting
-    static final int USER_EXCEPTION_EXIT_VALUE = 2;
+    public static final int USER_EXCEPTION_EXIT_VALUE = 2;
 
     /**
      * exit value when any unrecoverable exception other than {@link UserException} occurs
