@@ -84,8 +84,8 @@ public final class MainTest extends CommandLineProgramTest {
     @Test(singleThreaded = true)
     public void testMainErrorWithoutStackTrace() {
         final SecurityManager backup = System.getSecurityManager();
-        System.setSecurityManager(new ThrowOnExitSecurityManager());
         try {
+            System.setSecurityManager(new ThrowOnExitSecurityManager());
             new Main().mainEntry(new String[]{"PrintReadsW"});
         } catch (ExitNotAllowedException e) {
             // does exist as if it is an user exception
