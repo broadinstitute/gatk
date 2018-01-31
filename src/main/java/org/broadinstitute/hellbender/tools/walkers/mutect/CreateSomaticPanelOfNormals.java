@@ -54,8 +54,8 @@ import java.util.*;
  *   -O normal1_for_pon.vcf.gz
  * </pre>
  *
- * <h4>Step 2. Create a file ending with .args extension with the paths to the VCFs from step 1, one per line.</h4>
- * <p>This approach is optional.  It will fail if a file with an extension other than .args is used. </p>
+ * <h4>Step 2. Create a file ending with .args or .list extension with the paths to the VCFs from step 1, one per line.</h4>
+ * <p>This approach is optional. Other extensions will error the run. </p>
  *
  * <pre>
  *     normal1_for_pon.vcf.gz
