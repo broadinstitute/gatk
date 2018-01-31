@@ -34,7 +34,7 @@ import java.util.List;
  * </p>
  *
  * <h3>Usage examples</h3>
- * <p>Example commands show how to run Mutect2 for typical scenerios. The two modes are (i) <i>somatic mode</i> where a tumor sample is matched with a normal sample in analysis and
+ * <p>Example commands show how to run Mutect2 for typical scenarios. The two modes are (i) <i>somatic mode</i> where a tumor sample is matched with a normal sample in analysis and
  * (ii) <i>tumor-only mode</i> where a single sample's alignment data undergoes analysis. </p>
  *
  * <h4>(i) Tumor with matched normal</h4>
