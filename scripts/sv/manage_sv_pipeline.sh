@@ -4,6 +4,8 @@
 set -eu
 set -o pipefail
 
+########################################################################################################################
+# helper functions
 show_help() {
 cat << EOF
 Manage the SV discovery pipeline on Google Cloud Services (GCS) cluster
@@ -63,8 +65,17 @@ throw_error() {
     exit 1
 }
 
+########################################################################################################################
+# parses arguments provided to this script
 QUIET=${SV_QUIET:-"N"}
 GCS_USER=${GCS_USER:-${USER}}
+
+# update gcloud
+if [[ "${QUIET}" == "Y" ]]; then
+    gcloud components update --quiet
+else
+    gcloud components update
+fi
 
 while [ $# -ge 1 ]; do
     case $1 in
@@ -154,9 +165,6 @@ if [ $# -lt 4 ]; then
   exit 1
 fi
 
-CLUSTER_MAX_LIFE_HOURS=${CLUSTER_MAX_LIFE_HOURS:-4h}
-CLUSTER_MAX_IDLE_MINUTES=${CLUSTER_MAX_IDLE_MINUTES:-60m}
-
 # init variables that MUST be defined
 GATK_DIR="$1"
 PROJECT_NAME="$2"
@@ -165,77 +173,59 @@ GCS_REFERENCE_2BIT="$4"
 shift $(($# < 4 ? $# : 4))
 SV_ARGS=${*:-${SV_ARGS:-""}} && SV_ARGS=${SV_ARGS:+" ${SV_ARGS}"}
 
-INIT_SCRIPT=${INIT_SCRIPT:-"${GATK_DIR}/scripts/sv/default_init.sh"}
-GCS_SAVE_PATH=${GCS_SAVE_PATH:-"${PROJECT_NAME}/${GCS_USER}"}
-
 # add GATK SV scripts to PATH
 PATH="${GATK_DIR}/scripts/sv:${PATH}"
+
+########################################################################################################################
+# upfront sanity checks (exit whenever these checks fail)
+
+export GATK_DIR
+export QUIET
+source sanity_checks.sh
+
+########################################################################################################################
+# various paths
+##############################################
+# paths on google bucket
+GCS_BAM_DIR="$(dirname ${GCS_BAM})"
+GCS_REFERENCE_DIR="$(dirname ${GCS_REFERENCE_2BIT})"
+
+# for now assume the reference image is just the reference fasta + ".img"
+GCS_REFERENCE_IMAGE="$(echo "${GCS_REFERENCE_2BIT}" | sed 's/.2bit$/.fasta.img/')"
+if [ "$(dirname ${GCS_REFERENCE_2BIT})" != "$(dirname ${GCS_REFERENCE_IMAGE})" ]; then
+    echo "Reference and reference image must be in same folder"
+    exit -1
+fi
+
+GCS_SAVE_PATH=${GCS_SAVE_PATH:-"${PROJECT_NAME}/${GCS_USER}"}
 
 # configure caching .jar files
 export GATK_GCS_STAGING=${GATK_GCS_STAGING:-"gs://${PROJECT_NAME}/${GCS_USER}/staging/"}
 
-echo
+##############################################
+# paths on cluster (HDFS, except for reference image which must be regular FS)
+CLUSTER_BAM="/data/$(basename ${GCS_BAM})"
+CLUSTER_REFERENCE_2BIT="/reference/$(basename ${GCS_REFERENCE_2BIT})"
+CLUSTER_REFERENCE_IMAGE="/mnt/1/reference/$(basename ${GCS_REFERENCE_IMAGE})"
 
-# set cluster name based on user and target bam file and branch name
-# (NOTE: can override by defining SV_CLUSTER_NAME)
-SANITIZED_BAM=$(basename "${GCS_BAM}" | awk '{print tolower($0)}' | sed 's/[^a-z0-9]/-/g')
-GATK_GIT_HASH=$(readlink ${GATK_DIR}/build/libs/gatk-spark.jar | awk 'BEGIN {FS="-g"} {print $2}' | cut -d- -f 1)
-GIT_BRANCH=$(git -C ${GATK_DIR} branch --contains ${GATK_GIT_HASH} | rev | cut -d" " -f 1 | rev)
+##############################################
+# store local run log in this file (NOTE: can override by defining SV_LOCAL_LOG_FILE)
+SANITIZED_BAM=$(basename "${CLUSTER_BAM}" | awk '{print tolower($0)}' | sed 's/[^a-z0-9]/-/g')
+LOCAL_LOG_FILE=${SV_LOCAL_LOG_FILE:-"${TMPDIR}sv-discovery-${SANITIZED_BAM}.log"}
+
+########################################################################################################################
+# call create_cluster, using default_init
+CLUSTER_MAX_LIFE_HOURS=${CLUSTER_MAX_LIFE_HOURS:-4h}
+CLUSTER_MAX_IDLE_MINUTES=${CLUSTER_MAX_IDLE_MINUTES:-60m}
+INIT_SCRIPT=${INIT_SCRIPT:-"${GATK_DIR}/scripts/sv/default_init.sh"}
+# set cluster name (NOTE: can override by defining SV_CLUSTER_NAME) based on user and target bam file and branch name
 SANITIZED_GIT_BRANCH="master"
 if [[ "$GIT_BRANCH" != "master" ]]; then
     SANITIZED_GIT_BRANCH="feature"
 fi
+
 CLUSTER_NAME=${SV_CLUSTER_NAME:-"${GCS_USER}-${SANITIZED_BAM}-${SANITIZED_GIT_BRANCH}"}
 echo "Using cluster name \"${CLUSTER_NAME}\""
-
-# update gcloud
-if [ "${QUIET}" == "Y" ]; then
-    gcloud components update --quiet
-else
-    gcloud components update
-fi
-
-# for now assume the reference image is just the reference fasta + ".img"
-GCS_REFERENCE_IMAGE="$(echo "${GCS_REFERENCE_2BIT}" | sed 's/.2bit$/.fasta.img/')"
-# monkey around with variables to put them in form used by gatk/sv/scripts
-GCS_BAM_DIR="$(dirname ${GCS_BAM})"
-GCS_BAM="/data/$(basename ${GCS_BAM})"
-GCS_REFERENCE_DIR="$(dirname ${GCS_REFERENCE_2BIT})"
-if [ "$(dirname ${GCS_REFERENCE_IMAGE})" != "$(dirname ${GCS_REFERENCE_IMAGE})" ]; then
-    echo "Reference fasta and reference image must be in same folder"
-    exit -1
-fi
-GCS_REFERENCE_2BIT="/reference/$(basename ${GCS_REFERENCE_2BIT})"
-GCS_REFERENCE_IMAGE="/mnt/1/reference/$(basename ${GCS_REFERENCE_IMAGE})"
-
-# store run log in this file
-# (NOTE: can override by defining SV_LOCAL_LOG_FILE)
-LOCAL_LOG_FILE=${SV_LOCAL_LOG_FILE:-"${TMPDIR}sv-discovery-${SANITIZED_BAM}.log"}
-
-# check if GATK jar was compiled from the current .git hash
-echo
-if [[ ! -f ${GATK_DIR}/build/libs/gatk-spark.jar ]]; then
-    echo "Cannot find GATK spark jar, maybe you forgot to build? Given GATK dir.: ${GATK_DIR}"
-fi
-CURRENT_GIT_HASH=$(git -C ${GATK_DIR} rev-parse --short HEAD | cut -c1-7)
-if [ "${QUIET}" != "Y" ] && [ "${GATK_GIT_HASH}" != "${CURRENT_GIT_HASH}" ]; then
-    while true; do
-        read -p "gatk-spark.jar version (${GATK_GIT_HASH}) does not match current git commit (${CURRENT_GIT_HASH}). Run anyway? (yes/no)" yn
-        case $yn in
-            [Yy]*)  break
-                    ;;
-            [Nn]*)  exit
-                    ;;
-            *)      echo "Please answer yes or no"
-                    ;;
-        esac
-    done
-fi
-# set output directory to datetime-git branch-git hash stamped folder
-OUTPUT_DIR="/results/$(date "+%Y-%m-%d_%H.%M.%S")-${GIT_BRANCH}-${GATK_GIT_HASH}"
-
-
-# call create_cluster, using default_init
 while true; do
     echo "#############################################################" 2>&1 | tee -a ${LOCAL_LOG_FILE}
     if [ "${QUIET}" == "Y" ]; then
@@ -263,7 +253,10 @@ while true; do
     esac
 done
 
+########################################################################################################################
 # call runWholePipeline
+# set output directory to datetime-git branch-git hash stamped folder
+OUTPUT_DIR="/results/$(date "+%Y-%m-%d_%H.%M.%S")-${GIT_BRANCH}-${GATK_JAR_HASH}${UNTRACKED_COMMIT}"
 while true; do
     echo "#############################################################" 2>&1 | tee -a ${LOCAL_LOG_FILE}
     if [ "${QUIET}" == "Y" ]; then
@@ -273,8 +266,8 @@ while true; do
     fi
     case $yn in
         [Yy]*)  SECONDS=0
-                echo "runWholePipeline.sh ${GATK_DIR} ${CLUSTER_NAME} ${OUTPUT_DIR} ${GCS_BAM} ${GCS_REFERENCE_2BIT} ${GCS_REFERENCE_IMAGE}${SV_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}" | tee -a ${LOCAL_LOG_FILE}
-                runWholePipeline.sh ${GATK_DIR} ${CLUSTER_NAME} ${OUTPUT_DIR} ${GCS_BAM} ${GCS_REFERENCE_2BIT} ${GCS_REFERENCE_IMAGE}${SV_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}
+                echo "runWholePipeline.sh ${GATK_DIR} ${CLUSTER_NAME} ${OUTPUT_DIR} ${CLUSTER_BAM} ${CLUSTER_REFERENCE_2BIT} ${CLUSTER_REFERENCE_IMAGE} ${SV_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}" | tee -a ${LOCAL_LOG_FILE}
+                runWholePipeline.sh ${GATK_DIR} ${CLUSTER_NAME} ${OUTPUT_DIR} ${CLUSTER_BAM} ${CLUSTER_REFERENCE_2BIT} ${CLUSTER_REFERENCE_IMAGE} ${SV_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}
                 printf 'Pipeline completed in %02dh:%02dm:%02ds\n' $((${SECONDS}/3600)) $((${SECONDS}%3600/60)) $((${SECONDS}%60))
                 break
                 ;;
@@ -287,6 +280,7 @@ while true; do
     esac
 done
 
+########################################################################################################################
 # copy results into gcloud
 while true; do
     echo "#############################################################" 2>&1 | tee -a ${LOCAL_LOG_FILE}
@@ -309,6 +303,7 @@ while true; do
     esac
 done
 
+########################################################################################################################
 # delete cluster
 while true; do
     echo "#############################################################"
