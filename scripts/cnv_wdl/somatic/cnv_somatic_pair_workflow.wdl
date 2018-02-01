@@ -45,7 +45,7 @@ workflow CNVSomaticPairWorkflow {
     #### optional basic arguments ####
     ##################################
      # For running oncotator
-    Boolean is_run_oncotator = false
+    Boolean? is_run_oncotator
     File? gatk4_jar_override
     Int? preemptible_attempts
     # Use as a last resort to increase the disk given to every task in case of ill behaving data
@@ -111,8 +111,12 @@ workflow CNVSomaticPairWorkflow {
     #########################################
     Int? minimum_contig_length
 
-    # Ignored if not running oncotator
-    String oncotator_docker = "broadinstitute/oncotator:1.9.5.0-eval-gatk-protected"
+    ##########################################
+    #### optional arguments for Oncotator ####
+    ##########################################
+    String? additional_args_for_oncotator
+    String? oncotator_docker
+    Int? mem_gb_for_oncotator
 
     Int ref_size = ceil(size(ref_fasta, "GB") + size(ref_fasta_dict, "GB") + size(ref_fasta_fai, "GB"))
     Int read_count_pon_size = ceil(size(read_count_pon, "GB"))
@@ -382,11 +386,11 @@ workflow CNVSomaticPairWorkflow {
             preemptible_attempts = preemptible_attempts
     }
 
-    if (is_run_oncotator) {
+    if (select_first([is_run_oncotator, false])) {
         call CNVOncotator.CNVOncotatorWorkflow as CNVOncotatorWorkflow {
             input:
                  called_file = CallCopyRatioSegmentsTumor.called_copy_ratio_segments,
-                 additional_args = additional_args,
+                 additional_args = additional_args_for_oncotator,
                  oncotator_docker = oncotator_docker,
                  mem_gb_for_oncotator = mem_gb_for_oncotator,
                  preemptible_attempts = preemptible_attempts
