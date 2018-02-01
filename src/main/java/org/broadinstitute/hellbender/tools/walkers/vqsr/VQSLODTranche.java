@@ -130,12 +130,12 @@ public class VQSLODTranche extends Tranche {
         return tranches;
     }
 
-    public static List<TruthSensitivityTranche> mergeAndConvertTranches(final Map<Double, List<VQSLODTranche>> scatteredTranches, final List<Double> tsLevels, final VariantRecalibratorArgumentCollection.Mode mode) {
+    public static List<TruthSensitivityTranche> mergeAndConvertTranches(final TreeMap<Double, List<VQSLODTranche>> scatteredTranches, final List<Double> tsLevels, final VariantRecalibratorArgumentCollection.Mode mode) {
         List<VQSLODTranche> mergedTranches = new ArrayList<>();
         List<TruthSensitivityTranche> gatheredTranches = new ArrayList<>();
 
         //make a list of merged tranches of the same length
-        for (final Double VQSLODlevel : scatteredTranches.keySet()) {
+        for (final Double VQSLODlevel : scatteredTranches.descendingKeySet()) {
             mergedTranches.add(mergeAndConvertTranches(scatteredTranches.get(VQSLODlevel),mode));
         }
 

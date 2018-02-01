@@ -63,7 +63,7 @@ public class GatherTranches extends CommandLineProgram {
         }
 
         //use a data structure to hold the tranches from each scatter shard in a format that's easy to merge
-        final Map<Double, List<VQSLODTranche>> scatteredTranches = new HashMap<>();
+        final TreeMap<Double, List<VQSLODTranche>> scatteredTranches = new TreeMap<>();
         for (final File trancheFile : inputReports) {
             try {
                 for (final VQSLODTranche currentTranche : VQSLODTranche.readTranches(trancheFile)) {
