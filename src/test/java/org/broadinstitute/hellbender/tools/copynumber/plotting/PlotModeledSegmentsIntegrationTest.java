@@ -29,11 +29,12 @@ public final class PlotModeledSegmentsIntegrationTest extends CommandLineProgram
     private static final File ALLELIC_COUNTS_OUT_OF_DICTIONARY_BOUNDS_FILE = new File(TEST_SUB_DIR, "plotting-allelic-counts-out-of-dictionary-bounds.tsv");
     private static final File MODELED_SEGMENTS_WITH_SAMPLE_NAME_MISMATCH_FILE = new File(TEST_SUB_DIR, "plotting-modeled-segments-with-sample-name-mismatch.seg");
     private static final File MODELED_SEGMENTS_OUT_OF_DICTIONARY_BOUNDS_FILE = new File(TEST_SUB_DIR, "plotting-modeled-segments-out-of-dictionary-bounds.seg");
+    private static final File MODELED_SEGMENTS_WITH_NO_SEGMENTS_FILE = new File(TEST_SUB_DIR, "plotting-modeled-segments-with-no-segments.seg");
     private static final File MODELED_SEGMENTS_WITH_WRONG_NUM_POINTS_COPY_RATIO_FILE = new File(TEST_SUB_DIR, "plotting-modeled-segments-with-wrong-num-points-copy-ratio.seg");
     private static final File MODELED_SEGMENTS_WITH_WRONG_NUM_POINTS_ALLELE_FRACTION_FILE = new File(TEST_SUB_DIR, "plotting-modeled-segments-with-wrong-num-points-allele-fraction.seg");
     
     private static final String OUTPUT_PREFIX = "test";
-    private static final int THRESHOLD_PLOT_FILE_SIZE_IN_BYTES = 50000;  //test that data points are plotted (not just background/axes)
+    private static final int THRESHOLD_PLOT_FILE_SIZE_IN_BYTES = 50000;  //test that segments and data points are plotted (not just background/axes)
 
     //checks that output files with reasonable file sizes are generated, but correctness of output is not checked
     @Test
@@ -80,6 +81,22 @@ public final class PlotModeledSegmentsIntegrationTest extends CommandLineProgram
         runCommandLine(arguments);
         Assert.assertTrue(new File(outputDir, OUTPUT_PREFIX + ".modeled.png").exists());
         Assert.assertTrue(new File(outputDir, OUTPUT_PREFIX + ".modeled.png").length() > THRESHOLD_PLOT_FILE_SIZE_IN_BYTES / 2);    //allele-fraction-only plot is half the size
+    }
+
+    @Test
+    public void testPlottingNoSegments() {
+        final File outputDir = createTempDir("testDir");
+        final String[] arguments = {
+                "--" + CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, DENOISED_COPY_RATIOS_FILE.getAbsolutePath(),
+                "--" + CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, ALLELIC_COUNTS_FILE.getAbsolutePath(),
+                "--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME, MODELED_SEGMENTS_WITH_NO_SEGMENTS_FILE.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, SEQUENCE_DICTIONARY_FILE.getAbsolutePath(),
+                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputDir.getAbsolutePath(),
+                "--" + CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, OUTPUT_PREFIX
+        };
+        runCommandLine(arguments);
+        Assert.assertTrue(new File(outputDir, OUTPUT_PREFIX + ".modeled.png").exists());
+        Assert.assertTrue(new File(outputDir, OUTPUT_PREFIX + ".modeled.png").length() > THRESHOLD_PLOT_FILE_SIZE_IN_BYTES);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

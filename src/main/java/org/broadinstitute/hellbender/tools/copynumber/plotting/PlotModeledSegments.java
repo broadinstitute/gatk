@@ -178,10 +178,14 @@ public final class PlotModeledSegments extends CommandLineProgram {
         //get sample name from input files (consistency check is performed)
         final String sampleName = getSampleName();
 
-        //perform a basic check on the total number of copy-ratio intervals/allele-fraction sites per contig
-        //(we do not check the number of intervals/sites overlapping each segment, in order to be robust against future
-        //changes to the segmentation that might assign intervals to more than one segment)
-        validateNumPointsPerContig();
+        if (modeledSegments.size() == 0) {
+            logger.warn("Modeled-segments file contained no segments, plotting data points only...");
+        } else {
+            //perform a basic check on the total number of copy-ratio intervals/allele-fraction sites per contig
+            //(we do not check the number of intervals/sites overlapping each segment, in order to be robust against future
+            //changes to the segmentation that might assign intervals to more than one segment)
+            validateNumPointsPerContig();
+        }
 
         //validate sequence dictionaries and load contig names and lengths into a LinkedHashMap
         final SAMSequenceDictionary sequenceDictionary = modeledSegments.getMetadata().getSequenceDictionary();

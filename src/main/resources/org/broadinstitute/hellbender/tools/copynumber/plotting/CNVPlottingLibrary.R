@@ -35,71 +35,93 @@ PlotCopyRatios = function(copy_ratios_df, color, contig_names, contig_starts) {
 }
 
 PlotCopyRatiosWithModeledSegments = function(denoised_copy_ratios_df, modeled_segments_df, contig_names, contig_starts, point_size=0.2) {
-   points_start_index = 1
-   for (s in 1:nrow(modeled_segments_df)) {
-       #skip segments with no points
-       num_points = modeled_segments_df[s, "NUM_POINTS_COPY_RATIO"]
-       if (num_points == 0) {
-           next
-       }
-       points_end_index = points_start_index + num_points
+    num_segments = nrow(modeled_segments_df)
+    if (num_segments == 0) {
+        #if there are no segments, we just plot the data points
+        contigs = denoised_copy_ratios_df[["CONTIG"]]
+        offsets = contig_starts[match(contigs, contig_names)]
+        genomic_coordinates = offsets + denoised_copy_ratios_df[["MIDDLE"]]
+        denoised_copy_ratios = denoised_copy_ratios_df[["COPY_RATIO"]]
+        points(x=genomic_coordinates, y=denoised_copy_ratios, col="#3B5DFF", pch=".", cex=point_size)
+    } else {
+        points_start_index = 1
+        for (s in 1:num_segments) {
+            #skip segments with no points
+            num_points = modeled_segments_df[s, "NUM_POINTS_COPY_RATIO"]
+            if (num_points == 0) {
+                next
+            }
+            points_end_index = points_start_index + num_points
 
-       contig = modeled_segments_df[s, "CONTIG"]
-       offset = contig_starts[match(contig, contig_names)]
-       segment_start = offset + modeled_segments_df[s, "START"]
-       segment_end = offset + modeled_segments_df[s, "END"]
-       genomic_coordinates = offset + denoised_copy_ratios_df[points_start_index:points_end_index, "MIDDLE"]
+            contig = modeled_segments_df[s, "CONTIG"]
+            offset = contig_starts[match(contig, contig_names)]
+            segment_start = offset + modeled_segments_df[s, "START"]
+            segment_end = offset + modeled_segments_df[s, "END"]
+            genomic_coordinates = offset + denoised_copy_ratios_df[points_start_index:points_end_index, "MIDDLE"]
 
-       denoised_copy_ratios = denoised_copy_ratios_df[points_start_index:points_end_index, "COPY_RATIO"]
+            denoised_copy_ratios = denoised_copy_ratios_df[points_start_index:points_end_index, "COPY_RATIO"]
 
-       colors = c("coral", "dodgerblue")
-       points(x=genomic_coordinates, y=denoised_copy_ratios, col=colors[s %% 2 + 1], pch=".", cex=point_size)
+            colors = c("coral", "dodgerblue")
+            points(x=genomic_coordinates, y=denoised_copy_ratios, col=colors[s %% 2 + 1], pch=".", cex=point_size)
 
-       copy_ratio_posterior_10 = 2^modeled_segments_df[s, "LOG2_COPY_RATIO_POSTERIOR_10"]
-       copy_ratio_posterior_50 = 2^modeled_segments_df[s, "LOG2_COPY_RATIO_POSTERIOR_50"]
-       copy_ratio_posterior_90 = 2^modeled_segments_df[s, "LOG2_COPY_RATIO_POSTERIOR_90"]
-       segments(x0=segment_start, y0=copy_ratio_posterior_50, x1=segment_end, y1=copy_ratio_posterior_50, col="black", lwd=2, lty=1)
-       rect(xleft=segment_start, ybottom=copy_ratio_posterior_10, xright=segment_end, ytop=copy_ratio_posterior_90, lwd=1, lty=1)
+            copy_ratio_posterior_10 = 2^modeled_segments_df[s, "LOG2_COPY_RATIO_POSTERIOR_10"]
+            copy_ratio_posterior_50 = 2^modeled_segments_df[s, "LOG2_COPY_RATIO_POSTERIOR_50"]
+            copy_ratio_posterior_90 = 2^modeled_segments_df[s, "LOG2_COPY_RATIO_POSTERIOR_90"]
+            segments(x0=segment_start, y0=copy_ratio_posterior_50, x1=segment_end, y1=copy_ratio_posterior_50, col="black", lwd=2, lty=1)
+            rect(xleft=segment_start, ybottom=copy_ratio_posterior_10, xright=segment_end, ytop=copy_ratio_posterior_90, lwd=1, lty=1)
 
-       points_start_index = points_start_index + num_points
-   }
+            points_start_index = points_start_index + num_points
+        }
+    }
 }
 
-PlotAlternateAlleleFractionsWithModeledSegments = function(allelic_counts_df, modeled_segments_df, contig_names, contig_starts, point_size=0.4) {
-   points_start_index = 1
-   for (s in 1:nrow(modeled_segments_df)) {
-       #skip segments with no points
-       num_points = modeled_segments_df[s, "NUM_POINTS_ALLELE_FRACTION"]
-       if (num_points == 0) {
-           next
-       }
-       points_end_index = points_start_index + num_points
+PlotAlternateAlleleFractionsWithModeledSegments = function(allelic_counts_df, modeled_segments_df, contig_names, contig_starts, point_size=1.0) {
+    num_segments = nrow(modeled_segments_df)
+    if (num_segments == 0) {
+        #if there are no segments, we just plot the data points
+        contigs = allelic_counts_df[["CONTIG"]]
+        offsets = contig_starts[match(contigs, contig_names)]
+        genomic_coordinates = offsets + allelic_counts_df[["POSITION"]]
+        ref_counts = allelic_counts_df[["REF_COUNT"]]
+        alt_counts = allelic_counts_df[["ALT_COUNT"]]
+        alternate_allele_fractions = alt_counts / (alt_counts + ref_counts)
+        points(x=genomic_coordinates, y=alternate_allele_fractions, col="#3B5DFF", pch=".", cex=point_size)
+    } else {
+        points_start_index = 1
+        for (s in 1:num_segments) {
+            #skip segments with no points
+            num_points = modeled_segments_df[s, "NUM_POINTS_ALLELE_FRACTION"]
+            if (num_points == 0) {
+                next
+            }
+            points_end_index = points_start_index + num_points
 
-       contig = modeled_segments_df[s, "CONTIG"]
-       offset = contig_starts[match(contig, contig_names)]
-       segment_start = offset + modeled_segments_df[s, "START"]
-       segment_end = offset + modeled_segments_df[s, "END"]
-       genomic_coordinates = offset + allelic_counts_df[points_start_index:points_end_index, "POSITION"]
+            contig = modeled_segments_df[s, "CONTIG"]
+            offset = contig_starts[match(contig, contig_names)]
+            segment_start = offset + modeled_segments_df[s, "START"]
+            segment_end = offset + modeled_segments_df[s, "END"]
+            genomic_coordinates = offset + allelic_counts_df[points_start_index:points_end_index, "POSITION"]
 
-       ref_counts = allelic_counts_df[points_start_index:points_end_index, "REF_COUNT"]
-       alt_counts = allelic_counts_df[points_start_index:points_end_index, "ALT_COUNT"]
-       alternate_allele_fractions = alt_counts / (alt_counts + ref_counts)
+            ref_counts = allelic_counts_df[points_start_index:points_end_index, "REF_COUNT"]
+            alt_counts = allelic_counts_df[points_start_index:points_end_index, "ALT_COUNT"]
+            alternate_allele_fractions = alt_counts / (alt_counts + ref_counts)
 
-       colors = c("coral", "dodgerblue")
-       points(x=genomic_coordinates, y=alternate_allele_fractions, col=colors[s %% 2 + 1], pch=".", cex=point_size)
+            colors = c("coral", "dodgerblue")
+            points(x=genomic_coordinates, y=alternate_allele_fractions, col=colors[s %% 2 + 1], pch=".", cex=point_size)
 
-       minor_allele_fraction_posterior_10 = modeled_segments_df[s, "MINOR_ALLELE_FRACTION_POSTERIOR_10"]
-       minor_allele_fraction_posterior_50 = modeled_segments_df[s, "MINOR_ALLELE_FRACTION_POSTERIOR_50"]
-       minor_allele_fraction_posterior_90 = modeled_segments_df[s, "MINOR_ALLELE_FRACTION_POSTERIOR_90"]
-       segments(x0=segment_start, y0=minor_allele_fraction_posterior_50, x1=segment_end, y1=minor_allele_fraction_posterior_50, col="black", lwd=2, lty=1)
-       rect(xleft=segment_start, ybottom=minor_allele_fraction_posterior_10, xright=segment_end, ytop=minor_allele_fraction_posterior_90, lwd=1, lty=1)
+            minor_allele_fraction_posterior_10 = modeled_segments_df[s, "MINOR_ALLELE_FRACTION_POSTERIOR_10"]
+            minor_allele_fraction_posterior_50 = modeled_segments_df[s, "MINOR_ALLELE_FRACTION_POSTERIOR_50"]
+            minor_allele_fraction_posterior_90 = modeled_segments_df[s, "MINOR_ALLELE_FRACTION_POSTERIOR_90"]
+            segments(x0=segment_start, y0=minor_allele_fraction_posterior_50, x1=segment_end, y1=minor_allele_fraction_posterior_50, col="black", lwd=2, lty=1)
+            rect(xleft=segment_start, ybottom=minor_allele_fraction_posterior_10, xright=segment_end, ytop=minor_allele_fraction_posterior_90, lwd=1, lty=1)
 
-       major_allele_fraction_posterior_10 = 1 - minor_allele_fraction_posterior_10
-       major_allele_fraction_posterior_50 = 1 - minor_allele_fraction_posterior_50
-       major_allele_fraction_posterior_90 = 1 - minor_allele_fraction_posterior_90
-       segments(x0=segment_start, y0=major_allele_fraction_posterior_50, x1=segment_end, y1=major_allele_fraction_posterior_50, col="black", lwd=2, lty=1)
-       rect(xleft=segment_start, ybottom=major_allele_fraction_posterior_90, xright=segment_end, ytop=major_allele_fraction_posterior_10, lwd=1, lty=1)
+            major_allele_fraction_posterior_10 = 1 - minor_allele_fraction_posterior_10
+            major_allele_fraction_posterior_50 = 1 - minor_allele_fraction_posterior_50
+            major_allele_fraction_posterior_90 = 1 - minor_allele_fraction_posterior_90
+            segments(x0=segment_start, y0=major_allele_fraction_posterior_50, x1=segment_end, y1=major_allele_fraction_posterior_50, col="black", lwd=2, lty=1)
+            rect(xleft=segment_start, ybottom=major_allele_fraction_posterior_90, xright=segment_end, ytop=major_allele_fraction_posterior_10, lwd=1, lty=1)
 
-       points_start_index = points_start_index + num_points
-   }
+            points_start_index = points_start_index + num_points
+        }
+    }
 }
