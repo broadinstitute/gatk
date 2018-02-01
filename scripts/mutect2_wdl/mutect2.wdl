@@ -472,7 +472,7 @@ task M2 {
 
     runtime {
         docker: gatk_docker
-        memory: machine_mem + " GB"
+        memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
         cpu: select_first([cpu, 1])
@@ -519,7 +519,7 @@ task MergeVCFs {
 
     runtime {
         docker: gatk_docker
-        memory: machine_mem + " GB"
+        memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
         cpu: select_first([cpu, 1])
@@ -551,7 +551,7 @@ task MergeBamOuts {
 
     # Mem is in units of GB but our command and memory runtime values are in MB
     Int machine_mem = if defined(mem) then mem * 1000 else 7000
-    Int command_mem = machine_mem - 1
+    Int command_mem = machine_mem - 1000
 
     command <<<
         # This command block assumes that there is at least one file in bam_outs.
@@ -565,7 +565,7 @@ task MergeBamOuts {
 
     runtime {
         docker: gatk_docker
-        memory: machine_mem + " GB"
+        memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
         cpu: select_first([cpu, 1])
@@ -596,7 +596,7 @@ task CollectSequencingArtifactMetrics {
 
     # Mem is in units of GB but our command and memory runtime values are in MB
     Int machine_mem = if defined(mem) then mem * 1000 else 7000
-    Int command_mem = machine_mem - 1
+    Int command_mem = machine_mem - 1000
 
     command {
         set -e
@@ -607,7 +607,7 @@ task CollectSequencingArtifactMetrics {
 
     runtime {
         docker: gatk_docker
-        memory: machine_mem + " GB"
+        memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
         cpu: select_first([cpu, 1])
@@ -726,7 +726,7 @@ task Filter {
 
     runtime {
         docker: gatk_docker
-        memory: machine_mem + " GB"
+        memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
         cpu: select_first([cpu, 1])
@@ -853,7 +853,7 @@ task oncotate_m2 {
 
     runtime {
         docker: oncotator_docker
-        memory: machine_mem + " GB"
+        memory: machine_mem + " MB"
         bootDiskSizeGb: 12
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
