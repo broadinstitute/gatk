@@ -1,1 +1,2 @@
-from .inference import score_and_write_batch, args_and_model_from_semantics
+from .inference import score_and_write_batch
+from .models import args_and_model_from_semantics

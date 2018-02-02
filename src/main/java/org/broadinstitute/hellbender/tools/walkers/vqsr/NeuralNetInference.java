@@ -27,7 +27,7 @@ import java.util.stream.StreamSupport;
  * Annotate a VCF with scores from 1D Convolutional Neural Network.
  *
  * This tool streams variants and their reference context to a python program
- * which evaluates a pretrained neural network on each variant.
+ * which evaluates a pre-trained neural network on each variant.
  * The neural network performs 1D convolutions over the reference sequence surrounding the variant
  * and combines those features with a multilayer perceptron on the variant annotations.
  *
