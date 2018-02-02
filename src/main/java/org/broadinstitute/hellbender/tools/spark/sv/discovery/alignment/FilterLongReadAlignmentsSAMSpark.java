@@ -98,8 +98,8 @@ public final class FilterLongReadAlignmentsSAMSpark extends GATKSparkTool {
     }
 
     @Override
-    public ReadFilter makeReadFilter() {
-        return ReadFilterLibrary.MAPPED;
+    public List<ReadFilter> getDefaultReadFilters() {
+        return Collections.singletonList(ReadFilterLibrary.MAPPED);
     }
 
     @Override
