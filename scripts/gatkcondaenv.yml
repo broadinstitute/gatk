@@ -19,6 +19,11 @@ dependencies:
 - xz=5.2.3=0
 - zlib=1.2.11=0
 - pip:
+          "pysam >= 0.13",
+          "scikit-learn >= 0.19.1",
+          "matplotlib >= 2.1.2",
+          "pyvcf >= 0.6.8",
+          "biopython >= 1.70"
   - bleach==1.5.0
   - cycler==0.10.0
   - enum34==1.1.6
@@ -34,9 +39,12 @@ dependencies:
   - protobuf==3.5.0.post1
   - pymc3==3.1
   - pyparsing==2.2.0
+  - pysam==0.13
   - python-dateutil==2.6.1
   - pytz==2017.3
+  - pyvcf==0.6.8
   - pyyaml==3.12
+  - scikit-learn==0.19.1
   - scipy==1.0.0
   - six==1.11.0
   - tensorflow==1.4.0
