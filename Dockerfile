@@ -43,6 +43,7 @@ RUN mkdir $DOWNLOAD_DIR && \
     rm $DOWNLOAD_DIR/miniconda.sh
 ENV PATH $CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH
 RUN mkdir /gatk/scripts
+RUN mv /gatk/gatkcondaenv.yml /gatk/scripts
 WORKDIR /gatk
 RUN conda create -n gatk -f /gatk/scripts/gatkcondaenv.yml && \
     echo "source activate gatk" >> /gatk/gatkenv.rc
