@@ -105,7 +105,7 @@ if [ -n "${IS_PUSH}" ]; then
 else
     RELEASE=false
 fi
-./gradlew clean bundle -Drelease=$DRELEASE
+./gradlew clean bundle createPythonPackageArchive -Drelease=$DRELEASE
 ZIPPATH=$( find ./build -name "gatk*.zip" )
 unzip -j ${ZIPPATH} -d ./unzippedJar
 
