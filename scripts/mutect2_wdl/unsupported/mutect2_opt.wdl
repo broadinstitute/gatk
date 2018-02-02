@@ -260,7 +260,7 @@ workflow Mutect2 {
                 normal_bai = normal_bai,
                 variants_for_contamination = variants_for_contamination,
                 variants_for_contamination_index = variants_for_contamination_index,
-                disk_space = tumor_bam_size + ceil(size(variants_for_contamination, "GB") * small_input_to_output_multiplier) + disk_pad,
+                disk_space = tumor_bam_size + normal_bam_size + ceil(size(variants_for_contamination, "GB") * small_input_to_output_multiplier) + disk_pad,
                 auth = auth
         }
     }
