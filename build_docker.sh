@@ -106,8 +106,10 @@ else
     RELEASE=false
 fi
 ./gradlew clean bundle createPythonPackageArchive -Drelease=$DRELEASE
-ZIPPATH=$( find ./build -name "gatk*.zip" )
+ZIPPATHGATK=$( find ./build -name "gatk-*.zip" )
+ZIPPATHPYTHON=$( find ./build -name "gatkPython*.zip" )
 unzip -j ${ZIPPATH} -d ./unzippedJar
+unzip -j ${ZIPPATHPYTHON} -d ./unzippedJar
 
 echo "Building image to tag ${REPO_PRJ}:${GITHUB_TAG}..."
 docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg ZIPPATH=./unzippedJar .
