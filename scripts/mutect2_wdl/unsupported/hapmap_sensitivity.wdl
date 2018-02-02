@@ -37,6 +37,8 @@ workflow HapmapSensitivity {
     String prefix   #a prefix string like "5plex"
     File python_script
     Int max_depth
+    Array[Int] depth_bins
+    Int depth_bin_width
     File preprocessed_hapmap
     File preprocessed_hapmap_idx
 
@@ -103,7 +105,7 @@ workflow HapmapSensitivity {
     }
 
     call AnalyzeSensitivity {
-        input: input_table = SensitivityTables.table, python_script = python_script, prefix = prefix
+        input: input_table = SensitivityTables.table, python_script = python_script, prefix = prefix, depth_bins = depth_bins, depth_bin_width = depth_bin_width
     }
 
     call CombineTables as SummaryTables {
@@ -277,11 +279,15 @@ task AnalyzeSensitivity {
     File input_table
     File python_script
     String prefix
+    Array[Int] depth_bins
+    Int depth_bin_width
 
     command {
         . /broad/software/scripts/useuse
         use Python-2.7
-	python ${python_script} ${input_table}
+	    python ${python_script} --input_file ${input_table} \
+	        --depth_bins ${sep = ' ' depth_bins} \
+	        --depth_bin_width ${depth_bin_width}
         mv "SNP_sensitivity.tsv" "${prefix}_SNP_sensitivity.tsv"
         mv "SNP_sensitivity.png" "${prefix}_SNP_sensitivity.png"
         mv "Indel_sensitivity.tsv" "${prefix}_Indel_sensitivity.tsv"
