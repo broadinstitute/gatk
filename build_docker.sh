@@ -108,7 +108,7 @@ fi
 ./gradlew clean bundle createPythonPackageArchive -Drelease=$DRELEASE
 ZIPPATHGATK=$( find ./build -name "gatk-*.zip" )
 ZIPPATHPYTHON=$( find ./build -name "gatkPython*.zip" )
-unzip -j ${ZIPPATH} -d ./unzippedJar
+unzip -j ${ZIPPATHGATK} -d ./unzippedJar
 unzip -j ${ZIPPATHPYTHON} -d ./unzippedJar
 
 echo "Building image to tag ${REPO_PRJ}:${GITHUB_TAG}..."
