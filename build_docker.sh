@@ -109,7 +109,7 @@ fi
 ZIPPATHGATK=$( find ./build -name "gatk-*.zip" )
 ZIPPATHPYTHON=$( find ./build -name "gatkPython*.zip" )
 unzip -j ${ZIPPATHGATK} -d ./unzippedJar
-unzip -j ${ZIPPATHPYTHON} -d ./unzippedJar
+unzip -j ${ZIPPATHPYTHON} -d ./unzippedJar/scripts
 
 echo "Building image to tag ${REPO_PRJ}:${GITHUB_TAG}..."
 docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg ZIPPATH=./unzippedJar .
