@@ -4,7 +4,8 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.VariantAnnotationArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.DefaultGATKVariantAnnotationArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardMutectAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
@@ -120,7 +121,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * Any requirements that are not met, e.g. failing to provide a pedigree file for a pedigree-based annotation, may cause the run to fail.
      */
     @ArgumentCollection
-    VariantAnnotationArgumentCollection variantAnnotationArgumentCollection = new VariantAnnotationArgumentCollection(
+    GATKAnnotationArgumentCollection defaultGATKVariantAnnotationArgumentCollection = new DefaultGATKVariantAnnotationArgumentCollection(
             Arrays.asList(StandardMutectAnnotation.class.getSimpleName()),
             Collections.emptyList(),
             Collections.emptyList());

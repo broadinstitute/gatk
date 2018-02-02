@@ -37,7 +37,6 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -172,7 +171,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         initializeActiveRegionEvaluationGenotyperEngine();
 
         if (annotationEngine == null) {
-            annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(hcArgs.variantAnnotationArgumentCollection, hcArgs.dbsnp.dbsnp, hcArgs.comps);
+            annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(hcArgs.defaultGATKVariantAnnotationArgumentCollection, hcArgs.dbsnp.dbsnp, hcArgs.comps);
 
         }
 
@@ -226,13 +225,13 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             hcArgs.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING = -0.0;
 
             // also, we don't need to output several of the annotations
-            hcArgs.variantAnnotationArgumentCollection.annotationsToExclude.add(ChromosomeCounts.class.getSimpleName());
-            hcArgs.variantAnnotationArgumentCollection.annotationsToExclude.add(FisherStrand.class.getSimpleName());
-            hcArgs.variantAnnotationArgumentCollection.annotationsToExclude.add(StrandOddsRatio.class.getSimpleName());
-            hcArgs.variantAnnotationArgumentCollection.annotationsToExclude.add(QualByDepth.class.getSimpleName());
+            hcArgs.defaultGATKVariantAnnotationArgumentCollection.getUserDisabledAnnotationNames().add(ChromosomeCounts.class.getSimpleName());
+            hcArgs.defaultGATKVariantAnnotationArgumentCollection.getUserDisabledAnnotationNames().add(FisherStrand.class.getSimpleName());
+            hcArgs.defaultGATKVariantAnnotationArgumentCollection.getUserDisabledAnnotationNames().add(StrandOddsRatio.class.getSimpleName());
+            hcArgs.defaultGATKVariantAnnotationArgumentCollection.getUserDisabledAnnotationNames().add(QualByDepth.class.getSimpleName());
 
             // but we definitely want certain other ones
-            hcArgs.variantAnnotationArgumentCollection.annotationsToUse.add(StrandBiasBySample.class.getSimpleName());
+            hcArgs.defaultGATKVariantAnnotationArgumentCollection.getUserEnabledAnnotationNames().add(StrandBiasBySample.class.getSimpleName());
             logger.info("Standard Emitting and Calling confidence set to 0.0 for reference-model confidence output");
             if ( ! hcArgs.annotateAllSitesWithPLs ) {
                 logger.info("All sites annotated with PLs forced to true for reference-model confidence output");

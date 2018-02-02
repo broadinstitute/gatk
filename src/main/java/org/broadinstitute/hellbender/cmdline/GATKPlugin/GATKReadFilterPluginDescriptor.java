@@ -47,7 +47,8 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
     // when they were created
     private final Map<String, ReadFilter> toolDefaultReadFilters = new LinkedHashMap<>();
 
-    // Set of dependent args for which we've seen values (requires predecessor)
+    // Set of predecessor readFilters for which we've seen arguments that must exist either as a tool default or be supplied by the user
+    // (eg. ReadLengthReadFilter if we see "--maxReadLength" on the command line)
     private final Set<String> requiredPredecessors = new HashSet<>();
 
     /**
