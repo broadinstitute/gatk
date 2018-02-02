@@ -387,6 +387,13 @@ tasks.withType(Jar) {
 }
 
 test {
+    String DOCKER_TEST = "$System.env.DOCKER_TEST"
+
+    if (DOCKER_TEST == "true"){
+        classpath = files("/gatk/gatk.jar", "/usr") + classpath
+        workingDir = file("/gatksrc/")
+    }
+    //classpath.each {println it }
     outputs.upToDateWhen { false }  //tests will never be "up to date" so you can always rerun them
     String TEST_VERBOSITY = "$System.env.TEST_VERBOSITY"
 
@@ -467,7 +474,6 @@ test {
         }
     }
 }
-
 
 task wrapper(type: Wrapper) {
     gradleVersion = '3.1'
