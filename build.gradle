@@ -174,19 +174,6 @@ configurations.all {
     all*.exclude group: 'junit', module: 'junit'
 }
 
-
-jacocoTestReport {
-    dependsOn test
-    group = "Reporting"
-    description = "Generate Jacoco coverage reports after running tests."
-    additionalSourceDirs = files(sourceSets.main.allJava.srcDirs)
-
-    reports {
-        xml.enabled = true
-        html.enabled = true
-    }
-}
-
 //NOTE: we ignore contracts for now
 compileJava {
   options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror', '-Xdiags:verbose']
@@ -379,7 +366,6 @@ version = (isRelease ? gitVersion() : gitVersion() + "-SNAPSHOT").replaceAll(".d
 logger.info("build for version:" + version)
 group = 'org.broadinstitute'
 
-
 tasks.withType(Jar) {
     manifest {
         attributes 'Implementation-Title': 'The Genome Analysis Toolkit (GATK)',
@@ -391,6 +377,170 @@ tasks.withType(Jar) {
 }
 
 test {
+    outputs.upToDateWhen { false }  //tests will never be "up to date" so you can always rerun them
+    String TEST_VERBOSITY = "$System.env.TEST_VERBOSITY"
+
+    /**
+     * Valid options for TEST_TYPE are:
+     * cloud, integration, unit, spark, python, bucket, funcotatorValidation  : run one of the several disjoint partitions of the test suite
+     * all                                                                    : run all the tests
+     * anything else                                                          : run the non-cloud tests
+     */
+    String TEST_TYPE = "$System.env.TEST_TYPE"
+
+    useTestNG {
+        if (TEST_TYPE == "cloud") {
+            // run only the cloud tests
+            includeGroups 'cloud', 'bucket'
+        } else if (TEST_TYPE == "integration"){
+            include "**/*IntegrationTest.class"
+            excludeGroups "cloud", "bucket", "python", "funcotatorValidation"
+        } else if (TEST_TYPE == "unit") {
+            exclude "**/*IntegrationTest.class"
+            excludeGroups "cloud", "bucket", "python", "funcotatorValidation"
+        } else if (TEST_TYPE == "spark") {
+            includeGroups "spark"
+            excludeGroups "cloud", "bucket", "python", "funcotatorValidation"
+        } else if (TEST_TYPE == "python") {
+            includeGroups "python"
+        } else if (TEST_TYPE == "all"){
+            //include everything
+        } else {
+            excludeGroups "cloud", "bucket", "python", "funcotatorValidation"
+        }
+    }
+
+    systemProperty "samjdk.use_async_io_read_samtools", "false"
+    systemProperty "samjdk.use_async_io_write_samtools", "true"
+    systemProperty "samjdk.use_async_io_write_tribble", "false"
+    systemProperty "samjdk.compression_level", "2"
+    systemProperty "gatk.spark.debug", System.getProperty("gatk.spark.debug")
+
+    environment "SPARK_LOCAL_IP","127.0.0.1"
+
+    // set heap size for the test JVM(s)
+    minHeapSize = "1G"
+    maxHeapSize = "4G"
+
+    if (TEST_VERBOSITY == "minimal") {
+        int count = 0
+        // listen to events in the test execution lifecycle
+
+        beforeTest { descriptor ->
+            count++
+            if( count % 10000 == 0) {
+                logger.lifecycle("Finished "+ Integer.toString(count++) + " tests")
+            }
+        }
+    } else {
+        // show standard out and standard error of the test JVM(s) on the console
+        testLogging.showStandardStreams = true
+        beforeTest { descriptor ->
+            logger.lifecycle("Running Test: " + descriptor)
+        }
+
+        // listen to standard out and standard error of the test JVM(s)
+        onOutput { descriptor, event ->
+            logger.lifecycle("Test: " + descriptor + " produced standard out/err: " + event.message )
+        }
+    }
+
+    testLogging {
+        testLogging {
+            events "skipped", "failed"
+            exceptionFormat = "full"
+        }
+        afterSuite { desc, result ->
+            if (!desc.parent) { // will match the outermost suite
+                println "Results: ${result.resultType} (${result.testCount} tests, ${result.successfulTestCount} successes, ${result.failedTestCount} failures, ${result.skippedTestCount} skipped)"
+            }
+        }
+    }
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '3.1'
+}
+
+tasks.withType(ShadowJar) {
+    from(project.sourceSets.main.output)
+    baseName = project.name + '-package'
+    mergeServiceFiles()
+    relocate 'com.google.common', 'org.broadinstitute.hellbender.relocated.com.google.common'
+    zip64 true
+    exclude 'log4j.properties' // from adam jar as it clashes with hellbender's log4j2.xml
+    exclude '**/*.SF' // these are Manifest signature files and
+    exclude '**/*.RSA' // keys which may accidentally be imported from other signed projects and then fail at runtime
+
+    // Suggested by the akka devs to make sure that we do not get the spark configuration error.
+    // http://doc.akka.io/docs/akka/snapshot/general/configuration.html#When_using_JarJar__OneJar__Assembly_or_any_jar-bundler
+    transform(com.github.jengelman.gradle.plugins.shadow.transformers.AppendingTransformer) {
+        resource = 'reference.conf'
+    }
+}
+
+shadowJar {
+    configurations = [project.configurations.runtime]
+    classifier = 'local'
+    mergeServiceFiles('reference.conf')
+    doLast {
+        // Create a symlink to the newly created jar.  The name will be gatk.jar and
+        //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
+        // Please note that this will cause failures in Windows, which does not support symlinks.
+        createGatkSymlinks(destinationDir.toString(), archivePath, "", baseJarName, secondaryBaseJarName)
+    }
+}
+
+task localJar{ dependsOn shadowJar }
+
+task sparkJar(type: ShadowJar) {
+    group = "Shadow"
+    description = "Create a combined jar of project and runtime dependencies that excludes provided spark dependencies"
+    configurations = [project.configurations.sparkConfiguration]
+    classifier = 'spark'
+    doLast {
+        // Create a symlink to the newly created jar.  The name will be gatk.jar and
+        //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
+        // Please note that this will cause failures in Windows, which does not support symlinks.
+        createGatkSymlinks(destinationDir.toString(), archivePath, classifier, baseJarName, secondaryBaseJarName)
+    }
+}
+
+// A jar that only contains the test classes and resources (to be extracted for testing)
+task shadowTestClassJar(type: ShadowJar){
+    group = "Shadow"
+    from sourceSets.test.output
+    classifier = "test"
+}
+
+// A minimal jar that only contains the extra dependencies needed for running the tests
+task shadowTestJar(type: ShadowJar){
+    group = "Shadow"
+    from {
+        (project.configurations.testRuntime - project.configurations.runtime ).collect {
+            it.isDirectory() ? it : it.getName().contains(".jar") ? zipTree(it) : it
+        }
+    }
+    classifier = "testDependencies"
+}
+
+task unpackJar(type: Copy){
+    String testClassesJar = "$System.env.TEST_JAR"
+    print testClassesJar
+
+    if (testClassesJar != null){
+        from zipTree(testClassesJar)
+        into "testClasses"
+    }
+}
+
+task testOnShadowJar(type: Test){
+    String testClassesJar = "$System.env.TEST_JAR"
+    String testDependencyJar = "$System.env.TEST_DEPENDENCY_JAR"
+    String gatkJar = "$System.env.GATK_JAR"
+
+    dependsOn unpackJar
+
     outputs.upToDateWhen { false }  //tests will never be "up to date" so you can always rerun them
     String TEST_VERBOSITY = "$System.env.TEST_VERBOSITY"
 
@@ -470,59 +620,13 @@ test {
             }
         }
     }
-}
 
-
-task wrapper(type: Wrapper) {
-    gradleVersion = '3.1'
-}
-
-tasks.withType(ShadowJar) {
-    from(project.sourceSets.main.output)
-    baseName = project.name + '-package'
-    mergeServiceFiles()
-    relocate 'com.google.common', 'org.broadinstitute.hellbender.relocated.com.google.common'
-    zip64 true
-    exclude 'log4j.properties' // from adam jar as it clashes with hellbender's log4j2.xml
-    exclude '**/*.SF' // these are Manifest signature files and
-    exclude '**/*.RSA' // keys which may accidentally be imported from other signed projects and then fail at runtime
-
-    // Suggested by the akka devs to make sure that we do not get the spark configuration error.
-    // http://doc.akka.io/docs/akka/snapshot/general/configuration.html#When_using_JarJar__OneJar__Assembly_or_any_jar-bundler
-    transform(com.github.jengelman.gradle.plugins.shadow.transformers.AppendingTransformer) {
-        resource = 'reference.conf'
-    }
-}
-
-shadowJar {
-    configurations = [project.configurations.runtime]
-    classifier = 'local'
-    mergeServiceFiles('reference.conf')
-    doLast {
-        // Create a symlink to the newly created jar.  The name will be gatk.jar and
-        //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
-        // Please note that this will cause failures in Windows, which does not support symlinks.
-        createGatkSymlinks(destinationDir.toString(), archivePath, "", baseJarName, secondaryBaseJarName)
-    }
-}
-
-task localJar{ dependsOn shadowJar }
-
-task sparkJar(type: ShadowJar) {
-    group = "Shadow"
-    description = "Create a combined jar of project and runtime dependencies that excludes provided spark dependencies"
-    configurations = [project.configurations.sparkConfiguration]
-    classifier = 'spark'
-    doLast {
-        // Create a symlink to the newly created jar.  The name will be gatk.jar and
-        //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
-        // Please note that this will cause failures in Windows, which does not support symlinks.
-        createGatkSymlinks(destinationDir.toString(), archivePath, classifier, baseJarName, secondaryBaseJarName)
-    }
+    testClassesDir = file("testClasses")
+    classpath = files( gatkJar, testDependencyJar, testClassesJar)
 }
 
 task bundle(type: Zip) {
-    dependsOn shadowJar, sparkJar, 'condaEnvironmentDefinition', 'gatkTabComplete', 'gatkDoc'
+    dependsOn shadowJar, sparkJar,   'condaEnvironmentDefinition', 'gatkTabComplete', 'gatkDoc'
 
     doFirst {
         assert file("gatk").exists()
@@ -553,6 +657,43 @@ task bundle(type: Zip) {
 
     doLast {
         logger.lifecycle("Created GATK distribution in ${destinationDir}/${archiveName}")
+    }
+}
+
+jacocoTestReport {
+    dependsOn test
+
+    group = "Reporting"
+    description = "Generate Jacoco coverage reports after running tests."
+    additionalSourceDirs = files(sourceSets.main.allJava.srcDirs)
+
+    reports {
+        xml.enabled = true
+        html.enabled = true
+    }
+}
+
+task jacocoTestReportOnShadowJar(type: JacocoReport) {
+    String sourceFiles = "$System.env.SOURCE_DIR"
+
+    dependsOn testOnShadowJar
+    executionData testOnShadowJar
+    sourceSets {
+        jacocoTestReportOnShadowJar {
+            java {
+                srcDir sourceFiles
+            }
+        }
+    }
+    sourceDirectories = files(sourceFiles)
+    classDirectories =  files("testClasses")
+
+    group = "Reporting"
+    description = "Generate Jacoco coverage reports after running tests."
+
+    reports {
+        xml.enabled = true
+        html.enabled = true
     }
 }
 
