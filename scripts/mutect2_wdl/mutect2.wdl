@@ -80,12 +80,13 @@ workflow Mutect2 {
     String? m2_extra_filtering_args
     String? split_intervals_extra_args
     Boolean? make_bamout
-    Boolean generate_bamout = select_first([make_bamout, false])
+    Boolean make_bamout_or_default = select_first([make_bamout, false])
     Boolean? compress_vcfs
     Boolean compress = select_first([compress_vcfs, false])
 
     # oncotator inputs
     Boolean? run_oncotator
+    Boolean run_oncotator_or_default = select_first([run_oncotator, false])
     File? onco_ds_tar_gz
     String? onco_ds_local_db_dir
     String? sequencing_center
@@ -94,6 +95,7 @@ workflow Mutect2 {
 
     # funcotator inputs
     Boolean? run_funcotator
+    Boolean run_funcotator_or_default = select_first([run_funcotator, false])
     String? reference_version
     String? data_sources_tar_gz
     String? transcript_selection_mode
@@ -137,7 +139,6 @@ workflow Mutect2 {
     String filtered_name = output_basename + "-filtered"
     String funcotated_name = output_basename + "-funcotated"
 
-
     String output_vcf_name = basename(tumor_bam, ".bam") + ".vcf"
 
 
@@ -173,7 +174,7 @@ workflow Mutect2 {
                 gnomad_index = gnomad_index,
                 preemptible_attempts = preemptible_attempts,
                 m2_extra_args = m2_extra_args,
-                generate_bamout = generate_bamout,
+                make_bamout = make_bamout_or_default,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts,
@@ -201,7 +202,7 @@ workflow Mutect2 {
             disk_space = ceil(SumSubVcfs.total_size * large_input_to_output_multiplier) + disk_pad
     }
 
-    if (generate_bamout) {
+    if (make_bamout_or_default) {
         call SumFloats as SumSubBamouts {
             input:
                 sizes = sub_bamout_size,
@@ -287,8 +288,7 @@ workflow Mutect2 {
         }
     }
 
-
-    if (select_first([run_oncotator, false])) {
+    if (run_oncotator_or_default) {
         File oncotate_vcf_input = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
         call oncotate_m2 {
             input:
@@ -306,7 +306,7 @@ workflow Mutect2 {
         }
     }
 
-    if (select_first([run_funcotator, false])) {
+    if (run_funcotator_or_default) {
         File funcotate_vcf_input = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
         call Funcotate {
             input:
@@ -366,7 +366,6 @@ task SplitIntervals {
     Int machine_mem = if defined(mem) then mem * 1000 else 3500
     Int command_mem = machine_mem - 500
 
-
     command {
         set -e
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
@@ -409,7 +408,7 @@ task M2 {
     File? gnomad
     File? gnomad_index
     String? m2_extra_args
-    Boolean? generate_bamout
+    Boolean? make_bamout
 
     File? gatk_override
 
@@ -451,7 +450,7 @@ task M2 {
             ${"-pon " + pon} \
             ${"-L " + intervals} \
             -O "output.vcf.gz" \
-            ${true='--bam-output bamout.bam' false='' generate_bamout} \
+            ${true='--bam-output bamout.bam' false='' make_bamout} \
             ${m2_extra_args}
     >>>
 
@@ -479,7 +478,6 @@ task MergeVCFs {
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
     String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
 
-
     File? gatk_override
 
     # runtime
@@ -492,7 +490,7 @@ task MergeVCFs {
 
     # Mem is in units of GB but our command and memory runtime values are in MB
     Int machine_mem = if defined(mem) then mem * 1000 else 3500
-    Int command_mem = machine_mem - 1
+    Int command_mem = machine_mem - 1000
 
     # using MergeVcfs instead of GatherVcfs so we can create indices
     # WARNING 2015-10-28 15:01:48 GatherVcfs  Index creation not currently supported when gathering block compressed VCFs.
@@ -779,7 +777,6 @@ task oncotate_m2 {
     Int command_mem = machine_mem - 500
 
     command <<<
-
         # fail if *any* command below (not just the last) doesn't return 0, in particular if wget fails
         set -e
 
