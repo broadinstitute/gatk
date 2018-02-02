@@ -98,25 +98,9 @@ public final class AssemblyContigAlignmentSignatureClassifier {
 
         final EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> contigsByRawTypes = new EnumMap<>(RawTypes.class);
 
-        // first remove overlap, if any
-        final JavaRDD<AssemblyContigWithFineTunedAlignments> preprocessedContigs = contigsWithOnlyOneBestConfigAnd2AI.map(
-                decoratedContig -> {
-                    final AlignedContig contig = decoratedContig.getSourceContig();
-                    final AlignmentInterval one = contig.alignmentIntervals.get(0),
-                                            two = contig.alignmentIntervals.get(1);
-                    final List<AlignmentInterval> deOverlappedAlignments =
-                            ContigAlignmentsModifier.removeOverlap(one, two, broadcastSequenceDictionary.getValue());
-
-                    final AlignedContig contigWithDeOverlappedAlignments =
-                            new AlignedContig(contig.contigName, contig.contigSequence, deOverlappedAlignments,
-                                    contig.hasEquallyGoodAlnConfigurations);
-                    return new AssemblyContigWithFineTunedAlignments(contigWithDeOverlappedAlignments);
-                }
-        );
-
         // split between the case where both alignments has unique ref span or not
         final Tuple2<JavaRDD<AssemblyContigWithFineTunedAlignments>, JavaRDD<AssemblyContigWithFineTunedAlignments>> hasFullyContainedRefSpanOrNot =
-                RDDUtils.split(preprocessedContigs, AssemblyContigWithFineTunedAlignments::hasIncompletePictureFromTwoAlignments, false);
+                RDDUtils.split(contigsWithOnlyOneBestConfigAnd2AI, AssemblyContigWithFineTunedAlignments::hasIncompletePictureFromTwoAlignments, false);
         contigsByRawTypes.put(RawTypes.Incomplete, hasFullyContainedRefSpanOrNot._1);
 
         // split between same chromosome mapping or not
