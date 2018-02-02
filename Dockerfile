@@ -44,7 +44,7 @@ RUN mkdir $DOWNLOAD_DIR && \
 ENV PATH $CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH
 RUN mv /gatk/gatkcondaenv.yml /gatk/scripts
 WORKDIR /gatk
-RUN conda create -n gatk -f /gatk/scripts/gatkcondaenv.yml && \
+RUN conda-env create -n gatk -f /gatk/scripts/gatkcondaenv.yml && \
     echo "source activate gatk" >> /gatk/gatkenv.rc
 
 CMD ["bash", "--init-file", "/gatk/gatkenv.rc"]
