@@ -475,7 +475,7 @@ task M2 {
 
     runtime {
         docker: gatk_docker
-        memory: machine_mem + " GB"
+        memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
         cpu: select_first([cpu, 1])
@@ -521,7 +521,7 @@ task MergeVCFs {
 
     runtime {
         docker: gatk_docker
-        memory: machine_mem + " GB"
+        memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
         cpu: select_first([cpu, 1])
@@ -567,7 +567,7 @@ task MergeBamOuts {
 
     runtime {
         docker: gatk_docker
-        memory: machine_mem + " GB"
+        memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
         cpu: select_first([cpu, 1])
@@ -609,7 +609,7 @@ task CollectSequencingArtifactMetrics {
 
     runtime {
         docker: gatk_docker
-        memory: machine_mem + " GB"
+        memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
         cpu: select_first([cpu, 1])
@@ -728,7 +728,7 @@ task Filter {
 
     runtime {
         docker: gatk_docker
-        memory: machine_mem + " GB"
+        memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
         cpu: select_first([cpu, 1])
@@ -854,7 +854,7 @@ task oncotate_m2 {
 
     runtime {
         docker: oncotator_docker
-        memory: machine_mem + " GB"
+        memory: machine_mem + " MB"
         bootDiskSizeGb: 12
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
