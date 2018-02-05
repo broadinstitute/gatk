@@ -393,6 +393,9 @@ test {
     }
 }
 
+task printHomeDirectory  << {
+    println gradle.gradleHomeDir
+}
 
 task wrapper(type: Wrapper) {
     gradleVersion = '3.1'
