@@ -19,7 +19,7 @@ RUN apt-get install -y \
  build-essential \
  dpkg-sig \
  iptables \
- samtools \
+ ##samtools \
  software-properties-common
 
 #### Specific for google cloud support
@@ -62,3 +62,14 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9 && \
 
 COPY install_R_packages.R install_R_packages.R
 RUN Rscript install_R_packages.R
+
+RUN apt-get purge -y \
+ aufs-tools \
+ automake \
+ bedtools \
+ btrfs-tools \
+ build-essential \
+ dpkg-sig \
+ iptables \
+ samtools \
+ software-properties-common
