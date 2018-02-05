@@ -26,6 +26,8 @@ workflow HapmapSensitivityAllPlexes {
   	File ref_dict
 
     Int max_depth
+    Array[Int] depth_bins
+    Int depth_bin_width
   	Int scatter_count
 
   	File five_plex_bam_list
@@ -60,6 +62,8 @@ workflow HapmapSensitivityAllPlexes {
           ref_fai = ref_fai,
           ref_dict = ref_dict,
           max_depth = max_depth,
+          depth_bins = depth_bins,
+          depth_bin_width = depth_bin_width,
           scatter_count = scatter_count,
           bam_list = five_plex_bam_list,
           pon = pon,
@@ -83,6 +87,8 @@ workflow HapmapSensitivityAllPlexes {
           ref_fai = ref_fai,
           ref_dict = ref_dict,
           max_depth = max_depth,
+          depth_bins = depth_bins,
+          depth_bin_width = depth_bin_width,
           scatter_count = scatter_count,
           bam_list = ten_plex_bam_list,
           pon = pon,
@@ -106,6 +112,8 @@ workflow HapmapSensitivityAllPlexes {
           ref_fai = ref_fai,
           ref_dict = ref_dict,
           max_depth = max_depth,
+          depth_bins = depth_bins,
+          depth_bin_width = depth_bin_width,
           scatter_count = scatter_count,
           bam_list = twenty_plex_bam_list,
           pon = pon,
@@ -125,7 +133,7 @@ workflow HapmapSensitivityAllPlexes {
   call single_plex.CombineTables as AllPlexTable { input: input_tables = all_plex_sensitivity_tables, prefix = "all_plex" }
 
   call single_plex.AnalyzeSensitivity as AllPlex {
-      input: input_table = AllPlexTable.table, python_script = python_script, prefix = "all_plex"
+      input: input_table = AllPlexTable.table, python_script = python_script, prefix = "all_plex", depth_bins = depth_bins, depth_bin_width = depth_bin_width
   }
 
   output {
