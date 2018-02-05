@@ -41,7 +41,7 @@ RUN mkdir $DOWNLOAD_DIR && \
     test "`md5sum $DOWNLOAD_DIR/miniconda.sh | awk -v FS='  ' '{print $1}'` = $CONDA_MD5" && \
     bash $DOWNLOAD_DIR/miniconda.sh -p $CONDA_PATH -b && \
     rm $DOWNLOAD_DIR/miniconda.sh && \
-    conda clean -all
+    conda clean -y -all
 ENV PATH $CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH
 RUN mv /gatk/gatkcondaenv.yml /gatk/scripts
 WORKDIR /gatk
