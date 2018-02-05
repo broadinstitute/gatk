@@ -12,14 +12,14 @@ RUN apt-get update && \
 
 # Install some more useful tools
 RUN apt-get install -y \
- aufs-tools \
- automake \
- bedtools \
- btrfs-tools \
- build-essential \
- dpkg-sig \
- iptables \
- ##samtools \
+# aufs-tools \
+# automake \
+# bedtools \
+# btrfs-tools \
+# build-essential \
+# dpkg-sig \
+# iptables \
+# ##samtools \
  software-properties-common
 
 #### Specific for google cloud support
@@ -63,13 +63,13 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9 && \
 COPY install_R_packages.R install_R_packages.R
 RUN Rscript install_R_packages.R
 
-RUN apt-get purge -y \
- aufs-tools \
- automake \
- bedtools \
- btrfs-tools \
- build-essential \
- dpkg-sig \
- iptables \
- samtools \
- software-properties-common
+#RUN apt-get purge -y \
+# aufs-tools \
+# automake \
+# bedtools \
+# btrfs-tools \
+# build-essential \
+# dpkg-sig \
+# iptables \
+# samtools \
+# software-properties-common
