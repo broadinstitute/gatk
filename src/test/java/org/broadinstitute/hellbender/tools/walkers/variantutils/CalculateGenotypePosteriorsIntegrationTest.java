@@ -1,12 +1,15 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
+import htsjdk.samtools.util.BlockCompressedInputStream;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.io.IOException;
+import java.io.*;
 import java.util.Collections;
 
 public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLineProgramTest {
@@ -103,5 +106,31 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
                 1,
                 UserException.class);
         spec.executeTest("testFamilyPriorsMixedPloidy", this);
+    }
+
+
+    @Test //test for https://github.com/broadinstitute/gatk/issues/4346
+    public void testNoDuplicatesForAdjacentInputs() throws IOException {
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                " -O %s" +
+                        " -V " + getTestFile("overlappingVariants.vcf") +
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
+                Collections.singletonList(getTestFile("overlappingVariants.expected.no_duplicates.vcf").toString()));
+        spec.executeTest("testNoDuplicatesForOverlappingVariants", this);
+    }
+
+    @Test //test for https://github.com/broadinstitute/gatk/issues/4346
+    public void gzipOutputIsGzipped() throws IOException {
+        final File out = createTempFile("out", ".vcf.gz");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addOutput(out)
+                .addVCF(getTestFile("overlappingVariants.vcf"));
+
+        runCommandLine(args);
+
+        try( final InputStream in = new BufferedInputStream(new FileInputStream(out))) {
+            Assert.assertTrue(BlockCompressedInputStream.isValidFile(in));
+        }
     }
 }

@@ -150,7 +150,7 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
     public List<FeatureInput<VariantContext>> supportVariants = new ArrayList<>();
 
     @Argument(doc="File to which variants should be written", fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, optional = false)
-    public String out = null;
+    public File out = null;
 
     /**
      * The global prior of a variant site -- i.e. the expected allele frequency distribution knowing only that N alleles
@@ -223,21 +223,14 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
     private File pedigreeFile = null;
 
     private FamilyLikelihoods famUtils;
-    private SampleDB sampleDB = null;
 
     private VariantContextWriter vcfWriter;
 
     @Override
     public void onTraversalStart() {
-        final VariantContextWriterBuilder builder = new VariantContextWriterBuilder().setOutputFile(out).setOutputFileType(VariantContextWriterBuilder.OutputType.VCF);
-        if (hasReference()){
-            vcfWriter = builder.setReferenceDictionary(getBestAvailableSequenceDictionary()).setOption(Options.INDEX_ON_THE_FLY).build();
-        } else {
-            vcfWriter = builder.unsetOption(Options.INDEX_ON_THE_FLY).build();
-            logger.info("Can't make an index for output file " + out + " because a reference dictionary is required for creating Tribble indices on the fly");
-        }
+        vcfWriter = createVCFWriter(out);
 
-        sampleDB = initializeSampleDB();
+        SampleDB sampleDB = initializeSampleDB();
 
         // Get list of samples to include in the output
         final Map<String, VCFHeader> vcfHeaders = Collections.singletonMap(getDrivingVariantsFeatureInput().getName(), getHeaderForVariants());
@@ -255,17 +248,6 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
         final VCFHeader header = vcfHeaders.values().iterator().next();
         if ( ! header.hasGenotypingData() ) {
             throw new UserException("VCF has no genotypes");
-        }
-
-        if ( header.hasInfoLine(GATKVCFConstants.MLE_ALLELE_COUNT_KEY) ) {
-            final VCFInfoHeaderLine mleLine = header.getInfoHeaderLine(GATKVCFConstants.MLE_ALLELE_COUNT_KEY);
-            if ( mleLine.getCountType() != VCFHeaderLineCount.A ) {
-                throw new UserException("VCF does not have a properly formatted MLEAC field: the count type should be \"A\"");
-            }
-
-            if ( mleLine.getType() != VCFHeaderLineType.Integer ) {
-                throw new UserException("VCF does not have a properly formatted MLEAC field: the field type should be \"Integer\"");
-            }
         }
 
         // Initialize VCF header
@@ -300,40 +282,39 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
                       final ReadsContext readsContext,
                       final ReferenceContext referenceContext,
                       final FeatureContext featureContext) {
-        final Collection<VariantContext> vcs = featureContext.getValues(getDrivingVariantsFeatureInput());
 
         final Collection<VariantContext> otherVCs = featureContext.getValues(supportVariants);
 
         final int missing = supportVariants.size() - otherVCs.size();
 
-        for ( final VariantContext vc : vcs ) {
-            final VariantContext vc_familyPriors;
-            final VariantContext vc_bothPriors;
+        final VariantContext vc_familyPriors;
+        final VariantContext vc_bothPriors;
 
-            //do family priors first (if applicable)
-            final VariantContextBuilder builder = new VariantContextBuilder(vc);
-            //only compute family priors for biallelelic sites
-            if (!skipFamilyPriors && vc.isBiallelic()){
-                final GenotypesContext gc = famUtils.calculatePosteriorGLs(vc);
-                builder.genotypes(gc);
-            }
-            VariantContextUtils.calculateChromosomeCounts(builder, false);
-            vc_familyPriors = builder.make();
-
-            if (!skipPopulationPriors) {
-                vc_bothPriors = PosteriorProbabilitiesUtils.calculatePosteriorProbs(vc_familyPriors, otherVCs, missing * numRefIfMissing, globalPrior, !ignoreInputSamples, defaultToAC, useACoff);
-            } else {
-                final VariantContextBuilder builder2 = new VariantContextBuilder(vc_familyPriors);
-                VariantContextUtils.calculateChromosomeCounts(builder, false);
-                vc_bothPriors = builder2.make();
-            }
-            vcfWriter.add(vc_bothPriors);
+        //do family priors first (if applicable)
+        final VariantContextBuilder builder = new VariantContextBuilder(variant);
+        //only compute family priors for biallelelic sites
+        if (!skipFamilyPriors && variant.isBiallelic()){
+            final GenotypesContext gc = famUtils.calculatePosteriorGLs(variant);
+            builder.genotypes(gc);
         }
+        VariantContextUtils.calculateChromosomeCounts(builder, false);
+        vc_familyPriors = builder.make();
+
+        if (!skipPopulationPriors) {
+            vc_bothPriors = PosteriorProbabilitiesUtils.calculatePosteriorProbs(vc_familyPriors, otherVCs, missing * numRefIfMissing, globalPrior, !ignoreInputSamples, defaultToAC, useACoff);
+        } else {
+            final VariantContextBuilder builder2 = new VariantContextBuilder(vc_familyPriors);
+            VariantContextUtils.calculateChromosomeCounts(builder, false);
+            vc_bothPriors = builder2.make();
+        }
+        vcfWriter.add(vc_bothPriors);
     }
 
     @Override
     public void closeTool(){
-        vcfWriter.close();
+        if(vcfWriter != null) {
+            vcfWriter.close();
+        }
     }
 }
 
