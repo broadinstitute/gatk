@@ -112,7 +112,7 @@ unzip -j ${ZIPPATHGATK} -d ./unzippedJar
 unzip -o -j ${ZIPPATHPYTHON} -d ./unzippedJar/scripts
 
 echo "Building image to tag ${REPO_PRJ}:${GITHUB_TAG}..."
-docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg ZIPPATH=./unzippedJar .
+docker build -t ${REPO_PRJ}:${GITHUB_TAG} --squash --build-arg ZIPPATH=./unzippedJar .
 
 if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
 
