@@ -118,21 +118,30 @@ script:
   elif [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
     echo "Can't run cloud tests without keys so don't run tests";
   elif [[ $RUN_CNV_GERMLINE_WDL == true ]]; then
+    cd ./scripts/docker/gatkbase/;
+    sudo bash build_docker_base.sh;
+    cd ../../../;
     echo "Running CNV germline workflows";
     bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh;
   elif [[ $RUN_CNV_SOMATIC_WDL == true ]]; then
+    cd ./scripts/docker/gatkbase/;
+    sudo bash build_docker_base.sh;
+    cd ../../../;
     echo "Running CNV somatic workflows";
     bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;
   elif [[ $RUN_M2_WDL == true ]]; then
     echo "Deleting some unused files before running M2 WDL...";
+    cd ./scripts/docker/gatkbase/;
+    sudo bash build_docker_base.sh;
+    cd ../../../;
     rm -Rf src/test/resources/large/VQSR;
     echo "Running M2 WDL";
     sudo bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
   elif [[ $TEST_DOCKER == true ]]; then
     echo "Building docker image and running appropriate tests..." ;
-    #cd ./scripts/docker/gatkbase/;
-    #sudo bash build_docker_base.sh;
-    #cd ../../../;
+    cd ./scripts/docker/gatkbase/;
+    sudo bash build_docker_base.sh;
+    cd ../../../;
     if [ ${TRAVIS_PULL_REQUEST} != false ]; then
       sudo bash build_docker.sh  -e FETCH_HEAD -s -u -d $PWD/temp_staging/ -t ${TRAVIS_PULL_REQUEST};
       DOCKER_TAG=FETCH_HEAD;
