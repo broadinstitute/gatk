@@ -113,7 +113,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * but may also increase calling false positive, i.e. germline, variants.
      */
     @Argument(fullName = "normal-lod", optional = true, doc = "LOD threshold for calling normal variant non-germline.")
-    public double NORMAL_LOD_THRESHOLD = 2.2;
+    public double normalLodThreshold = 2.2;
 
 
     /**
