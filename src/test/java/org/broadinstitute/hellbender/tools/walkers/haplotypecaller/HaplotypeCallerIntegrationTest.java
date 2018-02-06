@@ -2,17 +2,23 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.SamFiles;
 import htsjdk.tribble.Tribble;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFHeader;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -571,10 +577,214 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
     }
 
+    @DataProvider
+    public Object[][] getContaminationCorrectionTestData() {
+        // This bam is a snippet of GATKBaseTest.NA12878_20_21_WGS_bam artificially contaminated
+        // at 15% with reads from another sample. We use such a high contamination fraction to ensure
+        // that calls will be noticeably different vs. running without -contamination at all.
+        final String contaminatedBam15Percent = largeFileTestDir + "contaminated_bams/CEUTrio.HiSeq.WGS.b37.NA12878.CONTAMINATED.WITH.HCC1143.NORMALS.AT.15PERCENT.bam";
+
+        final SimpleInterval traversalInterval = new SimpleInterval("20", 10100000, 10150000);
+
+        // File specifying the per-sample contamination for contaminatedBam15Percent
+        final String contaminationFile = TEST_FILES_DIR + "contamination_file_for_CEUTrio.HiSeq.WGS.b37.NA12878.CONTAMINATED.WITH.HCC1143.NORMALS.AT.15PERCENT";
+
+        // Expected calls from GATK 3.x on the contaminated bam running with -contamination
+        // Created in GATK 3.8-1-1-gdde23f56a6 using the command:
+        // java -jar target/GenomeAnalysisTK.jar -T HaplotypeCaller -I ../hellbender/src/test/resources/large/contaminated_bams/CEUTrio.HiSeq.WGS.b37.NA12878.CONTAMINATED.WITH.HCC1143.NORMALS.AT.15PERCENT.bam -R ../hellbender/src/test/resources/large/human_g1k_v37.20.21.fasta -L 20:10100000-10150000 -contamination 0.15 -o ../hellbender/src/test/resources/org/broadinstitute/hellbender/tools/haplotypecaller/expected.CEUTrio.HiSeq.WGS.b37.NA12878.CONTAMINATED.WITH.HCC1143.NORMALS.AT.15PERCENT.calls.20.10100000-10150000.gatk3.8-1-1-gdde23f56a6.vcf
+        final String expectedGATK3ContaminationCorrectedCallsVCF = TEST_FILES_DIR + "expected.CEUTrio.HiSeq.WGS.b37.NA12878.CONTAMINATED.WITH.HCC1143.NORMALS.AT.15PERCENT.calls.20.10100000-10150000.gatk3.8-1-1-gdde23f56a6.vcf";
+
+        // Expected calls from GATK 3.x on the contaminated bam running with -contamination
+        // Created in GATK 3.8-1-1-gdde23f56a6 using the command:
+        // java -jar target/GenomeAnalysisTK.jar -T HaplotypeCaller -I ../hellbender/src/test/resources/large/contaminated_bams/CEUTrio.HiSeq.WGS.b37.NA12878.CONTAMINATED.WITH.HCC1143.NORMALS.AT.15PERCENT.bam -R ../hellbender/src/test/resources/large/human_g1k_v37.20.21.fasta -L 20:10100000-10150000 -contamination 0.15 -o ../hellbender/src/test/resources/org/broadinstitute/hellbender/tools/haplotypecaller/expected.CEUTrio.HiSeq.WGS.b37.NA12878.CONTAMINATED.WITH.HCC1143.NORMALS.AT.15PERCENT.calls.20.10100000-10150000.gatk3.8-1-1-gdde23f56a6.g.vcf -ERC GVCF
+        final String expectedGATK3ContaminationCorrectedCallsGVCF = TEST_FILES_DIR + "expected.CEUTrio.HiSeq.WGS.b37.NA12878.CONTAMINATED.WITH.HCC1143.NORMALS.AT.15PERCENT.calls.20.10100000-10150000.gatk3.8-1-1-gdde23f56a6.g.vcf";
+
+        // Expected calls from GATK 4 on the uncontaminated bam (VCF mode)
+        final String expectedGATK4UncontaminatedCallsVCF = TEST_FILES_DIR + "expected.CEUTrio.HiSeq.WGS.b37.NA12878.calls.20.10100000-10150000.vcf";
+
+        // Expected calls from GATK 4 on the uncontaminated bam (GVCF mode)
+        final String expectedGATK4UncontaminatedCallsGVCF = TEST_FILES_DIR + "expected.CEUTrio.HiSeq.WGS.b37.NA12878.calls.20.10100000-10150000.g.vcf";
+
+        // bam,
+        // known contamination fraction,
+        // per-sample contamination file,
+        // interval,
+        // reference,
+        // GVCF mode,
+        // GATK 4 calls on the uncontaminated bam
+        // GATK 3 calls on the contaminated bam with contamination correction
+        return new Object[][] {
+                { contaminatedBam15Percent,
+                  0.15,
+                  contaminationFile,
+                  traversalInterval,
+                  b37_reference_20_21,
+                  false, // VCF mode
+                  expectedGATK4UncontaminatedCallsVCF,
+                  expectedGATK3ContaminationCorrectedCallsVCF
+                },
+                { contaminatedBam15Percent,
+                  0.15,
+                  contaminationFile,
+                  traversalInterval,
+                  b37_reference_20_21,
+                  true, // GVCF mode
+                  expectedGATK4UncontaminatedCallsGVCF,
+                  expectedGATK3ContaminationCorrectedCallsGVCF
+                }
+        };
+    }
+
+    @Test(dataProvider = "getContaminationCorrectionTestData")
+    public void testContaminationCorrection( final String contaminatedBam,
+                                   final double contaminationFraction,
+                                   final String contaminationFile,
+                                   final SimpleInterval interval,
+                                   final String reference,
+                                   final boolean gvcfMode,
+                                   final String gatk4UncontaminatedCallsVCF,
+                                   final String gatk3ContaminationCorrectedCallsVCF ) throws Exception {
+        final File uncorrectedOutput = createTempFile("testContaminationCorrectionUncorrectedOutput", gvcfMode ? ".g.vcf" : ".vcf");
+        final File correctedOutput = createTempFile("testContaminationCorrectionCorrectedOutput", gvcfMode ? ".g.vcf" : ".vcf");
+        final File correctedOutputUsingContaminationFile = createTempFile("testContaminationCorrectionCorrectedOutputUsingContaminationFile", gvcfMode ? ".g.vcf" : ".vcf");
+
+        // Generate raw uncorrected calls on the contaminated bam, for comparison purposes
+        final String[] noContaminationCorrectionArgs = {
+                "-I", contaminatedBam,
+                "-R", reference,
+                "-L", interval.toString(),
+                "-O", uncorrectedOutput.getAbsolutePath(),
+                "-ERC", (gvcfMode ? "GVCF" : "NONE")
+        };
+        Utils.resetRandomGenerator();
+        runCommandLine(noContaminationCorrectionArgs);
+
+        // Run with contamination correction using -contamination directly
+        final String[] contaminationCorrectionArgs = {
+                "-I", contaminatedBam,
+                "-R", reference,
+                "-L", interval.toString(),
+                "-O", correctedOutput.getAbsolutePath(),
+                "-contamination", Double.toString(contaminationFraction),
+                "-ERC", (gvcfMode ? "GVCF" : "NONE")
+        };
+        Utils.resetRandomGenerator();
+        runCommandLine(contaminationCorrectionArgs);
+
+        // Run with contamination correction using a contamination file
+        final String[] contaminationCorrectionFromFileArgs = {
+                "-I", contaminatedBam,
+                "-R", reference,
+                "-L", interval.toString(),
+                "-O", correctedOutputUsingContaminationFile.getAbsolutePath(),
+                "-contamination-file", contaminationFile,
+                "-ERC", (gvcfMode ? "GVCF" : "NONE")
+        };
+        Utils.resetRandomGenerator();
+        runCommandLine(contaminationCorrectionFromFileArgs);
+
+        // Calculate concordance vs. the calls on the uncontaminated bam. Count only actual calls
+        // (ignoring GVCF reference blocks, if present) for the purposes of the concordance calculation.
+        final double uncorrectedCallsVSUncontaminatedCallsConcordance = calculateConcordance(uncorrectedOutput, new File(gatk4UncontaminatedCallsVCF), gvcfMode);
+        final double correctedCallsVSUncontaminatedCallsConcordance = calculateConcordance(correctedOutput, new File(gatk4UncontaminatedCallsVCF), gvcfMode);
+        final double correctedCallsFromFileVSUncontaminatedCallsConcordance = calculateConcordance(correctedOutputUsingContaminationFile, new File(gatk4UncontaminatedCallsVCF), gvcfMode);
+
+        // Calculate concordance vs. the contamination-corrected calls from GATK3. Here we count
+        // all records in the output, including reference blocks.
+        final double correctedCallsVSGATK3CorrectedCallsConcordance = calculateConcordance(correctedOutput, new File(gatk3ContaminationCorrectedCallsVCF));
+        final double correctedCallsFromFileVSGATK3CorrectedCallsConcordance = calculateConcordance(correctedOutputUsingContaminationFile, new File(gatk3ContaminationCorrectedCallsVCF));
+
+        // Sanity checks: the concordance when running with -contamination should be the same as the
+        // concordance when running with -contamination-file
+        assertEqualsDoubleSmart(correctedCallsVSUncontaminatedCallsConcordance, correctedCallsFromFileVSUncontaminatedCallsConcordance, 0.001,
+                "concordance running with -contamination and -contamination-file should be identical, but wasn't");
+        assertEqualsDoubleSmart(correctedCallsVSGATK3CorrectedCallsConcordance, correctedCallsFromFileVSGATK3CorrectedCallsConcordance, 0.001,
+                "concordance running with -contamination and -contamination-file should be identical, but wasn't");
+
+        // With -contamination correction on, concordance vs. the calls on the uncontaminated bam
+        // should improve by at least 1% (actual improvement tends to be much larger, but we just
+        // want to make sure that the calls don't actually get worse here)
+        Assert.assertTrue(correctedCallsVSUncontaminatedCallsConcordance > uncorrectedCallsVSUncontaminatedCallsConcordance + 0.01,
+                "running with -contamination should have improved concordance vs. calls on the uncontaminated bam by at least 1%, but it didn't");
+
+        // With -contamination-file correction on, concordance vs. the calls on the uncontaminated bam
+        // should improve by at least 1% (actual improvement tends to be much larger, but we just
+        // want to make sure that the calls don't actually get worse here)
+        Assert.assertTrue(correctedCallsFromFileVSUncontaminatedCallsConcordance > uncorrectedCallsVSUncontaminatedCallsConcordance + 0.01,
+                "running with -contamination-file should have improved concordance vs. calls on the uncontaminated bam by at least 1%, but it didn't");
+
+        // -contamination corrected output in GATK4 should have >= 99% concordance
+        // vs. -contamination corrected output in GATK3
+        Assert.assertTrue(correctedCallsVSGATK3CorrectedCallsConcordance >= 0.99,
+                "output with -contamination correction should have >= 99% concordance with contamination-corrected calls from GATK3, but it didn't");
+
+        // -contamination-file corrected output in GATK4 should have >= 99% concordance
+        // vs. -contamination corrected output in GATK3
+        Assert.assertTrue(correctedCallsFromFileVSGATK3CorrectedCallsConcordance >= 0.99,
+                "output with -contamination-file correction should have >= 99% concordance with contamination-corrected calls from GATK3, but it didn't");
+    }
+
+    // With 100% contamination in VCF mode, make sure that we get no calls
+    @Test
+    public void test100PercentContaminationNoCallsInVCFMode() throws Exception {
+        final File output = createTempFile("test100PercentContaminationNoCallsInVCFMode", ".vcf");
+
+        final String[] contaminationArgs = {
+                "-I", NA12878_20_21_WGS_bam,
+                "-R", b37_reference_20_21,
+                "-L", "20:10000000-10010000",
+                "-O", output.getAbsolutePath(),
+                "-contamination", "1.0"
+        };
+        runCommandLine(contaminationArgs);
+
+        final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+
+        // Check that we get no calls, but a non-empty VCF header.
+        Assert.assertTrue(result.getLeft().getMetaDataInInputOrder().size() > 0, "There should be a non-empty header present");
+        Assert.assertEquals(result.getRight().size(), 0, "There should be no calls with 100% contamination in VCF mode");
+    }
+
+    // With 100% contamination in GVCF mode, make sure that we get no calls (only reference blocks)
+    @Test
+    public void test100PercentContaminationNoCallsInGVCFMode() throws Exception {
+        final File output = createTempFile("test100PercentContaminationNoCallsInGVCFMode", ".g.vcf");
+
+        final String[] contaminationArgs = {
+                "-I", NA12878_20_21_WGS_bam,
+                "-R", b37_reference_20_21,
+                "-L", "20:10000000-10010000",
+                "-O", output.getAbsolutePath(),
+                "-contamination", "1.0",
+                "-ERC", "GVCF"
+        };
+        runCommandLine(contaminationArgs);
+
+        final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+
+        // Check that we get a non-empty VCF header.
+        Assert.assertTrue(result.getLeft().getMetaDataInInputOrder().size() > 0, "There should be a non-empty header present");
+
+        // Check that we get only GVCF reference blocks, and no actual calls
+        final List<VariantContext> vcfRecords = result.getRight();
+        Assert.assertTrue(! vcfRecords.isEmpty(), "VCF should be non-empty in GVCF mode");
+        for ( final VariantContext vc : vcfRecords ) {
+            Assert.assertTrue(isGVCFReferenceBlock(vc), "Expected only GVCF reference blocks (no actual calls)");
+        }
+    }
+
     /*
      * Calculate rough concordance between two vcfs, comparing only the positions, alleles, and the first genotype.
      */
     public static double calculateConcordance( final File actual, final File expected ) {
+        return calculateConcordance(actual, expected, false);
+    }
+
+    /*
+     * Calculate rough concordance between two vcfs, comparing only the positions, alleles, and the first genotype.
+     * Can optionally ignore GVCF blocks in the concordance calculation.
+     */
+    public static double calculateConcordance( final File actual, final File expected, final boolean ignoreGVCFBlocks ) {
         final Set<String> actualVCFKeys = new HashSet<>();
         final Set<String> expectedVCFKeys = new HashSet<>();
         int concordant = 0;
@@ -584,11 +794,15 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
               final FeatureDataSource<VariantContext> expectedSource = new FeatureDataSource<>(expected) ) {
 
             for ( final VariantContext vc : actualSource ) {
-                actualVCFKeys.add(keyForVariant(vc));
+                if ( ! ignoreGVCFBlocks || ! isGVCFReferenceBlock(vc) ) {
+                    actualVCFKeys.add(keyForVariant(vc));
+                }
             }
 
             for ( final VariantContext vc : expectedSource ) {
-                expectedVCFKeys.add(keyForVariant(vc));
+                if ( ! ignoreGVCFBlocks || ! isGVCFReferenceBlock(vc) ) {
+                    expectedVCFKeys.add(keyForVariant(vc));
+                }
             }
 
             for ( final String vcKey : actualVCFKeys ) {
@@ -613,5 +827,11 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     private static String keyForVariant( final VariantContext variant ) {
         return String.format("%s:%d-%d %s %s", variant.getContig(), variant.getStart(), variant.getEnd(),
                 variant.getAlleles(), variant.getGenotype(0).getGenotypeString(false));
+    }
+
+    private static boolean isGVCFReferenceBlock( final VariantContext vc ) {
+        return vc.hasAttribute(VCFConstants.END_KEY) &&
+               vc.getAlternateAlleles().size() == 1 &&
+               vc.getAlternateAllele(0).equals(Allele.NON_REF_ALLELE);
     }
 }

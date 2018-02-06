@@ -165,8 +165,8 @@ public class AlleleBiasedDownsamplingUtilsUnitTest extends GATKBaseTest {
     }
 
     @DataProvider(name = "goodContaminationFiles")
-    public Integer[][] goodContaminationFiles() {
-        return new Integer[][]{
+    public Object[][] goodContaminationFiles() {
+        return new Object[][]{
                 {1, 2},
                 {2, 3},
                 {3, 2},
@@ -179,8 +179,8 @@ public class AlleleBiasedDownsamplingUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider = "goodContaminationFiles")
-    public void testLoadContaminationFile(final Integer ArtificalBAMnumber, final Integer numberOfSamples) throws IOException {
-        final String ArtificialBAM = String.format("contamination.case.%d.txt", ArtificalBAMnumber);
+    public void testLoadContaminationFile(final int artificalBAMnumber, final int numberOfSamples) throws IOException {
+        final String ArtificialBAM = String.format("contamination.case.%d.txt", artificalBAMnumber);
 
         final File file = new File(TEST_DATA_DIR, ArtificialBAM);
         Assert.assertTrue(AlleleBiasedDownsamplingUtils.loadContaminationFile(file, 0.0, null, logger).size() == numberOfSamples);
@@ -189,8 +189,8 @@ public class AlleleBiasedDownsamplingUtilsUnitTest extends GATKBaseTest {
 
 
     @DataProvider(name = "badContaminationFiles")
-    public Integer[][] badContaminationFiles() {
-        return new Integer[][]{{1}, {2}, {3}, {4}, {5}};
+    public Object[][] badContaminationFiles() {
+        return new Object[][]{{1}, {2}, {3}, {4}, {5}};
     }
 
     @Test(dataProvider = "badContaminationFiles", expectedExceptions = UserException.MalformedFile.class)
