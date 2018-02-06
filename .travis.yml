@@ -99,6 +99,7 @@ install:
     echo "Can't run cloud tests without keys so don't bother building";
   elif [[ $TEST_DOCKER == true ]]; then
     echo "Skip the install because we're doing a docker build";
+    ./scripts/docker/gatkbase/build_docker_base.sh
   else
     ./gradlew assemble;
     ./gradlew installDist;
