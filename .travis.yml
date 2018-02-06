@@ -130,7 +130,9 @@ script:
     sudo bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
   elif [[ $TEST_DOCKER == true ]]; then
     echo "Building docker image and running appropriate tests..." ;
+    cd ./scripts/docker/gatkbase/
     bash ./scripts/docker/gatkbase/build_docker_base.sh;
+    cd ../../../
     if [ ${TRAVIS_PULL_REQUEST} != false ]; then
       sudo bash build_docker.sh  -e FETCH_HEAD -s -u -d $PWD/temp_staging/ -t ${TRAVIS_PULL_REQUEST};
       DOCKER_TAG=FETCH_HEAD;
