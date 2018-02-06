@@ -13,6 +13,9 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -51,12 +54,24 @@ import java.util.stream.Collectors;
 )
 final public class GetSampleName extends GATKTool {
 
+    public static final String STANDARD_ENCODING = "UTF-8";
+
     @Argument(
             doc = "Output file with only the sample name in it.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
     protected File outputSampleNameFile;
+
+    public static final String URL_ENCODING_LONG_NAME = "use-url-encoding";
+    public static final String URL_ENCODING_SHORT_NAME = "encode";
+
+    @Argument(
+            doc = "Apply URL encoding to convert spaces and other special characters in sample name.",
+            fullName = URL_ENCODING_LONG_NAME,
+            shortName = URL_ENCODING_SHORT_NAME
+    )
+    protected boolean urlEncode;
 
     @Override
     public void traverse() {
@@ -84,9 +99,27 @@ final public class GetSampleName extends GATKTool {
         }
 
         try (final FileWriter fileWriter = new FileWriter(outputSampleNameFile, false)) {
-            fileWriter.write(sampleNames.get(0));
+            final String rawSample = sampleNames.get(0);
+            final String outputSample = urlEncode ? encode(rawSample) : rawSample;
+            fileWriter.write(outputSample);
         } catch (final IOException ioe) {
             throw new UserException("Could not write file.", ioe);
+        }
+    }
+
+    public static final String encode(final String string) {
+        try {
+            return URLEncoder.encode(string, STANDARD_ENCODING);
+        } catch (final UnsupportedEncodingException ex) {
+            throw new UserException("Could not encode sample name", ex);
+        }
+    }
+
+    public static final String decode(final String string) {
+        try {
+            return URLDecoder.decode(string, STANDARD_ENCODING);
+        } catch (final UnsupportedEncodingException ex) {
+            throw new UserException("Could not decode sample name", ex);
         }
     }
 }

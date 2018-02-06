@@ -21,6 +21,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -64,11 +65,19 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
         final File filteredVcf = createTempFile("filtered", ".vcf");
 
+        final File tumorNameFile = createTempFile("tumor_name", ".txt");
+        final File normalNameFile = createTempFile("normal_name", ".txt");
+
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-I", tumorBam.getAbsolutePath(), "-O", tumorNameFile.getAbsolutePath(), "-encode"), "GetSampleName"));
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-I", normalBam.getAbsolutePath(), "-O", normalNameFile.getAbsolutePath(), "-encode"), "GetSampleName"));
+        final String tumor = Files.readAllLines(tumorNameFile.toPath()).get(0);
+        final String normal = Files.readAllLines(normalNameFile.toPath()).get(0);
+
         final String[] args = {
                 "-I", tumorBam.getAbsolutePath(),
-                "-tumor", tumorSample,
+                "-tumor", tumor,
                 "-I", normalBam.getAbsolutePath(),
-                "-normal", normalSample,
+                "-normal", normal,
                 "-R", b37_reference_20_21,
                 "-L", "20",
                 "-germline-resource", GNOMAD.getAbsolutePath(),
@@ -324,7 +333,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Utils.resetRandomGenerator();
 
         final File tumor = new File(DREAM_BAMS_DIR, "tumor_1.bam");
-        final String tumorSample = "synthetic.challenge.set1.tumor";
+        final String tumorSample = "tumor sample";
 
         final File outputAtLowThreshold = createTempFile("output", ".vcf");
         final File outputAtHighThreshold = createTempFile("output", ".vcf");
@@ -435,7 +444,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     @DataProvider(name = "dreamSyntheticData")
     public Object[][] dreamSyntheticData() {
         return new Object[][]{
-                {new File(DREAM_BAMS_DIR, "tumor_1.bam"), "synthetic.challenge.set1.tumor", new File(DREAM_BAMS_DIR, "normal_1.bam"), "synthetic.challenge.set1.normal", new File(DREAM_VCFS_DIR, "sample_1.vcf"), new File(DREAM_MASKS_DIR, "mask1.list"), 0.97},
+                {new File(DREAM_BAMS_DIR, "tumor_1.bam"), "tumor sample", new File(DREAM_BAMS_DIR, "normal_1.bam"), "synthetic.challenge.set1.normal", new File(DREAM_VCFS_DIR, "sample_1.vcf"), new File(DREAM_MASKS_DIR, "mask1.list"), 0.97},
                 {new File(DREAM_BAMS_DIR, "tumor_2.bam"), "background.synth.challenge2.snvs.svs.tumorbackground", new File(DREAM_BAMS_DIR, "normal_2.bam"), "synthetic.challenge.set2.normal", new File(DREAM_VCFS_DIR, "sample_2.vcf"), new File(DREAM_MASKS_DIR, "mask2.list"), 0.95},
                 {new File(DREAM_BAMS_DIR, "tumor_3.bam"), "IS3.snv.indel.sv", new File(DREAM_BAMS_DIR, "normal_3.bam"), "G15512.prenormal.sorted", new File(DREAM_VCFS_DIR, "sample_3.vcf"), new File(DREAM_MASKS_DIR, "mask3.list"), 0.90},
                 {new File(DREAM_BAMS_DIR, "tumor_4.bam"), "synthetic.challenge.set4.tumour", new File(DREAM_BAMS_DIR, "normal_4.bam"), "synthetic.challenge.set4.normal", new File(DREAM_VCFS_DIR, "sample_4.vcf"), new File(DREAM_MASKS_DIR, "mask4.list"), 0.65}
@@ -447,7 +456,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     @DataProvider(name = "dreamSyntheticDataSample1")
     public Object[][] dreamSyntheticDataSample1() {
         return new Object[][]{
-                {new File(DREAM_BAMS_DIR, "tumor_1.bam"), "synthetic.challenge.set1.tumor", new File(DREAM_BAMS_DIR, "normal_1.bam"), "synthetic.challenge.set1.normal"}
+                {new File(DREAM_BAMS_DIR, "tumor_1.bam"), "tumor sample", new File(DREAM_BAMS_DIR, "normal_1.bam"), "synthetic.challenge.set1.normal"}
         };
     }
 

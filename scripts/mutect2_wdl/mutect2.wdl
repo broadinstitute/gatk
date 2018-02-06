@@ -434,11 +434,11 @@ task M2 {
         touch bamout.bam
         echo "" > normal_name.txt
 
-        gatk --java-options "-Xmx${command_mem}m" GetSampleName -R ${ref_fasta} -I ${tumor_bam} -O tumor_name.txt
+        gatk --java-options "-Xmx${command_mem}m" GetSampleName -R ${ref_fasta} -I ${tumor_bam} -O tumor_name.txt -encode
         tumor_command_line="-I ${tumor_bam} -tumor `cat tumor_name.txt`"
 
         if [[ -f "${normal_bam}" ]]; then
-            gatk --java-options "-Xmx${command_mem}m" GetSampleName -R ${ref_fasta} -I ${normal_bam} -O normal_name.txt
+            gatk --java-options "-Xmx${command_mem}m" GetSampleName -R ${ref_fasta} -I ${normal_bam} -O normal_name.txt -encode
             normal_command_line="-I ${normal_bam} -normal `cat normal_name.txt`"
         fi
 

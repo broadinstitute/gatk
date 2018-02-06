@@ -87,7 +87,7 @@ public class AnnotatePairOrientationIntegrationTest extends CommandLineProgramTe
         final String[][] gtF1R2F2R1 = {{"22,0", "11,0", "9,9", "8,4"},{"11,0","15,0", "11,8","9,10"}};
 
         assertOrientationAnnotationValues(variantContexts, gtF1R2F2R1, "synthetic.challenge.set1.normal",
-                "synthetic.challenge.set1.tumor");
+                "tumor sample");
     }
 
     private List<VariantContext> getVariantContextsFromFile(File vcfFile) {
