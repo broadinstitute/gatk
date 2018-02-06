@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
@@ -27,12 +28,14 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
 
     Allele Aref, T, C, G, Cref, ATC, ATCATC;
     Allele ATCATCT;
     Allele ATref;
+    Allele ATCref;
     Allele Anoref;
     Allele GT;
 
@@ -45,6 +48,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         C = Allele.create("C");
         G = Allele.create("G");
         ATC = Allele.create("ATC");
+        ATCref = Allele.create("ATC", true);
         ATCATC = Allele.create("ATCATC");
         ATCATCT = Allele.create("ATCATCT");
         ATref = Allele.create("AT",true);
@@ -85,12 +89,6 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         int start = 10;
         int stop = start + alleles.get(0).length() - 1; // alleles.contains(ATC) ? start + 3 : start;
         return new VariantContextBuilder(source, "1", start, stop, alleles).genotypes(genotypes).filters(filters).make();
-    }
-
-    @Test
-    public void testHomozygousAlleleList() throws Exception {
-        final List<Allele> alleles = GATKVariantContextUtils.homozygousAlleleList(T, 2);
-        Assert.assertEquals(alleles, Arrays.asList(T, T));
     }
 
     // --------------------------------------------------------------------------------
@@ -1015,56 +1013,6 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
 
     // --------------------------------------------------------------------------------
     //
-    // test primitive allele splitting
-    //
-    // --------------------------------------------------------------------------------
-
-    @DataProvider(name = "PrimitiveAlleleSplittingData")
-    public Object[][] makePrimitiveAlleleSplittingData() {
-        List<Object[]> tests = new ArrayList<>();
-
-        // no split
-        tests.add(new Object[]{"A", "C", 0, null});
-        tests.add(new Object[]{"A", "AC", 0, null});
-        tests.add(new Object[]{"AC", "A", 0, null});
-
-        // one split
-        tests.add(new Object[]{"ACA", "GCA", 1, Collections.singletonList(0)});
-        tests.add(new Object[]{"ACA", "AGA", 1, Collections.singletonList(1)});
-        tests.add(new Object[]{"ACA", "ACG", 1, Collections.singletonList(2)});
-
-        // two splits
-        tests.add(new Object[]{"ACA", "GGA", 2, Arrays.asList(0, 1)});
-        tests.add(new Object[]{"ACA", "GCG", 2, Arrays.asList(0, 2)});
-        tests.add(new Object[]{"ACA", "AGG", 2, Arrays.asList(1, 2)});
-
-        // three splits
-        tests.add(new Object[]{"ACA", "GGG", 3, Arrays.asList(0, 1, 2)});
-
-        return tests.toArray(new Object[][]{});
-    }
-
-    @Test(dataProvider = "PrimitiveAlleleSplittingData")
-    public void testPrimitiveAlleleSplitting(final String ref, final String alt, final int expectedSplit, final List<Integer> variantPositions) {
-
-        final int start = 10;
-        final VariantContext vc = GATKVariantContextUtils.makeFromAlleles("test", "20", start, Arrays.asList(ref, alt));
-
-        final List<VariantContext> result = GATKVariantContextUtils.splitIntoPrimitiveAlleles(vc);
-
-        if ( expectedSplit > 0 ) {
-            Assert.assertEquals(result.size(), expectedSplit);
-            for ( int i = 0; i < variantPositions.size(); i++ ) {
-                Assert.assertEquals(result.get(i).getStart(), start + variantPositions.get(i));
-            }
-        } else {
-            Assert.assertEquals(result.size(), 1);
-            Assert.assertEquals(vc, result.get(0));
-        }
-    }
-
-    // --------------------------------------------------------------------------------
-    //
     // test allele remapping
     //
     // --------------------------------------------------------------------------------
@@ -1405,148 +1353,6 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     // Test methods for merging reference confidence VCs
     //
     // --------------------------------------------------------------------------------
-
-
-    @Test(dataProvider = "indexOfAlleleData")
-    public void testIndexOfAllele(final Allele reference, final List<Allele> altAlleles, final List<Allele> otherAlleles) {
-        final List<Allele> alleles = new ArrayList<>(altAlleles.size() + 1);
-        alleles.add(reference);
-        alleles.addAll(altAlleles);
-        final VariantContext vc = makeVC("Source", alleles);
-
-        for (int i = 0; i < alleles.size(); i++) {
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,alleles.get(i),true,true,true),i);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc, alleles.get(i), false, true, true),i);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,alleles.get(i),true,true,false),i);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,alleles.get(i),false,true,false),i);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,Allele.create(alleles.get(i),true),true,true,true),i);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,Allele.create(alleles.get(i),true),true,true,false),-1);
-            if (i == 0) {
-                Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,alleles.get(i),true,false,true),-1);
-                Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,alleles.get(i),false,false,true),-1);
-                Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,alleles.get(i),true,false,false),-1);
-                Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,alleles.get(i),false,false,false),-1);
-                Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,Allele.create(alleles.get(i).getBases(),true),false,true,true),i);
-                Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,Allele.create(alleles.get(i).getBases(),false),false,true,true),-1);
-            } else {
-                Assert.assertEquals(GATKVariantContextUtils.indexOfAltAllele(vc,alleles.get(i),true),i - 1);
-                Assert.assertEquals(GATKVariantContextUtils.indexOfAltAllele(vc,alleles.get(i),false), i - 1);
-                Assert.assertEquals(GATKVariantContextUtils.indexOfAltAllele(vc,Allele.create(alleles.get(i),true),true),i-1);
-                Assert.assertEquals(GATKVariantContextUtils.indexOfAltAllele(vc,Allele.create(alleles.get(i),true),false),-1);
-            }
-        }
-
-        for (final Allele other : otherAlleles) {
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc, other, true, true, true), -1);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,other,false,true,true),-1);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,other,true,true,false),-1);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,other,false,true,false),-1);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,other,true,false,true),-1);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,other,false,false,true),-1);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc,other,true,false,false),-1);
-            Assert.assertEquals(GATKVariantContextUtils.indexOfAllele(vc, other, false, false, false),-1);
-        }
-    }
-
-    @DataProvider(name = "indexOfAlleleData")
-    public Iterator<Object[]> indexOfAlleleData() {
-
-        final Allele[] ALTERNATIVE_ALLELES = new Allele[] { T, C, G, ATC, ATCATC};
-
-        final int lastMask = 0x1F;
-
-        return new Iterator<Object[]>() {
-
-            int nextMask = 0;
-
-            @Override
-            public boolean hasNext() {
-                return nextMask <= lastMask;
-            }
-
-            @Override
-            public Object[] next() {
-
-                int mask = nextMask++;
-                final List<Allele> includedAlleles = new ArrayList<>(5);
-                final List<Allele> excludedAlleles = new ArrayList<>(5);
-                for (int i = 0; i < ALTERNATIVE_ALLELES.length; i++) {
-                    ((mask & 1) == 1 ? includedAlleles : excludedAlleles).add(ALTERNATIVE_ALLELES[i]);
-                    mask >>= 1;
-                }
-                return new Object[] { Aref , includedAlleles, excludedAlleles};
-            }
-
-            @Override
-            public void remove() {
-                throw new UnsupportedOperationException();
-            }
-        };
-    }
-
-    @Test(dataProvider="overlapWithData")
-    public void testOverlapsWith(final VariantContext vc, final GenomeLoc genomeLoc) {
-        final boolean expected;
-
-        if (genomeLoc.isUnmapped())
-            expected = false;
-        else if (vc.getStart() > genomeLoc.getStop())
-            expected = false;
-        else if (vc.getEnd() < genomeLoc.getStart())
-            expected = false;
-        else if (!vc.getContig().equals(genomeLoc.getContig()))
-            expected = false;
-        else
-            expected = true;
-
-        Assert.assertEquals(GATKVariantContextUtils.overlapsRegion(vc, genomeLoc), expected);
-    }
-
-
-    private final String[] OVERLAP_WITH_CHROMOSOMES =  { "1", "2" };
-    private final int[] OVERLAP_WITH_EVENT_SIZES =  { -10, -1, 0, 1, 10 }; // 0 == SNP , -X xbp deletion, +X xbp insertion.
-    private final int[] OVERLAP_WITH_EVENT_STARTS = { 1000, 1001,
-            1005, 1010,
-            1009, 1011,
-            2000 };
-
-    @DataProvider(name="overlapWithData")
-    public Object[][] overlapWithData() {
-
-        final int totalLocations = OVERLAP_WITH_CHROMOSOMES.length * OVERLAP_WITH_EVENT_SIZES.length * OVERLAP_WITH_EVENT_STARTS.length + 1;
-        final int totalEvents = OVERLAP_WITH_CHROMOSOMES.length * OVERLAP_WITH_EVENT_SIZES.length * OVERLAP_WITH_EVENT_STARTS.length;
-        final GenomeLoc[] locs = new GenomeLoc[totalLocations];
-        final VariantContext[] events = new VariantContext[totalEvents];
-
-        generateAllLocationsAndVariantContextCombinations(OVERLAP_WITH_CHROMOSOMES, OVERLAP_WITH_EVENT_SIZES,
-                OVERLAP_WITH_EVENT_STARTS, locs, events);
-
-        return generateAllParameterCombinationsForOverlapWithData(locs, events);
-    }
-
-    private Object[][] generateAllParameterCombinationsForOverlapWithData(GenomeLoc[] locs, VariantContext[] events) {
-        final List<Object[]> result = new LinkedList<>();
-        for (final GenomeLoc loc : locs)
-            for (final VariantContext event : events)
-                result.add(new Object[] { event , loc });
-
-        return result.toArray(new Object[result.size()][]);
-    }
-
-    private void generateAllLocationsAndVariantContextCombinations(final String[] chrs, final int[] eventSizes,
-                                                                   final int[] eventStarts, final GenomeLoc[] locs,
-                                                                   final VariantContext[] events) {
-        int nextIndex = 0;
-        for (final String chr : chrs )
-            for (final int size : eventSizes )
-                for (final int starts : eventStarts ) {
-                    locs[nextIndex] = hg19GenomeLocParser.createGenomeLoc(chr,starts,starts + Math.max(0,size));
-                    events[nextIndex++] = new VariantContextBuilder().source("test").loc(chr,starts,starts + Math.max(0,size)).alleles(Arrays.asList(
-                            Allele.create(randomBases(size <= 0 ? 1 : size + 1, true), true), Allele.create(randomBases(size < 0 ? -size + 1 : 1, false), false))).make();
-                }
-
-        locs[nextIndex++]  = GenomeLoc.UNMAPPED;
-    }
 
     @Test(dataProvider = "totalPloidyData")
     public void testTotalPloidy(final int[] ploidies, final int defaultPloidy, final int expected) {
@@ -2080,6 +1886,37 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         };
     }
 
+    final static private Locatable START_AT_1 = new SimpleInterval("1",1,1);
+    final static private Locatable START_AT_2 = new SimpleInterval("1",2,2);
+
+    @DataProvider
+    Object[][] provideDataForDetermineReferenceAllele() {
+        return new Object[][] {
+                { Collections.emptyList(), Collections.emptyList(), null, null },
+                { Collections.emptyList(), Collections.emptyList(), START_AT_1, null },
+                { Arrays.asList(Arrays.asList(Aref)), Arrays.asList(1), START_AT_1, Aref },
+                { Arrays.asList(Arrays.asList(Aref)), Arrays.asList(1), START_AT_2, null },
+                { Arrays.asList(Arrays.asList(Aref), Arrays.asList(ATref)), Arrays.asList(1,1), START_AT_1, ATref },
+                { Arrays.asList(Arrays.asList(ATref), Arrays.asList(Aref)), Arrays.asList(1,1), START_AT_1, ATref },
+                { Arrays.asList(Arrays.asList(Aref), Arrays.asList(ATref)), Arrays.asList(1,2), START_AT_1, Aref },
+                { Arrays.asList(Arrays.asList(Aref), Arrays.asList(ATref)), Arrays.asList(1,1), START_AT_2, null },
+                { Arrays.asList(Arrays.asList(Aref), Arrays.asList(ATref)), Arrays.asList(1,1), null, ATref },
+                { Arrays.asList(Arrays.asList(Aref, C), Arrays.asList(ATref, ATCATC)), Arrays.asList(1,1), START_AT_1, ATref },
+                { Arrays.asList(Arrays.asList(Aref), Arrays.asList(ATCref), Arrays.asList(ATref)), Arrays.asList(1,1,1), START_AT_1, ATCref }
+        };
+    }
+
+    @DataProvider
+    Object[][] provideDataForIsTransition() {
+        return new Object[][] {
+                { makeVC("source", Arrays.asList(Aref, C)), false},
+                { makeVC("source", Arrays.asList(Aref, G)), true},
+                { makeVC("source", Arrays.asList(Aref, T)), false},
+                { makeVC("source", Arrays.asList(Cref, G)), false},
+                { makeVC("source", Arrays.asList(Cref, T)), true}
+        };
+    }
+
 
     @Test(dataProvider = "provideAllelesAndFrameshiftResults")
     void testIsFrameshift(final Allele ref, final Allele alt, final boolean expected) {
@@ -2114,5 +1951,31 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     void testIsIndel(final Allele ref, final Allele alt, final boolean expected ) {
         Assert.assertEquals( GATKVariantContextUtils.isIndel(ref, alt), expected );
         Assert.assertEquals( GATKVariantContextUtils.isIndel(ref.getBaseString(), alt.getBaseString()), expected );
+    }
+
+    @Test(dataProvider = "provideDataForDetermineReferenceAllele")
+    public void testDetermineReferenceAllele(final List<List<Allele>> alleleLists, final List<Integer> starts, final Locatable loc, final Allele expectedRef) {
+        final List<VariantContext> vcs = IntStream.range(0, alleleLists.size())
+                .mapToObj(n -> {
+                    final int start = starts.get(n);
+                    final int stop = starts.get(n) + alleleLists.get(n).get(0).length() - 1;
+                    return new VariantContextBuilder(Integer.toString(n), "1", start, stop, alleleLists.get(n)).make();
+                })
+                .collect(Collectors.toList());
+
+        final Allele ref = GATKVariantContextUtils.determineReferenceAllele(vcs, loc);
+
+        if (expectedRef == null) {
+            Assert.assertTrue(ref == null);
+        } else {
+            Assert.assertTrue(ref.isReference());
+            Assert.assertEquals(ref.getBaseString(), expectedRef.getBaseString());
+        }
+        Assert.assertTrue(ref == expectedRef || ref.getBaseString().equals(expectedRef.getBaseString()));
+    }
+
+    @Test(dataProvider = "provideDataForIsTransition")
+    public void testIsTransition(final VariantContext vc, final boolean isTransition) {
+        Assert.assertEquals(GATKVariantContextUtils.isTransition(vc), isTransition);
     }
 }

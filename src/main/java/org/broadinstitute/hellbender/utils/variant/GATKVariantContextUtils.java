@@ -112,62 +112,6 @@ public final class GATKVariantContextUtils {
         return VariantContextWriterBuilder.OutputType.UNSPECIFIED;
     }
 
-    /**
-     * Diploid NO_CALL allele list...
-     *
-     * @deprecated you should use {@link #noCallAlleles(int)} instead. It indicates the presence of a hardcoded diploid assumption which is bad.
-     */
-    @Deprecated
-    public final static List<Allele> NO_CALL_ALLELES = Arrays.asList(Allele.NO_CALL, Allele.NO_CALL);
-
-
-    /**
-     * Checks whether a variant-context overlaps with a region.
-     *
-     * <p>
-     *     No event overlaps an unmapped region.
-     * </p>
-     *
-     * @param variantContext variant-context to test the overlap with.
-     * @param region region to test the overlap with.
-     *
-     * @throws IllegalArgumentException if either region or event is {@code null}.
-     *
-     * @return {@code true} if there is an overlap between the event described and the active region provided.
-     */
-    public static boolean overlapsRegion(final VariantContext variantContext, final GenomeLoc region) {
-        Utils.nonNull(region, "the active region is null");
-        Utils.nonNull(variantContext);
-
-        if (region.isUnmapped())
-            return false;
-        if (variantContext.getEnd() < region.getStart())
-            return false;
-        if (variantContext.getStart() > region.getStop())
-            return false;
-        return variantContext.getContig().equals(region.getContig());
-    }
-
-    /**
-     * Checks whether a variant-context overlaps with a region.
-     *
-     * @param variantContext variant-context to test the overlap with.
-     * @param region region to test the overlap with.
-     *
-     * @throws IllegalArgumentException if either region or event is {@code null}.
-     *
-     * @return {@code true} if there is an overlap between the event described and the active region provided.
-     */
-    public static boolean overlapsRegion(final VariantContext variantContext, final SimpleInterval region) {
-        Utils.nonNull(region, "the active region is null");
-        Utils.nonNull(variantContext);
-        if (variantContext.getEnd() < region.getStart())
-            return false;
-        if (variantContext.getStart() > region.getEnd())
-            return false;
-        return variantContext.getContig().equals(region.getContig());
-    }
-
     private static boolean hasPLIncompatibleAlleles(final Collection<Allele> alleleSet1, final Collection<Allele> alleleSet2) {
         final Iterator<Allele> it1 = alleleSet1.iterator();
         final Iterator<Allele> it2 = alleleSet2.iterator();
@@ -197,7 +141,7 @@ public final class GATKVariantContextUtils {
         Allele ref = null;
 
         for ( final VariantContext vc : VCs ) {
-            if ( contextMatchesLoc(vc, loc) ) {
+            if (loc == null || loc.getStart() == vc.getStart()) {
                 final Allele myRef = vc.getReference();
                 if ( ref == null || ref.length() < myRef.length() )
                     ref = myRef;
@@ -223,42 +167,14 @@ public final class GATKVariantContextUtils {
     }
 
     /**
-     * Returns the type of the substitution (transition vs transversion) represented by this variant. Only applicable to bi allelic SNPs.
-     */
-    public static BaseUtils.BaseSubstitutionType getSNPSubstitutionType(final VariantContext context) {
-        Utils.nonNull(context);
-        if (!context.isSNP() || !context.isBiallelic()) {
-            throw new IllegalArgumentException("Requested SNP substitution type for bialleic non-SNP " + context);
-        }
-        return BaseUtils.SNPSubstitutionType(context.getReference().getBases()[0], context.getAlternateAllele(0).getBases()[0]);
-    }
-
-    /**
      * If this is a BiAllelic SNP, is it a transition?
      */
     public static boolean isTransition(final VariantContext context) {
         Utils.nonNull(context);
-        return getSNPSubstitutionType(context) == BaseUtils.BaseSubstitutionType.TRANSITION;
+        Utils.validateArg(context.isSNP() && context.isBiallelic(), () -> "Requested SNP substitution type for bialleic non-SNP " + context);
+        return BaseUtils.isTransition(context.getReference().getBases()[0], context.getAlternateAllele(0).getBases()[0]);
     }
 
-
-    /**
-     * Returns a homozygous call allele list given the only allele and the ploidy.
-     *
-     * @param allele the only allele in the allele list.
-     * @param ploidy the ploidy of the resulting allele list.
-     *
-     * @throws IllegalArgumentException if {@code allele} is {@code null} or ploidy is negative.
-     *
-     * @return never {@code null}.
-     */
-    public static List<Allele> homozygousAlleleList(final Allele allele, final int ploidy) {
-        Utils.nonNull(allele);
-        Utils.validateArg(ploidy >= 0, "ploidy cannot be negative");
-
-        // Use a tailored inner class to implement the list:
-        return Collections.nCopies(ploidy,allele);
-    }
 
     /**
      * Add the genotype call (GT) field to GenotypeBuilder using the requested {@link GenotypeAssignmentMethod}
@@ -291,6 +207,7 @@ public final class GATKVariantContextUtils {
             }
         }
     }
+
 
     public enum GenotypeMergeType {
         /**
@@ -616,6 +533,18 @@ public final class GATKVariantContextUtils {
         return ( g.hasLikelihoods() || g.hasAD() ) ? new GenotypeBuilder(g).noPL().noAD().make() : g;
     }
 
+    // Contract: the List<Allele> alleles of the resulting VariantContext is the ref allele followed by alt alleles in the
+    // same order as in the input vcs
+    public static VariantContext makeMergedVariantContext(final List<VariantContext> vcs) {
+        if (vcs.isEmpty()) {
+            return null;
+        }
+        final List<String> haplotypeSources = vcs.stream().map(VariantContext::getSource).collect(Collectors.toList());
+        return simpleMerge(vcs, haplotypeSources,
+                FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
+                GenotypeMergeType.PRIORITIZE, false, false, null, false, false);
+    }
+
     //TODO consider refactor variant-context merging code so that we share as much as possible between
     //TODO simpleMerge and referenceConfidenceMerge
     //TODO likely using a separate helper class or hierarchy.
@@ -881,10 +810,6 @@ public final class GATKVariantContextUtils {
 
     private static Allele determineReferenceAllele(final List<VariantContext> VCs) {
         return determineReferenceAllele(VCs, null);
-    }
-
-    public static boolean contextMatchesLoc(final VariantContext vc, final Locatable loc) {
-        return loc == null || loc.getStart() == vc.getStart();
     }
 
     private static AlleleMapper resolveIncompatibleAlleles(final Allele refAllele, final VariantContext vc, final LinkedHashSet<Allele> allAlleles) {
@@ -1244,59 +1169,6 @@ public final class GATKVariantContextUtils {
     }
 
     /**
-     * Splits the alleles for the provided variant context into its primitive parts.
-     * Requires that the input VC be bi-allelic, so calling methods should first call splitVariantContextToBiallelics() if needed.
-     * Currently works only for MNPs.
-     *
-     * @param vc  the non-null VC to split
-     * @return a non-empty list of VCs split into primitive parts or the original VC otherwise
-     */
-    public static List<VariantContext> splitIntoPrimitiveAlleles(final VariantContext vc) {
-        Utils.nonNull(vc);
-        if ( !vc.isBiallelic() ) {
-            throw new IllegalArgumentException("Trying to break a multi-allelic Variant Context into primitive parts");
-        }
-
-        // currently only works for MNPs
-        if ( !vc.isMNP() )
-            return Arrays.asList(vc);
-
-        final byte[] ref = vc.getReference().getBases();
-        final byte[] alt = vc.getAlternateAllele(0).getBases();
-
-        Utils.validate(ref.length == alt.length, "ref and alt alleles for MNP have different lengths");
-
-        final List<VariantContext> result = new ArrayList<>(ref.length);
-
-        for ( int i = 0; i < ref.length; i++ ) {
-
-            // if the ref and alt bases are different at a given position, create a new SNP record (otherwise do nothing)
-            if ( ref[i] != alt[i] ) {
-
-                // create the ref and alt SNP alleles
-                final Allele newRefAllele = Allele.create(ref[i], true);
-                final Allele newAltAllele = Allele.create(alt[i], false);
-
-                // create a new VariantContext with the new SNP alleles
-                final VariantContextBuilder newVC = new VariantContextBuilder(vc).start(vc.getStart() + i).stop(vc.getStart() + i).alleles(Arrays.asList(newRefAllele, newAltAllele));
-
-                // create new genotypes with updated alleles
-                final Map<Allele, Allele> alleleMap = new LinkedHashMap<>();
-                alleleMap.put(vc.getReference(), newRefAllele);
-                alleleMap.put(vc.getAlternateAllele(0), newAltAllele);
-                final GenotypesContext newGenotypes = updateGenotypesWithMappedAlleles(vc.getGenotypes(), new AlleleMapper(alleleMap));
-
-                result.add(newVC.genotypes(newGenotypes).make());
-            }
-        }
-
-        if ( result.isEmpty() )
-            result.add(vc);
-
-        return result;
-    }
-
-    /**
      * Are vc1 and 2 equal including their position and alleles?
      * @param vc1 non-null VariantContext
      * @param vc2 non-null VariantContext
@@ -1310,81 +1182,6 @@ public final class GATKVariantContextUtils {
         if ( vc1.getEnd() != vc2.getEnd() ) return false;
         if ( !vc1.getContig().equals(vc2.getContig())) return false;
         return vc1.getAlleles().equals(vc2.getAlleles());
-    }
-
-    /**
-     * Returns the absolute 0-based index of an allele.
-     *
-     * <p/>
-     * If the allele is equal to the reference, the result is 0, if it equal to the first alternative the result is 1
-     * and so forth.
-     * <p/>
-     * Therefore if you want the 0-based index within the alternative alleles you need to do the following:
-     *
-     * <p/>
-     * You can indicate whether the Java object reference comparator {@code ==} can be safelly used by setting {@code useEquals} to {@code false}.
-     *
-     * @param vc the target variant context.
-     * @param allele the target allele.
-     * @param ignoreRefState whether the reference states of the allele is important at all. Has no effect if {@code useEquals} is {@code false}.
-     * @param considerRefAllele whether the reference allele should be considered. You should set it to {@code false} if you are only interested in alternative alleles.
-     * @param useEquals whether equal method should be used in the search: {@link Allele#equals(Allele,boolean)}.
-     *
-     * @throws IllegalArgumentException if {@code allele} is {@code null}.
-     * @return {@code -1} if there is no such allele that satify those criteria, a value between 0 and {@link VariantContext#getNAlleles()} {@code -1} otherwise.
-     */
-    public static int indexOfAllele(final VariantContext vc, final Allele allele, final boolean ignoreRefState, final boolean considerRefAllele, final boolean useEquals) {
-        Utils.nonNull(allele);
-        return useEquals ? indexOfEqualAllele(vc,allele,ignoreRefState,considerRefAllele) : indexOfSameAllele(vc,allele,considerRefAllele);
-    }
-
-    /**
-     * Returns the relative 0-based index of an alternative allele.
-     * <p/>
-     * The the query allele is the same as the first alternative allele, the result is 0,
-     * if it is equal to the second 1 and so forth.
-     *
-     *
-     * <p/>
-     * Notice that the ref-status of the query {@code allele} is ignored.
-     *
-     * @param vc the target variant context.
-     * @param allele the query allele.
-     * @param useEquals  whether equal method should be used in the search: {@link Allele#equals(Allele,boolean)}.
-     *
-     * @throws IllegalArgumentException if {@code allele} is {@code null}.
-     *
-     * @return {@code -1} if there is no such allele that satisfy those criteria, a value between 0 and the number
-     *  of alternative alleles - 1.
-     */
-    public static int indexOfAltAllele(final VariantContext vc, final Allele allele, final boolean useEquals) {
-        final int absoluteIndex = indexOfAllele(vc,allele,true,false,useEquals);
-        return absoluteIndex == -1 ? -1 : absoluteIndex - 1;
-    }
-
-    // Implements index search using equals.
-    private static int indexOfEqualAllele(final VariantContext vc, final Allele allele, final boolean ignoreRefState,
-                                          final boolean considerRefAllele) {
-        int i = 0;
-        for (final Allele a : vc.getAlleles())
-            if (a.equals(allele,ignoreRefState))
-                return i == 0 ? (considerRefAllele ? 0 : -1) : i;
-            else
-                i++;
-        return -1;
-    }
-
-    // Implements index search using ==.
-    private static int indexOfSameAllele(final VariantContext vc, final Allele allele, final boolean considerRefAllele) {
-        int i = 0;
-
-        for (final Allele a : vc.getAlleles())
-            if (a == allele)
-                return i == 0 ? (considerRefAllele ? 0 : -1) : i;
-            else
-                i++;
-
-        return -1;
     }
 
     /**
@@ -1450,25 +1247,7 @@ public final class GATKVariantContextUtils {
     public static int calculateGQFromPLs(final int[] plValues) {
         Utils.nonNull(plValues);
         Utils.validateArg(plValues.length >= 2, () -> "Array of PL values must contain at least two elements.");
-
-        int first = plValues[0];
-        int second = plValues[1];
-        if (first > second) {
-            second = first;
-            first = plValues[1];
-        }
-        for (int i = 2; i < plValues.length; i++) {
-            final int candidate = plValues[i];
-            if (candidate >= second) {
-                continue;
-            }
-            if (candidate <= first) {
-                second = first;
-                first = candidate;
-            } else
-                second = candidate;
-        }
-        return second - first;
+        return GATKProtectedMathUtils.secondSmallestMinusSmallest(plValues, 0);
     }
 
     /**

@@ -246,6 +246,7 @@ public final class ReferenceConfidenceModel {
                                                                  final ReadPileup pileup,
                                                                  final Locatable curPos,
                                                                  final int offset) {
+        ParamUtils.isPositiveOrZero(ploidy, "ploidy may not be negative");
         // Assume infinite population on a single sample.
         final int refOffset = offset + globalRefOffset;
         final byte refBase = ref[refOffset];
@@ -254,7 +255,7 @@ public final class ReferenceConfidenceModel {
         final Allele refAllele = Allele.create(refBase, true);
         final List<Allele> refSiteAlleles = Arrays.asList(refAllele, Allele.NON_REF_ALLELE);
         final VariantContextBuilder vcb = new VariantContextBuilder("HC", curPos.getContig(), curPos.getStart(), curPos.getStart(), refSiteAlleles);
-        final GenotypeBuilder gb = new GenotypeBuilder(sampleName, GATKVariantContextUtils.homozygousAlleleList(refAllele, ploidy));
+        final GenotypeBuilder gb = new GenotypeBuilder(sampleName, Collections.nCopies(ploidy,refAllele));
         gb.AD(homRefCalc.getAD());
         gb.DP(homRefCalc.getDP());
 
