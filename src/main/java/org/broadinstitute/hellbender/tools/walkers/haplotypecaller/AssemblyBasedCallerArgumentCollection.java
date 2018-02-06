@@ -110,6 +110,6 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
 
     @Advanced
     @Argument(fullName = "smith-waterman", doc = "Which Smith-Waterman implementation to use, generally FASTEST_AVAILABLE is the right choice", optional = true)
-    public SmithWatermanAligner.Implementation smithWatermanImplementation = SmithWatermanAligner.Implementation.JAVA;
+    public SmithWatermanAligner.Implementation smithWatermanImplementation = SmithWatermanAligner.Implementation.FASTEST_AVAILABLE;
 
 }
