@@ -102,7 +102,7 @@ def parse_args():
     # Evaluation related arguments
     parser.add_argument('--score_keys', nargs='+', default=['VQSLOD'],
                         help='List of variant score keys for performance comparisons.')
-    parser.add_argument('--tranches', nargs='+', default=[0.99, 0.95, 0.9], type=float,
+    parser.add_argument('--tranches', nargs='+', default=[100, 99.9, 99, 95, 90], type=float,
                         help='List of variant score keys for performance comparisons.')
 
 
