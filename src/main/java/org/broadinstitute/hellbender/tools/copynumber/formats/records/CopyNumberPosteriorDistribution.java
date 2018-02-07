@@ -9,7 +9,9 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.util.Map;
 
 /**
- * A record containing a copy number posterior distribution for a single interval
+ * A record containing the integer copy-number posterior distribution for a single interval.
+ *
+ * @author Andrey Smirnov &lt;asmirnov@broadinstitute.org&gt;
  */
 public class CopyNumberPosteriorDistribution {
 
@@ -35,7 +37,7 @@ public class CopyNumberPosteriorDistribution {
                 .mapToDouble(FastMath::exp).sum();
         if (MathUtils.compareDoubles(probabilitySum, 1.0, ERROR_TOLERANCE) != 0) {
             throw new IllegalArgumentException("Posterior probabilities for at at least one " +
-                    "posterior record do not sum up to one");
+                    "posterior record do not sum up to one.");
         }
     }
 

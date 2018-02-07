@@ -88,6 +88,12 @@ workflow CNVGermlineCaseWorkflow {
     Float? gcnv_caller_admixing_rate
     Boolean? gcnv_disable_annealing
 
+    ############################################################
+    #### required arguments for PostprocessGermlineCNVCalls ####
+    ############################################################
+    Array[String] allosomal_contigs
+    Int ref_copy_number_autosomal_contigs
+
     call CNVTasks.PreprocessIntervals {
         input:
             intervals = intervals,
@@ -181,7 +187,11 @@ workflow CNVGermlineCaseWorkflow {
     call CNVTasks.PostprocessGermlineCNVCalls {
         input:
             entity_id = CollectCounts.entity_id,
-            chunk_path_tars = GermlineCNVCallerCaseMode.gcnv_calls_tar,
+            gcnv_calls_tars = GermlineCNVCallerCaseMode.gcnv_calls_tar,
+            gcnv_model_tars = gcnv_model_tars,
+            allosomal_contigs = allosomal_contigs,
+            ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
+            contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar,
             sample_index = 0,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
@@ -194,7 +204,8 @@ workflow CNVGermlineCaseWorkflow {
         File read_counts = CollectCounts.counts
         File contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar
         Array[File] gcnv_calls_tars = GermlineCNVCallerCaseMode.gcnv_calls_tar
-        File vcf = PostprocessGermlineCNVCalls.vcf
+        File genotyped_intervals_vcf = PostprocessGermlineCNVCalls.genotyped_intervals_vcf
+        File genotyped_segments_vcf = PostprocessGermlineCNVCalls.genotyped_segments_vcf
     }
 }
 

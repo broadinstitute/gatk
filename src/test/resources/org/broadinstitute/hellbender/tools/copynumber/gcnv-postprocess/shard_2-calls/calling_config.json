@@ -1,0 +1,11 @@
+{
+ "p_alt": 1e-06,
+ "p_active": 0.01,
+ "cnv_coherence_length": 10000.0,
+ "class_coherence_length": 10000.0,
+ "max_copy_number": 5,
+ "initialize_to_active_class": true,
+ "num_calling_processes": 1,
+ "num_copy_number_states": 6,
+ "num_copy_number_classes": 2
+}

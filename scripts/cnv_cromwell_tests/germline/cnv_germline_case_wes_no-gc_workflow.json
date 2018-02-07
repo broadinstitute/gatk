@@ -3,6 +3,8 @@
   "CNVGermlineCaseWorkflow.bam_idx": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74NEG_20xy-downsampled.bam.bai",
   "CNVGermlineCaseWorkflow.contig_ploidy_model_tar": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/wes-contig-ploidy-model.tar.gz",
   "CNVGermlineCaseWorkflow.gatk_docker": "__GATK_DOCKER__",
+  "CNVGermlineCaseWorkflow.allosomal_contigs": ["X", "Y"],
+  "CNVGermlineCaseWorkflow.ref_copy_number_autosomal_contigs": 2,
   "CNVGermlineCaseWorkflow.gcnv_disable_annealing": true,
   "CNVGermlineCaseWorkflow.gcnv_initial_temperature": 1.0,
   "CNVGermlineCaseWorkflow.gcnv_max_training_epochs": 1,

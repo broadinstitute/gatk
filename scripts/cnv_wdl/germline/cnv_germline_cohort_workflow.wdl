@@ -73,7 +73,7 @@ workflow CNVGermlineCohortWorkflow {
     Int? mem_gb_for_germline_cnv_caller
     Int? cpu_for_germline_cnv_caller
 
-    #optional arguments for germline CNV denoising model
+    # optional arguments for germline CNV denoising model
     Int? gcnv_max_bias_factors
     Float? gcnv_mapping_error_rate
     Float? gcnv_interval_psi_scale
@@ -87,7 +87,7 @@ workflow CNVGermlineCohortWorkflow {
     Boolean? gcnv_enable_bias_factors
     Int? gcnv_active_class_padding_hybrid_mode
 
-    #optional arguments for Hybrid ADVI
+    # optional arguments for Hybrid ADVI
     Float? gcnv_learning_rate
     Float? gcnv_adamax_beta_1
     Float? gcnv_adamax_beta_2
@@ -107,6 +107,12 @@ workflow CNVGermlineCohortWorkflow {
     Float? gcnv_caller_update_convergence_threshold
     Float? gcnv_caller_admixing_rate
     Boolean? gcnv_disable_annealing
+
+    ############################################################
+    #### required arguments for PostprocessGermlineCNVCalls ####
+    ############################################################
+    Array[String] allosomal_contigs
+    Int ref_copy_number_autosomal_contigs
 
     Array[Pair[String, String]] normal_bams_and_bais = zip(normal_bams, normal_bais)
 
@@ -234,7 +240,11 @@ workflow CNVGermlineCohortWorkflow {
         call CNVTasks.PostprocessGermlineCNVCalls {
             input:
                 entity_id = CollectCounts.entity_id[sample_index],
-                chunk_path_tars = GermlineCNVCallerCohortMode.gcnv_calls_tar,
+                gcnv_calls_tars = GermlineCNVCallerCohortMode.gcnv_calls_tar,
+                gcnv_model_tars = GermlineCNVCallerCohortMode.gcnv_model_tar,
+                contig_ploidy_calls_tar = DetermineGermlineContigPloidyCohortMode.contig_ploidy_calls_tar,
+                allosomal_contigs = allosomal_contigs,
+                ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
                 sample_index = sample_index,
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
@@ -250,7 +260,8 @@ workflow CNVGermlineCohortWorkflow {
         File contig_ploidy_calls_tar = DetermineGermlineContigPloidyCohortMode.contig_ploidy_calls_tar
         Array[File] gcnv_model_tars = GermlineCNVCallerCohortMode.gcnv_model_tar
         Array[File] gcnv_calls_tars = GermlineCNVCallerCohortMode.gcnv_calls_tar
-        Array[File] vcfs = PostprocessGermlineCNVCalls.vcf
+        Array[File] genotyped_intervals_vcfs = PostprocessGermlineCNVCalls.genotyped_intervals_vcf
+        Array[File] genotyped_segments_vcfs = PostprocessGermlineCNVCalls.genotyped_segments_vcf
     }
 }
 

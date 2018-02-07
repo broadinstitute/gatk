@@ -2,6 +2,8 @@
   "CNVGermlineCohortWorkflow.cohort_entity_id": "wes-no-gc",
   "CNVGermlineCohortWorkflow.contig_ploidy_priors": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/contig_ploidy_priors_chr20xy.tsv",
   "CNVGermlineCohortWorkflow.gatk_docker": "__GATK_DOCKER__",
+  "CNVGermlineCohortWorkflow.allosomal_contigs": ["X", "Y"],
+  "CNVGermlineCohortWorkflow.ref_copy_number_autosomal_contigs": 2,
   "CNVGermlineCohortWorkflow.gcnv_disable_annealing": true,
   "CNVGermlineCohortWorkflow.gcnv_initial_temperature": 1.0,
   "CNVGermlineCohortWorkflow.gcnv_max_training_epochs": 1,
