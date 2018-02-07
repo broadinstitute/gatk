@@ -66,7 +66,7 @@ final testNGVersion = '6.11'
 
 final baseJarName = 'gatk'
 final secondaryBaseJarName = 'hellbender'
-
+final docBuildDir = "$buildDir/docs"
 final pythonPackageArchiveName = 'gatkPythonPackageArchive.zip'
 
 configurations.all {
@@ -434,12 +434,12 @@ task sparkJar(type: ShadowJar) {
 }
 
 task bundle(type: Zip) {
-    dependsOn shadowJar, sparkJar, 'gatkTabComplete', 'createPythonPackageArchive'
+    dependsOn shadowJar, sparkJar, 'gatkTabComplete', 'createPythonPackageArchive', 'gatkDoc'
 
     doFirst {
         assert file("gatk").exists()
         assert file("README.md").exists()
-        assert file("build/docs/tabCompletion/gatk-completion.sh").exists()
+        assert file("$docBuildDir/tabCompletion/gatk-completion.sh").exists()
         assert file("src/main/resources/org/broadinstitute/hellbender/utils/config/GATKConfig.properties").exists()
     }
 
@@ -451,7 +451,8 @@ task bundle(type: Zip) {
     from(sparkJar.archivePath)
     from("gatk")
     from("README.md")
-    from("build/docs/tabCompletion/gatk-completion.sh")
+    from("$docBuildDir/tabCompletion/gatk-completion.sh")
+    from("$docBuildDir/gatkDoc", { into("gatkdoc") })
 
     from("src/main/resources/org/broadinstitute/hellbender/utils/config/GATKConfig.properties") {
         rename 'GATKConfig.properties', 'GATKConfig.EXAMPLE.properties'
@@ -489,7 +490,7 @@ task createPythonPackageArchive(type: Zip) {
 
 task javadocJar(type: Jar, dependsOn: javadoc) {
     classifier = 'javadoc'
-    from 'build/docs/javadoc'
+    from "$docBuildDir/javadoc"
 }
 
 task sourcesJar(type: Jar) {
@@ -512,7 +513,7 @@ javadoc {
 
 // Generate GATK Online Doc
 task gatkDoc(type: Javadoc, dependsOn: classes) {
-    final File gatkDocDir = new File("build/docs/gatkdoc")
+    final File gatkDocDir = new File("$docBuildDir/gatkdoc")
     doFirst {
         // make sure the output folder exists or we can create it
         if (!gatkDocDir.exists() && !gatkDocDir.mkdirs()) {
@@ -553,7 +554,7 @@ task gatkDoc(type: Javadoc, dependsOn: classes) {
 
 // Generate GATK Bash Tab Completion File
 task gatkTabComplete(type: Javadoc, dependsOn: classes) {
-    final File tabCompletionDir = new File("build/docs/tabCompletion")
+    final File tabCompletionDir = new File("$docBuildDir/tabCompletion")
     doFirst {
         // make sure the output folder exists or we can create it
         if (!tabCompletionDir.exists() && !tabCompletionDir.mkdirs()) {
