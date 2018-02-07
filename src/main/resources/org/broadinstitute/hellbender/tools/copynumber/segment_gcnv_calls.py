@@ -46,6 +46,12 @@ group.add_argument("--output_path",
                    default=argparse.SUPPRESS,
                    help="Output path to write segmented calls")
 
+group.add_argument("--sample_index",
+                   type=int,
+                   required=True,
+                   default=argparse.SUPPRESS,
+                   help="Sample index to process")
+
 if __name__ == "__main__":
 
     # parse arguments
@@ -63,5 +69,7 @@ if __name__ == "__main__":
     logger.info("Instantiating the Viterbi segmentation engine...")
     logger.debug("Model shards path(s): {0}".format(repr(args.model_shards)))
     logger.debug("Calls shards path(s): {0}".format(repr(args.model_shards)))
-    gcnvkernel.ViterbiSegmentationEngine(
-        args.model_shards, args.calls_shards, sample_metadata_collection, args.output_path)()
+
+    viterbi_engine = gcnvkernel.ViterbiSegmentationEngine(
+        args.model_shards, args.calls_shards, sample_metadata_collection, args.output_path)
+    viterbi_engine.export_copy_number_segments_for_single_sample(args.sample_index)

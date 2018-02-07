@@ -119,9 +119,7 @@ class ViterbiSegmentationEngine:
             self.sam_seq_dict_raw_lines)
 
         for si in range(self.num_samples):
-            _logger.info("Processing sample ({0}/{1}) (sample name: {2})...".format(si + 1, self.num_samples, self.sample_names[si]))
-            sample_output_path = os.path.join(self.output_path, io_consts.sample_folder_prefix + repr(si))
-            self.export_copy_number_segments_for_single_sample(si, sample_output_path)
+            self.export_copy_number_segments_for_single_sample(si)
 
     def viterbi_segments_generator_for_single_sample(self, sample_index: int)\
             -> Generator[IntegerCopyNumberSegment, None, None]:
@@ -224,18 +222,25 @@ class ViterbiSegmentationEngine:
 
                 yield segment
 
-    def export_copy_number_segments_for_single_sample(self, sample_index: int, sample_output_path: str):
+    def export_copy_number_segments_for_single_sample(self, sample_index: int):
         """Performs Viterbi segmentation and segment quality calculation for a single sample in
         the call-set and saves the results to disk.
 
         Args:
             sample_index: sample index in the call-set
-            sample_output_path: a writeable path for saving the results
         """
         assert 0 <= sample_index < self.num_samples, "Sample index is out of range."
+        sample_name = self.sample_names[sample_index]
+        _logger.info("Processing sample index: {0}, sample name: {1}...".format(sample_index, sample_name))
+        sample_output_path = os.path.join(self.output_path, io_consts.sample_folder_prefix + repr(sample_index))
         io_commons.assert_output_path_writable(sample_output_path, try_creating_output_path=True)
 
-        sample_name = self.sample_names[sample_index]
+        # write configs, gcnvkernel version and sample name to output path
+        shutil.copy(os.path.join(self.calls_shards_paths[0], io_consts.default_denoising_config_json_filename),
+                    sample_output_path)
+        shutil.copy(os.path.join(self.calls_shards_paths[0], io_consts.default_calling_config_json_filename),
+                    sample_output_path)
+        io_commons.export_gcnvkernel_version(sample_output_path)
         io_commons.write_sample_name_to_txt_file(sample_output_path, sample_name)
 
         seg_file = os.path.join(sample_output_path, io_consts.default_copy_number_segments_tsv_filename)
