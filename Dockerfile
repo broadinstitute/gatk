@@ -1,5 +1,5 @@
 # Using OpenJDK 8
-FROM broadinstitute/gatk:gatkbase-1.2.4-testA
+FROM broadinstitute/gatk:gatkbase-1.2.3
 ARG ZIPPATH
 
 ADD $ZIPPATH /gatk
@@ -23,7 +23,7 @@ WORKDIR /gatk
 ENV CI true
 RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
     echo "export DOCKER_TEST=\"true\"" >> /root/run_unit_tests.sh && \
-    echo "cd /gatk/ && /gatksrc/gradlew jacocoTestReport -a -p /gatksrc " >> /root/run_unit_tests.sh
+    echo "cd /gatk/ && /gatksrc/gradlew jacocoTestReport --stacktrace-a -p /gatksrc " >> /root/run_unit_tests.sh
 
 WORKDIR /root
 RUN cp -r /root/run_unit_tests.sh /gatk

@@ -161,5 +161,5 @@ fi
 
 cd ${ORIGINAL_WORKING_DIRECTORY}
 if [ -n "$STAGING_DIR" ] ; then
-    rm -Rf ${STAGING_DIR}/${STAGING_CLONE_DIR}
+    ##rm -Rf ${STAGING_DIR}/${STAGING_CLONE_DIR}
 fi
