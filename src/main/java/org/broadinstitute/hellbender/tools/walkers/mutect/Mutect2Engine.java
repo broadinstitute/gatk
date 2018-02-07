@@ -14,7 +14,6 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.GetSampleName;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingOutputMode;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
@@ -28,6 +27,7 @@ import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -36,7 +36,6 @@ import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
-import java.net.URLDecoder;
 import java.util.*;
 
 /**
@@ -106,9 +105,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         samplesList = new IndexedSampleList(new ArrayList<>(ReadUtils.getSamplesFromHeader(header)));
         // If sample name is encoded from {@link GetSampleName}, decode it
         tumorSampleName = samplesList.asListOfSamples().contains(MTAC.tumorSampleName) ?
-                MTAC.tumorSampleName : GetSampleName.decode(MTAC.tumorSampleName);
+                MTAC.tumorSampleName : IOUtils.urlDecode(MTAC.tumorSampleName);
         normalSampleName = MTAC.normalSampleName == null || samplesList.asListOfSamples().contains(MTAC.normalSampleName) ?
-                MTAC.normalSampleName : GetSampleName.decode(MTAC.normalSampleName);
+                MTAC.normalSampleName : IOUtils.urlDecode(MTAC.normalSampleName);
         initialize(createBamOutIndex, createBamOutMD5);
     }
 

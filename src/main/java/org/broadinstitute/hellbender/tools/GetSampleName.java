@@ -6,6 +6,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -13,9 +14,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
-import java.net.URLEncoder;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -100,26 +98,11 @@ final public class GetSampleName extends GATKTool {
 
         try (final FileWriter fileWriter = new FileWriter(outputSampleNameFile, false)) {
             final String rawSample = sampleNames.get(0);
-            final String outputSample = urlEncode ? encode(rawSample) : rawSample;
+            final String outputSample = urlEncode ? IOUtils.urlEncode(rawSample) : rawSample;
             fileWriter.write(outputSample);
         } catch (final IOException ioe) {
             throw new UserException("Could not write file.", ioe);
         }
     }
 
-    public static final String encode(final String string) {
-        try {
-            return URLEncoder.encode(string, STANDARD_ENCODING);
-        } catch (final UnsupportedEncodingException ex) {
-            throw new UserException("Could not encode sample name", ex);
-        }
-    }
-
-    public static final String decode(final String string) {
-        try {
-            return URLDecoder.decode(string, STANDARD_ENCODING);
-        } catch (final UnsupportedEncodingException ex) {
-            throw new UserException("Could not decode sample name", ex);
-        }
-    }
 }
