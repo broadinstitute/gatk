@@ -11,10 +11,7 @@
 #
 # - Example invocation:
 #
-#       java -jar cromwell.jar run cnv_somatic_panel_workflow.wdl -i myParameters.json
-#
-#   See cnv_somatic_panel_workflow_template.json for a template json file to modify with your own parameters (please save
-#   your modified version with a different filename and do not commit to the gatk repository).
+#       java -jar cromwell.jar run cnv_somatic_panel_workflow.wdl -i my_parameters.json
 #
 #############
 
@@ -48,6 +45,12 @@ workflow CNVSomaticPanelWorkflow {
     ####################################################
     Int? padding
     Int? bin_length
+    Int? mem_gb_for_preprocess_intervals
+
+    ##################################################
+    #### optional arguments for AnnotateIntervals ####
+    ##################################################
+    Int? mem_gb_for_annotate_intervals
 
     ##############################################
     #### optional arguments for CollectCounts ####
@@ -79,6 +82,7 @@ workflow CNVSomaticPanelWorkflow {
             bin_length = bin_length,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
+            mem_gb = mem_gb_for_preprocess_intervals,
             preemptible_attempts = preemptible_attempts
     }
 
@@ -91,6 +95,7 @@ workflow CNVSomaticPanelWorkflow {
                 ref_fasta_dict = ref_fasta_dict,
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
+                mem_gb = mem_gb_for_annotate_intervals,
                 preemptible_attempts = preemptible_attempts
         }
     }

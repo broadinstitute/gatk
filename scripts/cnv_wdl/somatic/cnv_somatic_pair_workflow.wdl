@@ -14,10 +14,7 @@
 #
 # - Example invocation:
 #
-#       java -jar cromwell.jar run cnv_somatic_pair_workflow.wdl -i myParameters.json
-#
-#   See cnv_somatic_pair_workflow_template.json for a template json file to modify with your own parameters (please save
-#   your modified version with a different filename and do not commit to the gatk repository).
+#       java -jar cromwell.jar run cnv_somatic_pair_workflow.wdl -i my_parameters.json
 #
 #############
 
@@ -56,6 +53,7 @@ workflow CNVSomaticPairWorkflow {
     ####################################################
     Int? padding
     Int? bin_length
+    Int? mem_gb_for_preprocess_intervals
 
     ##############################################
     #### optional arguments for CollectCounts ####
@@ -73,6 +71,7 @@ workflow CNVSomaticPairWorkflow {
     #### optional arguments for DenoiseReadCounts ####
     ##################################################
     Int? number_of_eigensamples
+    Int? mem_gb_for_denoise_read_counts
 
     ##############################################
     #### optional arguments for ModelSegments ####
@@ -105,11 +104,13 @@ workflow CNVSomaticPairWorkflow {
     Float? neutral_segment_copy_ratio_upper_bound
     Float? outlier_neutral_segment_copy_ratio_z_score_threshold
     Float? calling_copy_ratio_z_score_threshold
+    Int? mem_gb_for_call_copy_ratio_segments
 
     #########################################
     #### optional arguments for plotting ####
     #########################################
     Int? minimum_contig_length
+    Int? mem_gb_for_plotting
 
     ##########################################
     #### optional arguments for Oncotator ####
@@ -138,6 +139,7 @@ workflow CNVSomaticPairWorkflow {
             bin_length = bin_length,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
+            mem_gb = mem_gb_for_preprocess_intervals,
             disk_space_gb = preprocess_intervals_disk,
             preemptible_attempts = preemptible_attempts
     }
@@ -219,6 +221,7 @@ workflow CNVSomaticPairWorkflow {
             number_of_eigensamples = number_of_eigensamples,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
+            mem_gb = mem_gb_for_denoise_read_counts,
             disk_space_gb = denoise_read_counts_tumor_disk,
             preemptible_attempts = preemptible_attempts
     }
@@ -232,6 +235,7 @@ workflow CNVSomaticPairWorkflow {
             number_of_eigensamples = number_of_eigensamples,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
+            mem_gb = mem_gb_for_denoise_read_counts,
             disk_space_gb = denoise_read_counts_normal_disk,
             preemptible_attempts = preemptible_attempts
     }
@@ -264,6 +268,7 @@ workflow CNVSomaticPairWorkflow {
             num_smoothing_iterations_per_fit = num_smoothing_iterations_per_fit,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
+            mem_gb = mem_gb_for_model_segments,
             disk_space_gb = model_segments_disk,
             preemptible_attempts = preemptible_attempts
     }
@@ -294,6 +299,7 @@ workflow CNVSomaticPairWorkflow {
             num_smoothing_iterations_per_fit = num_smoothing_iterations_per_fit,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
+            mem_gb = mem_gb_for_model_segments,
             disk_space_gb = model_segments_disk,
             preemptible_attempts = preemptible_attempts
     }
@@ -309,6 +315,7 @@ workflow CNVSomaticPairWorkflow {
             calling_copy_ratio_z_score_threshold = calling_copy_ratio_z_score_threshold,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
+            mem_gb = mem_gb_for_call_copy_ratio_segments,
             disk_space_gb = copy_ratio_segments_tumor_disk,
             preemptible_attempts = preemptible_attempts
     }
@@ -324,6 +331,7 @@ workflow CNVSomaticPairWorkflow {
             calling_copy_ratio_z_score_threshold = calling_copy_ratio_z_score_threshold,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
+            mem_gb = mem_gb_for_call_copy_ratio_segments,
             disk_space_gb = copy_ratio_segments_normal_disk,
             preemptible_attempts = preemptible_attempts
     }
@@ -339,6 +347,7 @@ workflow CNVSomaticPairWorkflow {
             minimum_contig_length = minimum_contig_length,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
+            mem_gb = mem_gb_for_plotting,
             disk_space_gb = plot_tumor_disk,
             preemptible_attempts = preemptible_attempts
     }
@@ -354,6 +363,7 @@ workflow CNVSomaticPairWorkflow {
             minimum_contig_length = minimum_contig_length,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
+            mem_gb = mem_gb_for_plotting,
             disk_space_gb = plot_normal_disk,
             preemptible_attempts = preemptible_attempts
     }
@@ -368,6 +378,7 @@ workflow CNVSomaticPairWorkflow {
             minimum_contig_length = minimum_contig_length,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
+            mem_gb = mem_gb_for_plotting,
             disk_space_gb = plot_tumor_disk,
             preemptible_attempts = preemptible_attempts
     }
@@ -382,6 +393,7 @@ workflow CNVSomaticPairWorkflow {
             minimum_contig_length = minimum_contig_length,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
+            mem_gb = mem_gb_for_plotting,
             disk_space_gb = plot_normal_disk,
             preemptible_attempts = preemptible_attempts
     }

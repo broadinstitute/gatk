@@ -8,9 +8,8 @@
 #   For WGS, the intervals should simply cover the chromosomes of interest.
 #
 # - Example invocation:
-#    java -jar cromwell.jar run cnv_germline_cohort_workflow.wdl myParameters.json
-#   See cnv_germline_cohort_workflow_template.json for a template json file to modify with your own parameters (please save
-#   your modified version with a different filename and do not commit to the gatk repository).
+#
+#       java -jar cromwell.jar run cnv_germline_cohort_workflow.wdl -i my_parameters.json
 #
 #############
 
