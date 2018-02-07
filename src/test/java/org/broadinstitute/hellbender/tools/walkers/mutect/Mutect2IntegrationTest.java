@@ -75,23 +75,24 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         final String[] args = {
                 "-I", tumorBam.getAbsolutePath(),
-                "-tumor", tumor,
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, tumor,
                 "-I", normalBam.getAbsolutePath(),
-                "-normal", normal,
+                "-" + M2ArgumentCollection.NORMAL_SAMPLE_SHORT_NAME, normal,
                 "-R", b37_reference_20_21,
                 "-L", "20",
-                "-germline-resource", GNOMAD.getAbsolutePath(),
+                "--" + M2ArgumentCollection.GERMLINE_RESOURCE_LONG_NAME, GNOMAD.getAbsolutePath(),
                 "-XL", mask.getAbsolutePath(),
                 "-O", unfilteredVcf.getAbsolutePath(),
-                "--downsampling-stride", "20",
+                "--" + M2ArgumentCollection.DOWNSAMPLING_STRIDE_LONG_NAME, "20",
                 "--max-reads-per-alignment-start", "4",
-                "--max-suspicious-reads-per-alignment-start", "4"
+                "--" + M2ArgumentCollection.MAX_SUSPICIOUS_READS_PER_ALIGNMENT_START_LONG_NAME, "4",
+
         };
 
         runCommandLine(args);
 
         // run FilterMutectCalls
-        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), "FilterMutectCalls"));
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), FilterMutectCalls.class.getSimpleName()));
 
         // verify that alleles contained in likelihoods matrix but dropped from somatic calls do not show up in annotations
         // also check that alleles have been properly clipped after dropping any non-called alleles, i.e. if we had AAA AA A
@@ -129,9 +130,9 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File ponVcf = createTempFile("pon", ".vcf");
         final String[] createPonArgs = {
                 "-I", tumorBam.getAbsolutePath(),
-                "-tumor", tumorSample,
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, tumorSample,
                 "-I", normalBam.getAbsolutePath(),
-                "-normal", normalSample,
+                "-" + M2ArgumentCollection.NORMAL_SAMPLE_SHORT_NAME, normalSample,
                 "-R", b37_reference_20_21,
                 "-L", "20",
                 "-O", ponVcf.getAbsolutePath()
@@ -143,10 +144,10 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File filteredVcf = createTempFile("filtered", ".vcf");
         final String[] callWithPonArgs = {
                 "-I", tumorBam.getAbsolutePath(),
-                "-tumor", tumorSample,
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, tumorSample,
                 "-I", normalBam.getAbsolutePath(),
-                "-normal", normalSample,
-                "-pon", ponVcf.getAbsolutePath(),
+                "-" + M2ArgumentCollection.NORMAL_SAMPLE_SHORT_NAME, normalSample,
+                "-" + M2ArgumentCollection.PANEL_OF_NORMALS_SHORT_NAME, ponVcf.getAbsolutePath(),
                 "-R", b37_reference_20_21,
                 "-L", "20",
                 "-O", unfilteredVcf.getAbsolutePath()
@@ -155,8 +156,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         runCommandLine(callWithPonArgs);
 
         // run FilterMutectCalls
-        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), "FilterMutectCalls"));
-
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), FilterMutectCalls.class.getSimpleName()));
 
         final long numVariants = StreamSupport.stream(new FeatureDataSource<VariantContext>(filteredVcf).spliterator(), false)
                 .filter(vc -> vc.getFilters().isEmpty()).count();
@@ -179,9 +179,9 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         final String[] args = {
                 "-I", tumorBam.getAbsolutePath(),
-                "-tumor", tumorName,
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, tumorName,
                 "-I", normalBam.getAbsolutePath(),
-                "-normal", normalName,
+                "-" + M2ArgumentCollection.NORMAL_SAMPLE_SHORT_NAME, normalName,
                 "-R", b37_reference_20_21,
                 "-L", "20:10000000-10100000", // this is 1/3 of the chr 20 interval of our mini-dbSNP
                 "-O", outputVcf.getAbsolutePath()
@@ -202,10 +202,10 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         final String[] args = {
                 "-I", NA12878_20_21_WGS_bam,
-                "-tumor", "NA12878",
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "NA12878",
                 "-R", b37_reference_20_21,
                 "-L", "20:10000000-10010000",
-                "-germline-resource", GNOMAD.getAbsolutePath(),
+                "--" + M2ArgumentCollection.GERMLINE_RESOURCE_LONG_NAME, GNOMAD.getAbsolutePath(),
                 "-O", unfilteredVcf.getAbsolutePath()
         };
 
@@ -237,19 +237,19 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         final String[] args = {
                 "-I", NA12878_20_21_WGS_bam,
-                "-tumor", "NA12878",
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "NA12878",
                 "-R", b37_reference_20_21,
                 "-L", "20:10000000-20010000",
-                "-germline-resource", GNOMAD.getAbsolutePath(),
+                "--" + M2ArgumentCollection.GERMLINE_RESOURCE_LONG_NAME, GNOMAD.getAbsolutePath(),
                 "-O", unfilteredVcf.getAbsolutePath()
         };
 
         runCommandLine(args);
 
         // run FilterMutectCalls
-        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcfNoContamination.getAbsolutePath(), "--contamination-table", NO_CONTAMINATION_TABLE.getAbsolutePath()), "FilterMutectCalls"));
-        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcfFivePctContamination.getAbsolutePath(), "--contamination-table", FIVE_PCT_CONTAMINATION_TABLE.getAbsolutePath()), "FilterMutectCalls"));
-        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcfTenPctContamination.getAbsolutePath(), "--contamination-table", TEN_PCT_CONTAMINATION_TABLE.getAbsolutePath()), "FilterMutectCalls"));
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcfNoContamination.getAbsolutePath(), "--contamination-table", NO_CONTAMINATION_TABLE.getAbsolutePath()), FilterMutectCalls.class.getSimpleName()));
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcfFivePctContamination.getAbsolutePath(), "--contamination-table", FIVE_PCT_CONTAMINATION_TABLE.getAbsolutePath()), FilterMutectCalls.class.getSimpleName()));
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcfTenPctContamination.getAbsolutePath(), "--contamination-table", TEN_PCT_CONTAMINATION_TABLE.getAbsolutePath()), FilterMutectCalls.class.getSimpleName()));
 
 
         final Set<VariantContext> variantsFilteredAtZeroPct =
@@ -303,7 +303,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File outputVcf = createTempFile("output", ".vcf");
         final String[] args = {
                 "-I", CONSUMES_ZERO_REFERENCE_BASES,
-                "-tumor", "SM-612V3",
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "SM-612V3",
                 "-R", b37_reference_20_21,
                 "-O", outputVcf.getAbsolutePath()
         };
@@ -340,7 +340,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         final String[] lowThresholdArgs = {
                 "-I", tumor.getAbsolutePath(),
-                "-tumor", tumorSample,
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, tumorSample,
                 "-R", b37_reference_20_21,
                 "-L", "20:10000000-13000000",
                 "-O", outputAtLowThreshold.getAbsolutePath(),
@@ -351,7 +351,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         final String[] highThresholdArgs = {
                 "-I", tumor.getAbsolutePath(),
-                "-tumor", tumorSample,
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, tumorSample,
                 "-R", b37_reference_20_21,
                 "-L", "20:10000000-13000000",
                 "-O", outputAtHighThreshold.getAbsolutePath(),
