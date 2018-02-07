@@ -11,7 +11,7 @@ import java.util.Arrays;
 public class ExampleStreamingPythonExecutorIntegrationTest extends CommandLineProgramTest {
 
     private static final String TEST_DATA_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
-    private static final String TEST_OUTPUT_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/examples/";
+    private static final String TEST_OUTPUT_DIRECTORY = exampleTestDir;
 
     @DataProvider(name = "streamingBatchSizes")
     public Object[][] getBatchSizes() {

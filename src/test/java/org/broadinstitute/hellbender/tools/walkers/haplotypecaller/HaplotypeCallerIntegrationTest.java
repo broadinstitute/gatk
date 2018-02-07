@@ -28,7 +28,7 @@ import java.util.stream.StreamSupport;
 
 public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
-    public static final String TEST_FILES_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/haplotypecaller/";
+    public static final String TEST_FILES_DIR = toolsTestDir + "haplotypecaller/";
 
     @DataProvider(name="HaplotypeCallerTestInputs")
     public Object[][] getHaplotypCallerTestInputs() {

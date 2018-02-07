@@ -55,7 +55,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
             "QD",//TODO QD and AS_QD have cap values and anything that reaches that is randomized.  It's difficult to reproduce the same random numbers across gatk3 -> 4
             "FS");//TODO There's some bug in either gatk3 or gatk4 fisherstrand that's making them not agree still, I'm not sure which is correct
 
-    private static final String ALLELE_SPECIFIC_DIRECTORY = publicTestDir + "/org/broadinstitute/hellbender/tools/walkers/annotator/allelespecific";
+    private static final String ALLELE_SPECIFIC_DIRECTORY = toolsTestDir + "walkers/annotator/allelespecific";
 
     private static <T> void assertForEachElementInLists(final List<T> actual, final List<T> expected, final BiConsumer<T, T> assertion) {
         Assert.assertEquals(actual.size(), expected.size(), "different number of elements in lists:\n"

@@ -11,8 +11,7 @@ import java.io.File;
 import java.util.Arrays;
 
 public final class ASEReadCounterIntegrationTest extends CommandLineProgramTest {
-    private static final String aseDirRelative = "src/test/resources/org/broadinstitute/hellbender/tools/walkers/rnaseq/ASEReadCounter";
-    public static final String aseTestDir = new File(gatkDirectory, aseDirRelative).getAbsolutePath() + "/";
+    public static final String aseTestDir = toolsTestDir + "walkers/rnaseq/ASEReadCounter/";
 
     @Test
     public void testASEReadCounterWithHighMQ() throws Exception {

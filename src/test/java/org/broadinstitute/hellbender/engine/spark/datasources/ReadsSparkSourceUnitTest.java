@@ -34,10 +34,7 @@ import java.util.List;
 import static org.testng.Assert.assertEquals;
 
 public class ReadsSparkSourceUnitTest extends GATKBaseTest {
-
-    private static final String dir = "src/test/resources/org/broadinstitute/hellbender/tools/";
-    private static final String dirBQSR = dir + "BQSR/";
-
+    private static final String dirBQSR = toolsTestDir + "BQSR/";
 
     @DataProvider(name = "loadReads")
     public Object[][] loadReads() {
@@ -46,7 +43,7 @@ public class ReadsSparkSourceUnitTest extends GATKBaseTest {
                 {dirBQSR + "HiSeq.1mb.1RG.2k_lines.alternate.bam", null},
                 {dirBQSR + "expected.HiSeq.1mb.1RG.2k_lines.alternate.recalibrated.DIQ.bam", null},
                 {NA12878_chr17_1k_CRAM, v37_chr17_1Mb_Reference},
-                {dir + "valid.cram", dir + "valid.fasta"}
+                {toolsTestDir + "valid.cram", toolsTestDir + "valid.fasta"}
         };
     }
 
@@ -69,7 +66,7 @@ public class ReadsSparkSourceUnitTest extends GATKBaseTest {
     // this tests handling the case where a reference is specified but the file doesn't exist
     @Test(expectedExceptions = UserException.MissingReference.class)
     public void loadReadsNonExistentReference() {
-        doLoadReads(dir + "valid.cram",
+        doLoadReads(toolsTestDir + "valid.cram",
                 GATKBaseTest.getSafeNonExistentFile("NonExistentReference.fasta").getAbsolutePath(),
                 ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY);
     }

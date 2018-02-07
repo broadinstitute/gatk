@@ -35,12 +35,12 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     // positions 10,000,000 - 11,000,000 of chr 20 and with most annotations removed
     private static final File GNOMAD = new File(largeFileTestDir, "very-small-gnomad.vcf");
     private static final String DREAM_BAMS_DIR = largeFileTestDir + "mutect/dream_synthetic_bams/";
-    private static final String DREAM_VCFS_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/dream/vcfs/";
-    private static final String DREAM_MASKS_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/dream/masks/";
+    private static final String DREAM_VCFS_DIR = toolsTestDir + "mutect/dream/vcfs/";
+    private static final String DREAM_MASKS_DIR = toolsTestDir + "mutect/dream/masks/";
 
-    private static final File NO_CONTAMINATION_TABLE = new File(publicTestDir, "org/broadinstitute/hellbender/tools/mutect/no-contamination.table");
-    private static final File FIVE_PCT_CONTAMINATION_TABLE = new File(publicTestDir, "org/broadinstitute/hellbender/tools/mutect/five-pct-contamination.table");
-    private static final File TEN_PCT_CONTAMINATION_TABLE = new File(publicTestDir, "org/broadinstitute/hellbender/tools/mutect/ten-pct-contamination.table");
+    private static final File NO_CONTAMINATION_TABLE = new File(toolsTestDir, "mutect/no-contamination.table");
+    private static final File FIVE_PCT_CONTAMINATION_TABLE = new File(toolsTestDir, "mutect/five-pct-contamination.table");
+    private static final File TEN_PCT_CONTAMINATION_TABLE = new File(toolsTestDir, "mutect/ten-pct-contamination.table");
     /**
      * Several DREAM challenge bams with synthetic truth data.  In order to keep file sizes manageable, bams are restricted
      * to chromosome 20, leaving ~100-200 variants, and then further restricted to 400-bp intervals centered around
@@ -318,7 +318,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     @Test
     public void testBamWithRepeatedReads() {
         doMutect2Test(
-                publicTestDir + "org/broadinstitute/hellbender/tools/mutect/repeated_reads.bam",
+                toolsTestDir + "mutect/repeated_reads.bam",
                 "SM-612V3",
                 "20:10018000-10020000",
                 false,
@@ -394,7 +394,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     public void testBamoutVariations(final boolean createBamout, final boolean createBamoutIndex, final boolean createBamoutMD5) {
         // hijack repeated reads test for bamout variations testing
         doMutect2Test(
-                publicTestDir + "org/broadinstitute/hellbender/tools/mutect/repeated_reads.bam",
+                toolsTestDir + "mutect/repeated_reads.bam",
                 "SM-612V3",
                 "20:10018000-10020000",
                 createBamout,
