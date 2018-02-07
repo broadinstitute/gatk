@@ -5,8 +5,11 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 /**
- * A single copy number posterior record for a specific interval. The posterior distribution is stored
- * in the natural log space
+ * A single integer copy-number posterior record for a specific interval.
+ *
+ * Note: the posterior distribution is stored in the natural log space.
+ *
+ * @author Andrey Smirnov &lt;asmirnov@broadinstitute.org&gt;
  */
 public class LocatableCopyNumberPosteriorDistribution implements Locatable {
     private final SimpleInterval interval;
@@ -24,7 +27,11 @@ public class LocatableCopyNumberPosteriorDistribution implements Locatable {
     public CopyNumberPosteriorDistribution getCopyNumberPosteriors() {
         return copyNumberPosteriorDistribution;
     }
-    
+
+    public SimpleInterval getInterval() {
+        return interval;
+    }
+
     @Override
     public String getContig() {
         return interval.getContig();

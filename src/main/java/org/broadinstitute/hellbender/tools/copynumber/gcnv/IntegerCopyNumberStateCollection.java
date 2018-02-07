@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.copynumber.gcnv;
 
-import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
@@ -10,18 +9,14 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Collection of copy number states considered in the germline CNV calling pipeline
+ * Collection of integer copy-number states.
+ *
+ * @author Andrey Smirnov &lt;asmirnov@broadinstitute.org&gt;
  */
 public class IntegerCopyNumberStateCollection {
 
     private final List<IntegerCopyNumberState> copyNumberStates;
     private final TableColumnCollection columnCollection;
-    private final List<Allele> alleles;
-
-    /**
-     * The state with this copy number represents a reference allele
-     */
-    private static final int REFERENCE_COPY_NUMBER_VALUE = 2;
 
     public IntegerCopyNumberStateCollection(final List<String> copyNumberStatesColumns) {
         Utils.nonEmpty(copyNumberStatesColumns);
@@ -29,9 +24,6 @@ public class IntegerCopyNumberStateCollection {
         this.copyNumberStates = new ArrayList<>();
         copyNumberStatesColumns
                 .forEach(copyNumberString -> copyNumberStates.add(parseIntegerCopyNumber(copyNumberString)));
-        this.alleles = copyNumberStates.stream()
-                .map(state -> state.toAllele(REFERENCE_COPY_NUMBER_VALUE))
-                .collect(Collectors.toList());
     }
 
     /**
@@ -76,13 +68,6 @@ public class IntegerCopyNumberStateCollection {
         }
     }
 
-    /**
-     * Get corresponding alleles for this set of copy number states
-     */
-    public List<Allele> getAlleles() {
-        return alleles;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -100,5 +85,12 @@ public class IntegerCopyNumberStateCollection {
     @Override
     public int hashCode() {
         return copyNumberStates != null ? copyNumberStates.hashCode() : 0;
+    }
+
+    @Override
+    public String toString() {
+        return copyNumberStates.stream()
+                .map(IntegerCopyNumberState::toString)
+                .collect(Collectors.joining(", ", "[", "]"));
     }
 }

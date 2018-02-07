@@ -4,6 +4,9 @@ import theano as th
 import pymc3 as pm
 import theano.tensor as tt
 from scipy.misc import logsumexp
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class HMMSegmentationQualityCalculator:
@@ -306,7 +309,12 @@ class HMMSegmentationQualityCalculator:
             phred-scaled probability
         """
         final_log_prob = log_prob if not complement else HMMSegmentationQualityCalculator.log_prob_complement(log_prob)
-        return -final_log_prob * HMMSegmentationQualityCalculator.INV_LN_10_TIMES_10
+        result = -final_log_prob * HMMSegmentationQualityCalculator.INV_LN_10_TIMES_10
+        if result < 0:
+            _logger.warning("Negative phred-scaled quality was produced -- setting it to 0.")
+            return 0.
+        else:
+            return result
 
     @staticmethod
     def log_prob_complement(log_prob: float) -> float:

@@ -210,7 +210,7 @@ public final class GermlineCNVCaller extends CommandLineProgram {
     private RunMode runMode;
 
     @Argument(
-            doc = "Input contig-ploidy calls directory (output of DetermlineGermlineContigPloidy).",
+            doc = "Input contig-ploidy calls directory (output of DetermineGermlineContigPloidy).",
             fullName = CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME
     )
     private String inputContigPloidyCallsDir;
