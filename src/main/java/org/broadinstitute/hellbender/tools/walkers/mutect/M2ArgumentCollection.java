@@ -21,10 +21,10 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     //TODO: so for now we require the user to specify bams *both* as inputs, with -I tumor.bam -I normal.bam
     //TODO: *and* as sample names e.g. -tumor <tumor sample> -normal <normal sample>
 
-    @Argument(fullName = "tumor-sample", shortName = "tumor", doc = "BAM sample name of tumor", optional = false)
+    @Argument(fullName = "tumor-sample", shortName = "tumor", doc = "BAM sample name of tumor.  May be URL-encoded as output by GetSampleName with -encode argument.", optional = false)
     protected String tumorSampleName = null;
 
-    @Argument(fullName = "normal-sample", shortName = "normal", doc = "BAM sample name of tumor", optional = true)
+    @Argument(fullName = "normal-sample", shortName = "normal", doc = "BAM sample name of normal.  May be URL-encoded as output by GetSampleName with -encode argument.", optional = true)
     protected String normalSampleName = null;
 
     //TODO: END OF HACK ALERT
@@ -113,7 +113,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * but may also increase calling false positive, i.e. germline, variants.
      */
     @Argument(fullName = "normal-lod", optional = true, doc = "LOD threshold for calling normal variant non-germline.")
-    public double NORMAL_LOD_THRESHOLD = 2.2;
+    public double normalLodThreshold = 2.2;
 
 
     /**

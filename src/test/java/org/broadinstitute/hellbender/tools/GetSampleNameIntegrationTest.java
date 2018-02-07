@@ -30,6 +30,23 @@ public class GetSampleNameIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(Files.readAllLines(outputFile.toPath()).stream().filter(n -> n.equals("Hi,Mom!")).count() == 1);
     }
 
+    @Test
+    public void testUrlEncoding() throws IOException {
+
+        final File outputFile = createTempFile("get-sample-name", ".txt");
+        final String[] arguments = {
+                "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, SINGLE_SAMPLE_BAM_FILE.getAbsolutePath(),
+                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
+                "-encode",
+                "--verbosity", "INFO"
+        };
+        runCommandLine(arguments);
+        Assert.assertTrue(outputFile.exists());
+        Assert.assertTrue(outputFile.length() > 0);
+        Assert.assertTrue(Files.readAllLines(outputFile.toPath()).stream().count() == 1);
+        Assert.assertTrue(Files.readAllLines(outputFile.toPath()).stream().filter(n -> n.equals("Hi%2CMom%21")).count() == 1);
+    }
+
     @Test(expectedExceptions = UserException.class)
     public void testMultiSampleBam() {
         final File outputFile = createTempFile("get-sample-name-ms", ".txt");

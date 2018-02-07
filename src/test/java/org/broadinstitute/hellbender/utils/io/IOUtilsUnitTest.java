@@ -251,4 +251,24 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         IOUtils.createDirectory(tempPath.toUri().toString());
         Assert.assertTrue(java.nio.file.Files.exists(tempPath));
     }
+
+    @DataProvider(name="urlEncodeDecode")
+    public Object[][] urlEncodeDecode() {
+        return new Object[][]{
+                // string, url encoding
+                { "string", "string"},
+                { "string.", "string."},
+                { "string1", "string1"},
+                { "string with space", "string+with+space"},
+                { "string://", "string%3A%2F%2F"},
+        };
+    }
+
+    @Test(dataProvider = "urlEncodeDecode")
+    public void testUrlEncodeDecode(final String string, final String encoded) {
+        Assert.assertEquals(IOUtils.urlEncode(string), encoded);
+        Assert.assertEquals(string, IOUtils.urlDecode(encoded));
+    }
+
+
 }

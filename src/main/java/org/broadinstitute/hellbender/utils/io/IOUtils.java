@@ -13,11 +13,14 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.GetSampleName;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.*;
 import java.net.URI;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -615,5 +618,21 @@ public final class IOUtils {
         Utils.nonNull(pathString);
 
         Files.createDirectory(getPath(pathString));
+    }
+
+    public static final String urlEncode(final String string) {
+        try {
+            return URLEncoder.encode(string, GetSampleName.STANDARD_ENCODING);
+        } catch (final UnsupportedEncodingException ex) {
+            throw new UserException("Could not encode sample name", ex);
+        }
+    }
+
+    public static final String urlDecode(final String string) {
+        try {
+            return URLDecoder.decode(string, GetSampleName.STANDARD_ENCODING);
+        } catch (final UnsupportedEncodingException ex) {
+            throw new UserException("Could not decode sample name", ex);
+        }
     }
 }

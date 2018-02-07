@@ -57,8 +57,8 @@
 ##orientation_bias_artifact_modes=<ID=C/T|G/T,Description="The artifact modes that were used for orientation bias artifact filtering for this VCF">
 ##source=FilterMutectCalls
 ##source=Mutect2
-##tumor_sample=synthetic.challenge.set1.tumor
+##tumor_sample=tumor sample
 ##Manually removed the F1R2 and F2R1 from FORMAT and header
-#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	synthetic.challenge.set1.normal	synthetic.challenge.set1.tumor
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	synthetic.challenge.set1.normal	tumor sample
 20	577548	.	C	G	.	PASS	DP=55;ECNT=1;NLOD=8.72;N_ART_LOD=-1.483e+00;POP_AF=1.000e-03;P_GERMLINE=-5.423e+00;TLOD=25.47	GT:AD:AF:MBQ:MFRL:MMQ:MPOS:OBAM:OBAMRC:OBF:OBP:OBQ:OBQRC:SA_MAP_AF:SA_POST_PROB	0/0:29,0:0.017:0:339,0:0:0:false:false	0/1:14,10:0.420:30:314,325:60:20:false:false:.:.:45.99:100.00:0.394,0.384,0.417:0.021,0.024,0.955
 20	1838610	.	T	A	.	PASS	DP=64;ECNT=1;NLOD=7.82;N_ART_LOD=-1.438e+00;POP_AF=1.000e-03;P_GERMLINE=-4.521e+00;TLOD=50.09	GT:AD:AF:MBQ:MFRL:MMQ:MPOS:OBAM:OBAMRC:OBF:OBP:OBQ:OBQRC:SA_MAP_AF:SA_POST_PROB	0/0:26,0:0.019:0:338,0:0:0:false:false	0/1:20,17:0.460:32:336,340:60:20:false:false:.:.:100.00:49.80:0.444,0.404,0.459:0.017,0.032,0.951
