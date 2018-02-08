@@ -1,0 +1,147 @@
+package org.broadinstitute.hellbender.tools.walkers.vqsr;
+
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
+import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
+import org.broadinstitute.hellbender.utils.io.Resource;
+import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
+import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * Write variant tensors for training a Convolutional Neural Network (CNN) for filtering variants.
+ *
+ *
+ * <h3>Inputs</h3>
+ * <ul>
+ *      <li>The input variants to make into tensors.
+ *      These variant calls must be annotated with the standard best practices annotations.</li>
+ *      <li>The truth VCF has validated variant calls, like those in the genomes in a bottle,
+ *      platinum genomes, or CHM VCFs.  Variants in both the input VCF and the truth VCF
+ *      will be used as positive training data.</li>
+ *      <li>The truth BED is a bed file define the confident region for the validated calls.
+ *      Variants from the input VCF inside this region, but not included in the truth VCF
+ *      will be used as negative training data.</li>
+ *      <li>The tensor-name argument determines what types of tensors will be written.
+ *      Set it to "reference" to write 1D tensors or "read_tensor" to write 2D tensors.</li>
+ *      <li>The bam-file argument is necessary to write 2D tensors which incorporate read data.</li>
+ * </ul>
+ *
+ * <h3>Outputs</h3>
+ * <ul>
+ * <li>data-dir This directory is created and populated with variant tensors.
+ *  it will be divided into training, validation and test sets and each set will be further divided into
+ *  positive and negative SNPs and INDELs.</li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
+ *
+ * <h4>Write Reference Tensors</h4>
+ * <pre>
+ * gatk CNNVariantWriteTensors \
+ *   -R reference.fasta \
+ *   -V input.vcf.gz \
+ *   -truth-vcf platinum-genomes.vcf \
+ *   -truth-bed platinum-confident-region.bed \
+ *   -tensor-name reference \
+ *   -data-dir my-tensor-folder
+ * </pre>
+ *
+ * <h4>Write Read Tensors</h4>
+ * <pre>
+ * gatk CNNVariantWriteTensors \
+ *   -R reference.fasta \
+ *   -V input.vcf.gz \
+ *   -truth-vcf platinum-genomes.vcf \
+ *   -truth-bed platinum-confident-region.bed \
+ *   -tensor-name read_tensor \
+ *   -bam-file input.bam \
+ *   -data-dir my-tensor-folder
+ * </pre>
+ *
+ */
+@CommandLineProgramProperties(
+        summary = "Write variant tensors for training a CNN to filter variants",
+        oneLineSummary = "Write variant tensors for training a CNN to filter variants",
+        programGroup = VariantEvaluationProgramGroup.class
+)
+@DocumentedFeature
+@ExperimentalFeature
+public class CNNVariantWriteTensors extends CommandLineProgram {
+
+    @Argument(fullName = StandardArgumentDefinitions.REFERENCE_LONG_NAME,
+            shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME,
+            doc = "Reference fasta file.", optional = true)
+    private String reference = "";
+
+    @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME,
+            doc = "Input VCF file", optional = true)
+    private String inputVcf = "";
+
+    @Argument(fullName = "data-dir", shortName = "dd", doc = "Directory of training tensors. Subdivided into train, valid and test sets.", optional = true)
+    private String dataDir = "";
+
+    @Argument(fullName = "truth-vcf", shortName = "tv", doc = "Validated VCF file.", optional = true)
+    private String truthVcf = "";
+
+    @Argument(fullName = "truth-bed", shortName = "tb", doc = "Confident region of the validated VCF file.", optional = true)
+    private String truthBed = "";
+
+    @Argument(fullName = "bam-file", shortName = "bf", doc = "BAM or BAMout file to use for read data when generating 2D tensors.", optional = true)
+    private String bamFile = "";
+
+    @Argument(fullName = "tensor-name", shortName = "tn", doc = "Name of the tensors to generate.", optional = true)
+    private String tensorName = "reference";
+
+    @Argument(fullName = "annotation-set", shortName = "as", doc = "Which set of annotations to use.", optional = true)
+    private String annotationSet = "best_practices";
+
+    @Argument(fullName = "max-tensors", shortName = "mt", doc = "Maximum number of tensors to write.", optional = true, minValue = 0)
+    private int maxTensors = 1000000;
+
+    // Start the Python executor. This does not actually start the Python process, but fails if python can't be located
+    final PythonScriptExecutor pythonExecutor = new PythonScriptExecutor(true);
+
+    @Override
+    protected void onStartup() {
+        PythonScriptExecutor.checkPythonEnvironmentForPackage("vqsr_cnn");
+    }
+
+    @Override
+    protected Object doWork() {
+        final Resource pythonScriptResource = new Resource("training.py", VariantTranchesPython.class);
+        List<String> arguments = new ArrayList<>(Arrays.asList(
+                "--reference_fasta", reference,
+                "--input_vcf", inputVcf,
+                "--bam_file", bamFile,
+                "--train_vcf", truthVcf,
+                "--bed_file", truthBed,
+                "--tensor_name", tensorName,
+                "--annotation_set", annotationSet,
+                "--samples", Integer.toString(maxTensors),
+                "--data_dir", dataDir));
+
+        if (tensorName.equals("reference")) {
+            arguments.addAll(Arrays.asList("--mode", "write_reference_and_annotation_tensors"));
+        } else if (tensorName.equals("read_tensor")) {
+            arguments.addAll(Arrays.asList("--mode", "write_read_and_annotation_tensors"));
+        }
+
+        logger.info("Args are:"+ Arrays.toString(arguments.toArray()));
+        final boolean pythonReturnCode = pythonExecutor.executeScript(
+                pythonScriptResource,
+                null,
+                arguments
+        );
+        return pythonReturnCode;
+    }
+
+}

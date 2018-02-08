@@ -10,6 +10,7 @@ import htsjdk.tribble.util.TabixUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
@@ -18,6 +19,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
+import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.File;
 import java.io.IOException;
@@ -69,9 +71,9 @@ import java.util.stream.Collectors;
 @CommandLineProgramProperties(
         summary = "Apply tranche filtering based on a truth VCF of known common sites of variation and score from VCF INFO field",
         oneLineSummary = "Apply tranche filtering",
-        programGroup = ShortVariantDiscoveryProgramGroup.class
+        programGroup = VariantEvaluationProgramGroup.class
 )
-
+@DocumentedFeature
 @ExperimentalFeature
 public class VariantTranchesPython extends CommandLineProgram {
     @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME,

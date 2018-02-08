@@ -7,6 +7,7 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 
 import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
@@ -43,6 +44,7 @@ import java.util.stream.StreamSupport;
  * </pre>
  *
  */
+@DocumentedFeature
 @ExperimentalFeature
 @CommandLineProgramProperties(
         summary = CNNVariantScore.USAGE_SUMMARY,

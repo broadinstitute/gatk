@@ -3,10 +3,12 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
+import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 
 import java.util.ArrayList;
@@ -54,9 +56,9 @@ import java.util.List;
 @CommandLineProgramProperties(
         summary = "Train a CNN model for filtering variants",
         oneLineSummary = "Train a CNN model for filtering variants",
-        programGroup = ShortVariantDiscoveryProgramGroup.class
+        programGroup = VariantEvaluationProgramGroup.class
 )
-
+@DocumentedFeature
 @ExperimentalFeature
 public class CNNVariantTrain extends CommandLineProgram {
 
