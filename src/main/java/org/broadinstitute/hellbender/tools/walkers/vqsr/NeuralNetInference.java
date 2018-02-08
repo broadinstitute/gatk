@@ -80,6 +80,14 @@ public class NeuralNetInference extends VariantWalker {
     @Argument(fullName = "transfer-batch-size", shortName = "tbs", doc = "Size of data to queue for python streaming.", minValue = 1, maxValue=8192, optional = true)
     private int transferBatchSize = 512;
 
+    @Advanced
+    @Argument(fullName = "tf-intra-threads", shortName = "intra", doc = "Number of threads used for intra op parallelism in TensorFlow.", minValue = 0, optional = true)
+    private int tfIntraThreads = 0;
+
+    @Advanced
+    @Argument(fullName = "tf-inter-threads", shortName = "inter", doc = "Number of threads used for inter op parallelism in TensorFlow.", minValue = 0, optional = true)
+    private int tfInterThreads = 0;
+
     @Hidden
     @Argument(fullName = "enable-journal", shortName = "journal", doc = "Enable streaming process journal.", optional = true)
     private boolean enableJournal = false;
@@ -147,6 +155,9 @@ public class NeuralNetInference extends VariantWalker {
             }
             pythonExecutor.sendSynchronousCommand(String.format("tempFile = open('%s', 'w+')" + NL, scoreFile.getAbsolutePath()));
             pythonExecutor.sendSynchronousCommand("from keras.models import load_model" + NL);
+            pythonExecutor.sendSynchronousCommand("from keras import backend" + NL);
+            pythonExecutor.sendSynchronousCommand(String.format("backend.set_session(backend.tf.Session(config=backend.tf.ConfigProto(" +
+                    "intra_op_parallelism_threads=%d, inter_op_parallelism_threads=%d)))" + NL, tfIntraThreads, tfInterThreads));
             pythonExecutor.sendSynchronousCommand("import vqsr_cnn" + NL);
             pythonExecutor.sendSynchronousCommand(String.format("model = load_model('%s', custom_objects=vqsr_cnn.get_metric_dict())", architecture) + NL);
             logger.info("Loaded CNN architecture:"+architecture);
