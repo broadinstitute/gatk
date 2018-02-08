@@ -351,7 +351,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         argBuilder.addReference(new File(b37_reference_20_21));
         argBuilder.addOutput(new File(vcfOutput.getAbsolutePath()));
         argBuilder.addArgument("L", testInterval);
-        argBuilder.addArgument("bamout", bamOutput.getAbsolutePath());
+        argBuilder.addArgument(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_SHORT_NAME, bamOutput.getAbsolutePath());
         argBuilder.addArgument("pairHMM", "AVX_LOGLESS_CACHING");
 
         runCommandLine(argBuilder.getArgsArray());
@@ -399,7 +399,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         argBuilder.addReference(new File(b37_reference_20_21));
         argBuilder.addOutput(new File(vcfOutput.getAbsolutePath()));
         argBuilder.addArgument("L", testInterval);
-        argBuilder.addArgument("bamout", bamOutput.getAbsolutePath());
+        argBuilder.addArgument(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_SHORT_NAME, bamOutput.getAbsolutePath());
         argBuilder.addArgument("pairHMM", "AVX_LOGLESS_CACHING");
         argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME, createBamoutIndex);
         argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_LONG_NAME, createBamoutMD5);
@@ -539,7 +539,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-R", b37_reference_20_21,
                 "-L", "20:10000000-10010000",
                 "-O", outputAtLowThreshold.getAbsolutePath(),
-                "--min-base-quality-score", "20"
+                "--" + AssemblyBasedCallerArgumentCollection.MIN_BASE_QUALITY_SCORE_LONG_NAME, "20"
         };
 
         runCommandLine(lowThresholdArgs);
@@ -549,7 +549,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-R", b37_reference_20_21,
                 "-L", "20:10000000-10010000",
                 "-O", outputAtHighThreshold.getAbsolutePath(),
-                "--min-base-quality-score", "30"
+                "--" + AssemblyBasedCallerArgumentCollection.MIN_BASE_QUALITY_SCORE_LONG_NAME, "30"
         };
 
         runCommandLine(highThresholdArgs);

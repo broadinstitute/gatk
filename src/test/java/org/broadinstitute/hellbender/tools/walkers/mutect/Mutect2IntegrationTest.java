@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -344,7 +345,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-R", b37_reference_20_21,
                 "-L", "20:10000000-13000000",
                 "-O", outputAtLowThreshold.getAbsolutePath(),
-                "--min-base-quality-score", "20"
+                "--" + AssemblyBasedCallerArgumentCollection.MIN_BASE_QUALITY_SCORE_LONG_NAME, "20"
         };
 
         runCommandLine(lowThresholdArgs);
@@ -355,7 +356,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-R", b37_reference_20_21,
                 "-L", "20:10000000-13000000",
                 "-O", outputAtHighThreshold.getAbsolutePath(),
-                "--min-base-quality-score", "30"
+                "--" + AssemblyBasedCallerArgumentCollection.MIN_BASE_QUALITY_SCORE_LONG_NAME, "30"
         };
 
         runCommandLine(highThresholdArgs);
@@ -423,7 +424,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         argBuilder.addArgument("L", interval);
         if (createBamout) {
             bamoutFile = new File(tempDir, "bamout.bam");
-            argBuilder.addArgument("bamout", bamoutFile.getAbsolutePath());
+            argBuilder.addArgument(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_SHORT_NAME, bamoutFile.getAbsolutePath());
         }
         argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME, createBamoutIndex);
         argBuilder.addBooleanArgument(StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_LONG_NAME, createBamoutMD5);

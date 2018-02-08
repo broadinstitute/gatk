@@ -196,7 +196,7 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
         // We can reuse for annotation the likelihood for genotyping as long as there is no contamination filtering
         // or the user want to use the contamination filtered set for annotations.
         // Otherwise (else part) we need to do it again.
-        if (configuration.USE_FILTERED_READ_MAP_FOR_ANNOTATIONS || !configuration.isSampleContaminationPresent()) {
+        if (configuration.useFilteredReadMapForAnnotations || !configuration.isSampleContaminationPresent()) {
             readAlleleLikelihoodsForAnnotations = readAlleleLikelihoodsForGenotyping;
             readAlleleLikelihoodsForAnnotations.filterToOnlyOverlappingUnclippedReads(loc);
         } else {
