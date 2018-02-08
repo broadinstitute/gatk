@@ -31,7 +31,7 @@ def parse_args():
 
     # Annotation arguments
     parser.add_argument('--annotations', help='Array of annotation names, initialised via annotation_set argument')
-    parser.add_argument('--annotation_set', default='gatk', choices=defines.ANNOTATIONS.keys(),
+    parser.add_argument('--annotation_set', default='best_practices', choices=defines.ANNOTATIONS.keys(),
                         help='Key which maps to an annotations list (or None for architectures that do not take annotations).')
 
 

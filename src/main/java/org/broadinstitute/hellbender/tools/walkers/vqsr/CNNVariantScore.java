@@ -35,7 +35,7 @@ import java.util.stream.StreamSupport;
  * <h3>Example</h3>
  *
  * <pre>
- * gatk NeuralNetInference\
+ * gatk CNNVariantScore\
  *   -V vcf_to_annotate.vcf.gz \
  *   -R reference.fasta \
  *   -O annotated.vcf \
@@ -45,12 +45,12 @@ import java.util.stream.StreamSupport;
  */
 @ExperimentalFeature
 @CommandLineProgramProperties(
-        summary = NeuralNetInference.USAGE_SUMMARY,
-        oneLineSummary = NeuralNetInference.USAGE_ONE_LINE_SUMMARY,
+        summary = CNNVariantScore.USAGE_SUMMARY,
+        oneLineSummary = CNNVariantScore.USAGE_ONE_LINE_SUMMARY,
         programGroup = VariantEvaluationProgramGroup.class
 )
 
-public class NeuralNetInference extends VariantWalker {
+public class CNNVariantScore extends VariantWalker {
     private final static String NL = String.format("%n");
     static final String USAGE_ONE_LINE_SUMMARY = "Apply 1d Convolutional Neural Net to filter annotated variants";
     static final String USAGE_SUMMARY = "Annotate a VCF with scores from 1d Convolutional Neural Network (CNN)." +
@@ -61,6 +61,7 @@ public class NeuralNetInference extends VariantWalker {
     private static final int REF_INDEX = 2;
     private static final int ALT_INDEX = 3;
     private static final int KEY_INDEX = 4;
+    private static final int FIFO_STRING_CAPACITY = 1024;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -203,35 +204,36 @@ public class NeuralNetInference extends VariantWalker {
     }
 
     private void transferReadsToPythonViaFifo(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext) {
-        String readTensorString = null;
+        StringBuilder sb = new StringBuilder(FIFO_STRING_CAPACITY);
         try {
-            readTensorString = String.format("%s\t%s\t%s\t%s\t",
+            sb.append(String.format("%s\t%s\t%s\t%s\t",
                     getVariantDataString(variant),
                     new String(Arrays.copyOfRange(referenceContext.getBases(), 0, windowSize), "UTF-8"),
                     getVariantInfoString(variant),
-                    variant.isSNP() ? "SNP" : variant.isIndel() ? "INDEL" : "OTHER");
+                    variant.isSNP() ? "SNP" : variant.isIndel() ? "INDEL" : "OTHER"));
         } catch (UnsupportedEncodingException e) {
             throw new GATKException("Trying to make string from reference, but unsupported encoding UTF-8.", e);
         }
         Iterator<GATKRead> readIt = readsContext.iterator();
         while(readIt.hasNext()){
-            readTensorString += GATKReadToString(readIt.next());
+            sb.append(GATKReadToString(readIt.next()));
         }
-        readTensorString += "\n";
-        batchList.add(readTensorString);
+        sb.append("\n");
+        batchList.add(sb.toString());
         curBatchSize++;
     }
 
     private String GATKReadToString(GATKRead read){
-        String readString = read.getBasesString() + "\t";
-        readString += baseQualityBytesToString(read.getBaseQualities())+ "\t";
-        readString += read.getCigar().toString() + "\t";
-        readString += read.isReverseStrand() + "\t";
-        readString += (read.isPaired() ? read.mateIsReverseStrand() : "false") + "\t";
-        readString += read.isFirstOfPair() + "\t";
-        readString += read.getMappingQuality() + "\t";
-        readString += Integer.toString(read.getUnclippedStart()) + "\t";
-        return readString;
+        StringBuilder sb = new StringBuilder(FIFO_STRING_CAPACITY);
+        sb.append(read.getBasesString() + "\t");
+        sb.append(baseQualityBytesToString(read.getBaseQualities())+ "\t");
+        sb.append(read.getCigar().toString() + "\t");
+        sb.append(read.isReverseStrand() + "\t");
+        sb.append((read.isPaired() ? read.mateIsReverseStrand() : "false") + "\t");
+        sb.append(read.isFirstOfPair() + "\t");
+        sb.append(read.getMappingQuality() + "\t");
+        sb.append(Integer.toString(read.getUnclippedStart()) + "\t");
+        return sb.toString();
 
     }
 
@@ -305,9 +307,8 @@ public class NeuralNetInference extends VariantWalker {
 
 
     private void writeOutputVCFWithScores(){
-        final VariantContextWriter vcfWriter = createVCFWriter(new File(outputFile));
-
-        try (final Scanner scoreScan = new Scanner(scoreFile)) {
+        try (final Scanner scoreScan = new Scanner(scoreFile);
+             final VariantContextWriter vcfWriter = createVCFWriter(new File(outputFile))) {
             scoreScan.useDelimiter("\\n");
             writeVCFHeader(vcfWriter);
             final VariantFilter variantfilter = makeVariantFilter();

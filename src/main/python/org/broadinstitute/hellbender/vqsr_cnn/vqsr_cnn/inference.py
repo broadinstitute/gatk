@@ -24,7 +24,7 @@ Variant = namedtuple("Variant", "contig pos ref alt type")
 def score_and_write_batch(args, model, file_out, fifo, batch_size, python_batch_size):
 	'''Score and write a batch of variants with a 1D CNN.
 
-	This function is tightly coupled with the NeuralNetInference
+	This function is tightly coupled with the CNNVariantScore
 	It requires data written to the fifo in the order given by transferToPythonViaFifo
 
 	Arguments
@@ -48,7 +48,7 @@ def score_and_write_batch(args, model, file_out, fifo, batch_size, python_batch_
 
 		variant_data.append(fifo_data[0] + '\t' + fifo_data[1] + '\t' + fifo_data[2] + '\t' + fifo_data[3])
 		reference_batch.append(reference_string_to_tensor(fifo_data[4]))
-		annotation_batch.append(annotation_string_to_tensor(fifo_data[5]))
+		annotation_batch.append(annotation_string_to_tensor(args, fifo_data[5]))
 		variant_types.append(fifo_data[6])
 
 		fidx = 7 # 7 Because above we parsed: contig pos ref alt reference_string annotation variant_type
@@ -104,13 +104,13 @@ def reference_string_to_tensor(reference):
 	return dna_data
 
 
-def annotation_string_to_tensor(annotation_string):
+def annotation_string_to_tensor(args, annotation_string):
 	name_val_pairs = annotation_string.split(';')
 	name_val_arrays = [p.split('=') for p in name_val_pairs]
 	annotation_map = {str(p[0]).strip() : p[1] for p in name_val_arrays if len(p) > 1}
-	annotation_data = np.zeros(( len(defines.ANNOTATIONS['gatk']),))
+	annotation_data = np.zeros(( len(defines.ANNOTATIONS[args.annotation_set]),))
 	
-	for i,a in enumerate(defines.ANNOTATIONS['gatk']):
+	for i,a in enumerate(defines.ANNOTATIONS[args.annotation_set]):
 		if a in annotation_map:
 			annotation_data[i] = annotation_map[a]
 	
