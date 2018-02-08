@@ -706,7 +706,7 @@ public final class ModelSegments extends CommandLineProgram {
         modeller.writeModelParameterFiles(copyRatioParameterFile, alleleFractionParameterFile);
     }
 
-    private void writeSegments(final AbstractSampleLocatableCollection<?> segments,
+    private void writeSegments(final AbstractSampleLocatableCollection<?, ?> segments,
                                final String fileSuffix) {
         final File segmentsFile = new File(outputDir, outputPrefix + fileSuffix);
         segments.write(segmentsFile);

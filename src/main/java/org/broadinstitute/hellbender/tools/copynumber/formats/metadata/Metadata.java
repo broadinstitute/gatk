@@ -11,7 +11,8 @@ public interface Metadata {
     enum Type {
         SAMPLE,
         LOCATABLE,
-        SAMPLE_LOCATABLE
+        SAMPLE_LOCATABLE,
+        BINNING_SAMPLE_LOCATABLE
     }
 
     /**

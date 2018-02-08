@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import java.io.File;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 /**
  * Represents a sample name,
@@ -22,16 +22,15 @@ public abstract class AbstractSampleRecordCollection<RECORD> extends AbstractRec
     AbstractSampleRecordCollection(final SampleMetadata metadata,
                                    final List<RECORD> records,
                                    final TableColumnCollection mandatoryColumns,
-                                   final Function<DataLine, RECORD> recordFromDataLineDecoder,
+                                   final BiFunction<DataLine, SampleMetadata, RECORD> recordFromDataLineDecoder,
                                    final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         super(metadata, records, mandatoryColumns, recordFromDataLineDecoder, recordToDataLineEncoder);
     }
 
     AbstractSampleRecordCollection(final File inputFile,
-                                   final TableColumnCollection mandatoryColumns,
-                                   final Function<DataLine, RECORD> recordFromDataLineDecoder,
+                                   final BiFunction<DataLine, SampleMetadata, RECORD> recordFromDataLineDecoder,
                                    final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
-        super(inputFile, mandatoryColumns, recordFromDataLineDecoder, recordToDataLineEncoder);
+        super(inputFile, recordFromDataLineDecoder, recordToDataLineEncoder);
     }
 
     @Override

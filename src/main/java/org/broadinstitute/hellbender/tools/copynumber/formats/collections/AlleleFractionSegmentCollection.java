@@ -9,14 +9,14 @@ import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import java.io.File;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 /**
  * Represents an allele-fraction segmentation.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class AlleleFractionSegmentCollection extends AbstractSampleLocatableCollection<AlleleFractionSegment> {
+public final class AlleleFractionSegmentCollection extends AbstractSampleLocatableCollection<SampleLocatableMetadata, AlleleFractionSegment> {
     //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
     /**
      * CONTIG, START, END, NUM_POINTS_ALLELE_FRACTION
@@ -30,7 +30,7 @@ public final class AlleleFractionSegmentCollection extends AbstractSampleLocatab
         static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
     }
 
-    private static final Function<DataLine, AlleleFractionSegment> ALLELE_FRACTION_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION = dataLine -> {
+    private static final BiFunction<DataLine, SampleLocatableMetadata, AlleleFractionSegment> ALLELE_FRACTION_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION = (dataLine, sampleLocatableMetadata) -> {
         final String contig = dataLine.get(AlleleFractionSegmentTableColumn.CONTIG);
         final int start = dataLine.getInt(AlleleFractionSegmentTableColumn.START);
         final int end = dataLine.getInt(AlleleFractionSegmentTableColumn.END);
@@ -46,7 +46,7 @@ public final class AlleleFractionSegmentCollection extends AbstractSampleLocatab
                     .append(alleleFractionSegment.getNumPoints());
 
     public AlleleFractionSegmentCollection(final File inputFile) {
-        super(inputFile, AlleleFractionSegmentTableColumn.COLUMNS, ALLELE_FRACTION_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION, ALLELE_FRACTION_SEGMENT_RECORD_AND_DATA_LINE_BI_CONSUMER);
+        super(inputFile, ALLELE_FRACTION_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION, ALLELE_FRACTION_SEGMENT_RECORD_AND_DATA_LINE_BI_CONSUMER);
     }
 
     public AlleleFractionSegmentCollection(final SampleLocatableMetadata metadata,

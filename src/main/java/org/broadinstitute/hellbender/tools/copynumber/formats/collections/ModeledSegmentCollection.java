@@ -9,12 +9,12 @@ import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import java.io.File;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 /**
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class ModeledSegmentCollection extends AbstractSampleLocatableCollection<ModeledSegment> {
+public final class ModeledSegmentCollection extends AbstractSampleLocatableCollection<SampleLocatableMetadata, ModeledSegment> {
     //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
     /**
      * CONTIG, START, END, NUM_POINTS_COPY_RATIO, NUM_POINTS_ALLELE_FRACTION,
@@ -37,7 +37,8 @@ public final class ModeledSegmentCollection extends AbstractSampleLocatableColle
         static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
     }
 
-    private static final Function<DataLine, ModeledSegment> MODELED_SEGMENT_RECORD_FROM_DATA_LINE_DECODER = dataLine -> {
+    private static final BiFunction<DataLine, SampleLocatableMetadata, ModeledSegment> MODELED_SEGMENT_RECORD_FROM_DATA_LINE_DECODER =
+            (dataLine, sampleLocatableMetadata) -> {
         final String contig = dataLine.get(ModeledSegmentTableColumn.CONTIG);
         final int start = dataLine.getInt(ModeledSegmentTableColumn.START);
         final int end = dataLine.getInt(ModeledSegmentTableColumn.END);
@@ -69,7 +70,7 @@ public final class ModeledSegmentCollection extends AbstractSampleLocatableColle
                     .append(formatDouble(modeledSegment.getMinorAlleleFractionSimplePosteriorSummary().getDecile90()));
 
     public ModeledSegmentCollection(final File inputFile) {
-        super(inputFile, ModeledSegmentTableColumn.COLUMNS, MODELED_SEGMENT_RECORD_FROM_DATA_LINE_DECODER, MODELED_SEGMENT_RECORD_TO_DATA_LINE_ENCODER);
+        super(inputFile, MODELED_SEGMENT_RECORD_FROM_DATA_LINE_DECODER, MODELED_SEGMENT_RECORD_TO_DATA_LINE_ENCODER);
     }
 
     public ModeledSegmentCollection(final SampleLocatableMetadata metadata,

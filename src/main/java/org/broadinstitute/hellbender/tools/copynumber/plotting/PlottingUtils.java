@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AbstractSampleLocatableCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -64,10 +65,11 @@ final class PlottingUtils {
     }
 
     //validate contig names and lengths
-    static <T extends Locatable> void validateContigs(final Map<String, Integer> contigLengthMap,
-                                                      final AbstractSampleLocatableCollection<T> locatableCollection,
-                                                      final File file,
-                                                      final Logger logger) {
+    static <M extends SampleLocatableMetadata, T extends Locatable> void validateContigs(
+            final Map<String, Integer> contigLengthMap,
+            final AbstractSampleLocatableCollection<M, T> locatableCollection,
+            final File file,
+            final Logger logger) {
         Utils.nonNull(contigLengthMap);
         Utils.nonNull(logger);
         if (locatableCollection == null) {

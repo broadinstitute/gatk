@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import java.io.File;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -23,7 +23,7 @@ import java.util.stream.IntStream;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class SimpleCountCollection extends AbstractSampleLocatableCollection<SimpleCount> {
+public final class SimpleCountCollection extends AbstractSampleLocatableCollection<SampleLocatableMetadata, SimpleCount> {
     //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
     /**
      * CONTIG, START, END, COUNT
@@ -37,7 +37,8 @@ public final class SimpleCountCollection extends AbstractSampleLocatableCollecti
         static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
     }
     
-    private static final Function<DataLine, SimpleCount> SIMPLE_COUNT_RECORD_FROM_DATA_LINE_DECODER = dataLine -> {
+    private static final BiFunction<DataLine, SampleLocatableMetadata, SimpleCount> SIMPLE_COUNT_RECORD_FROM_DATA_LINE_DECODER =
+            (dataLine, sampleLocatableMetadata) -> {
         final String contig = dataLine.get(SimpleCountTableColumn.CONTIG);
         final int start = dataLine.getInt(SimpleCountTableColumn.START);
         final int end = dataLine.getInt(SimpleCountTableColumn.END);
@@ -53,7 +54,7 @@ public final class SimpleCountCollection extends AbstractSampleLocatableCollecti
                     .append(simpleCount.getCount());
 
     private SimpleCountCollection(final File inputFile) {
-        super(inputFile, SimpleCountCollection.SimpleCountTableColumn.COLUMNS, SIMPLE_COUNT_RECORD_FROM_DATA_LINE_DECODER, SIMPLE_COUNT_RECORD_TO_DATA_LINE_ENCODER);
+        super(inputFile, SIMPLE_COUNT_RECORD_FROM_DATA_LINE_DECODER, SIMPLE_COUNT_RECORD_TO_DATA_LINE_ENCODER);
     }
 
     public SimpleCountCollection(final SampleLocatableMetadata metadata,

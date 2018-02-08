@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import java.io.File;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 /**
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
@@ -26,7 +26,8 @@ public final class SimpleIntervalCollection extends AbstractLocatableCollection<
         static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
     }
 
-    private static final Function<DataLine, SimpleInterval> SIMPLE_INTERVAL_RECORD_FROM_DATA_LINE_DECODER = dataLine -> {
+    private static final BiFunction<DataLine, LocatableMetadata, SimpleInterval> SIMPLE_INTERVAL_RECORD_FROM_DATA_LINE_DECODER =
+            (dataLine, locatableMetadata) -> {
         final String contig = dataLine.get(SimpleIntervalTableColumn.CONTIG);
         final int start = dataLine.getInt(SimpleIntervalTableColumn.START);
         final int end = dataLine.getInt(SimpleIntervalTableColumn.END);
@@ -39,7 +40,7 @@ public final class SimpleIntervalCollection extends AbstractLocatableCollection<
                     .append(simpleInterval.getEnd());
 
     public SimpleIntervalCollection(final File inputFile) {
-        super(inputFile, SimpleIntervalTableColumn.COLUMNS, SIMPLE_INTERVAL_RECORD_FROM_DATA_LINE_DECODER, SIMPLE_INTERVAL_RECORD_TO_DATA_LINE_ENCODER);
+        super(inputFile, SIMPLE_INTERVAL_RECORD_FROM_DATA_LINE_DECODER, SIMPLE_INTERVAL_RECORD_TO_DATA_LINE_ENCODER);
     }
 
     public SimpleIntervalCollection(final LocatableMetadata metadata,

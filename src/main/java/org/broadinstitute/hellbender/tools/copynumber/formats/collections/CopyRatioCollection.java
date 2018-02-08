@@ -10,13 +10,13 @@ import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import java.io.File;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 /**
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class CopyRatioCollection extends AbstractSampleLocatableCollection<CopyRatio> {
+public final class CopyRatioCollection extends AbstractSampleLocatableCollection<SampleLocatableMetadata, CopyRatio> {
     //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
     /**
      * CONTIG, START, END, LOG2_COPY_RATIO
@@ -30,7 +30,8 @@ public final class CopyRatioCollection extends AbstractSampleLocatableCollection
         static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
     }
 
-    private static final Function<DataLine, CopyRatio> COPY_RATIO_RECORD_FROM_DATA_LINE_DECODER = dataLine -> {
+    private static final BiFunction<DataLine, SampleLocatableMetadata, CopyRatio> COPY_RATIO_RECORD_FROM_DATA_LINE_DECODER =
+            (dataLine, sampleLocatableMetadata) -> {
         final String contig = dataLine.get(CopyRatioTableColumn.CONTIG);
         final int start = dataLine.getInt(CopyRatioTableColumn.START);
         final int end = dataLine.getInt(CopyRatioTableColumn.END);
@@ -46,7 +47,7 @@ public final class CopyRatioCollection extends AbstractSampleLocatableCollection
                 .append(formatDouble(copyRatio.getLog2CopyRatioValue()));
 
     public CopyRatioCollection(final File inputFile) {
-        super(inputFile, CopyRatioTableColumn.COLUMNS, COPY_RATIO_RECORD_FROM_DATA_LINE_DECODER, COPY_RATIO_RECORD_TO_DATA_LINE_ENCODER);
+        super(inputFile, COPY_RATIO_RECORD_FROM_DATA_LINE_DECODER, COPY_RATIO_RECORD_TO_DATA_LINE_ENCODER);
     }
 
     public CopyRatioCollection(final SampleLocatableMetadata metadata,

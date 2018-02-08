@@ -9,12 +9,12 @@ import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import java.io.File;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 /**
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class CopyRatioSegmentCollection extends AbstractSampleLocatableCollection<CopyRatioSegment> {
+public final class CopyRatioSegmentCollection extends AbstractSampleLocatableCollection<SampleLocatableMetadata, CopyRatioSegment> {
     //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
     /**
      * CONTIG, START, END, NUM_POINTS_COPY_RATIO, MEAN_LOG2_COPY_RATIO
@@ -29,7 +29,8 @@ public final class CopyRatioSegmentCollection extends AbstractSampleLocatableCol
         static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
     }
 
-    private static final Function<DataLine, CopyRatioSegment> COPY_RATIO_SEGMENT_RECORD_FROM_DATA_LINE_DECODER = dataLine -> {
+    private static final BiFunction<DataLine, SampleLocatableMetadata, CopyRatioSegment> COPY_RATIO_SEGMENT_RECORD_FROM_DATA_LINE_DECODER =
+            (dataLine, sampleLocatableMetadata) -> {
         final String contig = dataLine.get(CopyRatioSegmentTableColumn.CONTIG);
         final int start = dataLine.getInt(CopyRatioSegmentTableColumn.START);
         final int end = dataLine.getInt(CopyRatioSegmentTableColumn.END);
@@ -47,7 +48,7 @@ public final class CopyRatioSegmentCollection extends AbstractSampleLocatableCol
                     .append(formatDouble(copyRatioSegment.getMeanLog2CopyRatio()));
 
     public CopyRatioSegmentCollection(final File inputFile) {
-        super(inputFile, CopyRatioSegmentTableColumn.COLUMNS, COPY_RATIO_SEGMENT_RECORD_FROM_DATA_LINE_DECODER, COPY_RATIO_SEGMENT_RECORD_TO_DATA_LINE_ENCODER);
+        super(inputFile, COPY_RATIO_SEGMENT_RECORD_FROM_DATA_LINE_DECODER, COPY_RATIO_SEGMENT_RECORD_TO_DATA_LINE_ENCODER);
     }
 
     public CopyRatioSegmentCollection(final SampleLocatableMetadata metadata,

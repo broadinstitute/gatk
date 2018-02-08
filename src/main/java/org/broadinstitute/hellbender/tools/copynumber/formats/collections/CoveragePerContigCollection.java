@@ -30,7 +30,7 @@ public final class CoveragePerContigCollection extends AbstractRecordCollection<
                 metadata,
                 coveragePerContigs,
                 new TableColumnCollection(ListUtils.union(Collections.singletonList(SAMPLE_NAME_TABLE_COLUMN), contigs)),
-                dataLine -> new CoveragePerContig(
+                (dataLine, locatableMetadata) -> new CoveragePerContig(
                         dataLine.get(SAMPLE_NAME_TABLE_COLUMN),
                         contigs.stream().collect(Collectors.toMap(
                                 Function.identity(),

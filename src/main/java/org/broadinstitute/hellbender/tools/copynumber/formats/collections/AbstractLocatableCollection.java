@@ -16,7 +16,7 @@ import java.io.File;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 /**
@@ -34,7 +34,7 @@ public abstract class AbstractLocatableCollection<METADATA extends LocatableMeta
     AbstractLocatableCollection(final METADATA metadata,
                                 final List<RECORD> records,
                                 final TableColumnCollection mandatoryColumns,
-                                final Function<DataLine, RECORD> recordFromDataLineDecoder,
+                                final BiFunction<DataLine, METADATA, RECORD> recordFromDataLineDecoder,
                                 final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         super(metadata, sortRecords(records, metadata.getSequenceDictionary()), mandatoryColumns, recordFromDataLineDecoder, recordToDataLineEncoder);
         CopyNumberArgumentValidationUtils.validateIntervals(getRecords(), metadata.getSequenceDictionary());
@@ -44,10 +44,9 @@ public abstract class AbstractLocatableCollection<METADATA extends LocatableMeta
      * @throws IllegalArgumentException if records are not sorted according to the {@link SAMSequenceDictionary} contained in the input file
      */
     AbstractLocatableCollection(final File inputFile,
-                                final TableColumnCollection mandatoryColumns,
-                                final Function<DataLine, RECORD> recordFromDataLineDecoder,
+                                final BiFunction<DataLine, METADATA, RECORD> recordFromDataLineDecoder,
                                 final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
-        super(inputFile, mandatoryColumns, recordFromDataLineDecoder, recordToDataLineEncoder);
+        super(inputFile, recordFromDataLineDecoder, recordToDataLineEncoder);
         CopyNumberArgumentValidationUtils.validateIntervals(getRecords(), getMetadata().getSequenceDictionary());
     }
 

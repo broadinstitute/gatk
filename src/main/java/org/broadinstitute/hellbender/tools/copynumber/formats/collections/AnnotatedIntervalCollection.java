@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import java.io.File;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 /**
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
@@ -29,7 +29,8 @@ public final class AnnotatedIntervalCollection extends AbstractLocatableCollecti
         static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
     }
     
-    private static final Function<DataLine, AnnotatedInterval> ANNOTATED_INTERVAL_RECORD_FROM_DATA_LINE_DECODER = dataLine -> {
+    private static final BiFunction<DataLine, LocatableMetadata, AnnotatedInterval> ANNOTATED_INTERVAL_RECORD_FROM_DATA_LINE_DECODER =
+            (dataLine, locatableMetadata) -> {
         final String contig = dataLine.get(AnnotatedIntervalTableColumn.CONTIG);
         final int start = dataLine.getInt(AnnotatedIntervalTableColumn.START);
         final int end = dataLine.getInt(AnnotatedIntervalTableColumn.END);
@@ -46,7 +47,7 @@ public final class AnnotatedIntervalCollection extends AbstractLocatableCollecti
                     .append(formatDouble(annotatedInterval.getAnnotationSet().getGCContent()));
 
     public AnnotatedIntervalCollection(final File inputFile) {
-        super(inputFile, AnnotatedIntervalCollection.AnnotatedIntervalTableColumn.COLUMNS, ANNOTATED_INTERVAL_RECORD_FROM_DATA_LINE_DECODER, ANNOTATED_INTERVAL_RECORD_TO_DATA_LINE_ENCODER);
+        super(inputFile, ANNOTATED_INTERVAL_RECORD_FROM_DATA_LINE_DECODER, ANNOTATED_INTERVAL_RECORD_TO_DATA_LINE_ENCODER);
     }
 
     public AnnotatedIntervalCollection(final LocatableMetadata metadata,

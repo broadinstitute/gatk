@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 public enum ReadCountTableColumn {
     CONTIG("CONTIG"),
     START("START"),
-    END("STOP");
+    END("END");
 
     private final String columnName;  //store the column names
 

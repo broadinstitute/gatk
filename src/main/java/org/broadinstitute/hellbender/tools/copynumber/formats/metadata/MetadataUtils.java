@@ -4,6 +4,9 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.ReadCountFileHeaderKey;
+import org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.ReadCountType;
+import org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.covariatebin.ReadCountCovariateBinningConfiguration;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.List;
@@ -32,6 +35,33 @@ public final class MetadataUtils {
         return sampleNames.get(0);
     }
 
+    /**
+     * @return read count type extracted from {@link SAMFileHeader} comments
+     */
+    public static ReadCountType getReadCountType(final SAMFileHeader header) {
+        Utils.nonNull(header);
+        final List<String> comments = Utils.nonEmpty(header.getComments());
+        return ReadCountType.getReadCountTypeByName(
+                ReadCountFileHeaderKey.getHeaderValueForKey(comments, ReadCountFileHeaderKey.READ_COUNT_TYPE));
+    }
+
+    /**
+     * @return null if read count type is {@link ReadCountType#SIMPLE_COUNT}
+     */
+    public static List<ReadCountCovariateBinningConfiguration> getBinningConfigurations(
+            final SAMFileHeader header,
+            final ReadCountType readCountType) {
+
+        Utils.nonNull(header);
+        if (readCountType == ReadCountType.SIMPLE_COUNT) {
+            return null;
+        }
+
+        final List<String> comments = Utils.nonEmpty(header.getComments());
+        return ReadCountCovariateBinningConfiguration.parseParameters(
+                ReadCountFileHeaderKey.getHeaderValueForKey(comments, ReadCountFileHeaderKey.BINNING_CONFIGURATION));
+    }
+
     @SuppressWarnings("unchecked")
     public static <T extends Metadata> T fromHeader(final SAMFileHeader header,
                                                     final Metadata.Type metadataType) {
@@ -44,6 +74,10 @@ public final class MetadataUtils {
                 return (T) new SimpleLocatableMetadata(header.getSequenceDictionary());
             case SAMPLE_LOCATABLE:
                 return (T) new SimpleSampleLocatableMetadata(readSampleName(header), header.getSequenceDictionary());
+            case BINNING_SAMPLE_LOCATABLE:
+                final ReadCountType readCountType = getReadCountType(header);
+                return (T) new SimpleBinningSampleLocatableMetadata(readSampleName(header),
+                        header.getSequenceDictionary(), readCountType, getBinningConfigurations(header, readCountType));
             default:
                 throw new GATKException.ShouldNeverReachHereException("Encountered unknown Metadata.Type.");
         }

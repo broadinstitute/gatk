@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyNumberPosteriorDistribution;
 import org.broadinstitute.hellbender.tools.copynumber.gcnv.IntegerCopyNumberStateCollection;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -8,6 +9,7 @@ import org.broadinstitute.hellbender.utils.tsv.DataLine;
 
 import java.io.File;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -21,7 +23,6 @@ public final class ChunkedCopyNumberPosteriorCollection extends AbstractSampleRe
     public ChunkedCopyNumberPosteriorCollection(final File inputFile,
                                                 final IntegerCopyNumberStateCollection integerCopyNumberStateCollection) {
         super(inputFile,
-                Utils.nonNull(integerCopyNumberStateCollection).getTableColumnCollection(),
                 getPosteriorRecordFromDataLineDecoder(integerCopyNumberStateCollection),
                 getPosteriorRecordToDataLineEncoder(integerCopyNumberStateCollection));
     }
@@ -32,9 +33,9 @@ public final class ChunkedCopyNumberPosteriorCollection extends AbstractSampleRe
      *
      * Note: we assume that the posteriors are stored in the log space.
      */
-    private static Function<DataLine, CopyNumberPosteriorDistribution> getPosteriorRecordFromDataLineDecoder(
+    private static BiFunction<DataLine, SampleMetadata, CopyNumberPosteriorDistribution> getPosteriorRecordFromDataLineDecoder(
             final IntegerCopyNumberStateCollection integerCopyNumberStateCollection) {
-            return dataLine -> {
+            return (dataLine, sampleMetadata) -> {
                 try {
                     return new CopyNumberPosteriorDistribution(
                             IntStream.range(0, integerCopyNumberStateCollection.size())

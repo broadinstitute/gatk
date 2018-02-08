@@ -6,19 +6,24 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.*;
 import org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.covariatebin.ReadCountCovariateBinCollection;
 import org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.covariatebin.ReadCountCovariateBinningConfiguration;
-import org.broadinstitute.hellbender.tools.exome.*;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.BinnedReadCountCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.BinningSampleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.MetadataUtils;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleBinningSampleLocatableMetadata;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -46,9 +51,9 @@ import java.util.stream.IntStream;
         oneLineSummary = "Perform binned or simple count coverage collection on single-sample BAM file",
         programGroup = CopyNumberProgramGroup.class
 )
-public final class CollectReadCounts extends ReadWalker {
+@ExperimentalFeature
+public final class CollectBinnedReadCounts extends ReadWalker {
 
-    public static final String LINE_SEPARATOR = "\n";
     public static final double GC_MIN_BIN_VALUE = 0.;
     public static final double GC_MAX_BIN_VALUE = 1.0;
 
@@ -79,7 +84,7 @@ public final class CollectReadCounts extends ReadWalker {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             optional = false
     )
-    protected File output = null;
+    protected File outputFile = null;
 
     @Argument(
             doc = "Type of read count collection. It can be SIMPLE_COUNT for simple" +
@@ -141,19 +146,19 @@ public final class CollectReadCounts extends ReadWalker {
     protected int fragmentLengthBinEndValue = 500;
 
     /**
-     * Writer to the main output file indicated by {@link #output}.
-     */
-    private PrintWriter outputWriter;
-
-    /**
      * Reference to the logger.
      */
-    private static final Logger logger = LogManager.getLogger(CalculateTargetCoverage.class);
+    private static final Logger logger = LogManager.getLogger(CollectBinnedReadCounts.class);
 
     /**
-     * Sequence dictionary
+     * Sequence dictionary TODO this will be replaced with SampleLocatableMetadata
      */
     private SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
+
+    /**
+     * Metadata contained in the BAM file.
+     */
+    private BinningSampleLocatableMetadata metadata;
 
     /**
      * List of non-overlapping intervals
@@ -163,7 +168,7 @@ public final class CollectReadCounts extends ReadWalker {
     /**
      * Map from targets to their corresponding read count data
      */
-    private Map<SimpleInterval, ReadCountData> readCountDataMap;
+    private final Map<SimpleInterval, ReadCountData> readCountDataMap = new LinkedHashMap<>();
 
     /**
      * Collection of read count bins, it could be {@code null} if type of read count collection is not binned
@@ -175,6 +180,11 @@ public final class CollectReadCounts extends ReadWalker {
      */
     private List<ReadCountCovariateBinningConfiguration> covariateBinningConfigurations;
 
+    /**
+     * Reference data source used to compute reference related covariate metrics such as GC content
+     */
+    private ReferenceDataSource referenceDataSource;
+    
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
         final List<ReadFilter> filters = new ArrayList<>(super.getDefaultReadFilters());
@@ -191,15 +201,19 @@ public final class CollectReadCounts extends ReadWalker {
     }
 
     @Override
+    public boolean requiresReference() {
+        return true;
+    }
+
+    @Override
     public void onTraversalStart() {
         // validate arguments
         if (readArguments.getReadFilesNames().size() != 1) {
             throw new UserException.BadInput("This tool only accepts a single bam/sam/cram as input");
         }
-        SampleCollection sampleCollection = new SampleCollection(getHeaderForReads());
-        if (sampleCollection.sampleCount() > 1) {
-            throw new UserException.BadInput("We do not support BAM files with multiple samples");
-        }
+        CopyNumberArgumentValidationUtils.validateIntervalArgumentCollection(intervalArgumentCollection);
+
+        referenceDataSource = ReferenceDataSource.of(referenceArguments.getReferencePath());
 
         // initialize fields
         if (readCountType == ReadCountType.BINNED) {
@@ -209,14 +223,21 @@ public final class CollectReadCounts extends ReadWalker {
             }
             covariateBinCollection = buildCovariateBinCollection();
         }
-        final String sampleName = sampleCollection.sampleIds().get(0);
-        logger.log(Level.INFO, "Reading targets locations from intervals...");
+        metadata = new SimpleBinningSampleLocatableMetadata(MetadataUtils.readSampleName(getHeaderForReads()),
+                getHeaderForReads().getSequenceDictionary(), readCountType, covariateBinningConfigurations);
 
+        if (!CopyNumberArgumentValidationUtils.isSameDictionary(metadata.getSequenceDictionary(), sequenceDictionary)) {
+            logger.warn("Sequence dictionary in BAM does not match the master sequence dictionary.");
+        }
+
+        logger.log(Level.INFO, "Reading intervals...");
+        final List<SimpleInterval> intervals = intervalArgumentCollection.getIntervals(sequenceDictionary);
+
+        //TODO replace this with the OverlapDetector
         intervalList = new CachedBinarySearchIntervalList<>(intervalArgumentCollection.getIntervals(sequenceDictionary));
 
-        readCountDataMap = buildReadCountDataMap();
-        // Open output files and write headers:
-        outputWriter = openOutputWriter(output, composeMatrixOutputHeader(getCommandLine(), sampleName));
+        intervals.stream().forEach(interval -> readCountDataMap.put(
+                interval, ReadCountDataFactory.getReadCountDataObject(readCountType, interval, covariateBinCollection)));
 
         // Next we start the traversal:
         logger.log(Level.INFO, "Collecting read counts ...");
@@ -232,66 +253,6 @@ public final class CollectReadCounts extends ReadWalker {
         }
         this.covariateBinningConfigurations = configurations;
         return new ReadCountCovariateBinCollection(covariateBinningConfigurations);
-    }
-
-    /**
-     * Populate the read count data map by instantiating a read count data container for each interval
-     *
-     * @return never {@code null}.
-     */
-    private Map<SimpleInterval, ReadCountData> buildReadCountDataMap() {
-        final Map<SimpleInterval, ReadCountData> result = new HashMap<>();
-        intervalList.getSortedIntervals().stream()
-                .forEach(interval -> result.put(interval, ReadCountDataFactory.getReadCountDataObject(readCountType, interval, covariateBinCollection)));
-        return result;
-    }
-
-    /**
-     * Opens the output file for writing with a print-writer.
-     *
-     * @param output     the output file.
-     * @param headerText to be printed immediately after opening the writer.
-     * @return never {@code null}.
-     * @throws UserException.CouldNotCreateOutputFile if there was some problem creating or overwriting {@code output}.
-     */
-    private PrintWriter openOutputWriter(final File output, final String headerText) {
-        try {
-            final PrintWriter result = new PrintWriter(output);
-            result.println(headerText);
-            result.flush();
-            return result;
-        } catch (final IOException e) {
-            throw new UserException.CouldNotCreateOutputFile(output, e);
-        }
-    }
-
-    /**
-     * Composes the main output header.
-     *
-     * @param commandLine      the tool command line.
-     * @param sampleName        the name of the sample
-     * @return never {@code null}.
-     */
-    private String composeMatrixOutputHeader(final String commandLine, final String sampleName) {
-        final String formatString = String.join(LINE_SEPARATOR,
-                "##fileFormat    = tsv",
-                "##commandLine   = %s",
-                "##title         = Read counts per target",
-                ("##" + ReadCountFileHeaderKey.READ_COUNT_TYPE.getHeaderKeyName() + " = %s"),
-                ("##" + ReadCountFileHeaderKey.SAMPLE_NAME.getHeaderKeyName() + "    = %s"));
-
-        StringBuilder header = new StringBuilder(String.format(formatString, commandLine, readCountType.toString(), sampleName));
-
-        //append the binning configuration descriptor if read count collection type is binned
-        if (this.readCountType == ReadCountType.BINNED) {
-            final String binningConfigurationDescriptor = covariateBinningConfigurations.stream().
-                    map(config -> config.toString()).reduce("", (s1, s2) -> s1.concat(s2));
-            final String binningConfigurationLine = ("##" + ReadCountFileHeaderKey.BINNING_CONFIGURATION.getHeaderKeyName()
-                    + " = " + binningConfigurationDescriptor);
-            header.append(LINE_SEPARATOR + binningConfigurationLine);
-        }
-
-        return header.toString();
     }
 
     @Override
@@ -312,30 +273,20 @@ public final class CollectReadCounts extends ReadWalker {
         readCountTableColumns.addAll(ReadCountDataFactory.getColumnsOfReadCountType(readCountType, covariateBinCollection).names());
         final TableColumnCollection columns = new TableColumnCollection(readCountTableColumns);
 
-        try {
-            BinnedReadCountWriter writer = new BinnedReadCountWriter(outputWriter, columns);
-            for(SimpleInterval interval: intervalList.getSortedIntervals()) {
-                writer.writeRecord(readCountDataMap.get(interval));
-            }
-        } catch(IOException ex) {
-            throw new UserException.CouldNotCreateOutputFile(output, "Could not create output file");
-        }
+        final BinnedReadCountCollection binnedReadCountCollection = new BinnedReadCountCollection(metadata,
+                new ArrayList<>(readCountDataMap.values()), columns);
+        binnedReadCountCollection.write(outputFile);
 
         logger.log(Level.INFO, "Writing counts done.");
 
         return "SUCCESS";
     }
 
-    @Override
-    public void closeTool() {
-        if (outputWriter != null) {
-            outputWriter.close();
-        }
-    }
+
+
+
 
     /**
-     * This is the stripped down version of {@link HashedListTargetCollection} designed to only support binary search
-     * of {@link Locatable} objects
      *
      * @param <E> a locatable object
      */

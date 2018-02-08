@@ -73,7 +73,7 @@ public final class ParameterDecileCollection<T extends Enum<T> & ParameterEnum> 
                 Utils.nonNull(metadata),
                 new ArrayList<>(parameterToDecileCollectionMap.entrySet()),
                 ParameterTableColumn.COLUMNS,
-                dataLine -> {
+                (dataLine, sampleMetadata) -> {
                     final String parameterName = dataLine.get(ParameterTableColumn.PARAMETER_NAME);
                     final T parameter = Enum.valueOf(Utils.nonNull(parameterClass), parameterName);
                     final DecileCollection deciles = parseDecilesFromDataLine(dataLine);
@@ -91,8 +91,7 @@ public final class ParameterDecileCollection<T extends Enum<T> & ParameterEnum> 
                                      final Class<T> parameterClass) {
         super(
                 Utils.nonNull(file),
-                ParameterTableColumn.COLUMNS,
-                dataLine -> {
+                (dataLine, sampleMetadata) -> {
                     final String parameterName = dataLine.get(ParameterTableColumn.PARAMETER_NAME);
                     final T parameter = Enum.valueOf(Utils.nonNull(parameterClass), parameterName);
                     final DecileCollection deciles = parseDecilesFromDataLine(dataLine);

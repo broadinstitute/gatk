@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber.coverage.readcount;
 
 import org.broadinstitute.barclay.utils.Utils;
-import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;

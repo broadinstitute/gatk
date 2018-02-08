@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import java.io.File;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 /**
  * Simple data structure to pass and read/write a List of {@link AllelicCount} objects.
@@ -19,7 +19,7 @@ import java.util.function.Function;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public final class AllelicCountCollection extends AbstractSampleLocatableCollection<AllelicCount> {
+public final class AllelicCountCollection extends AbstractSampleLocatableCollection<SampleLocatableMetadata, AllelicCount> {
     //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
     /**
      * CONTIG, POSITION, REF_COUNT, ALT_COUNT, REF_NUCLEOTIDE, ALT_NUCLEOTIDE
@@ -35,7 +35,7 @@ public final class AllelicCountCollection extends AbstractSampleLocatableCollect
         static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
     }
     
-    private static final Function<DataLine, AllelicCount> ALLELIC_COUNT_RECORD_FROM_DATA_LINE_DECODER = dataLine -> {
+    private static final BiFunction<DataLine, SampleLocatableMetadata, AllelicCount> ALLELIC_COUNT_RECORD_FROM_DATA_LINE_DECODER = (dataLine, sampleLocatableMetadata) -> {
         final String contig = dataLine.get(AllelicCountTableColumn.CONTIG);
         final int position = dataLine.getInt(AllelicCountTableColumn.POSITION);
         final int refReadCount = dataLine.getInt(AllelicCountTableColumn.REF_COUNT);
@@ -55,7 +55,7 @@ public final class AllelicCountCollection extends AbstractSampleLocatableCollect
                     .append(allelicCount.getAltNucleotide().name());
 
     public AllelicCountCollection(final File inputFile) {
-        super(inputFile, AllelicCountCollection.AllelicCountTableColumn.COLUMNS, ALLELIC_COUNT_RECORD_FROM_DATA_LINE_DECODER, ALLELIC_COUNT_RECORD_TO_DATA_LINE_ENCODER);
+        super(inputFile, ALLELIC_COUNT_RECORD_FROM_DATA_LINE_DECODER, ALLELIC_COUNT_RECORD_TO_DATA_LINE_ENCODER);
     }
 
     public AllelicCountCollection(final SampleLocatableMetadata metadata,

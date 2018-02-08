@@ -33,11 +33,18 @@ public enum ReadCountType {
      * @param name name
      * @return read count type, {@code null} if there is no corresponding type
      */
-    public static ReadCountType getReadCountTypeByName (String name) {
+    public static ReadCountType getReadCountTypeByName(String name) {
         return nameToReadCountTypeMap.get(name);
     }
 
     public String getReadCountTypeName() {
         return readCountTypeName;
+    }
+
+    @Override
+    public String toString() {
+        return ReadCountFileHeaderKey.READ_COUNT_TYPE.getHeaderKeyName() +
+                ReadCountFileHeaderKey.KEY_VALUE_COMMENT_SEPARATOR +
+                readCountTypeName;
     }
 }

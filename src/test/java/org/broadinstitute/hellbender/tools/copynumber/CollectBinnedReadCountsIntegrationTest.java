@@ -2,9 +2,11 @@ package org.broadinstitute.hellbender.tools.copynumber;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.ReadCountFileHeaderKey;
 import org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.ReadCountType;
+import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -18,14 +20,12 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.IntStream;
 
-import static org.testng.Assert.*;
-
 /**
- * Integration test for {@link CollectReadCounts}
+ * Integration test for {@link CollectBinnedReadCounts}
  *
  * @author Andrey Smirnov &lt;asmirnov@broadinstitute.org&gt;
  */
-public class CollectReadCountsIntegrationTest extends CommandLineProgramTest {
+public class CollectBinnedReadCountsIntegrationTest extends CommandLineProgramTest {
 
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/copynumber/collectreadcounts";
 
@@ -45,12 +45,11 @@ public class CollectReadCountsIntegrationTest extends CommandLineProgramTest {
 
     private final static List<String> headerKeysToCompare = Arrays.asList(
             ReadCountFileHeaderKey.READ_COUNT_TYPE.getHeaderKeyName(),
-            ReadCountFileHeaderKey.SAMPLE_NAME.getHeaderKeyName(),
             ReadCountFileHeaderKey.BINNING_CONFIGURATION.getHeaderKeyName());
 
     @Override
     public String getTestedClassName() {
-        return CollectReadCounts.class.getSimpleName();
+        return CollectBinnedReadCounts.class.getSimpleName();
     }
 
     @DataProvider(name="correctRunData")
@@ -68,30 +67,31 @@ public class CollectReadCountsIntegrationTest extends CommandLineProgramTest {
 //                        INTERVALS_LIST,
 //                        NA12878_GC_BINNING_ONLY_EXPECTED_OUTPUT,
 //                        ReadCountType.BINNED.getReadCountTypeName(),
-//                        new String[] { "-" + CollectReadCounts.INCLUDE_GC_BINS_SHORT_NAME, "true",
-//                                "-" + CollectReadCounts.NUMBER_GC_BINS_SHORT_NAME, "10"}
+//                        new String[] { "-" + CollectBinnedReadCounts.INCLUDE_GC_BINS_SHORT_NAME, "true",
+//                                "-" + CollectBinnedReadCounts.NUMBER_GC_BINS_SHORT_NAME, "10"}
 //                },
 //                {
 //                        new File[]{ NA12878_BAM },
 //                        INTERVALS_LIST,
 //                        NA12878_FL_BINNING_ONLY_EXPECTED_OUTPUT,
 //                        ReadCountType.BINNED.getReadCountTypeName(),
-//                        new String[] { "-" + CollectReadCounts.INCLUDE_FRAGMENT_LENGTH_BINS_SHORT_NAME, "true",
-//                                "-" + CollectReadCounts.FRAGMENT_LENGTH_MIN_BIN_VALUE_SHORT_NAME, "0",
-//                                "-" + CollectReadCounts.FRAGMENT_LENGTH_MAX_BIN_VALUE_SHORT_NAME, "1000",
-//                                "-" + CollectReadCounts.NUMBER_FRAGMENT_LENGTH_BINS_SHORT_NAME, "20"}
+//                        new String[] { "-" + CollectBinnedReadCounts.INCLUDE_FRAGMENT_LENGTH_BINS_SHORT_NAME, "true",
+//                                "-" + CollectBinnedReadCounts.FRAGMENT_LENGTH_MIN_BIN_VALUE_SHORT_NAME, "0",
+//                                "-" + CollectBinnedReadCounts.FRAGMENT_LENGTH_MAX_BIN_VALUE_SHORT_NAME, "1000",
+//                                "-" + CollectBinnedReadCounts.NUMBER_FRAGMENT_LENGTH_BINS_SHORT_NAME, "20"}
 //                },
                 {
                         new File[]{ NA12878_BAM },
                         INTERVALS_LIST,
                         NA12878_FL_AND_GC_BINNING_EXPECTED_OUTPUT,
                         ReadCountType.BINNED.getReadCountTypeName(),
-                        new String[] { "-" + CollectReadCounts.INCLUDE_GC_BINS_SHORT_NAME, "true",
-                                "-" + CollectReadCounts.NUMBER_GC_BINS_SHORT_NAME, "100",
-                                "-" + CollectReadCounts.INCLUDE_FRAGMENT_LENGTH_BINS_SHORT_NAME, "true",
-                                "-" + CollectReadCounts.FRAGMENT_LENGTH_MIN_BIN_VALUE_SHORT_NAME, "0",
-                                "-" + CollectReadCounts.FRAGMENT_LENGTH_MAX_BIN_VALUE_SHORT_NAME, "500",
-                                "-" + CollectReadCounts.NUMBER_FRAGMENT_LENGTH_BINS_SHORT_NAME, "1"}
+                        new String[] { "-" + CollectBinnedReadCounts.INCLUDE_GC_BINS_SHORT_NAME, "true",
+                                "-" + CollectBinnedReadCounts.NUMBER_GC_BINS_SHORT_NAME, "100",
+                                "-" + CollectBinnedReadCounts.INCLUDE_FRAGMENT_LENGTH_BINS_SHORT_NAME, "true",
+                                "-" + CollectBinnedReadCounts.FRAGMENT_LENGTH_MIN_BIN_VALUE_SHORT_NAME, "0",
+                                "-" + CollectBinnedReadCounts.FRAGMENT_LENGTH_MAX_BIN_VALUE_SHORT_NAME, "500",
+                                "-" + CollectBinnedReadCounts.NUMBER_FRAGMENT_LENGTH_BINS_SHORT_NAME, "1",
+                                "-" + IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString()}
                 }
 
         };
@@ -103,6 +103,7 @@ public class CollectReadCountsIntegrationTest extends CommandLineProgramTest {
 
     //TODO add test that checks for validity of covariate configuration parameters
 
+    //TODO test that inteval merging rule is set correctly
     @Test(dataProvider = "correctRunData")
     public void testCorrectRun(final File[] bamFiles, final File intervalFile, final File expectedOutputFile,
                                final String readCountType, final String[] additionalArguments) {
@@ -114,7 +115,7 @@ public class CollectReadCountsIntegrationTest extends CommandLineProgramTest {
             arguments.add("-L");
             arguments.add(intervalFile.getAbsolutePath());
         }
-        arguments.add("-" + CollectReadCounts.READ_COUNT_TYPE_SHORT_NAME);
+        arguments.add("-" + CollectBinnedReadCounts.READ_COUNT_TYPE_SHORT_NAME);
         arguments.add(readCountType);
         Arrays.asList(bamFiles).forEach(bam -> {
             arguments.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
@@ -151,7 +152,7 @@ public class CollectReadCountsIntegrationTest extends CommandLineProgramTest {
             String lastLine;
 
             //read in the header values
-            String headerKeyValuePattern = ReadCountFileHeaderKey.headerKeyValuePattern;
+            String headerKeyValuePattern = null;
             while ((lastLine = lineReader.readLine()) != null) {
                 if (lastLine.matches(COMMENT_PREFIX_START_REGEX)) {
                     headerValuesMap.put(lastLine.replaceAll(headerKeyValuePattern, "$1"), lastLine.replaceAll(headerKeyValuePattern, "$2"));

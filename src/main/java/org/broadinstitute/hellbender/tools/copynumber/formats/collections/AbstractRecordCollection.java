@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.utils.tsv.*;
 import java.io.*;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 /**
@@ -31,7 +31,7 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
     private final METADATA metadata;
     private final ImmutableList<RECORD> records;
     private final TableColumnCollection mandatoryColumns;
-    private final Function<DataLine, RECORD> recordFromDataLineDecoder;
+    private final BiFunction<DataLine, METADATA, RECORD> recordFromDataLineDecoder;
     private final BiConsumer<RECORD, DataLine> recordToDataLineEncoder;
 
     /**
@@ -41,13 +41,14 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
      * @param metadata                      {@link METADATA} (which can be represented as a {@link SAMFileHeader}
      * @param records                       list of records; may be empty
      * @param mandatoryColumns              mandatory columns required to construct collection from a TSV file; cannot be empty
-     * @param recordFromDataLineDecoder     lambda for decoding a record from a {@link DataLine} when reading from a TSV file
+     * @param recordFromDataLineDecoder     lambda for decoding a record from a {@link DataLine} given a metadata
+     *                                      when reading from a TSV file
      * @param recordToDataLineEncoder       lambda for encoding a record to a {@link DataLine} when writing to a TSV file
      */
     AbstractRecordCollection(final METADATA metadata,
                              final List<RECORD> records,
                              final TableColumnCollection mandatoryColumns,
-                             final Function<DataLine, RECORD> recordFromDataLineDecoder,
+                             final BiFunction<DataLine, METADATA, RECORD> recordFromDataLineDecoder,
                              final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         this.metadata = Utils.nonNull(metadata);
         this.records = ImmutableList.copyOf(Utils.nonNull(records));
@@ -62,22 +63,21 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
      * The list of records is read using the column headers and the appropriate lambda.
      *
      * @param inputFile                     TSV file; must contain a {@link SAMFileHeader} and mandatory column headers, but can contain no records
-     * @param mandatoryColumns              mandatory columns required to construct collection from a TSV file; cannot be empty
-     * @param recordFromDataLineDecoder     lambda for decoding a record from a {@link DataLine} when reading from a TSV file
+     * @param recordFromDataLineDecoder     lambda for decoding a record from a {@link DataLine} given a metadata
+     *                                      when reading from a TSV file
      * @param recordToDataLineEncoder       lambda for encoding a record to a {@link DataLine} when writing to a TSV file
      */
     AbstractRecordCollection(final File inputFile,
-                             final TableColumnCollection mandatoryColumns,
-                             final Function<DataLine, RECORD> recordFromDataLineDecoder,
+                             final BiFunction<DataLine, METADATA, RECORD> recordFromDataLineDecoder,
                              final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         IOUtils.canReadFile(inputFile);
-        this.mandatoryColumns = Utils.nonNull(mandatoryColumns);
         this.recordFromDataLineDecoder = Utils.nonNull(recordFromDataLineDecoder);
         this.recordToDataLineEncoder = Utils.nonNull(recordToDataLineEncoder);
-        Utils.nonEmpty(mandatoryColumns.names());
 
         try (final RecordCollectionReader reader = new RecordCollectionReader(inputFile)) {
-            metadata = MetadataUtils.fromHeader(reader.getHeader(), getMetadataType());
+            metadata = reader.getMetadata();
+            this.mandatoryColumns = reader.columns();
+            Utils.nonEmpty(mandatoryColumns.names());
             TableUtils.checkMandatoryColumns(reader.columns(), mandatoryColumns, UserException.BadInput::new);
             records = reader.stream().collect(Collectors.collectingAndThen(Collectors.toList(), ImmutableList::copyOf));
         } catch (final IOException | UncheckedIOException e) {
@@ -165,21 +165,27 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
     private final class RecordCollectionReader extends TableReader<RECORD> {
         private static final String COMMENT_PREFIX = "@";   //SAMTextHeaderCodec.HEADER_LINE_START; we need TableReader to treat SAM header as comment lines
         private final File file;
+        private final METADATA metadata;
 
         private RecordCollectionReader(final File file) throws IOException {
             super(file);
             this.file = file;
+            this.metadata = MetadataUtils.fromHeader(getHeader(), getMetadataType());
         }
 
         @Override
         protected RECORD createRecord(final DataLine dataLine) {
             Utils.nonNull(dataLine);
-            return recordFromDataLineDecoder.apply(dataLine);
+            return recordFromDataLineDecoder.apply(dataLine, metadata);
         }
 
         private SAMFileHeader getHeader() throws FileNotFoundException {
             final LineReader lineReader = new BufferedLineReader(new FileInputStream(file));
             return new SAMTextHeaderCodec().decode(lineReader, getSource());
+        }
+
+        private METADATA getMetadata() {
+            return metadata;
         }
 
         @Override

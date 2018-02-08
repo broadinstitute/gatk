@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber.coverage.readcount;
 
+import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
@@ -10,7 +11,7 @@ import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
  *
  * @author Andrey Smirnov &lt;asmirnov@broadinstitute.org&gt;
  */
-public abstract class ReadCountData {
+public abstract class ReadCountData implements Locatable {
 
     /**
      * Updates information about the interval's read count data given a new read
@@ -49,4 +50,19 @@ public abstract class ReadCountData {
      * @return total read count
      */
     public abstract int getTotalReadCount();
+
+    @Override
+    public String getContig() {
+        return getInterval().getContig();
+    }
+
+    @Override
+    public int getStart() {
+        return getInterval().getStart();
+    }
+
+    @Override
+    public int getEnd() {
+        return getInterval().getEnd();
+    }
 }

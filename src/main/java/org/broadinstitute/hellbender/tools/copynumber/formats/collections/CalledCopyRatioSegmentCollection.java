@@ -12,12 +12,12 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 /**
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class CalledCopyRatioSegmentCollection extends AbstractSampleLocatableCollection<CalledCopyRatioSegment> {
+public final class CalledCopyRatioSegmentCollection extends AbstractSampleLocatableCollection<SampleLocatableMetadata, CalledCopyRatioSegment> {
     //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
     /**
      * CONTIG, START, END, NUM_POINTS_COPY_RATIO, MEAN_LOG2_COPY_RATIO, CALL
@@ -33,7 +33,8 @@ public final class CalledCopyRatioSegmentCollection extends AbstractSampleLocata
         static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
     }
 
-    private static final Function<DataLine, CalledCopyRatioSegment> CALLED_COPY_RATIO_SEGMENT_RECORD_FROM_DATA_LINE_DECODER = dataLine -> {
+    private static final BiFunction<DataLine, SampleLocatableMetadata, CalledCopyRatioSegment> CALLED_COPY_RATIO_SEGMENT_RECORD_FROM_DATA_LINE_DECODER =
+            (dataLine, sampleLocatableMetadata) -> {
         final String contig = dataLine.get(CalledCopyRatioSegmentTableColumn.CONTIG);
         final int start = dataLine.getInt(CalledCopyRatioSegmentTableColumn.START);
         final int end = dataLine.getInt(CalledCopyRatioSegmentTableColumn.END);
@@ -58,7 +59,7 @@ public final class CalledCopyRatioSegmentCollection extends AbstractSampleLocata
                     .append(calledCopyRatioSegment.getCall().getOutputString());
 
     public CalledCopyRatioSegmentCollection(final File inputFile) {
-        super(inputFile, CalledCopyRatioSegmentTableColumn.COLUMNS, CALLED_COPY_RATIO_SEGMENT_RECORD_FROM_DATA_LINE_DECODER, CALLED_COPY_RATIO_SEGMENT_RECORD_TO_DATA_LINE_ENCODER);
+        super(inputFile, CALLED_COPY_RATIO_SEGMENT_RECORD_FROM_DATA_LINE_DECODER, CALLED_COPY_RATIO_SEGMENT_RECORD_TO_DATA_LINE_ENCODER);
     }
 
     public CalledCopyRatioSegmentCollection(final SampleLocatableMetadata metadata,

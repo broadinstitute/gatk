@@ -22,7 +22,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 /**
  * Unit tests for {@link AbstractSampleLocatableCollection}.
@@ -119,7 +119,7 @@ public final class AbstractSampleLocatableCollectionUnitTest extends GATKBaseTes
     }
 
     //simple example of a collection class
-    private static final class SimpleSampleLocatableCollection extends AbstractSampleLocatableCollection<SimpleLocatable> {
+    private static final class SimpleSampleLocatableCollection extends AbstractSampleLocatableCollection<SampleLocatableMetadata, SimpleLocatable> {
         enum SimpleLocatableTableColumn {
             CONTIG,
             START,
@@ -129,7 +129,8 @@ public final class AbstractSampleLocatableCollectionUnitTest extends GATKBaseTes
             static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
         }
         
-        private static final Function<DataLine, SimpleLocatable> SIMPLE_LOCATABLE_RECORD_FROM_DATA_LINE_DECODER = dataLine -> {
+        private static final BiFunction<DataLine, SampleLocatableMetadata, SimpleLocatable> SIMPLE_LOCATABLE_RECORD_FROM_DATA_LINE_DECODER =
+                (dataLine, sampleLocatableMetadata) -> {
             final String contig = dataLine.get(SimpleLocatableTableColumn.CONTIG);
             final int start = dataLine.getInt(SimpleLocatableTableColumn.START);
             final int end = dataLine.getInt(SimpleLocatableTableColumn.END);
@@ -145,7 +146,7 @@ public final class AbstractSampleLocatableCollectionUnitTest extends GATKBaseTes
                         .append(formatDouble(simpleLocatable.getValue()));
 
         private SimpleSampleLocatableCollection(final File inputFile) {
-            super(inputFile, SimpleLocatableTableColumn.COLUMNS, SIMPLE_LOCATABLE_RECORD_FROM_DATA_LINE_DECODER, SIMPLE_LOCATABLE_RECORD_TO_DATA_LINE_ENCODER);
+            super(inputFile, SIMPLE_LOCATABLE_RECORD_FROM_DATA_LINE_DECODER, SIMPLE_LOCATABLE_RECORD_TO_DATA_LINE_ENCODER);
         }
 
         private SimpleSampleLocatableCollection(final SampleLocatableMetadata metadata,
