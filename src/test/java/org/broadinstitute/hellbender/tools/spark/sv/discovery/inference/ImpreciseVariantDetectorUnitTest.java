@@ -68,7 +68,10 @@ public class ImpreciseVariantDetectorUnitTest extends GATKBaseTest {
     public void testProcessEvidenceTargetLinks(final List<EvidenceTargetLink> etls,
                                                final List<VariantContext> expectedVariants) {
         final int impreciseEvidenceVariantCallingThreshold =
-                new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection().impreciseEvidenceVariantCallingThreshold;
+                new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection().impreciseVariantEvidenceThreshold;
+
+        final int maxCallableImpreciseVariantDeletionSize =
+                new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection().maxCallableImpreciseVariantDeletionSize;
 
         final ReferenceMultiSource referenceMultiSource = new ReferenceMultiSource(twoBitRefURL, ReferenceWindowFunctions.IDENTITY_FUNCTION);
 
@@ -80,8 +83,12 @@ public class ImpreciseVariantDetectorUnitTest extends GATKBaseTest {
         etls.forEach(e -> evidenceTree.put(e.getPairedStrandedIntervals(), e));
 
         final List<VariantContext> impreciseVariants =
-                ImpreciseVariantDetector.callImpreciseDeletionFromEvidenceLinks(evidenceTree, metadata,
-                        referenceMultiSource, impreciseEvidenceVariantCallingThreshold, localLogger);
+                ImpreciseVariantDetector.callImpreciseDeletionFromEvidenceLinks(evidenceTree,
+                        metadata,
+                        referenceMultiSource,
+                        impreciseEvidenceVariantCallingThreshold,
+                        maxCallableImpreciseVariantDeletionSize,
+                        localLogger);
 
         VariantContextTestUtils.assertEqualVariants(impreciseVariants, expectedVariants);
     }
