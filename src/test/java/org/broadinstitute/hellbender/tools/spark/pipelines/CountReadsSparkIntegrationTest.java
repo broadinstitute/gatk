@@ -104,4 +104,11 @@ public final class CountReadsSparkIntegrationTest extends CommandLineProgramTest
         args.addInput(new File(getTestDataDir(), "count_reads.bam"));
         this.runCommandLine(args.getArgsArray());
     }
+
+    @Test(groups = "spark")
+    public void testIssue() {
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addArgument("I", "gs://emeryj-testing/Solexa-272222.bam");
+        this.runCommandLine(args.getArgsArray());
+    }
 }
