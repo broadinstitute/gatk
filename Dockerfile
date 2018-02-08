@@ -1,5 +1,5 @@
 # Using OpenJDK 8
-FROM broadinstitute/gatk:gatkbase-1.2.3
+FROM broadinstitute/gatk:gatkbase-1.2.4-testA
 ARG ZIPPATH
 
 ADD $ZIPPATH /gatk

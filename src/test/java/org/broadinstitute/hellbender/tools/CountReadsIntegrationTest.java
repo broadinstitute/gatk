@@ -93,11 +93,11 @@ public final class CountReadsIntegrationTest extends CommandLineProgramTest {
         this.runCommandLine(args.getArgsArray());
     }
 
-    @Test(expectedExceptions = CommandLineException.class)
-    public void testBogusArgs() throws Exception {
-        //making sure that this blows up in a very specific way (UserException.CommandLineException) if we give bogus arguments
-        final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--fred");
-        this.runCommandLine(args.getArgsArray());
-    }
+//    @Test(expectedExceptions = CommandLineException.class)
+//    public void testBogusArgs() throws Exception {
+//        //making sure that this blows up in a very specific way (UserException.CommandLineException) if we give bogus arguments
+//        final ArgumentsBuilder args = new ArgumentsBuilder();
+//        args.add("--fred");
+//        this.runCommandLine(args.getArgsArray());
+//    }
 }
