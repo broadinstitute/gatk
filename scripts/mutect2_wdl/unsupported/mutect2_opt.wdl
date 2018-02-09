@@ -190,7 +190,7 @@ workflow Mutect2 {
                 auth = auth
         }
 
-        Float sub_vcf_size = size(M2.vcf, "GB")
+        Float sub_vcf_size = size(M2.unfiltered_vcf, "GB")
         Float sub_bamout_size = size(M2.output_bamOut, "GB")
     }
 
@@ -202,8 +202,8 @@ workflow Mutect2 {
 
     call MergeVCFs {
         input:
-            input_vcfs = M2.vcf,
-            input_vcf_indices = M2.vcf_index,
+            input_vcfs = M2.unfiltered_vcf,
+            input_vcf_indices = M2.unfiltered_vcf_index,
             output_name = unfiltered_name,
             compress = compress,
             gatk_override = gatk_override,
@@ -492,8 +492,8 @@ task M2 {
     }
 
     output {
-        File vcf = "${output_vcf}"
-        File vcf_index = "${output_vcf_index}"
+        File unfiltered_vcf = "${output_vcf}"
+        File unfiltered_vcf_index = "${output_vcf_index}"
         File output_bamOut = "bamout.bam"
         String tumor_sample = read_string("tumor_name.txt")
         String normal_sample = read_string("normal_name.txt")
