@@ -182,6 +182,7 @@ workflow Mutect2 {
                 preemptible_attempts = preemptible_attempts,
                 m2_extra_args = m2_extra_args,
                 make_bamout = make_bamout_or_default,
+                compress = compress,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts,
@@ -189,7 +190,7 @@ workflow Mutect2 {
                 auth = auth
         }
 
-        Float sub_vcf_size = size(M2.output_vcf, "GB")
+        Float sub_vcf_size = size(M2.unfiltered_vcf, "GB")
         Float sub_bamout_size = size(M2.output_bamOut, "GB")
     }
 
@@ -201,7 +202,8 @@ workflow Mutect2 {
 
     call MergeVCFs {
         input:
-            input_vcfs = M2.output_vcf,
+            input_vcfs = M2.unfiltered_vcf,
+            input_vcf_indices = M2.unfiltered_vcf_index,
             output_name = unfiltered_name,
             compress = compress,
             gatk_override = gatk_override,
@@ -271,6 +273,7 @@ workflow Mutect2 {
             gatk_docker = gatk_docker,
             intervals = intervals,
             unfiltered_vcf = MergeVCFs.merged_vcf,
+            unfiltered_vcf_index = MergeVCFs.merged_vcf_index,
             output_name = filtered_name,
             compress = compress,
             preemptible_attempts = preemptible_attempts,
@@ -288,6 +291,7 @@ workflow Mutect2 {
             input:
                 gatk_override = gatk_override,
                 input_vcf = Filter.filtered_vcf,
+                input_vcf_index = Filter.filtered_vcf_index,
                 output_name = filtered_name,
                 compress = compress,
                 gatk_docker = gatk_docker,
@@ -319,9 +323,11 @@ workflow Mutect2 {
 
     if (run_funcotator_or_default) {
         File funcotate_vcf_input = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
+        File funcotate_vcf_input_index = select_first([FilterByOrientationBias.filtered_vcf_index, Filter.filtered_vcf_index])
         call Funcotate {
             input:
                 m2_vcf = funcotate_vcf_input,
+                m2_vcf_index = funcotate_vcf_input_index,
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
                 ref_dict = ref_dict,
@@ -420,6 +426,10 @@ task M2 {
     File? gnomad_index
     String? m2_extra_args
     Boolean? make_bamout
+    Boolean compress
+
+    String output_vcf = "output" + if compress then ".vcf.gz" else ".vcf"
+    String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
 
     File? gatk_override
 
@@ -468,7 +478,7 @@ task M2 {
             ${"--germline-resource " + gnomad} \
             ${"-pon " + pon} \
             ${"-L " + intervals} \
-            -O "output.vcf.gz" \
+            -O "${output_vcf}" \
             ${true='--bam-output bamout.bam' false='' make_bamout} \
             ${m2_extra_args}
     >>>
@@ -482,7 +492,8 @@ task M2 {
     }
 
     output {
-        File output_vcf = "output.vcf.gz"
+        File unfiltered_vcf = "${output_vcf}"
+        File unfiltered_vcf_index = "${output_vcf_index}"
         File output_bamOut = "bamout.bam"
         String tumor_sample = read_string("tumor_name.txt")
         String normal_sample = read_string("normal_name.txt")
@@ -492,6 +503,7 @@ task M2 {
 task MergeVCFs {
     # inputs
     Array[File] input_vcfs
+    Array[File] input_vcf_indices
     String output_name
     Boolean compress
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
@@ -685,6 +697,7 @@ task Filter {
     # inputs
     File? intervals
     File unfiltered_vcf
+    File unfiltered_vcf_index
     String output_name
     Boolean compress
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
@@ -744,6 +757,7 @@ task FilterByOrientationBias {
     # input
     File? gatk_override
     File input_vcf
+    File input_vcf_index
     String output_name
     Boolean compress
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
@@ -894,6 +908,7 @@ task Funcotate {
     File ref_fai
     File ref_dict
     File m2_vcf
+    File m2_vcf_index
     String reference_version
     String output_name
     Boolean compress
