@@ -26,12 +26,10 @@ public final class ReadsKey {
     private static String subkeyForFragment(final SAMFileHeader header, final GATKRead read) {
         final String library = ReadUtils.getLibrary(read, header);
 
-        return String.format(
-                "%s|%d|%d|%s",
-                library != null ? library : "-",
-                ReadUtils.getReferenceIndex(read, header),
-                ReadUtils.getStrandedUnclippedStart(read),
-                read.isReverseStrand() ? "r" : "f");
+        return (library != null ? library : "-") + "|" +
+                ReadUtils.getReferenceIndex(read, header) + "|" +
+                ReadUtils.getStrandedUnclippedStart(read) + "|" +
+                (read.isReverseStrand() ? "r" : "f");
     }
 
     /**
@@ -43,12 +41,10 @@ public final class ReadsKey {
             return PAIRED_ENDS_PREFIX + key;
         }
 
-        return String.format(
-                PAIRED_ENDS_PREFIX + "%s|%d|%d|%s",
-                key,
-                ReadUtils.getReferenceIndex(second, header),
-                ReadUtils.getStrandedUnclippedStart(second),
-                second.isReverseStrand() ? "r" : "f");
+        return PAIRED_ENDS_PREFIX + key + "|" +
+                ReadUtils.getReferenceIndex(second, header) + "|" +
+                ReadUtils.getStrandedUnclippedStart(second) + "|" +
+                (second.isReverseStrand() ? "r" : "f");
     }
 
     /**
