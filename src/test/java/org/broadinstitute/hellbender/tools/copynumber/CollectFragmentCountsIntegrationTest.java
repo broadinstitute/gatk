@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
+import org.broadinstitute.hellbender.tools.copynumber.utils.ReadOrientation;
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.IntervalSetRule;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -135,7 +136,7 @@ public final class CollectFragmentCountsIntegrationTest extends CommandLineProgr
     @Test(dataProvider = "artificialReadsData")
     public void testFragmentCenterComputation(final GATKRead read, final int expectedFragmentCenterPosition) {
         final SimpleInterval expectedFragmentCenter = new SimpleInterval(read.getContig(), expectedFragmentCenterPosition, expectedFragmentCenterPosition);
-        final SimpleInterval resultFragmentCenter = CollectFragmentCounts.ReadOrientation.getFragmentCenter(read);
+        final SimpleInterval resultFragmentCenter = ReadOrientation.getFragmentCenter(read);
         Assert.assertEquals(expectedFragmentCenter, resultFragmentCenter);
     }
 }

@@ -1,10 +1,13 @@
 package org.broadinstitute.hellbender.tools.copynumber.coverage.readcount;
 
 import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
+
+import javax.annotation.Nullable;
 
 /**
  * A container that stores and updates read count data pertaining to a single interval
@@ -16,8 +19,9 @@ public abstract class ReadCountData implements Locatable {
     /**
      * Updates information about the interval's read count data given a new read
      * @param read GATK read
+     * @param referenceContext reference context surrounding the read, can be null
      */
-    public abstract void updateReadCount(final GATKRead read);
+    public abstract void updateReadCount(final GATKRead read, @Nullable final ReferenceContext referenceContext);
 
     /**
      * Appends this instance read counts to a data-line object.

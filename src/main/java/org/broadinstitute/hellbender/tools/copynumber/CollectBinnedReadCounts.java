@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.copynumber;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -9,9 +10,9 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -22,23 +23,19 @@ import org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.covaria
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.BinnedReadCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.BinningSampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.MetadataUtils;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleBinningSampleLocatableMetadata;
-import org.broadinstitute.hellbender.utils.IndexRange;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.tools.copynumber.utils.CachedOverlapDetector;
+import org.broadinstitute.hellbender.tools.copynumber.utils.ReadOrientation;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
+ * TODO
  * @author Andrey Smirnov &lt;asmirnov@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
@@ -53,6 +50,8 @@ import java.util.stream.IntStream;
 )
 @ExperimentalFeature
 public final class CollectBinnedReadCounts extends ReadWalker {
+
+    private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 30;
 
     public static final double GC_MIN_BIN_VALUE = 0.;
     public static final double GC_MAX_BIN_VALUE = 1.0;
@@ -151,9 +150,9 @@ public final class CollectBinnedReadCounts extends ReadWalker {
     private static final Logger logger = LogManager.getLogger(CollectBinnedReadCounts.class);
 
     /**
-     * Sequence dictionary TODO this will be replaced with SampleLocatableMetadata
+     * Sequence dictionary
      */
-    private SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
+    private SAMSequenceDictionary sequenceDictionary;
 
     /**
      * Metadata contained in the BAM file.
@@ -161,9 +160,9 @@ public final class CollectBinnedReadCounts extends ReadWalker {
     private BinningSampleLocatableMetadata metadata;
 
     /**
-     * List of non-overlapping intervals
+     * Overlap detector
      */
-    private CachedBinarySearchIntervalList<SimpleInterval> intervalList;
+    private CachedOverlapDetector<SimpleInterval> overlapDetector;
 
     /**
      * Map from targets to their corresponding read count data
@@ -180,18 +179,17 @@ public final class CollectBinnedReadCounts extends ReadWalker {
      */
     private List<ReadCountCovariateBinningConfiguration> covariateBinningConfigurations;
 
-    /**
-     * Reference data source used to compute reference related covariate metrics such as GC content
-     */
-    private ReferenceDataSource referenceDataSource;
-    
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
         final List<ReadFilter> filters = new ArrayList<>(super.getDefaultReadFilters());
         filters.add(ReadFilterLibrary.MAPPED);
         filters.add(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
         filters.add(ReadFilterLibrary.NOT_DUPLICATE);
-
+        filters.add(ReadFilterLibrary.FIRST_OF_PAIR); // this will make sure we don't double count
+        filters.add(ReadFilterLibrary.PROPERLY_PAIRED);
+        filters.add(new MappingQualityReadFilter(DEFAULT_MINIMUM_MAPPING_QUALITY));
+        // this will only keep reads in pairs that are properly oriented and mapped on same chromosome
+        // and lie within a few standard deviations from the mean of fragment size distributions
         return filters;
     }
 
@@ -205,6 +203,8 @@ public final class CollectBinnedReadCounts extends ReadWalker {
         return true;
     }
 
+
+    //TODO clean up this code
     @Override
     public void onTraversalStart() {
         // validate arguments
@@ -212,8 +212,6 @@ public final class CollectBinnedReadCounts extends ReadWalker {
             throw new UserException.BadInput("This tool only accepts a single bam/sam/cram as input");
         }
         CopyNumberArgumentValidationUtils.validateIntervalArgumentCollection(intervalArgumentCollection);
-
-        referenceDataSource = ReferenceDataSource.of(referenceArguments.getReferencePath());
 
         // initialize fields
         if (readCountType == ReadCountType.BINNED) {
@@ -226,15 +224,18 @@ public final class CollectBinnedReadCounts extends ReadWalker {
         metadata = new SimpleBinningSampleLocatableMetadata(MetadataUtils.readSampleName(getHeaderForReads()),
                 getHeaderForReads().getSequenceDictionary(), readCountType, covariateBinningConfigurations);
 
+        sequenceDictionary = getBestAvailableSequenceDictionary();
         if (!CopyNumberArgumentValidationUtils.isSameDictionary(metadata.getSequenceDictionary(), sequenceDictionary)) {
             logger.warn("Sequence dictionary in BAM does not match the master sequence dictionary.");
         }
 
         logger.log(Level.INFO, "Reading intervals...");
         final List<SimpleInterval> intervals = intervalArgumentCollection.getIntervals(sequenceDictionary);
+        overlapDetector = new CachedOverlapDetector<>(intervals);
 
-        //TODO replace this with the OverlapDetector
-        intervalList = new CachedBinarySearchIntervalList<>(intervalArgumentCollection.getIntervals(sequenceDictionary));
+        //verify again that intervals do not overlap
+        Utils.validateArg(intervals.stream().noneMatch(i -> overlapDetector.getOverlapDetector().getOverlaps(i).size() > 1),
+                "Input intervals may not be overlapping.");
 
         intervals.stream().forEach(interval -> readCountDataMap.put(
                 interval, ReadCountDataFactory.getReadCountDataObject(readCountType, interval, covariateBinCollection)));
@@ -246,7 +247,7 @@ public final class CollectBinnedReadCounts extends ReadWalker {
     private ReadCountCovariateBinCollection buildCovariateBinCollection() {
         final List<ReadCountCovariateBinningConfiguration> configurations = new ArrayList<>();
         if (includeGCBinning) {
-            configurations.add(ReadCountCovariateBinningConfiguration.GC_CONTENT.setParameters(GC_MIN_BIN_VALUE, GC_MAX_BIN_VALUE, numGCBins));
+            configurations.add(ReadCountCovariateBinningConfiguration.FRAGMENT_GC_CONTENT.setParameters(GC_MIN_BIN_VALUE, GC_MAX_BIN_VALUE, numGCBins));
         }
         if (includeFragmentLengthBinning) {
             configurations.add(ReadCountCovariateBinningConfiguration.FRAGMENT_LENGTH.setParameters(fragmentLengthBinStartValue, fragmentLengthBinEndValue, numFragmentLengthBins));
@@ -258,8 +259,19 @@ public final class CollectBinnedReadCounts extends ReadWalker {
     @Override
     public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
         final SimpleInterval readLocation = referenceContext.getInterval();
-        intervalList.findIntersectionRange(readLocation).
-                forEach(intervalIndex -> readCountDataMap.get(intervalList.getSortedIntervals().get(intervalIndex)).updateReadCount(read));
+        final Pair<Integer, Integer> startEndFragmentPositions =
+                ReadOrientation.getReadOrientation(read).getReadToStartAndEndFragmentPositionsMapper().apply(read);
+        final int windowLeadingBases = readLocation.getStart() - startEndFragmentPositions.getLeft();
+        final int windowTrailingBases = startEndFragmentPositions.getRight() - readLocation.getEnd();
+        referenceContext.setWindow(windowLeadingBases, windowTrailingBases);
+        final Locatable fragmentCenter = ReadOrientation.getFragmentCenter(read);
+
+        final SimpleInterval overlappingInterval = overlapDetector.getOverlap(fragmentCenter);
+        //if fragment doesn't overlap any of the provided intervals, do nothing
+        if (overlappingInterval == null) {
+            return;
+        }
+        readCountDataMap.get(overlappingInterval).updateReadCount(read, referenceContext);
     }
 
     @Override
@@ -280,130 +292,5 @@ public final class CollectBinnedReadCounts extends ReadWalker {
         logger.log(Level.INFO, "Writing counts done.");
 
         return "SUCCESS";
-    }
-
-
-
-
-
-    /**
-     *
-     * @param <E> a locatable object
-     */
-    private class CachedBinarySearchIntervalList<E extends Locatable> {
-
-        private List<E> sortedIntervals;
-
-        private final Comparator<Locatable> intervalComparator = IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR;
-
-        private int lastBinarySearchPosition = -1;
-
-        CachedBinarySearchIntervalList(final List<E> unsortedIntervalList) {
-            Utils.nonEmpty(unsortedIntervalList, "Interval list cannot be empty");
-            Utils.containsNoNull(unsortedIntervalList, "intervals may not be null");
-            sortedIntervals = unsortedIntervalList.stream().sorted(intervalComparator).collect(Collectors.toList());
-            checkForIntervalOverlaps(sortedIntervals);
-        }
-
-        private void checkForIntervalOverlaps(final List<E> sortedIntervals) {
-            final OptionalInt failureIndex = IntStream.range(1, sortedIntervals.size())
-                    .filter(i -> IntervalUtils.overlaps(sortedIntervals.get(i-1),sortedIntervals.get(i)))
-                    .findFirst();
-
-            if (failureIndex.isPresent()) {
-                final int index = failureIndex.getAsInt();
-                throw new IllegalArgumentException(
-                        String.format("input intervals contain at least two overlapping intervals: %s and %s",
-                                sortedIntervals.get(index-1),sortedIntervals.get(index)));
-            }
-        }
-
-        private IndexRange findIntersectionRange(final Locatable location) {
-            Utils.nonNull(location, "the input location cannot be null");
-            final int searchIndex = cachedBinarySearch(location);
-            if (searchIndex < 0) {
-                //TODO output proper empty interval with start=stop position that indicates where location would be inserted was an interval there
-                return new IndexRange(0, 0);
-            } else {
-                final int firstOverlappingIndex = extendSearchIndexBackwards(location, searchIndex);
-                final int lastOverlappingIndex = extendSearchIndexForward(location, searchIndex);
-                return new IndexRange(firstOverlappingIndex, lastOverlappingIndex + 1);
-            }
-        }
-
-        /**
-         * Get list of sorted intervals
-         *
-         * @return sorted intervals
-         */
-        private List<E> getSortedIntervals() {
-            return sortedIntervals;
-        }
-
-        private int cachedBinarySearch(final Locatable location) {
-            if (lastBinarySearchPosition < 0) {
-                return lastBinarySearchPosition = uncachedBinarySearch(location);
-            } else {
-                if (IntervalUtils.overlaps(sortedIntervals.get(lastBinarySearchPosition), location)) {
-                    return lastBinarySearchPosition;
-                } else {
-                    final int candidate = lastBinarySearchPosition + 1;
-                    if (candidate == sortedIntervals.size()) {
-                        return lastBinarySearchPosition = uncachedBinarySearch(location);
-                    } else if (IntervalUtils.overlaps(sortedIntervals.get(candidate), location)) {
-                        return lastBinarySearchPosition = candidate;
-                    } else {
-                        return lastBinarySearchPosition = uncachedBinarySearch(location);
-                    }
-                }
-            }
-        }
-
-        private int uncachedBinarySearch(final Locatable location) {
-            final int searchResult = Collections.binarySearch(sortedIntervals, location, IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR);
-            if (searchResult >= 0) {
-                return searchResult;
-            } else {
-                final int insertIndex = - (searchResult + 1);
-                if (insertIndex < sortedIntervals.size() && IntervalUtils.overlaps(sortedIntervals.get(insertIndex),location)) {
-                    return insertIndex;
-                } if (insertIndex > 0 && IntervalUtils.overlaps(sortedIntervals.get(insertIndex - 1),location)) {
-                    return insertIndex - 1;
-                } else {
-                    return searchResult;
-                }
-            }
-        }
-
-        /**
-         * Looks for the last index in {@link #sortedIntervals} that has an overlap with the input {@code location}.
-         * starting at {@code startIndex} and assuming that the element at that index has an
-         * overlap with {@code location}.
-         */
-        private int extendSearchIndexForward(final Locatable location, final int startIndex) {
-            final ListIterator<E> it = sortedIntervals.listIterator(startIndex + 1);
-            while (it.hasNext()) {
-                final E next = it.next();
-                if (!IntervalUtils.overlaps(location, next)) {
-                    return it.previousIndex() - 1;
-                }
-            }
-            return it.previousIndex();
-        }
-
-        /**
-         * Looks for the first index in {@link #sortedIntervals} that has an overlap with the input {@code location}
-         * starting at {@code startIndex} and assuming that the element at that index has an overlap with {@code location}.
-         */
-        private int extendSearchIndexBackwards(final Locatable location, final int startIndex) {
-            final ListIterator<E> it = sortedIntervals.listIterator(startIndex);
-            while (it.hasPrevious()) {
-                final E previous = it.previous();
-                if (!IntervalUtils.overlaps(location, previous)) {
-                    return it.nextIndex() + 1;
-                }
-            }
-            return it.nextIndex();
-        }
     }
 }

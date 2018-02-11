@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.covari
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -81,11 +82,11 @@ public final class ReadCountCovariateBinCollection {
      * @param read GATK read
      * @return bin characterized by given read
      */
-    public ReadCountCovariateBin getReadCountCovariateBin(final GATKRead read) {
+    public ReadCountCovariateBin getReadCountCovariateBin(final GATKRead read, final ReferenceContext referenceContext) {
         int binIndex = 0;
         for (int i = binningConfigurations.size() - 1; i >= 0; i--) {
             ReadCountCovariateBinningConfiguration config = binningConfigurations.get(i);
-            binIndex += config.getBinIndexFromRead(read) * productMap.get(config);
+            binIndex += config.getBinIndexFromRead(read, referenceContext) * productMap.get(config);
         }
         return covariateBinList.get(binIndex);
     }

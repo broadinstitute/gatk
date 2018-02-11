@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber.coverage.readcount;
 
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.covariatebin.ReadCountCovariateBin;
 import org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.covariatebin.ReadCountCovariateBinCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -14,6 +15,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 /**
+ * TODO
  * Created by asmirnov on 7/10/17.
  */
 public class BinnedReadCountData extends ReadCountData {
@@ -22,13 +24,24 @@ public class BinnedReadCountData extends ReadCountData {
     private final Map<ReadCountCovariateBin, Integer> binToCountMap;
     private final ReadCountCovariateBinCollection covariateBinCollection;
 
-    public BinnedReadCountData(final SimpleInterval interval, final ReadCountCovariateBinCollection covariateBinCollection) {
+    /**
+     * TODO
+     * @param interval
+     * @param covariateBinCollection
+     */
+    BinnedReadCountData(final SimpleInterval interval, final ReadCountCovariateBinCollection covariateBinCollection) {
         this.interval = Utils.nonNull(interval);
         this.covariateBinCollection = Utils.nonNull(covariateBinCollection);
         binToCountMap = new HashMap<>();
     }
 
-    protected BinnedReadCountData(final SimpleInterval interval,
+    /**
+     * TODO
+     * @param interval
+     * @param covariateBinCollection
+     * @param binToCountMap
+     */
+    BinnedReadCountData(final SimpleInterval interval,
                                   final ReadCountCovariateBinCollection covariateBinCollection,
                                   final Map<ReadCountCovariateBin, Integer> binToCountMap) {
         this.interval = Utils.nonNull(interval);
@@ -37,13 +50,13 @@ public class BinnedReadCountData extends ReadCountData {
     }
 
     @Override
-    public void updateReadCount(GATKRead read) {
-        ReadCountCovariateBin bin = covariateBinCollection.getReadCountCovariateBin(read);
+    public void updateReadCount(final GATKRead read, final ReferenceContext referenceContext) {
+        final ReadCountCovariateBin bin = covariateBinCollection.getReadCountCovariateBin(read, referenceContext);
         binToCountMap.put(bin, binToCountMap.getOrDefault(bin, 0) + 1);
     }
 
     @Override
-    public void appendCountsTo(DataLine dataLine) {
+    public void appendCountsTo(final DataLine dataLine) {
         covariateBinCollection.getCovariateBinList().stream().forEach(
                 bin -> dataLine.append(binToCountMap.getOrDefault(bin, 0))
         );

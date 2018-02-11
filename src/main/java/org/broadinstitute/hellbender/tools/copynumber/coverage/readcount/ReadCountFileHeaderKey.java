@@ -57,7 +57,7 @@ public enum ReadCountFileHeaderKey {
         }
         final ReadCountFileHeaderKey headerKey = stringToHeaderKeyMap.get(splitCommentLine[0]);
         final String value = splitCommentLine[1];
-        return new ImmutablePair(headerKey, value);
+        return new ImmutablePair<>(headerKey, value);
     }
 
     /**

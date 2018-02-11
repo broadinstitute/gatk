@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -27,6 +26,7 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.MetadataU
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.SimpleCount;
 import org.broadinstitute.hellbender.tools.copynumber.utils.CachedOverlapDetector;
+import org.broadinstitute.hellbender.tools.copynumber.utils.ReadOrientation;
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -35,7 +35,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -212,50 +211,5 @@ public final class CollectFragmentCounts extends ReadWalker {
         }
 
         return "SUCCESS";
-    }
-
-    /**
-     * Helper class to calculate fragment center of a properly paired read
-     */
-    @VisibleForTesting
-    protected enum ReadOrientation {
-
-        /**
-         * Read was located on forward strand
-         */
-        FORWARD(read -> read.getUnclippedStart() + read.getFragmentLength() / 2),
-
-        /**
-         * Read was located on reverse strand
-         */
-        REVERSE(read -> read.getUnclippedStart() + (read.getLength() - 1)  + read.getFragmentLength() / 2);
-
-        private final Function<GATKRead, Integer> readToFragmentCenterMapper;
-
-        ReadOrientation(final Function<GATKRead, Integer> readToCenterMapper) {
-            this.readToFragmentCenterMapper = readToCenterMapper;
-        }
-
-        /**
-         * Get a function that maps the read to the center of the fragment.
-         */
-        protected Function<GATKRead, Integer> getReadToFragmentCenterMapper() {
-            return readToFragmentCenterMapper;
-        }
-
-        /**
-         * Get {@link ReadOrientation} instance corresponding to the orientation of the read.
-         */
-        protected static ReadOrientation getReadOrientation(final GATKRead read) {
-            return read.getFragmentLength() > 0 ? FORWARD : REVERSE;
-        }
-
-        /**
-         * Compute center of the fragment corresponding to the read.
-         */
-        protected static SimpleInterval getFragmentCenter(final GATKRead read) {
-            final int fragmentCenter = getReadOrientation(read).getReadToFragmentCenterMapper().apply(read);
-            return new SimpleInterval(read.getContig(), fragmentCenter, fragmentCenter);
-        }
     }
 }

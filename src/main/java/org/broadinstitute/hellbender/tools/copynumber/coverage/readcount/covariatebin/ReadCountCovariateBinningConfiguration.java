@@ -1,15 +1,16 @@
 package org.broadinstitute.hellbender.tools.copynumber.coverage.readcount.covariatebin;
 
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.lang.ref.Reference;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -24,11 +25,11 @@ public enum ReadCountCovariateBinningConfiguration implements ReadCovariateValue
     /**
      * Binning configuration for GC covariate.
      */
-    GC_CONTENT("GC") {
+    FRAGMENT_GC_CONTENT("GC") {
         @Override
-        public double getValueFromRead(GATKRead read) {
+        public double getCovariateValue(final GATKRead read, final ReferenceContext referenceContext) {
             final Nucleotide.Counter counter = new Nucleotide.Counter();
-            counter.addAll(read.getBases());
+            counter.addAll(referenceContext.getBases());
             final long gcCount = counter.get(Nucleotide.C) + counter.get(Nucleotide.G);
             final long atCount = counter.get(Nucleotide.A) + counter.get(Nucleotide.T);
             final long totalCount = gcCount + atCount;
@@ -41,7 +42,7 @@ public enum ReadCountCovariateBinningConfiguration implements ReadCovariateValue
      */
     FRAGMENT_LENGTH("FL") {
         @Override
-        public double getValueFromRead(GATKRead read) {
+        public double getCovariateValue(final GATKRead read, final ReferenceContext referenceContext) {
             //take absolute value since call to fragment length method of the read can return a negative value that indicates direction
             return Math.abs(read.getFragmentLength());
         }
@@ -103,10 +104,11 @@ public enum ReadCountCovariateBinningConfiguration implements ReadCovariateValue
      * Helper method that computes the index of the bin in this configuration given a read
      *
      * @param read GATK read
+     * @param referenceContext reference context surrounding the read
      * @return index of the read
      */
-    public int getBinIndexFromRead(final GATKRead read) {
-        return getBinIndexFromValue(getValueFromRead(read));
+    public int getBinIndexFromRead(final GATKRead read, final ReferenceContext referenceContext) {
+        return getBinIndexFromValue(getCovariateValue(read, referenceContext));
     }
 
     /**

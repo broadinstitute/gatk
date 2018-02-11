@@ -36,6 +36,7 @@ public class CollectBinnedReadCountsIntegrationTest extends CommandLineProgramTe
     private final static File INTERVALS_LIST = new File(TEST_SUB_DIR, "exome-read-counts-intervals.list");
     private final static File INTERVALS_BED = new File(TEST_SUB_DIR, "exome-read-counts-intervals.tsv");
     private final static File INTERVALS_LIST_DUPS = new File(TEST_SUB_DIR, "exome-read-counts-intervals_dups.list");
+    private final static File REFERENCE = new File(publicTestDir + "large/human_g1k_v37.20.21.fasta");
 
     //output files
     private final static File NA12878_SIMPLE_COUNT_EXPECTED_OUTPUT = new File(TEST_SUB_DIR, "");
@@ -84,6 +85,7 @@ public class CollectBinnedReadCountsIntegrationTest extends CommandLineProgramTe
                         new File[]{ NA12878_BAM },
                         INTERVALS_LIST,
                         NA12878_FL_AND_GC_BINNING_EXPECTED_OUTPUT,
+                        REFERENCE,
                         ReadCountType.BINNED.getReadCountTypeName(),
                         new String[] { "-" + CollectBinnedReadCounts.INCLUDE_GC_BINS_SHORT_NAME, "true",
                                 "-" + CollectBinnedReadCounts.NUMBER_GC_BINS_SHORT_NAME, "100",
@@ -106,7 +108,7 @@ public class CollectBinnedReadCountsIntegrationTest extends CommandLineProgramTe
     //TODO test that inteval merging rule is set correctly
     @Test(dataProvider = "correctRunData")
     public void testCorrectRun(final File[] bamFiles, final File intervalFile, final File expectedOutputFile,
-                               final String readCountType, final String[] additionalArguments) {
+                               final File reference, final String readCountType, final String[] additionalArguments) {
         final File outputFile = BaseTest.createTempFile("GATK4-collectCounts-outputTable", ".tmp");
         final List<String> arguments = new ArrayList<>(Arrays.asList(
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath()
@@ -114,6 +116,10 @@ public class CollectBinnedReadCountsIntegrationTest extends CommandLineProgramTe
         if (intervalFile != null) {
             arguments.add("-L");
             arguments.add(intervalFile.getAbsolutePath());
+        }
+        if (reference != null) {
+            arguments.add("-R");
+            arguments.add(reference.getAbsolutePath());
         }
         arguments.add("-" + CollectBinnedReadCounts.READ_COUNT_TYPE_SHORT_NAME);
         arguments.add(readCountType);

@@ -24,6 +24,8 @@ public final class CachedOverlapDetector<T extends Locatable> {
     }
 
     /**
+     * TODO enforce the locatable to be of size 1
+     *
      * We check the previously cached result first.  Assuming that queries will be made in sorted order,
      * this may slightly save on lookup time.
      * @return {@code null} if no interval overlaps {@code locatable}

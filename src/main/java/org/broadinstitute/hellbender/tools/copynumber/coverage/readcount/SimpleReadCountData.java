@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber.coverage.readcount;
 
 import org.broadinstitute.barclay.utils.Utils;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
@@ -47,7 +48,7 @@ public class SimpleReadCountData extends ReadCountData {
     }
 
     @Override
-    public void updateReadCount(final GATKRead read) {
+    public void updateReadCount(final GATKRead read, final ReferenceContext referenceContext) {
         count++;
     }
 
