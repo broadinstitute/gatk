@@ -26,10 +26,10 @@ public final class ReadsKey {
     private static String subkeyForFragment(final SAMFileHeader header, final GATKRead read) {
         final String library = ReadUtils.getLibrary(read, header);
 
-        return (library != null ? library : "-") + "|" +
-                ReadUtils.getReferenceIndex(read, header) + "|" +
-                ReadUtils.getStrandedUnclippedStart(read) + "|" +
-                (read.isReverseStrand() ? "r" : "f");
+        return new StringBuilder().append(library != null ? library : "-").append("|")
+                .append(ReadUtils.getReferenceIndex(read, header)).append("|")
+                .append(ReadUtils.getStrandedUnclippedStart(read)).append("|")
+                .append(read.isReverseStrand() ? "r" : "f").toString();
     }
 
     /**
@@ -41,17 +41,17 @@ public final class ReadsKey {
             return PAIRED_ENDS_PREFIX + key;
         }
 
-        return PAIRED_ENDS_PREFIX + key + "|" +
-                ReadUtils.getReferenceIndex(second, header) + "|" +
-                ReadUtils.getStrandedUnclippedStart(second) + "|" +
-                (second.isReverseStrand() ? "r" : "f");
+        return new StringBuilder().append(PAIRED_ENDS_PREFIX).append(key).append("|")
+                .append(ReadUtils.getReferenceIndex(second, header)).append("|")
+                .append(ReadUtils.getStrandedUnclippedStart(second)).append("|")
+                .append(second.isReverseStrand() ? "r" : "f").toString();
     }
 
     /**
      * Makes a unique key for the read.
      */
     public static String keyForRead(final SAMFileHeader header, final GATKRead read) {
-        return  read.getReadGroup() + "|" + read.getName();
+        return new StringBuilder().append(read.getReadGroup()).append("|").append(read.getName()).toString();
     }
 
     /**
