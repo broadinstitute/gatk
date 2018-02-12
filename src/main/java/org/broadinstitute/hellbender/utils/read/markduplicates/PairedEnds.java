@@ -15,13 +15,21 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   public short tile = -1;
   public short x = -1, y = -1;
   public short libraryId = -1;
+  public transient Integer markedScore;
 
   PairedEnds(final GATKRead first) {
     this.first = first;
   }
 
+  PairedEnds() { }
+
   public static PairedEnds of(final GATKRead first) {
     return new PairedEnds(first);
+  }
+
+  // An optimization for passing around empty read information
+  public static PairedEnds empty(){
+    return new PairedEnds();
   }
 
   public PairedEnds and(final GATKRead second) {
@@ -52,7 +60,9 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   }
 
   public int score(final MarkDuplicatesScoringStrategy scoringStrategy) {
-    return scoringStrategy.score(first) + scoringStrategy.score(second);
+    if (markedScore!=null) return markedScore;
+    markedScore = scoringStrategy.score(first) + ((second!=null)?scoringStrategy.score(second):0);
+    return markedScore;
   }
 
   @Override
@@ -84,6 +94,10 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
 
   @Override
   public void setLibraryId(final short libraryId) { this.libraryId = libraryId; }
+
+  public boolean hasMateMapping() {
+    return first==null;
+  }
   /**
    * returns a deep(ish) copy of the GATK reads in the PairedEnds.
    * TODO: This is only deep for the Google Model read, GATKRead copy() isn't deep for
