@@ -20,8 +20,15 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
     this.first = first;
   }
 
+  PairedEnds() { }
+
   public static PairedEnds of(final GATKRead first) {
     return new PairedEnds(first);
+  }
+
+  // An optimization for passing around empty read information
+  public static PairedEnds empty(){
+    return new PairedEnds();
   }
 
   public PairedEnds and(final GATKRead second) {
@@ -84,6 +91,10 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
 
   @Override
   public void setLibraryId(final short libraryId) { this.libraryId = libraryId; }
+
+  public boolean hasMateMapping() {
+    return first==null;
+  }
   /**
    * returns a deep(ish) copy of the GATK reads in the PairedEnds.
    * TODO: This is only deep for the Google Model read, GATKRead copy() isn't deep for
