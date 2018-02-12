@@ -6,7 +6,7 @@ import java.util.Random;
 
 public class ReadsKeyUnitTest {
 
-    @Test //(enabled = false)
+    @Test (enabled = false)
     // This test makes the argument that using a StringBuilder in ReadsKey is faster than an equivalent call to String.format()
     /* an example of the results:
         With Format:	13909867289
@@ -14,7 +14,7 @@ public class ReadsKeyUnitTest {
         With String +:	1155343164
         With Joiner:	2013227121
      */
-    public void testKeyForFragment() throws Exception {
+    public void testKeyForFragmentPerformanceEvidence() throws Exception {
         Random rand = new Random();
         int numTrials = 10000000;
         for (int i = 0; i < numTrials; i++) {
@@ -61,8 +61,6 @@ public class ReadsKeyUnitTest {
         }
         endTime = System.nanoTime();
         System.out.println("With String +:\t" + (endTime - startTime));
-
-
 
         startTime = System.nanoTime();
         for (int i = 0; i < numTrials; i++) {
