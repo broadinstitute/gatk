@@ -456,10 +456,10 @@ public class GATKReadAdaptersUnitTest extends GATKBaseTest {
         SAMRecord emptyCigarSam = basicSAMRecord();
         emptyCigarSam.setCigar(new Cigar());
 
-          return new Object[][]{
-                { basicReadBackedBySam(), TextCigarCodec.decode(BASIC_READ_CIGAR) },
-                { new SAMRecordToGATKReadAdapter(noCigarSam), new Cigar() },
-                { new SAMRecordToGATKReadAdapter(emptyCigarSam), new Cigar() },
+        return new Object[][]{
+            { basicReadBackedBySam(), TextCigarCodec.decode(BASIC_READ_CIGAR) },
+            { new SAMRecordToGATKReadAdapter(noCigarSam), new Cigar() },
+            { new SAMRecordToGATKReadAdapter(emptyCigarSam), new Cigar() },
         };
     }
 
@@ -501,9 +501,9 @@ public class GATKReadAdaptersUnitTest extends GATKBaseTest {
         SAMRecord noRGSam = basicSAMRecord();
         noRGSam.clearAttributes();
 
-         return new Object[][] {
-                { basicReadBackedBySam(), BASIC_READ_GROUP },
-                { new SAMRecordToGATKReadAdapter(noRGSam), null },
+        return new Object[][] {
+            { basicReadBackedBySam(), BASIC_READ_GROUP },
+            { new SAMRecordToGATKReadAdapter(noRGSam), null },
         };
     }
 

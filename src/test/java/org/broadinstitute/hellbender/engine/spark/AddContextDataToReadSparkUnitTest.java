@@ -26,13 +26,14 @@ import org.testng.annotations.Test;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 public class AddContextDataToReadSparkUnitTest extends GATKBaseTest {
     @DataProvider(name = "bases")
     public Object[][] bases() {
-        List<Class<?>> classes = Arrays.asList(SAMRecord.class, SAMRecord.class);
+        List<Class<?>> classes = Collections.singletonList(SAMRecord.class);
         JoinStrategy[] strategies = JoinStrategy.values();
         Object[][] data = new Object[classes.size() * strategies.length][];
         for (int i = 0; i < classes.size(); ++i) {
@@ -52,7 +53,7 @@ public class AddContextDataToReadSparkUnitTest extends GATKBaseTest {
     @Test(dataProvider = "bases", groups = "spark")
     public void addContextDataTest(List<GATKRead> reads, List<GATKVariant> variantList,
                                    List<KV<GATKRead, ReadContextData>> expectedReadContextData,
-                                   JoinStrategy joinStrategy) throws IOException {
+                                   JoinStrategy joinStrategy) {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         JavaRDD<GATKRead> rddReads = ctx.parallelize(reads);
