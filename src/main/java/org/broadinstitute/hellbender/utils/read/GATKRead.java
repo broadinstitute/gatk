@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.read;
 
-import com.google.api.services.genomics.model.Read;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMFileHeader;
@@ -15,15 +14,14 @@ import java.util.List;
 /**
  * Unified read interface for use throughout the GATK.
  *
- * Adapter classes implementing this interface exist for both htsjdk's {@link SAMRecord} ({@link SAMRecordToGATKReadAdapter})
- * and the Google Genomics {@link Read} ({@link GoogleGenomicsReadToGATKReadAdapter})
+ * Adapter classes implementing this interface exist for htsjdk's {@link SAMRecord} ({@link SAMRecordToGATKReadAdapter})
  *
  * Since the adapter classes wrap the raw reads without making a copy, care must be taken to avoid
  * exposing the encapsulated reads, particularly if modifying reads in-place. As a result, this interface
  * should probably only be implemented by core engine-level classes.
  *
  * All GATKRead methods that return mutable reference types make defensive copies, with the exception
- * of the conversion methods {@link #convertToSAMRecord} and {@link #convertToGoogleGenomicsRead}.
+ * of the conversion method {@link #convertToSAMRecord}.
  *
  * Note that {@link #getContig} and {@link #getStart} will not expose nominal positions assigned to unmapped
  * reads for sorting purposes -- for unmapped reads, these methods will always return {@code null} or 0,
@@ -686,10 +684,9 @@ public interface GATKRead extends Locatable {
      * @return A copy of this read. The copy will not necessarily be a true deep copy (the fields
      *         encapsulated by the read itself may be shallow copied), but should be safe to use freely in general
      *         given that all GATKRead methods that return mutable reference types make defensive copies
-     *         (with the exception of the conversion methods {@link #convertToSAMRecord} and
-     *         {@link #convertToGoogleGenomicsRead}, but these are safe to call on copies since the
-     *         encapsulated reads do get shallow copied at a minimum by this method, so modifications
-     *         to the fields within a copied read will not alter the original).
+     *         (with the exception of the conversion method {@link #convertToSAMRecord,
+     *         but these are safe to call on copies since the encapsulated reads do get shallow copied at a minimum by
+     *         this method, so modifications to the fields within a copied read will not alter the original).
      */
     GATKRead copy();
 
@@ -710,16 +707,6 @@ public interface GATKRead extends Locatable {
      * @return This read as a SAMRecord
      */
     SAMRecord convertToSAMRecord( final SAMFileHeader header );
-
-    /**
-     * Convert this read into a Google Genomics model read.
-     *
-     * Warning: the return value is not guaranteed to be independent from this read (eg., if the read
-     * is already in Google Genomics format, no copy will be made).
-     *
-     * @return This read as a Google Genomics model read.
-     */
-    Read convertToGoogleGenomicsRead();
 
     /**
      * Get a string representation of this read in SAM string format, terminated with '\n'. Fields are separated by '\t',

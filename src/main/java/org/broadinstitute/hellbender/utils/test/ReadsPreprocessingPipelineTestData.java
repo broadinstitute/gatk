@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.test;
 
-import com.google.api.services.genomics.model.Read;
 import com.google.common.collect.Lists;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.engine.ReadContextData;
@@ -12,12 +11,14 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.variant.MinimalVariant;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
+import org.broadinstitute.hellbender.utils.variant.MinimalVariant;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * ReadsPreprocessingPipelineTestData contains coordinated test data that can be used in the many transforms that
@@ -190,9 +191,7 @@ public class ReadsPreprocessingPipelineTestData {
      * @return a new GAKTRead with either a Google model backed or SAMRecord backed read.
      */
     public static GATKRead makeRead(String contig, int start, int length, int i, Class<?> clazz) {
-        if (clazz == Read.class) {
-            return ArtificialReadUtils.createGoogleBackedRead(Integer.toString(i), contig, start, length);
-        } else if (clazz == SAMRecord.class) {
+        if (clazz == SAMRecord.class) {
             return ArtificialReadUtils.createSamBackedRead(Integer.toString(i), contig, start, length);
         } else {
             throw new GATKException("invalid GATKRead type");

@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.utils.read;
 
-
-import com.google.api.services.genomics.model.Read;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -687,12 +685,6 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     public SAMRecord getEncapsulatedSamRecord() {
         return samRecord;
-    }
-
-    @Override
-    public Read convertToGoogleGenomicsRead() {
-        // TODO: this converter is imperfect/lossy and should either be patched or replaced
-        return com.google.cloud.genomics.utils.ReadUtils.makeRead(samRecord);
     }
 
     @Override

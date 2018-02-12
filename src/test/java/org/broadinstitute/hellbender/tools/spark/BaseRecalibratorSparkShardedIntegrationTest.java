@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.spark;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceAPISource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.bqsr.BQSRTestData;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -61,8 +60,7 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
     @DataProvider(name = "BQSRTest")
     public Object[][] createBQSRTestData() {
         final String localResources =  getResourceDir();
-        final String hg19Ref = ReferenceAPISource.HG19_REF_ID;
-        final String GRCh37Ref = ReferenceAPISource.URL_PREFIX + ReferenceAPISource.GRCH37_REF_ID;
+        final String GRCh37Ref = GCS_b37_CHR20_21_REFERENCE;
         final String HiSeqBam_chr20 = localResources + WGS_B37_CH20_1M_1M1K_BAM;
         final String dbSNPb37_chr20 = localResources + DBSNP_138_B37_CH20_1M_1M1K_VCF;
         final String GRCh37RefLocal = b37_reference_20_21;
@@ -90,7 +88,7 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
 
     @DataProvider(name = "BQSRTestBucket")
     public Object[][] createBQSRTestDataBucket() {
-        final String GRCh37Ref = ReferenceAPISource.URL_PREFIX + ReferenceAPISource.GRCH37_REF_ID;
+        final String GRCh37Ref = GCS_b37_CHR20_21_REFERENCE;
         final String localResources =  getResourceDir();
         final String HiSeqBamCloud_chr20 = getCloudInputs() + WGS_B37_CH20_1M_1M1K_BAM;
         final String dbSNPb37_chr20 = localResources + DBSNP_138_B37_CH20_1M_1M1K_VCF;
@@ -127,14 +125,13 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
     @Test(description = "This is to test https://github.com/broadinstitute/hellbender/issues/322", groups = {"spark", "bucket"}, enabled = false)
     public void testPlottingWorkflow() throws IOException {
         final String resourceDir = getTestDataDir() + "/" + "BQSR" + "/";
-        final String GRCh37Ref = ReferenceAPISource.GRCH37_REF_ID; // that's the "full" version
         final String dbSNPb37 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
         final String HiSeqBam = getResourceDir() + WGS_B37_CH20_1M_1M1K_BAM;
 
         final File actualHiSeqBam_recalibrated = createTempFile("actual.NA12878.chr17_69k_70k.dictFix.recalibrated", ".bam");
 
         final String tablePre = createTempFile("gatk4.pre.cols", ".table").getAbsolutePath();
-        final String argPre = " -R " + ReferenceAPISource.URL_PREFIX + GRCh37Ref + "-indels --enable-baq " +" --known-sites " + dbSNPb37 + " -I " + HiSeqBam
+        final String argPre = " -R " +GCS_b37_CHR20_21_REFERENCE + "-indels --enable-baq " +" --known-sites " + dbSNPb37 + " -I " + HiSeqBam
                 + " -O " + tablePre;
         new BaseRecalibratorSpark().instanceMain(Utils.escapeExpressions(argPre));
 
@@ -142,7 +139,7 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
         new ApplyBQSRSpark().instanceMain(Utils.escapeExpressions(argApply));
 
         final File actualTablePost = createTempFile("gatk4.post.cols", ".table");
-        final String argsPost = " -R " + ReferenceAPISource.URL_PREFIX + GRCh37Ref + "-indels --enable-baq " +" --known-sites " + dbSNPb37 + " -I " + actualHiSeqBam_recalibrated.getAbsolutePath()
+        final String argsPost = " -R " + GCS_b37_CHR20_21_REFERENCE + "-indels --enable-baq " +" --known-sites " + dbSNPb37 + " -I " + actualHiSeqBam_recalibrated.getAbsolutePath()
                 + " -O " + actualTablePost.getAbsolutePath();
         new BaseRecalibratorSpark().instanceMain(Utils.escapeExpressions(argsPost));
 
@@ -159,7 +156,7 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
         final String localResources =  getResourceDir();
 
-        final String GRCh37Ref = ReferenceAPISource.URL_PREFIX + ReferenceAPISource.GRCH37_REF_ID; // that's the "full" version
+        final String GRCh37Ref = GCS_b37_CHR20_21_REFERENCE;
         final String HiSeqBam = resourceDir + "NA12878.chr17_69k_70k.dictFix.bam";
 
         final String  NO_DBSNP = "";
@@ -176,7 +173,7 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
         final String localResources =  getResourceDir();
 
-        final String hg19Ref = ReferenceAPISource.URL_PREFIX + ReferenceAPISource.HG19_REF_ID;
+        final String hg19Ref = hg19MicroReference;
         final String HiSeqBam = resourceDir + "NA12878.chr17_69k_70k.dictFix.bam";
 
         final String dbSNPb37 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";

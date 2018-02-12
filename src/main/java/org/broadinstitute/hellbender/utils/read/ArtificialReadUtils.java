@@ -1,10 +1,6 @@
 package org.broadinstitute.hellbender.utils.read;
 
-import com.google.api.services.genomics.model.LinearAlignment;
-import com.google.api.services.genomics.model.Position;
-import com.google.api.services.genomics.model.Read;
 import htsjdk.samtools.*;
-import htsjdk.samtools.util.StringUtil;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -302,26 +298,6 @@ public final class ArtificialReadUtils {
     }
 
     /**
-     * Creates an artificial GATKRead backed by a Google Genomics read.
-     *
-     * The read will consist of the specified number of Q30 'A' bases, and will be
-     * mapped to the specified contig at the specified start position.
-     *
-     * @param name name of the new read
-     * @param contig contig the new read is mapped to
-     * @param start start position of the new read
-     * @param length number of bases in the new read
-     * @return an artificial GATKRead backed by a Google Genomics read.
-     */
-    public static GATKRead createGoogleBackedRead( final String name, final String contig, final int start, final int length ) {
-        final byte[] bases = Utils.dupBytes((byte) 'A', length);
-        final byte[] quals = Utils.dupBytes((byte) 30, length);
-
-        final Read googleRead = createArtificialGoogleGenomicsRead(name, contig, start, bases, quals, length + "M");
-        return new GoogleGenomicsReadToGATKReadAdapter(googleRead);
-    }
-
-    /**
      * Create an artificial SAMRecord based on the parameters.  The cigar string will be *M, where * is the length of the read
      *
      * @param header         the SAM header to associate the read with
@@ -453,37 +429,6 @@ public final class ArtificialReadUtils {
     public static SAMRecord createUniqueArtificialSAMRecord(final Cigar cigar) {
         final SAMFileHeader header = createArtificialSamHeader();
         return createArtificialSAMRecord(header, cigar, UUID.randomUUID().toString());
-    }
-
-    public static Read createArtificialGoogleGenomicsRead( final String name, final String contig, final int start, final byte[] bases, final byte[] quals, final String cigar ) {
-        Read googleRead = new Read();
-
-        googleRead.setFragmentName(name);
-        googleRead.setAlignment(new LinearAlignment());
-        googleRead.getAlignment().setPosition(new Position());
-        googleRead.getAlignment().getPosition().setReferenceName(contig);
-        googleRead.getAlignment().getPosition().setPosition((long) start - 1);
-        googleRead.setAlignedSequence(StringUtil.bytesToString(bases));
-        googleRead.getAlignment().setCigar(CigarConversionUtils.convertSAMCigarToCigarUnitList(TextCigarCodec.decode(cigar)));
-
-        List<Integer> convertedQuals = new ArrayList<>();
-        for ( byte b : quals ) {
-            convertedQuals.add((int)b);
-        }
-        googleRead.setAlignedQuality(convertedQuals);
-
-        // Create a fully formed read that can be wrapped by a GATKRead and have a valid
-        // SAMString without GATKRead throwing missing field exceptions.
-        googleRead.setFailedVendorQualityChecks(false);
-        googleRead.setSecondaryAlignment(false);
-        googleRead.setSupplementaryAlignment(false);
-        googleRead.setDuplicateFragment(false);
-
-        Position matePos = new Position();
-        matePos.setReverseStrand(false);
-        googleRead.setNextMatePosition(matePos);
-
-        return googleRead;
     }
 
     public static List<GATKRead> createPair(SAMFileHeader header, String name, int readLen, int leftStart, int rightStart, boolean leftIsFirst, boolean leftIsNegative) {

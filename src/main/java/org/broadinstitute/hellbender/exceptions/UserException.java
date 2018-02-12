@@ -347,29 +347,6 @@ public class UserException extends RuntimeException {
         }
     }
 
-    public static final class ReferenceAPIReturnedUnexpectedNumberOfBytes extends UserException {
-        private static final long serialVersionUID = 0L;
-        public ReferenceAPIReturnedUnexpectedNumberOfBytes(final SimpleInterval interval, final byte[] bases) {
-            super("Query to genomics service failed for reference interval " + interval + ". Requested " + interval.size() + " bytes but got " + bases.length + ". Perhaps you're querying outside the edge of the contig.");
-        }
-    }
-
-    public static final class MultipleReferenceSets extends UserException {
-        private static final long serialVersionUID = 0L;
-
-        public MultipleReferenceSets(final String referenceSetAssemblyID, final Set<String> referenceSetIds) {
-            super("Multiple reference sets found for " + referenceSetAssemblyID + " : " + referenceSetIds + ". Please use a reference set ID that uniquely identifies a reference set.");
-        }
-    }
-
-    public static final class UnknownReferenceSet extends UserException {
-        private static final long serialVersionUID = 0L;
-
-        public UnknownReferenceSet(final String referenceSetAssemblyID) {
-            super("There are no known reference set for ID " + referenceSetAssemblyID);
-        }
-    }
-
     public static final class Require2BitReferenceForBroadcast extends BadInput {
         private static final long serialVersionUID = 0L;
         public Require2BitReferenceForBroadcast() {

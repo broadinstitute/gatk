@@ -45,7 +45,7 @@ public class ReferenceFileSource implements ReferenceSource, Serializable {
         this.referencePath = referencePath;
         this.referenceUri = referencePath.toUri();
         if (!Files.exists(this.referencePath)) {
-            throw new UserException.MissingReference("The specified fasta file (" + referencePath + ") does not exist.");
+            throw new UserException.MissingReference("The specified fasta file (" + referencePath.toAbsolutePath().toUri().toString() + ") does not exist.");
         }
     }
 
