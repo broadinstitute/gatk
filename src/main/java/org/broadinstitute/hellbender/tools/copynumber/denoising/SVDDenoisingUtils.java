@@ -112,7 +112,7 @@ public final class SVDDenoisingUtils {
         if (!CopyNumberArgumentValidationUtils.isSameDictionary(panelOfNormals.getSequenceDictionary(), readCounts.getMetadata().getSequenceDictionary())) {
             logger.warn("Sequence dictionaries in panel and case sample do not match.");
         }
-        ParamUtils.isPositive(numEigensamples, "Number of eigensamples to use for denoising must be positive.");
+        ParamUtils.isPositiveOrZero(numEigensamples, "Number of eigensamples to use for denoising must be non-negative.");
         Utils.validateArg(numEigensamples <= panelOfNormals.getNumEigensamples(),
                 "Number of eigensamples to use for denoising is greater than the number available in the panel of normals.");
 
@@ -424,6 +424,10 @@ public final class SVDDenoisingUtils {
     private static RealMatrix subtractProjection(final RealMatrix standardizedValues,
                                                  final double[][] eigensampleVectors,
                                                  final int numEigensamples) {
+        if (numEigensamples == 0) {
+            return standardizedValues.copy();
+        }
+
         final int numIntervals = eigensampleVectors.length;
         final int numAllEigensamples = eigensampleVectors[0].length;
 

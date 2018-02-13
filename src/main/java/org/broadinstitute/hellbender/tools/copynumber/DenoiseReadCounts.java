@@ -166,6 +166,7 @@ public final class DenoiseReadCounts extends CommandLineProgram {
                     "If not specified or if the number of eigensamples available in the panel of normals " +
                     "is smaller than this, all eigensamples will be used.",
             fullName = CopyNumberStandardArgument.NUMBER_OF_EIGENSAMPLES_LONG_NAME,
+            minValue = 0,
             optional = true
     )
     private Integer numEigensamplesRequested = null;
@@ -176,8 +177,6 @@ public final class DenoiseReadCounts extends CommandLineProgram {
             throw new UserException.HardwareFeatureException("Cannot load the required HDF5 library. " +
                     "HDF5 is currently supported on x86-64 architecture and Linux or OSX systems.");
         }
-        Utils.validateArg(numEigensamplesRequested == null || numEigensamplesRequested > 0,
-                "Number of eigensamples to use for denoising must be non-negative.");
 
         IOUtils.canReadFile(inputReadCountFile);
         logger.info(String.format("Reading read-counts file (%s)...", inputReadCountFile));
