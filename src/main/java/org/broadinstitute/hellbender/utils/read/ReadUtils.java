@@ -18,21 +18,18 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.OptionalInt;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
+
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
@@ -403,6 +400,39 @@ public final class ReadUtils {
      */
     public static boolean isReadNameGroupedBam(SAMFileHeader header) {
         return SAMFileHeader.SortOrder.queryname.equals(header.getSortOrder()) || SAMFileHeader.GroupOrder.query.equals(header.getGroupOrder());
+    }
+
+    /**
+     * Create a map of reads overlapping {@code interval} to their mates by looking for all possible mates within some
+     * maximum fragment size.  This is not guaranteed to find all mates, in particular near structural variant breakpoints
+     * where mates may align far away.
+     *
+     * The algorithm is:
+     * 1) make two maps of read name --> read for reads overlapping {@code interval}, one for first-of-pair reads and one
+     *    for second-of-pair reads.
+     * 2) For all reads in an expanded interval padded by {@code fragmentSize} on both sides look for a read of the same name
+     *    that is second-of-pair if this read is first-of-pair or vice-versa.  If such a read is found then this is that read's mate.
+     *
+     * @param readsContext
+     * @param fragmentSize the maximum distance on either side of {@code interval} to look for mates.
+     * @return a map of reads ot their mates for all reads for which a mate could be found.
+     */
+    public static Map<GATKRead, GATKRead> getReadToMateMap(final ReadsContext readsContext, final int fragmentSize) {
+        final Map<String, GATKRead> readOnes = new HashMap<>();
+        final Map<String, GATKRead> readTwos = new HashMap<>();
+        Utils.stream(readsContext.iterator()).forEach(read -> (read.isFirstOfPair() ? readOnes : readTwos).put(read.getName(), read));
+
+        final Map<GATKRead, GATKRead> result = new HashMap<>();
+        final SimpleInterval originalInterval = readsContext.getInterval();
+        final SimpleInterval expandedInterval = new SimpleInterval(originalInterval.getContig(), Math.max(1, originalInterval.getStart() - fragmentSize), originalInterval.getEnd() + fragmentSize);
+        Utils.stream(readsContext.iterator(expandedInterval)).forEach(mate -> {
+            final GATKRead read = (mate.isFirstOfPair() ? readTwos : readOnes).get(mate.getName());
+            if (read != null) {
+                result.put(read, mate);
+            }
+        });
+
+        return result;
     }
 
     /**
