@@ -109,6 +109,7 @@ workflow Mutect2 {
     String gatk_docker
     String basic_bash_docker = "ubuntu:16.04"
     String? oncotator_docker
+    String oncotator_docker_or_default = select_first([oncotator_docker, "broadinstitute/oncotator:1.9.6.1"])
     Int? preemptible_attempts
 
     # Use as a last resort to increase the disk given to every task in case of ill behaving data
@@ -304,7 +305,7 @@ workflow Mutect2 {
                 default_config_file = default_config_file,
                 case_id = M2.tumor_sample[0],
                 control_id = M2.normal_sample[0],
-                oncotator_docker = select_first([oncotator_docker, "NO_ONCOTATOR_DOCKER_GIVEN"]),
+                oncotator_docker = oncotator_docker_or_default,
                 preemptible_attempts = preemptible_attempts,
                 disk_space = ceil(size(oncotate_vcf_input, "GB") * large_input_to_output_multiplier) + onco_tar_size + disk_pad
         }
