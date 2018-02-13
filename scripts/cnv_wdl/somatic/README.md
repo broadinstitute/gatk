@@ -24,10 +24,10 @@ The reference used must be the same between PoN and case samples.
 - ``CNVSomaticPanelWorkflow.ref_fasta_fai`` -- Path to reference fasta fai file.
 - ``CNVSomaticPanelWorkflow.ref_fasta`` -- Path to reference fasta file.
 
-In additional, there are optional workflow-level and task-level parameters that may be set by advanced users; for example:
+Additionally, there are optional workflow-level and task-level parameters that may be set by advanced users; for example:
 
 - ``CNVSomaticPanelWorkflow.do_explicit_gc_correction`` -- (optional) If true, perform explicit GC-bias correction when creating PoN and in subsequent denoising of case samples.  If false, rely on PCA-based denoising to correct for GC bias.
-- ``CNVSomaticPanelWorkflow.PreprocessIntervals.bin_length`` -- Size of bins (in bp) for coverage collection.  *This must be the same value used for all case samples.*
+- ``CNVSomaticPanelWorkflow.PreprocessIntervals.bin_length`` -- Size of bins (in bp) for coverage collection.  Typically, this is set to `0` for capture samples.  *This must be the same value used for all case samples.*
 - ``CNVSomaticPanelWorkflow.PreprocessIntervals.padding`` -- Amount of padding (in bp) to add to both sides of targets for WES coverage collection.  *This must be the same value used for all case samples.*
 
 Further explanation of other task-level parameters may be found by invoking the ``--help`` documentation available in the gatk.jar for each tool.
@@ -39,8 +39,8 @@ The reference and bins (if specified) must be the same between PoN and case samp
 - ``CNVSomaticPairWorkflow.common_sites`` -- Picard or GATK-style interval list of common sites to use for collecting allelic counts.
 - ``CNVSomaticPairWorkflow.gatk_docker`` -- GATK Docker image (e.g., ``broadinstitute/gatk:latest``).
 - ``CNVSomaticPairWorkflow.intervals`` -- Picard or GATK-style interval list.  For WGS, this should typically only include the autosomal chromosomes.
-- ``CNVSomaticPairWorkflow.normal_bam`` -- Path to normal BAM file.
-- ``CNVSomaticPairWorkflow.normal_bam_idx`` -- Path to normal BAM file index.
+- ``CNVSomaticPairWorkflow.normal_bam`` -- (optional, but recommended) Path to normal BAM file.  Do not specify in order to run the tumor sample without a matched normal.
+- ``CNVSomaticPairWorkflow.normal_bam_idx`` -- (optional, but recommended) Path to normal BAM file index.  Do not specify in order to run the tumor sample without a matched normal.
 - ``CNVSomaticPairWorkflow.read_count_pon`` -- Path to read-count PoN created by the panel workflow. 
 - ``CNVSomaticPairWorkflow.ref_fasta_dict`` -- Path to reference dict file.
 - ``CNVSomaticPairWorkflow.ref_fasta_fai`` -- Path to reference fasta fai file.
@@ -48,7 +48,7 @@ The reference and bins (if specified) must be the same between PoN and case samp
 - ``CNVSomaticPairWorkflow.tumor_bam`` -- Path to tumor BAM file.
 - ``CNVSomaticPairWorkflow.tumor_bam_idx`` -- Path to tumor BAM file index.
 
-In additional, there are several task-level parameters that may be set by advanced users as above.
+Additionally, there are several task-level parameters that may be set by advanced users as above.
 
 To invoke Oncotator on the called tumor copy-ratio segments:
 
