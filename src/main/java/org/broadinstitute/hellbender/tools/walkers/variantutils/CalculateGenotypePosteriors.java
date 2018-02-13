@@ -247,11 +247,25 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
 
         final VCFHeader header = vcfHeaders.values().iterator().next();
         if ( ! header.hasGenotypingData() ) {
-            throw new UserException("VCF has no genotypes");
+            throw new UserException.BadInput("VCF has no genotypes");
+        }
+
+        if ( header.hasInfoLine(GATKVCFConstants.MLE_ALLELE_COUNT_KEY) ) {
+            final VCFInfoHeaderLine mleLine = header.getInfoHeaderLine(GATKVCFConstants.MLE_ALLELE_COUNT_KEY);
+            if ( mleLine.getCountType() != VCFHeaderLineCount.A ) {
+                throw new UserException.BadInput("VCF does not have a properly formatted MLEAC field: the count type should be \"A\"");
+            }
+
+            if ( mleLine.getType() != VCFHeaderLineType.Integer ) {
+                throw new UserException.BadInput("VCF does not have a properly formatted MLEAC field: the field type should be \"Integer\"");
+            }
         }
 
         // Initialize VCF header
         final Set<VCFHeaderLine> headerLines = VCFUtils.smartMergeHeaders(vcfHeaders.values(), true);
+        headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_COUNT_KEY));
+        headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_FREQUENCY_KEY));
+        headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_NUMBER_KEY));
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.GENOTYPE_PRIOR_KEY));
         if (!skipFamilyPriors) {

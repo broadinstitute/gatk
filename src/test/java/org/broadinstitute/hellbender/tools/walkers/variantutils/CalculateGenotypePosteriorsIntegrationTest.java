@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.*;
@@ -125,12 +126,32 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addOutput(out)
-                .addVCF(getTestFile("overlappingVariants.vcf"));
+            .addVCF(getTestFile("overlappingVariants.vcf"));
 
         runCommandLine(args);
 
         try( final InputStream in = new BufferedInputStream(new FileInputStream(out))) {
             Assert.assertTrue(BlockCompressedInputStream.isValidFile(in));
         }
+    }
+
+    @DataProvider
+    public Object[][] getBadInputs(){
+        return new Object[][]{
+                {"noGenotypes.vcf"},
+                {"badMLEAC_count_not_A.vcf"},
+                {"badMLEAC_type_not_int.vcf"}
+        };
+    }
+
+    @Test(dataProvider = "getBadInputs", expectedExceptions = UserException.BadInput.class)
+    public void testBadInputFilesAreRejectedWithReasonableError(String badFile) throws IOException {
+        final File out = createTempFile("out", ".vcf.gz");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addOutput(out)
+            .addVCF(getTestFile(badFile));
+
+        runCommandLine(args);
     }
 }
