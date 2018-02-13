@@ -98,8 +98,7 @@ public class BreakpointEvidence {
                     .map(strandedInterval -> strandedInterval.getInterval().toString() + (strandedInterval.getStrand() ? "1" : "0"))
                     .collect(Collectors.joining(";"))
                 : "";
-        return location.toString() + "\t" + weight + "\t" + (validated ? "1" : "0") + "\t" + this.getClass().getSimpleName()
-                + "\t" + dtString;
+        return location.toString() + "\t" + weight + "\t" + this.getClass().getSimpleName() + "\t" + dtString;
     }
 
     //* slicing equality -- just tests for equal fields */
@@ -217,6 +216,7 @@ public class BreakpointEvidence {
         private final boolean forwardStrand;
         private final String cigarString;
         private final int mappingQuality;
+        private final int templateSize;
 
         /**
          * evidence offset and width is set to "the rest of the fragment" not covered by this read
@@ -229,6 +229,7 @@ public class BreakpointEvidence {
             this.forwardStrand = ! read.isReverseStrand();
             this.cigarString = read.getCigar().toString();
             this.mappingQuality = read.getMappingQuality();
+            this.templateSize = read.getFragmentLength();
         }
 
         /**
@@ -244,18 +245,21 @@ public class BreakpointEvidence {
             this.forwardStrand = forwardStrand;
             this.cigarString = read.getCigar().toString();
             this.mappingQuality = read.getMappingQuality();
+            this.templateSize = read.getFragmentLength();
         }
 
         @VisibleForTesting ReadEvidence( final SVInterval interval, final int weight,
                                          final String templateName, final TemplateFragmentOrdinal fragmentOrdinal,
                                          final boolean validated, final boolean forwardStrand,
-                                         final String cigarString, final int mappingQuality) {
+                                         final String cigarString, final int mappingQuality,
+                                         final int templateSize) {
             super(interval, weight, validated);
             this.templateName = templateName;
             this.fragmentOrdinal = fragmentOrdinal;
             this.forwardStrand = forwardStrand;
             this.cigarString = cigarString;
             this.mappingQuality = mappingQuality;
+            this.templateSize = templateSize;
         }
 
         /**
@@ -270,6 +274,7 @@ public class BreakpointEvidence {
             this.forwardStrand = input.readBoolean();
             this.cigarString = input.readString();
             this.mappingQuality = input.readInt();
+            this.templateSize = input.readInt();
         }
 
         @Override
@@ -280,6 +285,7 @@ public class BreakpointEvidence {
             output.writeBoolean(forwardStrand);
             output.writeString(cigarString);
             output.writeInt(mappingQuality);
+            output.writeInt(templateSize);
         }
 
         public String getTemplateName() {
@@ -289,6 +295,12 @@ public class BreakpointEvidence {
         public TemplateFragmentOrdinal getFragmentOrdinal() {
             return fragmentOrdinal;
         }
+
+        public String getCigarString() { return cigarString; }
+
+        public int getMappingQuality() { return mappingQuality; }
+
+        public int getTemplateSize() { return templateSize; }
 
         @Override
         public Boolean isEvidenceUpstreamOfBreakpoint() {
@@ -308,7 +320,8 @@ public class BreakpointEvidence {
         @Override
         public String stringRep(final ReadMetadata readMetadata, final int minEvidenceMapq) {
             return super.stringRep(readMetadata, minEvidenceMapq) + "\t" + templateName + fragmentOrdinal
-                    + "\t" + (forwardStrand ? "1" : "0") + "\t" + cigarString + "\t" + mappingQuality;
+                    + "\t" + (forwardStrand ? "1" : "0") + "\t" + templateSize + "\t" + cigarString
+                    + "\t" + mappingQuality;
         }
 
         public static final class Serializer extends com.esotericsoftware.kryo.Serializer<ReadEvidence> {
@@ -877,21 +890,18 @@ public class BreakpointEvidence {
 
     @DefaultSerializer(WeirdTemplateSize.Serializer.class)
     public static final class WeirdTemplateSize extends DiscordantReadPairEvidence {
-        private final int templateSize;
         private final int mateStartPosition;
         private final boolean mateReverseStrand;
         private static final int WEIRD_TEMPLATE_SIZE_WEIGHT = ReadEvidence.SINGLE_READ_WEIGHT;
 
         WeirdTemplateSize( final GATKRead read, final ReadMetadata metadata ) {
             super(read, metadata, WEIRD_TEMPLATE_SIZE_WEIGHT);
-            this.templateSize = read.getFragmentLength();
             this.mateStartPosition = read.getMateStart();
             this.mateReverseStrand = read.mateIsReverseStrand();
         }
 
         private WeirdTemplateSize( final Kryo kryo, final Input input ) {
             super(kryo, input);
-            templateSize = input.readInt();
             mateStartPosition = input.readInt();
             mateReverseStrand = input.readBoolean();
         }
@@ -899,19 +909,13 @@ public class BreakpointEvidence {
         @Override
         protected void serialize( final Kryo kryo, final Output output ) {
             super.serialize(kryo, output);
-            output.writeInt(templateSize);
             output.writeInt(mateStartPosition);
             output.writeBoolean(mateReverseStrand);
         }
 
         @Override
         public String toString() {
-            return super.toString() + "\tTemplateSize\t" + target + "\t" + templateSize;
-        }
-
-        @Override
-        public String stringRep(final ReadMetadata readMetadata, final int minEvidenceMapq) {
-            return super.stringRep(readMetadata, minEvidenceMapq) + "\t" + templateSize;
+            return super.toString() + "\tTemplateSize\t" + target + "\t" + getTemplateSize();
         }
 
         public static final class Serializer extends com.esotericsoftware.kryo.Serializer<WeirdTemplateSize> {

@@ -33,6 +33,7 @@ OUTPUT_DIR=$3
 GCS_USER=${4:-${USER}}
 GCS_SAVE_PATH=${5:-"${PROJECT_NAME}/${GCS_USER}"}
 LOCAL_LOG_FILE=${6:-"/dev/null"}
+COPY_FASTQ=${COPY_FASTQ:-"Y"}
 
 shift $(($# < 6 ? $# : 6))
 SV_ARGS=${*:-${SV_ARGS:-""}}
@@ -81,6 +82,13 @@ else
     MAX_CHUNKS_IDEAL=$((${NUM_MAPS}*${SPLIT_RATIO}))
     MAX_CHUNKS_TOL=$((${MAX_CHUNKS_IDEAL} + ${NUM_MAPS}))
     DIST_CP_ARGS="-D distcp.dynamic.max.chunks.tolerable=${MAX_CHUNKS_TOL} -D distcp.dynamic.max.chunks.ideal=${MAX_CHUNKS_IDEAL} -D distcp.dynamic..min.records_per_chunk=0 -D distcp.dynamic.split.ratio=${SPLIT_RATIO}"
+    case "${COPY_FASTQ}" in
+        [nN]*)
+            DIST_CP_ARGS="${DIST_CP_ARGS} -filters <(echo '.*fastq')"
+            ;;
+        *)
+            ;;
+    esac
     CPY_CMD="hadoop distcp ${DIST_CP_ARGS} -m ${NUM_MAPS} -strategy dynamic /${RESULTS_DIR}/* ${GCS_RESULTS_DIR}/"
     echo "gcloud compute ssh ${MASTER} --zone ${ZONE} --command=\"${CPY_CMD}\" 2>&1 | tee -a ${LOCAL_LOG_FILE}" | tee -a ${LOCAL_LOG_FILE}
     gcloud compute ssh ${MASTER} --zone ${ZONE} --command="${CPY_CMD}" 2>&1 | tee -a ${LOCAL_LOG_FILE}

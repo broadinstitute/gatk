@@ -18,6 +18,8 @@ Syntax
       display help and exit
     -q or --quiet:
       run without prompting for user input
+    -n or --no-fastq
+      don't copy fastq files from cluster to cloud storage
     -u [GCS_USER] or --user [GCS_USER]:
       set GCS username (defaults to ${USER})
     -i [INIT_SCRIPT] or --init [INIT_SCRIPT]
@@ -26,12 +28,16 @@ Syntax
     -s [GCS_SAVE_PATH] or --save [GCS_SAVE_PATH]
       save results in specified bucket/folder
       (defaults to \$PROJECT_NAME/\$GCS_USER)
-    -t [MAX_LIFE] or --life:
-      life time of cluster
-      (defaults to \$CLUSTER_MAX_LIFE_HOURS)
-    -d [MAX_IDLE] or --idle:
-      maximum idling time for cluster
-      (defaults to \$CLUSTER_MAX_IDLE_MINUTES)
+    -t [MAX_LIFE] or --life [MAX_LIFE]:
+      life time of cluster (e.g. "2h" for two hours or "1d" for 1 day)
+      (defaults to \$CLUSTER_MAX_LIFE_HOURS if defined, otherwise 4h)
+    -d [MAX_IDLE] or --idle [MAX_IDLE]:
+      maximum idling time for cluster (e.g. "2h" for two hours or "10m"
+      for 10 minutes).
+      (defaults to \$CLUSTER_MAX_IDLE_MINUTES if defined, otherwise 60m)
+    -L [TOOL_NAME] or --launch-tool [TOOL_NAME]
+      specify GATK_SV_TOOL to launch
+      (defaults to "StructuralVariationDiscoveryPipelineSpark")
 
   Mandatory Positional Arguments:
     GATK_Folder: path to local copy of GATK
@@ -69,7 +75,10 @@ throw_error() {
 # parses arguments provided to this script
 QUIET=${SV_QUIET:-"N"}
 GCS_USER=${GCS_USER:-${USER}}
-
+CLUSTER_MAX_LIFE_HOURS=${CLUSTER_MAX_LIFE_HOURS:-4h}
+CLUSTER_MAX_IDLE_MINUTES=${CLUSTER_MAX_IDLE_MINUTES:-60m}
+GATK_SV_TOOL=${GATK_SV_TOOL:-"StructuralVariationDiscoveryPipelineSpark"}
+COPY_FASTQ=${COPY_FASTQ:-"Y"}
 # update gcloud
 if [[ "${QUIET}" == "Y" ]]; then
     gcloud components update --quiet
@@ -85,6 +94,10 @@ while [ $# -ge 1 ]; do
             ;;
         -q|--quiet)
             QUIET="Y"
+            shift
+            ;;
+        -n|--no-fastq)
+            COPY_FASTQ="N"
             shift
             ;;
         -u|--user)
@@ -145,6 +158,18 @@ while [ $# -ge 1 ]; do
             ;;
         --idle=?*)
             CLUSTER_MAX_IDLE_MINUTES=${1#*=} # remove everything up to = and assign rest to idle
+            shift
+            ;;
+        --L|--launch-tool)
+            if [ $# -ge 2 ]; then
+                GATK_SV_TOOL="$2"
+                shift 2
+            else
+                throw_error "--launch-tool requires a non-empty argument"
+            fi
+            ;;
+        --launch-tool=?*)
+            GATK_SV_TOOL=${1#*=} # remove everything up to = and assign rest to GATK_SV_TOOL
             shift
             ;;
         --)   # explicit call to end of all options
@@ -229,7 +254,11 @@ echo "Using cluster name \"${CLUSTER_NAME}\""
 while true; do
     echo "#############################################################" 2>&1 | tee -a ${LOCAL_LOG_FILE}
     if [ "${QUIET}" == "Y" ]; then
-        yn="Y"
+        if gcloud dataproc clusters list --project=${PROJECT_NAME} | grep -q ${CLUSTER_NAME}; then
+            yn="N"
+        else
+            yn="Y"
+        fi
     else
         read -p "Create cluster? (yes/no/cancel)" yn
     fi
@@ -266,8 +295,8 @@ while true; do
     fi
     case $yn in
         [Yy]*)  SECONDS=0
-                echo "runWholePipeline.sh ${GATK_DIR} ${CLUSTER_NAME} ${OUTPUT_DIR} ${CLUSTER_BAM} ${CLUSTER_REFERENCE_2BIT} ${CLUSTER_REFERENCE_IMAGE} ${SV_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}" | tee -a ${LOCAL_LOG_FILE}
-                runWholePipeline.sh ${GATK_DIR} ${CLUSTER_NAME} ${OUTPUT_DIR} ${CLUSTER_BAM} ${CLUSTER_REFERENCE_2BIT} ${CLUSTER_REFERENCE_IMAGE} ${SV_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}
+                echo "GATK_SV_TOOL=${GATK_SV_TOOL} runWholePipeline.sh ${GATK_DIR} ${CLUSTER_NAME} ${OUTPUT_DIR} ${CLUSTER_BAM} ${CLUSTER_REFERENCE_2BIT} ${CLUSTER_REFERENCE_IMAGE} ${SV_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}" | tee -a ${LOCAL_LOG_FILE}
+                GATK_SV_TOOL=${GATK_SV_TOOL} runWholePipeline.sh ${GATK_DIR} ${CLUSTER_NAME} ${OUTPUT_DIR} ${CLUSTER_BAM} ${CLUSTER_REFERENCE_2BIT} ${CLUSTER_REFERENCE_IMAGE} ${SV_ARGS} 2>&1 | tee -a ${LOCAL_LOG_FILE}
                 printf 'Pipeline completed in %02dh:%02dm:%02ds\n' $((${SECONDS}/3600)) $((${SECONDS}%3600/60)) $((${SECONDS}%60))
                 break
                 ;;
@@ -291,7 +320,7 @@ while true; do
     fi
     case $yn in
         [Yy]*)  echo "copy_sv_results.sh ${PROJECT_NAME} ${CLUSTER_NAME} ${OUTPUT_DIR} ${GCS_USER} ${GCS_SAVE_PATH} ${LOCAL_LOG_FILE} 2>&1" | tee -a ${LOCAL_LOG_FILE}
-                copy_sv_results.sh ${PROJECT_NAME} ${CLUSTER_NAME} ${OUTPUT_DIR} ${GCS_USER} ${GCS_SAVE_PATH} ${LOCAL_LOG_FILE}${SV_ARGS}
+                COPY_FASTQ=${COPY_FASTQ} copy_sv_results.sh ${PROJECT_NAME} ${CLUSTER_NAME} ${OUTPUT_DIR} ${GCS_USER} ${GCS_SAVE_PATH} ${LOCAL_LOG_FILE}${SV_ARGS}
                 break
                 ;;
         [Nn]*)  break

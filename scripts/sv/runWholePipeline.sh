@@ -52,20 +52,45 @@ if [ -z "${NUM_WORKERS}" ]; then
 fi
 NUM_EXECUTORS=$((2 * ${NUM_WORKERS}))
 
-"${GATK_DIR}/gatk" StructuralVariationDiscoveryPipelineSpark \
-    -I "${INPUT_BAM}" \
-    -O "${PROJECT_OUTPUT_DIR}/variants/inv_del_ins.vcf" \
-    -R "${REF_TWOBIT}" \
-    --aligner-index-image "${REF_INDEX_IMAGE}" \
-    --exclusion-intervals "${INTERVAL_KILL_LIST}" \
-    --kmers-to-ignore "${KMER_KILL_LIST}" \
-    --cross-contigs-to-ignore "${ALTS_KILL_LIST}" \
-    --breakpoint-intervals "${PROJECT_OUTPUT_DIR}/intervals" \
-    --fastq-dir "${PROJECT_OUTPUT_DIR}/fastq" \
-    --contig-sam-file "${PROJECT_OUTPUT_DIR}/assemblies.sam" \
-    --target-link-file ${PROJECT_OUTPUT_DIR}/target_links.bedpe \
-    --exp-variants-out-dir "${PROJECT_OUTPUT_DIR}/experimentalVariantInterpretations" \
-    ${SV_ARGS} \
+GATK_SV_TOOL=${GATK_SV_TOOL:-"StructuralVariationDiscoveryPipelineSpark"}
+
+case ${GATK_SV_TOOL} in
+    "StructuralVariationDiscoveryPipelineSpark")
+        TOOL_OPTIONS="\
+            -I ${INPUT_BAM} \
+            -O ${PROJECT_OUTPUT_DIR}/variants/inv_del_ins.vcf \
+            -R ${REF_TWOBIT} \
+            --aligner-index-image ${REF_INDEX_IMAGE} \
+            --exclusion-intervals ${INTERVAL_KILL_LIST} \
+            --kmers-to-ignore ${KMER_KILL_LIST} \
+            --cross-contigs-to-ignore ${ALTS_KILL_LIST} \
+            --breakpoint-intervals ${PROJECT_OUTPUT_DIR}/intervals \
+            --fastq-dir ${PROJECT_OUTPUT_DIR}/fastq \
+            --contig-sam-file ${PROJECT_OUTPUT_DIR}/assemblies.sam \
+            --target-link-file ${PROJECT_OUTPUT_DIR}/target_links.bedpe \
+            --exp-variants-out-dir ${PROJECT_OUTPUT_DIR}/experimentalVariantInterpretations"
+        ;;
+    "ExtractSVEvidenceSpark")
+        TOOL_OPTIONS="\
+            -I ${INPUT_BAM} \
+            -O ${PROJECT_OUTPUT_DIR}/evidence \
+            -R ${REF_TWOBIT} \
+            --aligner-index-image ${REF_INDEX_IMAGE} \
+            --exclusion-intervals ${INTERVAL_KILL_LIST} \
+            --kmers-to-ignore ${KMER_KILL_LIST} \
+            --cross-contigs-to-ignore ${ALTS_KILL_LIST} \
+            --breakpoint-intervals ${PROJECT_OUTPUT_DIR}/intervals \
+            --fastq-dir ${PROJECT_OUTPUT_DIR}/fastq \
+            --target-link-file ${PROJECT_OUTPUT_DIR}/target_links.bedpe"
+        ;;
+    *)
+        echo "Unknown tool: ${GATK_SV_TOOL}" 1>&2
+        exit 1
+        ;;
+esac
+    
+"${GATK_DIR}/gatk" ${GATK_SV_TOOL} \
+    ${TOOL_OPTIONS} ${SV_ARGS} \
     -- \
     --spark-runner GCS \
     --cluster "${CLUSTER_NAME}" \
