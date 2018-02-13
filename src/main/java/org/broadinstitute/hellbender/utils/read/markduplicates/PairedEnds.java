@@ -15,6 +15,7 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   public short tile = -1;
   public short x = -1, y = -1;
   public short libraryId = -1;
+  public transient Integer markedScore;
 
   PairedEnds(final GATKRead first) {
     this.first = first;
@@ -59,7 +60,9 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   }
 
   public int score(final MarkDuplicatesScoringStrategy scoringStrategy) {
-    return scoringStrategy.score(first) + scoringStrategy.score(second);
+    if (markedScore!=null) return markedScore;
+    markedScore = scoringStrategy.score(first) + ((second!=null)?scoringStrategy.score(second):0);
+    return markedScore;
   }
 
   @Override
