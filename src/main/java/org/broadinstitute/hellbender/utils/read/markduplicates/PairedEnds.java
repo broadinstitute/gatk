@@ -43,11 +43,11 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
     return this;
   }
 
-  public String key(final SAMFileHeader header) {
+  public Integer key(final SAMFileHeader header) {
     return ReadsKey.keyForPairedEnds(header, first, second);
   }
 
-  public String keyForFragment(final SAMFileHeader header) {
+  public Integer keyForFragment(final SAMFileHeader header) {
     return ReadsKey.keyForFragment(header, first);
   }
 
