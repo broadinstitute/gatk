@@ -68,8 +68,15 @@ public class MarkDuplicatesSparkUtils {
                     // Make a PairedEnd object with no second read for each fragment (and an empty one for each paired read)
                     .peek(read -> {
                         read.setIsDuplicate(false);
-                        PairedEnds fragment = (ReadUtils.readHasMappedMate(read)) ? PairedEnds.empty(ReadUtils.getStrandedUnclippedStart(read)) : PairedEnds.of(read, true);
-                        out.add(new Tuple2<>(fragment.isEmpty()? ReadsKey.keyForFragment(header, read, fragment.getStartPosition()) : fragment.keyForFragment(header), fragment));
+
+                        PairedEnds fragment = (ReadUtils.readHasMappedMate(read)) ?
+                                PairedEnds.empty(ReadUtils.getStrandedUnclippedStart(read)) :
+                                PairedEnds.of(read);
+
+                        out.add(new Tuple2<>(fragment.isEmpty()?
+                                ReadsKey.keyForFragment(header, read, fragment.getStartPosition()) :
+                                fragment.keyForFragment(header),
+                                fragment));
                     })
                     .filter(ReadUtils::readHasMappedMate)
                     .sorted(new GATKOrder(header))

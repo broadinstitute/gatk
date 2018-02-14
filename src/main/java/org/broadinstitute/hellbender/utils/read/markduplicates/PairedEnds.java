@@ -24,10 +24,18 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
     this.fragment = fragment;
   }
 
+  PairedEnds(final GATKRead first) {
+    this.first = first;
+  }
+
   PairedEnds(int start) { this.startPosition = start; }
 
   public static PairedEnds of(final GATKRead first, final boolean fragment) {
     return new PairedEnds(first, fragment);
+  }
+
+  public static PairedEnds of(final GATKRead first) {
+    return new PairedEnds(first);
   }
 
   // An optimization for passing around empty read information
