@@ -209,9 +209,10 @@ public class SVFastqUtils {
 
     @DefaultSerializer(FastqRead.Serializer.class)
     public static final class FastqRead implements FermiLiteAssembler.BasesAndQuals {
-        private final String header;
-        private final byte[] bases;
-        private final byte[] quals;
+        private final String header; // looks just like a line in a FASTQ file: "@readName"
+        private final byte[] bases;  // contains bytes with values like 'A', 'C', 'G', and 'T'
+        private final byte[] quals;  // contains phred-scaled bytes without any bias --
+                                     //   a bias of 33 is added when writing, and removed when reading
 
         public FastqRead(final GATKRead read) {
             this(read, true);
@@ -285,7 +286,9 @@ public class SVFastqUtils {
             }
         }
 
+        /** returns bases with values like 'A', 'C', 'G', and 'T' */
         @Override public byte[] getBases() { return bases; }
+        /** returns phred-scaled quals with no bias */
         @Override public byte[] getQuals() { return quals; }
 
         private void serialize( final Kryo kryo, final Output output ) {
@@ -309,45 +312,52 @@ public class SVFastqUtils {
     }
 
     public static List<FastqRead> readFastqFile( final String fileName ) {
-        final int INITIAL_CAPACITY = 10000; // absolute guess, just something not too crazy small
-        final List<FastqRead> reads = new ArrayList<>(INITIAL_CAPACITY);
+        final List<FastqRead> reads;
         try ( final BufferedReader reader = new BufferedReader(new InputStreamReader(BucketUtils.openFile(fileName))) ) {
-            String header;
-            int lineNo = 0;
-            while ( (header = reader.readLine()) != null ) {
-                lineNo += 1;
-                if (!FASTQ_READ_HEADER_PATTERN.matcher(header).find()) {
-                    throw new GATKException("In FASTQ file "+fileName+" sequence identifier line does not start with @ on line "+lineNo);
-                }
-                final String callLine = reader.readLine();
-                lineNo += 1;
-                if ( callLine == null ) {
-                    throw new GATKException("In FASTQ file "+fileName+" file truncated: missing calls.");
-                }
-                final String sepLine = reader.readLine();
-                lineNo += 1;
-                if ( sepLine == null ) {
-                    throw new GATKException("In FASTQ file "+fileName+" file truncated: missing + line.");
-                }
-                if ( sepLine.length() < 1 || sepLine.charAt(0) != LINE_SEPARATOR_CHR ) {
-                    throw new GATKException("In FASTQ file " + fileName + " separator line does not start with + on line " + lineNo);
-                }
-                final String qualLine = reader.readLine();
-                lineNo += 1;
-                if ( qualLine == null ) {
-                    throw new UserException.BadInput("In FASTQ file "+fileName+" file truncated: missing quals.");
-                }
-                if ( callLine.length() != qualLine.length() ) {
-                    throw new UserException.BadInput("In FASTQ file "+fileName+" there are "+qualLine.length()+
-                            " quality scores on line "+lineNo+" but there are "+callLine.length()+" base calls.");
-                }
-                final byte[] quals = qualLine.getBytes();
-                final byte[] calls = callLine.getBytes();
-                reads.add(new FastqRead(header, calls, quals));
-            }
+            reads = readFastqStream(reader, fileName);
         }
         catch ( final IOException ioe ) {
             throw new GATKException("Can't read "+fileName, ioe);
+        }
+        return reads;
+    }
+
+    public static List<FastqRead> readFastqStream( final BufferedReader reader, final String fileName ) throws IOException {
+        final int INITIAL_CAPACITY = 10000; // a wild guess, just something not too crazy small
+        final List<FastqRead> reads = new ArrayList<>(INITIAL_CAPACITY);
+        String header;
+        int lineNo = 0;
+        while ( (header = reader.readLine()) != null ) {
+            lineNo += 1;
+            if (!FASTQ_READ_HEADER_PATTERN.matcher(header).find()) {
+                throw new GATKException("In FASTQ file "+fileName+" sequence identifier line does not start with @ on line "+lineNo);
+            }
+            final String callLine = reader.readLine();
+            lineNo += 1;
+            if ( callLine == null ) {
+                throw new GATKException("In FASTQ file "+fileName+" file truncated: missing calls.");
+            }
+            final String sepLine = reader.readLine();
+            lineNo += 1;
+            if ( sepLine == null ) {
+                throw new GATKException("In FASTQ file "+fileName+" file truncated: missing + line.");
+            }
+            if ( sepLine.length() < 1 || sepLine.charAt(0) != LINE_SEPARATOR_CHR ) {
+                throw new GATKException("In FASTQ file " + fileName + " separator line does not start with + on line " + lineNo);
+            }
+            final String qualLine = reader.readLine();
+            lineNo += 1;
+            if ( qualLine == null ) {
+                throw new UserException.BadInput("In FASTQ file "+fileName+" file truncated: missing quals.");
+            }
+            if ( callLine.length() != qualLine.length() ) {
+                throw new UserException.BadInput("In FASTQ file "+fileName+" there are "+qualLine.length()+
+                        " quality scores on line "+lineNo+" but there are "+callLine.length()+" base calls.");
+            }
+            final byte[] quals = qualLine.getBytes();
+            SAMUtils.fastqToPhred(quals);
+            final byte[] calls = callLine.getBytes();
+            reads.add(new FastqRead(header, calls, quals));
         }
         return reads;
     }
