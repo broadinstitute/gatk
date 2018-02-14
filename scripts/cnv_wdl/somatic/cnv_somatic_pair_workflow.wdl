@@ -164,25 +164,6 @@ workflow CNVSomaticPairWorkflow {
             preemptible_attempts = preemptible_attempts
     }
 
-    Int collect_counts_normal_disk = normal_bam_size + ceil(size(PreprocessIntervals.preprocessed_intervals, "GB")) + disk_pad
-    if (defined(normal_bam)) {
-        call CNVTasks.CollectCounts as CollectCountsNormal {
-            input:
-                intervals = PreprocessIntervals.preprocessed_intervals,
-                bam = final_normal_bam,
-                bam_idx = final_normal_bam_idx,
-                ref_fasta = ref_fasta,
-                ref_fasta_fai = ref_fasta_fai,
-                ref_fasta_dict = ref_fasta_dict,
-                format = format,
-                gatk4_jar_override = gatk4_jar_override,
-                gatk_docker = gatk_docker,
-                mem_gb = mem_gb_for_collect_counts,
-                disk_space_gb = collect_counts_normal_disk,
-                preemptible_attempts = preemptible_attempts
-        }
-    }
-
     Int collect_allelic_counts_tumor_disk = tumor_bam_size + ref_size + disk_pad
     call CNVTasks.CollectAllelicCounts as CollectAllelicCountsTumor {
         input:
@@ -200,25 +181,6 @@ workflow CNVSomaticPairWorkflow {
             preemptible_attempts = preemptible_attempts
     }
 
-    if (defined(normal_bam)) {
-        Int collect_allelic_counts_normal_disk = normal_bam_size + ref_size + disk_pad
-        call CNVTasks.CollectAllelicCounts as CollectAllelicCountsNormal {
-            input:
-                common_sites = common_sites,
-                bam = final_normal_bam,
-                bam_idx = final_normal_bam_idx,
-                ref_fasta = ref_fasta,
-                ref_fasta_dict = ref_fasta_dict,
-                ref_fasta_fai = ref_fasta_fai,
-                minimum_base_quality =  minimum_base_quality,
-                gatk4_jar_override = gatk4_jar_override,
-                gatk_docker = gatk_docker,
-                mem_gb = mem_gb_for_collect_allelic_counts,
-                disk_space_gb = collect_allelic_counts_normal_disk,
-                preemptible_attempts = preemptible_attempts
-        }
-    }
-
     Int denoise_read_counts_tumor_disk = read_count_pon_size + ceil(size(CollectCountsTumor.counts, "GB")) + disk_pad
     call DenoiseReadCounts as DenoiseReadCountsTumor {
         input:
@@ -231,22 +193,6 @@ workflow CNVSomaticPairWorkflow {
             mem_gb = mem_gb_for_denoise_read_counts,
             disk_space_gb = denoise_read_counts_tumor_disk,
             preemptible_attempts = preemptible_attempts
-    }
-
-    if (defined(normal_bam)) {
-        Int denoise_read_counts_normal_disk = read_count_pon_size + ceil(size(CollectCountsNormal.counts, "GB")) + disk_pad
-        call DenoiseReadCounts as DenoiseReadCountsNormal {
-            input:
-                entity_id = CollectCountsNormal.entity_id,
-                read_counts = CollectCountsNormal.counts,
-                read_count_pon = read_count_pon,
-                number_of_eigensamples = number_of_eigensamples,
-                gatk4_jar_override = gatk4_jar_override,
-                gatk_docker = gatk_docker,
-                mem_gb = mem_gb_for_denoise_read_counts,
-                disk_space_gb = denoise_read_counts_normal_disk,
-                preemptible_attempts = preemptible_attempts
-        }
     }
 
     Int model_segments_normal_portion = if defined(normal_bam) then ceil(size(CollectAllelicCountsNormal.allelic_counts, "GB")) else 0
@@ -283,7 +229,102 @@ workflow CNVSomaticPairWorkflow {
             preemptible_attempts = preemptible_attempts
     }
 
+    Int copy_ratio_segments_tumor_disk = ceil(size(DenoiseReadCountsTumor.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsTumor.copy_ratio_only_segments, "GB")) + disk_pad
+    call CallCopyRatioSegments as CallCopyRatioSegmentsTumor {
+        input:
+            entity_id = CollectCountsTumor.entity_id,
+            copy_ratio_segments = ModelSegmentsTumor.copy_ratio_only_segments,
+            neutral_segment_copy_ratio_lower_bound = neutral_segment_copy_ratio_lower_bound,
+            neutral_segment_copy_ratio_upper_bound = neutral_segment_copy_ratio_upper_bound,
+            outlier_neutral_segment_copy_ratio_z_score_threshold = outlier_neutral_segment_copy_ratio_z_score_threshold,
+            calling_copy_ratio_z_score_threshold = calling_copy_ratio_z_score_threshold,
+            gatk4_jar_override = gatk4_jar_override,
+            gatk_docker = gatk_docker,
+            mem_gb = mem_gb_for_call_copy_ratio_segments,
+            disk_space_gb = copy_ratio_segments_tumor_disk,
+            preemptible_attempts = preemptible_attempts
+    }
+
+    # The F=files from other tasks are small enough to just combine into one disk variable and pass to the tumor plotting tasks
+    Int plot_tumor_disk = ref_size + ceil(size(DenoiseReadCountsTumor.standardized_copy_ratios, "GB")) + ceil(size(DenoiseReadCountsTumor.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsTumor.het_allelic_counts, "GB")) + ceil(size(ModelSegmentsTumor.modeled_segments, "GB")) + disk_pad
+    call PlotDenoisedCopyRatios as PlotDenoisedCopyRatiosTumor {
+        input:
+            entity_id = CollectCountsTumor.entity_id,
+            standardized_copy_ratios = DenoiseReadCountsTumor.standardized_copy_ratios,
+            denoised_copy_ratios = DenoiseReadCountsTumor.denoised_copy_ratios,
+            ref_fasta_dict = ref_fasta_dict,
+            minimum_contig_length = minimum_contig_length,
+            gatk4_jar_override = gatk4_jar_override,
+            gatk_docker = gatk_docker,
+            mem_gb = mem_gb_for_plotting,
+            disk_space_gb = plot_tumor_disk,
+            preemptible_attempts = preemptible_attempts
+    }
+
+    call PlotModeledSegments as PlotModeledSegmentsTumor {
+        input:
+            entity_id = CollectCountsTumor.entity_id,
+            denoised_copy_ratios = DenoiseReadCountsTumor.denoised_copy_ratios,
+            het_allelic_counts = ModelSegmentsTumor.het_allelic_counts,
+            modeled_segments = ModelSegmentsTumor.modeled_segments,
+            ref_fasta_dict = ref_fasta_dict,
+            minimum_contig_length = minimum_contig_length,
+            gatk4_jar_override = gatk4_jar_override,
+            gatk_docker = gatk_docker,
+            mem_gb = mem_gb_for_plotting,
+            disk_space_gb = plot_tumor_disk,
+            preemptible_attempts = preemptible_attempts
+    }
+
+    Int collect_counts_normal_disk = normal_bam_size + ceil(size(PreprocessIntervals.preprocessed_intervals, "GB")) + disk_pad
     if (defined(normal_bam)) {
+        call CNVTasks.CollectCounts as CollectCountsNormal {
+            input:
+                intervals = PreprocessIntervals.preprocessed_intervals,
+                bam = final_normal_bam,
+                bam_idx = final_normal_bam_idx,
+                ref_fasta = ref_fasta,
+                ref_fasta_fai = ref_fasta_fai,
+                ref_fasta_dict = ref_fasta_dict,
+                format = format,
+                gatk4_jar_override = gatk4_jar_override,
+                gatk_docker = gatk_docker,
+                mem_gb = mem_gb_for_collect_counts,
+                disk_space_gb = collect_counts_normal_disk,
+                preemptible_attempts = preemptible_attempts
+        }
+
+        Int collect_allelic_counts_normal_disk = normal_bam_size + ref_size + disk_pad
+        call CNVTasks.CollectAllelicCounts as CollectAllelicCountsNormal {
+            input:
+                common_sites = common_sites,
+                bam = final_normal_bam,
+                bam_idx = final_normal_bam_idx,
+                ref_fasta = ref_fasta,
+                ref_fasta_dict = ref_fasta_dict,
+                ref_fasta_fai = ref_fasta_fai,
+                minimum_base_quality =  minimum_base_quality,
+                gatk4_jar_override = gatk4_jar_override,
+                gatk_docker = gatk_docker,
+                mem_gb = mem_gb_for_collect_allelic_counts,
+                disk_space_gb = collect_allelic_counts_normal_disk,
+                preemptible_attempts = preemptible_attempts
+        }
+
+        Int denoise_read_counts_normal_disk = read_count_pon_size + ceil(size(CollectCountsNormal.counts, "GB")) + disk_pad
+        call DenoiseReadCounts as DenoiseReadCountsNormal {
+            input:
+                entity_id = CollectCountsNormal.entity_id,
+                read_counts = CollectCountsNormal.counts,
+                read_count_pon = read_count_pon,
+                number_of_eigensamples = number_of_eigensamples,
+                gatk4_jar_override = gatk4_jar_override,
+                gatk_docker = gatk_docker,
+                mem_gb = mem_gb_for_denoise_read_counts,
+                disk_space_gb = denoise_read_counts_normal_disk,
+                preemptible_attempts = preemptible_attempts
+        }
+
         call ModelSegments as ModelSegmentsNormal {
             input:
                 entity_id = CollectCountsNormal.entity_id,
@@ -314,25 +355,7 @@ workflow CNVSomaticPairWorkflow {
                 disk_space_gb = model_segments_disk,
                 preemptible_attempts = preemptible_attempts
         }
-    }
 
-    Int copy_ratio_segments_tumor_disk = ceil(size(DenoiseReadCountsTumor.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsTumor.copy_ratio_only_segments, "GB")) + disk_pad
-    call CallCopyRatioSegments as CallCopyRatioSegmentsTumor {
-        input:
-            entity_id = CollectCountsTumor.entity_id,
-            copy_ratio_segments = ModelSegmentsTumor.copy_ratio_only_segments,
-            neutral_segment_copy_ratio_lower_bound = neutral_segment_copy_ratio_lower_bound,
-            neutral_segment_copy_ratio_upper_bound = neutral_segment_copy_ratio_upper_bound,
-            outlier_neutral_segment_copy_ratio_z_score_threshold = outlier_neutral_segment_copy_ratio_z_score_threshold,
-            calling_copy_ratio_z_score_threshold = calling_copy_ratio_z_score_threshold,
-            gatk4_jar_override = gatk4_jar_override,
-            gatk_docker = gatk_docker,
-            mem_gb = mem_gb_for_call_copy_ratio_segments,
-            disk_space_gb = copy_ratio_segments_tumor_disk,
-            preemptible_attempts = preemptible_attempts
-    }
-
-    if (defined(normal_bam)) {
         Int copy_ratio_segments_normal_disk = ceil(size(DenoiseReadCountsNormal.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsNormal.copy_ratio_only_segments, "GB")) + disk_pad
         call CallCopyRatioSegments as CallCopyRatioSegmentsNormal {
             input:
@@ -348,25 +371,7 @@ workflow CNVSomaticPairWorkflow {
                 disk_space_gb = copy_ratio_segments_normal_disk,
                 preemptible_attempts = preemptible_attempts
         }
-    }
 
-    # The F=files from other tasks are small enough to just combine into one disk variable and pass to the tumor plotting tasks
-    Int plot_tumor_disk = ref_size + ceil(size(DenoiseReadCountsTumor.standardized_copy_ratios, "GB")) + ceil(size(DenoiseReadCountsTumor.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsTumor.het_allelic_counts, "GB")) + ceil(size(ModelSegmentsTumor.modeled_segments, "GB")) + disk_pad
-    call PlotDenoisedCopyRatios as PlotDenoisedCopyRatiosTumor {
-        input:
-            entity_id = CollectCountsTumor.entity_id,
-            standardized_copy_ratios = DenoiseReadCountsTumor.standardized_copy_ratios,
-            denoised_copy_ratios = DenoiseReadCountsTumor.denoised_copy_ratios,
-            ref_fasta_dict = ref_fasta_dict,
-            minimum_contig_length = minimum_contig_length,
-            gatk4_jar_override = gatk4_jar_override,
-            gatk_docker = gatk_docker,
-            mem_gb = mem_gb_for_plotting,
-            disk_space_gb = plot_tumor_disk,
-            preemptible_attempts = preemptible_attempts
-    }
-
-    if (defined(normal_bam)) {
         # The files from other tasks are small enough to just combine into one disk variable and pass to the normal plotting tasks
         Int plot_normal_disk = ref_size + ceil(size(DenoiseReadCountsNormal.standardized_copy_ratios, "GB")) + ceil(size(DenoiseReadCountsNormal.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsNormal.het_allelic_counts, "GB")) + ceil(size(ModelSegmentsNormal.modeled_segments, "GB")) + disk_pad
         call PlotDenoisedCopyRatios as PlotDenoisedCopyRatiosNormal {
@@ -382,24 +387,7 @@ workflow CNVSomaticPairWorkflow {
                 disk_space_gb = plot_normal_disk,
                 preemptible_attempts = preemptible_attempts
         }
-    }
 
-    call PlotModeledSegments as PlotModeledSegmentsTumor {
-        input:
-            entity_id = CollectCountsTumor.entity_id,
-            denoised_copy_ratios = DenoiseReadCountsTumor.denoised_copy_ratios,
-            het_allelic_counts = ModelSegmentsTumor.het_allelic_counts,
-            modeled_segments = ModelSegmentsTumor.modeled_segments,
-            ref_fasta_dict = ref_fasta_dict,
-            minimum_contig_length = minimum_contig_length,
-            gatk4_jar_override = gatk4_jar_override,
-            gatk_docker = gatk_docker,
-            mem_gb = mem_gb_for_plotting,
-            disk_space_gb = plot_tumor_disk,
-            preemptible_attempts = preemptible_attempts
-    }
-
-    if (defined(normal_bam)) {
         call PlotModeledSegments as PlotModeledSegmentsNormal {
             input:
                 entity_id = CollectCountsNormal.entity_id,
