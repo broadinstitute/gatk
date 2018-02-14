@@ -128,6 +128,9 @@ workflow CNVSomaticPairWorkflow {
     # This is added to every task as padding, should increase if systematically you need more disk for every call
     Int disk_pad = 20 + ceil(size(intervals, "GB")) + ceil(size(common_sites, "GB")) + gatk4_override_size + select_first([emergency_extra_disk,0])
 
+    File final_normal_bam = select_first([normal_bam, "null"])
+    File final_normal_bam_idx = select_first([normal_bam_idx, "null"])
+
     Int preprocess_intervals_disk = ref_size + disk_pad
     call CNVTasks.PreprocessIntervals {
         input:
@@ -166,8 +169,8 @@ workflow CNVSomaticPairWorkflow {
         call CNVTasks.CollectCounts as CollectCountsNormal {
             input:
                 intervals = PreprocessIntervals.preprocessed_intervals,
-                bam = normal_bam,
-                bam_idx = normal_bam_idx,
+                bam = final_normal_bam,
+                bam_idx = final_normal_bam_idx,
                 ref_fasta = ref_fasta,
                 ref_fasta_fai = ref_fasta_fai,
                 ref_fasta_dict = ref_fasta_dict,
@@ -202,8 +205,8 @@ workflow CNVSomaticPairWorkflow {
         call CNVTasks.CollectAllelicCounts as CollectAllelicCountsNormal {
             input:
                 common_sites = common_sites,
-                bam = normal_bam,
-                bam_idx = normal_bam_idx,
+                bam = final_normal_bam,
+                bam_idx = final_normal_bam_idx,
                 ref_fasta = ref_fasta,
                 ref_fasta_dict = ref_fasta_dict,
                 ref_fasta_fai = ref_fasta_fai,
