@@ -68,7 +68,7 @@ public class MarkDuplicatesSparkUtils {
                     // Make a PairedEnd object with no second read for each fragment (and an empty one for each paired read)
                     .peek(read -> {
                         read.setIsDuplicate(false);
-                        out.add(new Tuple2<>(ReadsKey.keyForFragment(header, read), (ReadUtils.readHasMappedMate(read)) ? PairedEnds.empty() : PairedEnds.of(read, true)));
+                        out.add(new Tuple2<>(ReadsKey.keyForFragment(header, read), (ReadUtils.readHasMappedMate(read)) ? PairedEnds.empty(ReadUtils.getStrandedUnclippedStart(read)) : PairedEnds.of(read, true)));
                     })
                     .filter(ReadUtils::readHasMappedMate)
                     .sorted(new GATKOrder(header))
@@ -179,7 +179,7 @@ public class MarkDuplicatesSparkUtils {
             }
 
             if (!paired.get(false).isEmpty()) {
-                final ImmutableListMultimap<Integer, PairedEnds> groups = Multimaps.index(paired.get(false), pair -> pair.first().getStart());
+                final ImmutableListMultimap<Integer, PairedEnds> groups = Multimaps.index(paired.get(false), PairedEnds::getStartPosition);
 
                 for (int key : groups.keys()) {
                     // As in Picard, unpaired ends left alone.
@@ -245,7 +245,7 @@ public class MarkDuplicatesSparkUtils {
     private static List<GATKRead> handleFragments(Iterable<PairedEnds> pairedEnds, Comparator<PairedEnds> comparator) {
         final List<GATKRead> reads = Lists.newArrayList();
 
-        final ImmutableListMultimap<Integer, PairedEnds> groups = Multimaps.index(pairedEnds, pair -> pair.first().getStart());
+        final ImmutableListMultimap<Integer, PairedEnds> groups = Multimaps.index(pairedEnds, pair -> pair.getStartPosition());
 
         for (int key : groups.keys()) {
             final Map<Boolean, List<PairedEnds>> byPairing = StreamSupport.stream(groups.get(key).spliterator(), false)

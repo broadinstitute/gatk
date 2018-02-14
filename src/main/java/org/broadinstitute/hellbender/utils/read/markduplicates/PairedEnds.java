@@ -17,21 +17,22 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   public short libraryId = -1;
   public boolean fragment = true;
   public transient Integer markedScore;
+  public int startPosition;
 
   PairedEnds(final GATKRead first, final boolean fragment) {
     this.first = first;
     this.fragment = fragment;
   }
 
-  PairedEnds() { }
+  PairedEnds(int start) { this.startPosition = start; }
 
   public static PairedEnds of(final GATKRead first, final boolean fragment) {
     return new PairedEnds(first, fragment);
   }
 
   // An optimization for passing around empty read information
-  public static PairedEnds empty(){
-    return new PairedEnds();
+  public static PairedEnds empty(int start){
+    return new PairedEnds(start);
   }
 
   public PairedEnds and(final GATKRead second) {
@@ -67,6 +68,13 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
     if (markedScore!=null) return markedScore;
     markedScore = scoringStrategy.score(first) + ((second!=null)?scoringStrategy.score(second):0);
     return markedScore;
+  }
+
+  public int getStartPosition() {
+    if (first!=null) {
+      return ReadUtils.getStrandedUnclippedStart(first);
+    }
+    return startPosition;
   }
 
   @Override
