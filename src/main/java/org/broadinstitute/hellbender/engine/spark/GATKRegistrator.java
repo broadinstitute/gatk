@@ -2,14 +2,8 @@ package org.broadinstitute.hellbender.engine.spark;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.serializers.FieldSerializer;
-import com.esotericsoftware.kryo.serializers.JavaSerializer;
-import com.google.api.services.genomics.model.Read;
 import de.javakaffee.kryoserializers.UnmodifiableCollectionsSerializer;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.FastGenotype;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.samtools.*;
 import org.apache.spark.serializer.KryoRegistrator;
 import org.bdgenomics.adam.serialization.ADAMKryoRegistrator;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
@@ -33,9 +27,6 @@ public class GATKRegistrator implements KryoRegistrator {
     @Override
     public void registerClasses(Kryo kryo) {
 
-        // JsonSerializer is needed for the Google Genomics classes like Read and Reference.
-        kryo.register(Read.class, new JsonSerializer<Read>());
-
         //relatively inefficient serialization of Collections created with Collections.nCopies(), without this
         //any Collection created with Collections.nCopies fails to serialize at run time
         kryo.register(Collections.nCopies(2, "").getClass(), new FieldSerializer<>(kryo, Collections.nCopies(2, "").getClass()));
@@ -52,6 +43,12 @@ public class GATKRegistrator implements KryoRegistrator {
         kryo.register(SAMRecordToGATKReadAdapter.class, new SAMRecordToGATKReadAdapterSerializer());
 
         kryo.register(SAMRecord.class, new SAMRecordSerializer());
+        kryo.register(BAMRecord.class, new SAMRecordSerializer());
+        kryo.register(SAMFileHeader.GroupOrder.class);
+        kryo.register(SAMFileHeader.class);
+        kryo.register(SAMProgramRecord.class);
+        kryo.register(SAMReadGroupRecord.class);
+        kryo.register(SAMFileHeader.SortOrder.class);
 
         //register to avoid writing the full name of this class over and over
         kryo.register(PairedEnds.class, new FieldSerializer<>(kryo, PairedEnds.class));
