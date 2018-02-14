@@ -15,16 +15,18 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   public short tile = -1;
   public short x = -1, y = -1;
   public short libraryId = -1;
+  public boolean fragment = true;
   public transient Integer markedScore;
 
-  PairedEnds(final GATKRead first) {
+  PairedEnds(final GATKRead first, final boolean fragment) {
     this.first = first;
+    this.fragment = fragment;
   }
 
   PairedEnds() { }
 
-  public static PairedEnds of(final GATKRead first) {
-    return new PairedEnds(first);
+  public static PairedEnds of(final GATKRead first, final boolean fragment) {
+    return new PairedEnds(first, fragment);
   }
 
   // An optimization for passing around empty read information
@@ -37,17 +39,19 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
         ReadUtils.getStrandedUnclippedStart(first) > ReadUtils.getStrandedUnclippedStart(second)) {
       this.second = this.first;
       this.first = second;
+      fragment = false;
     } else {
       this.second = second;
+      fragment = false;
     }
     return this;
   }
 
-  public String key(final SAMFileHeader header) {
+  public int key(final SAMFileHeader header) {
     return ReadsKey.keyForPairedEnds(header, first, second);
   }
 
-  public String keyForFragment(final SAMFileHeader header) {
+  public int keyForFragment(final SAMFileHeader header) {
     return ReadsKey.keyForFragment(header, first);
   }
 
@@ -95,6 +99,10 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   @Override
   public void setLibraryId(final short libraryId) { this.libraryId = libraryId; }
 
+  public boolean isFragment() {
+    return fragment;
+  }
+
   public boolean hasMateMapping() {
     return first==null;
   }
@@ -106,9 +114,9 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
    */
   public PairedEnds copy() {
     if (second == null) {
-      return new PairedEnds(first.copy());
+      return new PairedEnds(first.copy(), fragment);
     }
-    return new PairedEnds(first.copy()).and(second.copy());
+    return new PairedEnds(first.copy(), fragment).and(second.copy());
   }
 
   /**
