@@ -72,10 +72,10 @@ public class MarkDuplicatesSparkUtils {
                         PairedEnds fragment = (ReadUtils.readHasMappedMate(read)) ?
                                 PairedEnds.empty(ReadUtils.getStrandedUnclippedStart(read)) :
                                 PairedEnds.of(read);
-
-                        out.add(new Tuple2<>(fragment.isEmpty()?
-                                ReadsKey.keyForFragment(header, read, fragment.getStartPosition()) :
-                                fragment.keyForFragment(header),
+                        //TODO this still seems backwards
+                        out.add(new Tuple2<>(!fragment.isEmpty()?
+                                            ReadsKey.keyForFragment(header, read, fragment.getStartPosition()) :
+                                            fragment.keyForFragment(header),
                                 fragment));
                     })
                     .filter(ReadUtils::readHasMappedMate)
