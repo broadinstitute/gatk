@@ -245,36 +245,38 @@ public class MarkDuplicatesSparkUtils {
     private static List<GATKRead> handleFragments(Iterable<PairedEnds> pairedEnds, Comparator<PairedEnds> comparator) {
         final List<GATKRead> reads = Lists.newArrayList();
 
-        final ImmutableListMultimap<Integer, PairedEnds> groups = Multimaps.index(pairedEnds, pair -> pair.getStartPosition());
+        final ImmutableListMultimap<Integer, PairedEnds> groups = Multimaps.index(pairedEnds, pair -> pair != null ? pair.getStartPosition() : 0);
 
         for (int key : groups.keys()) {
-            final Map<Boolean, List<PairedEnds>> byPairing = StreamSupport.stream(groups.get(key).spliterator(), false)
-                    .collect(Collectors.partitioningBy(
-                            PairedEnds::hasMateMapping
-                    ));
+            if (key != 0) {
+                final Map<Boolean, List<PairedEnds>> byPairing = groups.get(key).stream()
+                        .collect(Collectors.partitioningBy(
+                                PairedEnds::hasMateMapping
+                        ));
 
-            // If there are any non-fragments at this site, mark everything as duplicates, otherwise compute the best score
-            boolean computeScore = byPairing.get(true).isEmpty();
-            PairedEnds maxScore = null;
-            for (PairedEnds pairing : byPairing.get(false)) {
-                GATKRead read = pairing.first();
+                // If there are any non-fragments at this site, mark everything as duplicates, otherwise compute the best score
+                boolean computeScore = byPairing.get(true).isEmpty();
+                PairedEnds maxScore = null;
+                for (PairedEnds pairing : byPairing.get(false)) {
+                    GATKRead read = pairing.first();
 
-                // There are no paired reads, mark all but the highest scoring fragment as duplicate.
-                if (computeScore) {
-                    if (maxScore != null) {
-                        maxScore = (comparator.compare(pairing, maxScore) > 0) ? maxScore : pairing;
-                    } else {
-                        maxScore = pairing;
+                    // There are no paired reads, mark all but the highest scoring fragment as duplicate.
+                    if (computeScore) {
+                        if (maxScore != null) {
+                            maxScore = (comparator.compare(pairing, maxScore) > 0) ? maxScore : pairing;
+                        } else {
+                            maxScore = pairing;
+                        }
                     }
+
+                    read.setIsDuplicate(true);
+                    reads.add(read);
                 }
 
-                read.setIsDuplicate(true);
-                reads.add(read);
-            }
-
-            // Mark best scoring read as a non-duplicate
-            if (maxScore != null) {
-                maxScore.first().setIsDuplicate(false);
+                // Mark best scoring read as a non-duplicate
+                if (maxScore != null) {
+                    maxScore.first().setIsDuplicate(false);
+                }
             }
         }
         return reads;
