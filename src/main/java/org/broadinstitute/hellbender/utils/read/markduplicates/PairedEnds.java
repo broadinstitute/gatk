@@ -123,7 +123,7 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   }
 
   public boolean isEmpty() {
-    return first != null;
+    return first == null;
   }
 
   public boolean hasMateMapping() {
