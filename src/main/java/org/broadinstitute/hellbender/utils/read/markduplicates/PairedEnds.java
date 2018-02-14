@@ -17,7 +17,7 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   public short libraryId = -1;
   public boolean fragment = true;
   public transient Integer markedScore;
-  public int startPosition;
+  public int startPosition = -1;
 
   PairedEnds(final GATKRead first, final boolean fragment) {
     this.first = first;
@@ -49,11 +49,13 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   }
 
   public int key(final SAMFileHeader header) {
-    return ReadsKey.keyForPairedEnds(header, first, second);
+    startPosition = ReadUtils.getStrandedUnclippedStart(first);
+    return ReadsKey.keyForPairedEnds(header, first, second, startPosition);
   }
 
   public int keyForFragment(final SAMFileHeader header) {
-    return ReadsKey.keyForFragment(header, first);
+    startPosition = ReadUtils.getStrandedUnclippedStart(first);
+    return ReadsKey.keyForFragment(header, first, startPosition);
   }
 
   public GATKRead first() {
@@ -71,10 +73,11 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   }
 
   public int getStartPosition() {
-    if (first!=null) {
+    if (startPosition != -1) {
+      return startPosition;
+    } else {
       return ReadUtils.getStrandedUnclippedStart(first);
     }
-    return startPosition;
   }
 
   @Override
@@ -109,6 +112,10 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
 
   public boolean isFragment() {
     return fragment;
+  }
+
+  public boolean isEmpty() {
+    return first != null;
   }
 
   public boolean hasMateMapping() {

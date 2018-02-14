@@ -68,7 +68,8 @@ public class MarkDuplicatesSparkUtils {
                     // Make a PairedEnd object with no second read for each fragment (and an empty one for each paired read)
                     .peek(read -> {
                         read.setIsDuplicate(false);
-                        out.add(new Tuple2<>(ReadsKey.keyForFragment(header, read), (ReadUtils.readHasMappedMate(read)) ? PairedEnds.empty(ReadUtils.getStrandedUnclippedStart(read)) : PairedEnds.of(read, true)));
+                        PairedEnds fragment = (ReadUtils.readHasMappedMate(read)) ? PairedEnds.empty(ReadUtils.getStrandedUnclippedStart(read)) : PairedEnds.of(read, true);
+                        out.add(new Tuple2<>(fragment.isEmpty()? ReadsKey.keyForFragment(header, read, ReadUtils.getStrandedUnclippedStart(read)) : fragment.keyForFragment(header), fragment));
                     })
                     .filter(ReadUtils::readHasMappedMate)
                     .sorted(new GATKOrder(header))
@@ -164,7 +165,7 @@ public class MarkDuplicatesSparkUtils {
                                             final OpticalDuplicateFinder finder, final SAMFileHeader header) {
         return keyedPairs.flatMap(keyedPair -> {
             Iterable<PairedEnds> pairedEnds = keyedPair._2();
-            final ImmutableListMultimap<Boolean, PairedEnds> paired = Multimaps.index(pairedEnds, PairedEnds::isFragment);
+            final ImmutableListMultimap<Boolean, PairedEnds> stratifiedByFragments = Multimaps.index(pairedEnds, PairedEnds::isFragment);
 
             Comparator<PairedEnds> pairedEndsComparator =
                     Comparator.<PairedEnds, Integer>comparing(pe -> pe.score(scoringStrategy)).reversed()
@@ -174,18 +175,17 @@ public class MarkDuplicatesSparkUtils {
 
             final List<GATKRead> out = Lists.newArrayList();
 
-            if (!paired.get(true).isEmpty()) { // fragments
-                out.addAll(handleFragments(paired.get(true), pairedEndsComparator));
+            /////// fragments ////////
+            if (!stratifiedByFragments.get(true).isEmpty()) { // fragments
+                out.addAll(handleFragments(stratifiedByFragments.get(true), pairedEndsComparator));
             }
 
-            if (!paired.get(false).isEmpty()) {
-                final ImmutableListMultimap<Integer, PairedEnds> groups = Multimaps.index(paired.get(false), PairedEnds::getStartPosition);
+            /////// ReadPairs ////////
+            if (!stratifiedByFragments.get(false).isEmpty()) {
+                final ImmutableListMultimap<Integer, PairedEnds> groups = Multimaps.index(stratifiedByFragments.get(false), PairedEnds::getStartPosition);
 
                 for (int key : groups.keys()) {
                     // As in Picard, unpaired ends left alone.
-                    for (final PairedEnds pair : paired.get(false)) {
-                        out.add(pair.first());
-                    }
                     groups.get(key).stream().filter(pair -> pair.second() == null).forEach(pair -> out.add(pair.first()));
 
                     // Order by score using ReadCoordinateComparator for tie-breaking.
@@ -245,38 +245,36 @@ public class MarkDuplicatesSparkUtils {
     private static List<GATKRead> handleFragments(Iterable<PairedEnds> pairedEnds, Comparator<PairedEnds> comparator) {
         final List<GATKRead> reads = Lists.newArrayList();
 
-        final ImmutableListMultimap<Integer, PairedEnds> groups = Multimaps.index(pairedEnds, pair -> pair != null ? pair.getStartPosition() : 0);
+        final ImmutableListMultimap<Integer, PairedEnds> groups = Multimaps.index(pairedEnds, pair -> pair.getStartPosition());
 
         for (int key : groups.keys()) {
-            if (key != 0) {
-                final Map<Boolean, List<PairedEnds>> byPairing = groups.get(key).stream()
-                        .collect(Collectors.partitioningBy(
-                                PairedEnds::hasMateMapping
-                        ));
+            final Map<Boolean, List<PairedEnds>> byPairing = groups.get(key).stream()
+                    .collect(Collectors.partitioningBy(
+                            PairedEnds::hasMateMapping
+                    ));
 
-                // If there are any non-fragments at this site, mark everything as duplicates, otherwise compute the best score
-                boolean computeScore = byPairing.get(true).isEmpty();
-                PairedEnds maxScore = null;
-                for (PairedEnds pairing : byPairing.get(false)) {
-                    GATKRead read = pairing.first();
+            // If there are any non-fragments at this site, mark everything as duplicates, otherwise compute the best score
+            boolean computeScore = byPairing.get(true).isEmpty();
+            PairedEnds maxScore = null;
+            for (PairedEnds pairing : byPairing.get(false)) {
+                GATKRead read = pairing.first();
 
-                    // There are no paired reads, mark all but the highest scoring fragment as duplicate.
-                    if (computeScore) {
-                        if (maxScore != null) {
-                            maxScore = (comparator.compare(pairing, maxScore) > 0) ? maxScore : pairing;
-                        } else {
-                            maxScore = pairing;
-                        }
+                // There are no paired reads, mark all but the highest scoring fragment as duplicate.
+                if (computeScore) {
+                    if (maxScore != null) {
+                        maxScore = (comparator.compare(pairing, maxScore) > 0) ? maxScore : pairing;
+                    } else {
+                        maxScore = pairing;
                     }
-
-                    read.setIsDuplicate(true);
-                    reads.add(read);
                 }
 
-                // Mark best scoring read as a non-duplicate
-                if (maxScore != null) {
-                    maxScore.first().setIsDuplicate(false);
-                }
+                read.setIsDuplicate(true);
+                reads.add(read);
+            }
+
+            // Mark best scoring read as a non-duplicate
+            if (maxScore != null) {
+                maxScore.first().setIsDuplicate(false);
             }
         }
         return reads;
