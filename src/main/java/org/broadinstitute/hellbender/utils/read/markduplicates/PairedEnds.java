@@ -15,21 +15,32 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   public short tile = -1;
   public short x = -1, y = -1;
   public short libraryId = -1;
+  public boolean fragment = true;
   public transient Integer markedScore;
+  public int startPosition = -1;
+
+  PairedEnds(final GATKRead first, final boolean fragment) {
+    this.first = first;
+    this.fragment = fragment;
+  }
 
   PairedEnds(final GATKRead first) {
     this.first = first;
   }
 
-  PairedEnds() { }
+  PairedEnds(int start) { this.startPosition = start; }
+
+  public static PairedEnds of(final GATKRead first, final boolean fragment) {
+    return new PairedEnds(first, fragment);
+  }
 
   public static PairedEnds of(final GATKRead first) {
     return new PairedEnds(first);
   }
 
   // An optimization for passing around empty read information
-  public static PairedEnds empty(){
-    return new PairedEnds();
+  public static PairedEnds empty(int start){
+    return new PairedEnds(start);
   }
 
   public PairedEnds and(final GATKRead second) {
@@ -37,18 +48,22 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
         ReadUtils.getStrandedUnclippedStart(first) > ReadUtils.getStrandedUnclippedStart(second)) {
       this.second = this.first;
       this.first = second;
+      fragment = false;
     } else {
       this.second = second;
+      fragment = false;
     }
     return this;
   }
 
-  public String key(final SAMFileHeader header) {
-    return ReadsKey.keyForPairedEnds(header, first, second);
+  public int key(final SAMFileHeader header) {
+    startPosition = ReadUtils.getStrandedUnclippedStart(first);
+    return ReadsKey.keyForPairedEnds(header, first, second, startPosition);
   }
 
-  public String keyForFragment(final SAMFileHeader header) {
-    return ReadsKey.keyForFragment(header, first);
+  public int keyForFragment(final SAMFileHeader header) {
+    startPosition = ReadUtils.getStrandedUnclippedStart(first);
+    return ReadsKey.keyForFragment(header, first, startPosition);
   }
 
   public GATKRead first() {
@@ -63,6 +78,14 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
     if (markedScore!=null) return markedScore;
     markedScore = scoringStrategy.score(first) + ((second!=null)?scoringStrategy.score(second):0);
     return markedScore;
+  }
+
+  public int getStartPosition() {
+    if (startPosition != -1) {
+      return startPosition;
+    } else {
+      return ReadUtils.getStrandedUnclippedStart(first);
+    }
   }
 
   @Override
@@ -95,6 +118,14 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   @Override
   public void setLibraryId(final short libraryId) { this.libraryId = libraryId; }
 
+  public boolean isFragment() {
+    return fragment;
+  }
+
+  public boolean isEmpty() {
+    return first != null;
+  }
+
   public boolean hasMateMapping() {
     return first==null;
   }
@@ -106,9 +137,9 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
    */
   public PairedEnds copy() {
     if (second == null) {
-      return new PairedEnds(first.copy());
+      return new PairedEnds(first.copy(), fragment);
     }
-    return new PairedEnds(first.copy()).and(second.copy());
+    return new PairedEnds(first.copy(), fragment).and(second.copy());
   }
 
   /**
