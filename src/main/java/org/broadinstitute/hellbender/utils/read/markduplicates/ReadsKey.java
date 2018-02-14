@@ -18,15 +18,15 @@ public final class ReadsKey {
     /**
      * Makes a unique key for the fragment.
      */
-    public static int keyForFragment(final SAMFileHeader header, final GATKRead read) {
+    public static int keyForFragment(final SAMFileHeader header, final GATKRead read, final int strandedUnclippedStart) {
         //return FRAGMENT_PREFIX + DELIMETER + subkeyForFragment(header, read);
-        return subkeyForFragment(header, read);
+        return subkeyForFragment(header, read, strandedUnclippedStart);
     }
 
     /**
      * Makes a unique key for the fragment (excluding the prefix).
      */
-    private static int subkeyForFragment(final SAMFileHeader header, final GATKRead read) {
+    private static int subkeyForFragment(final SAMFileHeader header, final GATKRead read, int strandedUnclippedStart) {
         final String library = ReadUtils.getLibrary(read, header);
 //
 //        return new StringBuilder().append(library != null ? library : "-").append(DELIMETER)
@@ -44,8 +44,8 @@ public final class ReadsKey {
     /**
      * Makes a unique key for the paired reads.
      */
-    public static int keyForPairedEnds(final SAMFileHeader header, final GATKRead first, final GATKRead second) {
-        int key = subkeyForFragment(header, first);
+    public static int keyForPairedEnds(final SAMFileHeader header, final GATKRead first, final GATKRead second, int strandedUnclippedStart) {
+        int key = subkeyForFragment(header, first, strandedUnclippedStart);
         if (second == null) {
             return key;
         }
