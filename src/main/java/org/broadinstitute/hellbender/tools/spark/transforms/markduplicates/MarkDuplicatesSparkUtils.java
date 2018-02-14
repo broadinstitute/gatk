@@ -69,7 +69,7 @@ public class MarkDuplicatesSparkUtils {
                     .peek(read -> {
                         read.setIsDuplicate(false);
                         PairedEnds fragment = (ReadUtils.readHasMappedMate(read)) ? PairedEnds.empty(ReadUtils.getStrandedUnclippedStart(read)) : PairedEnds.of(read, true);
-                        out.add(new Tuple2<>(fragment.isEmpty()? ReadsKey.keyForFragment(header, read, ReadUtils.getStrandedUnclippedStart(read)) : fragment.keyForFragment(header), fragment));
+                        out.add(new Tuple2<>(fragment.isEmpty()? ReadsKey.keyForFragment(header, read, fragment.getStartPosition()) : fragment.keyForFragment(header), fragment));
                     })
                     .filter(ReadUtils::readHasMappedMate)
                     .sorted(new GATKOrder(header))
@@ -77,7 +77,7 @@ public class MarkDuplicatesSparkUtils {
 
             ////// Making The Paired Reads //////
             // Write each paired read with a mapped mate as a pair
-            PairedEnds pair = null;
+            PairedEnds pair;
             while (sorted.hasNext()) {
                 pair = PairedEnds.of(sorted.next(), false);
                 if (sorted.hasNext()) {
