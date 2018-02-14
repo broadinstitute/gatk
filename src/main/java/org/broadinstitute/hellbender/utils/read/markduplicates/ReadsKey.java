@@ -18,35 +18,47 @@ public final class ReadsKey {
     /**
      * Makes a unique key for the fragment.
      */
-    public static String keyForFragment(final SAMFileHeader header, final GATKRead read) {
-        return FRAGMENT_PREFIX + DELIMETER + subkeyForFragment(header, read);
+    public static int keyForFragment(final SAMFileHeader header, final GATKRead read) {
+        //return FRAGMENT_PREFIX + DELIMETER + subkeyForFragment(header, read);
+        return subkeyForFragment(header, read);
     }
 
     /**
      * Makes a unique key for the fragment (excluding the prefix).
      */
-    private static String subkeyForFragment(final SAMFileHeader header, final GATKRead read) {
+    private static int subkeyForFragment(final SAMFileHeader header, final GATKRead read) {
         final String library = ReadUtils.getLibrary(read, header);
+//
+//        return new StringBuilder().append(library != null ? library : "-").append(DELIMETER)
+//                .append(ReadUtils.getReferenceIndex(read, header)).append(DELIMETER)
+//                .append(ReadUtils.getStrandedUnclippedStart(read)).append(DELIMETER)
+//                .append(read.isReverseStrand() ? "r" : "f").toString();
 
-        return new StringBuilder().append(library != null ? library : "-").append(DELIMETER)
-                .append(ReadUtils.getReferenceIndex(read, header)).append(DELIMETER)
-                .append(ReadUtils.getStrandedUnclippedStart(read)).append(DELIMETER)
-                .append(read.isReverseStrand() ? "r" : "f").toString();
+        int key = library.hashCode();
+        key = key * 31 + ReadUtils.getReferenceIndex(read, header);
+        key = key * 31 + ReadUtils.getStrandedUnclippedStart(read);
+        return key * 31 + (read.isReverseStrand() ? 0 : 1);
+
     }
 
     /**
      * Makes a unique key for the paired reads.
      */
-    public static String keyForPairedEnds(final SAMFileHeader header, final GATKRead first, final GATKRead second) {
-        final String key = subkeyForFragment(header, first);
+    public static int keyForPairedEnds(final SAMFileHeader header, final GATKRead first, final GATKRead second) {
+        int key = subkeyForFragment(header, first);
         if (second == null) {
-            return PAIRED_ENDS_PREFIX + DELIMETER + key;
+            return key;
         }
 
-        return new StringBuilder().append(PAIRED_ENDS_PREFIX).append(key).append(DELIMETER)
-                .append(ReadUtils.getReferenceIndex(second, header)).append(DELIMETER)
-                .append(ReadUtils.getStrandedUnclippedStart(second)).append(DELIMETER)
-                .append(second.isReverseStrand() ? "r" : "f").toString();
+//        return new StringBuilder().append(PAIRED_ENDS_PREFIX).append(key).append(DELIMETER)
+//                .append(ReadUtils.getReferenceIndex(second, header)).append(DELIMETER)
+//                .append(ReadUtils.getStrandedUnclippedStart(second)).append(DELIMETER)
+//                .append(second.isReverseStrand() ? "r" : "f").toString();
+
+        key = 31 * key + ReadUtils.getReferenceIndex(second, header);
+        key = 31 * key + ReadUtils.getStrandedUnclippedStart(second);
+        return 31 * key + (second.isReverseStrand() ? 0 : 1);
+
     }
 
     /**
