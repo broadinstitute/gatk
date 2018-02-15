@@ -68,7 +68,6 @@ import java.util.stream.Collectors;
         programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
 public final class FilterMutectCalls extends VariantWalker {
 
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME,

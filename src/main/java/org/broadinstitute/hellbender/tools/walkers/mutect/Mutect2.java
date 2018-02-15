@@ -121,7 +121,6 @@ import java.util.List;
          programGroup = ShortVariantDiscoveryProgramGroup.class
  )
 @DocumentedFeature
-@BetaFeature
 public final class Mutect2 extends AssemblyRegionWalker {
 
     @ArgumentCollection
