@@ -40,12 +40,24 @@ public class MarkDuplicatesSparkUnitTest extends GATKBaseTest {
         OpticalDuplicatesArgumentCollection opticalDuplicatesArgumentCollection = new OpticalDuplicatesArgumentCollection();
         final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
                 new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
-        JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.mark(reads, header, MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES, finder, 1);
+        JavaRDD<GATKRead> markedReads = null; //todo MarkDuplicatesSpark.mark(reads, header, MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES, finder, 1);
 
         Assert.assertEquals(markedReads.count(), totalExpected);
         JavaRDD<GATKRead> dupes = markedReads.filter(GATKRead::isDuplicate);
 
         Assert.assertEquals(dupes.count(), dupsExpected);
+    }
+
+    @Test
+    public void testOfParitioningRules() {
+        String input = new File("src/test/resources/org/broadinstitute/hellbender/tools/walkers/MarkDuplicatesGATK/").getAbsolutePath() + "/example.chr1.1-1K.unmarkedDups.noDups.bam";
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+
+        ReadsSparkSource readSource = new ReadsSparkSource(ctx);
+        JavaRDD<GATKRead> reads = readSource.getParallelReads(input, null);
+        reads.repartition(10);
+        //reads.mapPartitionsWithIndex()
+        System.out.println(reads.partitioner());
     }
 
 }

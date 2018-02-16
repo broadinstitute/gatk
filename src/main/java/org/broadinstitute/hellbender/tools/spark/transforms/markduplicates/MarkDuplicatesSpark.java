@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools.spark.transforms.markduplicates;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.metrics.MetricsFile;
+import org.apache.spark.HashPartitioner;
+import org.apache.spark.RangePartitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -12,15 +14,17 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicatesArgumentCollection;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
+import scala.Tuple2;
 
 import java.util.Collections;
 import java.util.List;
@@ -61,10 +65,19 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                                          final OpticalDuplicateFinder opticalDuplicateFinder, final int numReducers) {
 
         JavaRDD<GATKRead> primaryReads = reads.filter(v1 -> !ReadUtils.isNonPrimary(v1));
-        JavaRDD<GATKRead> nonPrimaryReads = reads.filter(v1 -> ReadUtils.isNonPrimary(v1));
-        JavaRDD<GATKRead> primaryReadsTransformed = MarkDuplicatesSparkUtils.transformReads(header, scoringStrategy, opticalDuplicateFinder, primaryReads, numReducers);
+//        JavaRDD<GATKRead> nonPrimaryReads = reads.filter(v1 -> ReadUtils.isNonPrimary(v1));
+        JavaPairRDD<String, Integer> primaryReadsTransformed = MarkDuplicatesSparkUtils.transformToDuplicateNames(header, scoringStrategy, opticalDuplicateFinder, primaryReads, numReducers);
 
-        return primaryReadsTransformed.union(nonPrimaryReads);
+        primaryReadsTransformed.repartition(reads.getNumPartitions()).count();
+//        return reads.cogroup(primaryReadsTransformed).flatMapValues(tup -> {
+//            if (tup._2.iterator().hasNext() ) {
+//                for (GATKRead read : tup._1) {
+//                    read.setIsDuplicate(true);
+//                }
+//            }
+//            return tup._1;
+//        }).values();
+        return reads;
     }
 
     @Override
@@ -72,16 +85,18 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         JavaRDD<GATKRead> reads = getReads();
         final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
                 new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
+        //reads.partitions().get(0).
+        //.mapToPair(read -> new Tuple2<String, GATKRead>(ReadsKey.keyForRead(getHeaderForReads(), read), read)
 
         final JavaRDD<GATKRead> finalReadsForMetrics = mark(reads, getHeaderForReads(), duplicatesScoringStrategy, finder, getRecommendedNumReducers());
-
+        //finalReadsForMetrics.repartition(new RangePartitioner<>())
         if (metricsFile != null) {
             final JavaPairRDD<String, DuplicationMetrics> metricsByLibrary = MarkDuplicatesSparkUtils.generateMetrics(getHeaderForReads(), finalReadsForMetrics);
             final MetricsFile<DuplicationMetrics, Double> resultMetrics = getMetricsFile();
             MarkDuplicatesSparkUtils.saveMetricsRDD(resultMetrics, getHeaderForReads(), metricsByLibrary, metricsFile);
         }
 
-        final JavaRDD<GATKRead> finalReads = cleanupTemporaryAttributes(finalReadsForMetrics);
+        final JavaRDD<GATKRead> finalReads = cleanupTemporaryAttributes( finalReadsForMetrics);
         writeReads(ctx, output, finalReads);
     }
 
