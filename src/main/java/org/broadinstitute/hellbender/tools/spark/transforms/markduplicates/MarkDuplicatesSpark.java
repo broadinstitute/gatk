@@ -64,7 +64,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         JavaRDD<GATKRead> nonPrimaryReads = reads.filter(v1 -> ReadUtils.isNonPrimary(v1));
         JavaRDD<GATKRead> primaryReadsTransformed = MarkDuplicatesSparkUtils.transformReads(header, scoringStrategy, opticalDuplicateFinder, primaryReads, numReducers);
 
-        return primaryReadsTransformed.union(nonPrimaryReads);
+        return reads;
     }
 
     @Override
