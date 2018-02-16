@@ -40,23 +40,23 @@ sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" ${CNV_CROMWELL_T
 echo "Running ========"
 
 # Panel WES
-java -jar ~/${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_panel_workflow.wdl -i cnv_somatic_panel_wes_no-gc_workflow_mod.json
+java -jar ${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_panel_workflow.wdl -i cnv_somatic_panel_wes_no-gc_workflow_mod.json
 # Panel WGS
-java -jar ~/${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_panel_workflow.wdl -i cnv_somatic_panel_wgs_no-gc_workflow_mod.json
+java -jar ${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_panel_workflow.wdl -i cnv_somatic_panel_wgs_no-gc_workflow_mod.json
 # Panel WES w/ explicit GC correction
-java -jar ~/${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_panel_workflow.wdl -i cnv_somatic_panel_wes_do-gc_workflow_mod.json
+java -jar ${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_panel_workflow.wdl -i cnv_somatic_panel_wes_do-gc_workflow_mod.json
 # Panel WGS w/ explicit GC correction
-java -jar ~/${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_panel_workflow.wdl -i cnv_somatic_panel_wgs_do-gc_workflow_mod.json
+java -jar ${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_panel_workflow.wdl -i cnv_somatic_panel_wgs_do-gc_workflow_mod.json
 
 # Pair WES
-java -jar ~/${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl -i cnv_somatic_pair_wes_no-gc_workflow_mod.json
+java -jar ${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl -i cnv_somatic_pair_wes_no-gc_workflow_mod.json
 # Pair WGS
-java -jar ~/${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl -i cnv_somatic_pair_wgs_no-gc_workflow_mod.json
+java -jar ${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl -i cnv_somatic_pair_wgs_no-gc_workflow_mod.json
 # Pair WES w/ explicit GC correction
-java -jar ~/${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl -i cnv_somatic_pair_wes_do-gc_workflow_mod.json
+java -jar ${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl -i cnv_somatic_pair_wes_do-gc_workflow_mod.json
 # Pair WGS w/ explicit GC correction
-java -jar ~/${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl -i cnv_somatic_pair_wgs_do-gc_workflow_mod.json
+java -jar ${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl -i cnv_somatic_pair_wgs_do-gc_workflow_mod.json
 # Tumor only WGS w/ explicit GC correction
-java -jar ~/${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl -i cnv_somatic_pair_wgs_do-gc_tumor_only_workflow_mod.json
+java -jar ${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl -i cnv_somatic_pair_wgs_do-gc_tumor_only_workflow_mod.json
 # Tumor only WES w/o explicit GC correction
-java -jar ~/${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl -i cnv_somatic_pair_wes_no-gc_tumor_only_workflow_mod.json
+java -jar ${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl -i cnv_somatic_pair_wes_no-gc_tumor_only_workflow_mod.json
