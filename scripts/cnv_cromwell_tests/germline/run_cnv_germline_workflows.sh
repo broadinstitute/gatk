@@ -35,24 +35,23 @@ sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" ${CNV_CROMWELL_T
 sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" ${CNV_CROMWELL_TEST_DIR}/cnv_germline_case_wgs_do-gc_workflow.json >cnv_germline_case_wgs_do-gc_workflow_mod.json
 
 echo "Running ========"
-CROMWELL_JAR="cromwell-0.29.jar"
 
 # We disable some tests to reduce runtime on Travis
 
 # Cohort WES
-#java -jar ~/${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/germline/cnv_germline_cohort_workflow.wdl -i cnv_germline_cohort_wes_no-gc_workflow_mod.json
+#java -jar ${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/germline/cnv_germline_cohort_workflow.wdl -i cnv_germline_cohort_wes_no-gc_workflow_mod.json
 # Cohort WGS
-#java -jar ~/${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/germline/cnv_germline_cohort_workflow.wdl -i cnv_germline_cohort_wgs_no-gc_workflow_mod.json
+#java -jar ${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/germline/cnv_germline_cohort_workflow.wdl -i cnv_germline_cohort_wgs_no-gc_workflow_mod.json
 # Cohort WES w/ explicit GC correction
-java -jar ~/${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/germline/cnv_germline_cohort_workflow.wdl -i cnv_germline_cohort_wes_do-gc_workflow_mod.json
+java -jar ${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/germline/cnv_germline_cohort_workflow.wdl -i cnv_germline_cohort_wes_do-gc_workflow_mod.json
 # Cohort WGS w/ explicit GC correction
-#java -jar ~/${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/germline/cnv_germline_cohort_workflow.wdl -i cnv_germline_cohort_wgs_do-gc_workflow_mod.json
+#java -jar ${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/germline/cnv_germline_cohort_workflow.wdl -i cnv_germline_cohort_wgs_do-gc_workflow_mod.json
 
 # Case WES
-#java -jar ~/${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/germline/cnv_germline_case_workflow.wdl -i cnv_germline_case_wes_no-gc_workflow_mod.json
+#java -jar ${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/germline/cnv_germline_case_workflow.wdl -i cnv_germline_case_wes_no-gc_workflow_mod.json
 # Case WGS
-#java -jar ~/${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/germline/cnv_germline_case_workflow.wdl -i cnv_germline_case_wgs_no-gc_workflow_mod.json
+#java -jar ${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/germline/cnv_germline_case_workflow.wdl -i cnv_germline_case_wgs_no-gc_workflow_mod.json
 # Case WES w/ explicit GC correction
-java -jar ~/${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/germline/cnv_germline_case_workflow.wdl -i cnv_germline_case_wes_do-gc_workflow_mod.json
+java -jar ${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/germline/cnv_germline_case_workflow.wdl -i cnv_germline_case_wes_do-gc_workflow_mod.json
 # Case WGS w/ explicit GC correction
-#java -jar ~/${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/germline/cnv_germline_case_workflow.wdl -i cnv_germline_case_wgs_do-gc_workflow_mod.json
+#java -jar ${CROMWELL_JAR} run /home/travis/build/broadinstitute/gatk/scripts/cnv_wdl/germline/cnv_germline_case_workflow.wdl -i cnv_germline_case_wgs_do-gc_workflow_mod.json

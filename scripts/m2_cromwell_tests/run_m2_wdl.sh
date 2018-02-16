@@ -35,7 +35,7 @@ cd $WORKING_DIR/
 
 echo "Running M2 WDL through cromwell (T/N)"
 ln -fs $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2.wdl
-sudo java -jar ~/cromwell-0.29.jar run $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2_multi_sample.wdl -i $WORKING_DIR/test_m2_wdl_multi_mod.json -m $WORKING_DIR/test_m2_wdl.metadata
+sudo java -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2_multi_sample.wdl -i $WORKING_DIR/test_m2_wdl_multi_mod.json -m $WORKING_DIR/test_m2_wdl.metadata
 
 echo "Running M2 WDL through cromwell (Tumor-only)"
-sudo java -jar ~/cromwell-0.29.jar run $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2_multi_sample.wdl -i $WORKING_DIR/test_m2_wdl_multi_mod_to.json -m $WORKING_DIR/test_m2_wdl_to.metadata
+sudo java -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2_multi_sample.wdl -i $WORKING_DIR/test_m2_wdl_multi_mod_to.json -m $WORKING_DIR/test_m2_wdl_to.metadata
