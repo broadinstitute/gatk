@@ -35,7 +35,6 @@ sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" ${CNV_CROMWELL_T
 sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" ${CNV_CROMWELL_TEST_DIR}/cnv_germline_case_wgs_do-gc_workflow.json >cnv_germline_case_wgs_do-gc_workflow_mod.json
 
 echo "Running ========"
-CROMWELL_JAR="cromwell-0.29.jar"
 
 # We disable some tests to reduce runtime on Travis
 

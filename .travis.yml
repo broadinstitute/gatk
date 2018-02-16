@@ -36,6 +36,8 @@ env:
   - ARTIFACTORY_USERNAME=gatkci
   #artifactory password
   - secure: "E0LWXgX3aWSE/DWHXXDx4vrAq4uX6vKg402wToaZ5otbHQ/UP0H7/FA5jomavAXoC46oMVHZcEltZ5OVhuJ0NW8yYxUCecJ1D/YvVQmnfFABcV/qLM+k4e2rYQOKVw/pejB2gG8XdTA+XE2WyTeENbmIkputS8f1ndKWCmZxuuk="
+  # For cromwell jar download
+  - CROMWELL_JAR=$HOME/cromwell-30.2.jar
 matrix:
   fast_finish: true
   include:
@@ -85,9 +87,9 @@ before_install:
    sudo apt-get install -y --force-yes r-base-core=3.1.3-1trusty;
    sudo Rscript scripts/docker/gatkbase/install_R_packages.R;
   fi
-# Download Cromwell jar
+# Download Cromwell jar -- if you change the version, please change the CROMWELL_JAR env variable above, too.
 - if [[ $RUN_CNV_GERMLINE_WDL == true || $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true ]]; then
-    wget -O ~/cromwell-0.29.jar https://github.com/broadinstitute/cromwell/releases/download/29/cromwell-29.jar;
+    wget -O $CROMWELL_JAR https://github.com/broadinstitute/cromwell/releases/download/30.2/cromwell-30.2.jar;
   fi
 # Download git lfs files
 - git lfs version
