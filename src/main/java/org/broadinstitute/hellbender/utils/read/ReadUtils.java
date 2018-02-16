@@ -1133,11 +1133,9 @@ public final class ReadUtils {
      * @return true if the file has a valid CRAM file header, otherwise false
      */
     public static boolean hasCRAMFileContents(final Path putativeCRAMPath) {
-        try {
-            try (final InputStream fileStream = Files.newInputStream(putativeCRAMPath)) {
-                try (final BufferedInputStream bis = new BufferedInputStream(fileStream)) {
-                    return SamStreams.isCRAMFile(bis);
-                }
+        try (final InputStream fileStream = Files.newInputStream(putativeCRAMPath)) {
+            try (final BufferedInputStream bis = new BufferedInputStream(fileStream)) {
+                return SamStreams.isCRAMFile(bis);
             }
         }
         catch (IOException e) {

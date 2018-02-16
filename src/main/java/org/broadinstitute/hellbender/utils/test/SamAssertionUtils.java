@@ -203,7 +203,11 @@ public final class SamAssertionUtils {
     }
 
     private static String compareReads(final File actualSam, final File expectedSam, final ValidationStringency validation, final File reference) throws IOException {
-        return compareReads(actualSam.toPath(), expectedSam.toPath(), validation, reference.toPath());
+        return compareReads(
+                actualSam.toPath(),
+                expectedSam.toPath(),
+                validation,
+                (null==reference?null:reference.toPath()));
     }
 
     private static String compareReads(final Path actualSam, final Path expectedSam, final ValidationStringency validation, final Path reference) throws IOException {
