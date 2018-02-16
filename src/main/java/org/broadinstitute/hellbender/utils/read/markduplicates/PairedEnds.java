@@ -8,34 +8,47 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
  * Struct-like class to store information about the paired reads for mark duplicates.
  */
 public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
-  private GATKRead first, second;
+  private transient GATKRead first, second;
 
   // Information used to detect optical dupes
-  public short readGroup = -1;
-  public short tile = -1;
-  public short x = -1, y = -1;
-  public short libraryId = -1;
+  public transient short readGroup = -1;
+  public transient short tile = -1;
+  public transient short x = -1, y = -1;
+  public transient short libraryId = -1;
   public boolean fragment = true;
-  public transient Integer markedScore;
-  public int startPosition = -1;
+  public Integer markedScore;
 
-  PairedEnds(final GATKRead first, final boolean fragment) {
+  public String name;
+  public int firstStartPosition = -1;
+  public int firstRefIndex = -1;
+
+  public int secondStartPosition = -1;
+  public int secondRefIndex = -1;
+
+  boolean R1R = false;
+  boolean R2R = false;
+
+
+  PairedEnds(final GATKRead first, final boolean fragment, final SAMFileHeader header) {
+    name = ReadsKey.keyForRead(header, first);
     this.first = first;
+    firstStartPosition = ReadUtils.getStrandedUnclippedStart(first);
+    firstRefIndex =  ReadUtils.getReferenceIndex(first, header);
     this.fragment = fragment;
   }
 
-  PairedEnds(final GATKRead first) {
-    this.first = first;
+  PairedEnds(final GATKRead first, final SAMFileHeader header) {
+    this(first, true, header);
   }
 
-  PairedEnds(int start) { this.startPosition = start; }
+  PairedEnds(int start) { this.firstStartPosition = start; }
 
-  public static PairedEnds of(final GATKRead first, final boolean fragment) {
-    return new PairedEnds(first, fragment);
+  public static PairedEnds of(final GATKRead first, final boolean fragment, final SAMFileHeader header) {
+    return new PairedEnds(first, fragment, header);
   }
 
-  public static PairedEnds of(final GATKRead first) {
-    return new PairedEnds(first);
+  public static PairedEnds of(final GATKRead first, final SAMFileHeader header) {
+    return new PairedEnds(first, header);
   }
 
   // An optimization for passing around empty read information
@@ -43,27 +56,52 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
     return new PairedEnds(start);
   }
 
-  public PairedEnds and(final GATKRead second) {
+  public PairedEnds and(final GATKRead second, final SAMFileHeader header) {
     if (second != null &&
-        ReadUtils.getStrandedUnclippedStart(first) > ReadUtils.getStrandedUnclippedStart(second)) {
+            firstStartPosition > ReadUtils.getStrandedUnclippedStart(second)) {
       this.second = this.first;
+      secondRefIndex = this.firstRefIndex;
+      secondStartPosition = this.firstStartPosition;
       this.first = second;
+      firstRefIndex = ReadUtils.getReferenceIndex(second, header);
+      firstStartPosition = ReadUtils.getStrandedUnclippedStart(second); //TODO don't compute twice
       fragment = false;
     } else {
       this.second = second;
+      secondRefIndex = ReadUtils.getReferenceIndex(second, header);
+      secondStartPosition = ReadUtils.getStrandedUnclippedStart(second); //TODO don't compute twice
       fragment = false;
     }
+
+    // Calculating necessary optical duplicate information
+
+    final GATKRead read1;
+    final GATKRead read2;
+    if (first.isFirstOfPair()){
+      read1 = first;
+      read2 = second;
+    } else {
+      read1 = second;
+      read2 = first;
+    }
+
+    R1R = read1.isReverseStrand();
+    R2R = read2.isReverseStrand();
     return this;
   }
 
   public int key(final SAMFileHeader header) {
-    startPosition = ReadUtils.getStrandedUnclippedStart(first);
-    return ReadsKey.keyForPairedEnds(header, first, second, startPosition);
+    firstStartPosition = ReadUtils.getStrandedUnclippedStart(first);
+    return ReadsKey.keyForPairedEnds(header, first, second, firstStartPosition);
   }
 
   public int keyForFragment(final SAMFileHeader header) {
-    startPosition = ReadUtils.getStrandedUnclippedStart(first);
-    return ReadsKey.keyForFragment(header, first, startPosition);
+    firstStartPosition = ReadUtils.getStrandedUnclippedStart(first); //todo
+    return ReadsKey.keyForFragment(header, first, firstStartPosition);
+  }
+
+  public String keyForRead() {
+    return this.name;
   }
 
   public GATKRead first() {
@@ -81,11 +119,7 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   }
 
   public int getStartPosition() {
-    if (startPosition != -1) {
-      return startPosition;
-    } else {
-      return ReadUtils.getStrandedUnclippedStart(first);
-    }
+    return firstStartPosition;
   }
 
   @Override
@@ -122,13 +156,11 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
     return fragment;
   }
 
+  //TODO note that this only
   public boolean isEmpty() {
-    return first == null;
+    return firstRefIndex == -1;
   }
 
-  public boolean hasMateMapping() {
-    return first==null;
-  }
   /**
    * returns a deep(ish) copy of the GATK reads in the PairedEnds.
    * TODO: This is only deep for the Google Model read, GATKRead copy() isn't deep for
@@ -137,9 +169,9 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
    */
   public PairedEnds copy() {
     if (second == null) {
-      return new PairedEnds(first.copy(), fragment);
+      return null; //todo new PairedEnds(first.copy(), fragment);
     }
-    return new PairedEnds(first.copy(), fragment).and(second.copy());
+    return null; //todo  new PairedEnds(first.copy(), fragment).and(second.copy());
   }
 
   /**
@@ -149,18 +181,18 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
    * Returns one of {@link ReadEnds#RR}, {@link ReadEnds#RF}, {@link ReadEnds#FR}, {@link ReadEnds#FF}
    */
   public byte getOrientationForOpticalDuplicates() {
-    final GATKRead read1;
-    final GATKRead read2;
-    if (first.isFirstOfPair()){
-      read1 = first;
-      read2 = second;
-    } else {
-      read1 = second;
-      read2 = first;
-    }
-
-    final boolean R1R = read1.isReverseStrand();
-    final boolean R2R = read2.isReverseStrand();
+//    final GATKRead read1;
+//    final GATKRead read2;
+//    if (first.isFirstOfPair()){
+//      read1 = first;
+//      read2 = second;
+//    } else {
+//      read1 = second;
+//      read2 = first;
+//    }
+//
+//    final boolean R1R = read1.isReverseStrand();
+//    final boolean R2R = read2.isReverseStrand();
     if (R1R && R2R) {
       return ReadEnds.RR;
     }
@@ -171,5 +203,9 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
       return ReadEnds.FR; //at this point we know for sure R1R is false
     }
     return ReadEnds.FF;  //at this point we know for sure R1R is false and R2R is false
+  }
+
+  public String getName() {
+    return name;
   }
 }
