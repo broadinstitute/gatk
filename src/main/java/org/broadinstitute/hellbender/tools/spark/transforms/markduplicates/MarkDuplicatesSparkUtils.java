@@ -192,31 +192,63 @@ public class MarkDuplicatesSparkUtils {
                 final ImmutableListMultimap<Integer, PairedEnds> groups = Multimaps.index(stratifiedByFragments.get(false), PairedEnds::getStartPosition);
 
                 for (int key : groups.keys()) {
-                    // As in Picard, unpaired ends left alone.
-                    groups.get(key).stream().filter(pair -> pair.second() == null).forEach(pair -> out.add(pair.first()));
+//                    // As in Picard, unpaired ends left alone.
+//                    groups.get(key).stream().filter(pair -> pair.second() == null).forEach(pair -> out.add(pair.first()));
+//
+//                    // Order by score using ReadCoordinateComparator for tie-breaking.
+//                    final List<PairedEnds> scored = groups.get(key).stream().filter(pair -> pair.second() != null).sorted(pairedEndsComparator).collect(Collectors.toList());
+//
+//                    final PairedEnds best = Iterables.getFirst(scored, null);
+//                    if (best == null) {
+//                        return out.iterator();
+//                    }
 
-                    // Order by score using ReadCoordinateComparator for tie-breaking.
-                    final List<PairedEnds> scored = groups.get(key).stream().filter(pair -> pair.second() != null).sorted(pairedEndsComparator).collect(Collectors.toList());
+                    PairedEnds maxScore = null;
+                    for (PairedEnds pair : groups.get(key)) {
+                        GATKRead read = pair.first();
 
-                    final PairedEnds best = Iterables.getFirst(scored, null);
-                    if (best == null) {
-                        return out.iterator();
+                        // As in Picard, unpaired ends left alone.
+                        if (pair.second() != null) {
+                            out.add(read);
+
+                            // Order by score using ReadCoordinateComparator for tie-breaking.
+                        } else {
+
+                            out.add(pair.first());
+                            out.add(pair.second());
+
+                            // There are no paired reads, mark all but the highest scoring fragment as duplicate.
+                            if (maxScore != null) {
+                                maxScore = (pairedEndsComparator.compare(pair, maxScore) > 0) ? maxScore : pair;
+                            } else {
+                                maxScore = pair;
+                            }
+                            pair.first().setIsDuplicate(true);
+                            pair.second().setIsDuplicate(true);
+                            finder.addLocationInformation(pair.first().getName(), pair);
+                        }
                     }
 
-                    // Mark everyone who's not best as a duplicate
-                    for (final PairedEnds pair : Iterables.skip(scored, 1)) {
-                        pair.first().setIsDuplicate(true);
-                        pair.second().setIsDuplicate(true);
-                    }
+                    maxScore.first().setIsDuplicate(false);
+                    maxScore.second().setIsDuplicate(false);
 
-                    // Now, add location information to the paired ends
-                    for (final PairedEnds pair : scored) {
-                        // Both elements in the pair have the same name
-                        finder.addLocationInformation(pair.first().getName(), pair);
-                    }
+//
+//                    // Mark everyone who's not best as a duplicate
+//                    for (final PairedEnds pair : Iterables.skip(scored, 1)) {
+//                        pair.first().setIsDuplicate(true);
+//                        pair.second().setIsDuplicate(true);
+//                    }
+//
+//                    // Now, add location information to the paired ends
+//                    for (final PairedEnds pair : scored) {
+//                        // Both elements in the pair have the same name
+//                        finder.addLocationInformation(pair.first().getName(), pair);
+//                    }
 
                     // This must happen last, as findOpticalDuplicates mutates the list.
                     // Split by orientation and count duplicates in each group separately.
+                    // TODO could be better
+                    List<PairedEnds> scored = stratifiedByFragments.get(false).stream().filter(pair -> pair.second() != null).collect(Collectors.toList());
                     final ImmutableListMultimap<Byte, PairedEnds> groupByOrientation = Multimaps.index(scored, pe -> pe.getOrientationForOpticalDuplicates());
                     final int numOpticalDuplicates;
                     if (groupByOrientation.containsKey(ReadEnds.FR) && groupByOrientation.containsKey(ReadEnds.RF)) {
@@ -226,12 +258,8 @@ public class MarkDuplicatesSparkUtils {
                     } else {
                         numOpticalDuplicates = countOpticalDuplicates(finder, scored);
                     }
-                    best.first().setAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, numOpticalDuplicates);
+                    maxScore.first().setAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, numOpticalDuplicates);
 
-                    for (final PairedEnds pair : scored) {
-                        out.add(pair.first());
-                        out.add(pair.second());
-                    }
                 }
             }
             return out.iterator();
