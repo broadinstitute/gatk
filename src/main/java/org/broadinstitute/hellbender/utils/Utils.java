@@ -5,6 +5,9 @@ import com.google.common.collect.Iterators;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.tribble.util.ParsingUtils;
+import java.io.FileNotFoundException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -530,6 +533,17 @@ public final class Utils {
      */
     public static String calculateFileMD5( final File file ) throws IOException{
         return Utils.calcMD5(FileUtils.readFileToByteArray(file));
+    }
+    public static String calculatePathMD5(final Path path) throws IOException{
+        // This doesn't have as nice error messages as FileUtils, but it's close.
+        String fname = path.toUri().toString();
+        if (!Files.exists(path)) {
+            throw new FileNotFoundException("File '" + fname + "' does not exist");
+        }
+        if (Files.isDirectory(path)) {
+            throw new IOException("File '" + fname + "' exists but is a directory");
+        }
+        return Utils.calcMD5(Files.readAllBytes(path));
     }
 
     /**

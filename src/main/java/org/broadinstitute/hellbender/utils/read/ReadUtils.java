@@ -14,10 +14,8 @@ import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SAMUtils;
 import htsjdk.samtools.SamStreams;
 import htsjdk.samtools.cram.build.CramIO;
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -1131,17 +1129,31 @@ public final class ReadUtils {
      * Validate that a file has CRAM contents by checking that it has a valid CRAM file header
      * (no matter what the extension).
      *
-     * @param putativeCRAMFile File to check.
+     * @param putativeCRAMPath File to check.
      * @return true if the file has a valid CRAM file header, otherwise false
      */
-    public static boolean hasCRAMFileContents(final File putativeCRAMFile) {
-        try (final FileInputStream fileStream = new FileInputStream(putativeCRAMFile);
-             final BufferedInputStream bis = new BufferedInputStream(fileStream)) {
-            return SamStreams.isCRAMFile(bis);
+    public static boolean hasCRAMFileContents(final Path putativeCRAMPath) {
+        try {
+            try (final InputStream fileStream = Files.newInputStream(putativeCRAMPath)) {
+                try (final BufferedInputStream bis = new BufferedInputStream(fileStream)) {
+                    return SamStreams.isCRAMFile(bis);
+                }
+            }
         }
         catch (IOException e) {
             throw new UserException.CouldNotReadInputFile(e.getMessage());
         }
+    }
+
+    /**
+     * Validate that a file has CRAM contents by checking that it has a valid CRAM file header
+     * (no matter what the extension).
+     *
+     * @param putativeCRAMFile File to check.
+     * @return true if the file has a valid CRAM file header, otherwise false
+     */
+    public static boolean hasCRAMFileContents(final File putativeCRAMFile) {
+        return hasCRAMFileContents(putativeCRAMFile.toPath());
     }
 
     public static boolean isNonPrimary(GATKRead read) {

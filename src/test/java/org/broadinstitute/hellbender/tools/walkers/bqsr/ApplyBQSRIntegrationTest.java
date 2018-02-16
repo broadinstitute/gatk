@@ -1,6 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.bqsr;
 
+import com.google.common.jimfs.Configuration;
+import com.google.common.jimfs.Jimfs;
 import htsjdk.samtools.SamReaderFactory;
+import java.nio.file.FileSystem;
+import java.nio.file.Path;
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
@@ -82,26 +86,31 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
 
     @Test(dataProvider = "ApplyBQSRTest")
     public void testApplyBQSR(ABQSRTest params) throws IOException {
-        File outFile = GATKBaseTest.createTempFile("applyBQSRTest", params.outputExtension);
-        final ArrayList<String> args = new ArrayList<>();
-        File refFile = null;
+        try (FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
+            final Path outPath = jimfs.getPath("applyBQSRTest"+params.outputExtension);
+            System.out.println("apply path: " + outPath.toUri().toString());
 
-        args.add("-I");
-        args.add(new File(params.bam).getAbsolutePath());
-        args.add("--" + StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME);
-        args.add(new File(resourceDir + "HiSeq.20mb.1RG.table.gz").getAbsolutePath());
-        args.add("-O"); args.add(outFile.getAbsolutePath());
-        if (params.reference != null) {
-            refFile = new File(params.reference);
-            args.add("-R"); args.add(refFile.getAbsolutePath());
+            final ArrayList<String> args = new ArrayList<>();
+            Path refPath = null;
+
+            args.add("-I");
+            args.add(new File(params.bam).getAbsolutePath());
+            args.add("--" + StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME);
+            args.add(new File(resourceDir + "HiSeq.20mb.1RG.table.gz").getAbsolutePath());
+            args.add("-O"); args.add(outPath.toUri().toString());
+            if (params.reference != null) {
+                File refFile = new File(params.reference);
+                args.add("-R"); args.add(refFile.getAbsolutePath());
+                refPath = refFile.toPath();
+            }
+            if (params.args != null) {
+                Stream.of(params.args).forEach(arg -> args.add(arg));
+            }
+
+            runCommandLine(args);
+
+            SamAssertionUtils.assertSamsEqual(outPath, new File(params.expectedFile).toPath(), refPath);
         }
-        if (params.args != null) {
-            Stream.of(params.args).forEach(arg -> args.add(arg));
-        }
-
-        runCommandLine(args);
-
-        SamAssertionUtils.assertSamsEqual(outFile, new File(params.expectedFile), refFile);
     }
 
     @Test
