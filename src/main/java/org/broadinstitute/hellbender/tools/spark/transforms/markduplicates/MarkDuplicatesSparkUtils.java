@@ -208,7 +208,7 @@ public class MarkDuplicatesSparkUtils {
                         GATKRead read = pair.first();
 
                         // As in Picard, unpaired ends left alone.
-                        if (pair.second() != null) {
+                        if (pair.second() == null) {
                             out.add(read);
 
                             // Order by score using ReadCoordinateComparator for tie-breaking.
@@ -228,9 +228,12 @@ public class MarkDuplicatesSparkUtils {
                             finder.addLocationInformation(pair.first().getName(), pair);
                         }
                     }
-
-                    maxScore.first().setIsDuplicate(false);
-                    maxScore.second().setIsDuplicate(false);
+                    if (maxScore != null) {
+                        maxScore.first().setIsDuplicate(false);
+                        maxScore.second().setIsDuplicate(false);
+                    } else {
+                        return out.iterator();
+                    }
 
 //
 //                    // Mark everyone who's not best as a duplicate
