@@ -34,8 +34,6 @@ public final class ExampleVariantWalkerSpark extends VariantWalkerSpark {
     @Argument(fullName="auxiliaryVariants", shortName="av", doc="Auxiliary set of variants", optional=true)
     private FeatureInput<VariantContext> auxiliaryVariants;
 
-    private PrintStream outputStream = null;
-
     @Override
     protected void processVariants(JavaRDD<VariantWalkerContext> rdd, JavaSparkContext ctx) {
         rdd.map(variantFunction(auxiliaryVariants)).saveAsTextFile(outputFile);
@@ -49,7 +47,7 @@ public final class ExampleVariantWalkerSpark extends VariantWalkerSpark {
             FeatureContext featureContext = context.getFeatureContext();
 
             StringBuilder sb = new StringBuilder();
-            sb.append(String.format("Current variant: " + variant));
+            sb.append("Current variant: " + variant);
             sb.append("\n");
 
             if ( referenceContext.hasBackingDataSource() ) {
