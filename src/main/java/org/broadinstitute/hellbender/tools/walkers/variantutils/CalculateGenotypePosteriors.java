@@ -301,9 +301,6 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
 
         final int missing = supportVariants.size() - otherVCs.size();
 
-        final VariantContext vc_familyPriors;
-        final VariantContext vc_bothPriors;
-
         //do family priors first (if applicable)
         final VariantContextBuilder builder = new VariantContextBuilder(variant);
         //only compute family priors for biallelelic sites
@@ -312,14 +309,13 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
             builder.genotypes(gc);
         }
         VariantContextUtils.calculateChromosomeCounts(builder, false);
-        vc_familyPriors = builder.make();
+        final VariantContext vc_familyPriors = builder.make();
 
+        final VariantContext vc_bothPriors;
         if (!skipPopulationPriors) {
             vc_bothPriors = PosteriorProbabilitiesUtils.calculatePosteriorProbs(vc_familyPriors, otherVCs, missing * numRefIfMissing, globalPrior, !ignoreInputSamples, defaultToAC, useACoff);
         } else {
-            final VariantContextBuilder builder2 = new VariantContextBuilder(vc_familyPriors);
-            VariantContextUtils.calculateChromosomeCounts(builder, false);
-            vc_bothPriors = builder2.make();
+            vc_bothPriors = vc_familyPriors;
         }
         vcfWriter.add(vc_bothPriors);
     }
