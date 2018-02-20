@@ -10,6 +10,8 @@ import com.google.common.collect.HashBiMap;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
@@ -22,13 +24,39 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.testng.Assert;
 
 import java.util.*;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public final class VariantContextTestUtils {
 
     private VariantContextTestUtils() {}
+
+    /**
+     * Reads an entire VCF into memory, returning both its VCFHeader and all VariantContext records in
+     * the vcf. Supports both local files and NIO-supported remote filesystems such as GCS.
+     *
+     * For unit/integration testing purposes only! Do not call this method from actual tools!
+     *
+     * @param vcfPath path or URI to a VCF, as a String
+     * @return A Pair with the VCFHeader as the first element, and a List of all VariantContexts from the VCF
+     *         as the second element
+     */
+    public static Pair<VCFHeader, List<VariantContext>> readEntireVCFIntoMemory(final String vcfPath) {
+        Utils.nonNull(vcfPath);
+
+        try ( final FeatureDataSource<VariantContext> vcfReader = new FeatureDataSource<>(vcfPath) ) {
+            final Object header = vcfReader.getHeader();
+            if ( ! (header instanceof VCFHeader) ) {
+                throw new IllegalArgumentException(vcfPath + " does not have a valid VCF header");
+            }
+
+            final List<VariantContext> vcfRecords = new ArrayList<>();
+            for ( final VariantContext vcfRecord : vcfReader ) {
+                vcfRecords.add(vcfRecord);
+            }
+
+            return Pair.of((VCFHeader)header, vcfRecords);
+        }
+    }
 
     private static void assertAttributeEquals(final String key, final Object actual, final Object expected) {
         final Object notationCorrectedActual = normalizeScientificNotation(actual);

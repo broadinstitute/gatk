@@ -26,7 +26,7 @@ public final class FeatureDataSourceUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testHandleNullFile() {
-        FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(null);
+        FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>((File)null);
     }
 
     @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)

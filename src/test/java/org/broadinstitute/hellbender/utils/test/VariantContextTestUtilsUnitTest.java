@@ -2,13 +2,15 @@ package org.broadinstitute.hellbender.utils.test;
 
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFHeader;
+import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
 
-public class VariantContextTestUtilsUnitTest {
+public class VariantContextTestUtilsUnitTest extends GATKBaseTest {
 
     private static final Allele ARef = Allele.create("A", true);
     private static final Allele T = Allele.create("T");
@@ -18,6 +20,42 @@ public class VariantContextTestUtilsUnitTest {
     private static final Allele GG = Allele.create("GG");
     private static final String SAMPLE_1 = "NA1";
     private static final String SAMPLE_2 = "NA2";
+
+    @DataProvider
+    public Object[][] testReadEntireVCFIntoMemoryData() {
+        return new Object[][] {
+                { dbsnp_138_b37_20_21_vcf, 160, 9594 }
+        };
+    }
+
+    @Test(dataProvider = "testReadEntireVCFIntoMemoryData")
+    public void testReadEntireVCFIntoMemory(final String vcf, final int expectedNumHeaderLines, final int expectedNumRecords) {
+        testReadEntireVCFIntoMemoryHelper(vcf, expectedNumHeaderLines, expectedNumRecords);
+    }
+
+    @DataProvider
+    public Object[][] testReadEntireVCFIntoMemoryFromGCSData() {
+        return new Object[][] {
+                { "large/dbsnp_138.b37.20.21.vcf", 160, 9594 }
+        };
+    }
+
+    @Test(groups = {"bucket"}, dataProvider = "testReadEntireVCFIntoMemoryFromGCSData")
+    public void testReadEntireVCFIntoMemoryFromGCS(final String vcf, final int expectedNumHeaderLines, final int expectedNumRecords) {
+        testReadEntireVCFIntoMemoryHelper(getGCPTestInputPath() + vcf, expectedNumHeaderLines, expectedNumRecords);
+    }
+
+    private void testReadEntireVCFIntoMemoryHelper(final String vcf, final int expectedNumHeaderLines, final int expectedNumRecords) {
+        final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(vcf);
+
+        Assert.assertEquals(result.getLeft().getMetaDataInInputOrder().size(), expectedNumHeaderLines, "Wrong number of header lines in VCFHeader returned from VariantContextTestUtils.readEntireVCFIntoMemory()");
+        Assert.assertEquals(result.getRight().size(), expectedNumRecords, "Wrong number of VariantContext records returned from VariantContextTestUtils.readEntireVCFIntoMemory()");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testReadEntireVCFIntoMemoryNonVCFInput() {
+        VariantContextTestUtils.readEntireVCFIntoMemory(publicTestDir + "org/broadinstitute/hellbender/engine/example_features.bed");
+    }
 
     @DataProvider(name="scientificNotationValuesToNormalize")
     public Object[][] getScientificNotationValuesToNormalize(){
