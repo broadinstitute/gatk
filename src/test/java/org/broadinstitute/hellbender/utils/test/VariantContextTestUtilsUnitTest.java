@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -55,6 +56,11 @@ public class VariantContextTestUtilsUnitTest extends GATKBaseTest {
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testReadEntireVCFIntoMemoryNonVCFInput() {
         VariantContextTestUtils.readEntireVCFIntoMemory(publicTestDir + "org/broadinstitute/hellbender/engine/example_features.bed");
+    }
+
+    @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
+    public void testReadEntireVCFIntoMemoryNonExistentFile() {
+        VariantContextTestUtils.readEntireVCFIntoMemory(getSafeNonExistentFile("testReadEntireVCFIntoMemoryNonExistentFile.vcf").getAbsolutePath());
     }
 
     @DataProvider(name="scientificNotationValuesToNormalize")
