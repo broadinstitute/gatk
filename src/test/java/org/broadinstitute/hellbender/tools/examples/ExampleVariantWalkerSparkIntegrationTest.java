@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.examples;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -16,7 +17,7 @@ public final class ExampleVariantWalkerSparkIntegrationTest extends CommandLineP
     @Test
     public void testExampleVariantWalker() throws IOException {
         final File out = File.createTempFile("out", ".txt");
-        out.delete();
+        Assert.assertTrue(out.delete(), "failed to perform necessary deletion during test setup");
         out.deleteOnExit();
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("-L 1:100-200");

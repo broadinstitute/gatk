@@ -1,4 +1,4 @@
-src/test/resources/org/broadinstitute/hellbender/tools/examples/expected_ExampleVariantWalkerIntegrationTest_output.txtICurrent variant: [VC Unknown @ 1:198-199 Q2.00 of type=INDEL alleles=[GG*, G] attr={} GT=[] filters=
+Current variant: [VC Unknown @ 1:198-199 Q2.00 of type=INDEL alleles=[GG*, G] attr={} GT=[] filters=
         Overlapping reference bases: NN
 
 
