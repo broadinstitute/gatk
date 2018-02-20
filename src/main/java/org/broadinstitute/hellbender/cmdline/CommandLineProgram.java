@@ -14,6 +14,7 @@ import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
@@ -24,10 +25,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
-import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.text.DecimalFormat;
+import java.lang.Thread;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -175,6 +175,8 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
             printStartupMessage(startDateTime);
         }
 
+        printProductionWarning();
+
         try {
             return runTool();
         } finally {
@@ -277,6 +279,63 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         }
         catch (final Exception e) { /* Unpossible! */ }
     }
+
+    /**
+     * If a tool is either Experimental or Beta, return a warning message advising against use in production environment.
+     * @return a warning message if the tool is Beta or Experimental, otherwise null
+     */
+    protected String getProductionWarning() {
+        final String KNRM = "\u001B[0m"; // reset
+        final String BOLDRED = "\u001B[1m\u001B[31m";
+
+        String warningMessage = null;
+        if (isBetaFeature()) {
+            warningMessage = String.format(
+                    "\n\n%s   %s\n\n   Warning: %s is a BETA tool and is not yet ready for use in production\n\n   %s%s\n\n",
+                    BOLDRED,
+                    Utils.dupChar('!', 60),
+                    this.getClass().getSimpleName(),
+                    Utils.dupChar('!', 60),
+                    KNRM
+            );
+        }
+        else if (isExperimentalFeature()) {
+            warningMessage = String.format(
+                    "\n\n%s   %s\n\n   Warning: %s is an EXPERIMENTAL tool and should not be used for production\n\n   %s%s\n\n",
+                    BOLDRED,
+                    Utils.dupChar('!', 60),
+                    this.getClass().getSimpleName(),
+                    Utils.dupChar('!', 60),
+                    KNRM
+            );
+        }
+        return warningMessage;
+    }
+
+    /**
+     * If a tool is either Experimental or Beta, log a warning against use in production environment.
+     */
+    protected void printProductionWarning() {
+        final String warningMessage = getProductionWarning();
+        if (warningMessage != null) {
+            logger.warn(warningMessage);
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                throw new GATKException("Interrupted during warning message pause", e);
+            }
+        }
+    }
+
+    /**
+     * @return true if this tool has {@code BetaFeature} status.
+     */
+    public boolean isBetaFeature() { return this.getClass().getAnnotation(BetaFeature.class) != null; }
+
+    /**
+     * @return true if this tool has {@code ExperimentalFeature} status.
+     */
+    public boolean isExperimentalFeature() { return this.getClass().getAnnotation(ExperimentalFeature.class) != null; }
 
     /**
      * @return The name of this toolkit. The default implementation uses "Implementation-Title" from the
