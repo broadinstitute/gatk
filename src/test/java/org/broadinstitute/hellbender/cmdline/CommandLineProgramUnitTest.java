@@ -204,9 +204,9 @@ public class CommandLineProgramUnitTest extends GATKBaseTest {
         Assert.assertEquals(clp.isBetaFeature(), isBeta);
         Assert.assertEquals(clp.isExperimentalFeature(), isExperimental);
         if (warningSentinel == null) {
-            Assert.assertEquals(clp.getProductionWarning(), null);
+            Assert.assertEquals(clp.getProductionWarning(true), null);
         } else {
-            Assert.assertTrue(clp.getProductionWarning().contains(warningSentinel));
+            Assert.assertTrue(clp.getProductionWarning(true).contains(warningSentinel));
         }
     }
 

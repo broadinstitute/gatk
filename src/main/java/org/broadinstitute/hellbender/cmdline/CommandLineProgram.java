@@ -14,7 +14,6 @@ import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.*;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
@@ -281,49 +280,47 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     }
 
     /**
-     * If a tool is either Experimental or Beta, return a warning message advising against use in production environment.
+     * If this tool is either Experimental or Beta, return a warning message advising against use in production
+     * environment.
+     * @param useTerminalColor true if the message should include highlighting terminal colorization
      * @return a warning message if the tool is Beta or Experimental, otherwise null
      */
-    protected String getProductionWarning() {
+    protected String getProductionWarning(final boolean useTerminalColor) {
         final String KNRM = "\u001B[0m"; // reset
         final String BOLDRED = "\u001B[1m\u001B[31m";
+        final int BORDER_LENGTH = 60;
 
         String warningMessage = null;
         if (isBetaFeature()) {
             warningMessage = String.format(
                     "\n\n%s   %s\n\n   Warning: %s is a BETA tool and is not yet ready for use in production\n\n   %s%s\n\n",
-                    BOLDRED,
-                    Utils.dupChar('!', 60),
+                    useTerminalColor ? BOLDRED : "",
+                    Utils.dupChar('!', BORDER_LENGTH),
                     this.getClass().getSimpleName(),
-                    Utils.dupChar('!', 60),
-                    KNRM
+                    Utils.dupChar('!', BORDER_LENGTH),
+                    useTerminalColor ? KNRM : ""
             );
         }
         else if (isExperimentalFeature()) {
             warningMessage = String.format(
                     "\n\n%s   %s\n\n   Warning: %s is an EXPERIMENTAL tool and should not be used for production\n\n   %s%s\n\n",
-                    BOLDRED,
-                    Utils.dupChar('!', 60),
+                    useTerminalColor ? BOLDRED : "",
+                    Utils.dupChar('!', BORDER_LENGTH),
                     this.getClass().getSimpleName(),
-                    Utils.dupChar('!', 60),
-                    KNRM
+                    Utils.dupChar('!', BORDER_LENGTH),
+                    useTerminalColor ? KNRM : ""
             );
         }
         return warningMessage;
     }
 
     /**
-     * If a tool is either Experimental or Beta, log a warning against use in production environment.
+     * If a tool is either Experimental or Beta, log a warning against use in production a environment.
      */
     protected void printProductionWarning() {
-        final String warningMessage = getProductionWarning();
+        final String warningMessage = getProductionWarning(!(System.console() == null));
         if (warningMessage != null) {
             logger.warn(warningMessage);
-            try {
-                Thread.sleep(5000);
-            } catch (InterruptedException e) {
-                throw new GATKException("Interrupted during warning message pause", e);
-            }
         }
     }
 
