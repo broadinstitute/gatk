@@ -50,7 +50,6 @@ workflow CNVGermlineCaseWorkflow {
     #### optional arguments for DetermineGermlineContigPloidyCaseMode ####
     ######################################################################
     Float? ploidy_mapping_error_rate
-    Float? ploidy_sample_psi_scale
     Int? mem_gb_for_determine_germline_contig_ploidy
     Int? cpu_for_determine_germline_contig_ploidy
 
@@ -132,7 +131,6 @@ workflow CNVGermlineCaseWorkflow {
             mem_gb = mem_gb_for_determine_germline_contig_ploidy,
             cpu = cpu_for_determine_germline_contig_ploidy,
             mapping_error_rate = ploidy_mapping_error_rate,
-            sample_psi_scale = ploidy_sample_psi_scale,
             preemptible_attempts = preemptible_attempts
     }
 
@@ -228,7 +226,6 @@ task DetermineGermlineContigPloidyCaseMode {
 
     # Model parameters
     Float? mapping_error_rate
-    Float? sample_psi_scale
 
     # We do not expose Hybrid ADVI parameters -- the default values are decent
 
@@ -254,8 +251,7 @@ task DetermineGermlineContigPloidyCaseMode {
             --output ${output_dir_} \
             --output-prefix case \
             --verbosity DEBUG \
-            --mapping-error-rate ${default="0.01" mapping_error_rate} \
-            --sample-psi-scale ${default="0.0001" sample_psi_scale}
+            --mapping-error-rate ${default="0.01" mapping_error_rate}
 
         tar czf case-contig-ploidy-calls.tar.gz -C ${output_dir_}/case-calls .
     >>>

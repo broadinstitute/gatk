@@ -114,11 +114,9 @@ import java.util.stream.Collectors;
  *     <dt>Choice of hyperparameters:</dt>
  *     <dd><p>The quality of ploidy model parametrization and the sensitivity/precision of germline karyotyping are
  *     sensitive to the choice of model hyperparameters, including standard deviation of mean contig coverage bias
- *     (set using the {@code mean-bias-standard-deviation} argument), mapping error rate
- *     (set using the {@code mapping-error-rate} argument), and the typical scale of contig- and sample-specific
- *     unexplained variance (set using the {@code global-psi-scale} and {@code sample-psi-scale} arguments,
- *     respectively). It is crucial to note that these hyperparameters are <em>not</em> universal
- *     and must be tuned for each sequencing protocol and properly set at runtime.</p></dd>
+ *     (set using the {@code mean-bias-standard-deviation} argument) and the mapping error rate
+ *     (set using the {@code mapping-error-rate} argument). It is crucial to note that these hyperparameters are
+ *     <em>not</em> universal and must be tuned for each sequencing protocol and properly set at runtime.</p></dd>
  *
  *     <dt>Mosaicism and fractional ploidies:</dt>
  *     <dd><p>The model underlying this tool assumes integer ploidy states (in contrast to fractional/variable ploidy
