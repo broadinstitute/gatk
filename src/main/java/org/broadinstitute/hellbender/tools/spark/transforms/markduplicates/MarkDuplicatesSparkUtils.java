@@ -75,7 +75,7 @@ public class MarkDuplicatesSparkUtils {
                                             ReadsKey.keyForFragment(header, read, fragment.getStartPosition()) :
                                             fragment.keyForFragment(header),
                                 fragment));
-                        fragment.score(scoringStrategy);
+                        if (!fragment.isEmpty()) fragment.score(scoringStrategy);
                     })
                     .filter(ReadUtils::readHasMappedMate)
                     .sorted(new GATKOrder(header))
