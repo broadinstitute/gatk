@@ -65,7 +65,8 @@ public final class ReadsKey {
      * Makes a unique key for the read.
      */
     public static String keyForRead(final SAMFileHeader header, final GATKRead read) {
-        return new StringBuilder().append(read.getReadGroup()).append(DELIMETER).append(read.getName()).toString();
+        return read.getName();
+        //return new StringBuilder().append(read.getReadGroup()).append(DELIMETER).append(read.getName()).toString();
     }
 
     /**
