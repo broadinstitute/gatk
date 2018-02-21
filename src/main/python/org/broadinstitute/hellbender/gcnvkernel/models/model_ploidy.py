@@ -4,11 +4,10 @@ import inspect
 from typing import List, Dict, Set, Tuple
 
 import numpy as np
-import pandas as pd
 import pymc3 as pm
 import theano as th
 import theano.tensor as tt
-from pymc3 import Normal, Deterministic, DensityDist, Bound, Exponential
+from pymc3 import Normal, Deterministic, DensityDist, Bound, Exponential, Poisson
 
 from ..tasks.inference_task_base import HybridInferenceParameters
 from .fancy_model import GeneralizedContinuousModel
@@ -25,22 +24,16 @@ class PloidyModelConfig:
     def __init__(self,
                  contig_ploidy_prior_map: Dict[str, np.ndarray] = None,
                  mean_bias_sd: float = 1e-2,
-                 psi_j_scale: float = 1e-3,
-                 psi_s_scale: float = 1e-4,
                  mapping_error_rate: float = 1e-2):
         """Initializer.
 
         Args:
             contig_ploidy_prior_map: map from contigs to prior probabilities of each ploidy state
             mean_bias_sd: standard deviation of mean contig-level coverage bias
-            psi_j_scale: typical scale of contig-specific unexplained variance
-            psi_s_scale: typical scale of sample-specific unexplained variance
             mapping_error_rate: typical mapping error probability
         """
         assert contig_ploidy_prior_map is not None
         self.mean_bias_sd = mean_bias_sd
-        self.psi_j_scale = psi_j_scale
-        self.psi_s_scale = psi_s_scale
         self.mapping_error_rate = mapping_error_rate
         self.contig_ploidy_prior_map, self.num_ploidy_states = self._get_validated_contig_ploidy_prior_map(
             contig_ploidy_prior_map)
@@ -101,16 +94,6 @@ class PloidyModelConfig:
                               type=float,
                               help="Typical mapping error rate",
                               default=initializer_params['mapping_error_rate'].default)
-
-        process_and_maybe_add("psi_j_scale",
-                              type=float,
-                              help="Typical scale of contig-specific unexplained coverage variance",
-                              default=initializer_params['psi_j_scale'].default)
-
-        process_and_maybe_add("psi_s_scale",
-                              type=float,
-                              help="Typical scale of sample-specific unexplained coverage variance",
-                              default=initializer_params['psi_s_scale'].default)
 
     @staticmethod
     def from_args_dict(args_dict: Dict):
@@ -226,21 +209,6 @@ class PloidyModel(GeneralizedContinuousModel):
                                           shape=(ploidy_workspace.num_contigs,))
         register_as_global(mean_bias_j)
 
-        # contig coverage unexplained variance
-        psi_j = Exponential(name='psi_j',
-                            lam=1.0 / ploidy_config.psi_j_scale,
-                            shape=(ploidy_workspace.num_contigs,))
-        register_as_global(psi_j)
-
-        # sample-specific contig unexplained variance
-        psi_s = Exponential(name='psi_s',
-                            lam=1.0 / ploidy_config.psi_j_scale,
-                            shape=(ploidy_workspace.num_samples,))
-        register_as_sample_specific(psi_s, sample_axis=0)
-
-        # convert "unexplained variance" to negative binomial over-dispersion
-        alpha_sj = tt.inv((tt.exp(psi_j.dimshuffle('x', 0) + psi_s.dimshuffle(0, 'x')) - 1.0))
-
         # mean ploidy per contig per sample
         mean_ploidy_sj = tt.sum(tt.exp(ploidy_workspace.log_q_ploidy_sjk)
                                 * ploidy_workspace.int_ploidy_values_k.dimshuffle('x', 'x', 0), axis=2)
@@ -251,7 +219,7 @@ class PloidyModel(GeneralizedContinuousModel):
         # gamma_rest_sj \equiv sum_{j' \neq j} gamma_sj
         gamma_rest_sj = tt.dot(gamma_sj, contig_exclusion_mask_jj)
 
-        # NB per-contig counts
+        # Poisson per-contig counts
         mu_num_sjk = (t_j.dimshuffle('x', 0, 'x') * mean_bias_j.dimshuffle('x', 0, 'x')
                       * ploidy_k.dimshuffle('x', 'x', 0))
         mu_den_sjk = gamma_rest_sj.dimshuffle(0, 1, 'x') + mu_num_sjk
@@ -260,10 +228,8 @@ class PloidyModel(GeneralizedContinuousModel):
                   + eps_j.dimshuffle('x', 0, 'x')) * n_s.dimshuffle(0, 'x', 'x')
 
         def _get_logp_sjk(_n_sj):
-            _logp_sjk = commons.negative_binomial_logp(
-                mu_sjk,  # mean
-                alpha_sj.dimshuffle(0, 1, 'x'),  # over-dispersion
-                _n_sj.dimshuffle(0, 1, 'x'))  # contig counts
+            _logp_sjk = Poisson.dist(mu=mu_sjk).logp(
+                n_sj.dimshuffle(0, 1, 'x'))  # contig counts
             return _logp_sjk
 
         DensityDist(name='n_sj_obs',
