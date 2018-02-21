@@ -106,7 +106,9 @@ def write_ndarray_to_tsv(output_file: str,
                          array: np.ndarray,
                          comment='@',
                          delimiter='\t',
-                         extra_comment_lines: Optional[List[str]] = None) -> None:
+                         extra_comment_lines: Optional[List[str]] = None,
+                         header: Optional[str] = None,
+                         write_shape_info: bool = True) -> None:
     """Write an vector or matrix ndarray to .tsv file.
 
     Note:
@@ -118,6 +120,8 @@ def write_ndarray_to_tsv(output_file: str,
         comment: comment character
         delimiter: delimiter character
         extra_comment_lines: (optional) list of extra comment lines to add to the header
+        header: header line (e.g. for representing the ndarray as a table with named columns)
+        write_shape_info: if True, ndarray shape info will be written to the header
 
     Returns:
         None
@@ -132,11 +136,14 @@ def write_ndarray_to_tsv(output_file: str,
         array_matrix = array.reshape((array.size, 1))
 
     with open(output_file, 'w') as f:
-        f.write(comment + 'shape=' + repr(shape) + '\n')
-        f.write(comment + 'dtype=' + str(dtype) + '\n')
+        if write_shape_info:
+            f.write(comment + 'shape=' + repr(shape) + '\n')
+            f.write(comment + 'dtype=' + str(dtype) + '\n')
         if extra_comment_lines is not None:
             for comment_line in extra_comment_lines:
                 f.write(comment + comment_line + '\n')
+        if header is not None:
+            f.write(header + '\n')
         for i_row in range(array_matrix.shape[0]):
             row = array_matrix[i_row, :]
             row_repr = delimiter.join([repr(x) for x in row])

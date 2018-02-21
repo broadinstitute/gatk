@@ -25,6 +25,9 @@ The module is organized as follows::
 
     `gcnvkernel.preprocess`: Routines for filtering interval lists.
 
+    `gcnvkernel.postprocess`: Classes for post-processing gcnvkernel output (e.g.
+        Viterbi segmentation and segment quality calculation).
+
     `gcnvkernel.structs`: Classes that represents genomic intervals, interval annotations,
         and sample metadata.
 
@@ -32,8 +35,8 @@ The module is organized as follows::
         This module additionally provides general-purpose templates for setting up arbitrary
         ADVI inference tasks for models with mixed discrete and continuous latent variables.
 
-    `gcnvkernel.utils`: Contains utility classes for CLI tools, as well as an implementation
-        of recursive least squares (RLS).
+    `gcnvkernel.utils`: Contains utility classes for CLI scripts, an implementation of
+        recursive least squares (RLS), and a number of useful mathematical functions.
 
 Even though `gcnvkernel` can be used as a standalone tool, its intended use case is to be
 privately called by GATK CLI tools. As such, the outputs of `gcnvkernel` are considered

@@ -432,19 +432,19 @@ class DenoisingCallingWorkspace:
         self.log_q_tau_tk: Optional[types.TensorSharedVariable] = None
 
         # class emission log posterior
-        # (to be initialize by calling `initialize_copy_number_class_inference_vars`)
+        # (to be initialized by calling `initialize_copy_number_class_inference_vars`)
         self.log_class_emission_tk: Optional[types.TensorSharedVariable] = None
 
         # class assignment prior probabilities
-        # (to be initialize by calling `initialize_copy_number_class_inference_vars`)
+        # (to be initialized by calling `initialize_copy_number_class_inference_vars`)
         self.class_probs_k: Optional[types.TensorSharedVariable] = None
 
         # class Markov chain log prior (initialized here and remains constant throughout)
-        # (to be initialize by calling `initialize_copy_number_class_inference_vars`)
+        # (to be initialized by calling `initialize_copy_number_class_inference_vars`)
         self.log_prior_k: Optional[np.ndarray] = None
 
         # class Markov chain log transition (initialized here and remains constant throughout)
-        # (to be initialize by calling `initialize_copy_number_class_inference_vars`)
+        # (to be initialized by calling `initialize_copy_number_class_inference_vars`)
         self.log_trans_tkk: Optional[np.ndarray] = None
 
         # GC bias factors
@@ -965,8 +965,13 @@ class HHMMClassAndCopyNumberBasicCaller:
         self.pi_sjkc: types.TensorSharedVariable = th.shared(pi_sjkc, name='pi_sjkc', borrow=config.borrow_numpy)
 
         # compiled function for forward-backward updates of copy number posterior
-        self._hmm_q_copy_number = TheanoForwardBackward(None, self.inference_params.caller_admixing_rate)
-        self._hmm_q_copy_number.compile()
+        self._hmm_q_copy_number = TheanoForwardBackward(
+            log_posterior_probs_output_tc=None,
+            resolve_nans=False,
+            do_thermalization=True,
+            do_admixing=True,
+            include_update_size_output=True,
+            include_alpha_beta_output=False)
 
         if not disable_class_update:
             # compiled function for forward-backward update of class posterior
@@ -974,15 +979,17 @@ class HHMMClassAndCopyNumberBasicCaller:
             #   if p_active == 0, we have to deal with inf - inf expressions properly.
             #   setting resolve_nans = True takes care of such ambiguities.
             self._hmm_q_class = TheanoForwardBackward(
-                shared_workspace.log_q_tau_tk, self.inference_params.caller_admixing_rate,
-                resolve_nans=(calling_config.p_active == 0))
-            self._hmm_q_class.compile()
+                log_posterior_probs_output_tc=shared_workspace.log_q_tau_tk,
+                resolve_nans=(calling_config.p_active == 0),
+                do_thermalization=True,
+                do_admixing=True,
+                include_update_size_output=True,
+                include_alpha_beta_output=False)
 
             # compiled function for update of class log emission
             self._update_log_class_emission_tk_theano_func = self._get_update_log_class_emission_tk_theano_func()
-
         else:
-            self._hmm_q_class = None
+            self._hmm_q_class: Optional[TheanoForwardBackward] = None
             self._update_log_class_emission_tk_theano_func = None
 
         # compiled function for variational update of copy number HMM specs
@@ -1070,14 +1077,15 @@ class HHMMClassAndCopyNumberBasicCaller:
 
             # step 2. run forward-backward and update copy-number posteriors
             _fb_result = self._hmm_q_copy_number.perform_forward_backward(
-                log_prior_c, log_trans_tcc,
-                log_copy_number_emission_tc, prev_log_posterior_tc,
+                log_prior_c, log_trans_tcc, log_copy_number_emission_tc,
+                prev_log_posterior_tc=prev_log_posterior_tc,
+                admixing_rate=self.inference_params.caller_admixing_rate,
                 temperature=self.temperature.get_value()[0])
             del log_prior_c
             del log_trans_tcc
-            new_log_posterior_tc = _fb_result[0]
-            copy_number_update_size = copy_number_update_summary_statistic_reducer(_fb_result[1])
-            log_likelihood = float(_fb_result[2])
+            new_log_posterior_tc = _fb_result.log_posterior_probs_tc
+            copy_number_update_size = copy_number_update_summary_statistic_reducer(_fb_result.update_norm_t)
+            log_likelihood = float(_fb_result.log_data_likelihood)
 
             return self.CopyNumberForwardBackwardResult(
                 _sample_index, new_log_posterior_tc, copy_number_update_size, log_likelihood)
@@ -1117,10 +1125,11 @@ class HHMMClassAndCopyNumberBasicCaller:
             self.shared_workspace.log_prior_k,
             self.shared_workspace.log_trans_tkk,
             self.shared_workspace.log_class_emission_tk.get_value(borrow=True),
-            self.shared_workspace.log_q_tau_tk.get_value(borrow=True),
+            prev_log_posterior_tc=self.shared_workspace.log_q_tau_tk.get_value(borrow=True),
+            admixing_rate=self.inference_params.caller_admixing_rate,
             temperature=self.temperature.get_value()[0])
-        class_update_size = class_update_summary_statistic_reducer(fb_result[0])
-        log_likelihood = float(fb_result[1])
+        class_update_size = class_update_summary_statistic_reducer(fb_result.update_norm_t)
+        log_likelihood = float(fb_result.log_data_likelihood)
         return class_update_size, log_likelihood
 
     def update_auxiliary_vars(self):

@@ -185,7 +185,10 @@ class SampleDenoisingAndCallingPosteriorsExporter:
                 si, self.denoising_calling_workspace.t_to_j_map.get_value(borrow=True)]
             io_commons.write_ndarray_to_tsv(
                 os.path.join(sample_posterior_path, io_consts.default_baseline_copy_number_tsv_filename),
-                baseline_copy_number_t)
+                baseline_copy_number_t,
+                extra_comment_lines=sample_name_comment_line,
+                header=io_consts.baseline_copy_number_column_name,
+                write_shape_info=False)
 
 
 class SampleDenoisingAndCallingPosteriorsImporter:

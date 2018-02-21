@@ -26,8 +26,8 @@ class ViterbiSegmentationEngine:
         This class is callable. Upon calling, all samples in the call-set will be processed sequentially.
 
     Note:
-        It is assumed that the model and calls shards are provided in the ascending ordering according
-        to the SAM sequence dictionary. It is not checked or enforced here.
+        It is assumed that the model and calls shards are provided in order according to the SAM sequence dictionary.
+        It is not checked or enforced here.
     """
     def __init__(self,
                  model_shards_paths: List[str],
@@ -62,8 +62,8 @@ class ViterbiSegmentationEngine:
             log_q_tau_tk_shards += (self._get_log_q_tau_tk_from_model_shard(model_path),)
         self.log_q_tau_tk: np.ndarray = np.concatenate(log_q_tau_tk_shards, axis=0)
 
-        # extract SAM sequence dictionary header
-        self.sam_seq_dict_raw_lines = io_intervals_and_counts.extract_sam_sequence_dictionary_from_file(
+        # extract SAM header lines from one of the interval lists
+        self.interval_list_sam_header_lines = io_intervals_and_counts.extract_sam_header_from_file(
             os.path.join(model_shards_paths[0], io_consts.default_interval_list_filename))
 
         # sample names
@@ -88,7 +88,13 @@ class ViterbiSegmentationEngine:
 
         # forward-backward algorithm
         _logger.info("Compiling theano forward-backward function...")
-        self.theano_forward_backward = TheanoForwardBackward(include_alpha_beta_output=True)
+        self.theano_forward_backward = TheanoForwardBackward(
+            log_posterior_probs_output_tc=None,
+            resolve_nans=False,
+            do_thermalization=False,
+            do_admixing=False,
+            include_update_size_output=False,
+            include_alpha_beta_output=True)
 
         # viterbi algorithm
         _logger.info("Compiling theano Viterbi function...")
@@ -116,12 +122,12 @@ class ViterbiSegmentationEngine:
         io_intervals_and_counts.write_interval_list_to_tsv_file(
             os.path.join(self.output_path, io_consts.default_interval_list_filename),
             self.interval_list,
-            self.sam_seq_dict_raw_lines)
+            self.interval_list_sam_header_lines)
 
         for si in range(self.num_samples):
             self.export_copy_number_segments_for_single_sample(si)
 
-    def viterbi_segments_generator_for_single_sample(self, sample_index: int)\
+    def _viterbi_segments_generator_for_single_sample(self, sample_index: int)\
             -> Generator[IntegerCopyNumberSegment, None, None]:
         """Performs Viterbi segmentation and segment quality calculation for a single sample in
         the call-set and returns a generator for segments.
@@ -148,7 +154,8 @@ class ViterbiSegmentationEngine:
                 contig_index + 1, len(self.ordered_contig_list), contig))
 
             # copy-number prior probabilities for each class
-            contig_baseline_copy_number_state = self.sample_metadata_collection.get_sample_ploidy_metadata(sample_name) \
+            contig_baseline_copy_number_state = self.sample_metadata_collection\
+                .get_sample_ploidy_metadata(sample_name)\
                 .get_contig_ploidy(contig)
             pi_jkc = HHMMClassAndCopyNumberBasicCaller.get_copy_number_prior_for_sample_jkc(
                 self.calling_config.num_copy_number_states,
@@ -175,50 +182,47 @@ class ViterbiSegmentationEngine:
             log_trans_contig_tcc = hmm_specs[1]
 
             # run forward-back algorithm
-            fb_result = self.theano_forward_backward.perform_forward_backward_no_admix(
+            fb_result = self.theano_forward_backward.perform_forward_backward(
                 log_prior_c, log_trans_contig_tcc, copy_number_log_emission_contig_tc)
-            log_posterior_prob_tc = fb_result[0]
-            log_data_likelihood = fb_result[1]
-            alpha_tc = fb_result[2]
-            beta_tc = fb_result[3]
+            log_posterior_prob_tc = fb_result.log_posterior_probs_tc
+            log_data_likelihood = fb_result.log_data_likelihood
+            alpha_tc = fb_result.alpha_tc
+            beta_tc = fb_result.beta_tc
 
             # run viterbi algorithm
             viterbi_path_t_contig = self.theano_viterbi.get_viterbi_path(
                 log_prior_c, log_trans_contig_tcc, copy_number_log_emission_contig_tc)
 
             # initialize the segment quality calculator
-            segment_quality_calculator = HMMSegmentationQualityCalculator(
+            segment_quality_calculator: HMMSegmentationQualityCalculator = HMMSegmentationQualityCalculator(
                 copy_number_log_emission_contig_tc, log_trans_contig_tcc,
                 alpha_tc, beta_tc, log_posterior_prob_tc, log_data_likelihood)
 
             # coalesce into piecewise constant copy-number segments, calculate qualities
-            for copy_number_call, start_index, end_index in self.coalesce_seq_into_segments(viterbi_path_t_contig):
-                num_spanning_intervals = end_index - start_index + 1
+            for copy_number_call, start_index, end_index in self._coalesce_seq_into_segments(viterbi_path_t_contig):
+                num_points = end_index - start_index + 1
                 segment = IntegerCopyNumberSegment(contig,
                                                    contig_interval_list[start_index].start,
                                                    contig_interval_list[end_index].end,
-                                                   num_spanning_intervals,
-                                                   copy_number_call)
-                if num_spanning_intervals > 1:
-                    segment.some_quality = segment_quality_calculator.get_segment_some_quality(
+                                                   num_points,
+                                                   copy_number_call,
+                                                   contig_baseline_copy_number_state)
+                if num_points > 1:
+                    segment.quality_some_called = segment_quality_calculator.get_segment_quality_some_called(
                         start_index, end_index, copy_number_call)
-                    segment.exact_quality = segment_quality_calculator.get_segment_exact_quality(
+                    segment.quality_all_called = segment_quality_calculator.get_segment_quality_all_called(
                         start_index, end_index, copy_number_call)
-                    segment.start_quality = segment_quality_calculator.get_segment_start_quality_direct(
+                    segment.quality_start = segment_quality_calculator.get_segment_quality_start(
                         start_index, copy_number_call)
-                    segment.end_quality = segment_quality_calculator.get_segment_end_quality_direct(
+                    segment.quality_end = segment_quality_calculator.get_segment_quality_end(
                         end_index, copy_number_call)
 
-                    # exact quality calculation is prone to numerical instability and may overflow
-                    # in that case, some quality will be reported
-                    if np.isinf(segment.exact_quality):
-                        segment.exact_quality = segment.some_quality
                 else:  # for single-interval segments, all qualities must be the same
-                    segment.some_quality = segment_quality_calculator.get_segment_some_quality(
+                    segment.quality_some_called = segment_quality_calculator.get_segment_quality_some_called(
                         start_index, end_index, copy_number_call)
-                    segment.exact_quality = segment.some_quality
-                    segment.start_quality = segment.some_quality
-                    segment.end_quality = segment.some_quality
+                    segment.quality_all_called = segment.quality_some_called
+                    segment.quality_start = segment.quality_some_called
+                    segment.quality_end = segment.quality_some_called
 
                 yield segment
 
@@ -245,8 +249,8 @@ class ViterbiSegmentationEngine:
 
         seg_file = os.path.join(sample_output_path, io_consts.default_copy_number_segments_tsv_filename)
         with open(seg_file, 'w') as of:
-            # copy SAM sequence dictionary header from model/calls interval list
-            for sam_header_line in self.sam_seq_dict_raw_lines:
+            # copy SAM header lines from model/calls interval list
+            for sam_header_line in self.interval_list_sam_header_lines:
                 of.write(sam_header_line + '\n')
 
             # add sample name header
@@ -256,7 +260,7 @@ class ViterbiSegmentationEngine:
             of.write(IntegerCopyNumberSegment.get_header_column_string() + '\n')
 
             # add segments
-            for segment in self.viterbi_segments_generator_for_single_sample(sample_index):
+            for segment in self._viterbi_segments_generator_for_single_sample(sample_index):
                 of.write(repr(segment) + '\n')
 
     @staticmethod
@@ -278,17 +282,28 @@ class ViterbiSegmentationEngine:
             # assert gcnvkernel versions are identical
             model_gcnvkernel_version_file = os.path.join(model_path, io_consts.default_gcnvkernel_version_json_filename)
             calls_gcnvkernel_version_file = os.path.join(calls_path, io_consts.default_gcnvkernel_version_json_filename)
-            io_commons.assert_files_are_identical(model_gcnvkernel_version_file, calls_gcnvkernel_version_file)
+            try:
+                io_commons.assert_files_are_identical(model_gcnvkernel_version_file, calls_gcnvkernel_version_file)
+            except AssertionError:
+                _logger.warning("Different gcnvkernel versions between model and calls -- proceeding at your own risk!")
 
             # assert denoising configs are identical
             model_denoising_config_file = os.path.join(model_path, io_consts.default_denoising_config_json_filename)
             calls_denoising_config_file = os.path.join(calls_path, io_consts.default_denoising_config_json_filename)
-            io_commons.assert_files_are_identical(model_denoising_config_file, calls_denoising_config_file)
+            try:
+                io_commons.assert_files_are_identical(model_denoising_config_file, calls_denoising_config_file)
+            except AssertionError:
+                _logger.warning("Different denoising configuration between model and calls -- "
+                                "proceeding at your own risk!")
 
             # assert callings configs are identical
             model_calling_config_file = os.path.join(model_path, io_consts.default_calling_config_json_filename)
             calls_calling_config_file = os.path.join(calls_path, io_consts.default_calling_config_json_filename)
-            io_commons.assert_files_are_identical(model_calling_config_file, calls_calling_config_file)
+            try:
+                io_commons.assert_files_are_identical(model_calling_config_file, calls_calling_config_file)
+            except AssertionError:
+                _logger.warning("Different calling configuration between model and calls -- "
+                                "proceeding at your own risk!")
 
             # extract and store sample names for the current shard
             scattered_sample_names.append(ViterbiSegmentationEngine._get_sample_names_from_calls_shard(calls_path))
@@ -312,7 +327,7 @@ class ViterbiSegmentationEngine:
             sample_names += (io_commons.get_sample_name_from_txt_file(sample_posteriors_path),)
             sample_index += 1
         if len(sample_names) == 0:
-            raise Exception("Could not file any sample posterior calls in {0}.".format(calls_path))
+            raise Exception("Could not find any sample posterior calls in {0}.".format(calls_path))
         else:
             return tuple(sample_names)
 
@@ -344,7 +359,7 @@ class ViterbiSegmentationEngine:
                 io_consts.default_copy_number_log_emission_tsv_filename)
 
     @staticmethod
-    def coalesce_seq_into_segments(seq: List[TypeVar('_T')]) -> List[Tuple[TypeVar('_T'), int, int]]:
+    def _coalesce_seq_into_segments(seq: List[TypeVar('_T')]) -> List[Tuple[TypeVar('_T'), int, int]]:
         """Coalesces a sequence of objects into piecewise constant segments, along with start and end indices
         for each constant segment.
 

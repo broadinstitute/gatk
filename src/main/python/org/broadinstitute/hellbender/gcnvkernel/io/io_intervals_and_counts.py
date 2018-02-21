@@ -68,8 +68,8 @@ def load_interval_list_tsv_file(interval_list_tsv_file: str,
     return _convert_interval_list_pandas_to_gcnv_interval_list(interval_list_pd, interval_list_tsv_file)
 
 
-def extract_sam_sequence_dictionary_from_file(input_file: str):
-    """Extract SAM sequence dictionary from a file.
+def extract_sam_header_from_file(input_file: str):
+    """Extract SAM header from a file.
 
     Notes:
         Only contiguous SAM header lines (starting with '@') are considered. The parsing of the input file
@@ -78,17 +78,17 @@ def extract_sam_sequence_dictionary_from_file(input_file: str):
     Returns:
         a list of str
     """
-    sam_seq_dict: List[str] = list()
+    sam_header_list: List[str] = list()
     with open(input_file, 'r') as f:
         for line in f:
             stripped_line = line.strip()
             if len(stripped_line) == 0:
                 continue
             elif stripped_line[0] == '@':
-                sam_seq_dict.append(stripped_line)
+                sam_header_list.append(stripped_line)
             else:
                 break
-    return sam_seq_dict
+    return sam_header_list
 
 
 def load_counts_in_the_modeling_zone(read_count_file_list: List[str],
@@ -157,7 +157,7 @@ def _convert_interval_list_pandas_to_gcnv_interval_list(interval_list_pd: pd.Dat
         interval = Interval(contig, start, end)
         interval_list.append(interval)
 
-    found_annotation_keys = columns.intersection(interval_annotations_dict.keys())
+    found_annotation_keys: Set[str] = columns.intersection(interval_annotations_dict.keys())
     if len(found_annotation_keys) > 0:
         _logger.info("The given interval list provides the following interval annotations: "
                      + str(found_annotation_keys))
@@ -165,7 +165,7 @@ def _convert_interval_list_pandas_to_gcnv_interval_list(interval_list_pd: pd.Dat
             bad_annotations_found = False
             for ti, raw_value in enumerate(interval_list_pd[annotation_key]):
                 try:
-                    annotation: IntervalAnnotation = interval_annotations_dict[annotation_key](raw_value)
+                    annotation = interval_annotations_dict[annotation_key](raw_value)
                     interval_list[ti].add_annotation(annotation_key, annotation)
                 except ValueError:
                     bad_annotations_found = True

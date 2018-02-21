@@ -30,15 +30,14 @@ group.add_argument("--model_shards",
                    required=True,
                    nargs='+',  # one or more
                    default=argparse.SUPPRESS,
-                   help="List of coverage model shards (in order)")
-
+                   help="List of coverage model shards (in genomic sequence order)")
 
 group.add_argument("--calls_shards",
                    type=str,
                    required=True,
                    nargs='+',  # one or more
                    default=argparse.SUPPRESS,
-                   help="List of gCNV calls shards (in order)")
+                   help="List of gCNV calls shards (in genomic sequence order)")
 
 group.add_argument("--output_path",
                    type=str,

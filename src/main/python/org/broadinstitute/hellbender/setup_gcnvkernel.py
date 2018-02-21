@@ -23,7 +23,7 @@ setup(
               'gcnvkernel.inference',
               'gcnvkernel.models',
               'gcnvkernel.preprocess',
-              'gcnvkernel.postprocess'
+              'gcnvkernel.postprocess',
               'gcnvkernel.structs',
               'gcnvkernel.tasks',
               'gcnvkernel.utils',
