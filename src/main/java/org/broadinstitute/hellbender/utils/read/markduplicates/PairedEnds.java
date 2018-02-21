@@ -156,8 +156,9 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
     return fragment;
   }
 
+  //TODO note that this only
   public boolean isEmpty() {
-    return firstRefIndex == -1;
+    return first == null;
   }
 
   public boolean hasMateMapping() {
