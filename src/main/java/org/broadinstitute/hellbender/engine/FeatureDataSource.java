@@ -137,6 +137,17 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     }
 
     /**
+     * Creates a FeatureDataSource backed by the provided path. The data source will have an automatically
+     * generated name, and will look ahead the default number of bases ({@link #DEFAULT_QUERY_LOOKAHEAD_BASES})
+     * during queries that produce cache misses.
+     *
+     * @param featurePath path or URI to source of Features
+     */
+    public FeatureDataSource(final String featurePath) {
+        this(featurePath, null, DEFAULT_QUERY_LOOKAHEAD_BASES, null);
+    }
+
+    /**
      * Creates a FeatureDataSource backed by the provided File and assigns this data source the specified logical
      * name. We will look ahead the default number of bases ({@link #DEFAULT_QUERY_LOOKAHEAD_BASES}) during queries
      * that produce cache misses.
