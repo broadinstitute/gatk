@@ -32,7 +32,7 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   PairedEnds(final GATKRead first, final boolean fragment, final SAMFileHeader header) {
     name = ReadsKey.keyForRead(header, first);
     this.first = first;
-    firstStartPosition = ReadUtils.getStrandedUnclippedStart(second);
+    firstStartPosition = ReadUtils.getStrandedUnclippedStart(first);
     firstRefIndex =  ReadUtils.getReferenceIndex(first, header);
     this.fragment = fragment;
   }
@@ -58,7 +58,7 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
 
   public PairedEnds and(final GATKRead second, final SAMFileHeader header) {
     if (second != null &&
-        ReadUtils.getStrandedUnclippedStart(first) > ReadUtils.getStrandedUnclippedStart(second)) {
+            firstStartPosition > ReadUtils.getStrandedUnclippedStart(second)) {
       this.second = this.first;
       secondRefIndex = this.firstRefIndex;
       secondStartPosition = this.firstStartPosition;
