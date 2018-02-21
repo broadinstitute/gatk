@@ -158,12 +158,9 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
 
   //TODO note that this only
   public boolean isEmpty() {
-    return first == null;
+    return firstRefIndex == -1;
   }
 
-  public boolean hasMateMapping() {
-    return firstStartPosition == -1;
-  }
   /**
    * returns a deep(ish) copy of the GATK reads in the PairedEnds.
    * TODO: This is only deep for the Google Model read, GATKRead copy() isn't deep for
