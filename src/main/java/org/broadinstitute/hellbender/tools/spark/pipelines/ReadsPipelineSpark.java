@@ -166,7 +166,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
             header = getHeaderForReads();
         }
 
-        final JavaRDD<GATKRead> markedReadsWithOD = MarkDuplicatesSpark.mark(alignedReads, header, duplicatesScoringStrategy, new OpticalDuplicateFinder(), getRecommendedNumReducers());
+        final JavaRDD<GATKRead> markedReadsWithOD = null; //todo MarkDuplicatesSpark.mark(alignedReads, header, duplicatesScoringStrategy, new OpticalDuplicateFinder(), getRecommendedNumReducers());
         final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.cleanupTemporaryAttributes(markedReadsWithOD);
 
         // The markedReads have already had the WellformedReadFilter applied to them, which
