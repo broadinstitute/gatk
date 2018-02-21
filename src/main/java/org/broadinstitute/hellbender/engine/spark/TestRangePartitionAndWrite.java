@@ -5,6 +5,8 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.math.Ordering;
@@ -13,13 +15,17 @@ import scala.reflect.ClassTag;
 import scala.reflect.ClassTag$;
 import scala.reflect.ClassTag$class;
 
+import java.util.Arrays;
 import java.util.Comparator;
 
+@CommandLineProgramProperties(summary = "test tool", oneLineSummary = "test tool", programGroup = TestProgramGroup.class)
 public class TestRangePartitionAndWrite extends GATKSparkTool {
 
     private static final long serialVersionUID = 1L;
+
     @Argument
-    boolean repartition = false;
+    public boolean repartition = false;
+
     @Override
     protected void runTool(JavaSparkContext ctx) {
         final JavaRDD<GATKRead> reads = getReads();
@@ -29,8 +35,8 @@ public class TestRangePartitionAndWrite extends GATKSparkTool {
 
             final Ordering<String> stringOrdering = Ordering$.MODULE$.comparatorToOrdering(
                     Comparator.<String>naturalOrder());
-            final ClassTag<String> classtag = ClassTag$.MODULE$.apply(Stringg.class);
-            final RangePartitioner<String, GATKRead> partitioner = new RangePartitioner<String, GATKRead>(
+            final ClassTag<String> classtag = ClassTag$.MODULE$.apply(String.class);
+            final RangePartitioner<String, GATKRead> partitioner = new RangePartitioner<>(
                     reads.getNumPartitions(), keyedReads.rdd(), true,
                     stringOrdering,
                     classtag);
