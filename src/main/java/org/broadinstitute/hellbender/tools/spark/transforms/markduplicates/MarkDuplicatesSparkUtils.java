@@ -303,10 +303,11 @@ public class MarkDuplicatesSparkUtils {
         for (int key : groups.keys()) {
             final Map<Boolean, List<PairedEnds>> byPairing = groups.get(key).stream()
                     .collect(Collectors.partitioningBy(
-                            PairedEnds::hasMateMapping
+                            PairedEnds::isEmpty
                     ));
 
             // If there are any non-fragments at this site, mark everything as duplicates, otherwise compute the best score
+            //TODO this must be collapsed 
             boolean computeScore = byPairing.get(true).isEmpty();
             PairedEnds maxScore = null;
             for (PairedEnds pairing : byPairing.get(false)) {
