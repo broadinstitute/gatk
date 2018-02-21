@@ -473,6 +473,11 @@ public final class SVDDenoisingUtils {
     private static void divideBySampleMedianAndTransformToLog2(final RealMatrix matrix) {
         logger.info("Dividing by sample medians and transforming to log2 space...");
         final double[] sampleMedians = MatrixSummaryUtils.getRowMedians(matrix);
+        IntStream.range(0, sampleMedians.length).forEach(sampleIndex ->
+                ParamUtils.isPositive(sampleMedians[sampleIndex],
+                        sampleMedians.length == 1
+                                ? "Sample does not have a non-negative sample median."
+                                : String.format("Sample at index %s does not have a non-negative sample median.", sampleIndex)));
         matrix.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
             @Override
             public double visit(int sampleIndex, int intervalIndex, double value) {
