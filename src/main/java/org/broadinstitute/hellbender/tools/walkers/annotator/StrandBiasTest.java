@@ -73,14 +73,17 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
 
             foundData = true;
             int[] data;
-            if ( g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY).getClass().equals(String.class)) {
-                final String sbbsString = (String)g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY);
+	    Object sbbsObj = g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY);
+            if (sbbsObj instanceof String) {
+                final String sbbsString = (String)sbbsObj;
                 data = encodeSBBS(sbbsString);
-            } else if (g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY).getClass().equals(ArrayList.class)) {
+            } else if (sbbsObj instanceof List) {
                 @SuppressWarnings("unchecked")
-                final List<Integer> sbbsList = (ArrayList<Integer>) g.getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY);
+                final List<Integer> sbbsList = (ArrayList<Integer>) sbbsObj;
                 data = encodeSBBS(sbbsList);
-            } else {
+            } else if (sbbsObj instanceof int[]) {
+		data = (int[])sbbsObj;
+	    } else {
                 throw new GATKException("Unexpected " + GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY + " type");
             }
 
