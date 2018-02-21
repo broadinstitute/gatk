@@ -193,8 +193,8 @@ public class MarkDuplicatesSparkUtils {
             final ImmutableListMultimap<Boolean, PairedEnds> stratifiedByFragments = Multimaps.index(pairedEnds, PairedEnds::isFragment);
 
             Comparator<PairedEnds> pairedEndsComparator =
-                    Comparator.<PairedEnds, Integer>comparing(pe -> pe.score(scoringStrategy)).reversed()
-                            .thenComparing((o1, o2) -> new ReadCoordinateComparator(header).compare(o1.first(), o2.first()));
+                    Comparator.<PairedEnds, Integer>comparing(pe -> pe.score(scoringStrategy)).reversed();
+                            //todo get secondary comparison .thenComparing((o1, o2) -> new ReadCoordinateComparator(header).compare(o1.first(), o2.first()));
 
             // Each key corresponds to either fragments or paired ends, not a mixture of both.
 
@@ -307,7 +307,7 @@ public class MarkDuplicatesSparkUtils {
                     ));
 
             // If there are any non-fragments at this site, mark everything as duplicates, otherwise compute the best score
-            //TODO this must be collapsed 
+            //TODO this must be collapsed
             boolean computeScore = byPairing.get(true).isEmpty();
             PairedEnds maxScore = null;
             for (PairedEnds pairing : byPairing.get(false)) {
