@@ -24,7 +24,7 @@ import java.util.List;
         oneLineSummary = "SortSam on Spark (works on SAM/BAM/CRAM)",
         programGroup = ReadDataManipulationProgramGroup.class)
 @BetaFeature
-public final class SortReadFileSpark extends GATKSparkTool {
+public final class SortSamSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
     @Override

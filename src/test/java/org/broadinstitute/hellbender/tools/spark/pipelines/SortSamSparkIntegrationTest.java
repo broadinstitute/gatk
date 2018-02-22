@@ -10,7 +10,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-public final class SortReadFileSparkIntegrationTest extends CommandLineProgramTest {
+public final class SortSamSparkIntegrationTest extends CommandLineProgramTest {
     @DataProvider(name="sortbams")
     public Object[][] sortBAMData() {
         return new Object[][] {
