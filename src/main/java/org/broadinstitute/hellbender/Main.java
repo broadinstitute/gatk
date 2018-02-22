@@ -202,7 +202,7 @@ public class Main {
             }
             handleUserException(e);
             System.exit(COMMANDLINE_EXCEPTION_EXIT_VALUE);
-        } catch (PicardNonZeroExitException e) {
+        } catch (final PicardNonZeroExitException e) {
             // a Picard tool returned a non-zero exit code
             handleResult(e.getToolReturnCode());
             System.exit(ANY_OTHER_EXCEPTION_EXIT_VALUE);
