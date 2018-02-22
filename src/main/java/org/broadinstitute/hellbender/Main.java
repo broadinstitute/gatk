@@ -7,6 +7,7 @@ import com.google.cloud.storage.StorageException;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.exceptions.PicardNonZeroExitException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.ClassUtils;
 import org.broadinstitute.hellbender.utils.runtime.RuntimeUtils;
@@ -201,6 +202,10 @@ public class Main {
             }
             handleUserException(e);
             System.exit(COMMANDLINE_EXCEPTION_EXIT_VALUE);
+        } catch (PicardNonZeroExitException e) {
+            // a Picard tool returned a non-zero exit code
+            handleResult(e.getToolReturnCode());
+            System.exit(ANY_OTHER_EXCEPTION_EXIT_VALUE);
         } catch (final UserException e){
             handleUserException(e);
             System.exit(USER_EXCEPTION_EXIT_VALUE);

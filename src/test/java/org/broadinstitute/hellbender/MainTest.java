@@ -94,4 +94,17 @@ public final class MainTest extends CommandLineProgramTest {
             System.setSecurityManager(backup);
         }
     }
+    @Test(singleThreaded = true)
+    public void testNonZeroPicardReturnValue() {
+        final SecurityManager backup = System.getSecurityManager();
+        try {
+            System.setSecurityManager(new ThrowOnExitSecurityManager());
+            new Main().mainEntry(new String[]{"ExtractSequences"});
+        } catch (ExitNotAllowedException e) {
+            Assert.assertNotEquals(e.status, 0);
+        } finally {
+            System.setSecurityManager(backup);
+        }
+    }
+
 }
