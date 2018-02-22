@@ -174,7 +174,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
             printStartupMessage(startDateTime);
         }
 
-        printProductionWarning();
+        warnOnToolStatus();
 
         try {
             return runTool();
@@ -285,7 +285,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
      * @param useTerminalColor true if the message should include highlighting terminal colorization
      * @return a warning message if the tool is Beta or Experimental, otherwise null
      */
-    protected String getProductionWarning(final boolean useTerminalColor) {
+    protected String getToolStatusWarning(final boolean useTerminalColor) {
         final String KNRM = "\u001B[0m"; // reset
         final String BOLDRED = "\u001B[1m\u001B[31m";
         final int BORDER_LENGTH = 60;
@@ -317,8 +317,8 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     /**
      * If a tool is either Experimental or Beta, log a warning against use in production a environment.
      */
-    protected void printProductionWarning() {
-        final String warningMessage = getProductionWarning(!(System.console() == null));
+    protected void warnOnToolStatus() {
+        final String warningMessage = getToolStatusWarning(true);
         if (warningMessage != null) {
             logger.warn(warningMessage);
         }
