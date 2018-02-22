@@ -159,12 +159,23 @@ public final class ConfigFactory {
     /**
      * Injects the given property to the System Properties.
      * Validates that this property was set after setting it.
+     * This will NOT override properties that already exist in the system.
      * @param properties A {@link Map} of key, value pairs of properties to add to the System Properties.
      */
     @VisibleForTesting
     void injectToSystemProperties(final Map<String, String> properties) {
 
+        // Get our current system properties:
+        final Properties systemProperties = System.getProperties();
+
         for ( final Map.Entry<String, String> entry : properties.entrySet() ) {
+
+            // If we have this key in our system already, we do NOT set it:
+            if ( systemProperties.containsKey(entry.getKey()) ) {
+                System.out.println("System property already exists.  Not overriding: " + entry.getKey());
+                logger.debug("System property already exists.  Not overriding: " + entry.getKey());
+                continue;
+            }
 
             System.setProperty(entry.getKey(), entry.getValue());
 
@@ -459,6 +470,7 @@ public final class ConfigFactory {
     /**
      * Injects system properties from the given configuration file.
      * System properties are specified by the presence of the {@link SystemProperty} annotation.
+     * This will NOT override properties that already exist in the system.
      * @param config The {@link GATKConfig} object from which to inject system properties.
      */
     public synchronized <T extends Config> void injectSystemPropertiesFromConfig(final T config) {

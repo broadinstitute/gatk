@@ -1,19 +1,19 @@
 package org.broadinstitute.hellbender;
 
-import com.google.common.annotations.VisibleForTesting;
-import org.broadinstitute.barclay.argparser.*;
-import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgramExecutor;
 import com.google.cloud.storage.StorageException;
 import htsjdk.samtools.util.StringUtil;
+import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgramExecutor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.ClassUtils;
-import org.broadinstitute.hellbender.utils.runtime.RuntimeUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
+import org.broadinstitute.hellbender.utils.runtime.RuntimeUtils;
 
-import java.io.*;
+import java.io.PrintStream;
+import java.io.Serializable;
 import java.util.*;
 
 /**
@@ -189,6 +189,7 @@ public class Main {
      * Note: this is the only method that is allowed to call System.exit (because gatk tools may be run from test harness etc)
      */
     protected final void mainEntry(final String[] args) {
+
         CommandLineProgram program = null;
         try {
             program = setupConfigAndExtractProgram(args, getPackageList(), getClassList(), getCommandLineName());

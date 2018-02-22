@@ -12,13 +12,11 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.FileInputStream;
+import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Integration test
@@ -33,6 +31,9 @@ public class ConfigIntegrationTest extends CommandLineProgramTest {
     )
     public static class DummyGatkTool extends GATKTool {
 
+        public static final String SYSTEM_VAR_ARG_LONG_NAME = "SystemVar";
+        public static final String SYSTEM_OUT_FILE_ARG_LONG_NAME = "SysOutFile";
+
         @Argument(
                 doc = "Output file with only the configuration settings in it.",
                 fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -40,10 +41,51 @@ public class ConfigIntegrationTest extends CommandLineProgramTest {
         )
         private File outputFilePath;
 
+        @Argument(
+                doc = "System properties to save to system properties output file.",
+                fullName = SYSTEM_VAR_ARG_LONG_NAME
+        )
+        private List<String> systemPropertiesToSave;
+
+        @Argument(
+                doc = "Output file with only the specified system properties in it.",
+                fullName = SYSTEM_OUT_FILE_ARG_LONG_NAME
+        )
+        private File systemPropertiesOutputFile;
+
         @Override
         public void traverse() {
+
+            // Create our config and dump the config settings:
             final GATKConfig gatkConfig = ConfigFactory.getInstance().getGATKConfig();
             ConfigFactory.dumpConfigSettings( gatkConfig, outputFilePath.toPath() );
+
+            final Properties systemProperties = new Properties();
+            for (final String propName : systemPropertiesToSave) {
+                systemProperties.put( propName, System.getProperty(propName) );
+            }
+
+            try ( final PrintStream systemOutPrintStream = new PrintStream(systemPropertiesOutputFile)) {
+                systemProperties.store(systemOutPrintStream, "");
+            }
+            catch ( final IOException ex ) {
+                throw new GATKException("Could not open output file for system properties.", ex);
+            }
+        }
+    }
+
+    private void listProperties(final Properties props) {
+
+        final List<String> propKeys = props.keySet().stream()
+                .map(Object::toString)
+                .sorted()
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        System.out.println("-- listing properties --");
+        for ( final String key : propKeys ) {
+            System.out.print(key);
+            System.out.print("=");
+            System.out.println(props.get(key));
         }
     }
 
@@ -67,54 +109,94 @@ public class ConfigIntegrationTest extends CommandLineProgramTest {
     @Test(dataProvider = "provideForTestToolWithConfigValidation")
     public void testToolWithConfigValidation(final Path configFilePath) {
 
-        final File tmpFile = getSafeNonExistentFile("ConfigIntegrationTest.output.txt");
-        tmpFile.deleteOnExit();
+        // Grab the properties so we can reset them later:
+        // NOTE: CLONE HERE IS ABSOLUTELY NECESSARY OR THIS WILL FAIL VERY VERY HARD!
+        final Properties systemProperties = (Properties)System.getProperties().clone();
+//        System.out.println("================================================================================");
+//        listProperties(systemProperties);
+//        System.out.println("================================================================================");
 
-        // Create some arguments for our command:
-        final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION);
-        args.add(configFilePath.toUri().toString());
-        args.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
-        args.add(tmpFile);
+        try {
+            final File tmpConfigPropsFile = getSafeNonExistentFile("ConfigIntegrationTest.config.properties");
+            final File tmpSystemPropsFile = getSafeNonExistentFile("ConfigIntegrationTest.system.properties");
 
-        // Run our command:
-        runCommandLine(args.getArgsArray());
+            // Add in some system options.
+            // None of these should be masked by the options of the same name in the config file.
+            final Map<String, String> systemPropertiesToQuery = new HashMap<>();
+            systemPropertiesToQuery.put("gatk_stacktrace_on_user_exception", "true");
+            systemPropertiesToQuery.put("samjdk.compression_level", "7777");
 
-        // Now we get to read in the file's contents and compare them to our config settings:
-        final Properties properties = new Properties();
-        try ( final FileInputStream inputStream = new FileInputStream(tmpFile) ) {
-            properties.load(inputStream);
+            for (final Map.Entry<String, String> entry : systemPropertiesToQuery.entrySet()) {
+                System.setProperty(entry.getKey(), entry.getValue());
+            }
+
+            // Create some arguments for our command:
+            final ArgumentsBuilder args = new ArgumentsBuilder();
+            args.add("--" + StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION);
+            args.add(configFilePath.toUri().toString());
+            args.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+            args.add(tmpConfigPropsFile);
+            args.add("--" + DummyGatkTool.SYSTEM_OUT_FILE_ARG_LONG_NAME);
+            args.add(tmpSystemPropsFile);
+
+            // Add in our system properties to check:
+            for ( final String sysProp : systemPropertiesToQuery.keySet() ) {
+                args.add("--" + DummyGatkTool.SYSTEM_VAR_ARG_LONG_NAME);
+                args.add(sysProp);
+            }
+
+            // Run our command:
+            runCommandLine(args.getArgsArray());
+
+            // =========================================================================================================
+            // Now we get to read in the file's contents and compare them to our config settings:
+            final Properties configProperties = new Properties();
+            try ( final FileInputStream inputStream = new FileInputStream(tmpConfigPropsFile) ) {
+                configProperties.load(inputStream);
+            }
+            catch ( final Exception ex ) {
+                throw new GATKException("Test error!", ex);
+            }
+
+            final Properties systemPropertiesPostToolRun = new Properties();
+            try ( final FileInputStream inputStream = new FileInputStream(tmpSystemPropsFile) ) {
+                systemPropertiesPostToolRun.load(inputStream);
+            }
+            catch ( final Exception ex ) {
+                throw new GATKException("Test error!", ex);
+            }
+
+            // Create a config object to compare with the properties:
+            final GATKConfig config = ConfigFactory.getInstance().createConfigFromFile(configFilePath.toString(), GATKConfig.class);
+
+            // Get the config properties:
+            final LinkedHashMap<String, Object> configMap = ConfigFactory.getConfigMap(config, false);
+
+            // Compare the configuration properties and assert their equality:
+            for ( final Map.Entry<String, Object> entry : configMap.entrySet() ) {
+                Assert.assertEquals(configProperties.getProperty(entry.getKey()), String.valueOf(entry.getValue()));
+            }
+
+            // Compare the system properties and assert their equality:
+            for ( final String sysPropKey : systemPropertiesToQuery.keySet() ) {
+                Assert.assertEquals(systemPropertiesPostToolRun.getProperty(sysPropKey), systemPropertiesToQuery.get(sysPropKey));
+            }
+
+            // Make sure they have the same size:
+            Assert.assertEquals(configProperties.size(), configMap.size());
+
         }
-        catch (final Exception ex) {
-            throw new GATKException("Test error!", ex);
-        }
-
-        // Create a config object to compare with the properties:
-        final GATKConfig config = ConfigFactory.getInstance().createConfigFromFile(configFilePath.toString(), GATKConfig.class);
-
-        // Get the config properties:
-        final LinkedHashMap<String, Object> configMap = ConfigFactory.getConfigMap(config, false);
-
-        // Compare the properties and assert their equality:
-        for ( final Map.Entry<String, Object> entry : configMap.entrySet() ) {
-            Assert.assertEquals( properties.getProperty(entry.getKey()), String.valueOf(entry.getValue()) );
-        }
-
-        // Make sure they have the same size:
-        Assert.assertEquals( properties.size(), configMap.size() );
-
         // =========================================================================================================
         // Now we have to reset our system options:
+        finally {
+            // Clear our system properties:
+            final List<Object> keyList = new ArrayList<>(System.getProperties().keySet());
+            for ( final Object key : keyList ) {
+                System.clearProperty(key.toString());
+            }
 
-        // Run with normal options to reset any transient testing changes:
-        final GATKConfig defaultConfig = ConfigFactory.getInstance().createConfigFromFile(null, GATKConfig.class);
-
-        // Get our system properties and what they should be:
-        final Map<String, Object> systemConfigOptions = ConfigFactory.getConfigMap(defaultConfig, true);
-
-        // Reset our system properties:
-        for ( final Map.Entry<String, Object> entry : systemConfigOptions.entrySet() ) {
-            System.setProperty(entry.getKey(), entry.getValue().toString());
+            // Set back the old System Properties:
+            System.setProperties(systemProperties);
         }
     }
 }
