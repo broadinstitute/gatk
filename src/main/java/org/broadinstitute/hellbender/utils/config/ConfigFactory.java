@@ -172,7 +172,6 @@ public final class ConfigFactory {
 
             // If we have this key in our system already, we do NOT set it:
             if ( systemProperties.containsKey(entry.getKey()) ) {
-                System.out.println("System property already exists.  Not overriding: " + entry.getKey());
                 logger.debug("System property already exists.  Not overriding: " + entry.getKey());
                 continue;
             }

@@ -440,6 +440,7 @@ task bundle(type: Zip) {
         assert file("gatk").exists()
         assert file("README.md").exists()
         assert file("build/docs/tabCompletion/gatk-completion.sh").exists()
+        assert file("src/main/resources/org/broadinstitute/hellbender/utils/config/GATKConfig.properties").exists()
     }
 
     baseName = project.name + "-" + project.version
@@ -451,6 +452,7 @@ task bundle(type: Zip) {
     from("gatk")
     from("README.md")
     from("build/docs/tabCompletion/gatk-completion.sh")
+    from("src/main/resources/org/broadinstitute/hellbender/utils/config/GATKConfig.properties")
     from("${buildDir}/${pythonPackageArchiveName}")
     // When including gatkcondaenv.yml file in the release bundle, strip off the
     // 'build/' prefix used for the location of the Python package archive.
