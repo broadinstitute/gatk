@@ -7,7 +7,7 @@ import numpy as np
 import pymc3 as pm
 import theano as th
 import theano.tensor as tt
-from pymc3 import Deterministic, DensityDist, Poisson, Gamma
+from pymc3 import Deterministic, DensityDist, Poisson, Gamma, Uniform
 
 from ..tasks.inference_task_base import HybridInferenceParameters
 from .fancy_model import GeneralizedContinuousModel
