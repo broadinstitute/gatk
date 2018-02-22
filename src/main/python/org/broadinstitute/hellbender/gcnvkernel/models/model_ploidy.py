@@ -7,7 +7,7 @@ import numpy as np
 import pymc3 as pm
 import theano as th
 import theano.tensor as tt
-from pymc3 import Normal, Deterministic, DensityDist, Bound, Exponential, Poisson, Cauchy, HalfCauchy, Uniform
+from pymc3 import Deterministic, DensityDist, Poisson, Gamma
 
 from ..tasks.inference_task_base import HybridInferenceParameters
 from .fancy_model import GeneralizedContinuousModel
@@ -169,11 +169,6 @@ class PloidyWorkspace:
         self.log_ploidy_emission_sjk: types.TensorSharedVariable = th.shared(
             log_ploidy_emission_sjk, name="log_ploidy_emission_sjk", borrow=config.borrow_numpy)
 
-        # exclusion mask; mask(j, k) = 1 - delta(j, k)
-        contig_exclusion_mask_jj = (np.ones((self.num_contigs, self.num_contigs), dtype=types.small_uint)
-                                    - np.eye(self.num_contigs, dtype=types.small_uint))
-        self.contig_exclusion_mask_jj = th.shared(contig_exclusion_mask_jj, name='contig_exclusion_mask_jj')
-
     @staticmethod
     def _get_contig_set_from_interval_list(interval_list: List[Interval]) -> Set[str]:
         return {interval.contig for interval in interval_list}
@@ -183,8 +178,6 @@ class PloidyModel(GeneralizedContinuousModel):
     """Declaration of the germline contig ploidy model (continuous variables only; posterior of discrete
     variables are assumed to be known)."""
 
-    BoundedCauchy = Bound(Cauchy, lower=0)  # how cool is this?
-
     def __init__(self,
                  ploidy_config: PloidyModelConfig,
                  ploidy_workspace: PloidyWorkspace):
@@ -192,8 +185,6 @@ class PloidyModel(GeneralizedContinuousModel):
 
         # shorthands
         t_j = ploidy_workspace.t_j
-        contig_exclusion_mask_jj = ploidy_workspace.contig_exclusion_mask_jj
-        n_s = ploidy_workspace.n_s
         n_sj = ploidy_workspace.n_sj
         ploidy_k = ploidy_workspace.int_ploidy_values_k
         q_ploidy_sjk = tt.exp(ploidy_workspace.log_q_ploidy_sjk)
@@ -203,34 +194,24 @@ class PloidyModel(GeneralizedContinuousModel):
         register_as_sample_specific = self.register_as_sample_specific
 
         # mean per-contig bias
-        # mean_bias_j = self.BoundedCauchy('mean_bias_j',
-        #                                  alpha=1.0,
-        #                                  beta=ploidy_config.mean_bias_sd,
-        #                                  shape=(ploidy_workspace.num_contigs,))
-        # register_as_global(mean_bias_j)
+        mean_bias_j = Gamma('mean_bias_j',
+                            alpha=10.0,
+                            beta=10.0,
+                            shape=(ploidy_workspace.num_contigs,))
+        register_as_global(mean_bias_j)
 
         # per-sample depth
-        depth_s = Uniform('depth_s',
-                          lower=0.0,
-                          upper=10000.0,
-                          shape=(ploidy_workspace.num_samples,))
+        depth_s = Gamma('depth_s',
+                        alpha=10.0,
+                        beta=0.1,
+                        shape=(ploidy_workspace.num_samples,))
         register_as_sample_specific(depth_s, sample_axis=0)
 
-        # mean ploidy per contig per sample
-        # mean_ploidy_sj = tt.sum(tt.exp(ploidy_workspace.log_q_ploidy_sjk)
-        #                         * ploidy_workspace.int_ploidy_values_k.dimshuffle('x', 'x', 0), axis=2)
-
-        # # mean-field amplification coefficient per contig
-        # gamma_sj = mean_ploidy_sj * t_j.dimshuffle('x', 0) * mean_bias_j.dimshuffle('x', 0)
-        #
-        # # gamma_rest_sj \equiv sum_{j' \neq j} gamma_sj
-        # gamma_rest_sj = tt.dot(gamma_sj, contig_exclusion_mask_jj)
-
         # Poisson per-contig counts
-        mu_num_sjk = ploidy_workspace.int_ploidy_values_k.dimshuffle('x', 'x', 0)
         eps_j = Uniform('eps_j', lower=0.0, upper=eps, shape=(ploidy_workspace.num_contigs,))
         register_as_global(eps_j)
-        mu_sjk = depth_s.dimshuffle(0, 'x', 'x') * (mu_num_sjk + eps_j.dimshuffle('x', 0, 'x')) * t_j.dimshuffle('x', 0, 'x')
+        mu_sjk = depth_s.dimshuffle(0, 'x', 'x') * t_j.dimshuffle('x', 0, 'x') * \
+                 (ploidy_workspace.int_ploidy_values_k.dimshuffle('x', 'x', 0) + eps_j.dimshuffle('x', 0, 'x'))
 
         def _get_logp_sjk(_n_sj):
             _logp_sjk = Poisson.dist(mu=mu_sjk).logp(
@@ -299,7 +280,7 @@ class PloidyBasicCaller:
             old_log_q_ploidy_sjk + np.log(1.0 - self.inference_params.caller_admixing_rate))
         update_norm_sj = commons.get_hellinger_distance(admixed_new_log_q_ploidy_sjk, old_log_q_ploidy_sjk)
         return th.function(inputs=[],
-                           outputs=[update_norm_sj, admixed_new_log_q_ploidy_sjk],
+                           outputs=[update_norm_sj],
                            updates=[(self.ploidy_workspace.log_q_ploidy_sjk, admixed_new_log_q_ploidy_sjk)])
 
     def call(self) -> np.ndarray:
