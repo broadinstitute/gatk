@@ -58,7 +58,7 @@ public class MarkDuplicatesSparkUtils {
         }
 
         // Place all the reads into a single RDD seperated
-        JavaPairRDD<Integer, Iterable<PairedEnds>> keyedPairs = keyedReads.flatMapToPair(keyedRead -> {
+        JavaPairRDD<Integer, List<PairedEnds>> keyedPairs = keyedReads.flatMapToPair(keyedRead -> {
             final List<Tuple2<Integer, PairedEnds>> out = Lists.newArrayList();
 
             final Iterator<GATKRead> sorted = StreamSupport.stream(keyedRead._2().spliterator(), false)
@@ -97,7 +97,9 @@ public class MarkDuplicatesSparkUtils {
                 }
             }
             return out.iterator();
-        }).groupByKey(numReducers); //TODO make this a proper agregate by key
+        }).aggregateByKey(new ArrayList<PairedEnds>(), numReducers,
+                (list, element) -> { list.add(element); return list;},
+                (left, right) -> { left.addAll(right); return left;}); //TODO make this a proper agregate by key
 
         return markPairedEnds(keyedPairs, scoringStrategy, finder, header);
     }
@@ -168,7 +170,7 @@ public class MarkDuplicatesSparkUtils {
         };
     }
 
-    static JavaPairRDD<String, Integer> markPairedEnds(final JavaPairRDD<Integer, Iterable<PairedEnds>> keyedPairs,
+    static JavaPairRDD<String, Integer> markPairedEnds(final JavaPairRDD<Integer, ? extends Iterable<PairedEnds>> keyedPairs,
                                             final MarkDuplicatesScoringStrategy scoringStrategy,
                                             final OpticalDuplicateFinder finder, final SAMFileHeader header) {
         return keyedPairs.flatMapToPair(keyedPair -> {
