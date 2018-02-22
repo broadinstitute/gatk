@@ -38,8 +38,7 @@ group.add_argument("--output_calls_path",
 gcnvkernel.PloidyModelConfig.expose_args(
     parser,
     hide={
-        "--mean_bias_sd",
-        "--psi_j_scale"
+        "--mean_bias_sd"
     })
 
 # override some inference parameters
