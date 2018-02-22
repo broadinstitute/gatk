@@ -7,7 +7,7 @@ import numpy as np
 import pymc3 as pm
 import theano as th
 import theano.tensor as tt
-from pymc3 import Normal, Deterministic, DensityDist, Bound, Exponential, Poisson
+from pymc3 import Normal, Deterministic, DensityDist, Bound, Exponential, Poisson, Cauchy, HalfCauchy
 
 from ..tasks.inference_task_base import HybridInferenceParameters
 from .fancy_model import GeneralizedContinuousModel
@@ -183,7 +183,7 @@ class PloidyModel(GeneralizedContinuousModel):
     """Declaration of the germline contig ploidy model (continuous variables only; posterior of discrete
     variables are assumed to be known)."""
 
-    PositiveNormal = Bound(Normal, lower=0)  # how cool is this?
+    PositiveCauchy = Bound(Cauchy, lower=0)  # how cool is this?
 
     def __init__(self,
                  ploidy_config: PloidyModelConfig,
@@ -203,9 +203,9 @@ class PloidyModel(GeneralizedContinuousModel):
         register_as_sample_specific = self.register_as_sample_specific
 
         # mean per-contig bias
-        mean_bias_j = self.PositiveNormal('mean_bias_j',
-                                          mu=1.0,
-                                          sd=ploidy_config.mean_bias_sd,
+        mean_bias_j = self.PositiveCauchy('mean_bias_j',
+                                          alpha=1.0,
+                                          beta=ploidy_config.mean_bias_sd,
                                           shape=(ploidy_workspace.num_contigs,))
         register_as_global(mean_bias_j)
 
@@ -223,8 +223,10 @@ class PloidyModel(GeneralizedContinuousModel):
         mu_num_sjk = (t_j.dimshuffle('x', 0, 'x') * mean_bias_j.dimshuffle('x', 0, 'x')
                       * ploidy_k.dimshuffle('x', 'x', 0))
         mu_den_sjk = gamma_rest_sj.dimshuffle(0, 1, 'x') + mu_num_sjk
-        eps_j = eps * t_j / tt.sum(t_j)  # average number of reads erroneously mapped to contig j
-        mu_sjk = ((1.0 - eps) * (mu_num_sjk / mu_den_sjk)
+        e_j = HalfCauchy('e_j', beta=eps, shape=(ploidy_workspace.num_contigs,))
+        register_as_global(e_j)
+        eps_j = e_j * t_j / tt.sum(t_j)  # average number of reads erroneously mapped to contig j
+        mu_sjk = ((1.0 - eps_j.dimshuffle('x', 0, 'x')) * (mu_num_sjk / mu_den_sjk)
                   + eps_j.dimshuffle('x', 0, 'x')) * n_s.dimshuffle(0, 'x', 'x')
 
         def _get_logp_sjk(_n_sj):
@@ -294,7 +296,7 @@ class PloidyBasicCaller:
             old_log_q_ploidy_sjk + np.log(1.0 - self.inference_params.caller_admixing_rate))
         update_norm_sj = commons.get_hellinger_distance(admixed_new_log_q_ploidy_sjk, old_log_q_ploidy_sjk)
         return th.function(inputs=[],
-                           outputs=[update_norm_sj],
+                           outputs=[update_norm_sj, admixed_new_log_q_ploidy_sjk],
                            updates=[(self.ploidy_workspace.log_q_ploidy_sjk, admixed_new_log_q_ploidy_sjk)])
 
     def call(self) -> np.ndarray:

@@ -21,7 +21,8 @@ class PloidyCaller(Caller):
         self.ploidy_basic_caller = PloidyBasicCaller(hybrid_inference_params, ploidy_workspace)
 
     def call(self) -> 'PloidyCallerUpdateSummary':
-        update_norm_sj = self.ploidy_basic_caller.call()
+        update_norm_sj, admixed_new_log_q_ploidy_sjk = self.ploidy_basic_caller.call()
+        print(np.exp(admixed_new_log_q_ploidy_sjk[:, -1, :]))
         return PloidyCallerUpdateSummary(
             update_norm_sj, self.hybrid_inference_params.caller_summary_statistics_reducer)
 
