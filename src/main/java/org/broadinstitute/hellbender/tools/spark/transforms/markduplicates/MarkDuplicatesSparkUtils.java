@@ -97,7 +97,7 @@ public class MarkDuplicatesSparkUtils {
                 }
             }
             return out.iterator();
-        }).aggregateByKey(new ArrayList<PairedEnds>(), numReducers,
+        }).aggregateByKey(new LinkedList<>(), numReducers,
                 (list, element) -> { list.add(element); return list;},
                 (left, right) -> { left.addAll(right); return left;}); //TODO make this a proper agregate by key
 
