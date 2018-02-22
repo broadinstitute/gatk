@@ -18,7 +18,7 @@ import java.util.Arrays;
  */
 public class CheckPileupIntegrationTest extends CommandLineProgramTest {
     private static final String TEST_DATA_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
-    private static final String TEST_OUTPUT_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/walkers/qc/pileup/";
+    private static final String TEST_OUTPUT_DIRECTORY = toolsTestDir + "walkers/qc/pileup/";
 
     /**
      * This test runs on a basic pileup obtained with samtools (version 1.3.1) and options -B --min-BQ 0

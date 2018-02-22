@@ -20,7 +20,7 @@ import java.util.stream.StreamSupport;
  */
 public class AnnotateVcfWithExpectedAlleleFractionIntegrationTest extends CommandLineProgramTest {
 
-    private static final String VCF_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/validation/";
+    private static final String VCF_DIRECTORY = toolsTestDir + "mutect/validation/";
     private static final File INPUT_VCF = new File(VCF_DIRECTORY, "dream_4_mixing.vcf");
 
     // run with made-up mixing fractions and the doctored 2-sample version of DREAM challenge sample 4

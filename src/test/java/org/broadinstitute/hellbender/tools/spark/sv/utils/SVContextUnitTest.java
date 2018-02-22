@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 
 
 public class SVContextUnitTest extends GATKBaseTest {
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/spark/sv/utils/";
+    private static final String TEST_SUB_DIR = toolsTestDir + "spark/sv/utils/";
 
     private static final File VALID_VARIANTS_FILE = new File(TEST_SUB_DIR, "SVContext.vcf.gz");
 

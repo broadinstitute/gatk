@@ -31,7 +31,7 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
 
     @Override
     public String getToolTestDataDir(){
-        return publicTestDir + "org/broadinstitute/hellbender/tools/VQSR/";
+        return toolsTestDir + "VQSR/";
     }
 
     private String getLargeVQSRTestDataDir(){

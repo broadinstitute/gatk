@@ -24,7 +24,7 @@ public final class ExcessHetUnitTest extends GATKBaseTest {
 
     @Override
     public String getToolTestDataDir() {
-        return "src/test/resources/org/broadinstitute/hellbender/tools/walkers/annotator/";
+        return toolsTestDir + "walkers/annotator/";
     }
 
 

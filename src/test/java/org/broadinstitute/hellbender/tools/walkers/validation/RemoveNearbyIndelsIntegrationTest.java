@@ -19,7 +19,7 @@ import java.util.stream.StreamSupport;
  */
 public class RemoveNearbyIndelsIntegrationTest extends CommandLineProgramTest {
 
-    private static final String TOOLS_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/validation/";
+    private static final String TOOLS_TEST_DIRECTORY = toolsTestDir + "mutect/validation/";
     private static final File INPUT_VCF = new File(TOOLS_TEST_DIRECTORY, "nearby_indels.vcf");
     /**
      * nearby_indels.vcf looks like this:

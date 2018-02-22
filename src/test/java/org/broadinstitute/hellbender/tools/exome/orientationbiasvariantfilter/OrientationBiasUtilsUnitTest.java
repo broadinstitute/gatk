@@ -21,7 +21,7 @@ import java.util.stream.StreamSupport;
 
 
 public class OrientationBiasUtilsUnitTest extends GATKBaseTest {
-    private static final File TEST_RESOURCE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/orientationbiasvariantfilter/");
+    private static final File TEST_RESOURCE_DIR = new File(toolsTestDir, "exome/orientationbiasvariantfilter/");
     public static final String smallM2VcfMore = TEST_RESOURCE_DIR.getAbsolutePath() + "/small_m2_more_variants.vcf";
 
     @Test(dataProvider = "BasicTransitionsWithRC")

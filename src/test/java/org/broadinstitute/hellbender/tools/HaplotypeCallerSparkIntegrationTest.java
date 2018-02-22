@@ -26,7 +26,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCall
 
 public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest {
 
-    private  static final String TEST_FILES_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/haplotypecaller/";
+    private  static final String TEST_FILES_DIR = toolsTestDir + "haplotypecaller/";
 
     /*
     * Test that in VCF mode we're >= 99% concordant with GATK3.8 results

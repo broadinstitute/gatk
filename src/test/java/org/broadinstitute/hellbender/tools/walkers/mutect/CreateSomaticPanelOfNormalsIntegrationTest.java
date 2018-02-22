@@ -22,7 +22,7 @@ import static org.testng.Assert.*;
  */
 public class CreateSomaticPanelOfNormalsIntegrationTest extends CommandLineProgramTest {
 
-    private static final File PON_VCFS_DIR = new File(publicTestDir, "org/broadinstitute/hellbender/tools/mutect/createpon/");
+    private static final File PON_VCFS_DIR = new File(toolsTestDir, "mutect/createpon/");
 
     /**
      * In the following test, we have sample1.vcf:

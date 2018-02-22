@@ -16,11 +16,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AnnotatePairOrientationIntegrationTest extends CommandLineProgramTest {
-    private static final File TEST_VCF_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/");
     private static final File TEST_BAM_DIR = new File("src/test/resources/large/mutect/dream_synthetic_bams/");
 
-    final static String TEST_VCF = TEST_VCF_DIR.getAbsolutePath() + "/test_no_pair_orientation_info.vcf";
-    final static String TEST_VCF_INDELS = TEST_VCF_DIR.getAbsolutePath() + "/test_no_pair_orientation_info_indels.vcf";
+    final static String TEST_VCF = toolsTestDir + "/test_no_pair_orientation_info.vcf";
+    final static String TEST_VCF_INDELS = toolsTestDir + "/test_no_pair_orientation_info_indels.vcf";
     final static String TEST_BAM_TUMOR = TEST_BAM_DIR.getAbsolutePath() + "/tumor_1.bam";
     final static String TEST_BAM_NORMAL = TEST_BAM_DIR.getAbsolutePath() + "/normal_1.bam";
     final static String TEST_BAM_TUMOR_INDELS = TEST_BAM_DIR.getAbsolutePath() + "/tumor_3.bam";

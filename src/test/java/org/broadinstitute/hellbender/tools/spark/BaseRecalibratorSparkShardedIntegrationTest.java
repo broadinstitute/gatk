@@ -18,7 +18,7 @@ import java.util.Arrays;
 
 public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProgramTest {
 
-    private final static String THIS_TEST_FOLDER = "org/broadinstitute/hellbender/tools/BQSR/";
+    private final static String THIS_TEST_FOLDER = toolsTestDir + "BQSR/";
 
     private static class BQSRTest {
         final String referenceURL;

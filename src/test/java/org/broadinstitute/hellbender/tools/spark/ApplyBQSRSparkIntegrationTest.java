@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest {
-    private final static String THIS_TEST_FOLDER = "org/broadinstitute/hellbender/tools/BQSR/";
+    private final static String THIS_TEST_FOLDER = toolsTestDir + "BQSR/";
 
     private static class ABQSRTest {
         final String bam;

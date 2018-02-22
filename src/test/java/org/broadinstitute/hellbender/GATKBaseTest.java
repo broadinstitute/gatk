@@ -30,6 +30,7 @@ public abstract class GATKBaseTest extends BaseTest {
 
     public static final String packageRootTestDir = publicTestDir + "org/broadinstitute/hellbender/";
     public static final String toolsTestDir = packageRootTestDir + "tools/";
+    public static final String exampleTestDir = toolsTestDir + "examples/";
 
     public static final String GCS_GATK_TEST_RESOURCES = "gs://hellbender/test/resources/";
 

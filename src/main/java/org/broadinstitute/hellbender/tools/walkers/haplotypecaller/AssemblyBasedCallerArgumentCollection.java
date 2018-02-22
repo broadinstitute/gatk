@@ -13,6 +13,16 @@ import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
  */
 public abstract class AssemblyBasedCallerArgumentCollection extends StandardCallerArgumentCollection {
     private static final long serialVersionUID = 1L;
+    public static final String USE_FILTERED_READS_FOR_ANNOTATIONS_LONG_NAME = "use-filtered-reads-for-annotations";
+    public static final String BAM_OUTPUT_LONG_NAME = "bam-output";
+    public static final String BAM_OUTPUT_SHORT_NAME = "bamout";
+    public static final String BAM_WRITER_TYPE_LONG_NAME = "bam-writer-type";
+    public static final String DONT_USE_SOFT_CLIPPED_BASES_LONG_NAME = "dont-use-soft-clipped-bases";
+    public static final String CAPTURE_ASSEMBLY_FAILURE_BAM_LONG_NAME = "capture-assembly-failure-bam";
+    public static final String ERROR_CORRECT_READS_LONG_NAME = "error-correct-reads";
+    public static final String DO_NOT_RUN_PHYSICAL_PHASING_LONG_NAME = "do-not-run-physical-phasing";
+    public static final String MIN_BASE_QUALITY_SCORE_LONG_NAME = "min-base-quality-score";
+    public static final String SMITH_WATERMAN_LONG_NAME = "smith-waterman";
 
     @ArgumentCollection
     public AssemblyRegionTrimmerArgumentCollection assemblyRegionTrimmerArgs = new AssemblyRegionTrimmerArgumentCollection();
@@ -28,8 +38,8 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
     public boolean debug;
 
     @Advanced
-    @Argument(fullName="use-filtered-reads-for-annotations", doc = "Use the contamination-filtered read maps for the purposes of annotating variants", optional=true)
-    public boolean USE_FILTERED_READ_MAP_FOR_ANNOTATIONS = false;
+    @Argument(fullName= USE_FILTERED_READS_FOR_ANNOTATIONS_LONG_NAME, doc = "Use the contamination-filtered read maps for the purposes of annotating variants", optional=true)
+    public boolean useFilteredReadMapForAnnotations = false;
 
     /**
      * The assembled haplotypes and locally realigned reads will be written as BAM to this file if requested.  Really
@@ -62,7 +72,7 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
      *
      */
     @Advanced
-    @Argument(fullName="bam-output", shortName="bamout", doc="File to which assembled haplotypes should be written", optional = true)
+    @Argument(fullName= BAM_OUTPUT_LONG_NAME, shortName= BAM_OUTPUT_SHORT_NAME, doc="File to which assembled haplotypes should be written", optional = true)
     public String bamOutputPath = null;
 
     /**
@@ -70,7 +80,7 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
      * considered (top 128 max) or just the ones that were selected as alleles and assigned to samples.
      */
     @Advanced
-    @Argument(fullName="bam-writer-type", doc="Which haplotypes should be written to the BAM", optional = true)
+    @Argument(fullName= BAM_WRITER_TYPE_LONG_NAME, doc="Which haplotypes should be written to the BAM", optional = true)
     public HaplotypeBAMWriter.WriterType bamWriterType = HaplotypeBAMWriter.WriterType.CALLED_HAPLOTYPES;
 
     // -----------------------------------------------------------------------------------------------
@@ -78,11 +88,11 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
     // -----------------------------------------------------------------------------------------------
 
     @Advanced
-    @Argument(fullName = "dont-use-soft-clipped-bases", doc = "Do not analyze soft clipped bases in the reads", optional = true)
+    @Argument(fullName = DONT_USE_SOFT_CLIPPED_BASES_LONG_NAME, doc = "Do not analyze soft clipped bases in the reads", optional = true)
     public boolean dontUseSoftClippedBases = false;
 
     @Hidden
-    @Argument(fullName = "capture-assembly-failure-bam", doc = "Write a BAM called assemblyFailure.bam capturing all of the reads that were in the active region when the assembler failed for any reason", optional = true)
+    @Argument(fullName = CAPTURE_ASSEMBLY_FAILURE_BAM_LONG_NAME, doc = "Write a BAM called assemblyFailure.bam capturing all of the reads that were in the active region when the assembler failed for any reason", optional = true)
     public boolean captureAssemblyFailureBAM = false;
 
     // Parameters to control read error correction
@@ -90,26 +100,26 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
      * Enabling this argument may cause fundamental problems with the assembly graph itself.
      */
     @Hidden
-    @Argument(fullName = "error-correct-reads", doc = "Use an exploratory algorithm to error correct the kmers used during assembly", optional = true)
+    @Argument(fullName = ERROR_CORRECT_READS_LONG_NAME, doc = "Use an exploratory algorithm to error correct the kmers used during assembly", optional = true)
     public boolean errorCorrectReads = false;
 
     /**
      * As of GATK 3.3, HaplotypeCaller outputs physical (read-based) information (see version 3.3 release notes and documentation for details). This argument disables that behavior.
      */
     @Advanced
-    @Argument(fullName = "do-not-run-physical-phasing",  doc = "Disable physical phasing", optional = true)
+    @Argument(fullName = DO_NOT_RUN_PHYSICAL_PHASING_LONG_NAME,  doc = "Disable physical phasing", optional = true)
     public boolean doNotRunPhysicalPhasing = false;
 
     /**
      * Bases with a quality below this threshold will not be used for calling.
      */
-    @Argument(fullName = "min-base-quality-score", shortName = "mbq", doc = "Minimum base quality required to consider a base for calling", optional = true)
+    @Argument(fullName = MIN_BASE_QUALITY_SCORE_LONG_NAME, shortName = "mbq", doc = "Minimum base quality required to consider a base for calling", optional = true)
     public byte minBaseQualityScore = 10;
 
     //Annotations
 
     @Advanced
-    @Argument(fullName = "smith-waterman", doc = "Which Smith-Waterman implementation to use, generally FASTEST_AVAILABLE is the right choice", optional = true)
+    @Argument(fullName = SMITH_WATERMAN_LONG_NAME, doc = "Which Smith-Waterman implementation to use, generally FASTEST_AVAILABLE is the right choice", optional = true)
     public SmithWatermanAligner.Implementation smithWatermanImplementation = SmithWatermanAligner.Implementation.JAVA;
 
 }
