@@ -100,8 +100,8 @@ public final class MainTest extends CommandLineProgramTest {
         try {
             System.setSecurityManager(new ThrowOnExitSecurityManager());
             new Main().mainEntry(new String[]{"ExtractSequences"});
-        } catch (ExitNotAllowedException e) {
-            Assert.assertNotEquals(e.status, 0);
+        } catch (final ExitNotAllowedException e) {
+            Assert.assertEquals(e.status, Main.PICARD_TOOL_EXCEPTION);
         } finally {
             System.setSecurityManager(backup);
         }

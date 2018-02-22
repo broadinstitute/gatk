@@ -22,7 +22,7 @@ public class PicardCommandLineProgramExecutor extends CommandLineProgram {
      */
     @Override
     public Object instanceMain(final String[] argv) {
-        int toolReturnCode = picardCommandLineProgram.instanceMain(argv);
+        final int toolReturnCode = picardCommandLineProgram.instanceMain(argv);
         if (toolReturnCode != 0) {
             throw new PicardNonZeroExitException(toolReturnCode);
         }

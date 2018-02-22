@@ -18,5 +18,8 @@ public class PicardNonZeroExitException extends RuntimeException {
         Utils.validateArg(picardToolReturnCode != 0, "Return code must be non-zero");
     }
 
+    /**
+     * @return the actual code value returned by the Picard tool
+     */
     public int getToolReturnCode() { return picardToolReturnCode; }
 }

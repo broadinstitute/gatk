@@ -70,6 +70,11 @@ public class Main {
     public static final int USER_EXCEPTION_EXIT_VALUE = 2;
 
     /**
+     * Exit value used when a Picard tool returns a non-zero exit code (the actual value is displayed on the command line)
+     */
+    public static final int PICARD_TOOL_EXCEPTION = 4;
+
+    /**
      * exit value when any unrecoverable exception other than {@link UserException} occurs
      */
     private static final int ANY_OTHER_EXCEPTION_EXIT_VALUE = 3;
@@ -205,7 +210,7 @@ public class Main {
         } catch (final PicardNonZeroExitException e) {
             // a Picard tool returned a non-zero exit code
             handleResult(e.getToolReturnCode());
-            System.exit(ANY_OTHER_EXCEPTION_EXIT_VALUE);
+            System.exit(PICARD_TOOL_EXCEPTION);
         } catch (final UserException e){
             handleUserException(e);
             System.exit(USER_EXCEPTION_EXIT_VALUE);
