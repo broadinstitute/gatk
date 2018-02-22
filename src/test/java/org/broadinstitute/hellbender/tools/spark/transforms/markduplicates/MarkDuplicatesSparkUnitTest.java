@@ -56,6 +56,7 @@ public class MarkDuplicatesSparkUnitTest extends GATKBaseTest {
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
         JavaRDD<GATKRead> reads = readSource.getParallelReads(input, null);
         reads.repartition(10);
+        //reads.mapPartitionsWithIndex()
         System.out.println(reads.partitioner());
     }
 

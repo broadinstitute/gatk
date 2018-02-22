@@ -11,10 +11,10 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   private transient GATKRead first, second;
 
   // Information used to detect optical dupes
-  public short readGroup = -1;
-  public short tile = -1;
-  public short x = -1, y = -1;
-  public short libraryId = -1;
+  public transient short readGroup = -1;
+  public transient short tile = -1;
+  public transient short x = -1, y = -1;
+  public transient short libraryId = -1;
   public boolean fragment = true;
   public Integer markedScore;
 
