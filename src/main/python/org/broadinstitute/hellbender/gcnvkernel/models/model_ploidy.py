@@ -7,7 +7,7 @@ import numpy as np
 import pymc3 as pm
 import theano as th
 import theano.tensor as tt
-from pymc3 import Normal, Deterministic, DensityDist, Bound, Exponential, Poisson, Cauchy, HalfCauchy
+from pymc3 import Normal, Deterministic, DensityDist, Bound, Exponential, Poisson, Cauchy, HalfCauchy, Uniform
 
 from ..tasks.inference_task_base import HybridInferenceParameters
 from .fancy_model import GeneralizedContinuousModel
@@ -183,7 +183,7 @@ class PloidyModel(GeneralizedContinuousModel):
     """Declaration of the germline contig ploidy model (continuous variables only; posterior of discrete
     variables are assumed to be known)."""
 
-    PositiveCauchy = Bound(Cauchy, lower=0)  # how cool is this?
+    BoundedCauchy = Bound(Cauchy, lower=0)  # how cool is this?
 
     def __init__(self,
                  ploidy_config: PloidyModelConfig,
@@ -203,31 +203,34 @@ class PloidyModel(GeneralizedContinuousModel):
         register_as_sample_specific = self.register_as_sample_specific
 
         # mean per-contig bias
-        mean_bias_j = self.PositiveCauchy('mean_bias_j',
-                                          alpha=1.0,
-                                          beta=ploidy_config.mean_bias_sd,
-                                          shape=(ploidy_workspace.num_contigs,))
-        register_as_global(mean_bias_j)
+        # mean_bias_j = self.BoundedCauchy('mean_bias_j',
+        #                                  alpha=1.0,
+        #                                  beta=ploidy_config.mean_bias_sd,
+        #                                  shape=(ploidy_workspace.num_contigs,))
+        # register_as_global(mean_bias_j)
+
+        # per-sample depth
+        depth_s = Uniform('depth_s',
+                          lower=0.0,
+                          upper=10000.0,
+                          shape=(ploidy_workspace.num_samples,))
+        register_as_sample_specific(depth_s, sample_axis=0)
 
         # mean ploidy per contig per sample
-        mean_ploidy_sj = tt.sum(tt.exp(ploidy_workspace.log_q_ploidy_sjk)
-                                * ploidy_workspace.int_ploidy_values_k.dimshuffle('x', 'x', 0), axis=2)
+        # mean_ploidy_sj = tt.sum(tt.exp(ploidy_workspace.log_q_ploidy_sjk)
+        #                         * ploidy_workspace.int_ploidy_values_k.dimshuffle('x', 'x', 0), axis=2)
 
-        # mean-field amplification coefficient per contig
-        gamma_sj = mean_ploidy_sj * t_j.dimshuffle('x', 0) * mean_bias_j.dimshuffle('x', 0)
-
-        # gamma_rest_sj \equiv sum_{j' \neq j} gamma_sj
-        gamma_rest_sj = tt.dot(gamma_sj, contig_exclusion_mask_jj)
+        # # mean-field amplification coefficient per contig
+        # gamma_sj = mean_ploidy_sj * t_j.dimshuffle('x', 0) * mean_bias_j.dimshuffle('x', 0)
+        #
+        # # gamma_rest_sj \equiv sum_{j' \neq j} gamma_sj
+        # gamma_rest_sj = tt.dot(gamma_sj, contig_exclusion_mask_jj)
 
         # Poisson per-contig counts
-        mu_num_sjk = (t_j.dimshuffle('x', 0, 'x') * mean_bias_j.dimshuffle('x', 0, 'x')
-                      * ploidy_k.dimshuffle('x', 'x', 0))
-        mu_den_sjk = gamma_rest_sj.dimshuffle(0, 1, 'x') + mu_num_sjk
-        e_j = HalfCauchy('e_j', beta=eps, shape=(ploidy_workspace.num_contigs,))
-        register_as_global(e_j)
-        eps_j = e_j * t_j / tt.sum(t_j)  # average number of reads erroneously mapped to contig j
-        mu_sjk = ((1.0 - eps_j.dimshuffle('x', 0, 'x')) * (mu_num_sjk / mu_den_sjk)
-                  + eps_j.dimshuffle('x', 0, 'x')) * n_s.dimshuffle(0, 'x', 'x')
+        mu_num_sjk = ploidy_workspace.int_ploidy_values_k.dimshuffle('x', 'x', 0)
+        eps_j = Uniform('eps_j', lower=0.0, upper=eps, shape=(ploidy_workspace.num_contigs,))
+        register_as_global(eps_j)
+        mu_sjk = depth_s.dimshuffle(0, 'x', 'x') * (mu_num_sjk + eps_j.dimshuffle('x', 0, 'x')) * t_j.dimshuffle('x', 0, 'x')
 
         def _get_logp_sjk(_n_sj):
             _logp_sjk = Poisson.dist(mu=mu_sjk).logp(
