@@ -7,6 +7,7 @@ import com.google.cloud.storage.StorageException;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.exceptions.PicardNonZeroExitException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.ClassUtils;
 import org.broadinstitute.hellbender.utils.runtime.RuntimeUtils;
@@ -67,6 +68,11 @@ public class Main {
      * Exit value when an unrecoverable {@link UserException} occurs.
      */
     public static final int USER_EXCEPTION_EXIT_VALUE = 2;
+
+    /**
+     * Exit value used when a Picard tool returns a non-zero exit code (the actual value is displayed on the command line)
+     */
+    public static final int PICARD_TOOL_EXCEPTION = 4;
 
     /**
      * exit value when any unrecoverable exception other than {@link UserException} occurs
@@ -201,6 +207,10 @@ public class Main {
             }
             handleUserException(e);
             System.exit(COMMANDLINE_EXCEPTION_EXIT_VALUE);
+        } catch (final PicardNonZeroExitException e) {
+            // a Picard tool returned a non-zero exit code
+            handleResult(e.getToolReturnCode());
+            System.exit(PICARD_TOOL_EXCEPTION);
         } catch (final UserException e){
             handleUserException(e);
             System.exit(USER_EXCEPTION_EXIT_VALUE);
