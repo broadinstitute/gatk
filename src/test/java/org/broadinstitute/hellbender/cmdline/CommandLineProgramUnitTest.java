@@ -145,4 +145,69 @@ public class CommandLineProgramUnitTest extends GATKBaseTest {
         }
         return tempFile;
     }
+
+    @CommandLineProgramProperties(
+            summary = "ExperimentalTool",
+            oneLineSummary = "ExperimentalTool",
+            programGroup = TestProgramGroup.class
+    )
+    @ExperimentalFeature
+    private static class TestExperimentalTool extends CommandLineProgram {
+
+        @Override
+        protected Object doWork() {
+            return null;
+        }
+    }
+
+    @CommandLineProgramProperties(
+            summary = "BetaTool",
+            oneLineSummary = "BetaTool",
+            programGroup = TestProgramGroup.class
+    )
+    @BetaFeature
+    private static class TestBetaTool extends CommandLineProgram {
+        @Override
+        protected Object doWork() {
+            return null;
+        }
+    }
+
+    @CommandLineProgramProperties(
+            summary = "ProductionTool",
+            oneLineSummary = "ProductionTool",
+            programGroup = TestProgramGroup.class
+    )
+    private static class TestProductionTool extends CommandLineProgram {
+        @Override
+        protected Object doWork() {
+            return null;
+        }
+    }
+
+    @DataProvider(name = "toolMaturityLevels")
+    public Object[][] getToolMaturityLevels() {
+        return new Object[][]{
+                {new TestExperimentalTool(), true, false, "EXPERIMENTAL"},
+                {new TestBetaTool(), false, true, "BETA"},
+                {new TestProductionTool(), false, false, null}
+        };
+    }
+
+    @Test(dataProvider = "toolMaturityLevels")
+    public void testToolMaturityLevel(
+            final CommandLineProgram clp,
+            final boolean isExperimental,
+            final boolean isBeta,
+            final String warningSentinel)
+    {
+        Assert.assertEquals(clp.isBetaFeature(), isBeta);
+        Assert.assertEquals(clp.isExperimentalFeature(), isExperimental);
+        if (warningSentinel == null) {
+            Assert.assertEquals(clp.getToolStatusWarning(true), null);
+        } else {
+            Assert.assertTrue(clp.getToolStatusWarning(true).contains(warningSentinel));
+        }
+    }
+
 }
