@@ -452,7 +452,11 @@ task bundle(type: Zip) {
     from("gatk")
     from("README.md")
     from("build/docs/tabCompletion/gatk-completion.sh")
-    from("src/main/resources/org/broadinstitute/hellbender/utils/config/GATKConfig.properties")
+
+    from("src/main/resources/org/broadinstitute/hellbender/utils/config/GATKConfig.properties") {
+        rename 'GATKConfig.properties', 'GATKConfig.EXAMPLE.properties'
+    }
+
     from("${buildDir}/${pythonPackageArchiveName}")
     // When including gatkcondaenv.yml file in the release bundle, strip off the
     // 'build/' prefix used for the location of the Python package archive.
