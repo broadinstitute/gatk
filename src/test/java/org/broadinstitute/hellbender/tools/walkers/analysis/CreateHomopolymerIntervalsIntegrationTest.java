@@ -1,11 +1,9 @@
-package org.broadinstitute.hellbender.tools.walkers.misc;
+package org.broadinstitute.hellbender.tools.walkers.analysis;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-
-import static org.testng.Assert.*;
 
 /**
  * Created by tsato on 1/24/18.

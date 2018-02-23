@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.walkers.misc;
+package org.broadinstitute.hellbender.tools.walkers.analysis;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;

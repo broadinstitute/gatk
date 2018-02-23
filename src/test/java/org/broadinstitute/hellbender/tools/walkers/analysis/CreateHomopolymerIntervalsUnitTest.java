@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.walkers.misc;
+package org.broadinstitute.hellbender.tools.walkers.analysis;
 
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramUnitTest;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
