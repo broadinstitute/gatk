@@ -87,6 +87,7 @@ public final class MainTest extends CommandLineProgramTest {
         try {
             System.setSecurityManager(new ThrowOnExitSecurityManager());
             new Main().mainEntry(new String[]{"PrintReadsW"});
+            Assert.fail("Should never reach here");
         } catch (ExitNotAllowedException e) {
             // does exist as if it is an user exception
             Assert.assertEquals(e.status, Main.USER_EXCEPTION_EXIT_VALUE);
@@ -100,6 +101,7 @@ public final class MainTest extends CommandLineProgramTest {
         try {
             System.setSecurityManager(new ThrowOnExitSecurityManager());
             new Main().mainEntry(new String[]{"ExtractSequences"});
+            Assert.fail("Should never reach here");
         } catch (final ExitNotAllowedException e) {
             Assert.assertEquals(e.status, Main.PICARD_TOOL_EXCEPTION);
         } finally {
