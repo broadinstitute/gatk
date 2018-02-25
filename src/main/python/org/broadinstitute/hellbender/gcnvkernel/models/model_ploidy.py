@@ -8,6 +8,7 @@ import pymc3 as pm
 import theano as th
 import theano.tensor as tt
 from pymc3 import Deterministic, DensityDist, Poisson, Gamma, Uniform, Beta, Normal, Bound, Exponential, HalfNormal
+from pymc3.math import logsumexp
 
 from ..tasks.inference_task_base import HybridInferenceParameters
 from .fancy_model import GeneralizedContinuousModel
@@ -193,50 +194,39 @@ class PloidyModel(GeneralizedContinuousModel):
         register_as_global = self.register_as_global
         register_as_sample_specific = self.register_as_sample_specific
 
-        # mosaicism
-        pi_mosaic_sj = Beta('pi_mosaic_sj',
-                            alpha=1.0,
-                            beta=1000.0,
-                            shape=(ploidy_workspace.num_samples, ploidy_workspace.num_contigs,))
-        register_as_sample_specific(pi_mosaic_sj, sample_axis=0)
-        f_mosaic_sj = Beta('f_mosaic_sj',
-                            alpha=10.0,
-                            beta=1.0,
-                            shape=(ploidy_workspace.num_samples, ploidy_workspace.num_contigs,))
-        register_as_sample_specific(f_mosaic_sj, sample_axis=0)
-
-        # bias_j = Bound(Normal, lower=0.)('bias_j',
-        #                                  mu=1.0,
-        #                                  sd=0.001,
-        #                                  shape=(ploidy_workspace.num_contigs,))
+        # per-contig bias
         bias_j = Gamma('bias_j',
                        alpha=100.0,
                        beta=100.0,
                        shape=(ploidy_workspace.num_contigs,))
         register_as_global(bias_j)
-        # bias_sj = Gamma('bias_sj',
-        #                alpha=100.0,
-        #                beta=100.0,
-        #                shape=(ploidy_workspace.num_samples, ploidy_workspace.num_contigs,))
-        # register_as_sample_specific(bias_sj, sample_axis=0)
 
         # per-sample depth
-        depth_s = Gamma('depth_s',
-                        alpha=40.0,
-                        beta=1.0,
-                        shape=(ploidy_workspace.num_samples,))
+        depth_s = Exponential('depth_s',
+                              lam=1.0 / 50.0,
+                              shape=(ploidy_workspace.num_samples,))
         register_as_sample_specific(depth_s, sample_axis=0)
 
         # Poisson per-contig counts
-        eps_j = Uniform('eps_j', lower=0.0, upper=0.1, shape=(ploidy_workspace.num_contigs,))
+        eps_j = Uniform('eps_j', lower=0.0, upper=0.05, shape=(ploidy_workspace.num_contigs,))
         register_as_global(eps_j)
-        # mu_sjk = depth_s.dimshuffle(0, 'x', 'x') * t_j.dimshuffle('x', 0, 'x') * \
-        #          (((1 - pi_mosaic_sj) + (f_mosaic_sj * pi_mosaic_sj)).dimshuffle(0, 1, 'x') * ploidy_workspace.int_ploidy_values_k.dimshuffle('x', 'x', 0) + eps_j.dimshuffle('x', 0, 'x'))
         mu_sjk = depth_s.dimshuffle(0, 'x', 'x') * t_j.dimshuffle('x', 0, 'x') * bias_j.dimshuffle('x', 0, 'x') * \
-            (((1 - pi_mosaic_sj) + (f_mosaic_sj * pi_mosaic_sj)).dimshuffle(0, 1, 'x') * ploidy_workspace.int_ploidy_values_k.dimshuffle('x', 'x', 0) + eps_j.dimshuffle('x', 0, 'x'))
+                 (ploidy_workspace.int_ploidy_values_k.dimshuffle('x', 'x', 0) + eps_j.dimshuffle('x', 0, 'x'))
+
+        # unexplained variance (can account for mosaicism)
+        psi_sj = HalfNormal(name='psi_sj',
+                            sd=0.01,
+                            shape=(ploidy_workspace.num_samples,ploidy_workspace.num_contigs,))
+        register_as_sample_specific(psi_sj, sample_axis=0)
+
+        # convert "unexplained variance" to negative binomial over-dispersion
+        alpha_sj = tt.inv((tt.exp(psi_sj) - 1.0))
 
         def _get_logp_sjk(_n_sj):
-            _logp_sjk = Poisson.dist(mu=mu_sjk).logp(n_sj.dimshuffle(0, 1, 'x'))
+            _logp_sjk = commons.negative_binomial_logp(
+                mu_sjk,  # mean
+                alpha_sj.dimshuffle(0, 1, 'x'),  # over-dispersion
+                _n_sj.dimshuffle(0, 1, 'x'))  # contig counts
             return _logp_sjk
 
         DensityDist(name='n_sj_obs',
