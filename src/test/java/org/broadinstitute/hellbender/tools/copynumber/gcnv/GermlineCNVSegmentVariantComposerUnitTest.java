@@ -65,17 +65,17 @@ public class GermlineCNVSegmentVariantComposerUnitTest extends GATKBaseTest {
 
             /* assert correctness of quality metrics */
             Assert.assertEquals(
-                    (int)(long)gen.getExtendedAttribute(GermlineCNVSegmentVariantComposer.SQ),
-                    (int)FastMath.round(segment.getSomeQuality()));
+                    (int)(long)gen.getExtendedAttribute(GermlineCNVSegmentVariantComposer.QS),
+                    (int)FastMath.round(segment.getQualitySomeCalled()));
             Assert.assertEquals(
-                    (int)(long)gen.getExtendedAttribute(GermlineCNVSegmentVariantComposer.EQ),
-                    (int)FastMath.round(segment.getExactQuality()));
+                    (int)(long)gen.getExtendedAttribute(GermlineCNVSegmentVariantComposer.QA),
+                    (int)FastMath.round(segment.getQualityAllCalled()));
             Assert.assertEquals(
-                    (int)(long)gen.getExtendedAttribute(GermlineCNVSegmentVariantComposer.LQ),
-                    (int)FastMath.round(segment.getStartQuality()));
+                    (int)(long)gen.getExtendedAttribute(GermlineCNVSegmentVariantComposer.QSS),
+                    (int)FastMath.round(segment.getQualityStart()));
             Assert.assertEquals(
-                    (int)(long)gen.getExtendedAttribute(GermlineCNVSegmentVariantComposer.RQ),
-                    (int)FastMath.round(segment.getEndQuality()));
+                    (int)(long)gen.getExtendedAttribute(GermlineCNVSegmentVariantComposer.QSE),
+                    (int)FastMath.round(segment.getQualityEnd()));
         }
     }
 

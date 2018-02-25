@@ -15,31 +15,35 @@ public class IntegerCopyNumberSegment implements Locatable {
     private final SimpleInterval interval;
     private final IntegerCopyNumberState callIntegerCopyNumberState;
     private final IntegerCopyNumberState baselineIntegerCopyNumberState;
-    private final int numSpanningIntervals;
-    private final double someQuality;
-    private final double exactQuality;
-    private final double startQuality;
-    private final double endQuality;
+    private final int numPoints;
+    private final double qualitySomeCalled;
+    private final double qualityAllCalled;
+    private final double qualityStart;
+    private final double qualityEnd;
 
     public IntegerCopyNumberSegment(final SimpleInterval interval,
                                     final IntegerCopyNumberState callIntegerCopyNumberState,
                                     final IntegerCopyNumberState baselineIntegerCopyNumberState,
-                                    final int numSpanningIntervals,
-                                    final double someQuality,
-                                    final double exactQuality,
-                                    final double startQuality,
-                                    final double endQuality) {
+                                    final int numPoints,
+                                    final double qualitySomeCalled,
+                                    final double qualityAllCalled,
+                                    final double qualityStart,
+                                    final double qualityEnd) {
         this.interval = Utils.nonNull(interval, "The interval for the segment must be non-null.");
         this.callIntegerCopyNumberState = Utils.nonNull(callIntegerCopyNumberState,
                 "The call integer copy-number state for the segment must be non-null.");
         this.baselineIntegerCopyNumberState = Utils.nonNull(baselineIntegerCopyNumberState,
                 "The baseline integer copy-number state for the segment must be non-null.");
-        this.numSpanningIntervals = ParamUtils.isPositive(numSpanningIntervals,
-                "Number of intervals spanned by the integer copy-number segment must be positive.");
-        this.someQuality = ParamUtils.isPositiveOrZero(someQuality, "Some quality must be non-negative.");
-        this.exactQuality = ParamUtils.isPositiveOrZero(exactQuality, "Exact quality must be non-negative.");
-        this.startQuality = ParamUtils.isPositiveOrZero(startQuality, "Left breakpoint quality must be non-negative.");
-        this.endQuality = ParamUtils.isPositiveOrZero(endQuality, "Right breakpoint quality must be non-negative");
+        this.numPoints = ParamUtils.isPositive(numPoints,
+                "Number of points in the segment must be positive.");
+        this.qualitySomeCalled = ParamUtils.isPositiveOrZero(qualitySomeCalled,
+                "The phred-scaled quality of \"some points called\" must be non-negative.");
+        this.qualityAllCalled = ParamUtils.isPositiveOrZero(qualityAllCalled,
+                "The phred-scaled quality of \"all points called\" must be non-negative.");
+        this.qualityStart = ParamUtils.isPositiveOrZero(qualityStart,
+                "The phred-scaled quality of \"segment start\" must be non-negative.");
+        this.qualityEnd = ParamUtils.isPositiveOrZero(qualityEnd,
+                "The phred-scaled quality of \"segment end\" must be non-negative");
     }
 
     @Override
@@ -69,24 +73,24 @@ public class IntegerCopyNumberSegment implements Locatable {
         return baselineIntegerCopyNumberState;
     }
 
-    public int getNumSpanningIntervals() {
-        return numSpanningIntervals;
+    public int getNumPoints() {
+        return numPoints;
     }
 
-    public double getSomeQuality() {
-        return someQuality;
+    public double getQualitySomeCalled() {
+        return qualitySomeCalled;
     }
 
-    public double getExactQuality() {
-        return exactQuality;
+    public double getQualityAllCalled() {
+        return qualityAllCalled;
     }
 
-    public double getStartQuality() {
-        return startQuality;
+    public double getQualityStart() {
+        return qualityStart;
     }
 
-    public double getEndQuality() {
-        return endQuality;
+    public double getQualityEnd() {
+        return qualityEnd;
     }
 
     @Override
@@ -96,11 +100,11 @@ public class IntegerCopyNumberSegment implements Locatable {
 
         IntegerCopyNumberSegment that = (IntegerCopyNumberSegment) o;
 
-        if (numSpanningIntervals != that.numSpanningIntervals) return false;
-        if (Double.compare(that.someQuality, someQuality) != 0) return false;
-        if (Double.compare(that.exactQuality, exactQuality) != 0) return false;
-        if (Double.compare(that.startQuality, startQuality) != 0) return false;
-        if (Double.compare(that.endQuality, endQuality) != 0) return false;
+        if (numPoints != that.numPoints) return false;
+        if (Double.compare(that.qualitySomeCalled, qualitySomeCalled) != 0) return false;
+        if (Double.compare(that.qualityAllCalled, qualityAllCalled) != 0) return false;
+        if (Double.compare(that.qualityStart, qualityStart) != 0) return false;
+        if (Double.compare(that.qualityEnd, qualityEnd) != 0) return false;
         if (!interval.equals(that.interval)) return false;
         if (!callIntegerCopyNumberState.equals(that.callIntegerCopyNumberState)) return false;
         return baselineIntegerCopyNumberState.equals(that.baselineIntegerCopyNumberState);
@@ -113,14 +117,14 @@ public class IntegerCopyNumberSegment implements Locatable {
         result = interval.hashCode();
         result = 31 * result + callIntegerCopyNumberState.hashCode();
         result = 31 * result + baselineIntegerCopyNumberState.hashCode();
-        result = 31 * result + numSpanningIntervals;
-        temp = Double.doubleToLongBits(someQuality);
+        result = 31 * result + numPoints;
+        temp = Double.doubleToLongBits(qualitySomeCalled);
         result = 31 * result + (int) (temp ^ (temp >>> 32));
-        temp = Double.doubleToLongBits(exactQuality);
+        temp = Double.doubleToLongBits(qualityAllCalled);
         result = 31 * result + (int) (temp ^ (temp >>> 32));
-        temp = Double.doubleToLongBits(startQuality);
+        temp = Double.doubleToLongBits(qualityStart);
         result = 31 * result + (int) (temp ^ (temp >>> 32));
-        temp = Double.doubleToLongBits(endQuality);
+        temp = Double.doubleToLongBits(qualityEnd);
         result = 31 * result + (int) (temp ^ (temp >>> 32));
         return result;
     }
@@ -131,11 +135,11 @@ public class IntegerCopyNumberSegment implements Locatable {
                 "interval=" + interval +
                 ", callIntegerCopyNumberState=" + callIntegerCopyNumberState +
                 ", baselineIntegerCopyNumberState=" + baselineIntegerCopyNumberState +
-                ", numSpanningIntervals=" + numSpanningIntervals +
-                ", someQuality=" + someQuality +
-                ", exactQuality=" + exactQuality +
-                ", startQuality=" + startQuality +
-                ", endQuality=" + endQuality +
+                ", numPoints=" + numPoints +
+                ", qualitySomeCalled=" + qualitySomeCalled +
+                ", qualityAllCalled=" + qualityAllCalled +
+                ", qualityStart=" + qualityStart +
+                ", qualityEnd=" + qualityEnd +
                 '}';
     }
 }

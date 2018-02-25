@@ -22,7 +22,7 @@ ploidy_column_name = "PLOIDY"
 ploidy_gq_column_name = "PLOIDY_GQ"
 
 # column names for copy-number segments file
-copy_number_call_column_name = "COPY_NUMBER_CALL"
+call_copy_number_column_name = "CALL_COPY_NUMBER"
 num_points_column_name = "NUM_POINTS"
 quality_some_called_column_name = "QUALITY_SOME_CALLED"
 quality_all_called_column_name = "QUALITY_ALL_CALLED"

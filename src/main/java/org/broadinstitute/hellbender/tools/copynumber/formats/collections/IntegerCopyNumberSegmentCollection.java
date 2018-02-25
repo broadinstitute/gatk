@@ -27,13 +27,13 @@ public final class IntegerCopyNumberSegmentCollection extends AbstractSampleLoca
         CONTIG,
         START,
         END,
-        NUM_SPANNING_INTERVALS,
+        NUM_POINTS,
         CALL_COPY_NUMBER,
         BASELINE_COPY_NUMBER,
-        SOME_QUALITY,
-        EXACT_QUALITY,
-        START_QUALITY,
-        END_QUALITY;
+        QUALITY_SOME_CALLED,
+        QUALITY_ALL_CALLED,
+        QUALITY_START,
+        QUALITY_END;
 
         static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
     }
@@ -42,18 +42,18 @@ public final class IntegerCopyNumberSegmentCollection extends AbstractSampleLoca
         final String contig = dataLine.get(IntegerCopyNumberSegmentTableColumn.CONTIG);
         final int start = dataLine.getInt(IntegerCopyNumberSegmentTableColumn.START);
         final int end = dataLine.getInt(IntegerCopyNumberSegmentTableColumn.END);
-        final int numSpanningIntervals = dataLine.getInt(IntegerCopyNumberSegmentTableColumn.NUM_SPANNING_INTERVALS);
+        final int numPoints = dataLine.getInt(IntegerCopyNumberSegmentTableColumn.NUM_POINTS);
         final int callCopyNumber = dataLine.getInt(IntegerCopyNumberSegmentTableColumn.CALL_COPY_NUMBER);
         final int baselineCopyNumber = dataLine.getInt(IntegerCopyNumberSegmentTableColumn.BASELINE_COPY_NUMBER);
-        final double someQuality = dataLine.getDouble(IntegerCopyNumberSegmentTableColumn.SOME_QUALITY);
-        final double exactQuality = dataLine.getDouble(IntegerCopyNumberSegmentTableColumn.EXACT_QUALITY);
-        final double startQuality = dataLine.getDouble(IntegerCopyNumberSegmentTableColumn.START_QUALITY);
-        final double endQuality = dataLine.getDouble(IntegerCopyNumberSegmentTableColumn.END_QUALITY);
+        final double qualitySomeCalled = dataLine.getDouble(IntegerCopyNumberSegmentTableColumn.QUALITY_SOME_CALLED);
+        final double qualityAllCalled = dataLine.getDouble(IntegerCopyNumberSegmentTableColumn.QUALITY_ALL_CALLED);
+        final double qualityStart = dataLine.getDouble(IntegerCopyNumberSegmentTableColumn.QUALITY_START);
+        final double qualityEnd = dataLine.getDouble(IntegerCopyNumberSegmentTableColumn.QUALITY_END);
         return new IntegerCopyNumberSegment(
                 new SimpleInterval(contig, start, end),
                 new IntegerCopyNumberState(callCopyNumber),
                 new IntegerCopyNumberState(baselineCopyNumber),
-                numSpanningIntervals, someQuality, exactQuality, startQuality, endQuality);
+                numPoints, qualitySomeCalled, qualityAllCalled, qualityStart, qualityEnd);
     };
 
     private static final BiConsumer<IntegerCopyNumberSegment, DataLine> INTEGER_COPY_NUMBER_SEGMENT_RECORD_ENCODER =
@@ -61,13 +61,13 @@ public final class IntegerCopyNumberSegmentCollection extends AbstractSampleLoca
                     dataLine.append(integerCopyNumberSegment.getContig())
                             .append(integerCopyNumberSegment.getStart())
                             .append(integerCopyNumberSegment.getEnd())
-                            .append(integerCopyNumberSegment.getNumSpanningIntervals())
+                            .append(integerCopyNumberSegment.getNumPoints())
                             .append(integerCopyNumberSegment.getCallIntegerCopyNumberState().getCopyNumber())
                             .append(integerCopyNumberSegment.getBaselineIntegerCopyNumberState().getCopyNumber())
-                            .append(formatDouble(integerCopyNumberSegment.getSomeQuality()))
-                            .append(formatDouble(integerCopyNumberSegment.getExactQuality()))
-                            .append(formatDouble(integerCopyNumberSegment.getStartQuality()))
-                            .append(formatDouble(integerCopyNumberSegment.getEndQuality()));
+                            .append(formatDouble(integerCopyNumberSegment.getQualitySomeCalled()))
+                            .append(formatDouble(integerCopyNumberSegment.getQualityAllCalled()))
+                            .append(formatDouble(integerCopyNumberSegment.getQualityStart()))
+                            .append(formatDouble(integerCopyNumberSegment.getQualityEnd()));
 
     public IntegerCopyNumberSegmentCollection(final File inputFile) {
         super(inputFile, IntegerCopyNumberSegmentTableColumn.COLUMNS,

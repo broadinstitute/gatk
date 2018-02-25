@@ -5,8 +5,8 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.math3.util.FastMath;
-import org.broadinstitute.hellbender.tools.copynumber.PostprocessGermlineCNVCalls;
 import org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller;
+import org.broadinstitute.hellbender.tools.copynumber.PostprocessGermlineCNVCalls;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.IntegerCopyNumberSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.IntegerCopyNumberSegment;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -34,29 +34,29 @@ public final class GermlineCNVSegmentVariantComposer {
     public static final String CN = "CN";
 
     /**
-     * Number of spanning intervals
+     * Number of points in the segment
      */
-    public static final String NI = "NI";
+    public static final String NP = "NP";
 
     /**
-     * Segment some quality
+     * Quality metric (some points called)
      */
-    public static final String SQ = "SQ";
+    public static final String QS = "QS";
 
     /**
-     * Segment exact quality
+     * Quality metric (all points called)
      */
-    public static final String EQ = "EQ";
+    public static final String QA = "QA";
 
     /**
-     * Segment start (left) quality
+     * Quality metric (segment start)
      */
-    public static final String LQ = "LQ";
+    public static final String QSS = "QSS";
 
     /**
-     * Segment end (right) quality
+     * Quality metric (segment end)
      */
-    public static final String RQ = "RQ";
+    public static final String QSE = "QSE";
 
     private final String sampleName;
     private final VariantContextWriter outputWriter;
@@ -106,21 +106,19 @@ public final class GermlineCNVSegmentVariantComposer {
         result.addMetaDataLine(new VCFFormatHeaderLine(VCFConstants.GENOTYPE_KEY, 1,
                 VCFHeaderLineType.Integer, "Segment genotype"));
         result.addMetaDataLine(new VCFFormatHeaderLine(CN, 1,
-                VCFHeaderLineType.Integer, "Segment copy-number call"));
-        result.addMetaDataLine(new VCFFormatHeaderLine(NI, 1,
-                VCFHeaderLineType.Integer, "Number of spanning intervals (i.e. targets or bins)"));
-        result.addMetaDataLine(new VCFFormatHeaderLine(SQ, 1,
-                VCFHeaderLineType.Integer, "Phred-scaled quality that one or more of the spanning intervals support " +
-                "the copy-number call (normalized by the number of spanning intervals)"));
-        result.addMetaDataLine(new VCFFormatHeaderLine(EQ, 1,
-                VCFHeaderLineType.Integer, "Phred-scaled quality that all of the spanning intervals support " +
-                "the copy-number call"));
-        result.addMetaDataLine(new VCFFormatHeaderLine(LQ, 1,
-                VCFHeaderLineType.Integer, "Phred-scaled quality of determining the position of the leftmost " +
-                "(starting) point of the segment"));
-        result.addMetaDataLine(new VCFFormatHeaderLine(RQ, 1,
-                VCFHeaderLineType.Integer, "Phred-scaled quality of determining the position of the rightmost " +
-                "(ending) point of the segment"));
+                VCFHeaderLineType.Integer, "Segment most-likely copy-number call"));
+        result.addMetaDataLine(new VCFFormatHeaderLine(NP, 1,
+                VCFHeaderLineType.Integer, "Number of points (i.e. targets or bins) in the segment"));
+        result.addMetaDataLine(new VCFFormatHeaderLine(QS, 1,
+                VCFHeaderLineType.Integer, "Phred-scaled quality of one or more of the points in the segment " +
+                "agreeing with the most-likely copy-number call (normalized by the number of points)"));
+        result.addMetaDataLine(new VCFFormatHeaderLine(QA, 1,
+                VCFHeaderLineType.Integer, "Phred-scaled quality of all of the points in the segment " +
+                "agreeing with the most-likely copy-number call"));
+        result.addMetaDataLine(new VCFFormatHeaderLine(QSS, 1,
+                VCFHeaderLineType.Integer, "Phred-scaled quality of determining the segment start position"));
+        result.addMetaDataLine(new VCFFormatHeaderLine(QSE, 1,
+                VCFHeaderLineType.Integer, "Phred-scaled quality of determining the segment end position"));
 
         /* INFO header lines */
         result.addMetaDataLine(new VCFInfoHeaderLine(VCFConstants.END_KEY, 1,
@@ -177,16 +175,15 @@ public final class GermlineCNVSegmentVariantComposer {
         }
         genotypeBuilder.alleles(Collections.singletonList(allele));
         genotypeBuilder.attribute(CN, copyNumberCall);
-        genotypeBuilder.attribute(NI, segment.getNumSpanningIntervals());
-        genotypeBuilder.attribute(SQ, FastMath.round(segment.getSomeQuality()));
-        genotypeBuilder.attribute(EQ, FastMath.round(segment.getExactQuality()));
-        genotypeBuilder.attribute(LQ, FastMath.round(segment.getStartQuality()));
-        genotypeBuilder.attribute(RQ, FastMath.round(segment.getEndQuality()));
+        genotypeBuilder.attribute(NP, segment.getNumPoints());
+        genotypeBuilder.attribute(QS, FastMath.round(segment.getQualitySomeCalled()));
+        genotypeBuilder.attribute(QA, FastMath.round(segment.getQualityAllCalled()));
+        genotypeBuilder.attribute(QSS, FastMath.round(segment.getQualityStart()));
+        genotypeBuilder.attribute(QSE, FastMath.round(segment.getQualityEnd()));
         final Genotype genotype = genotypeBuilder.make();
 
         variantContextBuilder.attribute(VCFConstants.END_KEY, end);
         variantContextBuilder.genotypes(genotype);
-        final VariantContext var = variantContextBuilder.make();
-        return var;
+        return variantContextBuilder.make();
     }
 }

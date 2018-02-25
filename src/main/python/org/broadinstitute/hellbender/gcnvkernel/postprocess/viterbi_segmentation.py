@@ -1,19 +1,21 @@
-from typing import List, Tuple, Dict, TypeVar, Generator
-from ..structs.metadata import SampleMetadataCollection
 import itertools
 import logging
 import os
+import shutil
+from typing import List, Tuple, Dict, TypeVar, Generator
+
 import numpy as np
+
+from .segment_quality_utils import HMMSegmentationQualityCalculator
 from .. import types
 from ..io import io_consts, io_commons, io_denoising_calling, io_intervals_and_counts
-from ..structs.interval import Interval
-from ..structs.metadata import IntervalListMetadata
-from ..structs.segment import IntegerCopyNumberSegment
-from ..models.model_denoising_calling import DenoisingModelConfig, CopyNumberCallingConfig,\
+from ..models.model_denoising_calling import DenoisingModelConfig, CopyNumberCallingConfig, \
     HHMMClassAndCopyNumberBasicCaller
 from ..models.theano_hmm import TheanoForwardBackward, TheanoViterbi
-from .segment_quality_utils import HMMSegmentationQualityCalculator
-import shutil
+from ..structs.interval import Interval
+from ..structs.metadata import IntervalListMetadata
+from ..structs.metadata import SampleMetadataCollection
+from ..structs.segment import IntegerCopyNumberSegment
 
 _logger = logging.getLogger(__name__)
 
@@ -154,13 +156,13 @@ class ViterbiSegmentationEngine:
                 contig_index + 1, len(self.ordered_contig_list), contig))
 
             # copy-number prior probabilities for each class
-            contig_baseline_copy_number_state = self.sample_metadata_collection\
+            contig_baseline_copy_number = self.sample_metadata_collection\
                 .get_sample_ploidy_metadata(sample_name)\
                 .get_contig_ploidy(contig)
             pi_jkc = HHMMClassAndCopyNumberBasicCaller.get_copy_number_prior_for_sample_jkc(
                 self.calling_config.num_copy_number_states,
                 self.calling_config.p_alt,
-                np.asarray([contig_baseline_copy_number_state], dtype=types.med_uint))
+                np.asarray([contig_baseline_copy_number], dtype=types.med_uint))
 
             # contig interval list and indices
             contig_interval_list = self.contig_interval_lists[contig]
@@ -199,27 +201,27 @@ class ViterbiSegmentationEngine:
                 alpha_tc, beta_tc, log_posterior_prob_tc, log_data_likelihood)
 
             # coalesce into piecewise constant copy-number segments, calculate qualities
-            for copy_number_call, start_index, end_index in self._coalesce_seq_into_segments(viterbi_path_t_contig):
+            for call_copy_number, start_index, end_index in self._coalesce_seq_into_segments(viterbi_path_t_contig):
                 num_points = end_index - start_index + 1
                 segment = IntegerCopyNumberSegment(contig,
                                                    contig_interval_list[start_index].start,
                                                    contig_interval_list[end_index].end,
                                                    num_points,
-                                                   copy_number_call,
-                                                   contig_baseline_copy_number_state)
+                                                   call_copy_number,
+                                                   contig_baseline_copy_number)
                 if num_points > 1:
                     segment.quality_some_called = segment_quality_calculator.get_segment_quality_some_called(
-                        start_index, end_index, copy_number_call)
+                        start_index, end_index, call_copy_number)
                     segment.quality_all_called = segment_quality_calculator.get_segment_quality_all_called(
-                        start_index, end_index, copy_number_call)
+                        start_index, end_index, call_copy_number)
                     segment.quality_start = segment_quality_calculator.get_segment_quality_start(
-                        start_index, copy_number_call)
+                        start_index, call_copy_number)
                     segment.quality_end = segment_quality_calculator.get_segment_quality_end(
-                        end_index, copy_number_call)
+                        end_index, call_copy_number)
 
                 else:  # for single-interval segments, all qualities must be the same
                     segment.quality_some_called = segment_quality_calculator.get_segment_quality_some_called(
-                        start_index, end_index, copy_number_call)
+                        start_index, end_index, call_copy_number)
                     segment.quality_all_called = segment.quality_some_called
                     segment.quality_start = segment.quality_some_called
                     segment.quality_end = segment.quality_some_called
