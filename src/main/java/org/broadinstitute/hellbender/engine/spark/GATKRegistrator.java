@@ -17,16 +17,43 @@ import java.util.Collections;
  */
 public class GATKRegistrator implements KryoRegistrator {
 
-    private final ADAMKryoRegistrator ADAMregistrator;
+    private final ADAMKryoRegistrator ADAMregistrator = new ADAMKryoRegistrator();
 
-    public GATKRegistrator() {
-        this.ADAMregistrator = new ADAMKryoRegistrator();
-    }
+    public GATKRegistrator() {}
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
     public void registerClasses(Kryo kryo) {
 
+        registerGATKClasses(kryo);
+
+
+        // register the ADAM data types using Avro serialization, including:
+        //     AlignmentRecord
+        //     Genotype
+        //     Variant
+        //     DatabaseVariantAnnotation
+        //     NucleotideContigFragment
+        //     Contig
+        //     StructuralVariant
+        //     VariantCallingAnnotations
+        //     VariantEffect
+        //     DatabaseVariantAnnotation
+        //     Dbxref
+        //     Feature
+        //     ReferencePosition
+        //     ReferencePositionPair
+        //     SingleReadBucket
+        //     IndelRealignmentTarget
+        //     TargetSet
+        //     ZippedTargetSet
+        ADAMregistrator.registerClasses(kryo);
+
+        //do this before and after ADAM to try and force our registrations to win out
+        registerGATKClasses(kryo);
+    }
+
+    private void registerGATKClasses(Kryo kryo) {
         //relatively inefficient serialization of Collections created with Collections.nCopies(), without this
         //any Collection created with Collections.nCopies fails to serialize at run time
         kryo.register(Collections.nCopies(2, "").getClass(), new FieldSerializer<>(kryo, Collections.nCopies(2, "").getClass()));
@@ -53,26 +80,5 @@ public class GATKRegistrator implements KryoRegistrator {
 
         //register to avoid writing the full name of this class over and over
         kryo.register(PairedEnds.class, new FieldSerializer<>(kryo, PairedEnds.class));
-
-        // register the ADAM data types using Avro serialization, including:
-        //     AlignmentRecord
-        //     Genotype
-        //     Variant
-        //     DatabaseVariantAnnotation
-        //     NucleotideContigFragment
-        //     Contig
-        //     StructuralVariant
-        //     VariantCallingAnnotations
-        //     VariantEffect
-        //     DatabaseVariantAnnotation
-        //     Dbxref
-        //     Feature
-        //     ReferencePosition
-        //     ReferencePositionPair
-        //     SingleReadBucket
-        //     IndelRealignmentTarget
-        //     TargetSet
-        //     ZippedTargetSet
-        ADAMregistrator.registerClasses(kryo);
     }
 }
