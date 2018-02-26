@@ -1,11 +1,13 @@
+import logging
 from typing import Dict, List
+
 import numpy as np
-import theano as th
 import pymc3 as pm
+import theano as th
 import theano.tensor as tt
 from scipy.misc import logsumexp
+
 from ..utils.math import logsumexp_double_complement, logp_to_phred
-import logging
 
 _logger = logging.getLogger(__name__)
 
@@ -60,13 +62,47 @@ class HMMSegmentationQualityCalculator:
 
         self.all_states_set = set(range(self.num_states))
         self.all_states_list = list(range(self.num_states))
-        self.all_states_set_except_for: Dict[int, List[int]] = {
-            except_state: [state for state in range(self.num_states) if state != except_state]
-            for except_state in range(self.num_states)}
+        self.leave_one_out_state_lists: Dict[int, List[int]] = {
+            left_out_state: [state for state in range(self.num_states) if state != left_out_state]
+            for left_out_state in range(self.num_states)}
 
     @staticmethod
     @th.configparser.change_flags(compute_test_value="ignore")
-    def _get_compiled_constrained_path_logp_theano_func():
+    def _get_compiled_constrained_path_logp_theano_func() -> th.compile.function_module.Function:
+        """Returns a theano function that calculates the log posterior probability of hidden state paths composed
+        from a subset X of all hidden states S.
+
+        More explicitly, this function calculates the logp of all paths constrained to the hidden-state set
+        X for t_0 <= t <= t_N but unconstrained for before (t < t_0) and after (t > t_N):
+
+        unconstrained           constrained           unconstrained
+             t < t_0 |    t_0    t_1    ...    t_N   |  t > t_N
+             c in S  |  c in X  c in X       c in X  |  c in S
+
+        The inputs for the returned theano function are as follows:
+
+            alpha_first_c: forward log likelihood (alpha) for t = t_0 and c in X
+            beta_last_c: backward log likelihood (beta) for t = t_N and c in X
+            log_emission_tc: log emission probabilities for t \in [t_0, ..., t_N] and c in X
+            log_trans_tcc: log transition probabilities from `t` to `t+1` for t in [t_0, ..., t_N]
+                and departure and destination states in X
+            log_data_likelihood: log data likelihood of the unconstrained problem
+
+        The output is a non-positive scalar value that signifies the desired probability in the log space.
+
+        Examples:
+
+            If X = S (all hidden states), we expect logp = 0 (up to round-off error)
+
+            if X = {a single hidden state}, then we expect the logp of a single path that takes on the same
+                hidden-state for all positions [t_0, ..., t_N]
+
+            In general, if X is a proper subset of S, we expect logp <= 0 (with logp = 0 iff the removed states
+                are strictly forbidden by the prior and/or the transition matrix)
+
+        Returns:
+            a theano function
+        """
         alpha_first_c = tt.vector('alpha_first_c')
         beta_last_c = tt.vector('beta_last_c')
         log_emission_tc = tt.matrix('log_emission_tc')
@@ -146,7 +182,7 @@ class HMMSegmentationQualityCalculator:
         assert call_state in self.all_states_set
 
         all_other_states_logp = self.get_log_constrained_posterior_prob(
-            start_index, end_index, self.all_states_set_except_for[call_state])
+            start_index, end_index, self.leave_one_out_state_lists[call_state])
 
         return logp_to_phred(all_other_states_logp, complement=False) / (end_index - start_index + 1)
 
@@ -187,12 +223,12 @@ class HMMSegmentationQualityCalculator:
 
         if start_index == end_index:
             log_compl_prob = logsumexp(
-                self.log_posterior_prob_tc[start_index, self.all_states_set_except_for[call_state]])
+                self.log_posterior_prob_tc[start_index, self.leave_one_out_state_lists[call_state]])
             return logp_to_phred(log_compl_prob, complement=False)
         else:
             # calculate the uncorrelated log complementary probability
             uncorrelated_log_compl_prob_array = np.asarray(
-                [logsumexp(self.log_posterior_prob_tc[ti, self.all_states_set_except_for[call_state]])
+                [logsumexp(self.log_posterior_prob_tc[ti, self.leave_one_out_state_lists[call_state]])
                  for ti in range(start_index, end_index + 1)])
             uncorrelated_logp = logsumexp_double_complement(uncorrelated_log_compl_prob_array)
             uncorrelated_quality = logp_to_phred(uncorrelated_logp, complement=False)
@@ -224,7 +260,7 @@ class HMMSegmentationQualityCalculator:
         """
         assert 0 <= start_index < self.num_sites
 
-        all_other_states_list = self.all_states_set_except_for[call_state]
+        all_other_states_list = self.leave_one_out_state_lists[call_state]
         if start_index == 0:
             logp = logsumexp(self.log_posterior_prob_tc[0, all_other_states_list])
         else:
@@ -259,7 +295,7 @@ class HMMSegmentationQualityCalculator:
         """
         assert 0 <= end_index < self.num_sites
 
-        all_other_states_list = self.all_states_set_except_for[call_state]
+        all_other_states_list = self.leave_one_out_state_lists[call_state]
 
         if end_index == self.num_sites - 1:
             logp = logsumexp(self.log_posterior_prob_tc[self.num_sites - 1, all_other_states_list])

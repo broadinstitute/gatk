@@ -108,6 +108,6 @@ if __name__ == "__main__":
     ploidy_task.disengage()
 
     # sample sample-specific posteriors
-    gcnvkernel.io_ploidy.SamplePloidyExporter(
+    gcnvkernel.io_ploidy.SamplePloidyWriter(
         ploidy_config, ploidy_workspace, ploidy_task.continuous_model,
         ploidy_task.continuous_model_approx, args.output_calls_path)()

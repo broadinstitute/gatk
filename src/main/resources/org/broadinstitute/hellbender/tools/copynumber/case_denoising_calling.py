@@ -62,7 +62,7 @@ group.add_argument("--input_opt_path",
                    type=str,
                    required=False,
                    default=argparse.SUPPRESS,
-                   help="(advanced) Path to exported optimizer state to take as the starting point")
+                   help="(advanced) Path to saved optimizer state to take as the starting point")
 
 # add denoising config args
 # Note: we are hiding parameters that are either set by the model or are irrelevant to the case calling task
@@ -94,29 +94,29 @@ gcnvkernel.CopyNumberCallingConfig.expose_args(
 gcnvkernel.HybridInferenceParameters.expose_args(parser)
 
 
-def update_args_dict_from_exported_model(input_model_path: str,
-                                         _args_dict: Dict[str, Any]):
+def update_args_dict_from_saved_model(input_model_path: str,
+                                      _args_dict: Dict[str, Any]):
     logging.info("Loading denoising model configuration from the provided model...")
     with open(os.path.join(input_model_path, "denoising_config.json"), 'r') as fp:
-        imported_denoising_config_dict = json.load(fp)
+        loaded_denoising_config_dict = json.load(fp)
 
     # boolean flags
     _args_dict['enable_bias_factors'] =\
-        imported_denoising_config_dict['enable_bias_factors']
+        loaded_denoising_config_dict['enable_bias_factors']
     _args_dict['enable_explicit_gc_bias_modeling'] =\
-        imported_denoising_config_dict['enable_explicit_gc_bias_modeling']
+        loaded_denoising_config_dict['enable_explicit_gc_bias_modeling']
     _args_dict['disable_bias_factors_in_active_class'] =\
-        imported_denoising_config_dict['disable_bias_factors_in_active_class']
+        loaded_denoising_config_dict['disable_bias_factors_in_active_class']
 
     # bias factor related
     _args_dict['max_bias_factors'] =\
-        imported_denoising_config_dict['max_bias_factors']
+        loaded_denoising_config_dict['max_bias_factors']
 
     # gc-related
     _args_dict['num_gc_bins'] =\
-        imported_denoising_config_dict['num_gc_bins']
+        loaded_denoising_config_dict['num_gc_bins']
     _args_dict['gc_curve_sd'] =\
-        imported_denoising_config_dict['gc_curve_sd']
+        loaded_denoising_config_dict['gc_curve_sd']
 
     logging.info("- bias factors enabled: "
                  + repr(_args_dict['enable_bias_factors']))
@@ -166,8 +166,8 @@ if __name__ == "__main__":
     # setup the inference task
     args_dict = args.__dict__
 
-    # import model configuration and update args dict
-    update_args_dict_from_exported_model(args.input_model_path, args_dict)
+    # read model configuration and update args dict
+    update_args_dict_from_saved_model(args.input_model_path, args_dict)
 
     # instantiate config classes
     denoising_config = gcnvkernel.DenoisingModelConfig.from_args_dict(args_dict)
@@ -188,12 +188,12 @@ if __name__ == "__main__":
 
     if hasattr(args, 'input_calls_path'):
         logger.info("A call path was provided to use as starting point...")
-        gcnvkernel.io_denoising_calling.SampleDenoisingAndCallingPosteriorsImporter(
+        gcnvkernel.io_denoising_calling.SampleDenoisingAndCallingPosteriorsReader(
             shared_workspace, task.continuous_model, task.continuous_model_approx,
             args.input_calls_path)()
 
     if hasattr(args, 'input_opt_path'):
-        logger.info("An exported optimizer state was provided to use as starting point...")
+        logger.info("A saved optimizer state was provided to use as starting point...")
         task.fancy_opt.load(args.input_opt_path)
 
     # go!
@@ -201,7 +201,7 @@ if __name__ == "__main__":
     task.disengage()
 
     # save calls
-    gcnvkernel.io_denoising_calling.SampleDenoisingAndCallingPosteriorsExporter(
+    gcnvkernel.io_denoising_calling.SampleDenoisingAndCallingPosteriorsWriter(
         denoising_config, calling_config, shared_workspace, task.continuous_model, task.continuous_model_approx,
         args.output_calls_path)()
 

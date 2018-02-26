@@ -239,8 +239,8 @@ task PostprocessGermlineCNVCalls {
     Array[File] gcnv_model_tars
     File contig_ploidy_calls_tar
     Array[String] allosomal_contigs
-    String ref_copy_number_autosomal_contigs
-    String sample_index
+    Int ref_copy_number_autosomal_contigs
+    Int sample_index
     File? gatk4_jar_override
 
     # Runtime parameters

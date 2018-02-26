@@ -45,14 +45,16 @@ public class LocatableIntegerCopyNumber implements Locatable {
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        LocatableIntegerCopyNumber that = (LocatableIntegerCopyNumber) o;
-
-        if (!interval.equals(that.interval)) return false;
-        return integerCopyNumberState.equals(that.integerCopyNumberState);
+    public boolean equals(final Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (other == null || getClass() != other.getClass()) {
+            return false;
+        }
+        LocatableIntegerCopyNumber that = (LocatableIntegerCopyNumber) other;
+        return (interval.equals(that.interval) &&
+                integerCopyNumberState.equals(that.integerCopyNumberState));
     }
 
     @Override

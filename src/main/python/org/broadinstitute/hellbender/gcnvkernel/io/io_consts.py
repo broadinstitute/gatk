@@ -38,6 +38,9 @@ sample_name_header_regexp = "^@RG.*SM:(.*)[\t]*.*$"
 # prefix for adding sample name as a header comment line
 sample_name_sam_header_prefix = "RG\tID:GATKCopyNumber\tSM:"
 
+default_comment_char = "@"
+default_delimiter_char = "\t"
+
 # default file names for loading and saving models, posteriors, and configurations
 default_sample_read_depth_tsv_filename = "global_read_depth.tsv"
 default_sample_name_txt_filename = "sample_name.txt"

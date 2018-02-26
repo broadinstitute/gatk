@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.copynumber.gcnv;
 
-import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 /**
@@ -13,10 +12,6 @@ public final class IntegerCopyNumberState {
      * Integer value of the represented copy number state
      */
     private final int copyNumber;
-
-    /**
-     * An allele representation of this copy number state (used for VCF creation)
-     */
 
     public IntegerCopyNumberState(final int copyNumber) {
         this.copyNumber = ParamUtils.isPositiveOrZero(copyNumber, "The integer copy number state" +

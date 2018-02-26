@@ -74,14 +74,10 @@ public class GermlineCNVIntervalVariantComposerUnitTest extends CommandLineProgr
      */
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCopyNumberPosteriorDistributionValidation() {
-        final CopyNumberPosteriorDistribution posteriorRecord = new CopyNumberPosteriorDistribution(
-                IntStream.range(0, TEST_VALID_LOG_POSTERIOR_VECTOR.length)
-                        .boxed()
-                        .collect(Collectors.toMap(IntegerCopyNumberState::new,
-                                cn -> TEST_INVALID_LOG_POSTERIOR_VECTOR[cn])));
-        final LocatableCopyNumberPosteriorDistribution locatablePosteriorRecord =
-                new LocatableCopyNumberPosteriorDistribution(TEST_INTERVAL, posteriorRecord);
-        testGenotyping(locatablePosteriorRecord, TEST_COPY_NUMBER_STATE_COLLECTION, null, 0, 0);
+        new CopyNumberPosteriorDistribution(IntStream.range(0, TEST_INVALID_LOG_POSTERIOR_VECTOR.length)
+                .boxed()
+                .collect(Collectors.toMap(IntegerCopyNumberState::new,
+                        cn -> TEST_INVALID_LOG_POSTERIOR_VECTOR[cn])));
     }
 
     /**
@@ -99,8 +95,8 @@ public class GermlineCNVIntervalVariantComposerUnitTest extends CommandLineProgr
                         .collect(Collectors.toList()));
         final IntegerCopyNumberState testRefAutosomalCopyNumberState = new IntegerCopyNumberState(2);
         final Set<String> testAllosomalContigsSet = Collections.emptySet();
-        new GermlineCNVIntervalVariantComposer(outputWriter, shortCopyNumberStateCollection, TEST_SAMPLE_NAME,
-                testRefAutosomalCopyNumberState, testAllosomalContigsSet);
+        new GermlineCNVIntervalVariantComposer(outputWriter, TEST_SAMPLE_NAME,
+                shortCopyNumberStateCollection, testRefAutosomalCopyNumberState, testAllosomalContigsSet);
     }
 
     @Test(dataProvider = "alleleDeterminationTestData")
@@ -113,7 +109,7 @@ public class GermlineCNVIntervalVariantComposerUnitTest extends CommandLineProgr
                 new IntegerCopyNumberState(baselineCopyNumber));
         final VariantContextWriter outputWriter = GATKVariantContextUtils.createVCFWriter(outputFile, null, false);
         final GermlineCNVIntervalVariantComposer variantComposer = new GermlineCNVIntervalVariantComposer(
-                outputWriter, TEST_COPY_NUMBER_STATE_COLLECTION, "TEST_SAMPLE_NAME",
+                outputWriter, "TEST_SAMPLE_NAME", TEST_COPY_NUMBER_STATE_COLLECTION,
                 new IntegerCopyNumberState(refAutosomalCopyNumber), allosomalContigs);
         final VariantContext var = variantComposer.composeVariantContext(TEST_LOCATABLE_DISTRIBUTION,
                 baselineCopyNumberState, "TEST_CNV");

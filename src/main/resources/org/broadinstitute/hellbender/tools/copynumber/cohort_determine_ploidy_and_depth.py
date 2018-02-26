@@ -103,14 +103,14 @@ if __name__ == "__main__":
     ploidy_task.disengage()
 
     # save model parameters
-    gcnvkernel.io_ploidy.PloidyModelExporter(ploidy_config, ploidy_workspace,
-                                             ploidy_task.continuous_model, ploidy_task.continuous_model_approx,
-                                             args.output_model_path)()
+    gcnvkernel.io_ploidy.PloidyModelWriter(ploidy_config, ploidy_workspace,
+                                           ploidy_task.continuous_model, ploidy_task.continuous_model_approx,
+                                           args.output_model_path)()
 
     # sample sample-specific posteriors
-    gcnvkernel.io_ploidy.SamplePloidyExporter(ploidy_config, ploidy_workspace,
-                                              ploidy_task.continuous_model, ploidy_task.continuous_model_approx,
-                                              args.output_calls_path)()
+    gcnvkernel.io_ploidy.SamplePloidyWriter(ploidy_config, ploidy_workspace,
+                                            ploidy_task.continuous_model, ploidy_task.continuous_model_approx,
+                                            args.output_calls_path)()
 
     # save a copy of interval list and ploidy priors as well
     shutil.copy(args.interval_list,

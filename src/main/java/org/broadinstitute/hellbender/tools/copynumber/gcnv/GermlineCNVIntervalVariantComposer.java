@@ -5,8 +5,8 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.math3.util.FastMath;
-import org.broadinstitute.hellbender.tools.copynumber.PostprocessGermlineCNVCalls;
 import org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller;
+import org.broadinstitute.hellbender.tools.copynumber.PostprocessGermlineCNVCalls;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.LocatableCopyNumberPosteriorDistribution;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.LocatableIntegerCopyNumber;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -22,36 +22,28 @@ import java.util.stream.Collectors;
  * @author Andrey Smirnov &lt;asmirnov@broadinstitute.org&gt;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public final class GermlineCNVIntervalVariantComposer {
-    private static final String VARIANT_PREFIX = "CNV";
+public final class GermlineCNVIntervalVariantComposer extends GermlineCNVAbstractVariantComposer {
 
     /* VCF FORMAT header keys */
 
     /**
      * Copy number maximum a posteriori value
      */
-    public static final String CN = "CN";
+    static final String CN = "CN";
 
     /**
      * Copy number log posterior (in Phred-scale)
      */
-    public static final String CNLP = "CNLP";
+    static final String CNLP = "CNLP";
 
     /**
      * Genotype call quality
      */
-    public static final String CNQ = "CNQ";
+    static final String CNQ = "CNQ";
 
     private final IntegerCopyNumberStateCollection integerCopyNumberStateCollection;
-    private final String sampleName;
-    private final VariantContextWriter outputWriter;
     private final IntegerCopyNumberState refAutosomalCopyNumberState;
     private final Set<String> allosomalContigSet;
-
-    public static final Allele REF_ALLELE = Allele.create("N", true);
-    public static final Allele DEL_ALLELE = Allele.create("<DEL>", false);
-    public static final Allele DUP_ALLELE = Allele.create("<DUP>", false);
-    public static final List<Allele> ALL_ALLELES = Arrays.asList(REF_ALLELE, DEL_ALLELE, DUP_ALLELE);
 
     /**
      * Constructor for {@link PostprocessGermlineCNVCalls} Postprocessor
@@ -64,24 +56,19 @@ public final class GermlineCNVIntervalVariantComposer {
      *                           given contig baseline copy-number states)
      */
     public GermlineCNVIntervalVariantComposer(final VariantContextWriter outputWriter,
-                                              final IntegerCopyNumberStateCollection integerCopyNumberStateCollection,
                                               final String sampleName,
+                                              final IntegerCopyNumberStateCollection integerCopyNumberStateCollection,
                                               final IntegerCopyNumberState refAutosomalCopyNumberState,
                                               final Set<String> allosomalContigSet) {
-        this.outputWriter = Utils.nonNull(outputWriter);
+        super(outputWriter, sampleName);
         this.integerCopyNumberStateCollection = Utils.nonNull(integerCopyNumberStateCollection);
         Utils.validate(integerCopyNumberStateCollection.size() > 2,
                 "There must be at least 3 copy number states present.");
-        this.sampleName = Utils.nonEmpty(sampleName);
         this.refAutosomalCopyNumberState = Utils.nonNull(refAutosomalCopyNumberState);
         this.allosomalContigSet = Utils.nonNull(allosomalContigSet);
     }
 
-    /**
-     * Compose the header of the variant context
-     *
-     * @param vcfDefaultToolHeaderLines default header lines of the VCF generation tool
-     */
+    @Override
     public void composeVariantContextHeader(final Set<VCFHeaderLine> vcfDefaultToolHeaderLines) {
         final VCFHeader result = new VCFHeader(Collections.emptySet(), Collections.singletonList(sampleName));
 

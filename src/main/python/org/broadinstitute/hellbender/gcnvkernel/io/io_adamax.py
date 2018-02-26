@@ -1,16 +1,18 @@
-import numpy as np
-import os
 import logging
-from ..inference.fancy_optimizers import FancyAdamax
+import os
+
+import numpy as np
+
 from . import io_commons
 from . import io_consts
 from .. import config, types
+from ..inference.fancy_optimizers import FancyAdamax
 
 _logger = logging.getLogger(__name__)
 
 
-class AdamaxStateExporter:
-    """Exports the state of adamax optimizer to disk."""
+class AdamaxStateWriter:
+    """Writes the state of adamax optimizer to disk."""
     def __init__(self,
                  fancy_adamax: FancyAdamax,
                  output_path: str):
@@ -18,9 +20,9 @@ class AdamaxStateExporter:
         self.output_path = output_path
 
     def __call__(self):
-        _logger.info("Exporting adamax moment estimates...")
+        _logger.info("Writing adamax moment estimates...")
         io_commons.assert_output_path_writable(self.output_path)
-        io_commons.export_gcnvkernel_version(self.output_path)
+        io_commons.write_gcnvkernel_version(self.output_path)
 
         mu_m = self.fancy_adamax.get_mu_m().get_value(borrow=True)
         np.save(os.path.join(self.output_path, "mu_" + io_consts.default_adamax_m_filename), mu_m)
@@ -39,7 +41,7 @@ class AdamaxStateExporter:
             np.save(os.path.join(self.output_path, io_consts.default_adamax_res_filename), res)
 
 
-class AdamaxStateImporter:
+class AdamaxStateReader:
     """Import the state of adamax optimizer from disk."""
     def __init__(self,
                  fancy_adamax: FancyAdamax,

@@ -28,7 +28,10 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -137,7 +140,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
             fullName = CALLS_SHARD_PATH_LONG_NAME,
             minElements = 1
     )
-    private List<File> unsortedCallDirectories;
+    private List<File> unsortedCallsShardPaths;
 
     @Argument(
             doc = "List of paths to GermlineCNVCaller model directories.",
@@ -145,7 +148,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
             minElements = 1,
             optional = true
     )
-    private List<File> unsortedModelDirectories;
+    private List<File> unsortedModelShardPaths;
 
     @Argument(
             doc = "Path to contig-ploidy calls directory (output of DetermineGermlineContigPloidy).",
@@ -174,7 +177,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
             fullName = ALLOSOMAL_CONTIG_LONG_NAME,
             optional = true
     )
-    private List<String> allosomalContigsList;
+    private List<String> allosomalContigList;
 
     @Argument(
             doc = "Output per-interval VCF file.",
@@ -224,17 +227,17 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
     /**
      * Set of allosomal contigs
      */
-    private Set<String> allosomalContigsSet;
+    private Set<String> allosomalContigSet;
 
     /**
      * Call shard directories put in correct order
      */
-    private List<File> sortedCallDirectories;
+    private List<File> sortedCallsShardPaths;
 
     /**
      * Model shard directories put in correct order
      */
-    private List<File> sortedModelDirectories;
+    private List<File> sortedModelShardPaths;
 
     @Override
     public void onStartup() {
@@ -251,11 +254,11 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
      */
     @Override
     public void onTraversalStart() {
-        numShards = unsortedCallDirectories.size();
+        numShards = unsortedCallsShardPaths.size();
 
         /* get intervals from each call and model shard in the provided (potentially arbitrary) order */
         final List<SimpleIntervalCollection> unsortedIntervalCollectionsFromCalls =
-                getIntervalCollectionsFromPaths(unsortedCallDirectories);
+                getIntervalCollectionsFromPaths(unsortedCallsShardPaths);
 
         /* assert that all shards have the same SAM sequence dictionary */
         final SAMSequenceDictionary samSequenceDictionary = unsortedIntervalCollectionsFromCalls.get(0)
@@ -267,11 +270,11 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
                                 shardSAMSequenceDictionary.equals(samSequenceDictionary)),
                 "The SAM sequence dictionary is not the same for all of the call shards.");
 
-        /* get the correct shard short orders and sort all collections */
+        /* get the correct shard sort order and sort all collections */
         final int[] sortedCallShardsOrder = SimpleIntervalCollection.getSimpleIntervalCollectionSortedOrder(
                 unsortedIntervalCollectionsFromCalls, samSequenceDictionary, true);
-        sortedCallDirectories = Arrays.stream(sortedCallShardsOrder)
-                .mapToObj(unsortedCallDirectories::get)
+        sortedCallsShardPaths = Arrays.stream(sortedCallShardsOrder)
+                .mapToObj(unsortedCallsShardPaths::get)
                 .collect(Collectors.toList());
         final List<SimpleIntervalCollection> sortedIntervalCollectionsFromCalls = Arrays.stream(sortedCallShardsOrder)
                 .mapToObj(unsortedIntervalCollectionsFromCalls::get)
@@ -282,15 +285,15 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
         final Set<String> allContigs = samSequenceDictionary.getSequences().stream()
                 .map(SAMSequenceRecord::getSequenceName)
                 .collect(Collectors.toSet());
-        allosomalContigsSet = new HashSet<>(allosomalContigsList);
-        if (allosomalContigsSet.isEmpty()) {
+        allosomalContigSet = new HashSet<>(allosomalContigList);
+        if (allosomalContigSet.isEmpty()) {
             logger.warn(String.format("Allosomal contigs were not specified; setting ref copy-number allele " +
                     "to (%d) for all intervals.", refAutosomalCopyNumber));
         } else {
-            Utils.validateArg(allContigs.containsAll(allosomalContigsSet), String.format(
+            Utils.validateArg(allContigs.containsAll(allosomalContigSet), String.format(
                     "The specified allosomal contigs must be contained in the SAM sequence dictionary of the " +
                             "call-set (specified allosomal contigs: %s, all contigs: %s)",
-                    allosomalContigsSet.stream().collect(Collectors.joining(", ", "[", "]")),
+                    allosomalContigSet.stream().collect(Collectors.joining(", ", "[", "]")),
                     allContigs.stream().collect(Collectors.joining(", ", "[", "]"))));
         }
 
@@ -321,19 +324,20 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
         if (outputSegmentsVCFFile != null) {
             Utils.nonNull(contigPloidyCallsPath, "Contig ploidy calls are required for generating segments " +
                     "VCF file.");
-            Utils.validateArg(unsortedModelDirectories.size() == numShards,
+            Utils.validateArg(unsortedModelShardPaths.size() == numShards,
                     "The number of input model shards must match the number of input call shards.");
 
             /* basic assertion that the model shards are valid and are compatible with call shards */
             final List<SimpleIntervalCollection> unsortedIntervalCollectionsFromModels =
-                    getIntervalCollectionsFromPaths(unsortedModelDirectories);
+                    getIntervalCollectionsFromPaths(unsortedModelShardPaths);
 
             Utils.validateArg(unsortedIntervalCollectionsFromModels.stream()
                             .map(SimpleIntervalCollection::getMetadata)
                             .map(LocatableMetadata::getSequenceDictionary)
                             .allMatch(shardSAMSequenceDictionary ->
                                     shardSAMSequenceDictionary.equals(samSequenceDictionary)),
-                    "The SAM sequence dictionary is not the same for all of the model shards.");
+                    "The SAM sequence dictionary is either not the same for all of the model shards, " +
+                            "or is different from the SAM sequence dictionary of calls shards.");
 
             final int[] sortedModelShardsOrder = SimpleIntervalCollection.getSimpleIntervalCollectionSortedOrder(
                     unsortedIntervalCollectionsFromModels, samSequenceDictionary, true);
@@ -345,14 +349,10 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
                             "paths are provided in matching order.");
 
             /* sort model shards */
-            sortedModelDirectories = Arrays.stream(sortedModelShardsOrder)
-                    .mapToObj(unsortedModelDirectories::get)
+            sortedModelShardPaths = Arrays.stream(sortedModelShardsOrder)
+                    .mapToObj(unsortedModelShardPaths::get)
                     .collect(Collectors.toList());
         }
-
-        /* assert that the calling config files and gcnvkernel versions match for calls and model shards */
-        /* todo this is done on the python side at the moment -- the idea is to bring most, if not all,
-           todo validations to java side */
     }
 
     @Override
@@ -370,8 +370,8 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
         final VariantContextWriter intervalsVCFWriter = createVCFWriter(outputIntervalsVCFFile);
 
         final GermlineCNVIntervalVariantComposer germlineCNVIntervalVariantComposer =
-                new GermlineCNVIntervalVariantComposer(intervalsVCFWriter, integerCopyNumberStateCollection,
-                        sampleName, refAutosomalIntegerCopyNumberState, allosomalContigsSet);
+                new GermlineCNVIntervalVariantComposer(intervalsVCFWriter, sampleName,
+                        integerCopyNumberStateCollection, refAutosomalIntegerCopyNumberState, allosomalContigSet);
         germlineCNVIntervalVariantComposer.composeVariantContextHeader(getDefaultToolVCFHeaderLines());
 
         for (int shardIndex = 0; shardIndex < numShards; shardIndex++) {
@@ -397,7 +397,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
      * Extracts sample name from a designated text file in the sample calls directory.
      */
     private String getShardSampleName(final int shardIndex) {
-        final File shardSampleNameTextFile = getSampleNameTextFile(sortedCallDirectories.get(shardIndex),
+        final File shardSampleNameTextFile = getSampleNameTextFile(sortedCallsShardPaths.get(shardIndex),
                 sampleIndex);
         try {
             final BufferedReader reader = new BufferedReader(new FileReader(shardSampleNameTextFile));
@@ -414,7 +414,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
      */
     private List<LocatableCopyNumberPosteriorDistribution> getShardCopyNumberPosteriorDistributions(final int shardIndex) {
         /* read copy-number posteriors for the shard */
-        final File shardRootDirectory = sortedCallDirectories.get(shardIndex);
+        final File shardRootDirectory = sortedCallsShardPaths.get(shardIndex);
         final File sampleCopyNumberPosteriorFile = getSampleCopyNumberPosteriorFile(shardRootDirectory, sampleIndex);
         final CopyNumberPosteriorDistributionCollection copyNumberPosteriorDistributionCollection =
                 new CopyNumberPosteriorDistributionCollection(sampleCopyNumberPosteriorFile, integerCopyNumberStateCollection);
@@ -429,6 +429,12 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
         final List<SimpleInterval> shardIntervals = sortedIntervalCollections.get(shardIndex).getIntervals();
         final List<CopyNumberPosteriorDistribution> copyNumberPosteriorDistributionList =
                 copyNumberPosteriorDistributionCollection.getRecords();
+        Utils.validate(shardIntervals.size() == copyNumberPosteriorDistributionList.size(),
+                String.format("The number of entries in the copy-number posterior file for shard %d does " +
+                        "not match the number of entries in the shard interval list (posterior list size: %d, " +
+                        "interval list size: %d)", shardIndex, copyNumberPosteriorDistributionList.size(),
+                        shardIntervals.size()));
+
         return IntStream.range(0, copyNumberPosteriorDistributionCollection.size())
                         .mapToObj(intervalIndex -> new LocatableCopyNumberPosteriorDistribution(
                                 shardIntervals.get(intervalIndex),
@@ -442,7 +448,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
      */
     private List<LocatableIntegerCopyNumber> getShardBaselineCopyNumbers(final int shardIndex) {
         /* read copy-number baselines for the shard */
-        final File shardRootDirectory = sortedCallDirectories.get(shardIndex);
+        final File shardRootDirectory = sortedCallsShardPaths.get(shardIndex);
         final File sampleBaselineCopyNumberFile = getSampleBaselineCopyNumberFile(shardRootDirectory, sampleIndex);
         final BaselineCopyNumberCollection baselineCopyNumberCollection = new BaselineCopyNumberCollection(sampleBaselineCopyNumberFile);
         final String sampleNameFromBaselineCopyNumberFile = baselineCopyNumberCollection
@@ -467,7 +473,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
      * posterior TSV file.
      */
     private IntegerCopyNumberStateCollection getCopyNumberStateCollectionFromCopyNumberPosteriorsHeader(final int shardIndex) {
-        final File shardRootDirectory = sortedCallDirectories.get(shardIndex);
+        final File shardRootDirectory = sortedCallsShardPaths.get(shardIndex);
         final File sampleCopyNumberPosteriorFile = getSampleCopyNumberPosteriorFile(shardRootDirectory, sampleIndex);
         final List<String> copyNumberStateColumns = CopyNumberPosteriorDistributionCollection
                 .extractCopyNumberPosteriorFileColumns(sampleCopyNumberPosteriorFile);
@@ -518,7 +524,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
             /* perform segmentation */
             final File pythonScriptOutputPath = IOUtils.tempDir("gcnv-segmented-calls", "");
             final boolean pythonScriptSucceeded = executeSegmentGermlineCNVCallsPythonScript(
-                    sampleIndex, contigPloidyCallsPath, sortedCallDirectories, sortedModelDirectories,
+                    sampleIndex, contigPloidyCallsPath, sortedCallsShardPaths, sortedModelShardPaths,
                     pythonScriptOutputPath);
             if (!pythonScriptSucceeded) {
                 throw new UserException("Python return code was non-zero.");
@@ -528,12 +534,18 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
             final File copyNumberSegmentsFile = getCopyNumberSegmentsFile(pythonScriptOutputPath, sampleIndex);
             final IntegerCopyNumberSegmentCollection integerCopyNumberSegmentCollection =
                     new IntegerCopyNumberSegmentCollection(copyNumberSegmentsFile);
+            final String sampleNameFromSegmentCollection = integerCopyNumberSegmentCollection
+                    .getMetadata().getSampleName();
+            Utils.validate(sampleNameFromSegmentCollection.equals(sampleName),
+                    String.format("Sample name found in the header of copy-number segments file is " +
+                                    "different from the expected sample name (found: %s, expected: %s).",
+                            sampleNameFromSegmentCollection, sampleName));
 
             /* write variants */
             final VariantContextWriter segmentsVCFWriter = createVCFWriter(outputSegmentsVCFFile);
             final GermlineCNVSegmentVariantComposer germlineCNVSegmentVariantComposer =
                     new GermlineCNVSegmentVariantComposer(segmentsVCFWriter, sampleName,
-                            refAutosomalIntegerCopyNumberState, allosomalContigsSet);
+                            refAutosomalIntegerCopyNumberState, allosomalContigSet);
             germlineCNVSegmentVariantComposer.composeVariantContextHeader(getDefaultToolVCFHeaderLines());
             germlineCNVSegmentVariantComposer.writeAll(integerCopyNumberSegmentCollection);
             segmentsVCFWriter.close();

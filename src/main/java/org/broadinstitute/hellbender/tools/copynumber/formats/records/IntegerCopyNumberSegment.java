@@ -94,20 +94,22 @@ public class IntegerCopyNumberSegment implements Locatable {
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        IntegerCopyNumberSegment that = (IntegerCopyNumberSegment) o;
-
-        if (numPoints != that.numPoints) return false;
-        if (Double.compare(that.qualitySomeCalled, qualitySomeCalled) != 0) return false;
-        if (Double.compare(that.qualityAllCalled, qualityAllCalled) != 0) return false;
-        if (Double.compare(that.qualityStart, qualityStart) != 0) return false;
-        if (Double.compare(that.qualityEnd, qualityEnd) != 0) return false;
-        if (!interval.equals(that.interval)) return false;
-        if (!callIntegerCopyNumberState.equals(that.callIntegerCopyNumberState)) return false;
-        return baselineIntegerCopyNumberState.equals(that.baselineIntegerCopyNumberState);
+    public boolean equals(final Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (other == null || getClass() != other.getClass()) {
+            return false;
+        }
+        IntegerCopyNumberSegment that = (IntegerCopyNumberSegment) other;
+        return (numPoints == that.numPoints &&
+                Double.compare(that.qualitySomeCalled, qualitySomeCalled) == 0 &&
+                Double.compare(that.qualityAllCalled, qualityAllCalled) == 0 &&
+                Double.compare(that.qualityStart, qualityStart) == 0 &&
+                Double.compare(that.qualityEnd, qualityEnd) == 0 &&
+                interval.equals(that.interval) &&
+                callIntegerCopyNumberState.equals(that.callIntegerCopyNumberState) &&
+                baselineIntegerCopyNumberState.equals(that.baselineIntegerCopyNumberState));
     }
 
     @Override

@@ -1,15 +1,15 @@
-import os
 import csv
-import numpy as np
-from typing import List
-import pandas as pd
 import logging
+import numpy as np
+import os
+import pandas as pd
+from typing import List
 
-from ..structs.metadata import SampleReadDepthMetadata, SamplePloidyMetadata, SampleCoverageMetadata,\
-    SampleMetadataCollection
-from .. import types
 from . import io_commons
 from . import io_consts
+from .. import types
+from ..structs.metadata import SampleReadDepthMetadata, SamplePloidyMetadata, SampleCoverageMetadata, \
+    SampleMetadataCollection
 
 _logger = logging.getLogger(__name__)
 
@@ -50,8 +50,8 @@ def write_sample_coverage_metadata(sample_metadata_collection: SampleMetadataCol
 
 def read_sample_coverage_metadata(sample_metadata_collection: SampleMetadataCollection,
                                   input_file: str,
-                                  comment='@',
-                                  delimiter='\t') -> List[str]:
+                                  comment=io_consts.default_comment_char,
+                                  delimiter=io_consts.default_delimiter_char) -> List[str]:
     """Reads sample coverage metadata from a .tsv file and adds them to `sample_metadata_collection`.
 
     Args:
@@ -84,8 +84,8 @@ def read_sample_coverage_metadata(sample_metadata_collection: SampleMetadataColl
 def update_sample_metadata_collection_from_ploidy_determination_calls(
         sample_metadata_collection: SampleMetadataCollection,
         input_calls_path: str,
-        comment='@',
-        delimiter='\t'):
+        comment=io_consts.default_comment_char,
+        delimiter=io_consts.default_delimiter_char):
     """Reads the output of contig ploidy determination tool and updates the given instance of
     `SampleMetadataCollection` for read depth and ploidy metadata.
 

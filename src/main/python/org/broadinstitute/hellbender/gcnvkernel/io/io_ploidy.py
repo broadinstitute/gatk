@@ -1,23 +1,23 @@
 import logging
+import os
 from typing import List, Dict
 
 import numpy as np
-import pymc3 as pm
 import pandas as pd
-import os
+import pymc3 as pm
 
-from ..models.model_ploidy import PloidyWorkspace, PloidyModel
-from ..models.model_ploidy import PloidyModelConfig
-from ..models import commons as model_commons
-from ..structs.metadata import SampleReadDepthMetadata, SamplePloidyMetadata
-from .. import types
 from . import io_commons
 from . import io_consts
+from .. import types
+from ..models import commons as model_commons
+from ..models.model_ploidy import PloidyModelConfig
+from ..models.model_ploidy import PloidyWorkspace, PloidyModel
+from ..structs.metadata import SampleReadDepthMetadata, SamplePloidyMetadata
 
 _logger = logging.getLogger(__name__)
 
 
-class PloidyModelExporter:
+class PloidyModelWriter:
     """Writes global ploidy model parameters to disk."""
     def __init__(self,
                  ploidy_config: PloidyModelConfig,
@@ -35,20 +35,20 @@ class PloidyModelExporter:
          self._approx_std_map) = io_commons.extract_meanfield_posterior_parameters(self.ploidy_model_approx)
 
     def __call__(self):
-        # export gcnvkernel version
-        io_commons.export_gcnvkernel_version(self.output_path)
+        # write gcnvkernel version
+        io_commons.write_gcnvkernel_version(self.output_path)
 
-        # export ploidy config
-        io_commons.export_dict_to_json_file(
+        # write ploidy config
+        io_commons.write_dict_to_json_file(
             os.path.join(self.output_path, io_consts.default_ploidy_config_json_filename),
             self.ploidy_config.__dict__,
             {'contig_ploidy_prior_map', 'contig_set', 'num_ploidy_states'})
 
-        # export global variables in the posterior
+        # write global variables in the posterior
         for var_name in self.ploidy_model.global_var_registry:
             assert var_name in self._approx_var_set, \
                 "a variable named {0} does not exist in the approximation".format(var_name)
-            _logger.info("exporting {0}...".format(var_name))
+            _logger.info("Writing {0}...".format(var_name))
             var_mu = self._approx_mu_map[var_name]
             var_std = self._approx_std_map[var_name]
             var_mu_out_path = os.path.join(self.output_path, 'mu_' + var_name + '.tsv')
@@ -57,7 +57,7 @@ class PloidyModelExporter:
             io_commons.write_ndarray_to_tsv(var_std_out_path, var_std)
 
 
-class SamplePloidyExporter:
+class SamplePloidyWriter:
     """Writes sample-specific ploidy model parameters and associated workspace variables to disk."""
     def __init__(self,
                  ploidy_config: PloidyModelConfig,
@@ -74,17 +74,11 @@ class SamplePloidyExporter:
          self._approx_std_map) = io_commons.extract_meanfield_posterior_parameters(self.ploidy_model_approx)
 
     @staticmethod
-    def _export_sample_name(sample_posterior_path: str,
-                            sample_name: str):
-        with open(os.path.join(sample_posterior_path, io_consts.default_sample_name_txt_filename), 'w') as f:
-            f.write(sample_name + '\n')
-
-    @staticmethod
-    def _export_sample_contig_ploidy(sample_posterior_path: str,
-                                     sample_ploidy_metadata: SamplePloidyMetadata,
-                                     extra_comment_lines: List[str] = None,
-                                     delimiter='\t',
-                                     comment='@'):
+    def _write_sample_contig_ploidy(sample_posterior_path: str,
+                                    sample_ploidy_metadata: SamplePloidyMetadata,
+                                    extra_comment_lines: List[str] = None,
+                                    comment=io_consts.default_comment_char,
+                                    delimiter=io_consts.default_delimiter_char):
         with open(os.path.join(sample_posterior_path, io_consts.default_sample_contig_ploidy_tsv_filename), 'w') as f:
             if extra_comment_lines is not None:
                 for comment_line in extra_comment_lines:
@@ -99,11 +93,11 @@ class SamplePloidyExporter:
                                         repr(sample_ploidy_metadata.ploidy_genotyping_quality_j[j])]) + '\n')
 
     @staticmethod
-    def _export_sample_read_depth(sample_posterior_path: str,
-                                  sample_read_depth_metadata: SampleReadDepthMetadata,
-                                  extra_comment_lines: List[str] = None,
-                                  delimiter='\t',
-                                  comment='@'):
+    def _write_sample_read_depth(sample_posterior_path: str,
+                                 sample_read_depth_metadata: SampleReadDepthMetadata,
+                                 extra_comment_lines: List[str] = None,
+                                 comment=io_consts.default_comment_char,
+                                 delimiter=io_consts.default_delimiter_char):
         with open(os.path.join(sample_posterior_path, io_consts.default_sample_read_depth_tsv_filename), 'w') as f:
             if extra_comment_lines is not None:
                 for comment_line in extra_comment_lines:
@@ -140,29 +134,29 @@ class SamplePloidyExporter:
                 sample_ploidy_metadata,
                 self.ploidy_workspace.interval_list_metadata)
 
-            # export contig ploidy
-            self._export_sample_contig_ploidy(
+            # write contig ploidy
+            self._write_sample_contig_ploidy(
                 sample_posterior_path, sample_ploidy_metadata, extra_comment_lines=sample_name_comment_line)
 
-            # export read depth
-            self._export_sample_read_depth(
+            # write read depth
+            self._write_sample_read_depth(
                 sample_posterior_path, sample_read_depth_metadata, extra_comment_lines=sample_name_comment_line)
 
-            # export sample name
-            self._export_sample_name(sample_posterior_path, sample_name)
+            # write sample name
+            io_commons.write_sample_name_to_txt_file(sample_posterior_path, sample_name)
 
-            # export sample-specific posteriors in the approximation
-            io_commons.export_meanfield_sample_specific_params(
+            # write sample-specific posteriors in the approximation
+            io_commons.write_meanfield_sample_specific_params(
                 si, sample_posterior_path, self._approx_var_set, self._approx_mu_map, self._approx_std_map,
                 self.ploidy_model, sample_name_comment_line)
 
 
-class PloidyModelImporter:
+class PloidyModelReader:
     """Reads ploidy model parameters from disk and updates the provided approximation accordingly.
 
     Note:
         It is assumed that the provided model instance and approximation are compatible with the model
-        parameters to be imported. This has to be asserted beforehand by the CLI tool.
+        parameters to be read. This has to be asserted beforehand by the CLI tool.
     """
     def __init__(self,
                  ploidy_model: PloidyModel,
@@ -176,13 +170,13 @@ class PloidyModelImporter:
         # check if the model is created with the same gcnvkernel version
         io_commons.check_gcnvkernel_version_from_path(self.input_path)
 
-        # export model params
-        io_commons.import_meanfield_global_params(self.input_path, self.ploidy_model_approx, self.ploidy_model)
+        # read model params
+        io_commons.read_meanfield_global_params(self.input_path, self.ploidy_model_approx, self.ploidy_model)
 
 
 def get_contig_ploidy_prior_map_from_tsv_file(input_path: str,
-                                              delimiter='\t',
-                                              comment='@') -> Dict[str, np.ndarray]:
+                                              comment=io_consts.default_comment_char,
+                                              delimiter=io_consts.default_delimiter_char) -> Dict[str, np.ndarray]:
     contig_ploidy_prior_pd = pd.read_csv(input_path, delimiter=delimiter, comment=comment)
     columns = [str(x) for x in contig_ploidy_prior_pd.columns.values]
     assert len(columns) > 1

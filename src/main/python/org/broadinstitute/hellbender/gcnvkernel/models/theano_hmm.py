@@ -1,10 +1,12 @@
+from typing import Optional, List, Tuple, Union
+
 import numpy as np
+import pymc3 as pm
 import theano as th
 import theano.tensor as tt
-import pymc3 as pm
-from typing import Optional, List, Tuple, Union
-from .. import types
+
 from . import commons
+from .. import types
 
 
 class TheanoForwardBackward:
@@ -121,7 +123,7 @@ class TheanoForwardBackward:
         return result
 
     @th.configparser.change_flags(compute_test_value="ignore")
-    def _get_compiled_forward_backward_theano_func(self):
+    def _get_compiled_forward_backward_theano_func(self) -> th.compile.function_module.Function:
         """Returns a compiled theano function that computes the posterior probabilities of hidden states using
         the forward-backward algorithm.
 
@@ -353,7 +355,7 @@ class TheanoViterbi:
         return self._viterbi_theano_func(log_prior_c, log_trans_tcc, log_emission_tc).tolist()
 
     @th.configparser.change_flags(compute_test_value="ignore")
-    def _get_compiled_viterbi_theano_func(self):
+    def _get_compiled_viterbi_theano_func(self) -> th.compile.function_module.Function:
         """Returns a theano function that calculates the Viterbi path."""
         log_prior_c = tt.vector('log_prior_c')
         log_trans_tcc = tt.tensor3('log_trans_tcc')

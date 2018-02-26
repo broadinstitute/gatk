@@ -11,9 +11,7 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.collections.Intege
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.IntegerCopyNumberSegment;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -22,51 +20,42 @@ import java.util.Set;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public final class GermlineCNVSegmentVariantComposer {
-
-    private static final String VARIANT_PREFIX = "CNV";
+public final class GermlineCNVSegmentVariantComposer extends GermlineCNVAbstractVariantComposer {
 
     /* VCF FORMAT header keys */
 
     /**
      * Segment copy-number call
      */
-    public static final String CN = "CN";
+    static final String CN = "CN";
 
     /**
      * Number of points in the segment
      */
-    public static final String NP = "NP";
+    static final String NP = "NP";
 
     /**
      * Quality metric (some points called)
      */
-    public static final String QS = "QS";
+    static final String QS = "QS";
 
     /**
      * Quality metric (all points called)
      */
-    public static final String QA = "QA";
+    static final String QA = "QA";
 
     /**
      * Quality metric (segment start)
      */
-    public static final String QSS = "QSS";
+    static final String QSS = "QSS";
 
     /**
      * Quality metric (segment end)
      */
-    public static final String QSE = "QSE";
+    static final String QSE = "QSE";
 
-    private final String sampleName;
-    private final VariantContextWriter outputWriter;
     private final IntegerCopyNumberState refAutosomalCopyNumberState;
     private final Set<String> allosomalContigSet;
-
-    public static final Allele REF_ALLELE = Allele.create("N", true);
-    public static final Allele DEL_ALLELE = Allele.create("<DEL>", false);
-    public static final Allele DUP_ALLELE = Allele.create("<DUP>", false);
-    public static final List<Allele> ALL_ALLELES = Arrays.asList(REF_ALLELE, DEL_ALLELE, DUP_ALLELE);
 
     /**
      * Constructor.
@@ -81,17 +70,12 @@ public final class GermlineCNVSegmentVariantComposer {
                                              final String sampleName,
                                              final IntegerCopyNumberState refAutosomalCopyNumberState,
                                              final Set<String> allosomalContigSet) {
-        this.outputWriter = Utils.nonNull(outputWriter);
-        this.sampleName = Utils.nonEmpty(sampleName);
+        super(outputWriter, sampleName);
         this.refAutosomalCopyNumberState = Utils.nonNull(refAutosomalCopyNumberState);
         this.allosomalContigSet = Utils.nonNull(allosomalContigSet);
     }
 
-    /**
-     * Compose the header of the variant context
-     *
-     * @param vcfDefaultToolHeaderLines default header lines of the VCF generation tool
-     */
+    @Override
     public void composeVariantContextHeader(final Set<VCFHeaderLine> vcfDefaultToolHeaderLines) {
         final VCFHeader result = new VCFHeader(Collections.emptySet(), Collections.singletonList(sampleName));
 
@@ -100,7 +84,7 @@ public final class GermlineCNVSegmentVariantComposer {
                 VCFHeaderVersion.VCF4_2.getVersionString()));
 
         /* add default tool header lines */
-        vcfDefaultToolHeaderLines.forEach(line -> result.addMetaDataLine(line));
+        vcfDefaultToolHeaderLines.forEach(result::addMetaDataLine);
 
         /* header lines related to genotype formatting */
         result.addMetaDataLine(new VCFFormatHeaderLine(VCFConstants.GENOTYPE_KEY, 1,

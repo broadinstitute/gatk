@@ -1,15 +1,16 @@
-import numpy as np
 import logging
 from typing import Callable
+
+import numpy as np
 import theano as th
 
 from .inference_task_base import Caller, CallerUpdateSummary, HybridInferenceTask, HybridInferenceParameters
 from .. import types
+from ..inference.fancy_optimizers import FancyAdamax
+from ..io.io_denoising_calling import DenoisingModelReader
 from ..models.model_denoising_calling import DenoisingModel, DenoisingModelConfig, \
     InitialModelParametersSupplier, DenoisingCallingWorkspace, CopyNumberCallingConfig, \
     HHMMClassAndCopyNumberBasicCaller
-from ..io.io_denoising_calling import DenoisingModelImporter
-from ..inference.fancy_optimizers import FancyAdamax
 
 _logger = logging.getLogger(__name__)
 
@@ -106,8 +107,8 @@ class CaseDenoisingCallingTask(HybridInferenceTask):
                          custom_optimizer=opt)
 
         _logger.info("Loading the model and updating the instantiated model and workspace...")
-        DenoisingModelImporter(denoising_config, calling_config, shared_workspace, denoising_model,
-                               self.continuous_model_approx, input_model_path)()
+        DenoisingModelReader(denoising_config, calling_config, shared_workspace, denoising_model,
+                             self.continuous_model_approx, input_model_path)()
 
     def disengage(self):
         pass

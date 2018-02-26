@@ -1,21 +1,19 @@
-import logging
 import argparse
 import inspect
-from typing import List, Dict, Set, Tuple
-
+import logging
 import numpy as np
-import pandas as pd
 import pymc3 as pm
 import theano as th
 import theano.tensor as tt
 from pymc3 import Normal, Deterministic, DensityDist, Bound, Exponential
+from typing import List, Dict, Set, Tuple
 
-from ..tasks.inference_task_base import HybridInferenceParameters
-from .fancy_model import GeneralizedContinuousModel
 from . import commons
+from .fancy_model import GeneralizedContinuousModel
 from .. import config, types
 from ..structs.interval import Interval
 from ..structs.metadata import IntervalListMetadata, SampleMetadataCollection
+from ..tasks.inference_task_base import HybridInferenceParameters
 
 _logger = logging.getLogger(__name__)
 
@@ -318,7 +316,7 @@ class PloidyBasicCaller:
         self._update_log_q_ploidy_sjk_theano_func = self._get_update_log_q_ploidy_sjk_theano_func()
 
     @th.configparser.change_flags(compute_test_value="off")
-    def _get_update_log_q_ploidy_sjk_theano_func(self):
+    def _get_update_log_q_ploidy_sjk_theano_func(self) -> th.compile.function_module.Function:
         new_log_q_ploidy_sjk = (self.ploidy_workspace.log_p_ploidy_jk.dimshuffle('x', 0, 1)
                                 + self.ploidy_workspace.log_ploidy_emission_sjk)
         new_log_q_ploidy_sjk -= pm.logsumexp(new_log_q_ploidy_sjk, axis=2)

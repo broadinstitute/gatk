@@ -1,10 +1,9 @@
 import itertools
 import logging
+import numpy as np
 import os
 import shutil
 from typing import List, Tuple, Dict, TypeVar, Generator
-
-import numpy as np
 
 from .segment_quality_utils import HMMSegmentationQualityCalculator
 from .. import types
@@ -118,7 +117,7 @@ class ViterbiSegmentationEngine:
                     self.output_path)
         shutil.copy(os.path.join(self.calls_shards_paths[0], io_consts.default_calling_config_json_filename),
                     self.output_path)
-        io_commons.export_gcnvkernel_version(self.output_path)
+        io_commons.write_gcnvkernel_version(self.output_path)
 
         # write concatenated interval list to output path
         io_intervals_and_counts.write_interval_list_to_tsv_file(
@@ -246,7 +245,7 @@ class ViterbiSegmentationEngine:
                     sample_output_path)
         shutil.copy(os.path.join(self.calls_shards_paths[0], io_consts.default_calling_config_json_filename),
                     sample_output_path)
-        io_commons.export_gcnvkernel_version(sample_output_path)
+        io_commons.write_gcnvkernel_version(sample_output_path)
         io_commons.write_sample_name_to_txt_file(sample_output_path, sample_name)
 
         seg_file = os.path.join(sample_output_path, io_consts.default_copy_number_segments_tsv_filename)
@@ -355,8 +354,8 @@ class ViterbiSegmentationEngine:
 
     @staticmethod
     def _get_log_copy_number_emission_tc_from_calls_shard(calls_path: str, sample_index: int):
-        return io_denoising_calling.SampleDenoisingAndCallingPosteriorsImporter.\
-            import_ndarray_tc_with_copy_number_header(
+        return io_denoising_calling.SampleDenoisingAndCallingPosteriorsReader.\
+            read_ndarray_tc_with_copy_number_header(
                 io_denoising_calling.get_sample_posterior_path(calls_path, sample_index),
                 io_consts.default_copy_number_log_emission_tsv_filename)
 

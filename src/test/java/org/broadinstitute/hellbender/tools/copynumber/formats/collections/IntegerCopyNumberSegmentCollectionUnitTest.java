@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.IntegerCopyNumberSegment;
 import org.broadinstitute.hellbender.tools.copynumber.gcnv.IntegerCopyNumberState;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -16,7 +17,7 @@ import java.util.List;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class IntegerCopyNumberSegmentCollectionUnitTest extends  GATKBaseTest {
+public class IntegerCopyNumberSegmentCollectionUnitTest extends GATKBaseTest {
     private static final File TEST_SUB_DIR = new File(toolsTestDir, "copynumber/formats/collections");
     public static final File TEST_INTEGER_COPY_NUMBER_SEGMENTS_FILE =
             new File(TEST_SUB_DIR, "test_copy_number_segments.tsv");
@@ -60,12 +61,16 @@ public class IntegerCopyNumberSegmentCollectionUnitTest extends  GATKBaseTest {
 
     @Test
     public void testWriteRead() {
+        final SampleLocatableMetadata metadata = new IntegerCopyNumberSegmentCollection(
+                TEST_INTEGER_COPY_NUMBER_SEGMENTS_FILE).getMetadata();
         final IntegerCopyNumberSegmentCollection collection = new IntegerCopyNumberSegmentCollection(
-                TEST_INTEGER_COPY_NUMBER_SEGMENTS_FILE);
+                metadata, TEST_INTEGER_COPY_NUMBER_SEGMENTS);
         final File tempCollectionFile = createTempFile("integer-copy-number-segments-collection", ".tsv");
         collection.write(tempCollectionFile);
         final IntegerCopyNumberSegmentCollection readCollection = new IntegerCopyNumberSegmentCollection(
                 tempCollectionFile);
+        Assert.assertEquals(readCollection.getMetadata().getSampleName(), EXPECTED_SAMPLE_NAME);
+        Assert.assertEquals(readCollection.getMetadata(), metadata);
         Assert.assertEquals(readCollection.getRecords(), TEST_INTEGER_COPY_NUMBER_SEGMENTS);
     }
 }
