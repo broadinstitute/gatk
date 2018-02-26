@@ -200,32 +200,40 @@ class PloidyModel(GeneralizedContinuousModel):
                        beta=100.0,
                        shape=(ploidy_workspace.num_contigs,))
         register_as_global(bias_j)
+        norm_bias_j = bias_j / tt.mean(bias_j)
 
         # per-sample depth
-        depth_s = Exponential('depth_s',
-                              lam=1.0 / 50.0,
-                              shape=(ploidy_workspace.num_samples,))
+        depth_s = Uniform('depth_s',
+                          lower=0.0,
+                          upper=10000.0,
+                          shape=(ploidy_workspace.num_samples,))
         register_as_sample_specific(depth_s, sample_axis=0)
 
-        # Poisson per-contig counts
-        eps_j = Uniform('eps_j', lower=0.0, upper=0.05, shape=(ploidy_workspace.num_contigs,))
-        register_as_global(eps_j)
-        mu_sjk = depth_s.dimshuffle(0, 'x', 'x') * t_j.dimshuffle('x', 0, 'x') * bias_j.dimshuffle('x', 0, 'x') * \
-                 (ploidy_workspace.int_ploidy_values_k.dimshuffle('x', 'x', 0) + eps_j.dimshuffle('x', 0, 'x'))
+        pi_mosaicism_sj = Beta(name='pi_mosaicism_sj',
+                               alpha=1.0,
+                               beta=100.0,
+                               shape=(ploidy_workspace.num_samples, ploidy_workspace.num_contigs,))
+        register_as_sample_specific(pi_mosaicism_sj, sample_axis=0)
 
-        # unexplained variance (can account for mosaicism)
-        psi_sj = HalfNormal(name='psi_sj',
-                            sd=0.01,
-                            shape=(ploidy_workspace.num_samples,ploidy_workspace.num_contigs,))
-        register_as_sample_specific(psi_sj, sample_axis=0)
+        # Poisson per-contig counts
+        eps_j = HalfNormal('eps_j', sd=0.01, shape=(ploidy_workspace.num_contigs,))
+        register_as_global(eps_j)
+        mu_sjk = depth_s.dimshuffle(0, 'x', 'x') * t_j.dimshuffle('x', 0, 'x') * norm_bias_j.dimshuffle('x', 0, 'x') * \
+                 ((1 - pi_mosaicism_sj.dimshuffle(0, 1, 'x')) * ploidy_workspace.int_ploidy_values_k.dimshuffle('x', 'x', 0) +
+                  pi_mosaicism_sj.dimshuffle(0, 1, 'x') * tt.maximum(0, (ploidy_workspace.int_ploidy_values_k.dimshuffle('x', 'x', 0) - 1)) +
+                  eps_j.dimshuffle('x', 0, 'x'))
+
+        # unexplained variance
+        psi = HalfNormal(name='psi', sd=0.01)
+        register_as_global(psi)
 
         # convert "unexplained variance" to negative binomial over-dispersion
-        alpha_sj = tt.inv((tt.exp(psi_sj) - 1.0))
+        alpha = tt.inv((tt.exp(psi) - 1.0))
 
         def _get_logp_sjk(_n_sj):
             _logp_sjk = commons.negative_binomial_logp(
                 mu_sjk,  # mean
-                alpha_sj.dimshuffle(0, 1, 'x'),  # over-dispersion
+                alpha.dimshuffle('x', 'x', 'x'),  # over-dispersion
                 _n_sj.dimshuffle(0, 1, 'x'))  # contig counts
             return _logp_sjk
 
