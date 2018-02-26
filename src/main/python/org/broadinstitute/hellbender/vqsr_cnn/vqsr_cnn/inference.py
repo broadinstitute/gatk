@@ -22,9 +22,9 @@ Variant = namedtuple("Variant", "contig pos ref alt type")
 # ~~~~~~~ Inference ~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def score_and_write_batch(args, model, file_out, fifo, batch_size, python_batch_size):
-	'''Score and write a batch of variants with a 1D CNN.
+	'''Score a batch of variants with a CNN model. Write tab delimited temp file with scores.
 
-	This function is tightly coupled with the CNNVariantScore
+	This function is tightly coupled with the CNNVariantScore.java
 	It requires data written to the fifo in the order given by transferToPythonViaFifo
 
 	Arguments
@@ -65,11 +65,9 @@ def score_and_write_batch(args, model, file_out, fifo, batch_size, python_batch_
 										 int(fifo_data[fidx+6]),
 										 int(fifo_data[fidx+7])))
 				fidx += READ_ELEMENTS
-				print('Got read, seq data fidx:', read_tuples[-1])
 			_, ref_start, _ = get_variant_window(args, var)
 			insert_dict = get_inserts(args, read_tuples, var)
 			read_batch.append(read_tuples_to_read_tensor(args, read_tuples, ref_start, insert_dict))
-			print('read_batch len:', len(read_batch))
 
 	if args.tensor_name in tensor_maps.TENSOR_MAPS_1D:
 		predictions = model.predict([np.array(reference_batch), np.array(annotation_batch)], batch_size=python_batch_size)

@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.StreamSupport;
 
 /**
- * Annotate a VCF with scores from 1D Convolutional Neural Network.
+ * Annotate a VCF with scores from a Convolutional Neural Network.
  *
  * This tool streams variants and their reference context to a python program
  * which evaluates a pre-trained neural network on each variant.
@@ -70,29 +70,29 @@ public class CNNVariantScore extends VariantWalker {
             doc = "Output file")
     private String outputFile = null; // output file produced by Python code
 
-    @Argument(fullName = "architecture", shortName = "a", doc = "Neural Net architecture configuration json file", optional = false)
+    @Argument(fullName = "architecture", shortName = "architecture", doc = "Neural Net architecture configuration json file", optional = false)
     private String architecture = null;
 
-    @Argument(fullName = "use-reads", shortName = "ur", doc = "Make tensor with reads or just from reference.", optional = true)
+    @Argument(fullName = "use-reads", shortName = "use-reads", doc = "Make tensor with reads or just from reference.", optional = true)
     private boolean useReads = false;
 
-    @Argument(fullName = "window-size", shortName = "ws", doc = "Neural Net input window size", minValue = 0, optional = true)
+    @Argument(fullName = "window-size", shortName = "window-size", doc = "Neural Net input window size", minValue = 0, optional = true)
     private int windowSize = 128;
 
     @Advanced
-    @Argument(fullName = "inference-batch-size", shortName = "ibs", doc = "Size of batches for python to do inference on.", minValue = 1, maxValue=4096, optional = true)
+    @Argument(fullName = "inference-batch-size", shortName = "inference-batch-size", doc = "Size of batches for python to do inference on.", minValue = 1, maxValue=4096, optional = true)
     private int inferenceBatchSize = 256;
 
     @Advanced
-    @Argument(fullName = "transfer-batch-size", shortName = "tbs", doc = "Size of data to queue for python streaming.", minValue = 1, maxValue=8192, optional = true)
+    @Argument(fullName = "transfer-batch-size", shortName = "transfer-batch-size", doc = "Size of data to queue for python streaming.", minValue = 1, maxValue=8192, optional = true)
     private int transferBatchSize = 512;
 
     @Hidden
-    @Argument(fullName = "enable-journal", shortName = "journal", doc = "Enable streaming process journal.", optional = true)
+    @Argument(fullName = "enable-journal", shortName = "enable-journal", doc = "Enable streaming process journal.", optional = true)
     private boolean enableJournal = false;
 
     @Hidden
-    @Argument(fullName = "keep-temp-file", shortName = "ktf", doc = "Keep the temporary file that python writes scores to.", optional = true)
+    @Argument(fullName = "keep-temp-file", shortName = "keep-temp-file", doc = "Keep the temporary file that python writes scores to.", optional = true)
     private boolean keepTempFile = false;
 
     // Create the Python executor. This doesn't actually start the Python process, but verifies that
@@ -109,12 +109,15 @@ public class CNNVariantScore extends VariantWalker {
     private boolean waitforBatchCompletion = false;
     private File scoreFile;
 
+    private String scoreKey;
+
     @Override
     protected String[] customCommandLineValidation(){
         if(inferenceBatchSize > transferBatchSize){
             String[] errors = {"Inference batch size must be less than or equal to transfer batch size."};
             return errors;
         }
+
         return null;
     }
 
@@ -125,6 +128,8 @@ public class CNNVariantScore extends VariantWalker {
 
     @Override
     public void onTraversalStart() {
+        setScoreKeyAndCheckModelAndReadsHarmony();
+
         // Start the Python process, and get a FIFO from the executor to use to send data to Python. The lifetime
         // of the FIFO is managed by the executor; the FIFO will be destroyed when the executor is destroyed.
         pythonExecutor.start(Collections.emptyList(), enableJournal);
@@ -157,7 +162,7 @@ public class CNNVariantScore extends VariantWalker {
             pythonExecutor.sendSynchronousCommand(String.format("tempFile = open('%s', 'w+')" + NL, scoreFile.getAbsolutePath()));
             pythonExecutor.sendSynchronousCommand("import vqsr_cnn" + NL);
             pythonExecutor.sendSynchronousCommand(String.format("args, model = vqsr_cnn.args_and_model_from_semantics('%s')", architecture) + NL);
-            logger.info("Loaded CNN architecture:"+architecture);
+            logger.info("Using key:" + scoreKey + " for CNN architecture:" + architecture);
         } catch (IOException e) {
             throw new GATKException("Error when creating temp file and initializing python executor.", e);
         }
@@ -326,7 +331,7 @@ public class CNNVariantScore extends VariantWalker {
                                 && variant.getReference().getBaseString().equals(scoredVariant[REF_INDEX])
                                 && variant.getAlternateAlleles().toString().equals(scoredVariant[ALT_INDEX])) {
                             final VariantContextBuilder builder = new VariantContextBuilder(variant);
-                            builder.attribute(GATKVCFConstants.CNN_1D_KEY, scoredVariant[KEY_INDEX]);
+                            builder.attribute(scoreKey, scoredVariant[KEY_INDEX]);
                             vcfWriter.add(builder.make());
                         } else {
                             String errorMsg = "Score file out of sync with original VCF. Score file has:"+sv;
@@ -346,13 +351,25 @@ public class CNNVariantScore extends VariantWalker {
         final VCFHeader inputHeader = getHeaderForVariants();
         final Set<VCFHeaderLine> inputHeaders = inputHeader.getMetaDataInSortedOrder();
         final Set<VCFHeaderLine> hInfo = new HashSet<>(inputHeaders);
-        hInfo.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.CNN_1D_KEY));
+        hInfo.add(GATKVCFHeaderLines.getInfoLine(scoreKey));
         VariantRecalibrationUtils.addVQSRStandardHeaderLines(hInfo);
         final TreeSet<String> samples = new TreeSet<>();
         samples.addAll(inputHeader.getGenotypeSamples());
         hInfo.addAll(getDefaultToolVCFHeaderLines());
         final VCFHeader vcfHeader = new VCFHeader(hInfo, samples);
         vcfWriter.writeHeader(vcfHeader);
+    }
+
+    private void setScoreKeyAndCheckModelAndReadsHarmony(){
+        if (useReads && this.hasReads()){
+            scoreKey = GATKVCFConstants.CNN_2D_KEY;
+        } else if (!useReads && !this.hasReads()){
+            scoreKey = GATKVCFConstants.CNN_1D_KEY;
+        } else if (useReads){
+            throw new GATKException("2D Models require a SAM/BAM file specified via -I (-input) argument.");
+        } else {
+            throw new GATKException("1D Models cannot use SAM/BAM files, don't use the -I argument for 1D models.");
+        }
     }
 
 }

@@ -14,8 +14,11 @@ import java.util.Arrays;
  * Created by sam on 1/8/18.
  */
 public class CNNVariantScoreIntegrationTest extends CommandLineProgramTest {
-    private static String architectureHD5 = packageMainResourcesDir + "tools/walkers/vqsr/1d_cnn_mix_train_full_bn.json";
+    private static String architecture1D = packageMainResourcesDir + "tools/walkers/vqsr/1d_cnn_mix_train_full_bn.json";
+    private static String architecture2D = packageMainResourcesDir + "tools/walkers/vqsr/2d_cnn_mix_train.json";
+
     private static final String inputVCF = largeFileTestDir + "VQSR/recalibrated_chr20_start.vcf";
+
     /**
      * Run the tool on a small test VCF.
      */
@@ -25,7 +28,7 @@ public class CNNVariantScoreIntegrationTest extends CommandLineProgramTest {
         argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
                 .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
                 .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
-                .addArgument("architecture", architectureHD5)
+                .addArgument("architecture", architecture1D)
                 .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(argsBuilder.toString(),
@@ -41,7 +44,7 @@ public class CNNVariantScoreIntegrationTest extends CommandLineProgramTest {
 //        argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
 //                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, largeFileTestDir + "VQSR/expected/cnn_1d_chr20_subset_expected.vcf")
 //                .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
-//                .addArgument("architecture", architectureHD5)
+//                .addArgument("architecture", architecture1D)
 //                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 //
 //        runCommandLine(argsBuilder);
@@ -54,7 +57,7 @@ public class CNNVariantScoreIntegrationTest extends CommandLineProgramTest {
         argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
                 .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
                 .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
-                .addArgument("architecture", architectureHD5)
+                .addArgument("architecture", architecture1D)
                 .addArgument("inference-batch-size", "8")
                 .addArgument("transfer-batch-size", "16")
                 .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
@@ -62,5 +65,29 @@ public class CNNVariantScoreIntegrationTest extends CommandLineProgramTest {
         final IntegrationTestSpec spec = new IntegrationTestSpec(argsBuilder.toString(),
                 Arrays.asList(largeFileTestDir + "VQSR/expected/cnn_1d_chr20_subset_expected.vcf"));
         spec.executeTest("testInference", this);
+    }
+
+
+    /**
+     * Run the 2D Model on a small test VCF.
+     */
+    @Test(groups = {"python"})
+    public void testInference2d() throws IOException{
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
+        argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
+                .addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam")
+                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
+                .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
+                .addArgument("architecture", architecture2D)
+                .addArgument("inference-batch-size", "2")
+                .addArgument("transfer-batch-size", "2")
+                .addArgument("use-reads", "true")
+                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+
+        //runCommandLine(argsBuilder);
+        final IntegrationTestSpec spec = new IntegrationTestSpec(argsBuilder.toString(),
+                Arrays.asList(largeFileTestDir + "VQSR/expected/cnn_2d_chr20_subset_expected.vcf"));
+        spec.executeTest("testInference2d", this);
+
     }
 }

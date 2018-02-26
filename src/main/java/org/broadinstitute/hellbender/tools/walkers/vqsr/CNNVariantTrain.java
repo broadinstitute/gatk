@@ -3,9 +3,10 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
+import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
@@ -62,22 +63,23 @@ import java.util.List;
 @ExperimentalFeature
 public class CNNVariantTrain extends CommandLineProgram {
 
-    @Argument(fullName = "data-dir", shortName = "dd", doc = "Directory of training tensors, created if write-tensors is true, otherwise read.", optional = true)
-    private String dataDir = "";
+    @Argument(fullName = "input-data-dir", shortName = "input-data-dir", doc = "Directory of training tensors, created if write-tensors is true, otherwise read.")
+    private String dataDir;
 
-    @Argument(fullName = "tensor-name", shortName = "tn", doc = "Name of the tensors to generate, reference for 1D reference tensors and read_tensor for 2D tensors.", optional = true)
-    private String tensorName = "reference";
+    @Argument(fullName = "output-dir", shortName = "output-dir", doc = "Directory where models and plots will be saved.")
+    private String outputDir;
 
-    @Argument(fullName = "annotation-set", shortName = "as", doc = "Which set of annotations to use.", optional = true)
+    @Argument(fullName = "tensor-name", shortName = "tensor-name", doc = "Name of the tensors to generate, reference for 1D reference tensors and read_tensor for 2D tensors.", optional = true)
+    private TensorMapEnum tensorMap = TensorMapEnum.reference;
+
+    @Hidden
+    @Argument(fullName = "annotation-set", shortName = "annotation-set", doc = "Which set of annotations to use.", optional = true)
     private String annotationSet = "best_practices";
 
-    @Argument(fullName = "output-dir", shortName = "od", doc = "Directory where models and plots will be saved.", optional = true)
-    private String outputDir = "./";
-
-    @Argument(fullName = "model-name", shortName = "mn", doc = "Name of the model to be trained.", optional = true)
+    @Argument(fullName = "model-name", shortName = "model-name", doc = "Name of the model to be trained.", optional = true)
     private String modelName = "variant_filter_model";
 
-    @Argument(fullName = "epochs", shortName = "e", doc = "Maximum number of training epochs.", optional = true, minValue = 0)
+    @Argument(fullName = "epochs", shortName = "epochs", doc = "Maximum number of training epochs.", optional = true, minValue = 0)
     private int epochs = 10;
 
     // Start the Python executor. This does not actually start the Python process, but fails if python can't be located
@@ -87,24 +89,25 @@ public class CNNVariantTrain extends CommandLineProgram {
     @Override
     protected void onStartup() {
         PythonScriptExecutor.checkPythonEnvironmentForPackage("vqsr_cnn");
-
     }
 
     @Override
     protected Object doWork() {
-        final Resource pythonScriptResource = new Resource("training.py", VariantTranchesPython.class);
+        final Resource pythonScriptResource = new Resource("training.py", VariantTranchesFromInfoKey.class);
         List<String> arguments = new ArrayList<>(Arrays.asList(
-                "--tensor_name", tensorName,
+                "--tensor_name", tensorMap.name(),
                 "--annotation_set", annotationSet,
                 "--epochs", Integer.toString(epochs),
                 "--data_dir", dataDir,
                 "--output_dir", outputDir,
                 "--id", modelName));
 
-        if (tensorName.equals("reference")) {
+        if (tensorMap == TensorMapEnum.reference) {
             arguments.addAll(Arrays.asList("--mode", "train_on_reference_tensors_and_annotations"));
-        } else if (tensorName.equals("read_tensor")) {
+        } else if (tensorMap == TensorMapEnum.read_tensor) {
             arguments.addAll(Arrays.asList("--mode", "train_on_read_tensors_and_annotations"));
+        } else {
+            throw new GATKException("Unknown tensor mapping mode:"+tensorMap.name());
         }
 
         logger.info("Args are:"+ Arrays.toString(arguments.toArray()));

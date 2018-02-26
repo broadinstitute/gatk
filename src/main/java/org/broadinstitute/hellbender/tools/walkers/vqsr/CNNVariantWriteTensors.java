@@ -3,10 +3,11 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
+import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
@@ -78,33 +79,34 @@ public class CNNVariantWriteTensors extends CommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.REFERENCE_LONG_NAME,
             shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME,
-            doc = "Reference fasta file.", optional = true)
+            doc = "Reference fasta file.")
     private String reference = "";
 
     @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME,
             shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME,
-            doc = "Input VCF file", optional = true)
+            doc = "Input VCF file")
     private String inputVcf = "";
 
-    @Argument(fullName = "data-dir", shortName = "dd", doc = "Directory of training tensors. Subdivided into train, valid and test sets.", optional = true)
+    @Argument(fullName = "data-dir", shortName = "data-dir", doc = "Directory of training tensors. Subdivided into train, valid and test sets.")
     private String dataDir = "";
 
-    @Argument(fullName = "truth-vcf", shortName = "tv", doc = "Validated VCF file.", optional = true)
+    @Argument(fullName = "truth-vcf", shortName = "truth-vcf", doc = "Validated VCF file.")
     private String truthVcf = "";
 
-    @Argument(fullName = "truth-bed", shortName = "tb", doc = "Confident region of the validated VCF file.", optional = true)
+    @Argument(fullName = "truth-bed", shortName = "truth-bed", doc = "Confident region of the validated VCF file.")
     private String truthBed = "";
 
-    @Argument(fullName = "bam-file", shortName = "bf", doc = "BAM or BAMout file to use for read data when generating 2D tensors.", optional = true)
+    @Argument(fullName = "bam-file", shortName = "bam-file", doc = "BAM or BAMout file to use for read data when generating 2D tensors.", optional = true)
     private String bamFile = "";
 
-    @Argument(fullName = "tensor-name", shortName = "tn", doc = "Name of the tensors to generate.", optional = true)
-    private String tensorName = "reference";
+    @Argument(fullName = "tensor-name", shortName = "tensor-name", doc = "Name of the tensors to generate.")
+    private TensorMapEnum tensorMap = TensorMapEnum.reference;
 
-    @Argument(fullName = "annotation-set", shortName = "as", doc = "Which set of annotations to use.", optional = true)
+    @Hidden
+    @Argument(fullName = "annotation-set", shortName = "annotation-set", doc = "Which set of annotations to use.", optional = true)
     private String annotationSet = "best_practices";
 
-    @Argument(fullName = "max-tensors", shortName = "mt", doc = "Maximum number of tensors to write.", optional = true, minValue = 0)
+    @Argument(fullName = "max-tensors", shortName = "max-tensors", doc = "Maximum number of tensors to write.", optional = true, minValue = 0)
     private int maxTensors = 1000000;
 
     // Start the Python executor. This does not actually start the Python process, but fails if python can't be located
@@ -117,22 +119,24 @@ public class CNNVariantWriteTensors extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
-        final Resource pythonScriptResource = new Resource("training.py", VariantTranchesPython.class);
+        final Resource pythonScriptResource = new Resource("training.py", VariantTranchesFromInfoKey.class);
         List<String> arguments = new ArrayList<>(Arrays.asList(
                 "--reference_fasta", reference,
                 "--input_vcf", inputVcf,
                 "--bam_file", bamFile,
                 "--train_vcf", truthVcf,
                 "--bed_file", truthBed,
-                "--tensor_name", tensorName,
+                "--tensor_name", tensorMap.name(),
                 "--annotation_set", annotationSet,
                 "--samples", Integer.toString(maxTensors),
                 "--data_dir", dataDir));
 
-        if (tensorName.equals("reference")) {
+        if (tensorMap == TensorMapEnum.reference) {
             arguments.addAll(Arrays.asList("--mode", "write_reference_and_annotation_tensors"));
-        } else if (tensorName.equals("read_tensor")) {
+        } else if (tensorMap == TensorMapEnum.read_tensor) {
             arguments.addAll(Arrays.asList("--mode", "write_read_and_annotation_tensors"));
+        } else {
+            throw new GATKException("Unknown tensor mapping mode:"+tensorMap.name());
         }
 
         logger.info("Args are:"+ Arrays.toString(arguments.toArray()));

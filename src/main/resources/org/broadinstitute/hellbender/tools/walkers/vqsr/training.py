@@ -45,8 +45,16 @@ def write_reference_and_annotation_tensors(args, include_dna=True, include_annot
         raise ValueError('Tensor map: ', args.tensor_name, ' is not one of the known 1D Tensor Maps:', str(tensor_maps.TENSOR_MAPS_1D))
 
     record_dict = SeqIO.to_dict(SeqIO.parse(args.reference_fasta, "fasta"))
-    vcf_reader = vcf.Reader(open(args.input_vcf, 'r'))
-    vcf_ram = vcf.Reader(open(args.train_vcf, 'rb'))
+    if os.path.splitext(args.input_vcf)[-1].lower() == '.gz':
+        vcf_reader = vcf.Reader(open(args.input_vcf, 'rb'))
+    else:
+        vcf_reader = vcf.Reader(open(args.input_vcf, 'r'))
+
+    if os.path.splitext(args.train_vcf)[-1].lower() == '.gz':
+        vcf_ram = vcf.Reader(open(args.train_vcf, 'rb'))
+    else:
+        vcf_ram = vcf.Reader(open(args.train_vcf, 'r'))
+
     bed_dict = bed_file_to_dict(args.bed_file)
     stats = Counter()
 

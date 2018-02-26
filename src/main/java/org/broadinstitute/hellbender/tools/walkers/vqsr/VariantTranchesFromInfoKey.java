@@ -13,7 +13,6 @@ import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -57,11 +56,11 @@ import java.util.stream.Collectors;
  *
  * <h4>Apply tranche filters based on CNN_1D scores</h4>
  * <pre>
- * gatk VariantTranchesPython \
+ * gatk VariantTranchesFromInfoKey \
  *   -V input.vcf.gz \
  *   --snp-truth-vcf hapmap.vcf \
  *   --indel-truth-vcf mills.vcf \
- *   --score-key CNN_1D \
+ *   --info-key CNN_1D \
  *   --tranche 99.9 --tranche 99.0 --tranche 95 \
  *   --max-sites 8000 \
  *   -O filtered.vcf
@@ -75,7 +74,7 @@ import java.util.stream.Collectors;
 )
 @DocumentedFeature
 @ExperimentalFeature
-public class VariantTranchesPython extends CommandLineProgram {
+public class VariantTranchesFromInfoKey extends CommandLineProgram {
     @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME,
             shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME,
             doc = "Input VCF file")
@@ -86,16 +85,16 @@ public class VariantTranchesPython extends CommandLineProgram {
             doc = "Output VCF file")
     private String outputVcf = null;
 
-    @Argument(fullName = "snp-truth-vcf", shortName = "stv", doc = "Input file of known common SNP sites.")
+    @Argument(fullName = "snp-truth-vcf", shortName = "snp-truth-vcf", doc = "Input file of known common SNP sites.")
     private String snpTruthVcf = null;
 
-    @Argument(fullName = "indel-truth-vcf", shortName = "itv", doc = "Input file of known common INDEL sites.")
+    @Argument(fullName = "indel-truth-vcf", shortName = "indel-truth-vcf", doc = "Input file of known common INDEL sites.")
     private String indelTruthVcf = null;
 
-    @Argument(fullName = "score-key", shortName = "sk", doc = "Score key must be in the INFO field of the input VCF.")
-    private String scoreKey = "CNN_1D";
+    @Argument(fullName = "info-key", shortName = "info-key", doc = "The key must be in the INFO field of the input VCF.")
+    private String infoKey = "CNN_1D";
 
-    @Argument(fullName = "max-sites", shortName = "s", doc = "Maximum number of truth VCF sites to check.")
+    @Argument(fullName = "max-sites", shortName = "max-sites", doc = "Maximum number of truth VCF sites to check.")
     private int maxSites = 1200;
 
     @Argument(fullName="tranche",
@@ -127,12 +126,12 @@ public class VariantTranchesPython extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
-        final Resource pythonScriptResource = new Resource("tranches.py", VariantTranchesPython.class);
+        final Resource pythonScriptResource = new Resource("tranches.py", VariantTranchesFromInfoKey.class);
         final List<String> snpArguments = new ArrayList<>(Arrays.asList(
                 "--mode", "write_snp_tranches",
                 "--input_vcf", inputVcf,
                 "--train_vcf", snpTruthVcf,
-                "--score_keys", scoreKey,
+                "--score_keys", infoKey,
                 trancheString,
                 "--samples", Integer.toString(maxSites),
                 "--output_vcf", tempFile.getAbsolutePath()));
@@ -158,7 +157,7 @@ public class VariantTranchesPython extends CommandLineProgram {
                 "--mode", "write_indel_tranches",
                 "--input_vcf", tempFile.getAbsolutePath(),
                 "--train_vcf", indelTruthVcf,
-                "--score_keys", scoreKey,
+                "--score_keys", infoKey,
                 trancheString,
                 "--samples", Integer.toString(maxSites),
                 "--output_vcf", outputVcf));
