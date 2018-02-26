@@ -8,7 +8,6 @@ from .inference_task_base import Sampler, Caller, CallerUpdateSummary,\
 from .. import config, types
 from ..models.model_ploidy import PloidyModelConfig, PloidyModel,\
     PloidyWorkspace, PloidyEmissionBasicSampler, PloidyBasicCaller
-from ..inference.fancy_optimizers import FancyAdamax
 
 _logger = logging.getLogger(__name__)
 

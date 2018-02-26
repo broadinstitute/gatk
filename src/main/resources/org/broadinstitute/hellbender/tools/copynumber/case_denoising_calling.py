@@ -169,15 +169,19 @@ if __name__ == "__main__":
     # import model configuration and update args dict
     update_args_dict_from_exported_model(args.input_model_path, args_dict)
 
-    # setup the case denoising and calling task
+    # instantiate config classes
     denoising_config = gcnvkernel.DenoisingModelConfig.from_args_dict(args_dict)
     calling_config = gcnvkernel.CopyNumberCallingConfig.from_args_dict(args_dict)
     inference_params = gcnvkernel.HybridInferenceParameters.from_args_dict(args_dict)
+
+    # instantiate and initialize the workspace
     shared_workspace = gcnvkernel.DenoisingCallingWorkspace(
         denoising_config, calling_config, modeling_interval_list,
         n_st, sample_names, sample_metadata_collection)
+
     initial_params_supplier = gcnvkernel.DefaultDenoisingModelInitializer(
         denoising_config, calling_config, shared_workspace)
+
     task = gcnvkernel.CaseDenoisingCallingTask(
         denoising_config, calling_config, inference_params,
         shared_workspace, initial_params_supplier, args.input_model_path)
@@ -198,7 +202,7 @@ if __name__ == "__main__":
 
     # save calls
     gcnvkernel.io_denoising_calling.SampleDenoisingAndCallingPosteriorsExporter(
-        shared_workspace, task.continuous_model, task.continuous_model_approx,
+        denoising_config, calling_config, shared_workspace, task.continuous_model, task.continuous_model_approx,
         args.output_calls_path)()
 
     # save a copy of targets in the calls path

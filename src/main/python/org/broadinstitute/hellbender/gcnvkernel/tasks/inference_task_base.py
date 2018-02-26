@@ -3,7 +3,6 @@ import pymc3 as pm
 import theano as th
 import theano.tensor as tt
 import inspect
-import sys
 import io
 
 import logging

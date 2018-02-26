@@ -21,7 +21,10 @@ from .structs.metadata import IntervalListMetadata, SampleMetadataCollection, \
 from .preprocess.interval_list_mask import IntervalListMask
 from .io import io_commons, io_consts, io_ploidy, io_denoising_calling, \
     io_intervals_and_counts, io_metadata, io_adamax
-from .utils import cli_commons
+from .utils import cli_commons, math
+
+# post-processing
+from .postprocess.viterbi_segmentation import ViterbiSegmentationEngine
 
 # structs
 from .structs.interval import Interval

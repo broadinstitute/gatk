@@ -7,6 +7,7 @@ import pymc3 as pm
 import os
 import json
 import re
+import filecmp
 
 from .._version import __version__ as gcnvkernel_version
 from . import io_consts
@@ -57,6 +58,12 @@ def get_sample_name_from_txt_file(input_path: str) -> str:
             return line.strip()
 
 
+def write_sample_name_to_txt_file(output_path: str, sample_name: str):
+    """Writes sample name to a text file."""
+    with open(os.path.join(output_path, io_consts.default_sample_name_txt_filename), 'w') as f:
+        f.write(sample_name + '\n')
+
+
 def assert_output_path_writable(output_path: str,
                                 try_creating_output_path: bool = True):
     """Assert an output path is either writable or can be created upon request.
@@ -99,7 +106,9 @@ def write_ndarray_to_tsv(output_file: str,
                          array: np.ndarray,
                          comment='@',
                          delimiter='\t',
-                         extra_comment_lines: Optional[List[str]] = None) -> None:
+                         extra_comment_lines: Optional[List[str]] = None,
+                         header: Optional[str] = None,
+                         write_shape_info: bool = True) -> None:
     """Write an vector or matrix ndarray to .tsv file.
 
     Note:
@@ -111,6 +120,8 @@ def write_ndarray_to_tsv(output_file: str,
         comment: comment character
         delimiter: delimiter character
         extra_comment_lines: (optional) list of extra comment lines to add to the header
+        header: header line (e.g. for representing the ndarray as a table with named columns)
+        write_shape_info: if True, ndarray shape info will be written to the header
 
     Returns:
         None
@@ -125,11 +136,14 @@ def write_ndarray_to_tsv(output_file: str,
         array_matrix = array.reshape((array.size, 1))
 
     with open(output_file, 'w') as f:
-        f.write(comment + 'shape=' + repr(shape) + '\n')
-        f.write(comment + 'dtype=' + str(dtype) + '\n')
+        if write_shape_info:
+            f.write(comment + 'shape=' + repr(shape) + '\n')
+            f.write(comment + 'dtype=' + str(dtype) + '\n')
         if extra_comment_lines is not None:
             for comment_line in extra_comment_lines:
                 f.write(comment + comment_line + '\n')
+        if header is not None:
+            f.write(header + '\n')
         for i_row in range(array_matrix.shape[0]):
             row = array_matrix[i_row, :]
             row_repr = delimiter.join([repr(x) for x in row])
@@ -509,3 +523,11 @@ def assert_mandatory_columns(mandatory_columns_set: Set[str],
     not_found_set = mandatory_columns_set.difference(found_columns_set)
     assert len(not_found_set) == 0, "The following mandatory columns could not be found in \"{0}\"; " \
                                     "cannot continue: {1}".format(input_tsv_file, not_found_set)
+
+
+def assert_files_are_identical(input_file_1: str, input_file_2: str):
+    """Asserts that two given files are bit identical."""
+    assert os.path.isfile(input_file_1), "Cannot find {0}.".format(input_file_1)
+    assert os.path.isfile(input_file_2), "Cannot find {0}.".format(input_file_2)
+    assert filecmp.cmp(input_file_1, input_file_2, shallow=False), \
+        "The following two files are expected to be identical: {0}, {1}".format(input_file_1, input_file_2)

@@ -1,14 +1,13 @@
 import numpy as np
-import pymc3 as pm
 import logging
 from typing import Callable
 import theano as th
 
-from .inference_task_base import Sampler, Caller, CallerUpdateSummary, HybridInferenceTask, HybridInferenceParameters
-from .. import config, types
+from .inference_task_base import Caller, CallerUpdateSummary, HybridInferenceTask, HybridInferenceParameters
+from .. import types
 from ..models.model_denoising_calling import DenoisingModel, DenoisingModelConfig, \
-    CopyNumberEmissionBasicSampler, InitialModelParametersSupplier, \
-    DenoisingCallingWorkspace, CopyNumberCallingConfig, HHMMClassAndCopyNumberBasicCaller
+    InitialModelParametersSupplier, DenoisingCallingWorkspace, CopyNumberCallingConfig, \
+    HHMMClassAndCopyNumberBasicCaller
 from ..io.io_denoising_calling import DenoisingModelImporter
 from ..inference.fancy_optimizers import FancyAdamax
 

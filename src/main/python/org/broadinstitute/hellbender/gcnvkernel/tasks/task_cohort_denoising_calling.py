@@ -9,7 +9,6 @@ from .. import config, types
 from ..models.model_denoising_calling import DenoisingModel, DenoisingModelConfig,\
     CopyNumberEmissionBasicSampler, InitialModelParametersSupplier,\
     DenoisingCallingWorkspace, CopyNumberCallingConfig, HHMMClassAndCopyNumberBasicCaller
-from ..inference.fancy_optimizers import FancyAdamax
 
 _logger = logging.getLogger(__name__)
 

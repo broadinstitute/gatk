@@ -169,7 +169,7 @@ class PloidyWorkspace:
 
         # ploidy priors
         p_ploidy_jk = np.zeros((self.num_contigs, self.ploidy_config.num_ploidy_states), dtype=types.floatX)
-        for j, contig in enumerate(interval_list_metadata.contig_list):
+        for j, contig in enumerate(interval_list_metadata.ordered_contig_list):
             p_ploidy_jk[j, :] = ploidy_config.contig_ploidy_prior_map[contig][:]
         log_p_ploidy_jk = np.log(p_ploidy_jk)
         self.log_p_ploidy_jk: types.TensorSharedVariable = th.shared(log_p_ploidy_jk, name='log_p_ploidy_jk',
