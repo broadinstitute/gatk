@@ -209,24 +209,19 @@ class PloidyModel(GeneralizedContinuousModel):
                           shape=(ploidy_workspace.num_samples,))
         register_as_sample_specific(depth_s, sample_axis=0)
 
-        pi_mosaicism_sj = Beta(name='pi_mosaicism_sj',
+        pi_mosaicism_sj = Beta(name='pi_mosaicism_s',
                                alpha=1.0,
                                beta=100.0,
                                shape=(ploidy_workspace.num_samples, ploidy_workspace.num_contigs,))
         register_as_sample_specific(pi_mosaicism_sj, sample_axis=0)
-        f_mosaicism_sj = Beta(name='f_mosaicism_sj',
-                              alpha=2.0,
-                              beta=2.0,
-                              shape=(ploidy_workspace.num_samples, ploidy_workspace.num_contigs,))
-        register_as_sample_specific(f_mosaicism_sj, sample_axis=0)
 
         # Poisson per-contig counts
         eps_j = HalfNormal('eps_j', sd=0.01, shape=(ploidy_workspace.num_contigs,))
         register_as_global(eps_j)
         mu_sjk = depth_s.dimshuffle(0, 'x', 'x') * t_j.dimshuffle('x', 0, 'x') * norm_bias_j.dimshuffle('x', 0, 'x') * \
-                 (ploidy_workspace.int_ploidy_values_k.dimshuffle('x', 'x', 0) + eps_j.dimshuffle('x', 0, 'x'))
-        mu_mosaic_sjk = depth_s.dimshuffle(0, 'x', 'x') * t_j.dimshuffle('x', 0, 'x') * norm_bias_j.dimshuffle('x', 0, 'x') * \
-                 (tt.maximum(0, (ploidy_workspace.int_ploidy_values_k.dimshuffle('x', 'x', 0) - f_mosaicism_sj.dimshuffle(0, 1, 'x'))) + eps_j.dimshuffle('x', 0, 'x'))
+                 ((1 - pi_mosaicism_sj.dimshuffle(0, 1, 'x')) * ploidy_workspace.int_ploidy_values_k.dimshuffle('x', 'x', 0) +
+                  pi_mosaicism_sj.dimshuffle(0, 1, 'x') * tt.maximum(0, ploidy_workspace.int_ploidy_values_k.dimshuffle('x', 'x', 0) - 1) +
+                  eps_j.dimshuffle('x', 0, 'x'))
 
         # unexplained variance
         psi = HalfNormal(name='psi', sd=0.01)
@@ -236,9 +231,7 @@ class PloidyModel(GeneralizedContinuousModel):
         alpha = tt.inv((tt.exp(psi) - 1.0))
 
         def _get_logp_sjk(_n_sj):
-            _logp_sjk = logsumexp([tt.log(1 - pi_mosaicism_sj.dimshuffle(0, 1, 'x')) + commons.negative_binomial_logp(mu_sjk, alpha.dimshuffle('x', 'x', 'x'), _n_sj.dimshuffle(0, 1, 'x')),
-                                   tt.log(pi_mosaicism_sj.dimshuffle(0, 1, 'x')) + commons.negative_binomial_logp(mu_mosaic_sjk, alpha.dimshuffle('x', 'x', 'x'), _n_sj.dimshuffle(0, 1, 'x'))],
-                                  axis=0)[0]
+            _logp_sjk = commons.negative_binomial_logp(mu_sjk, alpha.dimshuffle('x', 'x', 'x'), _n_sj.dimshuffle(0, 1, 'x'))
             return _logp_sjk
 
         DensityDist(name='n_sj_obs',
