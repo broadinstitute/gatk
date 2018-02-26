@@ -114,22 +114,21 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
         ReducibleAnnotationData myData = new ReducibleAnnotationData(rawMQdata);
         parseRawDataString(myData);
 
-        String annotationString = makeFinalizedAnnotationString(getNumOfReads(vc), myData.getAttributeMap());
-        return Collections.singletonMap(getKeyNames().get(0), (Object)annotationString);
+        String annotationString = makeFinalizedAnnotationString(getNumOfReads(vc, null), myData.getAttributeMap());
+        return Collections.singletonMap(getKeyNames().get(0), annotationString);
     }
 
-    public String makeFinalizedAnnotationString(final int numOfReads, final Map<Allele, Number> perAlleleData) {
-        return String.format("%.2f", Math.sqrt((double)perAlleleData.get(Allele.NO_CALL)/numOfReads));
+    public String makeFinalizedAnnotationString(final int numOfReads, final Map<Allele, Double> perAlleleData) {
+        return String.format("%.2f", Math.sqrt(perAlleleData.get(Allele.NO_CALL)/numOfReads));
     }
 
 
-    public void combineAttributeMap(ReducibleAnnotationData<Number> toAdd, ReducibleAnnotationData<Number> combined) {
+    public void combineAttributeMap(ReducibleAnnotationData<Double> toAdd, ReducibleAnnotationData<Double> combined) {
         if (combined.getAttribute(Allele.NO_CALL) != null) {
-            combined.putAttribute(Allele.NO_CALL, (Double) combined.getAttribute(Allele.NO_CALL) + (Double) toAdd.getAttribute(Allele.NO_CALL));
+            combined.putAttribute(Allele.NO_CALL, combined.getAttribute(Allele.NO_CALL) + toAdd.getAttribute(Allele.NO_CALL));
         } else {
             combined.putAttribute(Allele.NO_CALL, toAdd.getAttribute(Allele.NO_CALL));
         }
-
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})//FIXME
@@ -156,7 +155,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
         }
 
         final Map<String, Object> annotations = new HashMap<>();
-        final ReducibleAnnotationData<Number> myData = new ReducibleAnnotationData<>(null);
+        final ReducibleAnnotationData<Double> myData = new ReducibleAnnotationData<>(null);
         calculateRawData(vc, likelihoods, myData);
         final String annotationString = makeFinalizedAnnotationString(getNumOfReads(vc, likelihoods), myData.getAttributeMap());
         annotations.put(getKeyNames().get(0), annotationString);
@@ -180,7 +179,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
             return vc;
         } else {
             final double squareSum = parseRawDataString(rawMQdata);
-            final int numOfReads = getNumOfReads(vc);
+            final int numOfReads = getNumOfReads(vc, null);
             final double rms = Math.sqrt(squareSum / (double)numOfReads);
             final String finalizedRMSMAppingQuality = formattedValue(rms);
             return new VariantContextBuilder(vc)
@@ -208,38 +207,11 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
              */
             final double squareSum = Double.parseDouble(rawDataString.split(",")[0]);
             return squareSum;
-        } catch (final NumberFormatException e){
-            throw new UserException.BadInput("malformed " + GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY +" annotation: " + rawDataString);
+        } catch (final NumberFormatException e) {
+            throw new UserException.BadInput("malformed " + GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY + " annotation: " + rawDataString);
         }
     }
 
-    /**
-     *
-     * @return the number of reads at the given site, calculated as InfoField {@link VCFConstants#DEPTH_KEY} minus the
-     * format field {@link GATKVCFConstants#MIN_DP_FORMAT_KEY} or DP of each of the HomRef genotypes at that site
-     * @throws UserException.BadInput if the {@link VCFConstants#DEPTH_KEY} is missing or if the calculated depth is <= 0
-     */
-    @VisibleForTesting
-    static int getNumOfReads(final VariantContext vc) {
-        //don't use the full depth because we don't calculate MQ for reference blocks
-        int numOfReads = vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, -1);
-        if(vc.hasGenotypes()) {
-            for(final Genotype gt : vc.getGenotypes()) {
-                if(gt.isHomRef()) {
-                    //site-level DP contribution will come from MIN_DP for gVCF-called reference variants or DP for BP resolution
-                    if (gt.hasExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY)) {
-                        numOfReads -= Integer.parseInt(gt.getExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY).toString());
-                    } else if (gt.hasDP()) {
-                        numOfReads -= gt.getDP();
-                    }
-                }
-            }
-        }
-        if (numOfReads <= 0){
-            numOfReads = -1;  //return -1 to result in a NaN
-        }
-        return numOfReads;
-    }
 
     /**
      *
@@ -253,7 +225,21 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
                              final ReadLikelihoods<Allele> likelihoods) {
         int numOfReads = 0;
         if (vc.hasAttribute(VCFConstants.DEPTH_KEY)) {
-            return getNumOfReads(vc);
+            numOfReads = vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, -1);
+            if(vc.hasGenotypes()) {
+                for(final Genotype gt : vc.getGenotypes()) {
+                    if(gt.isHomRef()) {
+                        //site-level DP contribution will come from MIN_DP for gVCF-called reference variants or DP for BP resolution
+                        if (gt.hasExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY)) {
+                            numOfReads -= Integer.parseInt(gt.getExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY).toString());
+                        } else if (gt.hasDP()) {
+                            numOfReads -= gt.getDP();
+                        }
+                    }
+                }
+            }
+
+        // If there is no depth key, try to compute from the likelihoods
         } else if (likelihoods != null && likelihoods.numberOfAlleles() != 0) {
             for (int i = 0; i < likelihoods.numberOfSamples(); i++) {
                 for (GATKRead read : likelihoods.sampleReads(i)) {

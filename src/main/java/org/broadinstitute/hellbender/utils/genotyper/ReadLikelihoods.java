@@ -188,7 +188,8 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
     /**
      * Create an independent copy of this read-likelihoods collection
      */
-    public ReadLikelihoods<A> copy() {
+    @VisibleForTesting
+    ReadLikelihoods<A> copy() {
 
         final int sampleCount = samples.numberOfSamples();
         final int alleleCount = alleles.numberOfAlleles();

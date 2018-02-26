@@ -277,13 +277,13 @@ public final class RMSMappingQualityUnitTest {
                 .attribute(VCFConstants.DEPTH_KEY, 5 + 10 + 100)
                 .make();
 
-        Assert.assertEquals(RMSMappingQuality.getNumOfReads(vc), 115 - 5 - 10);
+        Assert.assertEquals(RMSMappingQuality.getNumOfReads(vc, null), 115 - 5 - 10);
     }
 
     @Test
     public void testGetNumReadsReturnsNegativeOneWhenDataIsBad(){
         final VariantContext emptyVariantContext = makeVC();
-        Assert.assertEquals(RMSMappingQuality.getNumOfReads(emptyVariantContext), -1);
+        Assert.assertEquals(RMSMappingQuality.getNumOfReads(emptyVariantContext, null), -1);
 
     }
 

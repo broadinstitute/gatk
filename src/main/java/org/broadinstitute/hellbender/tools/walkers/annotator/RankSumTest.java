@@ -20,16 +20,7 @@ import java.util.stream.Collectors;
  * Abstract root for all RankSum based annotations
  */
 public abstract class RankSumTest extends InfoFieldAnnotation implements Annotation {
-    protected static double INVALID_ELEMENT_FROM_READ = Double.NEGATIVE_INFINITY;
-    private boolean useDithering = true;
-
-    public RankSumTest(final boolean useDithering){
-        this.useDithering = useDithering;
-    }
-
-    public RankSumTest(){
-        this(false);
-    }
+    protected final static double INVALID_ELEMENT_FROM_READ = Double.NEGATIVE_INFINITY;
 
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
@@ -50,17 +41,19 @@ public abstract class RankSumTest extends InfoFieldAnnotation implements Annotat
         if( likelihoods != null) {
             if (likelihoods.hasFilledLikelihoods()) {
                 // Default to using the likelihoods to calculate the rank sum
-                fillQualsFromLiklihood(vc, likelihoods, refQuals, altQuals, refLoc);
+                fillQualsFromLikelihood(vc, likelihoods, refQuals, altQuals, refLoc);
 
             // Use the pileup to stratify otherwise
             } else {
                 for (final PileupElement p : likelihoods.getStratifiedPileups(vc).values().stream().flatMap(Collection::stream).collect(Collectors.toList())) {
-                    final OptionalDouble value = getElementForPileupElement(p, refLoc);
-                    if (value.isPresent() && value.getAsDouble() != INVALID_ELEMENT_FROM_READ && isUsableBase(p)) {
-                        if (vc.getReference().equals(Allele.create(p.getBase(), true))) {
-                            refQuals.add(value.getAsDouble());
-                        } else if (vc.hasAllele(Allele.create(p.getBase()))) {
-                            altQuals.add(value.getAsDouble());
+                    if (PileupElement.isUsableBaseForAnnotation(p)) {
+                        final OptionalDouble value = getElementForPileupElement(p, refLoc);
+                        if (value.isPresent() && value.getAsDouble() != INVALID_ELEMENT_FROM_READ) {
+                            if (vc.getReference().equals(Allele.create(p.getBase(), true))) {
+                                refQuals.add(value.getAsDouble());
+                            } else if (vc.hasAllele(Allele.create(p.getBase()))) {
+                                altQuals.add(value.getAsDouble());
+                            }
                         }
                     }
                 }
@@ -85,7 +78,7 @@ public abstract class RankSumTest extends InfoFieldAnnotation implements Annotat
         }
     }
 
-    protected void fillQualsFromLiklihood(VariantContext vc, ReadLikelihoods<Allele> likelihoods, List<Double> refQuals, List<Double> altQuals, int refLoc) {
+    protected void fillQualsFromLikelihood(VariantContext vc, ReadLikelihoods<Allele> likelihoods, List<Double> refQuals, List<Double> altQuals, int refLoc) {
         for (final ReadLikelihoods<Allele>.BestAllele bestAllele : likelihoods.bestAlleles()) {
             final GATKRead read = bestAllele.read;
             final Allele allele = bestAllele.allele;
@@ -137,31 +130,13 @@ public abstract class RankSumTest extends InfoFieldAnnotation implements Annotat
     }
 
     /**
-     * Can the base in this pileup element be used in comparative tests between ref / alt bases?
-     *
-     * Note that this function by default does not allow deletion pileup elements
-     *
-     * @param p the pileup element to consider
-     * @return true if this base is part of a meaningful read for comparison, false otherwise
-     */
-    protected boolean isUsableBase(final PileupElement p) {
-        return !(p.isDeletion() ||
-                p.getMappingQual() == 0 ||
-                p.getMappingQual() == QualityUtils.MAPPING_QUALITY_UNAVAILABLE ||
-                ((int) p.getQual()) < QualityUtils.MIN_USABLE_Q_SCORE); // need the unBAQed quality score here
-    }
-
-    /**
      * Get the element for the given read at the given reference position
      *
-     * By default this function returns null, indicating that the test doesn't support the old style of pileup calculations
+     * This can return an OptionalDouble.empty() if the annotation should not be computed based on the pileups.
      *
      * @param p        the pileup element
      * @return a Double representing the element to be used in the rank sum test, or null if it should not be used
      */
-    protected OptionalDouble getElementForPileupElement(final PileupElement p, final int refLoc) {
-        // default to returning the same value
-        return getElementForRead(p.getRead(), refLoc);
-    }
+    protected abstract OptionalDouble getElementForPileupElement(final PileupElement p, final int refLoc);
 
 }

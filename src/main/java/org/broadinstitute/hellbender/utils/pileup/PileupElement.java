@@ -4,7 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
+import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.locusiterator.AlignmentStateMachine;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -93,15 +93,15 @@ public final class PileupElement {
     }
 
     /**
-     * Create a pileup element for read at offset.
+     * Create a pileup element for read at a particular spot on the genome.
      *
-     * offset must correspond to a valid read offset given the read's cigar, or an IllegalStateException will be throw
+     * offset must correspond to a valid read offset read's alignment and cigar, or an IllegalStateException will be throw
      *
      * @param read a read
      * @param loc A one base location you want to generate your genome
      * @return a valid PileupElement with read and at offset
      */
-    public static PileupElement createPileupForReadAndOffset(final GATKRead read, final Locatable loc) {
+    public static PileupElement createPileupForReadAndGenomeLoc(final GATKRead read, final Locatable loc) {
         Utils.nonNull(read, "read is null");
 
         final AlignmentStateMachine stateMachine = new AlignmentStateMachine(read);
@@ -529,6 +529,20 @@ public final class PileupElement {
      */
     public boolean atStartOfCurrentCigar() {
         return offsetInCurrentCigar == 0;
+    }
+
+    /**
+     * Can the base in this pileup element be used in comparative tests?
+     *
+     * @param p the pileup element to consider
+     *
+     * @return true if this base is part of a meaningful read for comparison, false otherwise
+     */
+    public static boolean isUsableBaseForAnnotation(final PileupElement p) {
+        return !( p.isDeletion() ||
+                p.getMappingQual() == 0 ||
+                p.getMappingQual() == QualityUtils.MAPPING_QUALITY_UNAVAILABLE ||
+                ((int) p.getQual()) < QualityUtils.MIN_USABLE_Q_SCORE);
     }
 
 }

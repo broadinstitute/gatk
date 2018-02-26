@@ -1,9 +1,11 @@
 package org.broadinstitute.hellbender.utils.genotyper;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import org.broadinstitute.hellbender.utils.IndexRange;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
@@ -14,7 +16,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-//TODO comment this off
+/**
+ * Dummy Read-Likelihood container that computes partial likelihoods based on the read pileups for snps.
+ *
+ * Note: this class uses FastUtil collections for speed.
+ */
 public class UnfilledReadsLikelihoods<A extends Allele> extends ReadLikelihoods<A> {
 
     private Map<String, List<PileupElement>> stratifiedPileups;
@@ -50,7 +56,9 @@ public class UnfilledReadsLikelihoods<A extends Allele> extends ReadLikelihoods<
 
     /**
      * Is this container expected to have the per-allele likelihoods calculations filled in.
+     * This will always be false for this class because we can't compute the likelihoods without re-genotyping the reads
      */
+    @Override
     public boolean hasFilledLikelihoods() {
         return false;
     }
@@ -76,7 +84,8 @@ public class UnfilledReadsLikelihoods<A extends Allele> extends ReadLikelihoods<
     /**
      * Create an independent copy of this read-likelihoods collection
      */
-    public ReadLikelihoods<A> copy() {
+    @Override
+    ReadLikelihoods<A> copy() {
 
         final int sampleCount = samples.numberOfSamples();
         final int alleleCount = alleles.numberOfAlleles();
@@ -108,16 +117,24 @@ public class UnfilledReadsLikelihoods<A extends Allele> extends ReadLikelihoods<
     public void changeReads(final Map<GATKRead, GATKRead> readRealignments) {
         throw new UnsupportedOperationException("Cannot alter reads in UnfilledReadsLikelihoods object or cached pileups may be rendered inaccurate, please use a normal ReadsLikelihoods object");
     }
+
     @Override
     public void filterPoorlyModeledReads(final double maximumErrorPerBase) {
         throw new UnsupportedOperationException("Cannot alter reads in UnfilledReadsLikelihoods object or cached pileups may be rendered inaccurate, please use a normal ReadsLikelihoods object");
     }
+
     @Override
     public void addReads(final Map<String,List<GATKRead>> readsBySample, final double initialLikelihood) {
         throw new UnsupportedOperationException("Cannot alter reads in UnfilledReadsLikelihoods object or cached pileups may be rendered inaccurate, please use a normal ReadsLikelihoods object");
     }
+
     @Override
     public void contaminationDownsampling(final Map<String, Double> perSampleDownsamplingFraction) {
+        throw new UnsupportedOperationException("Cannot alter reads in UnfilledReadsLikelihoods object or cached pileups may be rendered inaccurate, please use a normal ReadsLikelihoods object");
+    }
+
+    @Override
+    public void filterToOnlyOverlappingUnclippedReads(final SimpleInterval location) {
         throw new UnsupportedOperationException("Cannot alter reads in UnfilledReadsLikelihoods object or cached pileups may be rendered inaccurate, please use a normal ReadsLikelihoods object");
     }
 }

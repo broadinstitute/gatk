@@ -88,7 +88,7 @@ public final class QualByDepth extends InfoFieldAnnotation implements StandardAn
                     continue;
                 }
             }
-
+            // if there is no AD value or it is a dummy value, we want to look to other means to get the depth
             if (likelihoods != null) {
                 depth += likelihoods.sampleReadCount(likelihoods.indexOfSample(genotype.getSampleName()));
             } else if ( genotype.hasDP() ) {

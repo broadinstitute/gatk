@@ -59,12 +59,16 @@ public final class DepthPerAlleleBySample extends GenotypeAnnotation implements 
 
         int[] counts;
         if (likelihoods.hasFilledLikelihoods()) {
+            // Compute based on the alignment map
             counts = annotateWithLikelihoods(vc, g, alleles, likelihoods);
         } else if (likelihoods.readCount()==0) {
+            // No reads, thus cant compute the AD so do nothing
             return;
         } else if (vc.isSNP()) {
+            // Compute based on pileup bases at the snp site (won't match haplotype caller output)
             counts = annotateWithPileup(vc, likelihoods.getStratifiedPileups(vc).get(g.getSampleName()));
         } else {
+            // Otherwise return an empty AD field for an indel.
             counts = new int[vc.getNAlleles()];
         }
 
@@ -78,15 +82,14 @@ public final class DepthPerAlleleBySample extends GenotypeAnnotation implements 
             alleleCounts.put(allele.getBases()[0], 0);
         }
         for ( final PileupElement p : pileupElements) {
-            if ( alleleCounts.containsKey(p.getBase()) ) {
-                alleleCounts.put(p.getBase(), alleleCounts.get(p.getBase()) + 1);
-            }
+            // only count bases that support alleles in the variant context
+            alleleCounts.computeIfPresent(p.getBase(), (base, count) -> count+ 1);
         }
 
         // we need to add counts in the correct order
         final int[] counts = new int[alleleCounts.size()];
         counts[0] = alleleCounts.get(vc.getReference().getBases()[0]);
-        for (int i = 0; i < vc.getAlternateAlleles().size(); i++) {
+        for (int i = 0; i < vc.getNAlleles() -1; i++) {
             counts[i + 1] = alleleCounts.get(vc.getAlternateAllele(i).getBases()[0]);
         }
         return counts;
@@ -106,7 +109,7 @@ public final class DepthPerAlleleBySample extends GenotypeAnnotation implements 
 
         final int[] counts = new int[alleleCounts.size()];
         counts[0] = alleleCounts.get(vc.getReference()); //first one in AD is always ref
-        for (int i = 0; i < vc.getAlternateAlleles().size(); i++) {
+        for (int i = 0; i < vc.getNAlleles() -1; i++) {
             counts[i + 1] = alleleCounts.get(vc.getAlternateAllele(i));
         }
 

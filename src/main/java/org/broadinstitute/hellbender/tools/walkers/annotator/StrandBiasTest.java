@@ -251,37 +251,17 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
         for (final Map.Entry<String, List<PileupElement>> sample : stratifiedContexts.entrySet() ) {
             final int[] myTable = new int[ARRAY_SIZE];
             for (final PileupElement p : sample.getValue()) {
-
-                if ( ! isUsableBase(p) ) // ignore deletions and bad MQ
-                    continue;
-
-                if ( p.getQual() < minQScoreToConsider || p.getMappingQual() < minQScoreToConsider )
-                    continue;
-
-                updateTable(myTable, Allele.create(p.getBase(), false), p.getRead(), ref, allAlts);
+                if (PileupElement.isUsableBaseForAnnotation(p) && Math.min(p.getQual(), p.getMappingQual()) >= minQScoreToConsider) {
+                    updateTable(myTable, Allele.create(p.getBase(), false), p.getRead(), ref, allAlts);
+                }
             }
 
             if ( passesMinimumThreshold( myTable, minCount ) ) {
                 copyToMainTable(myTable, table);
             }
-
         }
-
         return table;
     }
 
-    /**
-     * Can the base in this pileup element be used in comparative tests?
-     *
-     * @param p the pileup element to consider
-     *
-     * @return true if this base is part of a meaningful read for comparison, false otherwise
-     */
-    private static boolean isUsableBase(final PileupElement p) {
-        return !( p.isDeletion() ||
-                p.getMappingQual() == 0 ||
-                p.getMappingQual() == QualityUtils.MAPPING_QUALITY_UNAVAILABLE ||
-                ((int) p.getQual()) < QualityUtils.MIN_USABLE_Q_SCORE);
-    }
 
 }

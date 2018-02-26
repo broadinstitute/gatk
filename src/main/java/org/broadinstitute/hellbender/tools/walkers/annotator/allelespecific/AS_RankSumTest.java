@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.utils.Histogram;
 import org.broadinstitute.hellbender.utils.MannWhitneyU;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 
 import java.util.*;
 
@@ -45,7 +46,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
         if( likelihoods != null) {
             // Default to using the likelihoods to calculate the rank sum
             if (likelihoods.hasFilledLikelihoods()) {
-                fillQualsFromLiklihood(vc, likelihoods, refQuals, altQuals, refLoc);
+                fillQualsFromLikelihood(vc, likelihoods, refQuals, altQuals, refLoc);
             }
         }
 
@@ -350,5 +351,9 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
         return h.toString();
     }
 
-
+    @Override
+    // Unnecessary for this implementation of Annotate
+    protected final OptionalDouble getElementForPileupElement(PileupElement p, int refLoc) {
+        return null;
+    }
 }

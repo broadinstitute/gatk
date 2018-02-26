@@ -1,11 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import htsjdk.samtools.seekablestream.SeekablePathStream;
+import htsjdk.tribble.Feature;
 import htsjdk.tribble.readers.LineIterator;
 import htsjdk.tribble.readers.PositionalBufferedStream;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.engine.FeatureDataSourceUnitTest;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
@@ -33,17 +36,11 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
     );
 
     //TODO because of differences between how GATK3 and GATK4 handle capturing reads for spanning deletions (Namely 3 only looks for reads overlapping the first site, 4 gets all reads over the span)
-    //TODO then we want ot ignore affected attributes for concordance tests
+    //TODO then we want to ignore affected attributes for concordance tests
     private static final List<String> DEPTH_ATTRIBUTES_TO_IGNORE = Arrays.asList(
             "QD",
             "DP",
             "MQ");
-
-    final String testFile = getToolTestDataDir() + "vcfexample2.vcf";
-
-    public static String baseTestString() {
-        return "-R " + b37_reference_20_21 + " -O %s ";
-    }
 
     //==================================================================================================================
     // Testing
@@ -60,32 +57,13 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         }, reference);
     }
 
-    //TODO if this gets generalized to another class this should be made more robust to differing number of header lines
     private void assertHeadersMatch(File input, File expected, List<String> linesToIgnore) throws IOException {
         final VCFHeader expectedHeader = getHeaderFromFile(expected);
         final VCFHeader inputHeader = getHeaderFromFile(input);
 
-        Iterator<VCFHeaderLine> inputItr = inputHeader.getMetaDataInSortedOrder().iterator();
-        Iterator<VCFHeaderLine> expectedItr = expectedHeader.getMetaDataInSortedOrder().iterator();
-
-        while (inputItr.hasNext() && expectedItr.hasNext()) {
-            VCFHeaderLine expectedLine = expectedItr.next();
-            VCFHeaderLine inputLine = inputItr.next();
-            while (shouldFilterLine(inputLine, linesToIgnore)) {
-                inputLine = inputItr.hasNext()?inputItr.next():null;
-            }
-            while (shouldFilterLine(expectedLine, linesToIgnore)) {
-                expectedLine = expectedItr.hasNext()?expectedItr.next():null;
-            }
-            if ((inputLine == null || expectedLine==null) && expectedLine!=inputLine) {
-                Assert.fail("Files had a differing number of un-skipped lines");
-            } else {
-                Assert.assertEquals(inputLine, expectedLine);
-            }
-
-        }
-        Assert.assertFalse(inputItr.hasNext());
-        Assert.assertFalse(expectedItr.hasNext());
+        final Iterator<VCFHeaderLine> itr = expectedHeader.getMetaDataInSortedOrder().stream().filter(line -> !shouldFilterLine(line, linesToIgnore)).iterator();
+        final Iterator<VCFHeaderLine> itr2 = inputHeader.getMetaDataInSortedOrder().stream().filter(line -> !shouldFilterLine(line, linesToIgnore)).iterator();
+        Assert.assertEquals(itr, itr2);
     }
 
     private boolean shouldFilterLine(VCFHeaderLine line, List<String> linesToIgnore) {
@@ -141,10 +119,9 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
     }
 
     private static VCFHeader getHeaderFromFile(final File vcfFile) throws IOException {
-        SeekablePathStream stream = new SeekablePathStream(vcfFile.toPath());
-        VCFHeader header = VCFHeaderReader.readHeaderFrom(new SeekablePathStream(vcfFile.toPath()));
-        stream.close();
-        return header;
+        try (SeekablePathStream stream = new SeekablePathStream(vcfFile.toPath())) {
+            return VCFHeaderReader.readHeaderFrom(stream);
+        }
     }
 
     private static <T> void assertForEachElementInLists(final List<T> actual, final List<T> expected, final BiConsumer<T, T> assertion) {
@@ -162,7 +139,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
     //==================================================================================================================
 
     @Test
-    public void GATK3LargeConcoranceTest() throws IOException {
+    public void GATK3LargeConcordanceTest() throws IOException {
         assertVariantContextsMatch(getTestFile("HCOutput.NoAnnotations.vcf"), new File(getToolTestDataDir() + "expected/integrationTest.vcf"), Arrays.asList("-G", "Standard", "-G", "AS_Standard", "-L", "20:10000000-10100000", "-I", NA12878_20_21_WGS_bam), b37_reference_20_21);
     }
 
@@ -187,7 +164,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         runVariantAnnotatorAndAssertSomething(getTestFile("vcfexamplemultisample.vcf"), new File(getToolTestDataDir() + "expected/testHasAnnotsAsking1.vcf"), Arrays.asList("-G", "Standard", "-I", largeFileTestDir + "CEUTrio.multisample.b37.1M-1M50k.bam"),
                 (a, e) -> {
                     // We need to filter out sites where we saw a DP of 250 because we are comparing the results to GATK3, which downsamples to 250 reads per sample, which GATK4 does not currently support.
-                    if (!e.getGenotypes().stream().anyMatch(g -> g.hasDP() && g.getDP() >= 250)) {
+                    if (e.getGenotypes().stream().noneMatch(g -> g.hasDP() && g.getDP() >= 250)) {
                         VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, header);
                     }
                 },
@@ -201,7 +178,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         runVariantAnnotatorAndAssertSomething(getTestFile("vcfexamplemultisampleempty.vcf"), new File(getToolTestDataDir() + "expected/testHasNoAnnotsNotAsking1.vcf"), Arrays.asList( "-I", largeFileTestDir + "CEUTrio.multisample.b37.1M-1M50k.bam"),
                 (a, e) -> {
                     // We need to filter out sites where we saw a DP of 250 because we are comparing the results to GATK3, which downsamples to 250 reads per sample, which GATK4 does not currently support.
-                    if (!e.getGenotypes().stream().anyMatch(g -> g.hasDP() && g.getDP() >= 250)) {
+                    if (e.getGenotypes().stream().noneMatch(g -> g.hasDP() && g.getDP() >= 250)) {
                         VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, header);
                     }
                 },
@@ -215,7 +192,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         runVariantAnnotatorAndAssertSomething(getTestFile("vcfexamplemultisampleempty.vcf"), new File(getToolTestDataDir() + "expected/testHasNoAnnotsAsking1.vcf"), Arrays.asList("-G", "Standard", "-I", largeFileTestDir + "CEUTrio.multisample.b37.1M-1M50k.bam"),
                 (a, e) -> {
                     // We need to filter out sites where we saw a DP of 250 because we are comparing the results to GATK3, which downsamples to 250 reads per sample, which GATK4 does not currently support.
-                    if (!e.getGenotypes().stream().anyMatch(g -> g.hasDP() && g.getDP() >= 250)) {
+                    if (e.getGenotypes().stream().noneMatch(g -> g.hasDP() && g.getDP() >= 250)) {
                         VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, header);
                     }
                 },
@@ -231,7 +208,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
     }
     @Test
     public void testMultipleIdsWithDbsnp() throws IOException {
-        assertVariantContextsMatch(getTestFile("vcfdbsnpwithIDs.vcf"), getTestFile("expected/testMultipleIdsWithDbsnp.vcf"), Arrays.asList("-G", "Standard", "-L",getToolTestDataDir() + "vcfdbsnpwithIDs.vcf", "--alwaysAppendDbsnpId", "--dbsnp", dbsnp_138_b37_20_21_vcf), null);
+        assertVariantContextsMatch(getTestFile("vcfdbsnpwithIDs.vcf"), getTestFile("expected/testMultipleIdsWithDbsnp.vcf"), Arrays.asList("-G", "Standard", "-L",getToolTestDataDir() + "vcfdbsnpwithIDs.vcf", "--dbsnp", dbsnp_138_b37_20_21_vcf), null);
     }
     @Test
     public void testDBTagWithHapMap() throws IOException {
@@ -247,7 +224,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         assertVariantContextsMatch(getTestFile("HCOutput.NoAnnotations.vcf"),
                 getTestFile("expected/testWithAllAnnotations.vcf"),
                 //TODO remove the -AX here when https://github.com/broadinstitute/gatk/issues/3944 is resolved
-                Arrays.asList("--useAllAnnotations", "-AX", "ReferenceBases", "-L", "20:10000000-10100000", "-I", NA12878_20_21_WGS_bam),
+                Arrays.asList("--use-all-annotations", "-AX", "ReferenceBases", "-L", "20:10000000-10100000", "-I", NA12878_20_21_WGS_bam),
                  b37_reference_20_21);
     }
 
@@ -272,7 +249,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
     public void testUsingExpression() throws IOException {
         assertVariantContextsMatch(getTestFile("vcfexample3empty.vcf"),
                 new File(getToolTestDataDir() + "expected/testUsingExpression.vcf"),
-                Arrays.asList("--resourceAlleleConcordance",  "--resource",  "foo:" + getToolTestDataDir() + "targetAnnotations.vcf",
+                Arrays.asList("--resource-allele-concordance",  "--resource",  "foo:" + getToolTestDataDir() + "targetAnnotations.vcf",
                         "-G", "Standard", "-E", "foo.AF", "-L", getToolTestDataDir()+"vcfexample3empty.vcf"), b37_reference_20_21);
     }
 
@@ -280,7 +257,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
     public void testUsingExpressionAlleleMisMatch() throws IOException {
         assertVariantContextsMatch(getTestFile("vcfexample3empty-mod.vcf"),
                 new File(getToolTestDataDir() + "expected/testUsingExpressionAlleleMisMatch.vcf"),
-                Arrays.asList("--resourceAlleleConcordance",  "--resource",  "foo:" + getToolTestDataDir() + "targetAnnotations.vcf",
+                Arrays.asList("--resource-allele-concordance",  "--resource",  "foo:" + getToolTestDataDir() + "targetAnnotations.vcf",
                         "-G", "Standard", "-E", "foo.AF", "-L", getToolTestDataDir()+"vcfexample3empty-mod.vcf"), b37_reference_20_21);
     }
 
@@ -309,28 +286,6 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
                 b37_reference_20_21, Collections.emptyList());
     }
 
-//
-//
-//    @Test(enabled = true)
-//    public void testChromosomeCountsPed() {
-//        final String       nD5 = "0a18fe81dde8d0f94f9ac5e5f65d00d5";
-//        WalkerTestSpec spec = new WalkerTestSpec(
-//                "-T VariantAnnotator -R " + b37KGReference + " -A ChromosomeCounts --variant:vcf " + privateTestDir + "ug.random50000.subset300bp.chr1.family.vcf" +
-//                        " -L " + privateTestDir + "ug.random50000.subset300bp.chr1.family.vcf --no_cmdline_in_header -ped " + privateTestDir + "ug.random50000.family.ped -o %s", 1,
-//                Arrays.asList(MD5));
-//        executeTest("Testing ChromosomeCounts annotation with PED file", spec);
-//    }
-//
-    //TODO this has no arguments just yet
-//    @Test(enabled = true)
-//    public void testInbreedingCoeffPed() {
-//        final String MD5 = "95408408863cc81c63ec3c53716bf9d2";
-//        WalkerTestSpec spec = new WalkerTestSpec(
-//                "-T VariantAnnotator -R " + b37KGReference + " -A InbreedingCoeff --variant:vcf " + privateTestDir + "ug.random50000.subset300bp.chr1.family.vcf" +
-//                        " -L " + privateTestDir + "ug.random50000.subset300bp.chr1.family.vcf --no_cmdline_in_header -ped " + privateTestDir + "ug.random50000.family.ped -o %s", 1,
-//                Arrays.asList(MD5));
-//        executeTest("Testing InbreedingCoeff annotation with PED file", spec);
-//    }
 
     @Test
     public void testAlleleTrimming() throws IOException {
@@ -361,32 +316,20 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
 
         // confirm that the FisherStrand values are identical for the two pipelines
-        final VCFCodec codec = new VCFCodec();
-        final FileInputStream s = new FileInputStream(outputVCF);
-        final LineIterator lineIterator = codec.makeSourceFromStream(new PositionalBufferedStream(s));
-        codec.readHeader(lineIterator);
+        Iterator<Feature> outFeatureInput = new FeatureDataSource<>(outputVCF).iterator();
+        Iterator<Feature> expectedFeatureInput = new FeatureDataSource<>(outputVCF).iterator();
 
-        final VCFCodec codecAnn = new VCFCodec();
-        final FileInputStream sAnn = new FileInputStream(outputWithAddedFS);
-        final LineIterator lineIteratorAnn = codecAnn.makeSourceFromStream(new PositionalBufferedStream(sAnn));
-        codecAnn.readHeader(lineIteratorAnn);
-
-        while( lineIterator.hasNext() && lineIteratorAnn.hasNext() ) {
-            final String line = lineIterator.next();
-            Assert.assertFalse(line == null);
-            final VariantContext vc = codec.decode(line);
-
-            final String lineAnn = lineIteratorAnn.next();
-            Assert.assertFalse(lineAnn == null);
-            final VariantContext vcAnn = codecAnn.decode(lineAnn);
+        while( outFeatureInput.hasNext() && expectedFeatureInput.hasNext() ) {
+            final VariantContext vc = (VariantContext) outFeatureInput.next();
+            final VariantContext vcAnn = (VariantContext) expectedFeatureInput.next();
 
             Assert.assertTrue(vc.hasAttribute("FS"));
             Assert.assertTrue(vcAnn.hasAttribute("FS"));
             Assert.assertEquals(vc.getAttributeAsDouble("FS", 0.0), vcAnn.getAttributeAsDouble("FS", -1.0));
         }
 
-        Assert.assertFalse(lineIterator.hasNext());
-        Assert.assertFalse(lineIteratorAnn.hasNext());
+        Assert.assertFalse(outFeatureInput.hasNext());
+        Assert.assertFalse(expectedFeatureInput.hasNext());
     }
 
 }

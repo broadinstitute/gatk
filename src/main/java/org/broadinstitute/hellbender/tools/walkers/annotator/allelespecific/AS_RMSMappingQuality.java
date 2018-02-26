@@ -46,7 +46,8 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
 
     private final String printFormat = "%.2f";
 
-    private static final OneShotLogger logger = new OneShotLogger(AS_RMSMappingQuality.class);
+    private static final OneShotLogger allele_logger = new OneShotLogger(AS_RMSMappingQuality.class);
+    private static final OneShotLogger genotype_logger = new OneShotLogger(AS_RMSMappingQuality.class);
     public static final String SPLIT_DELIM = "\\|"; //String.split takes a regex, so we need to escape the pipe
     public static final String PRINT_DELIM = "|";
 
@@ -60,7 +61,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
             return Collections.emptyMap();
         }
         final Map<String, Object> annotations = new HashMap<>();
-        final ReducibleAnnotationData<Number> myData = new ReducibleAnnotationData<>(null);
+        final ReducibleAnnotationData<Double> myData = new ReducibleAnnotationData<>(null);
         getRMSDataFromLikelihoods(likelihoods, myData);
         final String annotationString = makeFinalizedAnnotationString(vc, myData.getAttributeMap());
         annotations.put(getKeyNames().get(0), annotationString);
@@ -78,7 +79,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
         }
 
         final Map<String, Object> annotations = new LinkedHashMap<>();
-        final ReducibleAnnotationData<Number> myData = new ReducibleAnnotationData<>(null);
+        final ReducibleAnnotationData<Double> myData = new ReducibleAnnotationData<>(null);
         getRMSDataFromLikelihoods(likelihoods, myData);
         final String annotationString = makeRawAnnotationString(vc.getAlleles(), myData.getAttributeMap());
         annotations.put(getRawKeyName(), annotationString);
@@ -109,10 +110,10 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
     @SuppressWarnings({"unchecked", "rawtypes"})//FIXME generics here blow up
     public Map<String, Object> combineRawData(final List<Allele> vcAlleles, final List<ReducibleAnnotationData<?>>  annotationList) {
         //VC already contains merged alleles from ReferenceConfidenceVariantContextMerger
-        ReducibleAnnotationData<Number> combinedData = new AlleleSpecificAnnotationData(vcAlleles, null);
+        ReducibleAnnotationData<Double> combinedData = new AlleleSpecificAnnotationData(vcAlleles, null);
 
         for (final ReducibleAnnotationData<?> currentValue : annotationList) {
-            ReducibleAnnotationData<Number> value = (ReducibleAnnotationData<Number>)currentValue;
+            ReducibleAnnotationData<Double> value = (ReducibleAnnotationData<Double>)currentValue;
             parseRawDataString(value);
             combineAttributeMap(value, combinedData);
 
@@ -123,7 +124,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
         return annotations;
     }
 
-    public void combineAttributeMap(final ReducibleAnnotationData<Number> toAdd, final ReducibleAnnotationData<Number> combined) {
+    public void combineAttributeMap(final ReducibleAnnotationData<Double> toAdd, final ReducibleAnnotationData<Double> combined) {
         //check that alleles match
         for (final Allele currentAllele : combined.getAlleles()){
             //combined is initialized with all alleles, but toAdd might have only a subset
@@ -137,7 +138,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
         }
     }
 
-    protected void parseRawDataString(final ReducibleAnnotationData<Number> myData) {
+    protected void parseRawDataString(final ReducibleAnnotationData<Double> myData) {
         final String rawDataString = myData.getRawData();
         //get per-allele data by splitting on allele delimiter
         final String[] rawDataPerAllele = rawDataString.split(SPLIT_DELIM);
@@ -181,7 +182,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
     @Override
     public String getRawKeyName() { return GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY; }
 
-    private void getRMSDataFromLikelihoods(final ReadLikelihoods<Allele> likelihoods, ReducibleAnnotationData<Number> myData) {
+    private void getRMSDataFromLikelihoods(final ReadLikelihoods<Allele> likelihoods, ReducibleAnnotationData<Double> myData) {
         for ( final ReadLikelihoods<Allele>.BestAllele bestAllele : likelihoods.bestAlleles() ) {
             if (bestAllele.isInformative()) {
                 final int mq = bestAllele.read.getMappingQuality();
@@ -193,7 +194,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
         }
     }
 
-    private String makeRawAnnotationString(final List<Allele> vcAlleles, final Map<Allele, Number> perAlleleValues) {
+    private String makeRawAnnotationString(final List<Allele> vcAlleles, final Map<Allele, Double> perAlleleValues) {
         String annotationString = "";
         for (final Allele current : vcAlleles) {
             if (!annotationString.isEmpty()) {
@@ -208,7 +209,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
         return annotationString;
     }
 
-    private String makeFinalizedAnnotationString(final VariantContext vc, final Map<Allele, Number> perAlleleValues) {
+    private String makeFinalizedAnnotationString(final VariantContext vc, final Map<Allele, Double> perAlleleValues) {
         final Map<Allele, Integer> variantADs = getADcounts(vc);
         String annotationString = "";
         for (final Allele current : vc.getAlternateAlleles()) {
@@ -218,7 +219,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
             if (perAlleleValues.containsKey(current)) {
                 annotationString += String.format(printFormat, Math.sqrt((double) perAlleleValues.get(current) / variantADs.get(current)));
             } else {
-                logger.warn("ERROR: VC allele is not found in annotation alleles -- maybe there was trimming?");
+                allele_logger.warn("ERROR: VC allele is not found in annotation alleles -- maybe there was trimming?");
             }
         }
         return annotationString;
@@ -227,7 +228,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
     private Map<Allele, Integer> getADcounts(final VariantContext vc) {
         final GenotypesContext genotypes = vc.getGenotypes();
         if ( genotypes == null || genotypes.size() == 0 ) {
-            logger.warn("VC does not have genotypes -- annotations were calculated in wrong order");
+            genotype_logger.warn("VC does not have genotypes -- annotations were calculated in wrong order");
             return null;
         }
 

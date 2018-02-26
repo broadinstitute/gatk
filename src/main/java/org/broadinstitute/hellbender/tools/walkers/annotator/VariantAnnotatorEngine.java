@@ -3,18 +3,17 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import com.google.common.collect.Sets;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.DefaultGATKVariantAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationArgumentCollection;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.FeatureInput;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotationData;
 import org.broadinstitute.hellbender.utils.ClassUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -37,8 +36,10 @@ public final class VariantAnnotatorEngine {
     private List<VAExpression> expressions = new ArrayList<>();
 
     private final VariantOverlapAnnotator variantOverlapAnnotator;
-    private Boolean expressionAlleleConcordance;
-    private final Boolean useRawAnnotations;
+    private boolean expressionAlleleConcordance;
+    private final boolean useRawAnnotations;
+
+    private final static Logger logger = LogManager.getLogger(VariantAnnotatorEngine.class);
 
     private VariantAnnotatorEngine(final AnnotationManager annots,
                                    final FeatureInput<VariantContext> dbSNPInput,
@@ -108,7 +109,7 @@ public final class VariantAnnotatorEngine {
     public static VariantAnnotatorEngine ofAllMinusExcluded(final List<String> annotationsToExclude,
                                                             final FeatureInput<VariantContext> dbSNPInput,
                                                             final List<FeatureInput<VariantContext>> comparisonFeatureInputs,
-                                                            final Boolean useRawAnnotations) {
+                                                            final boolean useRawAnnotations) {
         Utils.nonNull(annotationsToExclude, "annotationsToExclude is null");
         Utils.nonNull(comparisonFeatureInputs, "comparisonFeatureInputs is null");
         return new VariantAnnotatorEngine(AnnotationManager.ofAllMinusExcluded(annotationsToExclude), dbSNPInput, comparisonFeatureInputs, useRawAnnotations);
@@ -156,7 +157,7 @@ public final class VariantAnnotatorEngine {
                                                                  final List<String> annotationsToExclude,
                                                                  final FeatureInput<VariantContext> dbSNPInput,
                                                                  final List<FeatureInput<VariantContext>> comparisonFeatureInputs,
-                                                                 final Boolean useRawAnnotations) {
+                                                                 final boolean useRawAnnotations) {
         Utils.nonNull(annotationGroupsToUse, "annotationGroupsToUse is null");
         Utils.nonNull(annotationsToUse, "annotationsToUse is null");
         Utils.nonNull(annotationsToExclude, "annotationsToExclude is null");
@@ -179,7 +180,7 @@ public final class VariantAnnotatorEngine {
     public static VariantAnnotatorEngine ofSelectedMinusExcluded(final GATKAnnotationArgumentCollection argumentCollection,
                                                                  final FeatureInput<VariantContext> dbSNPInput,
                                                                  final List<FeatureInput<VariantContext>> comparisonFeatureInputs,
-                                                                 final Boolean useRawAnnotations) {
+                                                                 final boolean useRawAnnotations) {
         return ofSelectedMinusExcluded(argumentCollection.getUserEnabledAnnotationGroups(),
                 argumentCollection.getUserEnabledAnnotationNames(),
                 argumentCollection.getUserDisabledAnnotationNames(),
@@ -248,10 +249,37 @@ public final class VariantAnnotatorEngine {
             }
         }
 
+        // Add header lines corresponding to the expression target files
+        for (final VariantAnnotatorEngine.VAExpression expression : getRequestedExpressions()) {
+            // special case the ID field
+            if (expression.fieldName.equals("ID")) {
+                descriptions.add(new VCFInfoHeaderLine(expression.fullName, 1, VCFHeaderLineType.String, "ID field transferred from external VCF resource"));
+            } else {
+                final VCFInfoHeaderLine targetHeaderLine = ((VCFHeader) new FeatureDataSource<>(expression.binding, 100, VariantContext.class).getHeader())
+                        .getInfoHeaderLines().stream()
+                        .filter(l -> l.getID().equals(expression.fieldName))
+                        .findFirst().orElse(null);
+
+                VCFInfoHeaderLine lineToAdd;
+                if (targetHeaderLine != null) {
+                    expression.sethInfo(targetHeaderLine);
+                    if (targetHeaderLine.getCountType() == VCFHeaderLineCount.INTEGER) {
+                        lineToAdd = new VCFInfoHeaderLine(expression.fullName, targetHeaderLine.getCount(), targetHeaderLine.getType(), targetHeaderLine.getDescription());
+                    } else {
+                        lineToAdd = new VCFInfoHeaderLine(expression.fullName, targetHeaderLine.getCountType(), targetHeaderLine.getType(), targetHeaderLine.getDescription());
+                    }
+                } else {
+                    lineToAdd = new VCFInfoHeaderLine(expression.fullName, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Value transferred from another external VCF resource");
+                    logger.warn(String.format("The requested expression attribute \"%s\" is missing from the header in its resource file %s", expression.fullName, expression.binding.getName()));
+                }
+                descriptions.add(lineToAdd);
+                expression.sethInfo(lineToAdd);
+            }
+        }
+
         Utils.validate(!descriptions.contains(null), "getVCFAnnotationDescriptions should not contain null. This error is likely due to an incorrect implementation of getDescriptions() in one or more of the annotation classes");
         return descriptions;
     }
-
 
     /**
      * Combine (raw) data for reducible annotations (those that use raw data in gVCFs)
@@ -503,13 +531,17 @@ public final class VariantAnnotatorEngine {
 
             return Collections.unmodifiableList(new ArrayList<>(annotations));
         }
-
     }
-    protected static class VAExpression {
 
-        public String fullName, fieldName;
-        public FeatureInput<VariantContext> binding;
-        public VCFInfoHeaderLine hInfo;
+    /**
+     * A container object for storing the objects necessary for carrying over expression annotations.
+     * It holds onto the source feature input as well as any relevant header lines in order to alter the vcfHeader.
+     */
+    public static class VAExpression {
+
+        final private String fullName, fieldName;
+        final private FeatureInput<VariantContext> binding;
+        private VCFInfoHeaderLine hInfo;
 
         public VAExpression(String fullExpression, List<FeatureInput<VariantContext>> dataSourceList){
             final int indexOfDot = fullExpression.lastIndexOf(".");
@@ -521,12 +553,15 @@ public final class VariantAnnotatorEngine {
             fieldName = fullExpression.substring(indexOfDot+1);
 
             final String bindingName = fullExpression.substring(0, indexOfDot);
-            for ( final FeatureInput<VariantContext> ds : dataSourceList ) {
-                if ( ds.getName().equals(bindingName) ) {
-                    binding = ds;
-                    break;
-                }
+            Optional<FeatureInput<VariantContext>> binding = dataSourceList.stream().filter(ds -> ds.getName().equals(bindingName)).findFirst();
+            if (!binding.isPresent()) {
+                throw new UserException.BadInput("The requested expression '"+fullExpression+"' is invalid, could not find vcf input file");
             }
+            this.binding = binding.get();
+        }
+
+        public void sethInfo(VCFInfoHeaderLine hInfo) {
+            this.hInfo = hInfo;
         }
     }
 
@@ -572,11 +607,8 @@ public final class VariantAnnotatorEngine {
                 } else if (expression.fieldName.equals("ALT")) {
                     attributes.put(expression.fullName, expressionVC.getAlternateAllele(0).getDisplayString());
                 } else if (expression.fieldName.equals("FILTER")) {
-                    if (expressionVC.isFiltered()) {
-                        attributes.put(expression.fullName, expressionVC.getFilters().toString().replace("[", "").replace("]", "").replace(" ", ""));
-                    } else {
-                        attributes.put(expression.fullName, "PASS");
-                    }
+                    final String filterString = expressionVC.isFiltered() ? expressionVC.getFilters().stream().collect(Collectors.joining(",")) : "PASS";
+                    attributes.put(expression.fullName, filterString);
                 } else if (expressionVC.hasAttribute(expression.fieldName)) {
                     // find the info field
                     final VCFInfoHeaderLine hInfo = expression.hInfo;

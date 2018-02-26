@@ -5,7 +5,6 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fragments.FragmentCollection;
@@ -116,7 +115,7 @@ public class ReadPileup implements Iterable<PileupElement> {
         Utils.nonNull(reads, "Illegal null read list");
         return reads.stream().filter(r -> !r.isUnmapped())
                 .filter(r -> r.getStart()<=loc.getStart() && r.getEnd()>=loc.getEnd() )
-                .map(r -> PileupElement.createPileupForReadAndOffset(r, loc))
+                .map(r -> PileupElement.createPileupForReadAndGenomeLoc(r, loc))
                 .collect(Collectors.toList());
     }
 

@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -26,6 +27,7 @@ import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 
 import java.io.File;
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 /**
@@ -56,7 +58,6 @@ import java.util.*;
  *   -V input.vcf \
  *   -o output.vcf \
  *   -A Coverage \
- *   -L input.vcf \
  *   --dbsnp dbsnp.vcf
  * </pre>
  *
@@ -67,10 +68,10 @@ import java.util.*;
  *   -I input.bam \
  *   -V input.vcf \
  *   -o output.vcf \
- *   -L input.vcf \
+ *   -L anotherInput.vcf \
  *   --resource foo:resource.vcf \
  *   -E foo.AF \
- *   --resourceAlleleConcordance
+ *   --resource-allele-concordance
  * </pre>
  *
  * <h4>Annotate with AF and FILTER fields from an external resource </h4>
@@ -112,7 +113,7 @@ public class VariantAnnotator extends VariantWalker {
      * filtered in the comp track will be ignored. Note that 'dbSNP' has been special-cased (see the --dbsnp argument).
      */
     @Advanced
-    @Argument(fullName = "comp", shortName = "comp", doc = "Comparison VCF file(s)", optional = true)
+    @Argument(fullName = "comp", doc = "Comparison VCF file(s)", optional = true)
     public List<FeatureInput<VariantContext>> comps = new ArrayList<>();
 
     /**
@@ -124,10 +125,10 @@ public class VariantAnnotator extends VariantWalker {
      * '-E my_resource.AC' (-E is short for --expression, also documented on this page). In the resulting output
      * VCF, any records for which there is a record at the same position in the resource file will be annotated with
      * 'my_resource.AC=N'. Note that if there are multiple records in the resource file that overlap the given
-     * position, one is chosen randomly. Check for allele concordance if using --resourceAlleleConcordance, otherwise
+     * position, one is chosen randomly. Check for allele concordance if using --resource-allele-concordance, otherwise
      * the match is based on position only.
      */
-    @Argument(fullName="resource", shortName = "resource", doc="External resource VCF file", optional=true)
+    @Argument(fullName="resource", doc="External resource VCF file", optional=true)
     public List<FeatureInput<VariantContext>> resources;
 
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -163,11 +164,11 @@ public class VariantAnnotator extends VariantWalker {
      * (specified by --resource) to the input VCF (specified by --variant) only if the alleles are
      * concordant between input and the resource VCFs. Otherwise, always add the annotations.
      */
-    @Argument(fullName="resourceAlleleConcordance", shortName="rac", doc="Check for allele concordances when using an external resource VCF file", optional=true)
+    @Argument(fullName="resource-allele-concordance", shortName="rac", doc="Check for allele concordances when using an external resource VCF file", optional=true)
     protected Boolean expressionAlleleConcordance = false;
 
     /**
-     * You can use the -XL argument in combination with this one to exclude specific annotations.Note that some
+     * You can use the -XA argument in combination with this one to exclude specific annotations.Note that some
      * annotations may not be actually applied if they are not applicable to the data provided or if they are
      * unavailable to the tool (e.g. there are several annotations that are currently not hooked up to
      * HaplotypeCaller). At present no error or warning message will be provided, the annotation will simply be
@@ -176,17 +177,8 @@ public class VariantAnnotator extends VariantWalker {
      * additional requirements, e.g. minimum number of samples or heterozygous sites only -- see the documentation
      * for individual annotations' requirements).
      */
-    @Argument(fullName="useAllAnnotations", shortName="all", doc="Use all possible annotations (not for the faint of heart)", optional=true)
+    @Argument(fullName="use-all-annotations", shortName="all", doc="Use all possible annotations (not for the faint of heart)", optional=true)
     protected Boolean USE_ALL_ANNOTATIONS = false;
-
-    /**
-     * By default, a dbSNP ID is added only when the ID field in the variant record is empty (not already annotated).
-     * This argument allows you to override that behavior, and appends the new ID to the existing one. This is used
-     * in conjunction with the -dbsnp argument.
-     */
-    @Argument(fullName="alwaysAppendDbsnpId", shortName="alwaysAppendDbsnpId", doc="Add dbSNP ID even if one is already present", optional=true)
-    protected Boolean ALWAYS_APPEND_DBSNP_ID = false;
-    public boolean alwaysAppendDbsnpId() { return ALWAYS_APPEND_DBSNP_ID; }
 
     private VariantAnnotatorEngine annotatorEngine;
     private SampleList variantSamples;
@@ -213,33 +205,6 @@ public class VariantAnnotator extends VariantWalker {
         hInfo.addAll(annotatorEngine.getVCFAnnotationDescriptions(false));
         hInfo.addAll(getHeaderForVariants().getMetaDataInInputOrder());
 
-        // for the expressions, pull the info header line from the header of the resource VCF
-        for ( final VariantAnnotatorEngine.VAExpression expression : annotatorEngine.getRequestedExpressions() ) {
-            // special case the ID field
-            if ( expression.fieldName.equals("ID") ) {
-                hInfo.add(new VCFInfoHeaderLine(expression.fullName, 1, VCFHeaderLineType.String, "ID field transferred from external VCF resource"));
-            } else {
-                final VCFInfoHeaderLine targetHeaderLine = ((VCFHeader) getHeaderForFeatures(expression.binding)).getInfoHeaderLines().stream()
-                            .filter(l -> l.getID().equals(expression.fieldName))
-                            .findFirst().orElse(null);
-
-                VCFInfoHeaderLine lineToAdd;
-                if (targetHeaderLine != null) {
-                    expression.hInfo = targetHeaderLine;
-                    if (targetHeaderLine.getCountType() == VCFHeaderLineCount.INTEGER) {
-                        lineToAdd = new VCFInfoHeaderLine(expression.fullName, targetHeaderLine.getCount(), targetHeaderLine.getType(), targetHeaderLine.getDescription());
-                    } else {
-                        lineToAdd = new VCFInfoHeaderLine(expression.fullName, targetHeaderLine.getCountType(), targetHeaderLine.getType(), targetHeaderLine.getDescription());
-                    }
-                } else {
-                    lineToAdd = new VCFInfoHeaderLine(expression.fullName, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Value transferred from another external VCF resource");
-                    logger.warn(String.format("The requested expression attribute \"%s\" is missing from the header in its resource file %s",expression.fullName,expression.binding.getName()));
-                }
-                hInfo.add(lineToAdd);
-                expression.hInfo = lineToAdd;
-            }
-        }
-
         // TODO ask reviewer, VCFUtils.withUpdatedContigs is what GATK3 calls into, it isn't used anywhere in 4 though so should it be used here?
         VCFHeader vcfHeader = new VCFHeader(hInfo, samples);
         vcfWriter = createVCFWriter(outputFile);
@@ -261,9 +226,9 @@ public class VariantAnnotator extends VariantWalker {
 
         // if the reference is present and base is not ambiguous, we can annotate
         if (refContext.getBases().length ==0 || BaseUtils.simpleBaseToBaseIndex(refContext.getBase()) != -1 ) {
-            //TODO remove this filter and update the tests, we limit reads starting within a spanning deletion to match GATK3 at the expense of matching haplotype caller
-            List<GATKRead> reads = new ArrayList<>();
-            readsContext.iterator().forEachRemaining(r -> {if (r.getStart()<=vc.getStart()) {reads.add(r);}});
+            //TODO remove this filter and update the tests, this implementation filters out reads that start in a spanning deleting according to variant context in order to match gatk3,
+            //TODO this will cause the reads to be assigned and annotated in a different manner than the haplotype caller.
+            final List<GATKRead> reads = Utils.stream(readsContext).filter(r -> r.getStart() <= vc.getStart()).collect(Collectors.toList());
 
             ReadLikelihoods<Allele> likelihoods = new UnfilledReadsLikelihoods<>( variantSamples, new IndexedAlleleList<>(vc.getAlleles()),
                     AssemblyBasedCallerUtils.splitReadsBySample(variantSamples, getHeaderForReads(), reads));
@@ -285,12 +250,13 @@ public class VariantAnnotator extends VariantWalker {
     }
 
     /**
-     * Tell the user the number of loci processed and close out the new variants file.
+     * Make sure that the writer is closed upon completing the tool.
      */
     @Override
-    public Object onTraversalSuccess() {
-        vcfWriter.close();
-        return null;
+    public void closeTool() {
+        if (vcfWriter !=null) {
+            vcfWriter.close();
+        }
     }
 }
 
