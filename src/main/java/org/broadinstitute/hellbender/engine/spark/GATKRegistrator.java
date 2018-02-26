@@ -21,7 +21,6 @@ public class GATKRegistrator implements KryoRegistrator {
 
     public GATKRegistrator() {}
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
     public void registerClasses(Kryo kryo) {
 
@@ -53,6 +52,7 @@ public class GATKRegistrator implements KryoRegistrator {
         registerGATKClasses(kryo);
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private void registerGATKClasses(Kryo kryo) {
         //relatively inefficient serialization of Collections created with Collections.nCopies(), without this
         //any Collection created with Collections.nCopies fails to serialize at run time
