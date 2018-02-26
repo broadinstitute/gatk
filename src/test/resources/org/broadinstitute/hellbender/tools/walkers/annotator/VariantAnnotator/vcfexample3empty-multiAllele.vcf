@@ -1,0 +1,10 @@
+##fileformat=VCFv4.1
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##source=UnifiedGenotyper
+##reference=human_b36_both.fasta
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+20	10001292	.	G	A	42.220	.	AC=2;AF=0.2
+20	10002963	.	C	G	42.220	.	AC=5;AF=0.5
+20	10005008	.	A	T,CC,G	123.780	.	AC=2,1,5;AF=0.2,0.1,0.5
+20	10005200	.	GTGTGAACCCGC	G,GAACCCGC	100	.	AF=0.1,0.5;AC=1,5

@@ -4,6 +4,7 @@ import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -41,5 +42,10 @@ public final class MappingQualityRankSumTest extends RankSumTest implements Stan
     protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {
         Utils.nonNull(read);
         return OptionalDouble.of(read.getMappingQuality());
+    }
+
+    protected OptionalDouble getElementForPileupElement(final PileupElement p, final int refLoc) {
+        // default to returning the same value
+        return OptionalDouble.of(p.getMappingQual());
     }
 }

@@ -84,8 +84,9 @@ public class AS_MappingQualityRankSumTestUnitTest extends ReducibleAnnotationBas
 
         MannWhitneyU.Result expectedAlt = mannWhitneyU.test(new double[]{10.0, 20.0},new double[]{100.0, 110.0}, MannWhitneyU.TestType.FIRST_DOMINATES);
         String expected = "|"+String.format("%.1f",Math.round(Math.floor((expectedAlt.getZ() )/0.1))*0.1)+",1";
+        String expectedAnnotate = String.format("%.3f",expectedAlt.getZ());
 
-        Assert.assertEquals(annotate.get(key1), expected);
+        Assert.assertEquals(annotate.get(key2), expectedAnnotate);
         Assert.assertEquals(annotateRaw.get(key1), expected);
 
         Assert.assertEquals(ann.getDescriptions().size(), 1);

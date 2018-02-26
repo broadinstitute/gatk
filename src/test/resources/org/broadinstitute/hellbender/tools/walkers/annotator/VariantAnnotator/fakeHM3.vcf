@@ -1,0 +1,9 @@
+##fileformat=VCFv4.0
+##INFO=<ID=XX,Number=0,Type=Flag,Description="XX Membership">
+##FOO
+##BAR
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878	
+20	10001292	.	G	A	.	PASS	.	GT	1/0
+20	10006296	.	C	T	.	PASS	.	GT	0/1
+20	10042312	.	G	C	.	FAIL	.	GT	1/0
+20	10048142	.	A	G	.	PASS	.	GT	1/1

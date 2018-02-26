@@ -1,14 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
-import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
@@ -17,10 +15,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -95,5 +90,24 @@ public final class DepthPerAlleleBySampleUnitTest extends GATKBaseTest {
         new DepthPerAlleleBySample().annotate(null, vc, gAC, gb, likelihoods);
     }
 
+    @Test
+    public void testEmptyLikelihoodsFallback(){
+        final int dpDepth = 30;
+        final Genotype gAC = new GenotypeBuilder(SAMPLE, ALLELES).DP(dpDepth).make();
+
+        final double log10PError = -5;
+
+        Map<String, List<GATKRead>> emptyMap = new HashMap<>();
+        emptyMap.put(SAMPLE, Collections.emptyList());
+        final ReadLikelihoods<Allele> likelihoods = new UnfilledReadsLikelihoods<Allele>(new IndexedSampleList(SAMPLE), new IndexedAlleleList<>(ALLELES), emptyMap);
+
+        final VariantContext vc = new VariantContextBuilder("test", "20", 10, 10, ALLELES).log10PError(log10PError).genotypes(Arrays.asList(gAC)).make();
+
+        final GenotypeBuilder gb = new GenotypeBuilder(gAC);
+        new DepthPerAlleleBySample().annotate(null, vc, gAC, gb, likelihoods);
+        final int[] ad = gb.make().getAD();
+        Assert.assertEquals(ad, null);
+
+    }
 
 }
