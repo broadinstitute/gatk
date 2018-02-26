@@ -280,15 +280,17 @@ class PloidyBasicCaller:
     """Bayesian update of germline contig ploidy log posteriors."""
     def __init__(self,
                  inference_params: HybridInferenceParameters,
-                 ploidy_workspace: PloidyWorkspace):
+                 ploidy_workspace: PloidyWorkspace,
+                 temperature: types.TensorSharedVariable):
         self.ploidy_workspace = ploidy_workspace
         self.inference_params = inference_params
+        self.temperature = temperature
         self._update_log_q_ploidy_sjk_theano_func = self._get_update_log_q_ploidy_sjk_theano_func()
 
     @th.configparser.change_flags(compute_test_value="off")
     def _get_update_log_q_ploidy_sjk_theano_func(self):
         new_log_q_ploidy_sjk = (self.ploidy_workspace.log_p_ploidy_jk.dimshuffle('x', 0, 1)
-                                + self.ploidy_workspace.log_ploidy_emission_sjk)
+                                + self.ploidy_workspace.log_ploidy_emission_sjk) / self.temperature
         new_log_q_ploidy_sjk -= pm.logsumexp(new_log_q_ploidy_sjk, axis=2)
         old_log_q_ploidy_sjk = self.ploidy_workspace.log_q_ploidy_sjk
         admixed_new_log_q_ploidy_sjk = commons.safe_logaddexp(

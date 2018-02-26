@@ -2,6 +2,7 @@ import numpy as np
 import pymc3 as pm
 import logging
 from typing import Callable
+import theano as th
 
 from .inference_task_base import Sampler, Caller, CallerUpdateSummary,\
     HybridInferenceTask, HybridInferenceParameters
@@ -16,9 +17,10 @@ class PloidyCaller(Caller):
     """This class is a wrapper around `PloidyBasicCaller` to be used in a `HybridInferenceTask`."""
     def __init__(self,
                  hybrid_inference_params: HybridInferenceParameters,
-                 ploidy_workspace: PloidyWorkspace):
+                 ploidy_workspace: PloidyWorkspace,
+                 temperature: types.TensorSharedVariable):
         self.hybrid_inference_params = hybrid_inference_params
-        self.ploidy_basic_caller = PloidyBasicCaller(hybrid_inference_params, ploidy_workspace)
+        self.ploidy_basic_caller = PloidyBasicCaller(hybrid_inference_params, ploidy_workspace, temperature)
 
     def call(self) -> 'PloidyCallerUpdateSummary':
         update_norm_sj = self.ploidy_basic_caller.call()
@@ -87,7 +89,10 @@ class CohortPloidyInferenceTask(HybridInferenceTask):
         ploidy_emission_sampler = PloidyEmissionSampler(hybrid_inference_params, ploidy_model, ploidy_workspace)
 
         _logger.info("Instantiating the ploidy caller...")
-        ploidy_caller = PloidyCaller(hybrid_inference_params, ploidy_workspace)
+        initial_temperature = hybrid_inference_params.initial_temperature
+        self.temperature: types.TensorSharedVariable = th.shared(
+            np.asarray([initial_temperature], dtype=types.floatX))
+        ploidy_caller = PloidyCaller(hybrid_inference_params, ploidy_workspace, self.temperature)
 
         elbo_normalization_factor = ploidy_workspace.num_samples * ploidy_workspace.num_contigs
         super().__init__(hybrid_inference_params, ploidy_model, ploidy_emission_sampler, ploidy_caller,

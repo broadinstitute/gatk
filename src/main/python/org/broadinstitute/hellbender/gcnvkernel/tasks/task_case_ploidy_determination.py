@@ -1,4 +1,5 @@
 import logging
+import theano as th
 
 from .inference_task_base import HybridInferenceTask, HybridInferenceParameters
 from ..models.model_ploidy import PloidyModelConfig, PloidyModel, PloidyWorkspace
@@ -25,7 +26,10 @@ class CasePloidyInferenceTask(HybridInferenceTask):
         ploidy_emission_sampler = PloidyEmissionSampler(hybrid_inference_params, ploidy_model, ploidy_workspace)
 
         _logger.info("Instantiating the ploidy caller...")
-        ploidy_caller = PloidyCaller(hybrid_inference_params, ploidy_workspace)
+        initial_temperature = hybrid_inference_params.initial_temperature
+        self.temperature: types.TensorSharedVariable = th.shared(
+            np.asarray([initial_temperature], dtype=types.floatX))
+        ploidy_caller = PloidyCaller(hybrid_inference_params, ploidy_workspace, self.temperature)
 
         elbo_normalization_factor = ploidy_workspace.num_samples * ploidy_workspace.num_contigs
 
