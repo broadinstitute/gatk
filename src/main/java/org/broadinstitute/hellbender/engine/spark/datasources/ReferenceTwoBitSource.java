@@ -4,17 +4,14 @@ import com.google.common.io.ByteStreams;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.bdgenomics.adam.models.ReferenceRegion;
-import org.bdgenomics.adam.models.SequenceDictionary;
-import org.bdgenomics.adam.models.SequenceRecord;
 import org.bdgenomics.adam.util.TwoBitFile;
-import org.bdgenomics.formats.avro.Strand;
+import org.bdgenomics.adam.util.TwoBitRecord;
 import org.bdgenomics.utils.io.ByteAccess;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import scala.Option;
 import scala.collection.JavaConversions;
 
 import java.io.IOException;
@@ -35,7 +32,7 @@ public class ReferenceTwoBitSource implements ReferenceSource, Serializable {
 
     private final String referenceURL;
     private final TwoBitFile twoBitFile;
-    private final SequenceDictionary twoBitSeqDictionary;
+    private final Map<String, TwoBitRecord> twoBitSeqEntries;
 
     public ReferenceTwoBitSource(String referenceURL) throws IOException {
         this.referenceURL = referenceURL;
@@ -43,7 +40,7 @@ public class ReferenceTwoBitSource implements ReferenceSource, Serializable {
         byte[] bytes = ByteStreams.toByteArray(BucketUtils.openFile(this.referenceURL));
         ByteAccess byteAccess = new DirectFullByteArrayByteAccess(bytes);
         this.twoBitFile = new TwoBitFile(byteAccess);
-        this.twoBitSeqDictionary = twoBitFile.sequences();
+        this.twoBitSeqEntries = JavaConversions.mapAsJavaMap(twoBitFile.seqRecords());
     }
 
     /**
@@ -63,7 +60,10 @@ public class ReferenceTwoBitSource implements ReferenceSource, Serializable {
 
     @Override
     public SAMSequenceDictionary getReferenceSequenceDictionary(SAMSequenceDictionary optReadSequenceDictionaryToMatch) throws IOException {
-	return this.twoBitSeqDictionary.toSAMSequenceDictionary();
+        List<SAMSequenceRecord> records = twoBitSeqEntries.entrySet().stream()
+                .map(pair -> new SAMSequenceRecord(pair.getKey(), pair.getValue().dnaSize()))
+                .collect(Collectors.toList());
+        return new SAMSequenceDictionary(records);
     }
 
     public static boolean isTwoBit(String file) {
@@ -75,18 +75,15 @@ public class ReferenceTwoBitSource implements ReferenceSource, Serializable {
         String contig = interval.getContig();
         long start = interval.getGA4GHStart();
         long end = interval.getGA4GHEnd();
-        return new ReferenceRegion(contig, start, end, Strand.INDEPENDENT);
+        return new ReferenceRegion(contig, start, end, null);
     }
 
     private SimpleInterval cropIntervalAtContigEnd( final SimpleInterval interval ) {
         // The 2bit query API does not support queries beyond the ends of contigs, so we need
         // to truncate our interval at the contig end if necessary.
-        final Option<SequenceRecord> optContigRecord = twoBitSeqDictionary.apply(interval.getContig());
-	if (optContigRecord.isEmpty()) {
-	    throw new IllegalArgumentException("Contig " + interval.getContig() + " not found in reference dictionary");
-	}
-	final SequenceRecord contigRecord = optContigRecord.get();
-	return new SimpleInterval(interval.getContig(), interval.getStart(), Math.min(interval.getEnd(), Math.toIntExact(contigRecord.length())));
+        final TwoBitRecord contigRecord = twoBitSeqEntries.get(interval.getContig());
+        Utils.nonNull(contigRecord, () -> "Contig " + interval.getContig() + " not found in reference dictionary");
+        return new SimpleInterval(interval.getContig(), interval.getStart(), Math.min(interval.getEnd(), contigRecord.dnaSize()));
     }
 
 }
