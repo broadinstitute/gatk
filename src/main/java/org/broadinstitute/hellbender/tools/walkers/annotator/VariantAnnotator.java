@@ -5,10 +5,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
-import org.broadinstitute.barclay.argparser.Advanced;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.DefaultGATKVariantAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -97,7 +94,7 @@ import java.util.stream.Collectors;
 @CommandLineProgramProperties(summary="Tool for adding annotations to VCF files",
         oneLineSummary = "Tool for adding annotations to VCF files",
         programGroup = VariantManipulationProgramGroup.class)
-
+@BetaFeature
 public class VariantAnnotator extends VariantWalker {
     private VariantContextWriter vcfWriter;
 
