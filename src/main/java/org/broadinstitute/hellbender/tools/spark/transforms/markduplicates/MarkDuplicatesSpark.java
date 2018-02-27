@@ -73,8 +73,9 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                 .mapToPair(pair -> new Tuple2<>(pair.getIndex(), pair.getValue()))
                 .partitionBy(new KnownIndexPartitioner(reads.getNumPartitions()))
                 .values();
-
-        reads.zipPartitions(repartitionedReadNames, (readsIter, readNamesIter)  -> {
+        List<String> names = repartitionedReadNames.collect();
+        names.size();
+        return reads.zipPartitions(repartitionedReadNames, (readsIter, readNamesIter)  -> {
             final Set<String> namesOfNonDuplicateReads = Utils.stream(readNamesIter).collect(Collectors.toSet());
             return Utils.stream(readsIter).map( read -> {
                 if( namesOfNonDuplicateReads.contains(read.getName())) {
@@ -85,7 +86,6 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                 return read;
             }).iterator();
         });
-        return reads;
     }
 
     public static class KnownIndexPartitioner extends Partitioner {
