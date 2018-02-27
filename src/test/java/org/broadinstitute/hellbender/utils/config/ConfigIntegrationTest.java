@@ -106,7 +106,8 @@ public class ConfigIntegrationTest extends CommandLineProgramTest {
         };
     }
 
-    @Test(dataProvider = "provideForTestToolWithConfigValidation")
+    @Test(dataProvider = "provideForTestToolWithConfigValidation",
+            singleThreaded = true)
     public void testToolWithConfigValidation(final Path configFilePath) {
 
         // Grab the properties so we can reset them later:
@@ -132,21 +133,18 @@ public class ConfigIntegrationTest extends CommandLineProgramTest {
 
             // Create some arguments for our command:
             final ArgumentsBuilder args = new ArgumentsBuilder();
-            args.add("--" + StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION);
-            args.add(configFilePath.toUri().toString());
-            args.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
-            args.add(tmpConfigPropsFile);
-            args.add("--" + DummyGatkTool.SYSTEM_OUT_FILE_ARG_LONG_NAME);
-            args.add(tmpSystemPropsFile);
+
+            args.addArgument(StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION, configFilePath.toUri().toString());
+            args.addArgument(DummyGatkTool.SYSTEM_OUT_FILE_ARG_LONG_NAME, tmpSystemPropsFile.toString());
+            args.addOutput(tmpConfigPropsFile);
 
             // Add in our system properties to check:
             for ( final String sysProp : systemPropertiesToQuery.keySet() ) {
-                args.add("--" + DummyGatkTool.SYSTEM_VAR_ARG_LONG_NAME);
-                args.add(sysProp);
+                args.addArgument(DummyGatkTool.SYSTEM_VAR_ARG_LONG_NAME, sysProp);
             }
 
             // Run our command:
-            runCommandLine(args.getArgsArray());
+            runCommandLine(args);
 
             // =========================================================================================================
             // Now we get to read in the file's contents and compare them to our config settings:
