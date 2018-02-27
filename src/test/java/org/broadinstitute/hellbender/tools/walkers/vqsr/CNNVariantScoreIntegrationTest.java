@@ -79,8 +79,8 @@ public class CNNVariantScoreIntegrationTest extends CommandLineProgramTest {
                 .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
                 .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
                 .addArgument("architecture", architecture2D)
-                .addArgument("inference-batch-size", "2")
-                .addArgument("transfer-batch-size", "2")
+                .addArgument("inference-batch-size", "1")
+                .addArgument("transfer-batch-size", "1")
                 .addArgument("use-reads", "true")
                 .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 

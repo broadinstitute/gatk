@@ -39,6 +39,7 @@ public class CNNVariantWriteTensorsIntegrationTest extends CommandLineProgramTes
                 .addArgument("truth-vcf", truthVCF)
                 .addArgument("truth-bed", truthBED)
                 .addArgument("bam-file", bamFile)
+                .addArgument("max-tensors", "4000")
                 .addArgument("tensor-name", TensorMapEnum.read_tensor.name())
                 .addArgument("data-dir", largeFileTestDir + "VQSR/read_tensors/")
                 .addArgument("channels-last", "false");

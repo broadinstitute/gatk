@@ -38,7 +38,7 @@ public class CNNVariantTrainIntegrationTest extends CommandLineProgramTest {
         argsBuilder.addArgument("input-data-dir", dataDir)
                 .addArgument("tensor-name", TensorMapEnum.read_tensor.name())
                 .addArgument("epochs", "1")
-                .addArgument("training-steps", "2")
+                .addArgument("training-steps", "1")
                 .addArgument("validation-steps", "1")
                 .addArgument("model-name", "test_read_tensor_model")
                 .addArgument("output-dir", dataDir)
