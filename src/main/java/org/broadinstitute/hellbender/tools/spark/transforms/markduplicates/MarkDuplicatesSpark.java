@@ -2,8 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.transforms.markduplicates;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.metrics.MetricsFile;
-import org.apache.spark.HashPartitioner;
-import org.apache.spark.RangePartitioner;
+import org.apache.spark.Partitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -14,20 +13,22 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicatesArgumentCollection;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
-import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import scala.Tuple2;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @DocumentedFeature
 @CommandLineProgramProperties(
@@ -66,18 +67,45 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
 
         JavaRDD<GATKRead> primaryReads = reads.filter(v1 -> !ReadUtils.isNonPrimary(v1));
 //        JavaRDD<GATKRead> nonPrimaryReads = reads.filter(v1 -> ReadUtils.isNonPrimary(v1));
-        JavaPairRDD<String, Integer> primaryReadsTransformed = MarkDuplicatesSparkUtils.transformToDuplicateNames(header, scoringStrategy, opticalDuplicateFinder, primaryReads, numReducers);
+        JavaPairRDD<MarkDuplicatesSparkUtils.IndexPair<String>, Integer> namesOfNonDuplicates = MarkDuplicatesSparkUtils.transformToDuplicateNames(header, scoringStrategy, opticalDuplicateFinder, primaryReads, numReducers);
 
-        primaryReadsTransformed.repartition(reads.getNumPartitions()).count();
-//        return reads.cogroup(primaryReadsTransformed).flatMapValues(tup -> {
-//            if (tup._2.iterator().hasNext() ) {
-//                for (GATKRead read : tup._1) {
-//                    read.setIsDuplicate(true);
-//                }
-//            }
-//            return tup._1;
-//        }).values();
+        final JavaRDD<String> repartitionedReadNames = namesOfNonDuplicates.keys()
+                .mapToPair(pair -> new Tuple2<>(pair.getIndex(), pair.getValue()))
+                .partitionBy(new KnownIndexPartitioner(reads.getNumPartitions()))
+                .values();
+
+        reads.zipPartitions(repartitionedReadNames, (readsIter, readNamesIter)  -> {
+            final Set<String> namesOfNonDuplicateReads = Utils.stream(readNamesIter).collect(Collectors.toSet());
+            return Utils.stream(readsIter).map( read -> {
+                if( namesOfNonDuplicateReads.contains(read.getName())) {
+                    read.setIsDuplicate(false);
+                } else {
+                    read.setIsDuplicate(true);
+                }
+                return read;
+            }).iterator();
+        });
         return reads;
+    }
+
+    public static class KnownIndexPartitioner extends Partitioner {
+        private static final long serialVersionUID = 1L;
+        private final int numPartitions;
+
+        KnownIndexPartitioner(int numPartitions) {
+            this.numPartitions = numPartitions;
+        }
+
+        @Override
+        public int numPartitions() {
+            return numPartitions;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public int getPartition(Object key) {
+            return (Integer) key;
+        }
     }
 
     @Override
