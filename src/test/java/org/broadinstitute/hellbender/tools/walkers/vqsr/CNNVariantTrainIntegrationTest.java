@@ -41,7 +41,8 @@ public class CNNVariantTrainIntegrationTest extends CommandLineProgramTest {
                 .addArgument("training-steps", "2")
                 .addArgument("validation-steps", "1")
                 .addArgument("model-name", "test_read_tensor_model")
-                .addArgument("output-dir", dataDir);
+                .addArgument("output-dir", dataDir)
+                .addArgument("channels-last", "false");
 
         runCommandLine(argsBuilder);
     }

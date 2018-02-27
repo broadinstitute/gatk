@@ -1,5 +1,6 @@
 import argparse
 import numpy as np
+import keras.backend as K
 
 from . import defines
 
@@ -25,7 +26,7 @@ def parse_args():
                         help='Size of sequence window to use as input, typically centered at a variant.')
     parser.add_argument('--base_quality_mode', default='phot', choices=['phot', 'phred', '1hot'],
                         help='How to treat base qualities, must be in [phot, phred, 1hot]')
-    parser.add_argument('--channels_last', default=False, dest='channels_last', action='store_true',
+    parser.add_argument('--channels_last', default=True, dest='channels_last', action='store_true',
                         help='Store the channels in the last axis of tensors, tensorflow->true, theano->false')
     parser.add_argument('--channels_first', dest='channels_last', action='store_false',
                         help='Store the channels in the first axis of tensors, tensorflow->false, theano->true')
@@ -121,6 +122,12 @@ def parse_args():
     args.annotations = annotations_from_args(args)
     args.input_symbols = input_symbols_from_args(args)
     np.random.seed(args.random_seed)
+
+    if args.channels_last:
+        K.set_image_data_format('channels_last')
+    else:
+        K.set_image_data_format('channels_first')
+
     print('Arguments are', args)
     return args
 

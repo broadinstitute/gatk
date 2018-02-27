@@ -88,6 +88,9 @@ public class CNNVariantTrain extends CommandLineProgram {
     @Argument(fullName = "validation-steps", shortName = "validation-steps", doc = "Number of validation steps per epoch.", optional = true, minValue = 0)
     private int validationSteps = 2;
 
+    @Argument(fullName = "channels-last", shortName = "channels-last", doc = "Store the channels in the last axis of tensors, tensorflow->true, theano->false", optional = true)
+    private boolean channelsLast = true;
+
     // Start the Python executor. This does not actually start the Python process, but fails if python can't be located
     final PythonScriptExecutor pythonExecutor = new PythonScriptExecutor(true);
 
@@ -109,6 +112,12 @@ public class CNNVariantTrain extends CommandLineProgram {
                 "--training_steps", Integer.toString(trainingSteps),
                 "--validation_steps", Integer.toString(validationSteps),
                 "--id", modelName));
+
+        if(channelsLast){
+            arguments.add("--channels_last");
+        } else{
+            arguments.add("--channels_first");
+        }
 
         if (tensorMap == TensorMapEnum.reference) {
             arguments.addAll(Arrays.asList("--mode", "train_on_reference_tensors_and_annotations"));

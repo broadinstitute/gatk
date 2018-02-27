@@ -102,6 +102,9 @@ public class CNNVariantWriteTensors extends CommandLineProgram {
     @Argument(fullName = "tensor-name", shortName = "tensor-name", doc = "Name of the tensors to generate.")
     private TensorMapEnum tensorMap = TensorMapEnum.reference;
 
+    @Argument(fullName = "channels-last", shortName = "channels-last", doc = "Store the channels in the last axis of tensors, tensorflow->true, theano->false", optional = true)
+    private boolean channelsLast = true;
+
     @Hidden
     @Argument(fullName = "annotation-set", shortName = "annotation-set", doc = "Which set of annotations to use.", optional = true)
     private String annotationSet = "best_practices";
@@ -130,6 +133,12 @@ public class CNNVariantWriteTensors extends CommandLineProgram {
                 "--annotation_set", annotationSet,
                 "--samples", Integer.toString(maxTensors),
                 "--data_dir", dataDir));
+
+        if(channelsLast){
+            arguments.add("--channels_last");
+        } else{
+            arguments.add("--channels_first");
+        }
 
         if (tensorMap == TensorMapEnum.reference) {
             arguments.addAll(Arrays.asList("--mode", "write_reference_and_annotation_tensors"));
