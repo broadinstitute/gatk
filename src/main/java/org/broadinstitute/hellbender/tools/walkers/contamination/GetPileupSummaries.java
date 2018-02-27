@@ -100,9 +100,12 @@ public class GetPileupSummaries extends MultiVariantWalker {
     public static final String MIN_SITE_AF_LONG_NAME = "minimum-population-allele-frequency";
     public static final String MAX_SITE_AF_SHORT_NAME = "max-af";
     public static final String MIN_SITE_AF_SHORT_NAME = "min-af";
+    public static final String MIN_MAPPING_QUALITY_LONG_NAME = "min-mapping-quality";
+    public static final String MIN_MAPPING_QUALITY_SHORT_NAME = "mmq";
 
     private static final double DEFAULT_MIN_POPULATION_AF = 0.01;
     private static final double DEFAULT_MAX_POPULATION_AF = 0.2;
+    private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 50;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -118,6 +121,9 @@ public class GetPileupSummaries extends MultiVariantWalker {
             shortName = MAX_SITE_AF_SHORT_NAME,
             doc = "Maximum population allele frequency of sites to consider.", optional = true)
     private double maxPopulationAlleleFrequency = DEFAULT_MAX_POPULATION_AF;
+
+    @Argument(fullName = MIN_MAPPING_QUALITY_LONG_NAME, shortName = MIN_MAPPING_QUALITY_SHORT_NAME, doc = "Minimum read mapping quality", optional = true)
+    private int minMappingQuality = DEFAULT_MINIMUM_MAPPING_QUALITY;
 
     private final List<PileupSummary> pileupSummaries = new ArrayList<>();
 
@@ -136,12 +142,9 @@ public class GetPileupSummaries extends MultiVariantWalker {
         return false;
     }
 
-    private static final int MAPPING_QUALITY_THRESHOLD = 50;
-
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
         final List<ReadFilter> filters = new ArrayList<>();
-        filters.add(new MappingQualityReadFilter(MAPPING_QUALITY_THRESHOLD));
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO);
         filters.add(ReadFilterLibrary.MAPPED);
@@ -170,7 +173,8 @@ public class GetPileupSummaries extends MultiVariantWalker {
         if (lastVariant != null && vc.getStart() == lastVariant.getStart()) {
             return;
         } else if ( vc.isBiallelic() && vc.isSNP() && alleleFrequencyInRange(vc) ) {
-            final ReadPileup pileup = GATKProtectedVariantContextUtils.getPileup(vc, readsContext);
+            final ReadPileup pileup = GATKProtectedVariantContextUtils.getPileup(vc, readsContext)
+                    .makeFilteredPileup(pe -> pe.getRead().getMappingQuality() >= minMappingQuality);
             pileupSummaries.add(new PileupSummary(vc, pileup));
         }
         lastVariant = vc;
