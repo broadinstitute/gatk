@@ -158,10 +158,17 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
             addGenotypes(subsettedLog10TumorMatrix, subsettedLog10NormalMatrix, callVcb);
             final VariantContext call = callVcb.make();
-            final VariantContext annotatedCall =  annotationEngine.annotateContext(call, featureContext, referenceContext, log10Likelihoods, a -> true);
-            final VariantContext trimmedCall = GATKVariantContextUtils.trimAlleles(annotatedCall, true, true);
+            final VariantContext trimmedCall = GATKVariantContextUtils.trimAlleles(call, true, true);
+            final List<Allele> trimmedAlleles = trimmedCall.getAlleles();
+            final List<Allele> untrimmedAlleles = call.getAlleles();
+            final Map<Allele, List<Allele>> trimmedToUntrimmedAlleleMap = IntStream.range(0, trimmedCall.getNAlleles()).boxed()
+                    .collect(Collectors.toMap(n -> trimmedAlleles.get(n), n -> Arrays.asList(untrimmedAlleles.get(n))));
+            final ReadLikelihoods<Allele> trimmedLikelihoods = log10Likelihoods.marginalize(trimmedToUntrimmedAlleleMap);
+
+            final VariantContext annotatedCall =  annotationEngine.annotateContext(trimmedCall, featureContext, referenceContext, trimmedLikelihoods, a -> true);
+
             call.getAlleles().stream().map(alleleMapper::get).filter(Objects::nonNull).forEach(calledHaplotypes::addAll);
-            returnCalls.add( trimmedCall );
+            returnCalls.add( annotatedCall );
         }
 
         final List<VariantContext> outputCalls = doPhysicalPhasing ? phaseCalls(returnCalls, calledHaplotypes) : returnCalls;
