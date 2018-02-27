@@ -29,7 +29,8 @@ public final class IntervalCoverageFinder implements Iterable<Tuple2<Integer, in
 
         int intervalsIndex = 0;
         final int intervalsSize = intervals.size();
-        final Iterator<GATKRead> readItr = filter.applyFilter(unfilteredReadItr, SVReadFilter::isMapped);
+        final Iterator<GATKRead> readItr = filter.applyFilter(unfilteredReadItr,
+                (svReadFilter, read) -> svReadFilter.isMappedToPrimaryContig(read, metadata));
         while ( readItr.hasNext() ) {
             final GATKRead read = readItr.next();
             final int readContigId = metadata.getContigID(read.getContig());
@@ -44,38 +45,40 @@ public final class IntervalCoverageFinder implements Iterable<Tuple2<Integer, in
             final SVInterval readInterval = new SVInterval(readContigId, readStart, read.getEnd()+1);
 
             int intervalsContainingReadIndex = intervalsIndex;
-            SVInterval indexedInterval = intervals.get(intervalsContainingReadIndex);
+            while (intervalsContainingReadIndex < intervals.size()) {
+                final SVInterval indexedInterval = intervals.get(intervalsContainingReadIndex);
+                if ( !indexedInterval.overlaps(readInterval) ) break;
 
-            while (intervalsContainingReadIndex < intervals.size() && indexedInterval.overlaps(readInterval)) {
                 final SVInterval overlapInterval = readInterval.intersect(indexedInterval);
                 if (overlapInterval == null) throw new GATKException.ShouldNeverReachHereException("read was supposed to intersect interval but overlap is null");
-                if (intervalCoverage[intervalsContainingReadIndex] == null) {
+                if (intervalCoverage[intervalsContainingReadIndex] == null) { 
                     intervalCoverage[intervalsContainingReadIndex] = new int[indexedInterval.getLength()];
                 }
+                final int[] coverageArray = intervalCoverage[intervalsContainingReadIndex];
                 for (int i = overlapInterval.getStart(); i < overlapInterval.getEnd(); i++) {
-                    intervalCoverage[intervalsContainingReadIndex][i - indexedInterval.getStart()] += 1;
+                    coverageArray[i - indexedInterval.getStart()] += 1;
                 }
                 intervalsContainingReadIndex++;
-                if (intervalsContainingReadIndex < intervals.size()) {
-                    indexedInterval = intervals.get(intervalsContainingReadIndex);
-                }
             }
         }
     }
 
-    static Iterator<CandidateCoverageInterval> getHighCoverageIntervalsInWindow(final int minHighCoverageValue, final int maxHighCoverageValue, final SVInterval interval, final int[] coverageArray) {
+    static Iterator<CandidateCoverageInterval> getHighCoverageIntervalsInWindow(final int minFlankingHighCoverageValue,
+                                                                                final int minPeakHighCoverageValue,
+                                                                                final SVInterval interval,
+                                                                                final int[] coverageArray) {
         boolean inRegion = false;
         int regionStart = -1;
         boolean foundHighRegion = false;
         final List<CandidateCoverageInterval> highCovIntervals = new ArrayList<>(2);
         for (int i = 0; i < coverageArray.length; i++) {
-            if (coverageArray[i] >= minHighCoverageValue) {
+            if (coverageArray[i] >= minFlankingHighCoverageValue) {
                 if (! inRegion) {
                     inRegion = true;
                     foundHighRegion = false;
                     regionStart = i;
                 }
-                if (coverageArray[i] >= maxHighCoverageValue) {
+                if (coverageArray[i] >= minPeakHighCoverageValue) {
                     foundHighRegion = true;
                 }
             } else {

@@ -335,11 +335,14 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                                                                                   final SVReadFilter filter,
                                                                                   final Logger logger,
                                                                                   final Broadcast<ReadMetadata> broadcastMetadata) {
-        final long nRefBases = broadcastMetadata.getValue().getNRefBases();
-        final List<SVInterval> depthIntervals = new ArrayList<>((int) ((float) nRefBases / DEPTH_WINDOW_SIZE));
+        final int capacity = header.getSequenceDictionary().getSequences().stream()
+                .mapToInt(seqRec -> (seqRec.getSequenceLength() + DEPTH_WINDOW_SIZE - 1)/DEPTH_WINDOW_SIZE).sum();
+        final List<SVInterval> depthIntervals = new ArrayList<>(capacity);
         for (final SAMSequenceRecord sequenceRecord : header.getSequenceDictionary().getSequences()) {
-            for (int i = 1; i < sequenceRecord.getSequenceLength(); i = i + DEPTH_WINDOW_SIZE) {
-                depthIntervals.add(new SVInterval(readMetadata.getContigID(sequenceRecord.getSequenceName()), i, Math.min(sequenceRecord.getSequenceLength(), i + DEPTH_WINDOW_SIZE)));
+            final int contigID = readMetadata.getContigID(sequenceRecord.getSequenceName());
+            final int contigLength = sequenceRecord.getSequenceLength();
+            for (int i = 1; i < contigLength; i = i + DEPTH_WINDOW_SIZE) {
+                depthIntervals.add(new SVInterval(contigID, i, Math.min(contigLength, i + DEPTH_WINDOW_SIZE)));
             }
         }
 
@@ -817,17 +820,17 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final SVReadFilter filter,
             final Logger logger) {
 
-        final int minHighCovFactor = params.highDepthCoverageFactor;
-        final int maxHighCovFactor = params.highDepthCoveragePeakFactor;
+        final int minFlankingHighCovFactor = params.highDepthCoverageFactor;
+        final int minPeakHighCovFactor = params.highDepthCoveragePeakFactor;
 
-        int minHighCoverageValue = (int) (minHighCovFactor * broadcastMetadata.getValue().getCoverage());
-        int maxHighCoverageValue = (int) (maxHighCovFactor * broadcastMetadata.getValue().getCoverage());
+        int minFlankingHighCoverageValue = (int) (minFlankingHighCovFactor * broadcastMetadata.getValue().getCoverage());
+        int minPeakHighCoverageValue = (int) (minPeakHighCovFactor * broadcastMetadata.getValue().getCoverage());
         final List<SVInterval> result =
                 findHighCoverageSubIntervals(ctx, broadcastMetadata, intervals, unfilteredReads,
                         filter,
-                        minHighCoverageValue,
-                        maxHighCoverageValue);
-        log("Found " + result.size() + " sub-intervals with coverage over " + minHighCoverageValue + " and a peak coverage of over " + maxHighCoverageValue + ".", logger);
+                        minFlankingHighCoverageValue,
+                        minPeakHighCoverageValue);
+        log("Found " + result.size() + " sub-intervals with coverage over " + minFlankingHighCoverageValue + " and a peak coverage of over " + minPeakHighCoverageValue + ".", logger);
 
         final String intervalFile = params.highCoverageIntervalsFile;
         if (intervalFile != null) {
@@ -849,8 +852,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final List<SVInterval> intervals,
             final JavaRDD<GATKRead> unfilteredReads,
             final SVReadFilter filter,
-            final int minHighCoverageValue,
-            final int maxHighCoverageValue) {
+            final int minFlankingHighCoverageValue,
+            final int minPeakHighCoverageValue) {
         final Broadcast<List<SVInterval>> broadcastIntervals = ctx.broadcast(intervals);
         final List<CandidateCoverageInterval> highCoverageIntervalRegions =
                 unfilteredReads
@@ -864,7 +867,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                         }
                         return result;
                     })
-                    .flatMap(kv -> findHighCoverageSubintervals(broadcastIntervals, kv, minHighCoverageValue, maxHighCoverageValue))
+                    .flatMap(kv -> findHighCoverageSubintervals(broadcastIntervals, kv, minFlankingHighCoverageValue, minPeakHighCoverageValue))
                         .collect();
 
         final List<CandidateCoverageInterval> sortedRegions = new ArrayList<>(highCoverageIntervalRegions);
@@ -916,11 +919,11 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
     static Iterator<CandidateCoverageInterval> findHighCoverageSubintervals(final Broadcast<List<SVInterval>> broadcastIntervals,
                                                                                                    final Tuple2<Integer, int[]> intervalCoverage,
-                                                                                                   final int minHighCoverageValue,
-                                                                                                   final int maxHighCoverageValue) {
+                                                                                                   final int minFlankingHighCoverageValue,
+                                                                                                   final int minPeakHighCoverageValue) {
         final SVInterval interval = broadcastIntervals.getValue().get(intervalCoverage._1);
         final int[] coverageArray = intervalCoverage._2;
-        return IntervalCoverageFinder.getHighCoverageIntervalsInWindow(minHighCoverageValue, maxHighCoverageValue, interval, coverageArray);
+        return IntervalCoverageFinder.getHighCoverageIntervalsInWindow(minFlankingHighCoverageValue, minPeakHighCoverageValue, interval, coverageArray);
     }
 
     /** find template names for reads mapping to each interval */

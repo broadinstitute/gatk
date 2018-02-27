@@ -67,13 +67,11 @@ public class SVReadFilter implements Serializable {
     }
 
     public boolean containedInRegionToIgnore(final SVInterval interval, final SVIntervalTree<SVInterval> regionsToIgnore) {
-        if (regionsToIgnore.hasOverlapper(interval)) {
-            final Iterator<SVIntervalTree.Entry<SVInterval>> overlappers = regionsToIgnore.overlappers(interval);
-            while (overlappers.hasNext()) {
-                SVIntervalTree.Entry<SVInterval> depthFilteredInterval = overlappers.next();
-                if (depthFilteredInterval.getInterval().overlapLen(interval) == interval.getLength()) {
-                    return true;
-                }
+        final Iterator<SVIntervalTree.Entry<SVInterval>> overlappers = regionsToIgnore.overlappers(interval);
+        while (overlappers.hasNext()) {
+            SVIntervalTree.Entry<SVInterval> depthFilteredInterval = overlappers.next();
+            if (depthFilteredInterval.getInterval().overlapLen(interval) == interval.getLength()) {
+                return true;
             }
         }
         return false;
