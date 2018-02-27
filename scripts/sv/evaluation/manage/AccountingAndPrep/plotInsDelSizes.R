@@ -2,7 +2,7 @@
 # and deletion calls
 
 #########################################################################
-load("/Users/shuang/GATK/dsde-methods-sv/scripts/evaluation/AccountingAndPrep/func_collectSizes.Rdata")
+source("../../general/AccountingAndPrep/func_collectSizes.R")
 
 args<-commandArgs(TRUE)
 wd <- args[1]

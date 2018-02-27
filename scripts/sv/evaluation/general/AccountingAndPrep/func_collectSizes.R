@@ -83,5 +83,3 @@ collectSizes <- function(mantaDelSizesFile,
 
     result
 }
-
-save.image("func_collectSizes.Rdata")
