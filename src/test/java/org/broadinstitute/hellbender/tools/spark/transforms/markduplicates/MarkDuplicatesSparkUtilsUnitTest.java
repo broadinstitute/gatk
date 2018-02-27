@@ -62,7 +62,7 @@ public class MarkDuplicatesSparkUtilsUnitTest extends GATKBaseTest {
 
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         JavaRDD<GATKRead> reads = ctx.parallelize(ImmutableList.of(read1, read2, read3, read4), 1);
-        JavaPairRDD<String, Iterable<GATKRead>> groupedReads = MarkDuplicatesSparkUtils.spanReadsByKey(header, null); //todo reads);
+        JavaPairRDD<String, Iterable<MarkDuplicatesSparkUtils.IndexPair<GATKRead>>> groupedReads = MarkDuplicatesSparkUtils.spanReadsByKey(header, null); //todo reads);
         Assert.assertEquals(groupedReads.collect(),
                 ImmutableList.of(pairIterable(key1, read1, read3), pairIterable(key2, read2, read4)));
     }
