@@ -23,6 +23,7 @@ releases of the toolkit.
 * [Building GATK4](#building)
 * [Running GATK4](#running)
     * [Passing JVM options to gatk](#jvmoptions)
+    * [Passing a configuration file to gatk](#configFileOptions)
     * [Running GATK4 with inputs on Google Cloud Storage](#gcs)
     * [Running GATK4 Spark tools on a Spark cluster](#sparkcluster)
     * [Running GATK4 Spark tools on Google Cloud Dataproc](#dataproc)
@@ -166,6 +167,16 @@ You can download and run pre-built versions of GATK4 from the following places:
      
     ./gatk --java-options "-Xmx4G -XX:+PrintGCDetails" <rest of command>
     ```
+#### <a name="configFileOptions">Passing a configuration file to gatk</a>
+
+* To pass a configuration file to GATK, run `gatk` with the `--gatk-config-file` argument: 
+
+	```
+	./gatk --gatk-config-file GATKProperties.config <rest of command>
+	```
+
+	An example GATK configuration file is packaged with each release as `GATKConfig.EXAMPLE.properties`
+	This example file contains all current options that are used by GATK and their default values.
 
 #### <a name="gcs">Running GATK4 with inputs on Google Cloud Storage:</a>
 
