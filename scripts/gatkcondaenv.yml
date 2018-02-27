@@ -26,7 +26,7 @@ dependencies:
   - h5py==2.7.1
   - html5lib==0.9999999
   - joblib==0.11
-  - keras==2.1.1
+  - keras==2.1.4
   - markdown==2.6.9
   - matplotlib==2.1.0
   - numpy==1.13.3
