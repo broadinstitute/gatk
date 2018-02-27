@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.engine.spark;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.serializers.FieldSerializer;
 import de.javakaffee.kryoserializers.UnmodifiableCollectionsSerializer;
-import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.*;
 import org.apache.spark.serializer.KryoRegistrator;
 import org.bdgenomics.adam.serialization.ADAMKryoRegistrator;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
@@ -17,35 +17,15 @@ import java.util.Collections;
  */
 public class GATKRegistrator implements KryoRegistrator {
 
-    private ADAMKryoRegistrator ADAMregistrator;
+    private final ADAMKryoRegistrator ADAMregistrator = new ADAMKryoRegistrator();
 
-    public GATKRegistrator() {
-        this.ADAMregistrator = new ADAMKryoRegistrator();
-    }
+    public GATKRegistrator() {}
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
     public void registerClasses(Kryo kryo) {
 
-        //relatively inefficient serialization of Collections created with Collections.nCopies(), without this
-        //any Collection created with Collections.nCopies fails to serialize at run time
-        kryo.register(Collections.nCopies(2, "").getClass(), new FieldSerializer<>(kryo, Collections.nCopies(2, "").getClass()));
+        registerGATKClasses(kryo);
 
-        // htsjdk.variant.variantcontext.CommonInfo has a Map<String, Object> that defaults to
-        // a Collections.unmodifiableMap. This can't be handled by the version of kryo used in Spark, it's fixed
-        // in newer versions (3.0.x), but we can't use those because of incompatibility with Spark. We just include the
-        // fix here.
-        // We are tracking this issue with (#874)
-        kryo.register(Collections.unmodifiableMap(Collections.EMPTY_MAP).getClass(), new UnmodifiableCollectionsSerializer());
-
-        kryo.register(Collections.unmodifiableList(Collections.EMPTY_LIST).getClass(), new UnmodifiableCollectionsSerializer());
-
-        kryo.register(SAMRecordToGATKReadAdapter.class, new SAMRecordToGATKReadAdapterSerializer());
-
-        kryo.register(SAMRecord.class, new SAMRecordSerializer());
-
-        //register to avoid writing the full name of this class over and over
-        kryo.register(PairedEnds.class, new FieldSerializer<>(kryo, PairedEnds.class));
 
         // register the ADAM data types using Avro serialization, including:
         //     AlignmentRecord
@@ -67,5 +47,38 @@ public class GATKRegistrator implements KryoRegistrator {
         //     TargetSet
         //     ZippedTargetSet
         ADAMregistrator.registerClasses(kryo);
+
+        //do this before and after ADAM to try and force our registrations to win out
+        registerGATKClasses(kryo);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private void registerGATKClasses(Kryo kryo) {
+        //relatively inefficient serialization of Collections created with Collections.nCopies(), without this
+        //any Collection created with Collections.nCopies fails to serialize at run time
+        kryo.register(Collections.nCopies(2, "").getClass(), new FieldSerializer<>(kryo, Collections.nCopies(2, "").getClass()));
+
+        // htsjdk.variant.variantcontext.CommonInfo has a Map<String, Object> that defaults to
+        // a Collections.unmodifiableMap. This can't be handled by the version of kryo used in Spark, it's fixed
+        // in newer versions (3.0.x), but we can't use those because of incompatibility with Spark. We just include the
+        // fix here.
+        // We are tracking this issue with (#874)
+        kryo.register(Collections.unmodifiableMap(Collections.EMPTY_MAP).getClass(), new UnmodifiableCollectionsSerializer());
+
+        kryo.register(Collections.unmodifiableList(Collections.EMPTY_LIST).getClass(), new UnmodifiableCollectionsSerializer());
+
+        kryo.register(SAMRecordToGATKReadAdapter.class, new SAMRecordToGATKReadAdapterSerializer());
+
+        kryo.register(SAMRecord.class, new SAMRecordSerializer());
+        kryo.register(BAMRecord.class, new SAMRecordSerializer());
+
+        kryo.register(SAMFileHeader.class);
+        kryo.register(SAMFileHeader.GroupOrder.class);
+        kryo.register(SAMFileHeader.SortOrder.class);
+        kryo.register(SAMProgramRecord.class);
+        kryo.register(SAMReadGroupRecord.class);
+
+        //register to avoid writing the full name of this class over and over
+        kryo.register(PairedEnds.class, new FieldSerializer<>(kryo, PairedEnds.class));
     }
 }
