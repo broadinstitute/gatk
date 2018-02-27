@@ -15,6 +15,8 @@ public class CNNVariantTrainIntegrationTest extends CommandLineProgramTest {
 
     @Test(groups = {"python"})
     public void testTrainingReferenceModel() throws IOException{
+        CNNVariantWriteTensorsIntegrationTest wt = new CNNVariantWriteTensorsIntegrationTest();
+        wt.generateReferenceTensors();
         final String dataDir = largeFileTestDir + "VQSR/reference_tensors/";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.addArgument("input-data-dir", dataDir)
@@ -29,6 +31,8 @@ public class CNNVariantTrainIntegrationTest extends CommandLineProgramTest {
 
     @Test(groups = {"python"})
     public void testTrainingReadModel() throws IOException{
+        CNNVariantWriteTensorsIntegrationTest wt = new CNNVariantWriteTensorsIntegrationTest();
+        wt.generateReadTensors();
         final String dataDir = largeFileTestDir + "VQSR/read_tensors/";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.addArgument("input-data-dir", dataDir)
