@@ -92,23 +92,6 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
         assertSingleShardedWritingWorks(vcf, outputUrl);
     }
 
-
-    @DataProvider
-    public static Object[][] brokenGVCFCases() {
-        return new Object[][]{
-                {"g.vcf.gz"},
-                {"g.bcf"},
-                {"g.bcf.gz"}
-        };
-    }
-
-    @Test(dataProvider = "brokenGVCFCases", expectedExceptions = UserException.UnimplementedFeature.class)
-    public void testBrokenGVCFCasesAreDisallowed(String extension) throws IOException {
-        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        VariantsSparkSink.writeVariants(ctx, createTempFile("test", extension).toString(), null,
-                                        new VCFHeader(), true, Arrays.asList(1, 2, 4, 5), 2, 1 );
-    }
-
     @DataProvider
     public Object[][] gvcfCases(){
         return new Object[][]{
@@ -117,9 +100,9 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
                 {false, ".vcf.gz"},
                 {false, ".bcf"},
                 {false, ".bcf.gz"},
-                //  {true, "g.vcf.gz"},  TODO enable this when https://github.com/broadinstitute/gatk/issues/4274 is resolved
-                //  {true, ".g.bcf"},    TODO enable these when https://github.com/broadinstitute/gatk/issues/4303 is resolved
-                //  {true, ".g.bcf.gz"}
+                {true, ".g.vcf.gz"},
+                {true, ".g.bcf"},
+                {true, ".g.bcf.gz"}
         };
     }
 

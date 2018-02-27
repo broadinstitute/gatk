@@ -129,30 +129,19 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
     }
 
     @DataProvider
-    public static Object[][] brokenGVCFCases() {
+    public static Object[][] gvcfCases() {
         return new Object[][]{
-                {"g.vcf.gz"},
-                {"g.bcf"},
-                {"g.bcf.gz"}
+                {".g.vcf"},
+                {".g.vcf.gz"},
+                {".g.bcf"},
+                {".g.bcf.gz"}
         };
     }
-    
-    @Test(dataProvider = "brokenGVCFCases", expectedExceptions = UserException.UnimplementedFeature.class)
-    public void testBrokenGVCFConfigurationsAreDisallowed(String extension) {
-        final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_2bit_reference_20_21,
-                "-O", createTempFile("testGVCF_GZ_throw_exception", extension).getAbsolutePath(),
-                "-ERC", "GVCF",
-        };
 
-        runCommandLine(args);
-    }
-
-    @Test
-    public void testGVCFModeIsConcordantWithGATK3_8AlelleSpecificResults() throws Exception {
+    @Test(dataProvider = "gvcfCases")
+    public void testGVCFModeIsConcordantWithGATK3_8AlelleSpecificResults(String extension) throws Exception {
         Utils.resetRandomGenerator();
-        final File output = createTempFile("testGVCFModeIsConcordantWithGATK3_8AlelleSpecificResults", ".g.vcf");
+        final File output = createTempFile("testGVCFModeIsConcordantWithGATK3_8AlelleSpecificResults", extension);
 
         //Created by running:
         // java -jar gatk.3.8-4-g7b0250253f.jar -T HaplotypeCaller \
