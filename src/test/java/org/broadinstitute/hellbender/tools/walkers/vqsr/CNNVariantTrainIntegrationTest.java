@@ -29,7 +29,7 @@ public class CNNVariantTrainIntegrationTest extends CommandLineProgramTest {
         runCommandLine(argsBuilder);
     }
 
-    @Test(groups = {"python"})
+    @Test(groups = {"python"}, enabled = false)
     public void testTrainingReadModel() throws IOException{
         CNNVariantWriteTensorsIntegrationTest wt = new CNNVariantWriteTensorsIntegrationTest();
         wt.generateReadTensors();
