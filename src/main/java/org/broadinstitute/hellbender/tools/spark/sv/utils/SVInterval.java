@@ -6,6 +6,7 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 
 /**
  * Naturally collating, simple interval.
@@ -101,6 +102,10 @@ public final class SVInterval implements Comparable<SVInterval> {
             if ( result == 0 ) result = Integer.compare(this.end, that.end);
         }
         return result;
+    }
+
+    public String toBedString(final ReadMetadata metadata) {
+        return metadata.getContigName(this.contig)+"\t"+(start-1)+"\t"+end;
     }
 
     @Override

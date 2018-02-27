@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 
-import htsjdk.samtools.SAMFileHeader;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
@@ -13,11 +12,16 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.utils.FlatMapGluer;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 
+import java.util.List;
+
 import static org.broadinstitute.hellbender.tools.spark.sv.evidence.FindBreakpointEvidenceSpark.buildMetadata;
+import static org.broadinstitute.hellbender.tools.spark.sv.evidence.FindBreakpointEvidenceSpark.findGenomewideHighCoverageIntervalsToIgnore;
 
 /**
  * (Internal) Extracts evidence of structural variations from reads
@@ -87,11 +91,19 @@ public final class ExtractSVEvidenceSpark extends GATKSparkTool {
         final int allowedOverhang = params.allowedShortFragmentOverhang;
         final int minEvidenceMapQ = params.minEvidenceMapQ;
 
+        final SVIntervalTree<SVInterval> highCoverageSubintervalTree = findGenomewideHighCoverageIntervalsToIgnore(params,
+                readMetadata, ctx, getHeaderForReads(), unfilteredReads, filter, logger, broadcastMetadata);
+        final Broadcast<SVIntervalTree<SVInterval>> broadcastHighCoverageSubIntervals = ctx.broadcast(highCoverageSubintervalTree);
+
         unfilteredReads
             .mapPartitions(readItr -> {
                 final GATKRead sentinel = new SAMRecordToGATKReadAdapter(null);
                 return FlatMapGluer.applyMapFunc(
-                        new ReadClassifier(broadcastMetadata.value(), sentinel, allowedOverhang, filter),
+                        new ReadClassifier(broadcastMetadata.value(),
+                                sentinel,
+                                allowedOverhang,
+                                filter,
+                                broadcastHighCoverageSubIntervals.getValue()),
                         readItr, sentinel);
             }, true)
             .map(e -> e.stringRep(broadcastMetadata.getValue(), minEvidenceMapQ))

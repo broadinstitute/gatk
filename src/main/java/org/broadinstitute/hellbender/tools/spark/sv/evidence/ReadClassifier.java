@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.*;
@@ -22,15 +24,18 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
     private final int allowedShortFragmentOverhang;
     private final SVReadFilter filter;
     private final KSWindowFinder smallIndelFinder;
+    private final SVIntervalTree<SVInterval> regionsToIgnore;
 
-    public ReadClassifier( final ReadMetadata readMetadata,
-                           GATKRead sentinel,
-                           final int allowedShortFragmentOverhang,
-                           SVReadFilter filter ) {
+    public ReadClassifier(final ReadMetadata readMetadata,
+                          GATKRead sentinel,
+                          final int allowedShortFragmentOverhang,
+                          SVReadFilter filter,
+                          final SVIntervalTree<SVInterval> regionsToIgnore) {
         this.readMetadata = readMetadata;
         this.sentinel = sentinel;
         this.allowedShortFragmentOverhang = allowedShortFragmentOverhang;
         this.filter = filter;
+        this.regionsToIgnore = regionsToIgnore;
         smallIndelFinder = new KSWindowFinder(readMetadata, filter);
     }
 
@@ -42,7 +47,15 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
             return evidenceList.iterator();
         }
 
+        if ( !filter.isMappedToPrimaryContig(read, readMetadata)) return Collections.emptyIterator();
         if ( !filter.isEvidence(read) ) return Collections.emptyIterator();
+        if (regionsToIgnore != null) {
+            final int readContigId = readMetadata.getContigID(read.getContig());
+            final SVInterval clippedReadInterval = new SVInterval(readContigId, read.getStart(), read.getEnd());
+            if (filter.containedInRegionToIgnore(clippedReadInterval, regionsToIgnore)) {
+                return Collections.emptyIterator();
+            }
+        }
 
         final List<BreakpointEvidence> evidenceList = new ArrayList<>();
         checkForSplitRead(read, evidenceList);

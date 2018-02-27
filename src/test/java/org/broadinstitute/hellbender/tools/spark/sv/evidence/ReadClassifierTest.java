@@ -35,7 +35,7 @@ public class ReadClassifierTest extends GATKBaseTest {
         read.setReadGroup(groupName);
         read.setMappingQuality(60);
         final SVReadFilter filter = new SVReadFilter(params);
-        final ReadClassifier classifier = new ReadClassifier(readMetadata, null, params.allowedShortFragmentOverhang, filter);
+        final ReadClassifier classifier = new ReadClassifier(readMetadata, null, params.allowedShortFragmentOverhang, filter, null);
         checkClassification(classifier, read, Collections.emptyList());
         read.setCigar(ReadClassifier.MIN_SOFT_CLIP_LEN+"S"+(readSize-ReadClassifier.MIN_SOFT_CLIP_LEN)+"M");
         checkClassification(classifier, read, Collections.singletonList(new BreakpointEvidence.SplitRead(read, readMetadata, true)));
