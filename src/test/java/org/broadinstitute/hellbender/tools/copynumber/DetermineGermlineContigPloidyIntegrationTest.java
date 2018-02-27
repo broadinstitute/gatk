@@ -24,7 +24,7 @@ public final class DetermineGermlineContigPloidyIntegrationTest extends CommandL
     private static final File[] TEST_COUNT_FILES = IntStream.range(0, 20)
             .mapToObj(n -> new File(GCNV_SIMULATED_DATA_DIR, String.format("SAMPLE_%03d_counts.tsv", n)))
             .toArray(File[]::new);
-    private static final File TEMP_OUTPUT_DIR = new File("/home/slee/Storage/Downloads/aneuploidy/test");
+    private static final File TEMP_OUTPUT_DIR = new File("/media/slee/Storage/working/aneuploidy-samples/test");
 
     @Test(groups = {"python"})
     public void testCohort() {

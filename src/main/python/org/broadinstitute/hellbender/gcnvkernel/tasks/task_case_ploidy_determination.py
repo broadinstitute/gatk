@@ -1,6 +1,8 @@
 import logging
+import numpy as np
 import theano as th
 
+from .. import types
 from .inference_task_base import HybridInferenceTask, HybridInferenceParameters
 from ..models.model_ploidy import PloidyModelConfig, PloidyModel, PloidyWorkspace
 from ..inference.fancy_optimizers import FancyAdamax

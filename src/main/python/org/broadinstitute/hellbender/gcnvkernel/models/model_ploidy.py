@@ -209,29 +209,40 @@ class PloidyModel(GeneralizedContinuousModel):
                           shape=(ploidy_workspace.num_samples,))
         register_as_sample_specific(depth_s, sample_axis=0)
 
-        pi_mosaicism_sj = Beta(name='pi_mosaicism_s',
+        pi_mosaicism_sj = Beta(name='pi_mosaicism_sj',
                                alpha=1.0,
                                beta=100.0,
                                shape=(ploidy_workspace.num_samples, ploidy_workspace.num_contigs,))
         register_as_sample_specific(pi_mosaicism_sj, sample_axis=0)
+        f_mosaicism_sj = Beta(name='f_mosaicism_sj',
+                              alpha=10.0,
+                              beta=1.0,
+                              shape=(ploidy_workspace.num_samples, ploidy_workspace.num_contigs,))
+        register_as_sample_specific(f_mosaicism_sj, sample_axis=0)
+        norm_f_mosaicism_sj = f_mosaicism_sj / tt.max(f_mosaicism_sj, axis=1).dimshuffle(0, 'x')
 
         # Poisson per-contig counts
         eps_j = HalfNormal('eps_j', sd=0.01, shape=(ploidy_workspace.num_contigs,))
         register_as_global(eps_j)
-        mu_sjk = depth_s.dimshuffle(0, 'x', 'x') * t_j.dimshuffle('x', 0, 'x') * norm_bias_j.dimshuffle('x', 0, 'x') * \
-                 ((1 - pi_mosaicism_sj.dimshuffle(0, 1, 'x')) * ploidy_workspace.int_ploidy_values_k.dimshuffle('x', 'x', 0) +
-                  pi_mosaicism_sj.dimshuffle(0, 1, 'x') * tt.maximum(0, ploidy_workspace.int_ploidy_values_k.dimshuffle('x', 'x', 0) - 1) +
-                  eps_j.dimshuffle('x', 0, 'x'))
+        mu_sjk =  depth_s.dimshuffle(0, 'x', 'x') * t_j.dimshuffle('x', 0, 'x') * norm_bias_j.dimshuffle('x', 0, 'x') * \
+                  (ploidy_workspace.int_ploidy_values_k.dimshuffle('x', 'x', 0) + eps_j.dimshuffle('x', 0, 'x'))
+        mu_mosaic_sjk = norm_f_mosaicism_sj.dimshuffle(0, 1, 'x') * mu_sjk
 
         # unexplained variance
-        psi = HalfNormal(name='psi', sd=0.01)
+        psi = Uniform(name='psi', upper=10.0)
         register_as_global(psi)
 
         # convert "unexplained variance" to negative binomial over-dispersion
         alpha = tt.inv((tt.exp(psi) - 1.0))
 
         def _get_logp_sjk(_n_sj):
-            _logp_sjk = commons.negative_binomial_logp(mu_sjk, alpha.dimshuffle('x', 'x', 'x'), _n_sj.dimshuffle(0, 1, 'x'))
+            _logp_sjk = logsumexp([tt.log(1 - pi_mosaicism_sj.dimshuffle(0, 1, 'x')) + commons.negative_binomial_logp(mu_sjk, alpha.dimshuffle('x', 'x', 'x'), _n_sj.dimshuffle(0, 1, 'x')),
+                                   tt.log(pi_mosaicism_sj.dimshuffle(0, 1, 'x')) + commons.negative_binomial_logp(mu_mosaic_sjk, alpha.dimshuffle('x', 'x', 'x'), _n_sj.dimshuffle(0, 1, 'x'))],
+                                  axis=0)[0]
+            # _logp_sjk = logsumexp([tt.log(1 - pi_mosaicism_sj.dimshuffle(0, 1, 'x')) + Poisson.dist(mu=mu_sjk).logp(_n_sj.dimshuffle(0, 1, 'x')),
+            #                        tt.log(pi_mosaicism_sj.dimshuffle(0, 1, 'x')) + Poisson.dist(mu=mu_mosaic_sjk).logp(_n_sj.dimshuffle(0, 1, 'x'))],
+            #                       axis=0)[0]
+            # _logp_sjk = Poisson.dist(mu=mu_sjk).logp(_n_sj.dimshuffle(0, 1, 'x'))
             return _logp_sjk
 
         DensityDist(name='n_sj_obs',
@@ -290,12 +301,13 @@ class PloidyBasicCaller:
     @th.configparser.change_flags(compute_test_value="off")
     def _get_update_log_q_ploidy_sjk_theano_func(self):
         new_log_q_ploidy_sjk = (self.ploidy_workspace.log_p_ploidy_jk.dimshuffle('x', 0, 1)
-                                + self.ploidy_workspace.log_ploidy_emission_sjk) / self.temperature
+                                + self.ploidy_workspace.log_ploidy_emission_sjk) / self.temperature.get_value()
         new_log_q_ploidy_sjk -= pm.logsumexp(new_log_q_ploidy_sjk, axis=2)
         old_log_q_ploidy_sjk = self.ploidy_workspace.log_q_ploidy_sjk
-        admixed_new_log_q_ploidy_sjk = commons.safe_logaddexp(
-            new_log_q_ploidy_sjk + np.log(self.inference_params.caller_admixing_rate),
-            old_log_q_ploidy_sjk + np.log(1.0 - self.inference_params.caller_admixing_rate))
+        # admixed_new_log_q_ploidy_sjk = commons.safe_logaddexp(
+        #     new_log_q_ploidy_sjk + np.log(self.inference_params.caller_admixing_rate),
+        #     old_log_q_ploidy_sjk + np.log(1.0 - self.inference_params.caller_admixing_rate))
+        admixed_new_log_q_ploidy_sjk = new_log_q_ploidy_sjk
         update_norm_sj = commons.get_hellinger_distance(admixed_new_log_q_ploidy_sjk, old_log_q_ploidy_sjk)
         return th.function(inputs=[],
                            outputs=[update_norm_sj],
