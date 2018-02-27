@@ -18,7 +18,7 @@ public class CNNVariantWriteTensorsIntegrationTest extends CommandLineProgramTes
     final private static String truthBED = largeFileTestDir + "VQSR/giab_na12878_confident_chr20_1m_10m.bed";
     final private static String bamFile = largeFileTestDir + "VQSR/g94982_chr20_1m_10m_bamout.bam";
 
-    @Test(groups = {"disabled"})
+    @Test(groups = {"python"})
     public void generateReferenceTensors() throws IOException{
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
@@ -31,7 +31,7 @@ public class CNNVariantWriteTensorsIntegrationTest extends CommandLineProgramTes
         runCommandLine(argsBuilder);
     }
 
-    @Test(groups = {"disabled"})
+    @Test(groups = {"python"})
     public void generateReadTensors() throws IOException{
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
