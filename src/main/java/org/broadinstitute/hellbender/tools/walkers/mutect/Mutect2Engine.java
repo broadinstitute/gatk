@@ -43,7 +43,7 @@ import java.util.*;
  */
 public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
-    private static final String MUTECT_VERSION = "2.1-beta";
+    private static final String MUTECT_VERSION = "2.1";
 
     public static final String TUMOR_SAMPLE_KEY_IN_VCF_HEADER = "tumor_sample";
     public static final String NORMAL_SAMPLE_KEY_IN_VCF_HEADER = "normal_sample";
