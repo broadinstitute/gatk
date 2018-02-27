@@ -34,7 +34,7 @@ public final class ReadsKey {
 //                .append(ReadUtils.getStrandedUnclippedStart(read)).append(DELIMETER)
 //                .append(read.isReverseStrand() ? "r" : "f").toString();
 
-        int key = library.hashCode();
+        int key = library != null ? library.hashCode() : 1;
         key = key * 31 + ReadUtils.getReferenceIndex(read, header);
         key = key * 31 + ReadUtils.getStrandedUnclippedStart(read);
         return key * 31 + (read.isReverseStrand() ? 0 : 1);

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates;
 
 import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
@@ -28,37 +29,43 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   boolean R1R = false;
   boolean R2R = false;
 
+  private final int partitionIndex;
 
-  PairedEnds(final GATKRead first, final boolean fragment, final SAMFileHeader header) {
+  PairedEnds(final GATKRead first, final boolean fragment, final SAMFileHeader header, int partitionIndex) {
     name = ReadsKey.keyForRead(header, first);
     this.first = first;
     firstStartPosition = ReadUtils.getStrandedUnclippedStart(first);
     firstRefIndex =  ReadUtils.getReferenceIndex(first, header);
+    this.partitionIndex = partitionIndex;
     this.fragment = fragment;
   }
 
-  PairedEnds(final GATKRead first, final SAMFileHeader header) {
-    this(first, true, header);
+  PairedEnds(final GATKRead first, final SAMFileHeader header, int partitionIndex) {
+    this(first, true, header, partitionIndex);
   }
 
-  PairedEnds(int start) { this.firstStartPosition = start; }
-
-  public static PairedEnds of(final GATKRead first, final boolean fragment, final SAMFileHeader header) {
-    return new PairedEnds(first, fragment, header);
+  PairedEnds(int start, int partitionIndex) {
+    this.firstStartPosition = start;
+    this.partitionIndex = partitionIndex;
   }
 
-  public static PairedEnds of(final GATKRead first, final SAMFileHeader header) {
-    return new PairedEnds(first, header);
+  public static PairedEnds of(final GATKRead first, final boolean fragment, final SAMFileHeader header, int partitionIndex) {
+    return new PairedEnds(first, fragment, header, partitionIndex);
+  }
+
+  public static PairedEnds of(final GATKRead first, final SAMFileHeader header, int partitionIndex) {
+    return new PairedEnds(first, header, partitionIndex);
   }
 
   // An optimization for passing around empty read information
-  public static PairedEnds empty(int start){
-    return new PairedEnds(start);
+  public static PairedEnds empty(int start, int partitionIndex){
+    return new PairedEnds(start, partitionIndex);
   }
 
-  public PairedEnds and(final GATKRead second, final SAMFileHeader header) {
-    if (second != null &&
-            firstStartPosition > ReadUtils.getStrandedUnclippedStart(second)) {
+  public PairedEnds and(final GATKRead second, final SAMFileHeader header, int partitionIndex) {
+    Utils.nonNull(second);
+    Utils.validate(partitionIndex == this.partitionIndex, () -> "Partition indexes must match. " + this.partitionIndex + " != " +partitionIndex );
+    if (firstStartPosition > ReadUtils.getStrandedUnclippedStart(second)) {
       this.second = this.first;
       secondRefIndex = this.firstRefIndex;
       secondStartPosition = this.firstStartPosition;
@@ -203,6 +210,10 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
       return ReadEnds.FR; //at this point we know for sure R1R is false
     }
     return ReadEnds.FF;  //at this point we know for sure R1R is false and R2R is false
+  }
+
+  public int getPartitionIndex(){
+    return partitionIndex;
   }
 
   public String getName() {
