@@ -8,10 +8,6 @@ echo "BEGIN TO PERFORM SIMPLE COMPARISON BETWEEN MASTER AND FEATURE"
 echo -e '\033[0;35m#################################################\033[0m'
 echo -e '\033[0;35m#################################################\033[0m'
 
-echo "Diverts different types of variants in VCF files"
-echo "  and collects & saves variants sizes by type"
-
-
 if [[ "$GATK_VCF_MASTER" == *.vcf.gz ]]; then
     COMPRESSED=$(basename "$GATK_VCF_MASTER")
     pattern=".gz"
@@ -39,7 +35,7 @@ elif [[ "$GATK_CPX_VCF_FEATURE" == *.vcf  ]]; then
     GATKVCF_c="$GATK_CPX_VCF_FEATURE"
 fi
 
-mkdir -p "../masterVSfeature" && cd "../masterVSfeature/"
+cd "$ANALYSIS_DIR_MASTER_VS_FEATURE"
 
 ###################
 ## collect the IDs then do some accounting

@@ -67,6 +67,7 @@ EOF
     --gsvcpxf & path to GATK VCF on complex variants
     --gsvcpxf2 & path to another GATK VCF on complex variants (usually the call set from master)
     --gsvdir2 & local directory to save analysis results on the other GATK variant calls
+    --masterVSfeatureDir & local directory to save analysis results on comparing TP/FP between the two GATK call sets
 EOF
 } 
 
@@ -219,6 +220,18 @@ while [ $# -ge 1 ]; do
             ANALYSIS_DIR_MASTER=${1#*=} # remove everything up to = and assign rest to user
             shift
             ;;
+        --masterVSfeatureDir)
+            if [ $# -ge 2 ]; then
+                ANALYSIS_DIR_MASTER_VS_FEATURE="$2"
+                shift 2
+            else
+                throw_error "--masterVSfeatureDir requires a non-empty argument"
+            fi
+            ;;
+        --masterVSfeatureDir=?*)
+            ANALYSIS_DIR_MASTER_VS_FEATURE=${1#*=} # remove everything up to = and assign rest to user
+            shift
+            ;;
         --)   # explicit call to end of all options
             shift
             break
@@ -232,6 +245,11 @@ while [ $# -ge 1 ]; do
     esac
 done
 
+if [[ ! -z $ANALYSIS_DIR_MASTER_VS_FEATURE ]]; then
+    if [[ -z $GATK_VCF_MASTER ]]; then
+        throw_error "local directory to save analysis results on comparing TP/FP between the two GATK call sets is provided, but only one GATK call set is given"
+    fi
+fi
 # ###################
 
 # export PACBIO_VCF_CHM1
@@ -245,13 +263,14 @@ done
 # export GATK_CPX_VCF_MASTER
 # export GATK_CPX_VCF_FEATURE
 # export MANTA_VCF
+# export ANALYSIS_DIR_MASTER_VS_FEATURE
 
 # export REF_VER=38
 
 # export SCRIPT_DIR="../general/"
 # source "$SCRIPT_DIR""misc_functions.sh"
 
-# mkdir -p "$ANALYSIS_DIR_FEATURE" "$ANALYSIS_DIR_MASTER" "$MANTA_AND_PACBIO_PREANALYSIS_DIR"
+# mkdir -p "$ANALYSIS_DIR_FEATURE" "$ANALYSIS_DIR_MASTER" "$MANTA_AND_PACBIO_PREANALYSIS_DIR" "$ANALYSIS_DIR_MASTER_VS_FEATURE"
 
 # ################### run pre-analysis on Manta and PacBio callsets
 # bash AccountingAndPrep/checkAndParsePacBioAndManta.sh || on_error
@@ -270,7 +289,10 @@ done
 
 
 # ###################
-# bash masterVSfeature.sh || on_error
+# # optionally run analysis between GATK callsets
+# if [[ ! -z $ANALYSIS_DIR_MASTER_VS_FEATURE ]]; then
+#     bash masterVSfeature.sh || on_error
+# fi
 
 # echo -e '\033[0;35m#################################################\033[0m'
 # echo -e '\033[0;35m#################################################\033[0m'
