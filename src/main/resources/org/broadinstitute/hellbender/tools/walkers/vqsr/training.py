@@ -6,28 +6,18 @@ import math
 import h5py
 import time
 import pysam
+import vqsr_cnn
 import numpy as np
 from Bio import Seq, SeqIO
 from collections import Counter
 
-# Package Imports
-# from . import defines
-# from . import arguments
-# from . import tensor_maps
-
-# Package Imports
-from vqsr_cnn import plots
-from vqsr_cnn import models
-from vqsr_cnn import defines
-from vqsr_cnn import arguments
-from vqsr_cnn import tensor_maps
 
 # Keras Imports
 import keras.backend as K
 
 
 def run():
-    args = arguments.parse_args()
+    args = vqsr_cnn.parse_args()
     if 'write_reference_and_annotation_tensors' == args.mode:
         write_reference_and_annotation_tensors(args)
     elif 'write_read_and_annotation_tensors' == args.mode:
@@ -41,8 +31,8 @@ def run():
 
 
 def write_reference_and_annotation_tensors(args, include_dna=True, include_annotations=True):
-    if not args.tensor_name in tensor_maps.TENSOR_MAPS_1D:
-        raise ValueError('Tensor map: ', args.tensor_name, ' is not one of the known 1D Tensor Maps:', str(tensor_maps.TENSOR_MAPS_1D))
+    if not args.tensor_name in vqsr_cnn.TENSOR_MAPS_1D:
+        raise ValueError('Tensor map: ', args.tensor_name, ' is not one of the known 1D Tensor Maps:', str(vqsr_cnn.TENSOR_MAPS_1D))
 
     record_dict = SeqIO.to_dict(SeqIO.parse(args.reference_fasta, "fasta"))
     if os.path.splitext(args.input_vcf)[-1].lower() == '.gz':
@@ -80,18 +70,18 @@ def write_reference_and_annotation_tensors(args, include_dna=True, include_annot
                 annotation_data = get_annotation_data(args, variant, stats)
 
             if include_dna:
-                dna_data = np.zeros( (args.window_size, len(defines.DNA_SYMBOLS)) )
+                dna_data = np.zeros( (args.window_size, len(vqsr_cnn.DNA_SYMBOLS)) )
                 for i,b in enumerate(record.seq):
-                    if b in defines.DNA_SYMBOLS:
-                        dna_data[i, defines.DNA_SYMBOLS[b]] = 1.0
-                    elif b in defines.AMBIGUITY_CODES:
-                        dna_data[i] = defines.AMBIGUITY_CODES[b]
+                    if b in vqsr_cnn.DNA_SYMBOLS:
+                        dna_data[i, vqsr_cnn.DNA_SYMBOLS[b]] = 1.0
+                    elif b in vqsr_cnn.AMBIGUITY_CODES:
+                        dna_data[i] = vqsr_cnn.AMBIGUITY_CODES[b]
                     else:
                         raise ValueError('Error! Unknown code:', b)
 
             tensor_path = get_path_to_train_valid_or_test(args.data_dir)
             tensor_path += cur_label_key +'/'+ plain_name(args.input_vcf) +'_'+ plain_name(args.train_vcf)
-            tensor_path += '_allele_' + str(allele_idx) +'-'+ variant.CHROM +'_'+ str(variant.POS) + tensor_maps.TENSOR_SUFFIX
+            tensor_path += '_allele_' + str(allele_idx) +'-'+ variant.CHROM +'_'+ str(variant.POS) + vqsr_cnn.TENSOR_SUFFIX
             if not os.path.exists(os.path.dirname(tensor_path)):
                 os.makedirs(os.path.dirname(tensor_path))
 
@@ -175,16 +165,16 @@ def write_read_and_annotation_tensors(args, include_annotations=True, pileup=Fal
             reference_seq = record.seq
             for i in sorted(insert_dict.keys(), key=int, reverse=True):
                 if i < 0:
-                    reference_seq = defines.INDEL_CHAR*insert_dict[i] + reference_seq
+                    reference_seq = vqsr_cnn.INDEL_CHAR*insert_dict[i] + reference_seq
                 else:
-                    reference_seq = reference_seq[:i] + defines.INDEL_CHAR*insert_dict[i] + reference_seq[i:]
+                    reference_seq = reference_seq[:i] + vqsr_cnn.INDEL_CHAR*insert_dict[i] + reference_seq[i:]
 
             read_tensor = good_reads_to_tensor(args, good_reads, ref_start, insert_dict)
             reference_sequence_into_tensor(args, reference_seq, read_tensor)
 
             tensor_path = get_path_to_train_valid_or_test(args.data_dir)
             tensor_prefix = plain_name(args.input_vcf) +'_'+ plain_name(args.train_vcf) + '_allele_' + str(allele_idx) + '-' + cur_label_key
-            tensor_path += cur_label_key + '/' + tensor_prefix + '-' + variant.CHROM + '_' + str(variant.POS) + tensor_maps.TENSOR_SUFFIX
+            tensor_path += cur_label_key + '/' + tensor_prefix + '-' + variant.CHROM + '_' + str(variant.POS) + vqsr_cnn.TENSOR_SUFFIX
             stats[cur_label_key] += 1
 
             if not os.path.exists(os.path.dirname(tensor_path)):
@@ -226,12 +216,12 @@ def train_on_reference_tensors_and_annotations(args):
     generate_train = dna_annotation_generator(args, train_paths)
     generate_valid = dna_annotation_generator(args, valid_paths)
 
-    weight_path = arguments.weight_path_from_args(args)
-    model = models.build_reference_annotation_model(args)
-    model = models.train_model_from_generators(args, model, generate_train, generate_valid, weight_path)
+    weight_path = vqsr_cnn.weight_path_from_args(args)
+    model = vqsr_cnn.build_reference_annotation_model(args)
+    model = vqsr_cnn.train_model_from_generators(args, model, generate_train, generate_valid, weight_path)
 
     test = load_dna_annotations_positions_from_class_dirs(args, test_paths, per_class_max=args.samples)
-    plots.plot_roc_per_class(model, [test[0], test[1]], test[2], args.labels, args.id)
+    vqsr_cnn.plot_roc_per_class(model, [test[0], test[1]], test[2], args.labels, args.id)
 
 
 
@@ -253,13 +243,12 @@ def train_on_read_tensors_and_annotations(args):
     generate_train = tensor_generator_from_label_dirs_and_args(args, train_paths)
     generate_valid = tensor_generator_from_label_dirs_and_args(args, valid_paths)
 
-    weight_path = arguments.weight_path_from_args(args)
-    model = models.build_read_tensor_2d_and_annotations_model(args)
-
-    model = models.train_model_from_generators(args, model, generate_train, generate_valid, weight_path)
+    weight_path = vqsr_cnn.weight_path_from_args(args)
+    model = vqsr_cnn.build_read_tensor_2d_and_annotations_model(args)
+    model = vqsr_cnn.train_model_from_generators(args, model, generate_train, generate_valid, weight_path)
 
     test = load_tensors_and_annotations_from_class_dirs(args, test_paths, per_class_max=args.samples)
-    plots.plot_roc_per_class(model, [test[0], test[1]], test[2], args.labels, args.id, batch_size=args.batch_size)
+    vqsr_cnn.plot_roc_per_class(model, [test[0], test[1]], test[2], args.labels, args.id, batch_size=args.batch_size)
 
 
 
@@ -354,14 +343,14 @@ def get_good_reads(args, samfile, variant, sort_by='base'):
         if 'I' in read.cigarstring:
             cur_idx = 0
             for t in read.cigartuples:
-                if t[0] == defines.CIGAR_CODE['I']:
+                if t[0] == vqsr_cnn.CIGAR_CODE['I']:
                     insert_idx = cur_idx - index_dif
                     if insert_idx not in insert_dict:
                         insert_dict[insert_idx] = t[1]
                     elif insert_dict[insert_idx] < t[1]:
                         insert_dict[insert_idx] = t[1]
 
-                if t[0] in [defines.CIGAR_CODE['M'], defines.CIGAR_CODE['I'], defines.CIGAR_CODE['S'], defines.CIGAR_CODE['D']]:
+                if t[0] in [vqsr_cnn.CIGAR_CODE['M'], vqsr_cnn.CIGAR_CODE['I'], vqsr_cnn.CIGAR_CODE['S'], vqsr_cnn.CIGAR_CODE['D']]:
                     cur_idx += t[1]
 
         good_reads.append(read)
@@ -390,10 +379,10 @@ def get_base_to_sort_by(read, variant):
         for cur_op, length in read.cigartuples:
             cur_idx += length
             if cur_idx > var_idx:
-                if cur_op == defines.CIGAR_CODE['M']:
+                if cur_op == vqsr_cnn.CIGAR_CODE['M']:
                     return read.query_alignment_sequence[clamp(var_idx, 0, max_idx)]
                 else:
-                    return defines.CODE2CIGAR[cur_op]
+                    return vqsr_cnn.CODE2CIGAR[cur_op]
         return 'Y'
 
 
@@ -417,8 +406,8 @@ def good_reads_to_tensor(args, good_reads, ref_start, insert_dict):
     Returns:
         tensor: 3D read tensor.
     '''
-    channel_map = tensor_maps.get_tensor_channel_map_from_args(args)
-    tensor = np.zeros( tensor_maps.tensor_shape_from_args(args) )
+    channel_map = vqsr_cnn.get_tensor_channel_map_from_args(args)
+    tensor = np.zeros( vqsr_cnn.tensor_shape_from_args(args) )
 
     for j,read in enumerate(good_reads):
 
@@ -431,7 +420,7 @@ def good_reads_to_tensor(args, good_reads, ref_start, insert_dict):
             if i == args.window_size:
                 break
 
-            if b == defines.SKIP_CHAR:
+            if b == vqsr_cnn.SKIP_CHAR:
                 continue
             elif flag_start == -1:
                 flag_start = i
@@ -439,7 +428,7 @@ def good_reads_to_tensor(args, good_reads, ref_start, insert_dict):
                 flag_end = i
 
             if b in args.input_symbols:
-                if b == defines.INDEL_CHAR:
+                if b == vqsr_cnn.INDEL_CHAR:
                     if K.image_data_format() == 'channels_last':
                         tensor[j, i, args.input_symbols[b]] = 1.0
                     else:
@@ -451,18 +440,18 @@ def good_reads_to_tensor(args, good_reads, ref_start, insert_dict):
                     else:
                         tensor[:4, j, i] = hot_array
 
-            elif b in defines.AMBIGUITY_CODES:
+            elif b in vqsr_cnn.AMBIGUITY_CODES:
                 if K.image_data_format() == 'channels_last':
-                    tensor[j, i, :4] = defines.AMBIGUITY_CODES[b]
+                    tensor[j, i, :4] = vqsr_cnn.AMBIGUITY_CODES[b]
                 else:
-                    tensor[:4, j, i] = defines.AMBIGUITY_CODES[b]
+                    tensor[:4, j, i] = vqsr_cnn.AMBIGUITY_CODES[b]
 
             else:
                 print('Error! Unknown symbol in seq block:', b)
                 return
 
         flags = flag_to_array(read.flag)
-        for i in range(defines.READ_FLAGS):
+        for i in range(vqsr_cnn.READ_FLAGS):
             flag_str = 'flag_bit_'+ str(i)
 
             if flags[i] and flag_str in channel_map:
@@ -473,9 +462,9 @@ def good_reads_to_tensor(args, good_reads, ref_start, insert_dict):
 
         if 'mapping_quality' in channel_map:
             if K.image_data_format() == 'channels_last':
-                tensor[j, flag_start:flag_end, channel_map['mapping_quality']] = float(read.mapping_quality)/defines.MAPPING_QUALITY_MAX
+                tensor[j, flag_start:flag_end, channel_map['mapping_quality']] = float(read.mapping_quality)/vqsr_cnn.MAPPING_QUALITY_MAX
             else:
-                tensor[channel_map['mapping_quality'], j, flag_start:flag_end] = float(read.mapping_quality)/defines.MAPPING_QUALITY_MAX
+                tensor[channel_map['mapping_quality'], j, flag_start:flag_end] = float(read.mapping_quality)/vqsr_cnn.MAPPING_QUALITY_MAX
 
     return tensor
 
@@ -490,11 +479,11 @@ def sequence_and_qualities_from_read(args, read, ref_start, insert_dict):
     index_dif = ref_start - read.reference_start
     for t in read.cigartuples:
         my_ref_idx = cur_idx - index_dif
-        if t[0] == defines.CIGAR_CODE['I'] and my_ref_idx in insert_dict:
+        if t[0] == vqsr_cnn.CIGAR_CODE['I'] and my_ref_idx in insert_dict:
             my_indel_dict[my_ref_idx] = insert_dict[my_ref_idx] - t[1]
-        elif t[0] == defines.CIGAR_CODE['D']:
+        elif t[0] == vqsr_cnn.CIGAR_CODE['D']:
             my_indel_dict[my_ref_idx] = t[1]
-        if t[0] in [defines.CIGAR_CODE['M'], defines.CIGAR_CODE['I'], defines.CIGAR_CODE['S'], defines.CIGAR_CODE['D']]:
+        if t[0] in [vqsr_cnn.CIGAR_CODE['M'], vqsr_cnn.CIGAR_CODE['I'], vqsr_cnn.CIGAR_CODE['S'], vqsr_cnn.CIGAR_CODE['D']]:
             cur_idx += t[1]
 
     for k in insert_dict.keys():
@@ -508,15 +497,15 @@ def sequence_and_qualities_from_read(args, read, ref_start, insert_dict):
         rseq = rseq[index_dif:]
         rqual = rqual[index_dif:]
     elif index_dif < 0:
-        rseq = defines.SKIP_CHAR*(-index_dif) + rseq
+        rseq = vqsr_cnn.SKIP_CHAR*(-index_dif) + rseq
         rqual = [no_qual_filler]*(-index_dif) + rqual
 
     for j in sorted(my_indel_dict.keys(), key=int, reverse=True):
         if j < 1:
-            rseq = (defines.INDEL_CHAR*my_indel_dict[j]) + rseq
+            rseq = (vqsr_cnn.INDEL_CHAR*my_indel_dict[j]) + rseq
             rqual = ([no_qual_filler]*my_indel_dict[j]) + rqual
         else:
-            rseq = rseq[:j] + (defines.INDEL_CHAR*my_indel_dict[j]) + rseq[j:]
+            rseq = rseq[:j] + (vqsr_cnn.INDEL_CHAR*my_indel_dict[j]) + rseq[j:]
             rqual = rqual[:j] + ([no_qual_filler]*my_indel_dict[j]) + rqual[j:]
 
     return rseq, rqual
@@ -525,8 +514,8 @@ def sequence_and_qualities_from_read(args, read, ref_start, insert_dict):
 
 
 def read_tensor_to_pileup(args, read_tensor):
-    tensor_map = tensor_maps.get_tensor_channel_map_from_args(args)
-    channels = tensor_maps.get_reference_and_read_channels(args)
+    tensor_map = vqsr_cnn.get_tensor_channel_map_from_args(args)
+    channels = vqsr_cnn.get_reference_and_read_channels(args)
     pileup_tensor = np.zeros((args.window_size, channels))
 
     for i in range(args.window_size):
@@ -561,16 +550,16 @@ def reference_sequence_into_tensor(args, reference_seq, tensor):
                 tensor[:, i, ref_offset+args.input_symbols[b]] = 1.0
             else:
                 tensor[ref_offset+args.input_symbols[b], :, i] = 1.0
-        elif b in defines.AMBIGUITY_CODES:
+        elif b in vqsr_cnn.AMBIGUITY_CODES:
             if K.image_data_format() == 'channels_last':
-                tensor[:, i, ref_offset:ref_offset+4] = np.transpose(np.tile(defines.AMBIGUITY_CODES[b], (args.read_limit, 1)))
+                tensor[:, i, ref_offset:ref_offset+4] = np.transpose(np.tile(vqsr_cnn.AMBIGUITY_CODES[b], (args.read_limit, 1)))
             else:
-                tensor[ref_offset:ref_offset+4, :, i] = np.transpose(np.tile(defines.AMBIGUITY_CODES[b], (args.read_limit, 1)))
+                tensor[ref_offset:ref_offset+4, :, i] = np.transpose(np.tile(vqsr_cnn.AMBIGUITY_CODES[b], (args.read_limit, 1)))
 
 def flag_to_array(flag):
     flags = []
 
-    for i in range(defines.READ_FLAGS):
+    for i in range(vqsr_cnn.READ_FLAGS):
         flags.append((flag>>i)&1)
 
     return np.array(flags)
@@ -593,9 +582,9 @@ def add_mq_to_read_tensor(args, tensor, tensor_channel_map, mapping_qualities):
 
     for read_idx, mq in enumerate(mapping_qualities):
         if K.image_data_format() == 'channels_last':
-            tensor[read_idx, :, tensor_channel_map['mapping_quality']] = float(mq) / defines.MAPPING_QUALITY_MAX
+            tensor[read_idx, :, tensor_channel_map['mapping_quality']] = float(mq) / vqsr_cnn.MAPPING_QUALITY_MAX
         else:
-            tensor[tensor_channel_map['mapping_quality'], read_idx, :] = float(mq) / defines.MAPPING_QUALITY_MAX
+            tensor[tensor_channel_map['mapping_quality'], read_idx, :] = float(mq) / vqsr_cnn.MAPPING_QUALITY_MAX
 
 
 def base_quality_to_phred_array(base_quality, base, base_dict):
@@ -606,7 +595,7 @@ def base_quality_to_phred_array(base_quality, base, base_dict):
     not_base_quality = -10 * np.log10(not_p) # Back to Phred
 
     for b in base_dict.keys():
-        if b == defines.INDEL_CHAR:
+        if b == vqsr_cnn.INDEL_CHAR:
             continue
         elif b == base:
             phred[base_dict[b]] = base_quality
@@ -624,7 +613,7 @@ def base_quality_to_p_hot_array(base_quality, base, base_dict):
     for b in base_dict.keys():
         if b == base:
             phot[base_dict[b]] = p
-        elif b == defines.INDEL_CHAR:
+        elif b == vqsr_cnn.INDEL_CHAR:
             continue
         else:
             phot[base_dict[b]] = not_p
@@ -824,7 +813,7 @@ def dna_annotation_generator(args, train_paths):
     tensors = {}
 
     if args.window_size > 0:
-        channel_map = tensor_maps.get_tensor_channel_map_from_args(args)
+        channel_map = vqsr_cnn.get_tensor_channel_map_from_args(args)
         tensor = np.zeros((args.batch_size, args.window_size, len(channel_map)))
 
     annotation_data = np.zeros((args.batch_size, len(args.annotations)))
@@ -838,7 +827,7 @@ def dna_annotation_generator(args, train_paths):
             continue
         label = args.labels[label_key]
 
-        tensors[label] = [os.path.join(tp, t) for t in os.listdir(tp) if os.path.splitext(t)[1] == tensor_maps.TENSOR_SUFFIX]
+        tensors[label] = [os.path.join(tp, t) for t in os.listdir(tp) if os.path.splitext(t)[1] == vqsr_cnn.TENSOR_SUFFIX]
         tensor_counts[label] = 0
         print('Found ', len(tensors[label]), 'examples of label:', label, 'in:', tp)
 
@@ -893,12 +882,12 @@ def tensor_generator_from_label_dirs_and_args(args, train_paths, with_positions=
     tensor_counts = Counter()
     per_batch_per_label = (args.batch_size // len(args.labels) )
 
-    tm = tensor_maps.get_tensor_channel_map_from_args(args)
+    tm = vqsr_cnn.get_tensor_channel_map_from_args(args)
     if tm:
-        tensor_shape = tensor_maps.tensor_shape_from_args(args)
+        tensor_shape = vqsr_cnn.tensor_shape_from_args(args)
         batch[args.tensor_name] = np.zeros(((args.batch_size,)+tensor_shape))
 
-    if arguments.annotations_from_args(args):
+    if vqsr_cnn.annotations_from_args(args):
         batch[args.annotation_set] = np.zeros((args.batch_size, len(args.annotations)))
 
     if with_positions:
@@ -912,7 +901,7 @@ def tensor_generator_from_label_dirs_and_args(args, train_paths, with_positions=
             print('Skipping label directory:', label_key, ' which is not in args label set:', args.labels.keys())
             continue
         label = args.labels[label_key]
-        tensors[label] = [os.path.join(tp, t) for t in os.listdir(tp) if os.path.splitext(t)[1] == tensor_maps.TENSOR_SUFFIX]
+        tensors[label] = [os.path.join(tp, t) for t in os.listdir(tp) if os.path.splitext(t)[1] == vqsr_cnn.TENSOR_SUFFIX]
         tensor_counts[label] = 0
         print('Found ', len(tensors[label]), 'examples of label:', label, 'in:', tp)
 
@@ -950,10 +939,10 @@ def tensor_generator_from_label_dirs_and_args(args, train_paths, with_positions=
             yield (batch, label_matrix)
         label_matrix = np.zeros((args.batch_size, len(args.labels)))
         if with_positions and tm:
-            tensor_shape = tensor_maps.tensor_shape_from_args(args)
+            tensor_shape = vqsr_cnn.tensor_shape_from_args(args)
             batch[args.tensor_name] = np.zeros(((args.batch_size,)+tensor_shape))
 
-        if with_positions and tensor_maps.annotations_from_args(args):
+        if with_positions and vqsr_cnn.annotations_from_args(args):
             batch[args.annotation_set] = np.zeros((args.batch_size, len(args.annotations)))
 
 
@@ -983,7 +972,7 @@ def load_dna_annotations_positions_from_class_dirs(args, train_paths, per_class_
                 break
 
             fn, file_extension = os.path.splitext(t)
-            if not file_extension.lower() == tensor_maps.TENSOR_SUFFIX:
+            if not file_extension.lower() == vqsr_cnn.TENSOR_SUFFIX:
                 continue
 
             with h5py.File(tp+'/'+t, 'r') as hf:
@@ -1028,7 +1017,7 @@ def load_tensors_and_annotations_from_class_dirs(args, train_paths, per_class_ma
                 break
 
             fn, file_extension = os.path.splitext(t)
-            if not file_extension.lower() == tensor_maps.TENSOR_SUFFIX:
+            if not file_extension.lower() == vqsr_cnn.TENSOR_SUFFIX:
                 continue
 
             with h5py.File(tp+'/'+t, 'r') as hf:

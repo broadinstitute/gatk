@@ -16,8 +16,7 @@ public class CNNVariantWriteTensorsIntegrationTest extends CommandLineProgramTes
     final private static String inputVCF = largeFileTestDir + "VQSR/g94982_b37_chr20_1m_10m.vcf";
     final private static String truthVCF = largeFileTestDir + "VQSR/giab_chr20_1m_10m.vcf.gz";
     final private static String truthBED = largeFileTestDir + "VQSR/giab_na12878_confident_chr20_1m_10m.bed";
-    final private static String bamFile = largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam";
-
+    final private static String bamFile = largeFileTestDir + "VQSR/g94982_chr20_1m_10m_bamout.bam";
 
     @Test(groups = {"python"})
     public void generateReferenceTensors() throws IOException{
@@ -40,8 +39,7 @@ public class CNNVariantWriteTensorsIntegrationTest extends CommandLineProgramTes
                 .addArgument("truth-vcf", truthVCF)
                 .addArgument("truth-bed", truthBED)
                 .addArgument("bam-file", bamFile)
-                .addArgument("max-tensors ", "1000")
-                .addArgument("tensor-name", TensorMapEnum.reference.name())
+                .addArgument("tensor-name", TensorMapEnum.read_tensor.name())
                 .addArgument("data-dir", largeFileTestDir + "VQSR/read_tensors/");
 
         runCommandLine(argsBuilder);

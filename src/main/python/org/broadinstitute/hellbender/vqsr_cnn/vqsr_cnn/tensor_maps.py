@@ -4,12 +4,6 @@
 from . import defines
 import keras.backend as K
 
-
-TENSOR_SUFFIX = '.hd5'
-TENSOR_MAPS_1D = ['reference']
-TENSOR_MAPS_2D = ['read_tensor']
-
-
 def get_tensor_channel_map_from_args(args):
     '''Return tensor mapping dict given args.tensor_name'''
     if not args.tensor_name:

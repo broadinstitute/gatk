@@ -52,7 +52,7 @@ def score_and_write_batch(args, model, file_out, fifo, batch_size, python_batch_
 		variant_types.append(fifo_data[6])
 
 		fidx = 7 # 7 Because above we parsed: contig pos ref alt reference_string annotation variant_type
-		if args.tensor_name in tensor_maps.TENSOR_MAPS_2D and len(fifo_data) > fidx:
+		if args.tensor_name in defines.TENSOR_MAPS_2D and len(fifo_data) > fidx:
 			read_tuples = []
 			var = Variant(fifo_data[0], int(fifo_data[1]), fifo_data[2], fifo_data[3], fifo_data[6])
 			while fidx+7 < len(fifo_data):
@@ -69,9 +69,9 @@ def score_and_write_batch(args, model, file_out, fifo, batch_size, python_batch_
 			insert_dict = get_inserts(args, read_tuples, var)
 			read_batch.append(read_tuples_to_read_tensor(args, read_tuples, ref_start, insert_dict))
 
-	if args.tensor_name in tensor_maps.TENSOR_MAPS_1D:
+	if args.tensor_name in defines.TENSOR_MAPS_1D:
 		predictions = model.predict([np.array(reference_batch), np.array(annotation_batch)], batch_size=python_batch_size)
-	elif args.tensor_name in tensor_maps.TENSOR_MAPS_2D:
+	elif args.tensor_name in defines.TENSOR_MAPS_2D:
 		if len(read_batch) > 0:
 			predictions = model.predict({'read_tensor':np.array(read_batch), 'annotations':np.array(annotation_batch)}, batch_size=python_batch_size)
 	else:

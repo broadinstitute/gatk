@@ -8,8 +8,8 @@ def parse_args():
 
 
     # Tensor defining arguments
-    parser.add_argument('--tensor_name', default='read_tensor',
-                        help='Key which looks up the map from tensor channels to their meaning.')
+    parser.add_argument('--tensor_name', default='read_tensor', choices=defines.TENSOR_MAPS_1D+defines.TENSOR_MAPS_2D,
+                        help='String key which identifies the map from tensor channels to their meaning.')
     parser.add_argument('--labels', default=defines.SNP_INDEL_LABELS,
                         help='Dict mapping label names to their index within label tensors.')
     parser.add_argument('--input_symbol_set', default='dna_indel', choices=defines.INPUT_SYMBOLS.keys(),
@@ -23,10 +23,12 @@ def parse_args():
                         help='Maximum number of reads to load.')
     parser.add_argument('--window_size', default=128, type=int,
                         help='Size of sequence window to use as input, typically centered at a variant.')
-    parser.add_argument('--channels_last', default=False, dest='channels_last', action='store_true',
-                        help='Store the channels in the last axis of tensors, tensorflow->true, theano->false')
     parser.add_argument('--base_quality_mode', default='phot', choices=['phot', 'phred', '1hot'],
                         help='How to treat base qualities, must be in [phot, phred, 1hot]')
+    parser.add_argument('--channels_last', default=True, dest='channels_last', action='store_true',
+                        help='Store the channels in the last axis of tensors, tensorflow->true, theano->false')
+    parser.add_argument('--channels_first', dest='channels_last', action='store_false',
+                        help='Store the channels in the first axis of tensors, tensorflow->false, theano->true')
 
 
     # Annotation arguments

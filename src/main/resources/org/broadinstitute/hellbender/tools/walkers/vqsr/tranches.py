@@ -1,14 +1,11 @@
 import os
 import pysam
+import vqsr_cnn
 from collections import Counter
 
 
-# Package Imports
-from vqsr_cnn import defines
-from vqsr_cnn import arguments
-
 def run():
-    args = arguments.parse_args()
+    args = vqsr_cnn.parse_args()
     if 'write_snp_tranches' == args.mode:
         write_tranches(args)
     elif 'write_indel_tranches' == args.mode:

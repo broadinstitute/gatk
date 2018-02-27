@@ -82,6 +82,12 @@ public class CNNVariantTrain extends CommandLineProgram {
     @Argument(fullName = "epochs", shortName = "epochs", doc = "Maximum number of training epochs.", optional = true, minValue = 0)
     private int epochs = 10;
 
+    @Argument(fullName = "training-steps", shortName = "training-steps", doc = "Number of training steps per epoch.", optional = true, minValue = 0)
+    private int trainingSteps = 10;
+
+    @Argument(fullName = "validation-steps", shortName = "validation-steps", doc = "Number of validation steps per epoch.", optional = true, minValue = 0)
+    private int validationSteps = 2;
+
     // Start the Python executor. This does not actually start the Python process, but fails if python can't be located
     final PythonScriptExecutor pythonExecutor = new PythonScriptExecutor(true);
 
@@ -95,11 +101,13 @@ public class CNNVariantTrain extends CommandLineProgram {
     protected Object doWork() {
         final Resource pythonScriptResource = new Resource("training.py", VariantTranchesFromInfoKey.class);
         List<String> arguments = new ArrayList<>(Arrays.asList(
+                "--data_dir", dataDir,
+                "--output_dir", outputDir,
                 "--tensor_name", tensorMap.name(),
                 "--annotation_set", annotationSet,
                 "--epochs", Integer.toString(epochs),
-                "--data_dir", dataDir,
-                "--output_dir", outputDir,
+                "--training_steps", Integer.toString(trainingSteps),
+                "--validation_steps", Integer.toString(validationSteps),
                 "--id", modelName));
 
         if (tensorMap == TensorMapEnum.reference) {
