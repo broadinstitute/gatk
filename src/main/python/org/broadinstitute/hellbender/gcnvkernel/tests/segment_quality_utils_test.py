@@ -204,14 +204,14 @@ class TestHMMSegmentationQualityCalculator(unittest.TestCase):
                 qualities_favorable_prior = self._get_test_data_segment_quality(
                     test_data_favorable_prior, event_start, event_end, event_state)
 
-                self.assertTrue(qualities_favorable_prior.quality_some_called >
-                                qualities_default_prior.quality_some_called)
-                self.assertTrue(qualities_favorable_prior.quality_all_called >
-                                qualities_default_prior.quality_all_called)
-                self.assertTrue(qualities_favorable_prior.quality_start >
-                                qualities_default_prior.quality_start)
-                self.assertTrue(qualities_favorable_prior.quality_end >
-                                qualities_default_prior.quality_end)
+                self.assertGreater(qualities_favorable_prior.quality_some_called,
+                                   qualities_default_prior.quality_some_called)
+                self.assertGreater(qualities_favorable_prior.quality_all_called,
+                                   qualities_default_prior.quality_all_called)
+                self.assertGreater(qualities_favorable_prior.quality_start,
+                                   qualities_default_prior.quality_start)
+                self.assertGreater(qualities_favorable_prior.quality_end,
+                                   qualities_default_prior.quality_end)
 
     def test_quality_start_end_decreased_with_bad_breakpoints(self):
         """Tests that poorly determined breakpoints reduces all quality metrics."""
@@ -231,46 +231,109 @@ class TestHMMSegmentationQualityCalculator(unittest.TestCase):
                             test_data, test_segment_start, test_segment_end, event_state)
 
                         if test_segment_start == event_start:
-                            self.assertTrue(qualities_exact_event.quality_start == qualities_jittery_event.quality_start)
+                            self.assertEqual(qualities_exact_event.quality_start,
+                                             qualities_jittery_event.quality_start)
                         else:
-                            self.assertTrue(qualities_exact_event.quality_start > qualities_jittery_event.quality_start)
+                            self.assertGreater(qualities_exact_event.quality_start,
+                                               qualities_jittery_event.quality_start)
 
                         if test_segment_end == event_end:
-                            self.assertTrue(qualities_exact_event.quality_end == qualities_jittery_event.quality_end)
+                            self.assertEqual(qualities_exact_event.quality_end,
+                                             qualities_jittery_event.quality_end)
                         else:
-                            self.assertTrue(qualities_exact_event.quality_end > qualities_jittery_event.quality_end)
+                            self.assertGreater(qualities_exact_event.quality_end,
+                                               qualities_jittery_event.quality_end)
 
     def test_quality_decreased_with_bad_call(self):
-        """Tests that poorly determined call reduces all quality metrics."""
-        pass
+        """Tests that poorly determined call state reduces all quality metrics."""
+        for event_start, event_end in TEST_INTERVALS:
+            for event_state in DEFAULT_NON_BASELINE_STATES:
+                test_data = HMMSegmentationTestData(event_start, event_end, event_state)
+                qualities_exact_event = self._get_test_data_segment_quality(
+                    test_data, event_start, event_end, event_state)
+
+                for bad_event_state in range(DEFAULT_NUM_STATES):
+
+                    if bad_event_state == event_state:
+                        continue
+
+                    qualities_bad_event_state = self._get_test_data_segment_quality(
+                        test_data, event_start, event_end, bad_event_state)
+
+                    self.assertGreater(qualities_exact_event.quality_some_called,
+                                       qualities_bad_event_state.quality_some_called)
+                    self.assertGreater(qualities_exact_event.quality_all_called,
+                                       qualities_bad_event_state.quality_all_called)
+                    self.assertGreater(qualities_exact_event.quality_start,
+                                       qualities_bad_event_state.quality_start)
+                    self.assertGreater(qualities_exact_event.quality_end,
+                                       qualities_bad_event_state.quality_end)
 
     def test_quality_start_end_symmetry(self):
-        """Tests that start and end qualities are symmetric in symmetric situations."""
-        pass
+        """Tests that start and end qualities are symmetric in symmetric situations (the symmetry is never exact
+        because of the prior effect on the first position of the Markov chain; therefore, we require approximate
+        equality)."""
+        for event_state in DEFAULT_NON_BASELINE_STATES:
+            for event_start in [10, 11, 12]:
+                test_data_symmetric_even = HMMSegmentationTestData(
+                    event_start=event_start, event_end=99 - event_start,
+                    event_state=event_state, num_positions=100)
+                qualities_symmetric_even = self._get_test_data_segment_quality(
+                    test_data_symmetric_even, event_start, 99 - event_start, event_state)
+
+                test_data_symmetric_odd = HMMSegmentationTestData(
+                    event_start=event_start, event_end=98 - event_start,
+                    event_state=event_state, num_positions=99)
+                qualities_symmetric_odd = self._get_test_data_segment_quality(
+                    test_data_symmetric_odd, event_start, 98 - event_start, event_state)
+
+                self.assertAlmostEqual(qualities_symmetric_even.quality_start,
+                                       qualities_symmetric_even.quality_end, places=3)
+                self.assertAlmostEqual(qualities_symmetric_odd.quality_start,
+                                       qualities_symmetric_odd.quality_end, places=3)
 
     def test_quality_single_point_event(self):
-        """Tests that for a single-point event, all quality metrics are the same."""
-        pass
+        """Tests that for a single-point event, all quality metrics are the same (within 2 decimal places)."""
+        for point_event_position in [0, 40, 60, 99]:
+            for event_state in DEFAULT_NON_BASELINE_STATES:
+                test_data = HMMSegmentationTestData(
+                    event_start=point_event_position, event_end=point_event_position,
+                    event_state=event_state)
+                qualities = self._get_test_data_segment_quality(
+                    test_data, point_event_position, point_event_position, event_state)
+                self.assertAlmostEqual(qualities.quality_some_called, qualities.quality_all_called, places=2)
+                self.assertAlmostEqual(qualities.quality_some_called, qualities.quality_start, places=2)
+                self.assertAlmostEqual(qualities.quality_some_called, qualities.quality_end, places=2)
 
     def test_quality_decreased_for_small_coherence_length(self):
         """Tests that a small coherence length (compared to the event length-scale) leads to lower qualities."""
-        test_data_low_coherence_length = HMMSegmentationTestData(
-            25, 75, 1, coherence_length=1.0, emission_depth=10.0)
-        test_data_compatible_coherence_length = HMMSegmentationTestData(
-            25, 75, 1, coherence_length=10.0, emission_depth=10.0)
-        low_coherence_length_qualities = self._get_test_data_segment_quality(
-            test_data_low_coherence_length, 25, 75, 1)
-        compatible_coherence_length_qualities = self._get_test_data_segment_quality(
-            test_data_compatible_coherence_length, 25, 75, 1)
+        for event_start, event_end in TEST_INTERVALS:
+            for event_state in DEFAULT_NON_BASELINE_STATES:
 
-        self.assertTrue(compatible_coherence_length_qualities.quality_some_called >
-                        low_coherence_length_qualities.quality_some_called)
-        self.assertTrue(compatible_coherence_length_qualities.quality_all_called >
-                        low_coherence_length_qualities.quality_all_called)
-        self.assertTrue(compatible_coherence_length_qualities.quality_start >
-                        low_coherence_length_qualities.quality_start)
-        self.assertTrue(compatible_coherence_length_qualities.quality_end >
-                        low_coherence_length_qualities.quality_end)
+                compatible_coherence_length = float(event_end - event_start)
+                low_coherence_length = 0.01 * compatible_coherence_length
+
+                # we decrease the emission depth from the default value to make the effect more drastic
+                test_data_compatible_coherence_length = HMMSegmentationTestData(
+                    event_start, event_end, event_state, coherence_length=compatible_coherence_length,
+                    emission_depth=5.0)
+                test_data_low_coherence_length = HMMSegmentationTestData(
+                    event_start, event_end, event_state, coherence_length=low_coherence_length,
+                    emission_depth=5.0)
+
+                compatible_coherence_length_qualities = self._get_test_data_segment_quality(
+                    test_data_compatible_coherence_length, event_start, event_end, event_state)
+                low_coherence_length_qualities = self._get_test_data_segment_quality(
+                    test_data_low_coherence_length, event_start, event_end, event_state)
+
+                # the effect on "quality some called" is very small and is within the round-off error
+                # we only test the more robust metrics
+                self.assertGreater(compatible_coherence_length_qualities.quality_all_called,
+                                   low_coherence_length_qualities.quality_all_called)
+                self.assertGreater(compatible_coherence_length_qualities.quality_start,
+                                   low_coherence_length_qualities.quality_start)
+                self.assertGreater(compatible_coherence_length_qualities.quality_end,
+                                   low_coherence_length_qualities.quality_end)
 
     def test_quality_start_and_end_consistent_on_slope(self):
         """Tests that for an event located in a region with over-dispersion gradient, the breakpoint qualities
