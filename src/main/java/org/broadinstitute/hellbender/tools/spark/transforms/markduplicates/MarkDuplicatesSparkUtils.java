@@ -102,7 +102,7 @@ public class MarkDuplicatesSparkUtils {
                     final IndexPair<GATKRead> second = sorted.next();
                     pair = PairedEnds.newPair(first.getValue(), second.getValue(), header, second.getIndex(), scoringStrategy);
                 } else {
-                    pair = PairedEnds.newFragment(first.getValue(), header, first.getIndex(), scoringStrategy);
+                    pair = PairedEnds.newPairWithMissingSecond(first.getValue(), header, first.getIndex(), scoringStrategy);
                 }
                 out.add(new Tuple2<>(pair.key(header), pair));
             }
@@ -205,38 +205,36 @@ public class MarkDuplicatesSparkUtils {
 
             // Tie breaker
             final Comparator<PairedEnds> pairedEndsComparator =
-                    Comparator.<PairedEnds, Integer>comparing(PairedEnds::getScore).reversed();
+                    Comparator.comparing(PairedEnds::getScore).reversed();
                             //todo get secondary comparison .thenComparing((o1, o2) -> new ReadCoordinateComparator(header).compare(o1.first(), o2.first()));
 
             final List<Tuple2<IndexPair<String>, Integer>> out = Lists.newArrayList();
 
             // Each key corresponds to either fragments or paired ends, not a mixture of both.
+            final ImmutableList<PairedEnds> fragments = stratifiedByFragments.get(true);
+            final ImmutableList<PairedEnds> pairs = stratifiedByFragments.get(false);
 
             /////// Fragments ////////
-            if (!stratifiedByFragments.get(true).isEmpty()) { // fragments
-                Tuple2<IndexPair<String>, Integer> fragmentNonDuplicate = handleFragments(stratifiedByFragments.get(true), pairedEndsComparator);
+            if (!fragments.isEmpty()) { // fragments
+                Tuple2<IndexPair<String>, Integer> fragmentNonDuplicate = handleFragments(fragments, pairedEndsComparator);
                 if (fragmentNonDuplicate!=null) {
                     out.add(fragmentNonDuplicate);
                 }
             }
 
             /////// ReadPairs ////////
-            if (!stratifiedByFragments.get(false).isEmpty()) {
-                final ImmutableListMultimap<Integer, PairedEnds> groups = Multimaps.index(stratifiedByFragments.get(false), PairedEnds::getStartPosition);
+            if (!pairs.isEmpty()) {
+                final ImmutableListMultimap<Integer, PairedEnds> groups = Multimaps.index(pairs, PairedEnds::getStartPosition);
 
                 for (int key : groups.keys()) {
 
                     PairedEnds maxScore = null;
                     for (PairedEnds pair : groups.get(key)) {
-
                         // As in Picard, unpaired ends left alone.
                         if (pair.second() == null) {
                             out.add(new Tuple2<>(new IndexPair<>(pair.getName(), pair.getPartitionIndex()), -1));
-
                             // Order by score using ReadCoordinateComparator for tie-breaking.
                         } else {
-
-
                             // There are no paired reads, mark all but the highest scoring fragment as duplicate.
                             if (maxScore != null) {
                                 maxScore = (pairedEndsComparator.compare(pair, maxScore) > 0) ? maxScore : pair;
@@ -252,7 +250,8 @@ public class MarkDuplicatesSparkUtils {
                         // This must happen last, as findOpticalDuplicates mutates the list.
                         // Split by orientation and count duplicates in each group separately.
                         // TODO could be better
-                        List<PairedEnds> scored = stratifiedByFragments.get(false).stream().filter(pair -> pair.second() != null).collect(Collectors.toList());
+                        List<PairedEnds> scored = pairs
+                                .stream().filter(pair -> pair.second() != null).collect(Collectors.toList());
                         final ImmutableListMultimap<Byte, PairedEnds> groupByOrientation = Multimaps.index(scored, PairedEnds::getOrientationForOpticalDuplicates);
                         final int numOpticalDuplicates;
                         if (groupByOrientation.containsKey(ReadEnds.FR) && groupByOrientation.containsKey(ReadEnds.RF)) {
@@ -286,32 +285,25 @@ public class MarkDuplicatesSparkUtils {
 
         final ImmutableListMultimap<Integer, PairedEnds> groups = Multimaps.index(pairedEnds, PairedEnds::getStartPosition);
 
+        //todo this is broken and only emits for the first key
+        //adding throw here to check if we're hitting it
+        if (groups.keys().size() > 1){
+            throw new GATKException("We've had bad luck and are exploding because we had a hash collision, please fix this brokenness");
+        }
         for (int key : groups.keys()) {
+            //empty PairedEnds signify a pair that has additional
             final Map<Boolean, List<PairedEnds>> byPairing = groups.get(key).stream()
-                    .collect(Collectors.partitioningBy(
-                            PairedEnds::isEmpty
-                    ));
+                    .collect(Collectors.partitioningBy(PairedEnds::isEmpty));
 
             // If there are any non-fragments at this site, mark everything as duplicates, otherwise compute the best score
             //TODO this must be collapsed
             boolean computeScore = byPairing.get(true).isEmpty();
-            PairedEnds maxScore = null;
-            for (PairedEnds pairing : byPairing.get(false)) {
 
-                // There are no paired reads, mark all but the highest scoring fragment as duplicate.
-                if (computeScore) {
-                    if (maxScore != null) {
-                        maxScore = (comparator.compare(pairing, maxScore) > 0) ? maxScore : pairing;
-                    } else {
-                        maxScore = pairing;
-                    }
-                }
-
-            }
-
-            // Mark best scoring read as a non-duplicate
-            if (maxScore != null) {
-               return new Tuple2<IndexPair<String>,Integer>(new IndexPair<>(maxScore.getName(), maxScore.getPartitionIndex()),-1);
+            if (computeScore) {
+                return byPairing.get(false).stream()
+                        .max(comparator)
+                        .map(best -> new Tuple2<>( new IndexPair<>(best.getName(), best.getPartitionIndex()), -1))
+                        .orElse(null);
             }
         }
         return null;
