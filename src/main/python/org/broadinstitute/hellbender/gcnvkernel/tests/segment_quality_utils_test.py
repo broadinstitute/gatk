@@ -3,8 +3,27 @@ import unittest
 
 import numpy as np
 import scipy.stats as stats
+from typing import Optional
 from gcnvkernel.models.theano_hmm import TheanoForwardBackward
 from gcnvkernel.postprocess.segment_quality_utils import HMMSegmentationQualityCalculator
+
+
+# default values for the test data generator
+DEFAULT_EMISSION_DEPTH = 100.0
+DEFAULT_ERROR_RATE = 0.01
+DEFAULT_NUM_POSITIONS = 100
+DEFAULT_START_OVER_DISPERSION = 0.001
+DEFAULT_END_OVER_DISPERSION = 0.001
+DEFAULT_NOISE_STD = 0.
+DEFAULT_BASELINE_STATE = 2
+DEFAULT_NUM_STATES = 5
+DEFAULT_PRIOR_EVENT_PROB = 1e-3
+DEFAULT_COHERENCE_LENGTH = 0.1
+DEFAULT_RANDOM_SEED = 1984
+
+# a few typical intervals in [0, 100) for generating test events
+TEST_INTERVALS = [(0, 10), (89, 99), (10, 30), (25, 75), (70, 90)]
+DEFAULT_NON_BASELINE_STATES = [0, 1, 3, 4]
 
 
 class HMMSegmentationTestData:
@@ -46,20 +65,21 @@ class HMMSegmentationTestData:
     """
 
     def __init__(self,
-                 emission_depth: float = 100.0,
-                 error_rate: float = 0.01,
-                 num_positions: int = 100,
-                 event_start: int = 25,
-                 event_end: int = 75,
-                 event_state: int = 1,
-                 start_over_dispersion: float = 0.001,
-                 end_over_dispersion: float = 0.001,
-                 noise_std: float = 0.0,
-                 baseline_state: int = 2,
-                 num_states: int = 5,
-                 prior_prob_event: float = 1e-3,
-                 coherence_length: float = 0.1,
-                 random_seed: int = 1984):
+                 event_start: int,
+                 event_end: int,
+                 event_state: int,
+                 emission_depth: float = DEFAULT_EMISSION_DEPTH,
+                 error_rate: float = DEFAULT_ERROR_RATE,
+                 num_positions: int = DEFAULT_NUM_POSITIONS,
+                 start_over_dispersion: float = DEFAULT_START_OVER_DISPERSION,
+                 end_over_dispersion: float = DEFAULT_END_OVER_DISPERSION,
+                 noise_std: float = DEFAULT_NOISE_STD,
+                 baseline_state: int = DEFAULT_BASELINE_STATE,
+                 num_states: int = DEFAULT_NUM_STATES,
+                 prior_prob_event: float = DEFAULT_PRIOR_EVENT_PROB,
+                 prior_s: Optional[np.ndarray] = None,
+                 coherence_length: float = DEFAULT_COHERENCE_LENGTH,
+                 random_seed: int = DEFAULT_RANDOM_SEED):
         self.emission_depth = emission_depth
         self.error_rate = error_rate
         self.num_positions = num_positions
@@ -95,8 +115,9 @@ class HMMSegmentationTestData:
               for s_trial in range(num_states)] for x, psi in zip(self.x_t, self.psi_t)])
 
         # generate HMM specs
-        prior_s = np.ones((num_states,)) * prior_prob_event / (num_states - 1)
-        prior_s[baseline_state] = 1. - prior_prob_event
+        if prior_s is None:
+            prior_s = np.ones((num_states,)) * prior_prob_event / (num_states - 1)
+            prior_s[baseline_state] = 1. - prior_prob_event
         prob_stay = np.exp(-1. / coherence_length)
         trans_ss = prior_s[np.newaxis, :] * (1. - prob_stay) + prob_stay * np.eye(num_states)
         self.log_prior_s = np.log(prior_s)
@@ -162,26 +183,62 @@ class TestHMMSegmentationQualityCalculator(unittest.TestCase):
             segment_quality_calculator.get_segment_quality_start(segment_start, segment_call),
             segment_quality_calculator.get_segment_quality_end(segment_end, segment_call))
 
-    def test_quality_increased_with_higher_event_probability(self):
-        """Tests that all segmentation quality factors increase if the event is a priori more probable."""
-        test_data_low_event_prob = HMMSegmentationTestData(prior_prob_event=1e-6)
-        test_data_high_event_prob = HMMSegmentationTestData(prior_prob_event=1e-2)
-        segment_start, segment_end, segment_call = (test_data_low_event_prob.event_start,
-                                                    test_data_low_event_prob.event_end,
-                                                    test_data_low_event_prob.event_state)
-        low_event_prob_qualities = self._get_test_data_segment_quality(
-            test_data_low_event_prob, segment_start, segment_end, segment_call)
-        high_event_prob_qualities = self._get_test_data_segment_quality(
-            test_data_high_event_prob, segment_start, segment_end, segment_call)
+    def test_quality_increased_with_better_prior(self):
+        """Tests that all segmentation quality factors increase if a favorable prior is used."""
+        for event_start, event_end in TEST_INTERVALS:
+            for event_state in DEFAULT_NON_BASELINE_STATES:
 
-        self.assertTrue(high_event_prob_qualities.quality_some_called >low_event_prob_qualities.quality_some_called)
-        self.assertTrue(high_event_prob_qualities.quality_all_called > low_event_prob_qualities.quality_all_called)
-        self.assertTrue(high_event_prob_qualities.quality_start > low_event_prob_qualities.quality_start)
-        self.assertTrue(high_event_prob_qualities.quality_end > low_event_prob_qualities.quality_end)
+                test_data_default_prior = HMMSegmentationTestData(
+                    event_start, event_end, event_state)
 
-    def test_quality_decreased_with_bad_breakpoints(self):
+                # make a event_state-favoring prior
+                favorable_prior_s = np.ones((DEFAULT_NUM_STATES,))
+                favorable_prior_s[event_state] = 10.0
+                favorable_prior_s /= np.sum(favorable_prior_s)
+
+                test_data_favorable_prior = HMMSegmentationTestData(
+                    event_start, event_end, event_state, prior_s=favorable_prior_s)
+
+                qualities_default_prior = self._get_test_data_segment_quality(
+                    test_data_default_prior, event_start, event_end, event_state)
+                qualities_favorable_prior = self._get_test_data_segment_quality(
+                    test_data_favorable_prior, event_start, event_end, event_state)
+
+                self.assertTrue(qualities_favorable_prior.quality_some_called >
+                                qualities_default_prior.quality_some_called)
+                self.assertTrue(qualities_favorable_prior.quality_all_called >
+                                qualities_default_prior.quality_all_called)
+                self.assertTrue(qualities_favorable_prior.quality_start >
+                                qualities_default_prior.quality_start)
+                self.assertTrue(qualities_favorable_prior.quality_end >
+                                qualities_default_prior.quality_end)
+
+    def test_quality_start_end_decreased_with_bad_breakpoints(self):
         """Tests that poorly determined breakpoints reduces all quality metrics."""
-        pass
+        for event_start, event_end in TEST_INTERVALS:
+            for event_state in DEFAULT_NON_BASELINE_STATES:
+                test_data = HMMSegmentationTestData(event_start, event_end, event_state)
+                qualities_exact_event = self._get_test_data_segment_quality(
+                    test_data, event_start, event_end, event_state)
+
+                for left_jitter in range(-2, 2):
+                    for right_jitter in range(-2, 2):
+
+                        test_segment_start = min(max(0, left_jitter + event_start), DEFAULT_NUM_POSITIONS - 1)
+                        test_segment_end = min(max(0, right_jitter + event_end), DEFAULT_NUM_POSITIONS - 1)
+
+                        qualities_jittery_event = self._get_test_data_segment_quality(
+                            test_data, test_segment_start, test_segment_end, event_state)
+
+                        if test_segment_start == event_start:
+                            self.assertTrue(qualities_exact_event.quality_start == qualities_jittery_event.quality_start)
+                        else:
+                            self.assertTrue(qualities_exact_event.quality_start > qualities_jittery_event.quality_start)
+
+                        if test_segment_end == event_end:
+                            self.assertTrue(qualities_exact_event.quality_end == qualities_jittery_event.quality_end)
+                        else:
+                            self.assertTrue(qualities_exact_event.quality_end > qualities_jittery_event.quality_end)
 
     def test_quality_decreased_with_bad_call(self):
         """Tests that poorly determined call reduces all quality metrics."""
@@ -198,13 +255,13 @@ class TestHMMSegmentationQualityCalculator(unittest.TestCase):
     def test_quality_decreased_for_small_coherence_length(self):
         """Tests that a small coherence length (compared to the event length-scale) leads to lower qualities."""
         test_data_low_coherence_length = HMMSegmentationTestData(
-            event_start=10, event_end=50, event_state=1, coherence_length=1.0, emission_depth=10.0)
+            25, 75, 1, coherence_length=1.0, emission_depth=10.0)
         test_data_compatible_coherence_length = HMMSegmentationTestData(
-            event_start=10, event_end=50, event_state=1, coherence_length=10.0, emission_depth=10.0)
+            25, 75, 1, coherence_length=10.0, emission_depth=10.0)
         low_coherence_length_qualities = self._get_test_data_segment_quality(
-            test_data_low_coherence_length, 10, 50, 1)
+            test_data_low_coherence_length, 25, 75, 1)
         compatible_coherence_length_qualities = self._get_test_data_segment_quality(
-            test_data_compatible_coherence_length, 10, 50, 1)
+            test_data_compatible_coherence_length, 25, 75, 1)
 
         self.assertTrue(compatible_coherence_length_qualities.quality_some_called >
                         low_coherence_length_qualities.quality_some_called)
