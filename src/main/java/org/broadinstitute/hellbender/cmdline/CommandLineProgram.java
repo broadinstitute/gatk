@@ -60,7 +60,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     // abstract, this is fine (as long as no logging has to happen statically in this class).
     protected final Logger logger = LogManager.getLogger(this.getClass());
 
-    @Argument(common=true, optional=true)
+    @Argument(fullName = StandardArgumentDefinitions.TMP_DIR_NAME, common=true, optional=true)
     public List<File> TMP_DIR = new ArrayList<>();
 
     @ArgumentCollection(doc="Special Arguments that have meaning to the argument parsing system.  " +
@@ -70,16 +70,16 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     @Argument(fullName = StandardArgumentDefinitions.VERBOSITY_NAME, shortName = StandardArgumentDefinitions.VERBOSITY_NAME, doc = "Control verbosity of logging.", common = true, optional = true)
     public Log.LogLevel VERBOSITY = Log.LogLevel.INFO;
 
-    @Argument(doc = "Whether to suppress job-summary info on System.err.", common=true)
+    @Argument(fullName = StandardArgumentDefinitions.QUIET_NAME, doc = "Whether to suppress job-summary info on System.err.", common=true)
     public Boolean QUIET = false;
 
-    @Argument(fullName = "use-jdk-deflater", shortName = "jdk-deflater", doc = "Whether to use the JdkDeflater (as opposed to IntelDeflater)", common=true)
+    @Argument(fullName = StandardArgumentDefinitions.USE_JDK_DEFLATER_LONG_NAME, shortName = StandardArgumentDefinitions.USE_JDK_DEFLATER_SHORT_NAME, doc = "Whether to use the JdkDeflater (as opposed to IntelDeflater)", common=true)
     public boolean useJdkDeflater = false;
 
-    @Argument(fullName = "use-jdk-inflater", shortName = "jdk-inflater", doc = "Whether to use the JdkInflater (as opposed to IntelInflater)", common=true)
+    @Argument(fullName = StandardArgumentDefinitions.USE_JDK_INFLATER_LONG_NAME, shortName = StandardArgumentDefinitions.USE_JDK_INFLATER_SHORT_NAME, doc = "Whether to use the JdkInflater (as opposed to IntelInflater)", common=true)
     public boolean useJdkInflater = false;
 
-    @Argument(fullName = "gcs-max-retries", shortName = "gcs-retries", doc = "If the GCS bucket channel errors out, how many times it will attempt to re-initiate the connection", optional = true)
+    @Argument(fullName = StandardArgumentDefinitions.NIO_MAX_REOPENS_LONG_NAME, shortName = StandardArgumentDefinitions.NIO_MAX_REOPENS_SHORT_NAME, doc = "If the GCS bucket channel errors out, how many times it will attempt to re-initiate the connection", optional = true)
     public int NIO_MAX_REOPENS = ConfigFactory.getInstance().getGATKConfig().gcsMaxRetries();
 
     // This option is here for documentation completeness.
