@@ -231,7 +231,7 @@ export GATK_GCS_STAGING=${GATK_GCS_STAGING:-"gs://${PROJECT_NAME}/${GCS_USER}/st
 # paths on cluster (HDFS, except for reference image which must be regular FS)
 CLUSTER_BAM="/data/$(basename ${GCS_BAM})"
 CLUSTER_REFERENCE_2BIT="/reference/$(basename ${GCS_REFERENCE_2BIT})"
-CLUSTER_REFERENCE_IMAGE="/mnt/1/reference/$(basename ${GCS_REFERENCE_IMAGE})"
+CLUSTER_REFERENCE_IMAGE="/reference/$(basename ${GCS_REFERENCE_IMAGE})"
 
 ##############################################
 # store local run log in this file (NOTE: can override by defining SV_LOCAL_LOG_FILE)
