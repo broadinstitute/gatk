@@ -17,6 +17,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.markduplicates.AbstractOpticalDuplicateFinderCommandLineProgram;
@@ -304,7 +305,7 @@ public final class EstimateLibraryComplexityGATK extends AbstractOpticalDuplicat
                 new PairedReadCodec(),
                 new PairedReadComparator(),
                 MAX_RECORDS_IN_RAM,
-                TMP_DIR.stream().map(File::toPath).collect(Collectors.toList()));
+                TMP_DIR.stream().map(IOUtils::getPath).collect(Collectors.toList()));
 
         // Loop through the input files and pick out the read sequences etc.
         final ProgressLogger progress = new ProgressLogger(logger, (int) 1e6, "Read");

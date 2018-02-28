@@ -10,6 +10,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.*;
@@ -17,6 +18,7 @@ import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
 import java.io.Serializable;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -191,13 +193,13 @@ public final class MarkDuplicatesGATK extends AbstractMarkDuplicatesCommandLineP
                 new ReadEndsForMarkDuplicatesCodec(),
                 new ReadEndsMDComparator(),
                 maxInMemory,
-                TMP_DIR.stream().map(File::toPath).collect(Collectors.toList()));
+                TMP_DIR.stream().map(IOUtils::getPath).collect(Collectors.toList()));
 
         this.fragSort = SortingCollection.newInstanceFromPaths(ReadEndsForMarkDuplicates.class,
                 new ReadEndsForMarkDuplicatesCodec(),
                 new ReadEndsMDComparator(),
                 maxInMemory,
-                TMP_DIR.stream().map(File::toPath).collect(Collectors.toList()));
+                TMP_DIR.stream().map(IOUtils::getPath).collect(Collectors.toList()));
 
         try(final SamHeaderAndIterator headerAndIterator = openInputs()) {
             final SAMFileHeader header = headerAndIterator.header;
@@ -341,7 +343,7 @@ public final class MarkDuplicatesGATK extends AbstractMarkDuplicatesCommandLineP
         final int maxInMemory = (int) Math.min((Runtime.getRuntime().maxMemory() * 0.25) / SortingLongCollection.SIZEOF,
                 (double) (Integer.MAX_VALUE - 5));
         logger.info("Will retain up to " + maxInMemory + " duplicate indices before spilling to disk.");
-        this.duplicateIndexes = new SortingLongCollection(maxInMemory, TMP_DIR.toArray(new File[TMP_DIR.size()]));
+        this.duplicateIndexes = new SortingLongCollection(maxInMemory, (Path[]) TMP_DIR.stream().map(IOUtils::getPath).toArray());
 
         ReadEndsForMarkDuplicates firstOfNextChunk = null;
         final List<ReadEndsForMarkDuplicates> nextChunk = new ArrayList<>(200);

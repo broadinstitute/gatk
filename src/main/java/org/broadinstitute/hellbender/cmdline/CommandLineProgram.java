@@ -20,19 +20,20 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.text.DecimalFormat;
 import java.time.Duration;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.stream.Collectors;
@@ -62,8 +63,8 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
 
     private static final String DEFAULT_TOOLKIT_SHORT_NAME = "GATK";
 
-    @Argument(fullName = StandardArgumentDefinitions.TMP_DIR_NAME, common=true, optional=true)
-    public List<File> TMP_DIR = new ArrayList<>();
+    @Argument(fullName = StandardArgumentDefinitions.TMP_DIR_NAME, common=true, optional=true, doc = "List of temp directories to use.")
+    public List<String> TMP_DIR = new ArrayList<>();
 
     @ArgumentCollection(doc="Special Arguments that have meaning to the argument parsing system.  " +
             "It is unlikely these will ever need to be accessed by the command line program")
@@ -144,7 +145,11 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     public Object instanceMainPostParseArgs() {
         // Provide one temp directory if the caller didn't
         if (this.TMP_DIR == null) this.TMP_DIR = new ArrayList<>();
-        if (this.TMP_DIR.isEmpty()) TMP_DIR.add(IOUtil.getDefaultTmpDir());
+        // TODO - this should use the HTSJDK IOUtil.getDefaultTmpDirPath, which is somehow broken in the current HTSJDK version
+        // TODO - this should be p.toAbsolutePath().toUri().toString() to allow other FileSystems to be used
+        // TODO - but it did not work with the default FileSystem because it appends the file:// scheme
+        // TODO - maybe a method in IOUtils for converting a Path to String is required for handling this (and can be re-used in other places when it is required)
+        if (this.TMP_DIR.isEmpty()) TMP_DIR.add(IOUtils.getPath(System.getProperty("java.io.tmpdir")).toAbsolutePath().toString());
 
         // Build the default headers
         final ZonedDateTime startDateTime = ZonedDateTime.now();
@@ -153,13 +158,33 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
 
         LoggingUtils.setLoggingLevel(VERBOSITY);  // propagate the VERBOSITY level to logging frameworks
 
-        for (final File f : TMP_DIR) {
+        for (final String s : TMP_DIR) {
+            final Path p = IOUtils.getPath(s);
             // Intentionally not checking the return values, because it may be that the program does not
             // need a tmp_dir. If this fails, the problem will be discovered downstream.
-            if (!f.exists()) f.mkdirs();
-            f.setReadable(true, false);
-            f.setWritable(true, false);
-            System.setProperty("java.io.tmpdir", f.getAbsolutePath()); // in loop so that last one takes effect
+            if (!Files.exists(p)) {
+                try {
+                    Files.createDirectories(p);
+                } catch (IOException e) {
+                    // intentionally ignoring
+                }
+            }
+            try {
+                // add the READ/WRITE permissions to the actual permissions of the file
+                final Set<PosixFilePermission> permissions = Files.getPosixFilePermissions(p);
+                // only set the permissions if they change
+                if (permissions.addAll(Arrays.asList(
+                        PosixFilePermission.OWNER_READ, PosixFilePermission.GROUP_READ, PosixFilePermission.OTHERS_READ,
+                        PosixFilePermission.OWNER_WRITE, PosixFilePermission.GROUP_WRITE, PosixFilePermission.OTHERS_WRITE))) {
+                    Files.setPosixFilePermissions(p, permissions);
+                }
+            } catch (final UnsupportedOperationException | IOException e) {
+                // intentionally ignoring
+                // TODO - logging can be removed, but I think that it might be informative (maybe it should be debug)
+                logger.warn("Temp directory {}: unable to set permissions due to {}", p, e.getMessage());
+            }
+            // TODO - this should be p.toAbsolutePath().toUri().toString() to allow other FileSystems to be used (see above)
+            System.setProperty("java.io.tmpdir", p.toAbsolutePath().toString()); // in loop so that last one takes effect
         }
 
         //Set defaults (note: setting them here means they are not controllable by the user)
