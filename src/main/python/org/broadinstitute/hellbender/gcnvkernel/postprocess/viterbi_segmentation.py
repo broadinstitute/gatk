@@ -1,19 +1,21 @@
-from typing import List, Tuple, Dict, TypeVar, Generator
-from ..structs.metadata import SampleMetadataCollection
 import itertools
 import logging
 import os
+import shutil
+from typing import List, Tuple, Dict, TypeVar, Generator
+
 import numpy as np
+
+from .segment_quality_utils import HMMSegmentationQualityCalculator
 from .. import types
 from ..io import io_consts, io_commons, io_denoising_calling, io_intervals_and_counts
-from ..structs.interval import Interval
-from ..structs.metadata import IntervalListMetadata
-from ..structs.segment import IntegerCopyNumberSegment
-from ..models.model_denoising_calling import DenoisingModelConfig, CopyNumberCallingConfig,\
+from ..models.model_denoising_calling import DenoisingModelConfig, CopyNumberCallingConfig, \
     HHMMClassAndCopyNumberBasicCaller
 from ..models.theano_hmm import TheanoForwardBackward, TheanoViterbi
-from .segment_quality_utils import HMMSegmentationQualityCalculator
-import shutil
+from ..structs.interval import Interval
+from ..structs.metadata import IntervalListMetadata
+from ..structs.metadata import SampleMetadataCollection
+from ..structs.segment import IntegerCopyNumberSegment
 
 _logger = logging.getLogger(__name__)
 
@@ -184,10 +186,6 @@ class ViterbiSegmentationEngine:
             # run forward-back algorithm
             fb_result = self.theano_forward_backward.perform_forward_backward(
                 log_prior_c, log_trans_contig_tcc, copy_number_log_emission_contig_tc)
-            log_posterior_prob_tc = fb_result.log_posterior_probs_tc
-            log_data_likelihood = fb_result.log_data_likelihood
-            alpha_tc = fb_result.alpha_tc
-            beta_tc = fb_result.beta_tc
 
             # run viterbi algorithm
             viterbi_path_t_contig = self.theano_viterbi.get_viterbi_path(
@@ -195,8 +193,7 @@ class ViterbiSegmentationEngine:
 
             # initialize the segment quality calculator
             segment_quality_calculator: HMMSegmentationQualityCalculator = HMMSegmentationQualityCalculator(
-                copy_number_log_emission_contig_tc, log_trans_contig_tcc,
-                alpha_tc, beta_tc, log_posterior_prob_tc, log_data_likelihood)
+                copy_number_log_emission_contig_tc, log_trans_contig_tcc, fb_result)
 
             # coalesce into piecewise constant copy-number segments, calculate qualities
             for copy_number_call, start_index, end_index in self._coalesce_seq_into_segments(viterbi_path_t_contig):

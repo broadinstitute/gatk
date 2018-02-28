@@ -1,11 +1,14 @@
+import logging
 from typing import Dict, List
+
 import numpy as np
-import theano as th
 import pymc3 as pm
+import theano as th
 import theano.tensor as tt
 from scipy.misc import logsumexp
+
+from ..models.theano_hmm import ForwardBackwardResult
 from ..utils.math import logsumexp_double_complement, logp_to_phred
-import logging
 
 _logger = logging.getLogger(__name__)
 
@@ -21,19 +24,13 @@ class HMMSegmentationQualityCalculator:
     def __init__(self,
                  log_emission_tc: np.ndarray,
                  log_trans_tcc: np.ndarray,
-                 alpha_tc: np.ndarray,
-                 beta_tc: np.ndarray,
-                 log_posterior_prob_tc: np.ndarray,
-                 log_data_likelihood: float):
+                 fb_result: ForwardBackwardResult):
         """Initializer.
 
         Args:
             log_emission_tc: log copy-number emission matrix
             log_trans_tcc: log copy-number transition tensor
-            alpha_tc: forward log likelihood matrix (from forward-backward algorithm)
-            beta_tc: backward log likelihood matrix (from forward-backward algorithm)
-            log_posterior_prob_tc: log copy-number posterior matrix (from forward-backward algorithm)
-            log_data_likelihood: log data likelihood (from forward-backward algorithm)
+            fb_result: forward-backward result
         """
         assert isinstance(log_emission_tc, np.ndarray)
         assert log_emission_tc.ndim == 2
@@ -42,21 +39,20 @@ class HMMSegmentationQualityCalculator:
         assert isinstance(log_trans_tcc, np.ndarray)
         assert log_trans_tcc.shape == (self.num_sites - 1, self.num_states, self.num_states)
 
-        assert isinstance(alpha_tc, np.ndarray)
-        assert alpha_tc.shape == (self.num_sites, self.num_states)
-
-        assert isinstance(beta_tc, np.ndarray)
-        assert beta_tc.shape == (self.num_sites, self.num_states)
-
-        assert isinstance(log_posterior_prob_tc, np.ndarray)
-        assert log_posterior_prob_tc.shape == (self.num_sites, self.num_states)
+        assert fb_result is not None
+        assert fb_result.alpha_tc is not None
+        assert fb_result.beta_tc is not None
+        assert fb_result.log_posterior_probs_tc is not None
+        assert fb_result.alpha_tc.shape == (self.num_sites, self.num_states)
+        assert fb_result.beta_tc.shape == (self.num_sites, self.num_states)
+        assert fb_result.log_posterior_probs_tc.shape == (self.num_sites, self.num_states)
 
         self.log_emission_tc = log_emission_tc
         self.log_trans_tcc = log_trans_tcc
-        self.alpha_tc = alpha_tc
-        self.beta_tc = beta_tc
-        self.log_posterior_prob_tc = log_posterior_prob_tc
-        self.log_data_likelihood = log_data_likelihood
+        self.alpha_tc = fb_result.alpha_tc
+        self.beta_tc = fb_result.beta_tc
+        self.log_posterior_probs_tc = fb_result.log_posterior_probs_tc
+        self.log_data_likelihood = fb_result.log_data_likelihood
 
         self.all_states_set = set(range(self.num_states))
         self.all_states_list = list(range(self.num_states))
@@ -187,12 +183,12 @@ class HMMSegmentationQualityCalculator:
 
         if start_index == end_index:
             log_compl_prob = logsumexp(
-                self.log_posterior_prob_tc[start_index, self.all_states_set_except_for[call_state]])
+                self.log_posterior_probs_tc[start_index, self.all_states_set_except_for[call_state]])
             return logp_to_phred(log_compl_prob, complement=False)
         else:
             # calculate the uncorrelated log complementary probability
             uncorrelated_log_compl_prob_array = np.asarray(
-                [logsumexp(self.log_posterior_prob_tc[ti, self.all_states_set_except_for[call_state]])
+                [logsumexp(self.log_posterior_probs_tc[ti, self.all_states_set_except_for[call_state]])
                  for ti in range(start_index, end_index + 1)])
             uncorrelated_logp = logsumexp_double_complement(uncorrelated_log_compl_prob_array)
             uncorrelated_quality = logp_to_phred(uncorrelated_logp, complement=False)
@@ -226,7 +222,7 @@ class HMMSegmentationQualityCalculator:
 
         all_other_states_list = self.all_states_set_except_for[call_state]
         if start_index == 0:
-            logp = logsumexp(self.log_posterior_prob_tc[0, all_other_states_list])
+            logp = logsumexp(self.log_posterior_probs_tc[0, all_other_states_list])
         else:
             complementary_paths_unnorm_logp = [(self.alpha_tc[start_index - 1, prev_state] +
                                                 self.log_trans_tcc[start_index - 1, prev_state, start_state] +
@@ -262,7 +258,7 @@ class HMMSegmentationQualityCalculator:
         all_other_states_list = self.all_states_set_except_for[call_state]
 
         if end_index == self.num_sites - 1:
-            logp = logsumexp(self.log_posterior_prob_tc[self.num_sites - 1, all_other_states_list])
+            logp = logsumexp(self.log_posterior_probs_tc[self.num_sites - 1, all_other_states_list])
         else:
             complementary_paths_unnorm_logp = [(self.alpha_tc[end_index, end_state] +
                                                 self.log_trans_tcc[end_index, end_state, next_state] +
