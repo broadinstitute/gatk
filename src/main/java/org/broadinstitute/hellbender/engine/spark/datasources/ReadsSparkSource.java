@@ -22,6 +22,7 @@ import org.apache.spark.broadcast.Broadcast;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -217,26 +218,53 @@ public final class ReadsSparkSource implements Serializable {
             return reads;
         }
         int numPartitions = reads.getNumPartitions();
-        // Find the first read in each partition
-        List<GATKRead> firstReadInEachPartition = reads
-                .mapPartitions((FlatMapFunction<Iterator<GATKRead>, GATKRead>) it -> Iterators.singletonIterator(it.next()))
+        final String firstGroupInBam = reads.first().getName();
+        // Find the first group in each partition
+        List<List<GATKRead>> firstReadNamesInEachPartition = reads
+                .mapPartitions((FlatMapFunction<Iterator<GATKRead>, List<GATKRead>>) it ->
+                { PeekingIterator<GATKRead> current = Iterators.peekingIterator(it);
+                List<GATKRead> firstGroup = new ArrayList<>(2);
+                firstGroup.add(current.next());
+                while (current.hasNext() && current.peek().getName().equals(firstGroup.get(0).getName())) {
+                    firstGroup.add(current.next());
+                }
+                return Iterators.singletonIterator(firstGroup);
+                })
                 .collect();
+
+        // Checking for pathological cases (read name groups that span multiple partitions)
+        String groupName = null;
+        for (List<GATKRead> group : firstReadNamesInEachPartition) {
+            if (group!=null && !group.isEmpty()) {
+                // If a read spans multiple partitions we expect its name to show up multiple times and we don't expect this to work properly
+                if (groupName != null && group.get(0).getName().equals(groupName)) {
+                    throw new GATKException(String.format("The read name '%s' appeared across multiple partitions this could indicate there was a problem " +
+                            "with the sorting or that it has too many groups, check that the file is queryname sorted and consider decreasing the number of paritions", groupName));
+                }
+                groupName =  group.get(0).getName();
+            }
+        }
+
         // Shift left, so that each partition will be joined with the first read from the _next_ partition
-        List<GATKRead> firstReadInNextPartition = new ArrayList<>(firstReadInEachPartition.subList(1, numPartitions));
+        List<List<GATKRead>> firstReadInNextPartition = new ArrayList<>(firstReadNamesInEachPartition.subList(1, numPartitions));
         firstReadInNextPartition.add(null); // the last partition does not have any reads to add to it
 
         // Join the reads with the first read from the _next_ partition, then filter out the first and/or last read if not in a pair
         return reads.zipPartitions(ctx.parallelize(firstReadInNextPartition, numPartitions),
-                (FlatMapFunction2<Iterator<GATKRead>, Iterator<GATKRead>, GATKRead>) (it1, it2) -> {
+                (FlatMapFunction2<Iterator<GATKRead>, Iterator<List<GATKRead>>, GATKRead>) (it1, it2) -> {
             PeekingIterator<GATKRead> current = Iterators.peekingIterator(it1);
-            // skip the first read in the _current_ partition if it is the second in a pair since it will be handled in the previous partition
-            if (current.hasNext() && current.peek() != null && current.peek().isSecondOfPair()) {
-                current.next();
+            String firstName = current.peek().getName();
+            // Make sure we don't remove reads from the first partition
+            if (!firstGroupInBam.equals(firstName)) {
+                // skip the first readGroup in the _current_ partition if it is the second in a pair since it will be handled in the previous partition
+                while (current.hasNext() && current.peek() != null && current.peek().getName().equals(firstName)) {
+                    current.next();
+                }
             }
-            // append the first read in the _next_ partition to the _current_ partition if it is the second in a pair
-            PeekingIterator<GATKRead> next = Iterators.peekingIterator(it2);
-            if (next.hasNext() && next.peek() != null && next.peek().isSecondOfPair()) {
-                return Iterators.concat(current, next);
+            // append the first reads in the _next_ partition to the _current_ partition
+            PeekingIterator<List<GATKRead>> next = Iterators.peekingIterator(it2);
+            if (next.hasNext() && next.peek() != null) {
+                return Iterators.concat(current, next.peek().iterator());
             }
             return current;
         });
