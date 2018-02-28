@@ -141,12 +141,11 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             final Optional<LikelihoodMatrix<Allele>> subsettedLog10NormalMatrix =
                     getForNormal(() -> new SubsettedLikelihoodMatrix<>(log10NormalMatrix.get(), allSomaticAlleles));
 
-            final Map<String, Object> germlineAnnotations = GermlineProbabilityCalculator.calculateAnnotations(featureContext.getValues(MTAC.germlineResource, loc), somaticAltAlleles,
-                    tumorLog10Odds.asDoubleArray(somaticAltAlleles), normalLog10Odds.isPresent() ? Optional.of(normalLog10Odds.get().asDoubleArray(somaticAltAlleles)) : Optional.empty(), MTAC.afOfAllelesNotInGermlineResource, MTAC.log10PriorProbOfSomaticEvent);
+            final Map<String, Object> populationAlleleFreqeuncyAnnotation = GermlineProbabilityCalculator.getPopulationAlleleFrequencyAnnotation(featureContext.getValues(MTAC.germlineResource, loc), somaticAltAlleles, MTAC.afOfAllelesNotInGermlineResource);
 
             final VariantContextBuilder callVcb = new VariantContextBuilder(mergedVC)
                     .alleles(allSomaticAlleles)
-                    .attributes(germlineAnnotations)
+                    .attributes(populationAlleleFreqeuncyAnnotation)
                     .attribute(GATKVCFConstants.TUMOR_LOD_KEY, somaticAltAlleles.stream().mapToDouble(tumorLog10Odds::getAlt).toArray());
 
             normalLog10Odds.ifPresent(values -> callVcb.attribute(GATKVCFConstants.NORMAL_LOD_KEY, values.asDoubleArray(somaticAltAlleles)));

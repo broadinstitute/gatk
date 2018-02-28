@@ -7,7 +7,6 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -110,7 +109,7 @@ public final class FilterMutectCalls extends VariantWalker {
     @Override
     public void apply(final VariantContext vc, final ReadsContext readsContext, final ReferenceContext refContext, final FeatureContext fc) {
         final VariantContextBuilder vcb = new VariantContextBuilder(vc);
-        vcb.filters(filteringEngine.calculateFilters(MTFAC, vc));
+        filteringEngine.applyFilters(MTFAC, vc, vcb);
         vcfWriter.add(vcb.make());
     }
 
