@@ -5,19 +5,25 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
-
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.ReadsContext;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.python.StreamingPythonScriptExecutor;
 import org.broadinstitute.hellbender.utils.runtime.AsynchronousStreamWriterService;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.StreamSupport;
@@ -253,13 +259,13 @@ public class NeuralNetInference extends VariantWalker {
                     .filter(variantfilter)
                     .forEach(variant -> {
                         String sv = scoreScan.nextLine();
-                        String[] scoredVariant = sv.split("\\t");
-                        if(variant.getContig().equals(scoredVariant[CONTIG_INDEX])
-                                && Integer.toString(variant.getStart()).equals(scoredVariant[POS_INDEX])
-                                && variant.getReference().getBaseString().equals(scoredVariant[REF_INDEX])
-                                && variant.getAlternateAlleles().toString().equals(scoredVariant[ALT_INDEX])) {
+                        final List<String> scoredVariant = Utils.split(sv, '\t');
+                        if(variant.getContig().equals(scoredVariant.get(CONTIG_INDEX))
+                                && Integer.toString(variant.getStart()).equals(scoredVariant.get(POS_INDEX))
+                                && variant.getReference().getBaseString().equals(scoredVariant.get(REF_INDEX))
+                                && variant.getAlternateAlleles().toString().equals(scoredVariant.get(ALT_INDEX))) {
                             final VariantContextBuilder builder = new VariantContextBuilder(variant);
-                            builder.attribute(GATKVCFConstants.CNN_1D_KEY, scoredVariant[KEY_INDEX]);
+                            builder.attribute(GATKVCFConstants.CNN_1D_KEY, scoredVariant.get(KEY_INDEX));
                             vcfWriter.add(builder.make());
                         } else {
                             String errorMsg = "Score file out of sync with original VCF. Score file has:"+sv;

@@ -15,15 +15,15 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.ChunkedCopyNumberPosteriorCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.LocatableCopyNumberPosteriorDistribution;
-import org.broadinstitute.hellbender.tools.copynumber.gcnv.GermlineCNVPostprocessingEngine;
 import org.broadinstitute.hellbender.tools.copynumber.gcnv.GermlineCNVNamingConstants;
+import org.broadinstitute.hellbender.tools.copynumber.gcnv.GermlineCNVPostprocessingEngine;
 import org.broadinstitute.hellbender.tools.copynumber.gcnv.IntegerCopyNumberStateCollection;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -191,7 +191,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
             while (reader.hasNext()) {
                 String nextLine = reader.next();
                 if (!nextLine.startsWith(COMMENT_PREFIX)) {
-                    columns = Arrays.asList(nextLine.split(TableUtils.COLUMN_SEPARATOR_STRING));
+                    columns = Utils.split(nextLine, TableUtils.COLUMN_SEPARATOR);
                     break;
                 }
             }

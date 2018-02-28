@@ -629,7 +629,7 @@ public final class VariantAnnotatorEngine {
                         final String cleanedExpressionValue = expressionVC.getAttribute(expression.fieldName,"").toString().replaceAll("[\\[\\]\\s]", "");
 
                         // get comma separated expression values
-                        final ArrayList<String> expressionValuesList = new ArrayList<>(Arrays.asList(cleanedExpressionValue.split(",")));
+                        final ArrayList<String> expressionValuesList = new ArrayList<>(Utils.split(cleanedExpressionValue, ','));
 
                         boolean canAnnotate = false;
                         // get the minimum biallelics without genotypes
