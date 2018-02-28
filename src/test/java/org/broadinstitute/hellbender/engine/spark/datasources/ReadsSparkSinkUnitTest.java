@@ -62,6 +62,8 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
                 {testDataDir + "tools/BQSR/CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam", "ReadsSparkSinkUnitTest3", null, ".bam"},
                 {testDataDir + "tools/BQSR/NA12878.chr17_69k_70k.dictFix.cram", "ReadsSparkSinkUnitTest5",
                                                 publicTestDir + "human_g1k_v37.chr17_1Mb.fasta", ".cram"},
+
+                {testDataDir + "tools/BQSR/HiSeq.1mb.1RG.2k_lines.bam", "ReadsSparkSinkUnitTest6", null, ".sam"},
         };
     }
 

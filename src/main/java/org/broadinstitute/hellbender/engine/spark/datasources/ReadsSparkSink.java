@@ -4,6 +4,7 @@ import htsjdk.samtools.BamFileIoUtils;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.cram.build.CramIO;
+import htsjdk.samtools.util.IOUtil;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.NullWritable;
@@ -78,6 +79,49 @@ public final class ReadsSparkSink {
         }
     }
 
+    // Output format class for writing SAM files through saveAsNewAPIHadoopFile. Must be public.
+    public static class SparkSAMOutputFormat extends KeyIgnoringAnySAMOutputFormat<NullWritable> {
+
+        public SparkSAMOutputFormat() {
+            super(SAMFormat.SAM);
+        }
+
+        public static SAMFileHeader samHeader = null;
+
+        public static void setHeader(final SAMFileHeader header) {
+            samHeader = header;
+        }
+
+        @Override
+        public RecordWriter<NullWritable, SAMRecordWritable> getRecordWriter(TaskAttemptContext ctx) throws IOException {
+            setSAMHeader(samHeader);
+            // use SAM extension for part files since they are valid SAM files
+            Path out = getDefaultWorkFile(ctx, IOUtil.SAM_FILE_EXTENSION);
+            return new KeyIgnoringSAMRecordWriter<NullWritable>(out, samHeader, true, ctx);
+        }
+
+        @Override
+        public void checkOutputSpecs(JobContext job) throws IOException {
+            try {
+                super.checkOutputSpecs(job);
+            } catch (FileAlreadyExistsException e) {
+                // delete existing files before overwriting them
+                final Path outDir = getOutputPath(job);
+                outDir.getFileSystem(job.getConfiguration()).delete(outDir, true);
+            }
+        }
+    }
+
+    public static class SparkHeaderlessSAMOutputFormat extends SparkSAMOutputFormat {
+        @Override
+        public RecordWriter<NullWritable, SAMRecordWritable> getRecordWriter(TaskAttemptContext ctx) throws IOException {
+            setSAMHeader(samHeader);
+            // use SAM extension for part files since they are valid SAM files
+            Path out = getDefaultWorkFile(ctx, IOUtil.SAM_FILE_EXTENSION);
+            return new KeyIgnoringSAMRecordWriter<NullWritable>(out, samHeader, false, ctx);
+        }
+    }
+
     // Output format class for writing CRAM files through saveAsNewAPIHadoopFile. Must be public.
     public static class SparkCRAMOutputFormat extends KeyIgnoringCRAMOutputFormat<NullWritable> {
         public static SAMFileHeader bamHeader = null;
@@ -142,7 +186,10 @@ public final class ReadsSparkSink {
             final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<GATKRead> reads,
             final SAMFileHeader header, ReadsWriteFormat format, final int numReducers, final String outputPartsDir) throws IOException {
 
-        SAMFormat samOutputFormat = IOUtils.isCramFileName(outputFile) ? SAMFormat.CRAM : SAMFormat.BAM;
+        SAMFormat samOutputFormat = SAMFormat.inferFromFilePath(outputFile);
+        if (samOutputFormat == null) {
+            samOutputFormat = SAMFormat.BAM; // default to BAM if output file is a directory
+        }
 
         String absoluteOutputFile = BucketUtils.makeFilePathAbsolute(outputFile);
         String absoluteReferenceFile = referenceFile != null ?
@@ -201,6 +248,8 @@ public final class ReadsSparkSink {
         // Set the static header on the driver thread.
         if (samOutputFormat == SAMFormat.CRAM) {
             SparkCRAMOutputFormat.setHeader(header);
+        } else if (samOutputFormat == SAMFormat.SAM) {
+            SparkSAMOutputFormat.setHeader(header);
         } else {
             SparkBAMOutputFormat.setHeader(header);
         }
@@ -249,8 +298,9 @@ public final class ReadsSparkSink {
     private static Class<? extends OutputFormat<NullWritable, SAMRecordWritable>> getOutputFormat(final SAMFormat samFormat, final boolean writeHeader) {
         if (samFormat == SAMFormat.CRAM) {
             return writeHeader ? SparkCRAMOutputFormat.class : SparkHeaderlessCRAMOutputFormat.class;
-        }
-        else {
+        } else if (samFormat == SAMFormat.SAM) {
+            return writeHeader ? SparkSAMOutputFormat.class : SparkHeaderlessSAMOutputFormat.class;
+        } else {
             return writeHeader ? SparkBAMOutputFormat.class : SparkHeaderlessBAMOutputFormat.class;
         }
     }
