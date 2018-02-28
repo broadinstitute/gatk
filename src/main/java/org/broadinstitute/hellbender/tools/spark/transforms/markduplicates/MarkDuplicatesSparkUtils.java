@@ -283,16 +283,18 @@ public class MarkDuplicatesSparkUtils {
 
     private static Tuple2<IndexPair<String>,Integer> handleFragments(Iterable<PairedEnds> pairedEnds, Comparator<PairedEnds> comparator) {
 
-        final ImmutableListMultimap<Integer, PairedEnds> groups = Multimaps.index(pairedEnds, PairedEnds::getStartPosition);
+        final Collection<List<PairedEnds>> groups = Utils.stream(pairedEnds)
+                .collect(Collectors.groupingBy(PairedEnds::getStartPosition))
+                .values();
 
         //todo this is broken and only emits for the first key
         //adding throw here to check if we're hitting it
-        if (groups.keys().size() > 1){
+        if (groups.size() > 1){
             throw new GATKException("We've had bad luck and are exploding because we had a hash collision, please fix this brokenness");
         }
-        for (int key : groups.keys()) {
+        for (List<PairedEnds> duplicateFragmentGroup : groups) {
             //empty PairedEnds signify a pair that has additional
-            final Map<Boolean, List<PairedEnds>> byPairing = groups.get(key).stream()
+            final Map<Boolean, List<PairedEnds>> byPairing  = duplicateFragmentGroup.stream()
                     .collect(Collectors.partitioningBy(PairedEnds::isEmpty));
 
             // If there are any non-fragments at this site, mark everything as duplicates, otherwise compute the best score
@@ -309,7 +311,6 @@ public class MarkDuplicatesSparkUtils {
         return null;
 
     }
-
 
     static JavaPairRDD<String, DuplicationMetrics> generateMetrics(final SAMFileHeader header, final JavaRDD<GATKRead> reads) {
         return reads.filter(read -> !read.isSecondaryAlignment() && !read.isSupplementaryAlignment())
