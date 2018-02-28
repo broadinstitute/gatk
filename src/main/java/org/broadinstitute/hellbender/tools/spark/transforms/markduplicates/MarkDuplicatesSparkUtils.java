@@ -18,7 +18,6 @@ import scala.Tuple2;
 import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 /**
  * Utility classes and functions for Mark Duplicates.
@@ -71,7 +70,7 @@ public class MarkDuplicatesSparkUtils {
         JavaPairRDD<String, Iterable<IndexPair<GATKRead>>> keyedReads = getReadsGroupedByName(header, reads, numReducers);
 
         // Place all the reads into a single RDD separated
-        JavaPairRDD<Integer, Iterable<PairedEnds>> keyedPairs = keyedReads.flatMapToPair(keyedRead -> {
+        final JavaPairRDD<Integer, PairedEnds> pairedEnds = keyedReads.flatMapToPair(keyedRead -> {
             final List<Tuple2<Integer, PairedEnds>> out = Lists.newArrayList();
 
             final Iterator<IndexPair<GATKRead>> sorted = Utils.stream(keyedRead._2())
@@ -83,13 +82,11 @@ public class MarkDuplicatesSparkUtils {
                         final GATKRead read = readWithIndex.getValue();
                         PairedEnds fragment = (ReadUtils.readHasMappedMate(read)) ?
                                 PairedEnds.empty(ReadUtils.getStrandedUnclippedStart(read), readWithIndex.getIndex()) :
-                                PairedEnds.of(read, header, readWithIndex.getIndex());
+                                PairedEnds.newFragment(read, header, readWithIndex.getIndex(), scoringStrategy);
 
-                        out.add(new Tuple2<>(fragment.isEmpty()?
-                                            ReadsKey.keyForFragment(header, read, fragment.getStartPosition()) :
-                                            fragment.keyForFragment(header),
-                                fragment));
-                        if (!fragment.isEmpty()) fragment.score(scoringStrategy);
+                        out.add(new Tuple2<>(fragment.isEmpty() ?
+                                                     ReadsKey.keyForFragment(header, read, fragment.getStartPosition()) :
+                                                     fragment.keyForFragment(header), fragment));
                     })
                     .filter(readWithIndex -> ReadUtils.readHasMappedMate(readWithIndex.getValue()))
                     .sorted(new GATKOrder(header))
@@ -97,25 +94,24 @@ public class MarkDuplicatesSparkUtils {
 
             ////// Making The Paired Reads //////
             // Write each paired read with a mapped mate as a pair
-            PairedEnds pair;
             while (sorted.hasNext()) {
                 final IndexPair<GATKRead> first = sorted.next();
-                pair = PairedEnds.of(first.getValue(), false, header, first.getIndex());
+
+                final PairedEnds pair;
                 if (sorted.hasNext()) {
                     final IndexPair<GATKRead> second = sorted.next();
-                    pair.and(second.getValue(), header, second.getIndex());
-                    out.add(new Tuple2<>(pair.key(header), pair));
-                    pair.score(scoringStrategy);
+                    pair = PairedEnds.newPair(first.getValue(), second.getValue(), header, second.getIndex(), scoringStrategy);
+                } else {
+                    pair = PairedEnds.newFragment(first.getValue(), header, first.getIndex(), scoringStrategy);
                 }
-                else {
-                    out.add(new Tuple2<>(pair.key(header), pair));
-                    pair.score(scoringStrategy);
-                }
+                out.add(new Tuple2<>(pair.key(header), pair));
             }
             return out.iterator();
-        }).groupByKey(); //TODO make this a proper aggregate by key
+        });
 
-        return markPairedEnds(keyedPairs, scoringStrategy, finder, header);
+        final JavaPairRDD<Integer, Iterable<PairedEnds>> keyedPairs = pairedEnds.groupByKey(); //TODO make this a proper aggregate by key
+
+        return markPairedEnds(keyedPairs, finder, header);
     }
 
     private static JavaPairRDD<String, Iterable<IndexPair<GATKRead>>> getReadsGroupedByName(SAMFileHeader header, JavaRDD<GATKRead> reads, int numReducers) {
@@ -202,15 +198,14 @@ public class MarkDuplicatesSparkUtils {
     }
 
     private static JavaPairRDD<IndexPair<String>, Integer> markPairedEnds(final JavaPairRDD<Integer, Iterable<PairedEnds>> keyedPairs,
-                                                               final MarkDuplicatesScoringStrategy scoringStrategy,
-                                                               final OpticalDuplicateFinder finder, final SAMFileHeader header) {
+                                                                          final OpticalDuplicateFinder finder, final SAMFileHeader header) {
         return keyedPairs.flatMapToPair(keyedPair -> {
             Iterable<PairedEnds> pairedEnds = keyedPair._2();
             final ImmutableListMultimap<Boolean, PairedEnds> stratifiedByFragments = Multimaps.index(pairedEnds, PairedEnds::isFragment);
 
             // Tie breaker
-            Comparator<PairedEnds> pairedEndsComparator =
-                    Comparator.<PairedEnds, Integer>comparing(pe -> pe.score(scoringStrategy)).reversed();
+            final Comparator<PairedEnds> pairedEndsComparator =
+                    Comparator.<PairedEnds, Integer>comparing(PairedEnds::getScore).reversed();
                             //todo get secondary comparison .thenComparing((o1, o2) -> new ReadCoordinateComparator(header).compare(o1.first(), o2.first()));
 
             final List<Tuple2<IndexPair<String>, Integer>> out = Lists.newArrayList();
@@ -249,7 +244,7 @@ public class MarkDuplicatesSparkUtils {
                                 maxScore = pair;
                             }
 
-                            finder.addLocationInformation(pair.first().getName(), pair);//TODO this needs me to handle the name better
+                            finder.addLocationInformation(pair.getName(), pair);//TODO this needs me to handle the name better
                         }
                     }
                     if (maxScore != null) {
