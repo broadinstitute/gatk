@@ -16,8 +16,8 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   public transient short tile = -1;
   public transient short x = -1, y = -1;
   public transient short libraryId = -1;
-  public boolean fragment = true;
-  public Integer markedScore;
+  private final boolean fragment;
+  private Integer markedScore;
 
   public String name;
   public int firstStartPosition = -1;
@@ -31,70 +31,75 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
 
   private final int partitionIndex;
 
-  PairedEnds(final GATKRead first, final boolean fragment, final SAMFileHeader header, int partitionIndex) {
+  private PairedEnds(final GATKRead first, final boolean fragment, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
     name = ReadsKey.keyForRead(header, first);
     this.first = first;
     firstStartPosition = ReadUtils.getStrandedUnclippedStart(first);
-    firstRefIndex =  ReadUtils.getReferenceIndex(first, header);
+    firstRefIndex = ReadUtils.getReferenceIndex(first, header);
     this.partitionIndex = partitionIndex;
     this.fragment = fragment;
+    this.markedScore = scoringStrategy.score(first);
   }
 
-  PairedEnds(final GATKRead first, final SAMFileHeader header, int partitionIndex) {
-    this(first, true, header, partitionIndex);
-  }
-
-  PairedEnds(int start, int partitionIndex) {
+  /**
+   * special constructor for creating fragments
+   * @param start
+   * @param partitionIndex
+   */
+  private PairedEnds(int start, int partitionIndex) {
     this.firstStartPosition = start;
     this.partitionIndex = partitionIndex;
+    this.fragment = true;
+    this.firstRefIndex = -1;
   }
 
-  public static PairedEnds of(final GATKRead first, final boolean fragment, final SAMFileHeader header, int partitionIndex) {
-    return new PairedEnds(first, fragment, header, partitionIndex);
-  }
-
-  public static PairedEnds of(final GATKRead first, final SAMFileHeader header, int partitionIndex) {
-    return new PairedEnds(first, header, partitionIndex);
+  public static PairedEnds newFragment(final GATKRead first, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
+    return new PairedEnds(first, true, header, partitionIndex, scoringStrategy);
   }
 
   // An optimization for passing around empty read information
-  public static PairedEnds empty(int start, int partitionIndex){
+  public static PairedEnds empty(int start, int partitionIndex) {
     return new PairedEnds(start, partitionIndex);
   }
 
-  public PairedEnds and(final GATKRead second, final SAMFileHeader header, int partitionIndex) {
+  public static PairedEnds newPair(GATKRead first, GATKRead second, SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
+    Utils.nonNull(first);
     Utils.nonNull(second);
-    Utils.validate(partitionIndex == this.partitionIndex, () -> "Partition indexes must match. " + this.partitionIndex + " != " +partitionIndex );
-    if (firstStartPosition > ReadUtils.getStrandedUnclippedStart(second)) {
-      this.second = this.first;
-      secondRefIndex = this.firstRefIndex;
-      secondStartPosition = this.firstStartPosition;
-      this.first = second;
-      firstRefIndex = ReadUtils.getReferenceIndex(second, header);
-      firstStartPosition = ReadUtils.getStrandedUnclippedStart(second); //TODO don't compute twice
-      fragment = false;
+
+    final PairedEnds incomplete = new PairedEnds(first, false, header, partitionIndex, scoringStrategy);
+
+    incomplete.markedScore = incomplete.markedScore + scoringStrategy.score(second);
+
+    if (incomplete.firstStartPosition > ReadUtils.getStrandedUnclippedStart(second)) {
+      incomplete.second = incomplete.first;
+      incomplete.secondRefIndex = incomplete.firstRefIndex;
+      incomplete.secondStartPosition = incomplete.firstStartPosition;
+      incomplete.first = second;
+      incomplete.firstRefIndex = ReadUtils.getReferenceIndex(second, header);
+      incomplete.firstStartPosition = ReadUtils.getStrandedUnclippedStart(second); //TODO don't compute twice
     } else {
-      this.second = second;
-      secondRefIndex = ReadUtils.getReferenceIndex(second, header);
-      secondStartPosition = ReadUtils.getStrandedUnclippedStart(second); //TODO don't compute twice
-      fragment = false;
+      incomplete.second = second;
+      incomplete.secondRefIndex = ReadUtils.getReferenceIndex(second, header);
+      incomplete.secondStartPosition = ReadUtils.getStrandedUnclippedStart(second); //TODO don't compute twice
     }
+
 
     // Calculating necessary optical duplicate information
 
     final GATKRead read1;
     final GATKRead read2;
-    if (first.isFirstOfPair()){
-      read1 = first;
+    if (incomplete.first.isFirstOfPair()){
+      read1 = incomplete.first;
       read2 = second;
     } else {
       read1 = second;
-      read2 = first;
+      read2 = incomplete.first;
     }
 
-    R1R = read1.isReverseStrand();
-    R2R = read2.isReverseStrand();
-    return this;
+    incomplete.R1R = read1.isReverseStrand();
+    incomplete.R2R = read2.isReverseStrand();
+
+    return incomplete;
   }
 
   public int key(final SAMFileHeader header) {
@@ -119,9 +124,7 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
     return second;
   }
 
-  public int score(final MarkDuplicatesScoringStrategy scoringStrategy) {
-    if (markedScore!=null) return markedScore;
-    markedScore = scoringStrategy.score(first) + ((second!=null)?scoringStrategy.score(second):0);
+  public int getScore() {
     return markedScore;
   }
 
@@ -166,19 +169,6 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   //TODO note that this only
   public boolean isEmpty() {
     return firstRefIndex == -1;
-  }
-
-  /**
-   * returns a deep(ish) copy of the GATK reads in the PairedEnds.
-   * TODO: This is only deep for the Google Model read, GATKRead copy() isn't deep for
-   * TODO: for the SAMRecord backed read.
-   * @return a new deep copy
-   */
-  public PairedEnds copy() {
-    if (second == null) {
-      return null; //todo new PairedEnds(first.copy(), fragment);
-    }
-    return null; //todo  new PairedEnds(first.copy(), fragment).and(second.copy());
   }
 
   /**
