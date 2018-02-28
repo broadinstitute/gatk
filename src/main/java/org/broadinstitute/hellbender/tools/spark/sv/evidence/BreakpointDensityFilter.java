@@ -16,8 +16,8 @@ import java.util.NoSuchElementException;
  */
 public final class BreakpointDensityFilter implements Iterator<BreakpointEvidence> {
     private final ReadMetadata readMetadata;
-    private final int minEvidenceWeight;
-    private final int minCoherentEvidenceWeight;
+    private final double minEvidenceWeight;
+    private final double minCoherentEvidenceWeight;
     private final PartitionCrossingChecker partitionCrossingChecker;
     private final SVIntervalTree<List<BreakpointEvidence>> evidenceTree;
     private final int minEvidenceMapq;
@@ -26,13 +26,13 @@ public final class BreakpointDensityFilter implements Iterator<BreakpointEvidenc
 
     public BreakpointDensityFilter( final Iterator<BreakpointEvidence> evidenceItr,
                                     final ReadMetadata readMetadata,
-                                    final int minEvidenceWeight,
-                                    final int minCoherentEvidenceWeight,
+                                    final double minEvidenceWeightPerCoverage,
+                                    final double minCoherentEvidenceWeightPerCoverage,
                                     final PartitionCrossingChecker partitionCrossingChecker,
                                     final int minEvidenceMapq) {
         this.readMetadata = readMetadata;
-        this.minEvidenceWeight = minEvidenceWeight;
-        this.minCoherentEvidenceWeight = minCoherentEvidenceWeight;
+        this.minEvidenceWeight = minEvidenceWeightPerCoverage * readMetadata.getCoverage();
+        this.minCoherentEvidenceWeight = minCoherentEvidenceWeightPerCoverage * readMetadata.getCoverage();
         this.partitionCrossingChecker = partitionCrossingChecker;
         this.evidenceTree = buildTree(evidenceItr);
         this.treeItr = evidenceTree.iterator();
@@ -94,7 +94,7 @@ public final class BreakpointDensityFilter implements Iterator<BreakpointEvidenc
         while ( itr.hasNext() ) {
             final List<BreakpointEvidence> evidenceForInterval = itr.next().getValue();
             weight += evidenceForInterval.stream().mapToInt(BreakpointEvidence::getWeight).sum();
-            if ( weight >= minEvidenceWeight ) {
+            if ( weight >= minEvidenceWeight) {
                 return true;
             }
 

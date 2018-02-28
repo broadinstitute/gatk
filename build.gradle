@@ -321,6 +321,9 @@ dependencies {
 
     // Required for COSMIC Funcotator data source:
     compile 'org.xerial:sqlite-jdbc:3.20.1'
+    
+    // Required for SV Discovery machine learning
+    compile group: 'biz.k11i', name: 'xgboost-predictor', version: '0.3.0'
 
     testCompile "org.mockito:mockito-core:2.10.0"
     testCompile "com.google.jimfs:jimfs:1.1"

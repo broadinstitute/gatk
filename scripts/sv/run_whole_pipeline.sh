@@ -43,12 +43,11 @@ SV_ARGS=${*:-${SV_ARGS:-""}}
 # expand any local variables passed as strings (e.g. PROJECT_OUTPUT_DIR)
 eval "SV_ARGS=\"${SV_ARGS}\""
 
-# Choose NUM_EXECUTORS = 2 * NUM_WORKERS
-# NOTE: this would find preemptible workers, but it produces
-# (erroneous?) deprecation warnings
-#NUM_WORKERS=$(gcloud compute instances list --project ${PROJECT_NAME} --filter="name ~ ${CLUSTER_NAME}-[sw].*" | grep RUNNING | wc -l)
-# this works but does not see preemptible workers
-NUM_WORKERS=$(gcloud dataproc clusters list --project ${PROJECT_NAME} --filter "clusterName = ${CLUSTER_NAME}" | tail -n 1 | awk '{print $2}')
+NUM_WORKERS=$(gcloud dataproc clusters list --project ${PROJECT_NAME} \
+                    --filter "clusterName = ${CLUSTER_NAME}" \
+                    | awk 'NR==1 { for (i=1; i<=NF; i++) { f[$i] = i } }
+                           { print $(f["WORKER_COUNT"]) + $(f["PREEMPTIBLE_WORKER_COUNT"]) }' \
+                    | tail -1)
 if [ -z "${NUM_WORKERS}" ]; then
     echo "Cluster \"${CLUSTER_NAME}\" not found"
     exit 1
@@ -93,7 +92,9 @@ case ${GATK_SV_TOOL} in
         exit 1
         ;;
 esac
-    
+
+#   --conf spark.yarn.executor.memoryOverhead=5000 \
+
 "${GATK_DIR}/gatk" ${GATK_SV_TOOL} \
     ${TOOL_OPTIONS} ${SV_ARGS} \
     -- \
@@ -103,6 +104,6 @@ esac
     --num-executors ${NUM_EXECUTORS} \
     --driver-memory 30G \
     --executor-memory 30G \
-    --conf spark.yarn.executor.memoryOverhead=5000 \
+    --conf spark.executor.memoryOverhead=5000 \
     --conf spark.network.timeout=600 \
     --conf spark.executor.heartbeatInterval=120

@@ -138,6 +138,11 @@ public final class IntHistogram {
             }
         }
 
+        public CDF(final float[] cdfFractions, final long nCounts) {
+            this.cdfFractions = cdfFractions;
+            this.nCounts = nCounts;
+        }
+
         private CDF( final Kryo kryo, final Input input ) {
             final int len = input.readInt();
             cdfFractions = new float[len];

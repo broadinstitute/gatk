@@ -79,12 +79,20 @@ CLUSTER_MAX_LIFE_HOURS=${CLUSTER_MAX_LIFE_HOURS:-4h}
 CLUSTER_MAX_IDLE_MINUTES=${CLUSTER_MAX_IDLE_MINUTES:-60m}
 GATK_SV_TOOL=${GATK_SV_TOOL:-"StructuralVariationDiscoveryPipelineSpark"}
 COPY_FASTQ=${COPY_FASTQ:-"Y"}
-# update gcloud
-if [[ "${QUIET}" == "Y" ]]; then
-    gcloud components update --quiet
-else
-    gcloud components update
-fi
+SV_UPDATE_GCLOUD=${SV_UPDATE_GCLOUD:-true}
+
+function update_gcloud() {
+    if [ $SV_UPDATE_GCLOUD = true ]; then
+        if [[ "${QUIET}" == "Y" ]]; then
+            gcloud components update --quiet
+        else
+            gcloud components update
+        fi
+    fi
+}
+# try to update gcloud, on error ignore and continue. This can happen if
+# a package manager is maintaining gcloud
+update_gcloud || true
 
 while [ $# -ge 1 ]; do
     case $1 in
@@ -236,6 +244,7 @@ CLUSTER_REFERENCE_IMAGE="/reference/$(basename ${GCS_REFERENCE_IMAGE})"
 ##############################################
 # store local run log in this file (NOTE: can override by defining SV_LOCAL_LOG_FILE)
 SANITIZED_BAM=$(basename "${CLUSTER_BAM}" | awk '{print tolower($0)}' | sed 's/[^a-z0-9]/-/g')
+TMPDIR=${TMPDIR:-/tmp/} # $TMPDIR is defined by default on OSX, not linux
 LOCAL_LOG_FILE=${SV_LOCAL_LOG_FILE:-"${TMPDIR}sv-discovery-${SANITIZED_BAM}.log"}
 
 ########################################################################################################################
