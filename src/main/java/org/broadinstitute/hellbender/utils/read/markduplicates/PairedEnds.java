@@ -57,6 +57,11 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
     return new PairedEnds(first, true, header, partitionIndex, scoringStrategy);
   }
 
+  //todo: why???
+  public static PairedEnds newPairWithMissingSecond(final GATKRead first, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
+    return new PairedEnds(first, false, header, partitionIndex, scoringStrategy);
+  }
+
   // An optimization for passing around empty read information
   public static PairedEnds empty(int start, int partitionIndex) {
     return new PairedEnds(start, partitionIndex);
