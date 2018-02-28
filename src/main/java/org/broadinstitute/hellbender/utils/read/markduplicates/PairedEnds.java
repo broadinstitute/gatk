@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
  * Struct-like class to store information about the paired reads for mark duplicates.
  */
 public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
+  public int firstStartPosition;
   private transient GATKRead first, second;
 
   // Information used to detect optical dupes
@@ -20,34 +21,39 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   private Integer markedScore;
 
   public String name;
-  public int firstStartPosition = -1;
+  public int firstUnclippedStartPosition = -1;
+
+  public int getFirstRefIndex() {
+    return firstRefIndex;
+  }
+
   public int firstRefIndex = -1;
 
-  public int secondStartPosition = -1;
+  public int secondUnclippedStartPosition = -1;
   public int secondRefIndex = -1;
 
-  boolean R1R = false;
+  public boolean R1R = false;
   boolean R2R = false;
 
   private final int partitionIndex;
 
   private PairedEnds(final GATKRead first, final boolean fragment, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
-    name = ReadsKey.keyForRead(header, first);
+    name = first.getName();
     this.first = first;
-    firstStartPosition = ReadUtils.getStrandedUnclippedStart(first);
+    firstUnclippedStartPosition = ReadUtils.getStrandedUnclippedStart(first);
+    firstStartPosition = first.getAssignedStart();
     firstRefIndex = ReadUtils.getReferenceIndex(first, header);
     this.partitionIndex = partitionIndex;
     this.fragment = fragment;
     this.markedScore = scoringStrategy.score(first);
+    this.R1R = first.isReverseStrand();
   }
 
   /**
    * special constructor for creating fragments
-   * @param start
-   * @param partitionIndex
    */
-  private PairedEnds(int start, int partitionIndex) {
-    this.firstStartPosition = start;
+  private PairedEnds(GATKRead read, int partitionIndex) {
+    this.firstUnclippedStartPosition = ReadUtils.getStrandedUnclippedStart(read);
     this.partitionIndex = partitionIndex;
     this.fragment = true;
     this.firstRefIndex = -1;
@@ -63,30 +69,31 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   }
 
   // An optimization for passing around empty read information
-  public static PairedEnds empty(int start, int partitionIndex) {
-    return new PairedEnds(start, partitionIndex);
+  public static PairedEnds empty(GATKRead read, int partitionIndex) {
+    return new PairedEnds(read, partitionIndex);
   }
 
   public static PairedEnds newPair(GATKRead first, GATKRead second, SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
     Utils.nonNull(first);
     Utils.nonNull(second);
-
     final PairedEnds incomplete = new PairedEnds(first, false, header, partitionIndex, scoringStrategy);
 
     incomplete.markedScore = incomplete.markedScore + scoringStrategy.score(second);
 
-    if (incomplete.firstStartPosition > ReadUtils.getStrandedUnclippedStart(second)) {
+    if (incomplete.firstUnclippedStartPosition > ReadUtils.getStrandedUnclippedStart(second)) {
+      incomplete.firstStartPosition = second.getAssignedStart();
       incomplete.second = incomplete.first;
       incomplete.secondRefIndex = incomplete.firstRefIndex;
-      incomplete.secondStartPosition = incomplete.firstStartPosition;
+      incomplete.secondUnclippedStartPosition = incomplete.firstUnclippedStartPosition;
       incomplete.first = second;
       incomplete.firstRefIndex = ReadUtils.getReferenceIndex(second, header);
-      incomplete.firstStartPosition = ReadUtils.getStrandedUnclippedStart(second); //TODO don't compute twice
+      incomplete.firstUnclippedStartPosition = ReadUtils.getStrandedUnclippedStart(second); //TODO don't compute twice
     } else {
       incomplete.second = second;
       incomplete.secondRefIndex = ReadUtils.getReferenceIndex(second, header);
-      incomplete.secondStartPosition = ReadUtils.getStrandedUnclippedStart(second); //TODO don't compute twice
+      incomplete.secondUnclippedStartPosition = ReadUtils.getStrandedUnclippedStart(second); //TODO don't compute twice
     }
+
 
 
     // Calculating necessary optical duplicate information
@@ -108,25 +115,17 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   }
 
   public int key(final SAMFileHeader header) {
-    firstStartPosition = ReadUtils.getStrandedUnclippedStart(first);
-    return ReadsKey.keyForPairedEnds(header, first, second, firstStartPosition);
+    firstUnclippedStartPosition = ReadUtils.getStrandedUnclippedStart(first);
+    return ReadsKey.keyForPairedEnds(header, first, second, firstUnclippedStartPosition);
   }
 
   public int keyForFragment(final SAMFileHeader header) {
-    firstStartPosition = ReadUtils.getStrandedUnclippedStart(first); //todo
-    return ReadsKey.keyForFragment(header, first, firstStartPosition);
+    firstUnclippedStartPosition = ReadUtils.getStrandedUnclippedStart(first); //todo
+    return ReadsKey.keyForFragment(header, first, firstUnclippedStartPosition);
   }
 
   public String keyForRead() {
     return this.name;
-  }
-
-  public GATKRead first() {
-    return first;
-  }
-
-  public GATKRead second() {
-    return second;
   }
 
   public int getScore() {
@@ -134,7 +133,7 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   }
 
   public int getStartPosition() {
-    return firstStartPosition;
+    return firstUnclippedStartPosition;
   }
 
   @Override
@@ -209,6 +208,10 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
 
   public int getPartitionIndex(){
     return partitionIndex;
+  }
+
+  public boolean hasSecondRead(){
+    return secondRefIndex != -1;
   }
 
   public String getName() {
