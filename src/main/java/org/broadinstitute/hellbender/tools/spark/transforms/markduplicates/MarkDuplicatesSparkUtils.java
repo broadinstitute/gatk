@@ -5,6 +5,7 @@ import com.esotericsoftware.kryo.serializers.FieldSerializer;
 import com.google.common.collect.*;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.metrics.MetricsFile;
+import javafx.util.Pair;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -81,7 +82,7 @@ public class MarkDuplicatesSparkUtils {
 
                         final GATKRead read = readWithIndex.getValue();
                         PairedEnds fragment = (ReadUtils.readHasMappedMate(read)) ?
-                                PairedEnds.empty(ReadUtils.getStrandedUnclippedStart(read), readWithIndex.getIndex()) :
+                                PairedEnds.empty(read, readWithIndex.getIndex()) :
                                 PairedEnds.newFragment(read, header, readWithIndex.getIndex(), scoringStrategy);
 
                         out.add(new Tuple2<>(fragment.isEmpty() ?
@@ -205,8 +206,7 @@ public class MarkDuplicatesSparkUtils {
 
             // Tie breaker
             final Comparator<PairedEnds> pairedEndsComparator =
-                    Comparator.comparing(PairedEnds::getScore).reversed();
-                            //todo get secondary comparison .thenComparing((o1, o2) -> new ReadCoordinateComparator(header).compare(o1.first(), o2.first()));
+                    Comparator.comparing(PairedEnds::getScore).reversed().thenComparing(PairedEndsCoordinateComparator.INSTANCE);
 
             final List<Tuple2<IndexPair<String>, Integer>> out = Lists.newArrayList();
 
@@ -224,34 +224,37 @@ public class MarkDuplicatesSparkUtils {
 
             /////// ReadPairs ////////
             if (!pairs.isEmpty()) {
-                final ImmutableListMultimap<Integer, PairedEnds> groups = Multimaps.index(pairs, PairedEnds::getStartPosition);
+                final Collection<List<PairedEnds>> groups = pairs.stream()
+                        .collect(Collectors.groupingBy(PairedEnds::getStartPosition)).values();
 
-                for (int key : groups.keys()) {
+                if(groups.size() >1 ){
+                    throw new GATKException("We're having hash collisions and we don't handle them properly.");
+                }
+                for (List<PairedEnds> pairGroup : groups) {
 
-                    PairedEnds maxScore = null;
-                    for (PairedEnds pair : groups.get(key)) {
+                    PairedEnds bestPair = null;
+                    for (PairedEnds pair : pairGroup) {
                         // As in Picard, unpaired ends left alone.
-                        if (pair.second() == null) {
+                        if (!pair.hasSecondRead()) {
                             out.add(new Tuple2<>(new IndexPair<>(pair.getName(), pair.getPartitionIndex()), -1));
                             // Order by score using ReadCoordinateComparator for tie-breaking.
                         } else {
                             // There are no paired reads, mark all but the highest scoring fragment as duplicate.
-                            if (maxScore != null) {
-                                maxScore = (pairedEndsComparator.compare(pair, maxScore) > 0) ? maxScore : pair;
+                            if (bestPair != null) {
+                                bestPair = (pairedEndsComparator.compare(pair, bestPair) > 0) ? bestPair : pair;
                             } else {
-                                maxScore = pair;
+                                bestPair = pair;
                             }
 
                             finder.addLocationInformation(pair.getName(), pair);//TODO this needs me to handle the name better
                         }
                     }
-                    if (maxScore != null) {
+                    if (bestPair != null) {
 
                         // This must happen last, as findOpticalDuplicates mutates the list.
                         // Split by orientation and count duplicates in each group separately.
                         // TODO could be better
-                        List<PairedEnds> scored = pairs
-                                .stream().filter(pair -> pair.second() != null).collect(Collectors.toList());
+                        List<PairedEnds> scored = pairs.stream().filter(PairedEnds::hasSecondRead).collect(Collectors.toList());
                         final ImmutableListMultimap<Byte, PairedEnds> groupByOrientation = Multimaps.index(scored, PairedEnds::getOrientationForOpticalDuplicates);
                         final int numOpticalDuplicates;
                         if (groupByOrientation.containsKey(ReadEnds.FR) && groupByOrientation.containsKey(ReadEnds.RF)) {
@@ -261,8 +264,8 @@ public class MarkDuplicatesSparkUtils {
                         } else {
                             numOpticalDuplicates = countOpticalDuplicates(finder, scored);
                         }
-                        //maxScore.first().setAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, numOpticalDuplicates);
-                        out.add(new Tuple2<>(new IndexPair<>(maxScore.getName(), maxScore.getPartitionIndex()), numOpticalDuplicates));
+                        //bestPair.first().setAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, numOpticalDuplicates);
+                        out.add(new Tuple2<>(new IndexPair<>(bestPair.getName(), bestPair.getPartitionIndex()), numOpticalDuplicates));
                     }
                 }
             }
@@ -298,7 +301,6 @@ public class MarkDuplicatesSparkUtils {
                     .collect(Collectors.partitioningBy(PairedEnds::isEmpty));
 
             // If there are any non-fragments at this site, mark everything as duplicates, otherwise compute the best score
-            //TODO this must be collapsed
             boolean computeScore = byPairing.get(true).isEmpty();
 
             if (computeScore) {
@@ -454,6 +456,63 @@ public class MarkDuplicatesSparkUtils {
 
             final int res12 = Long.compare(lhs.getMateStart(), rhs.getMateStart());
             return res12;
+        }
+    }
+
+    /**
+     * Comparator for sorting Reads by coordinate. Note that a header is required in
+     * order to meaningfully compare contigs.
+     *
+     * Uses the various other fields in a read to break ties for reads that share
+     * the same location.
+     *
+     * Ordering is almost identical to the {@link htsjdk.samtools.SAMRecordCoordinateComparator},
+     * modulo a few subtle differences in tie-breaking rules for reads that share the same
+     * position. This comparator will produce an ordering consistent with coordinate ordering
+     * in a bam file, including interleaving unmapped reads assigned the positions of their
+     * mates with the mapped reads.
+     */
+    public static final class PairedEndsCoordinateComparator implements Comparator<PairedEnds>, Serializable {
+        private static final long serialVersionUID = 1L;
+
+        public static final PairedEndsCoordinateComparator INSTANCE = new PairedEndsCoordinateComparator();
+        private PairedEndsCoordinateComparator() { }
+
+        @Override
+        public int compare( PairedEnds first, PairedEnds second ) {
+            int result = compareCoordinates(first, second);
+            if ( result != 0 ) {
+                return result;
+            }
+
+            //This is done to mimic SAMRecordCoordinateComparator's behavior
+            if (first.R1R != second.R1R) {
+                return first.R1R ? 1: -1;
+            }
+
+            if ( first.getName() != null && second.getName() != null ) {
+                result = first.getName().compareTo(second.getName());
+            }
+            return result;
+        }
+
+        public static int compareCoordinates(final PairedEnds first, final PairedEnds second ) {
+            final int firstRefIndex = first.firstRefIndex;
+            final int secondRefIndex = second.firstRefIndex;
+
+            if ( firstRefIndex == -1 ) {
+                return (secondRefIndex == -1 ? 0 : 1);
+            }
+            else if ( secondRefIndex == -1 ) {
+                return -1;
+            }
+
+            final int refIndexDifference = firstRefIndex - secondRefIndex;
+            if ( refIndexDifference != 0 ) {
+                return refIndexDifference;
+            }
+
+            return Integer.compare(first.firstStartPosition, second.firstStartPosition);
         }
     }
 }
