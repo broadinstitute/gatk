@@ -14,12 +14,12 @@ DEFAULT_ERROR_RATE = 0.01
 DEFAULT_NUM_POSITIONS = 100
 DEFAULT_START_OVER_DISPERSION = 0.001
 DEFAULT_END_OVER_DISPERSION = 0.001
-DEFAULT_NOISE_STD = 0.
 DEFAULT_BASELINE_STATE = 2
 DEFAULT_NUM_STATES = 5
 DEFAULT_PRIOR_EVENT_PROB = 1e-3
 DEFAULT_COHERENCE_LENGTH = 0.1
 DEFAULT_RANDOM_SEED = 1984
+DEFAULT_DATA_DRAW_TYPE = 'mode'
 
 # a few typical intervals in [0, 100) for generating test events
 TEST_INTERVALS = [(0, 10), (89, 99), (10, 30), (25, 75), (70, 90)]
@@ -41,12 +41,15 @@ class HMMSegmentationTestData:
 
         1 / r_t = exp(psi_t) - 1,
 
-    finally, `x_t` is the observed data which we set to the mode of the distribution (calculated for s_truth_t)
-    with an additive white noise:
+    finally, `x_t` is the observed data which we either set to the mode of the distribution calculated for s_truth_t
+    if `data_draw_type == 'mode'`:
 
-        x_t = max(floor(mu_t[s_truth_t] + noise_std * normal_random), 0).
+        x_t = floor(mu_t[s_truth_t]),
 
-    For noise_std = 0, it is guaranteed that `p_emission(s_trial_t)` is maximized for s_trial_t = s_truth_t.
+    or we draw randomly from the distribution if `data_draw_type == 'random'`.
+
+    For `data_draw_type == 'mode'`, it is guaranteed that `p_emission(s_trial_t)` is maximized for
+    s_trial_t = s_truth_t.
 
     In order to test situations where event start/end determination qualities are different, we allow the
     over-dispersion to linear change from `start_over_dispersion` at t = 0 to `end_over_dispersion` at
@@ -73,13 +76,16 @@ class HMMSegmentationTestData:
                  num_positions: int = DEFAULT_NUM_POSITIONS,
                  start_over_dispersion: float = DEFAULT_START_OVER_DISPERSION,
                  end_over_dispersion: float = DEFAULT_END_OVER_DISPERSION,
-                 noise_std: float = DEFAULT_NOISE_STD,
+                 data_draw_type: str = DEFAULT_DATA_DRAW_TYPE,
                  baseline_state: int = DEFAULT_BASELINE_STATE,
                  num_states: int = DEFAULT_NUM_STATES,
                  prior_prob_event: float = DEFAULT_PRIOR_EVENT_PROB,
                  prior_s: Optional[np.ndarray] = None,
                  coherence_length: float = DEFAULT_COHERENCE_LENGTH,
                  random_seed: int = DEFAULT_RANDOM_SEED):
+
+        assert data_draw_type in ['mode', 'random']
+
         self.emission_depth = emission_depth
         self.error_rate = error_rate
         self.num_positions = num_positions
@@ -88,6 +94,7 @@ class HMMSegmentationTestData:
         self.event_state = event_state
         self.start_over_dispersion = start_over_dispersion
         self.end_over_dispersion = end_over_dispersion
+        self.data_draw_type = data_draw_type
         self.baseline_state = baseline_state
         self.num_states = num_states
         self.prior_prob_event = prior_prob_event
@@ -104,10 +111,15 @@ class HMMSegmentationTestData:
 
         # generate x_t
         np.random.seed(random_seed)
-        noise_t = noise_std * np.random.randn(num_positions)
         mu_for_s_truth_t = np.asarray([self._get_mu(s) for s in self.s_truth_t])
         mode_for_s_truth_t = mu_for_s_truth_t * (2. - np.exp(self.psi_t))
-        self.x_t = np.maximum(np.floor(mode_for_s_truth_t + noise_t), 0.).astype(np.int)
+        if data_draw_type == 'mode':
+            self.x_t = np.floor(mode_for_s_truth_t)
+        else:
+            alpha_t = [self._psi_to_alpha(psi) for psi in self.psi_t]
+            p_t = [alpha / (mu + alpha) for alpha, mu in zip(alpha_t, mu_for_s_truth_t)]
+            self.x_t = np.asarray([np.asscalar(np.random.negative_binomial(alpha, p, 1))
+                                   for alpha, p in zip(alpha_t, p_t)])
 
         # generate log emission probabilities
         self.log_emission_ts = np.asarray(
@@ -297,8 +309,7 @@ class TestHMMSegmentationQualityCalculator(unittest.TestCase):
         for point_event_position in [0, 40, 60, 99]:
             for event_state in DEFAULT_NON_BASELINE_STATES:
                 test_data = HMMSegmentationTestData(
-                    event_start=point_event_position, event_end=point_event_position,
-                    event_state=event_state)
+                    event_start=point_event_position, event_end=point_event_position, event_state=event_state)
                 qualities = self._get_test_data_segment_quality(
                     test_data, point_event_position, point_event_position, event_state)
                 self.assertAlmostEqual(qualities.quality_some_called, qualities.quality_all_called, places=2)
@@ -311,23 +322,24 @@ class TestHMMSegmentationQualityCalculator(unittest.TestCase):
             for event_state in DEFAULT_NON_BASELINE_STATES:
 
                 compatible_coherence_length = float(event_end - event_start)
-                low_coherence_length = 0.01 * compatible_coherence_length
+                low_coherence_length = compatible_coherence_length / 10000
 
-                # we decrease the emission depth from the default value to make the effect more drastic
+                # we decrease the emission depth and prior event probability from default values to make
+                # the effect more drastic
                 test_data_compatible_coherence_length = HMMSegmentationTestData(
                     event_start, event_end, event_state, coherence_length=compatible_coherence_length,
-                    emission_depth=5.0)
+                    emission_depth=5.0, prior_prob_event=1e-6)
                 test_data_low_coherence_length = HMMSegmentationTestData(
                     event_start, event_end, event_state, coherence_length=low_coherence_length,
-                    emission_depth=5.0)
+                    emission_depth=5.0, prior_prob_event=1e-6)
 
                 compatible_coherence_length_qualities = self._get_test_data_segment_quality(
                     test_data_compatible_coherence_length, event_start, event_end, event_state)
                 low_coherence_length_qualities = self._get_test_data_segment_quality(
                     test_data_low_coherence_length, event_start, event_end, event_state)
 
-                # the effect on "quality some called" is very small and is within the round-off error
-                # we only test the more robust metrics
+                self.assertGreater(compatible_coherence_length_qualities.quality_some_called,
+                                   low_coherence_length_qualities.quality_some_called)
                 self.assertGreater(compatible_coherence_length_qualities.quality_all_called,
                                    low_coherence_length_qualities.quality_all_called)
                 self.assertGreater(compatible_coherence_length_qualities.quality_start,
@@ -338,16 +350,71 @@ class TestHMMSegmentationQualityCalculator(unittest.TestCase):
     def test_quality_start_and_end_consistent_on_slope(self):
         """Tests that for an event located in a region with over-dispersion gradient, the breakpoint qualities
         are consistently higher/lower depending on the sign of the gradient."""
-        pass
+        low_over_dispersion = 0.001
+        high_over_dispersion = 0.2
 
-    def test_quality_some_and_all_called_decreased_with_noise(self):
-        """Tests that noisy data decreases all quality metrics."""
-        pass
+        for event_start, event_end in TEST_INTERVALS:
+            for event_state in DEFAULT_NON_BASELINE_STATES:
+
+                test_data_ascending = HMMSegmentationTestData(
+                    event_start, event_end, event_state,
+                    start_over_dispersion=low_over_dispersion,
+                    end_over_dispersion=high_over_dispersion)
+                test_data_descending = HMMSegmentationTestData(
+                    event_start, event_end, event_state,
+                    start_over_dispersion=high_over_dispersion,
+                    end_over_dispersion=low_over_dispersion)
+
+                ascending_qualities = self._get_test_data_segment_quality(
+                    test_data_ascending, event_start, event_end, event_state)
+                descending_qualities = self._get_test_data_segment_quality(
+                    test_data_descending, event_start, event_end, event_state)
+
+                self.assertGreater(ascending_qualities.quality_start, ascending_qualities.quality_end)
+                self.assertGreater(descending_qualities.quality_end, descending_qualities.quality_start)
+
+    def test_quality_some_and_all_called_decreased_with_over_dispersion(self):
+        """Tests that over-dispersion decreases all quality metrics."""
+        low_over_dispersion = 0.001
+        high_over_dispersion = 0.01
+        for event_start, event_end in TEST_INTERVALS:
+            for event_state in DEFAULT_NON_BASELINE_STATES:
+
+                test_data_certain = HMMSegmentationTestData(
+                    event_start, event_end, event_state,
+                    start_over_dispersion=low_over_dispersion,
+                    end_over_dispersion=low_over_dispersion)
+                test_data_uncertain = HMMSegmentationTestData(
+                    event_start, event_end, event_state,
+                    start_over_dispersion=high_over_dispersion,
+                    end_over_dispersion=high_over_dispersion)
+
+                certain_qualities = self._get_test_data_segment_quality(
+                    test_data_certain, event_start, event_end, event_state)
+                uncertain_qualities = self._get_test_data_segment_quality(
+                    test_data_uncertain, event_start, event_end, event_state)
+
+                self.assertGreater(certain_qualities.quality_some_called, uncertain_qualities.quality_some_called)
+                self.assertGreaterEqual(certain_qualities.quality_all_called, uncertain_qualities.quality_all_called)
 
     def test_quality_increased_with_depth(self):
         """Tests that higher emission depth implies higher qualities."""
-        pass
+        low_depth = 10.
+        high_depth = 100.
+        for event_start, event_end in TEST_INTERVALS:
+            for event_state in DEFAULT_NON_BASELINE_STATES:
 
-    def test_quality_decreased_with_error_rate(self):
-        """Tests that higher error rate implies lower qualities."""
-        pass
+                test_data_low_depth = HMMSegmentationTestData(
+                    event_start, event_end, event_state, emission_depth=low_depth)
+                test_data_high_depth = HMMSegmentationTestData(
+                    event_start, event_end, event_state, emission_depth=high_depth)
+
+                low_depth_qualities = self._get_test_data_segment_quality(
+                    test_data_low_depth, event_start, event_end, event_state)
+                high_depth_qualities = self._get_test_data_segment_quality(
+                    test_data_high_depth, event_start, event_end, event_state)
+
+                self.assertGreater(high_depth_qualities.quality_some_called, low_depth_qualities.quality_some_called)
+                self.assertGreater(high_depth_qualities.quality_all_called, low_depth_qualities.quality_all_called)
+                self.assertGreater(high_depth_qualities.quality_start, low_depth_qualities.quality_start)
+                self.assertGreater(high_depth_qualities.quality_end, low_depth_qualities.quality_end)
