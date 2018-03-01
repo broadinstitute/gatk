@@ -9,30 +9,32 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
  * Struct-like class to store information about the paired reads for mark duplicates.
  */
 public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
-  public int firstStartPosition;
-  private transient GATKRead first, second;
+  private int firstStartPosition;
+  private transient GATKRead first;
+  private transient GATKRead second;
 
   // Information used to detect optical dupes
-  public transient short readGroup = -1;
-  public transient short tile = -1;
-  public transient short x = -1, y = -1;
-  public transient short libraryId = -1;
+  private transient short readGroup = -1;
+  private transient short tile = -1;
+  private transient short x = -1;
+  private transient short y = -1;
+  private transient short libraryId = -1;
   private final boolean fragment;
-  private Integer markedScore;
+  private Integer score;
 
-  public String name;
-  public int firstUnclippedStartPosition = -1;
+  private String name;
+  private int firstUnclippedStartPosition = -1;
 
   public int getFirstRefIndex() {
     return firstRefIndex;
   }
 
-  public int firstRefIndex = -1;
+  private int firstRefIndex = -1;
 
-  public int secondUnclippedStartPosition = -1;
-  public int secondRefIndex = -1;
+  private int secondUnclippedStartPosition = -1;
+  private int secondRefIndex = -1;
 
-  public boolean R1R = false;
+  private boolean R1R = false;
   boolean R2R = false;
 
   private final int partitionIndex;
@@ -45,7 +47,7 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
     firstRefIndex = ReadUtils.getReferenceIndex(first, header);
     this.partitionIndex = partitionIndex;
     this.fragment = fragment;
-    this.markedScore = scoringStrategy.score(first);
+    this.score = scoringStrategy.score(first);
     this.R1R = first.isReverseStrand();
   }
 
@@ -78,7 +80,7 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
     Utils.nonNull(second);
     final PairedEnds incomplete = new PairedEnds(first, false, header, partitionIndex, scoringStrategy);
 
-    incomplete.markedScore = incomplete.markedScore + scoringStrategy.score(second);
+    incomplete.score = incomplete.score + scoringStrategy.score(second);
 
     if (incomplete.firstUnclippedStartPosition > ReadUtils.getStrandedUnclippedStart(second)) {
       incomplete.firstStartPosition = second.getAssignedStart();
@@ -124,15 +126,11 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
     return ReadsKey.keyForFragment(header, first, firstUnclippedStartPosition);
   }
 
-  public String keyForRead() {
-    return this.name;
-  }
-
   public int getScore() {
-    return markedScore;
+    return score;
   }
 
-  public int getStartPosition() {
+  public int getUnclippedStartPosition() {
     return firstUnclippedStartPosition;
   }
 
@@ -216,5 +214,21 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
 
   public String getName() {
     return name;
+  }
+
+  public int getFirstStartPosition() {
+    return firstStartPosition;
+  }
+
+  public GATKRead getFirst() {
+    return first;
+  }
+
+  public GATKRead getSecond() {
+    return second;
+  }
+
+  public boolean isR1R() {
+    return R1R;
   }
 }
