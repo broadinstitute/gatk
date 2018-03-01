@@ -50,10 +50,10 @@ public class MarkDuplicatesSparkUtilsUnitTest extends GATKBaseTest {
         GATKRead read4 = ArtificialReadUtils.createArtificialRead(header, "N", 0, 4, 20);
         read4.setReadGroup(getReadGroupId(header, 1));
 
-        String key1 = ReadsKey.keyForRead(header, read1);
-        String key2 = ReadsKey.keyForRead(header, read2);
-        String key3 = ReadsKey.keyForRead(header, read3);
-        String key4 = ReadsKey.keyForRead(header, read4);
+        String key1 = ReadsKey.keyForRead(read1);
+        String key2 = ReadsKey.keyForRead(read2);
+        String key3 = ReadsKey.keyForRead(read3);
+        String key4 = ReadsKey.keyForRead(read4);
 
         Assert.assertEquals("ReadGroup0|N", key1);
         Assert.assertEquals("ReadGroup1|N", key2);
@@ -62,7 +62,8 @@ public class MarkDuplicatesSparkUtilsUnitTest extends GATKBaseTest {
 
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         JavaRDD<GATKRead> reads = ctx.parallelize(ImmutableList.of(read1, read2, read3, read4), 1);
-        JavaPairRDD<String, Iterable<MarkDuplicatesSparkUtils.IndexPair<GATKRead>>> groupedReads = MarkDuplicatesSparkUtils.spanReadsByKey(header, null); //todo reads);
+        JavaPairRDD<String, Iterable<MarkDuplicatesSparkUtils.IndexPair<GATKRead>>> groupedReads = MarkDuplicatesSparkUtils.spanReadsByKey(
+                null); //todo reads);
         Assert.assertEquals(groupedReads.collect(),
                 ImmutableList.of(pairIterable(key1, read1, read3), pairIterable(key2, read2, read4)));
     }

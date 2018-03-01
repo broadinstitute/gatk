@@ -166,8 +166,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
             header = getHeaderForReads();
         }
 
-        final JavaRDD<GATKRead> markedReadsWithOD = null; //todo MarkDuplicatesSpark.mark(alignedReads, header, duplicatesScoringStrategy, new OpticalDuplicateFinder(), getRecommendedNumReducers());
-        final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.cleanupTemporaryAttributes(markedReadsWithOD);
+        final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.mark(alignedReads, header, duplicatesScoringStrategy, new OpticalDuplicateFinder(), getRecommendedNumReducers());
 
         // The markedReads have already had the WellformedReadFilter applied to them, which
         // is all the filtering that MarkDupes and ApplyBQSR want. BQSR itself wants additional
