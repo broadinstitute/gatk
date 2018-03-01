@@ -343,7 +343,7 @@ public final class MarkDuplicatesGATK extends AbstractMarkDuplicatesCommandLineP
         final int maxInMemory = (int) Math.min((Runtime.getRuntime().maxMemory() * 0.25) / SortingLongCollection.SIZEOF,
                 (double) (Integer.MAX_VALUE - 5));
         logger.info("Will retain up to " + maxInMemory + " duplicate indices before spilling to disk.");
-        this.duplicateIndexes = new SortingLongCollection(maxInMemory, (Path[]) TMP_DIR.stream().map(IOUtils::getPath).toArray());
+        this.duplicateIndexes = new SortingLongCollection(maxInMemory, TMP_DIR.stream().map(IOUtils::getPath).toArray(Path[]::new));
 
         ReadEndsForMarkDuplicates firstOfNextChunk = null;
         final List<ReadEndsForMarkDuplicates> nextChunk = new ArrayList<>(200);
