@@ -382,6 +382,9 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
 
     @Test
     public void testTwoMappedPairWithSamePositionDifferentStrands() {
+//        this test is failing and it's probably because of the recent change I made to how R1R and R2R are set ( which I thought was a bug fix)
+//                either that or it's due to the recent change to pass R1R as the fragment strand key instead of passing in first and calling isReverseStrand on it, which is subtly different if first is not firstofpair
+//                or maybe it's something else, or it never worked in the first place, we should check that'
         final AbstractMarkDuplicatesTester tester = getTester();
         tester.addMappedPair(0, 5604914, 5604914, false, false, "50M", "50M", true, false, false, ELIGIBLE_BASE_QUALITY); // +/-
         tester.addMappedPair(0, 5604914, 5604914, true, true, "50M", "50M", false, true, false, DEFAULT_BASE_QUALITY); // -/+

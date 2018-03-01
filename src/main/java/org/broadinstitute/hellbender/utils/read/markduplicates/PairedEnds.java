@@ -9,54 +9,70 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
  * Struct-like class to store information about the paired reads for mark duplicates.
  */
 public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
-  public int firstStartPosition;
-  private transient GATKRead first, second;
+  private final int firstStartPosition;
+  private transient GATKRead first;
+  private transient GATKRead second;
 
   // Information used to detect optical dupes
-  public transient short readGroup = -1;
-  public transient short tile = -1;
-  public transient short x = -1, y = -1;
-  public transient short libraryId = -1;
+  private transient short readGroup = -1;
+  private transient short tile = -1;
+  private transient short x = -1;
+  private transient short y = -1;
+  private transient short libraryId = -1;
+
+
   private final boolean fragment;
-  private Integer markedScore;
+  private final int score;
 
-  public String name;
-  public int firstUnclippedStartPosition = -1;
+  private final String name;
 
-  public int getFirstRefIndex() {
-    return firstRefIndex;
-  }
+  private final int firstUnclippedStartPosition;
+  private final short firstRefIndex;
 
-  public int firstRefIndex = -1;
+  private final int secondUnclippedStartPosition;
+  private final short secondRefIndex;
 
-  public int secondUnclippedStartPosition = -1;
-  public int secondRefIndex = -1;
-
-  public boolean R1R = false;
-  boolean R2R = false;
+  private final boolean R1R;
+  private final boolean R2R;
 
   private final int partitionIndex;
 
+
   private PairedEnds(final GATKRead first, final boolean fragment, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
-    name = first.getName();
+    this.name = first.getName();
     this.first = first;
-    firstUnclippedStartPosition = ReadUtils.getStrandedUnclippedStart(first);
-    firstStartPosition = first.getAssignedStart();
-    firstRefIndex = ReadUtils.getReferenceIndex(first, header);
+    this.firstUnclippedStartPosition = ReadUtils.getStrandedUnclippedStart(first);
+    this.secondUnclippedStartPosition = -1;
+    this.firstStartPosition = first.getAssignedStart();
+    this.firstRefIndex = (short)ReadUtils.getReferenceIndex(first, header);
+    this.secondRefIndex = -1;
     this.partitionIndex = partitionIndex;
     this.fragment = fragment;
-    this.markedScore = scoringStrategy.score(first);
+    this.score = scoringStrategy.score(first);
     this.R1R = first.isReverseStrand();
+    this.R2R = false;
   }
 
+
+
   /**
-   * special constructor for creating fragments
+   * special constructor for creating empty fragments
+   * this only includes the necessary data to locate the read, the rest is unnecessary because it will appear in the paired bucket
+   *
    */
-  private PairedEnds(GATKRead read, int partitionIndex) {
+  private PairedEnds(GATKRead read, SAMFileHeader header, int partitionIndex) {
     this.firstUnclippedStartPosition = ReadUtils.getStrandedUnclippedStart(read);
+    this.secondUnclippedStartPosition = -1;
+    this.first = read;
     this.partitionIndex = partitionIndex;
     this.fragment = true;
-    this.firstRefIndex = -1;
+    this.firstRefIndex = (short)ReadUtils.getReferenceIndex(first, header);
+    this.secondRefIndex = -1;
+    this.name = null;
+    this.R1R = read.isReverseStrand();
+    this.R2R = false;
+    this.score = 0;
+    this.firstStartPosition = firstUnclippedStartPosition;
   }
 
   public static PairedEnds newFragment(final GATKRead first, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
@@ -69,70 +85,86 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   }
 
   // An optimization for passing around empty read information
-  public static PairedEnds empty(GATKRead read, int partitionIndex) {
-    return new PairedEnds(read, partitionIndex);
+  public static PairedEnds empty(GATKRead read, SAMFileHeader header, int partitionIndex) {
+    return new PairedEnds(read, header, partitionIndex);
+  }
+
+
+  private PairedEnds(final GATKRead read1, final GATKRead read2, final boolean fragment, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
+    final String name1 = read1.getName();
+    final String name2 = read2.getName();
+    Utils.validate(name1.equals(name2), () -> "Paired reads have different names\n" + name1 + "\n" + name2);
+    this.name = name1;
+
+    this.partitionIndex = partitionIndex;
+    this.fragment = fragment;
+    this.score = scoringStrategy.score(read1) + scoringStrategy.score(read2);
+
+    this.first = read1;
+    final int read1UnclippedStart = ReadUtils.getStrandedUnclippedStart(read1);
+    final int read2UnclippedStart = ReadUtils.getStrandedUnclippedStart(read2);
+
+    if( read1UnclippedStart < read2UnclippedStart ){
+      first = read1;
+      second = read2;
+      firstUnclippedStartPosition = read1UnclippedStart;
+      secondUnclippedStartPosition = read2UnclippedStart;
+    } else {
+      first = read2;
+      second = read1;
+      firstUnclippedStartPosition = read2UnclippedStart;
+      secondUnclippedStartPosition = read1UnclippedStart;
+    }
+
+    firstStartPosition = first.getAssignedStart();
+    firstRefIndex = (short)ReadUtils.getReferenceIndex(first, header);
+    secondRefIndex = (short)ReadUtils.getReferenceIndex(second, header);
+
+
+    final GATKRead firstOfPair;
+    final GATKRead secondOfPair;
+    if (read1.isFirstOfPair()){
+      firstOfPair = read1;
+      secondOfPair = read2;
+    } else {
+      firstOfPair = read2;
+      secondOfPair = read1;
+    }
+
+    R1R = firstOfPair.isReverseStrand();
+    R2R = secondOfPair.isReverseStrand();
   }
 
   public static PairedEnds newPair(GATKRead first, GATKRead second, SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
-    Utils.nonNull(first);
-    Utils.nonNull(second);
-    final PairedEnds incomplete = new PairedEnds(first, false, header, partitionIndex, scoringStrategy);
+    return new PairedEnds(first, second, false, header, partitionIndex, scoringStrategy);
+  }
 
-    incomplete.markedScore = incomplete.markedScore + scoringStrategy.score(second);
-
-    if (incomplete.firstUnclippedStartPosition > ReadUtils.getStrandedUnclippedStart(second)) {
-      incomplete.firstStartPosition = second.getAssignedStart();
-      incomplete.second = incomplete.first;
-      incomplete.secondRefIndex = incomplete.firstRefIndex;
-      incomplete.secondUnclippedStartPosition = incomplete.firstUnclippedStartPosition;
-      incomplete.first = second;
-      incomplete.firstRefIndex = ReadUtils.getReferenceIndex(second, header);
-      incomplete.firstUnclippedStartPosition = ReadUtils.getStrandedUnclippedStart(second); //TODO don't compute twice
-    } else {
-      incomplete.second = second;
-      incomplete.secondRefIndex = ReadUtils.getReferenceIndex(second, header);
-      incomplete.secondUnclippedStartPosition = ReadUtils.getStrandedUnclippedStart(second); //TODO don't compute twice
-    }
-
-
-
-    // Calculating necessary optical duplicate information
-
-    final GATKRead read1;
-    final GATKRead read2;
-    if (incomplete.first.isFirstOfPair()){
-      read1 = incomplete.first;
-      read2 = second;
-    } else {
-      read1 = second;
-      read2 = incomplete.first;
-    }
-
-    incomplete.R1R = read1.isReverseStrand();
-    incomplete.R2R = read2.isReverseStrand();
-
-    return incomplete;
+  public Type getType(){
+      if(isFragment()){
+          return Type.FRAGMENT;
+      } else if (hasSecondRead()) {
+          return Type.PAIR;
+      } else {
+          return Type.PAIRED_BUT_MISSING_SECOND_READ;
+      }
   }
 
   public int key(final SAMFileHeader header) {
-    firstUnclippedStartPosition = ReadUtils.getStrandedUnclippedStart(first);
-    return ReadsKey.keyForPairedEnds(header, first, second, firstUnclippedStartPosition);
+    return ReadsKey.hashKeyForPair(header, first, second);
   }
 
   public int keyForFragment(final SAMFileHeader header) {
-    firstUnclippedStartPosition = ReadUtils.getStrandedUnclippedStart(first); //todo
-    return ReadsKey.keyForFragment(header, first, firstUnclippedStartPosition);
-  }
-
-  public String keyForRead() {
-    return this.name;
+    return ReadsKey.hashKeyForFragment(firstUnclippedStartPosition,
+                                       isR1R(),
+                                       firstRefIndex,
+                                       ReadUtils.getLibrary(first, header));
   }
 
   public int getScore() {
-    return markedScore;
+    return score;
   }
 
-  public int getStartPosition() {
+  public int getUnclippedStartPosition() {
     return firstUnclippedStartPosition;
   }
 
@@ -172,7 +204,7 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
 
   //TODO note that this only
   public boolean isEmpty() {
-    return firstRefIndex == -1;
+    return name == null;
   }
 
   /**
@@ -216,5 +248,27 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
 
   public String getName() {
     return name;
+  }
+
+  public int getFirstStartPosition() {
+    return firstStartPosition;
+  }
+
+  public boolean isR1R() {
+    return R1R;
+  }
+
+  public int getFirstRefIndex() {
+    return firstRefIndex;
+  }
+
+  @Override
+  public String toString() {
+    return name + " " + firstUnclippedStartPosition + " " + (secondUnclippedStartPosition == -1 ? "" : secondUnclippedStartPosition);
+  }
+
+  public enum Type {
+      FRAGMENT, PAIR, PAIRED_BUT_MISSING_SECOND_READ;
+
   }
 }
