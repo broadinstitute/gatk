@@ -5,10 +5,10 @@ import com.esotericsoftware.kryo.serializers.FieldSerializer;
 import com.google.common.collect.*;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.metrics.MetricsFile;
-import javafx.util.Pair;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.metrics.MetricsUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -78,15 +78,13 @@ public class MarkDuplicatesSparkUtils {
                     ////// Making The Fragments //////
                     // Make a PairedEnd object with no second read for each fragment (and an empty one for each paired read)
                     .peek(readWithIndex -> {
-                        //read.setIsDuplicate(false);
-
                         final GATKRead read = readWithIndex.getValue();
                         PairedEnds fragment = (ReadUtils.readHasMappedMate(read)) ?
                                 PairedEnds.empty(read, readWithIndex.getIndex()) :
                                 PairedEnds.newFragment(read, header, readWithIndex.getIndex(), scoringStrategy);
 
                         out.add(new Tuple2<>(fragment.isEmpty() ?
-                                                     ReadsKey.keyForFragment(header, read, fragment.getStartPosition()) :
+                                                     ReadsKey.keyForFragment(header, read, fragment.getUnclippedStartPosition()) :
                                                      fragment.keyForFragment(header), fragment));
                     })
                     .filter(readWithIndex -> ReadUtils.readHasMappedMate(readWithIndex.getValue()))
@@ -120,14 +118,17 @@ public class MarkDuplicatesSparkUtils {
         final JavaPairRDD<String, Iterable<IndexPair<GATKRead>>> keyedReads;
         final JavaRDD<IndexPair<GATKRead>> indexedReads = reads.mapPartitionsWithIndex(
                 (index, iter) -> Utils.stream(iter).map(read -> new IndexPair<>(read, index)).iterator(), false);
-        if (SAMFileHeader.SortOrder.queryname.equals(header.getSortOrder())) {
-            // reads are already sorted by name, so perform grouping within the partition (no shuffle)
+        if (SAMFileHeader.SortOrder.queryname.equals(header.getSortOrder()) || SAMFileHeader.GroupOrder.query.equals(header.getGroupOrder()) ) {
+            // reads are already grouped by name, so perform grouping within the partition (no shuffle)
             keyedReads = spanReadsByKey(header, indexedReads);
         } else {
-            // sort by group and name (incurs a shuffle)
-            JavaPairRDD<String, IndexPair<GATKRead>> keyReadPairs = indexedReads.mapToPair(read -> new Tuple2<>(
-                    ReadsKey.keyForRead(header, read.getValue()), read));
-            keyedReads = keyReadPairs.groupByKey(numReducers);
+            throw new UserException("MarkDuplicatesSpark requires input to be in queryname or querygroup order.  " +
+                                            "This bam has SortOrder=" + header.getSortOrder() + " GroupOrder=" + header.getGroupOrder());
+            //TODO fix this so that it works and groups reads correctly instead of the error.
+                // sort by group and name (incurs a shuffle)
+//                JavaPairRDD<String, IndexPair<GATKRead>> keyReadPairs = indexedReads.mapToPair(read -> new Tuple2<>(
+//                    ReadsKey.keyForRead(header, read.getValue()), read));
+//                keyedReads = keyReadPairs.groupByKey(numReducers);
         }
         return keyedReads;
     }
@@ -225,7 +226,7 @@ public class MarkDuplicatesSparkUtils {
             /////// ReadPairs ////////
             if (!pairs.isEmpty()) {
                 final Collection<List<PairedEnds>> groups = pairs.stream()
-                        .collect(Collectors.groupingBy(PairedEnds::getStartPosition)).values();
+                        .collect(Collectors.groupingBy(PairedEnds::getUnclippedStartPosition)).values();
 
                 if(groups.size() >1 ){
                     throw new GATKException("We're having hash collisions and we don't handle them properly.");
@@ -287,7 +288,7 @@ public class MarkDuplicatesSparkUtils {
     private static Tuple2<IndexPair<String>,Integer> handleFragments(Iterable<PairedEnds> pairedEnds, Comparator<PairedEnds> comparator) {
 
         final Collection<List<PairedEnds>> groups = Utils.stream(pairedEnds)
-                .collect(Collectors.groupingBy(PairedEnds::getStartPosition))
+                .collect(Collectors.groupingBy(PairedEnds::getUnclippedStartPosition))
                 .values();
 
         //todo this is broken and only emits for the first key
@@ -486,8 +487,8 @@ public class MarkDuplicatesSparkUtils {
             }
 
             //This is done to mimic SAMRecordCoordinateComparator's behavior
-            if (first.R1R != second.R1R) {
-                return first.R1R ? 1: -1;
+            if (first.isR1R() != second.isR1R()) {
+                return first.isR1R() ? 1: -1;
             }
 
             if ( first.getName() != null && second.getName() != null ) {
@@ -497,8 +498,8 @@ public class MarkDuplicatesSparkUtils {
         }
 
         public static int compareCoordinates(final PairedEnds first, final PairedEnds second ) {
-            final int firstRefIndex = first.firstRefIndex;
-            final int secondRefIndex = second.firstRefIndex;
+            final int firstRefIndex = first.getFirstRefIndex();
+            final int secondRefIndex = second.getFirstRefIndex();
 
             if ( firstRefIndex == -1 ) {
                 return (secondRefIndex == -1 ? 0 : 1);
@@ -512,7 +513,7 @@ public class MarkDuplicatesSparkUtils {
                 return refIndexDifference;
             }
 
-            return Integer.compare(first.firstStartPosition, second.firstStartPosition);
+            return Integer.compare(first.getFirstStartPosition(), second.getFirstStartPosition());
         }
     }
 }
