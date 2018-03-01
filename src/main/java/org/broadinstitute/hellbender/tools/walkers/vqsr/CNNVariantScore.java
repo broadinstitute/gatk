@@ -79,9 +79,6 @@ public class CNNVariantScore extends VariantWalker {
     @Argument(fullName = "window-size", shortName = "window-size", doc = "Neural Net input window size", minValue = 0, optional = true)
     private int windowSize = 128;
 
-    @Argument(fullName = "channels-last", shortName = "channels-last", doc = "Store the channels in the last axis of tensors, tensorflow->true, theano->false", optional = true)
-    private boolean channelsLast = true;
-
     @Advanced
     @Argument(fullName = "inference-batch-size", shortName = "inference-batch-size", doc = "Size of batches for python to do inference on.", minValue = 1, maxValue=4096, optional = true)
     private int inferenceBatchSize = 256;

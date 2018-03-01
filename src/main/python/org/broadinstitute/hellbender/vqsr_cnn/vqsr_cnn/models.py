@@ -57,8 +57,8 @@ def set_args_and_get_model_from_semantics(args, semantics_json):
     args.input_symbols = semantics['input_symbols']
     args.labels = semantics['output_labels']
 
-    if 'data_dir' in semantics:
-        args.data_dir = semantics['data_dir']
+    if 'channels_last' in semantics:
+        args.channels_last = semantics['channels_last']
 
     weight_path_hd5 = os.path.join(os.path.dirname(semantics_json), semantics['architecture'])
     print('Loading keras weight file from:', weight_path_hd5)
@@ -305,7 +305,6 @@ def per_class_precision(labels):
         exec(string_fxn)
         precision_fxn = eval(label_key + '_precision')
         precision_fxns.append(precision_fxn)
-
     return precision_fxns
 
 
@@ -316,7 +315,6 @@ def get_metric_dict(labels=defines.SNP_INDEL_LABELS):
     for i,label_key in enumerate(labels.keys()):
         metrics[label_key+'_precision'] = precision_fxns[i]
         metrics[label_key+'_recall'] = recall_fxns[i]
-
     return metrics
 
 
@@ -399,6 +397,8 @@ def serialize_model_semantics(args, architecture_hd5):
 
     if args.data_dir:
         semantics['data_dir'] = args.data_dir
+
+    semantics['channels_last'] = args.channels_last
 
     json_file_name = args.output_dir + args.id + '.json'
     with open(json_file_name, 'w') as outfile:

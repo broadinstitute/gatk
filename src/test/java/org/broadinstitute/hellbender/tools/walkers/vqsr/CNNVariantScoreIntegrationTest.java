@@ -15,8 +15,8 @@ import java.util.Arrays;
  */
 public class CNNVariantScoreIntegrationTest extends CommandLineProgramTest {
     private static String architecture1D = packageMainResourcesDir + "tools/walkers/vqsr/1d_cnn_mix_train_full_bn.json";
-    private static String architecture2D = packageMainResourcesDir + "tools/walkers/vqsr/2d_cnn_mix_train.json";
-
+    //private static String architecture2D = packageMainResourcesDir + "tools/walkers/vqsr/2d_cnn_mix_train.json";
+    private static final String architecture2D = largeFileTestDir + "VQSR/tiny_2d_tf_model.json";
     private static final String inputVCF = largeFileTestDir + "VQSR/recalibrated_chr20_start.vcf";
 
     /**
@@ -71,12 +71,13 @@ public class CNNVariantScoreIntegrationTest extends CommandLineProgramTest {
     /**
      * Run the 2D Model on a small test VCF.
      */
-    @Test(groups = {"python"}, enabled = false)
+    @Test(groups = {"python"}, enabled = true)
     public void testInference2d() throws IOException{
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
-                .addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam")
+                .addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, largeFileTestDir + "VQSR/g94982_chr20_1m_10m_bamout.bam")
                 .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
+                //.addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "cnn_2d_chr20_subset_expected.vcf")
                 .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
                 .addArgument("architecture", architecture2D)
                 .addArgument("inference-batch-size", "1")
@@ -84,7 +85,7 @@ public class CNNVariantScoreIntegrationTest extends CommandLineProgramTest {
                 .addArgument("use-reads", "true")
                 .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 
-        //runCommandLine(argsBuilder);
+//        runCommandLine(argsBuilder);
         final IntegrationTestSpec spec = new IntegrationTestSpec(argsBuilder.toString(),
                 Arrays.asList(largeFileTestDir + "VQSR/expected/cnn_2d_chr20_subset_expected.vcf"));
         spec.executeTest("testInference2d", this);
