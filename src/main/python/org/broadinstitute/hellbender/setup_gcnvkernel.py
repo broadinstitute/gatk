@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup
 import re
 import sys
 
@@ -28,6 +28,7 @@ setup(
               'gcnvkernel.tasks',
               'gcnvkernel.utils',
               'gcnvkernel.io'],
+    test_suite='gcnvkernel.tests',
     license='LICENSE.txt',
     description='GATK gCNV computational kernel',
     long_description=open('gcnvkernel/README.txt').read(),
