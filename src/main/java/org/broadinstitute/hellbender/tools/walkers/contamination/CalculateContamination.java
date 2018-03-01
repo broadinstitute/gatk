@@ -300,7 +300,7 @@ public class CalculateContamination extends CommandLineProgram {
         logger.info(String.format("Therefore, we estimate a contamination of %.3f.", contamination));
         logger.info(String.format("The error bars on this estimate are %.5f.", standardError));
 
-        return Pair.of(contamination, standardError);
+        return Pair.of(Math.min(contamination, 1.0), standardError);
     }
 
     private List<PileupSummary> filterSites(final List<PileupSummary> allSites) {

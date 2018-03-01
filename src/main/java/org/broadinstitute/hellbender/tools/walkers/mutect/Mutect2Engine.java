@@ -43,7 +43,7 @@ import java.util.*;
  */
 public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
-    private static final String MUTECT_VERSION = "2.1-beta";
+    private static final String MUTECT_VERSION = "2.1";
 
     public static final String TUMOR_SAMPLE_KEY_IN_VCF_HEADER = "tumor_sample";
     public static final String NORMAL_SAMPLE_KEY_IN_VCF_HEADER = "normal_sample";
@@ -151,7 +151,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         filters.add(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
         filters.add(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
         filters.add(GOOD_READ_LENGTH_FILTER);
-        filters.add(ReadFilterLibrary.MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE);
         filters.add(ReadFilterLibrary.GOOD_CIGAR);
         filters.add(new WellformedReadFilter());
 
