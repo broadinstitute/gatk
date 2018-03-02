@@ -72,37 +72,75 @@ public class StandardCallerArgumentCollection implements Serializable {
     @Argument(fullName = "contamination-fraction-per-sample-file", shortName = "contamination-file", doc = "Tab-separated File containing fraction of contamination in sequencing data (per sample) to aggressively remove. Format should be \"<SampleID><TAB><Contamination>\" (Contamination is double) per line; No header.", optional = true)
     public File CONTAMINATION_FRACTION_FILE = null;
 
+    private DefaultedMap<String,Double> sampleContamination;
+    private boolean mapHasContaminationSet = false;
+
     /**
      * Returns true if there is some sample contamination present, false otherwise.
      * @return {@code true} iff there is some sample contamination
      */
     public boolean isSampleContaminationPresent() {
-        return (!Double.isNaN(CONTAMINATION_FRACTION) && CONTAMINATION_FRACTION > 0.0) || (sampleContamination != null && !sampleContamination.isEmpty());
+        return contaminationFractionIsSet(CONTAMINATION_FRACTION) || mapHasContaminationSet;
     }
-
-    private DefaultedMap<String,Double> sampleContamination;
-
+    
     /**
      * Returns an unmodifiable view of the map of SampleId -> contamination.
+     * 
+     * The returned map will return a default value equal to the configured
+     * {@link #CONTAMINATION_FRACTION} for samples whose contamination is not
+     * explicitly set.
      */
     public Map<String,Double> getSampleContamination() {
+        if (sampleContamination == null) {
+            setSampleContamination(Collections.emptyMap()); // default to empty map
+        }
         return Collections.unmodifiableMap(sampleContamination);
     }
 
     /**
-     * Returns the sample contamination or CONTAMINATION_FRACTION if no contamination level was specified for this sample.
+     * Set the sample contamination map using the provided map. The resulting map will have
+     * its default value for unknown keys set equal to {@link #CONTAMINATION_FRACTION}, regardless
+     * of any default value set in the provided map (if it's a DefaultedMap).
+     *
+     * @param sampleContamination Map of sample to contamination fraction with which to initialize our
+     *                            sample contamination map. Replaces any existing values in our map.
+     *                            The resulting map will have {@link #CONTAMINATION_FRACTION} as the default
+     *                            value for unknown keys, regardless of any default set in the provided map.
      */
-    public Double getSampleContamination(final String sampleId){
-        Utils.nonNull(sampleId);
-        if (sampleContamination == null){
-            setSampleContamination(new DefaultedMap<>(CONTAMINATION_FRACTION));//default to empty map
-        }
-        return sampleContamination.get(sampleId);
-    }
-
-    public void setSampleContamination(final DefaultedMap<String, Double> sampleContamination) {
+    public void setSampleContamination(final Map<String, Double> sampleContamination) {
         this.sampleContamination = new DefaultedMap<>(CONTAMINATION_FRACTION);  //NOTE: a bit weird because it ignores the default from the argument and uses ours
         this.sampleContamination.putAll(sampleContamination);                   //make a copy to be safe
+
+        this.mapHasContaminationSet = contaminationIsPresentInMap(this.sampleContamination);
+    }
+
+    /**
+     * @param fraction double value to test
+     * @return True if fraction represents non-zero contamination, otherwise false
+     */
+    private boolean contaminationFractionIsSet(final double fraction) {
+        return ! Double.isNaN(fraction) && fraction > 0.0;
+    }
+
+    /**
+     * Given a map of sample to contamination fraction, determines whether any samples have
+     * a non-zero contamination fraction set.
+     *
+     * @param contaminationMap sample -> contamination fraction map to test
+     * @return true if at least one sample has a non-zero contamination fraction, otherwise false
+     */
+    private boolean contaminationIsPresentInMap(final Map<String, Double> contaminationMap) {
+        if ( contaminationMap == null ) {
+            return false;
+        }
+
+        for ( final Map.Entry<String,Double> mapEntry : contaminationMap.entrySet() ) {
+            if ( contaminationFractionIsSet(mapEntry.getValue()) ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
