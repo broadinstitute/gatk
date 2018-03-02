@@ -7,7 +7,6 @@ import htsjdk.variant.vcf.*;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller;
 import org.broadinstitute.hellbender.tools.copynumber.PostprocessGermlineCNVCalls;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.IntegerCopyNumberSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.IntegerCopyNumberSegment;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -20,7 +19,7 @@ import java.util.Set;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public final class GermlineCNVSegmentVariantComposer extends GermlineCNVAbstractVariantComposer {
+public final class GermlineCNVSegmentVariantComposer extends GermlineCNVVariantComposer<IntegerCopyNumberSegment> {
 
     /* VCF FORMAT header keys */
 
@@ -94,35 +93,23 @@ public final class GermlineCNVSegmentVariantComposer extends GermlineCNVAbstract
         result.addMetaDataLine(new VCFFormatHeaderLine(NP, 1,
                 VCFHeaderLineType.Integer, "Number of points (i.e. targets or bins) in the segment"));
         result.addMetaDataLine(new VCFFormatHeaderLine(QS, 1,
-                VCFHeaderLineType.Integer, "Phred-scaled quality of one or more of the points in the segment " +
-                "agreeing with the most-likely copy-number call (normalized by the number of points)"));
+                VCFHeaderLineType.Integer, "Complementary Phred-scaled probability that at least one point " +
+                "(i.e. target or bin) in the segment agrees with the segment copy-number call, divided by " +
+                "the number of points in the segment"));
         result.addMetaDataLine(new VCFFormatHeaderLine(QA, 1,
-                VCFHeaderLineType.Integer, "Phred-scaled quality of all of the points in the segment " +
-                "agreeing with the most-likely copy-number call"));
+                VCFHeaderLineType.Integer, "Complementary Phred-scaled probability that all points " +
+                "(i.e. targets or bins) in the segment agree with the segment copy-number call"));
         result.addMetaDataLine(new VCFFormatHeaderLine(QSS, 1,
-                VCFHeaderLineType.Integer, "Phred-scaled quality of determining the segment start position"));
+                VCFHeaderLineType.Integer, "Complementary Phred-scaled probability that the segment start " +
+                "position is a genuine copy-number changepoint"));
         result.addMetaDataLine(new VCFFormatHeaderLine(QSE, 1,
-                VCFHeaderLineType.Integer, "Phred-scaled quality of determining the segment end position"));
+                VCFHeaderLineType.Integer, "Complementary Phred-scaled probability that the segment end " +
+                "position is a genuine copy-number changepoint"));
 
         /* INFO header lines */
         result.addMetaDataLine(new VCFInfoHeaderLine(VCFConstants.END_KEY, 1,
                 VCFHeaderLineType.Integer, "End coordinate of the variant"));
         outputWriter.writeHeader(result);
-    }
-
-    /**
-     * Write all variants.
-     */
-    public void writeAll(final IntegerCopyNumberSegmentCollection collection) {
-        Utils.nonNull(collection);
-        Utils.validateArg(collection.getMetadata().getSampleName().equals(sampleName),
-                String.format("The sample name in the given collection differs from the expected " +
-                        "sample name (collection: %s, expected: %s).",
-                        collection.getMetadata().getSampleName(), sampleName));
-        for (final IntegerCopyNumberSegment segment : collection.getRecords()) {
-            final VariantContext variant = composeSegmentVariantContext(segment);
-            outputWriter.add(variant);
-        }
     }
 
     /**
@@ -132,7 +119,7 @@ public final class GermlineCNVSegmentVariantComposer extends GermlineCNVAbstract
      * @return composed variant context
      */
     @VisibleForTesting
-    VariantContext composeSegmentVariantContext(final IntegerCopyNumberSegment segment) {
+    VariantContext composeVariantContext(final IntegerCopyNumberSegment segment) {
         final String contig = segment.getContig();
         final int start = segment.getStart();
         final int end = segment.getEnd();

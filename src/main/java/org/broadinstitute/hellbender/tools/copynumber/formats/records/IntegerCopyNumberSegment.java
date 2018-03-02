@@ -101,7 +101,7 @@ public class IntegerCopyNumberSegment implements Locatable {
         if (other == null || getClass() != other.getClass()) {
             return false;
         }
-        IntegerCopyNumberSegment that = (IntegerCopyNumberSegment) other;
+        final IntegerCopyNumberSegment that = (IntegerCopyNumberSegment) other;
         return (numPoints == that.numPoints &&
                 Double.compare(that.qualitySomeCalled, qualitySomeCalled) == 0 &&
                 Double.compare(that.qualityAllCalled, qualityAllCalled) == 0 &&

@@ -7,8 +7,8 @@ import htsjdk.variant.vcf.*;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller;
 import org.broadinstitute.hellbender.tools.copynumber.PostprocessGermlineCNVCalls;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.LocatableCopyNumberPosteriorDistribution;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.LocatableIntegerCopyNumber;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyNumberPosteriorDistribution;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.IntervalCopyNumberGenotypingData;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
  * @author Andrey Smirnov &lt;asmirnov@broadinstitute.org&gt;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public final class GermlineCNVIntervalVariantComposer extends GermlineCNVAbstractVariantComposer {
+public final class GermlineCNVIntervalVariantComposer extends GermlineCNVVariantComposer<IntervalCopyNumberGenotypingData> {
 
     /* VCF FORMAT header keys */
 
@@ -41,7 +41,6 @@ public final class GermlineCNVIntervalVariantComposer extends GermlineCNVAbstrac
      */
     static final String CNQ = "CNQ";
 
-    private final IntegerCopyNumberStateCollection integerCopyNumberStateCollection;
     private final IntegerCopyNumberState refAutosomalCopyNumberState;
     private final Set<String> allosomalContigSet;
 
@@ -49,7 +48,6 @@ public final class GermlineCNVIntervalVariantComposer extends GermlineCNVAbstrac
      * Constructor for {@link PostprocessGermlineCNVCalls} Postprocessor
      *
      * @param outputWriter variant context writer
-     * @param integerCopyNumberStateCollection collection of copy-number states considered by post processor
      * @param sampleName sample name
      * @param refAutosomalCopyNumberState ref copy-number state on autosomal contigs
      * @param allosomalContigSet set of allosomal contigs (ref copy-number allele be chosen according to
@@ -57,13 +55,9 @@ public final class GermlineCNVIntervalVariantComposer extends GermlineCNVAbstrac
      */
     public GermlineCNVIntervalVariantComposer(final VariantContextWriter outputWriter,
                                               final String sampleName,
-                                              final IntegerCopyNumberStateCollection integerCopyNumberStateCollection,
                                               final IntegerCopyNumberState refAutosomalCopyNumberState,
                                               final Set<String> allosomalContigSet) {
         super(outputWriter, sampleName);
-        this.integerCopyNumberStateCollection = Utils.nonNull(integerCopyNumberStateCollection);
-        Utils.validate(integerCopyNumberStateCollection.size() > 2,
-                "There must be at least 3 copy number states present.");
         this.refAutosomalCopyNumberState = Utils.nonNull(refAutosomalCopyNumberState);
         this.allosomalContigSet = Utils.nonNull(allosomalContigSet);
     }
@@ -96,64 +90,28 @@ public final class GermlineCNVIntervalVariantComposer extends GermlineCNVAbstrac
         outputWriter.writeHeader(result);
     }
 
-    /**
-     * Write variant context fields given all posterior records from a single gCNV output shard
-     *
-     * @param copyNumberPosteriorRecordsShard copy-number posterior records from a gCNV output shard
-     * @param baselineCopyNumberRecordsShard baseline copy-number records from a gCNV output shard
-     */
-    public void writeVariantContext(final List<LocatableCopyNumberPosteriorDistribution> copyNumberPosteriorRecordsShard,
-                                    final List<LocatableIntegerCopyNumber> baselineCopyNumberRecordsShard) {
-        Utils.validateArg(Utils.nonNull(copyNumberPosteriorRecordsShard).size() ==
-                Utils.nonNull(baselineCopyNumberRecordsShard).size(), "Copy-number posterior records list has a " +
-                "different size than the baseline copy-number records list.");
-        final int numRecords = copyNumberPosteriorRecordsShard.size();
-        for (int recordIndex = 0; recordIndex < numRecords; recordIndex++) {
-            final LocatableCopyNumberPosteriorDistribution copyNumberPosteriorRecord =
-                    copyNumberPosteriorRecordsShard.get(recordIndex);
-            final LocatableIntegerCopyNumber baselineCopyNumberRecord =
-                    baselineCopyNumberRecordsShard.get(recordIndex);
-            Utils.validateArg(copyNumberPosteriorRecord.getInterval().equals(baselineCopyNumberRecord.getInterval()),
-                    "Copy-number posterior record (%s) and baseline copy-number records (%s) must be given for " +
-                            "the same genomic interval.");
-            final VariantContext variantContext = composeVariantContext(copyNumberPosteriorRecord,
-                    baselineCopyNumberRecord, VARIANT_PREFIX);
-            outputWriter.add(variantContext);
-        }
-    }
-
-    /**
-     * Compose a variant context given a posterior record for an interval
-     *
-     * @param locatableCopyNumberPosteriorDistribution a posterior record to genotype
-     * @param variantPrefix a variant prefix
-     * @return composed variant context
-     */
     @VisibleForTesting
-    VariantContext composeVariantContext(
-            final LocatableCopyNumberPosteriorDistribution locatableCopyNumberPosteriorDistribution,
-            final LocatableIntegerCopyNumber locatableBaselineIntegerCopyNumber,
-            final String variantPrefix) {
-        final List<Integer> copyNumberPLVector =
-                getCopyNumberPLVector(locatableCopyNumberPosteriorDistribution, integerCopyNumberStateCollection);
-        final int copyNumberMAP =
-                calculateMAPCopyNumberState(locatableCopyNumberPosteriorDistribution, integerCopyNumberStateCollection);
-        final int GQ = calculateGenotypeQuality(locatableCopyNumberPosteriorDistribution, integerCopyNumberStateCollection);
+    VariantContext composeVariantContext(final IntervalCopyNumberGenotypingData intervalCopyNumberGenotypingData) {
+        final CopyNumberPosteriorDistribution copyNumberPosteriorDistribution =
+                intervalCopyNumberGenotypingData.getCopyNumberPosteriorDistribution();
+        final List<Integer> copyNumberPLVector = calculateCopyNumberPLVector(copyNumberPosteriorDistribution);
+        final int copyNumberMAP = calculateMAPCopyNumberState(copyNumberPosteriorDistribution).getCopyNumber();
+        final int GQ = calculateGenotypeQuality(copyNumberPosteriorDistribution);
 
         final VariantContextBuilder variantContextBuilder = new VariantContextBuilder();
         variantContextBuilder.alleles(ALL_ALLELES);
-        variantContextBuilder.chr(locatableCopyNumberPosteriorDistribution.getContig());
-        variantContextBuilder.start(locatableCopyNumberPosteriorDistribution.getStart());
-        variantContextBuilder.stop(locatableCopyNumberPosteriorDistribution.getEnd());
-        variantContextBuilder.id(String.format(variantPrefix + "_%s_%d_%d",
-                locatableCopyNumberPosteriorDistribution.getContig(),
-                locatableCopyNumberPosteriorDistribution.getStart(),
-                locatableCopyNumberPosteriorDistribution.getEnd()));
+        variantContextBuilder.chr(intervalCopyNumberGenotypingData.getContig());
+        variantContextBuilder.start(intervalCopyNumberGenotypingData.getStart());
+        variantContextBuilder.stop(intervalCopyNumberGenotypingData.getEnd());
+        variantContextBuilder.id(String.format(VARIANT_PREFIX + "_%s_%d_%d",
+                intervalCopyNumberGenotypingData.getContig(),
+                intervalCopyNumberGenotypingData.getStart(),
+                intervalCopyNumberGenotypingData.getEnd()));
 
         final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(sampleName);
-        final String contig = locatableCopyNumberPosteriorDistribution.getContig();
+        final String contig = intervalCopyNumberGenotypingData.getContig();
         final IntegerCopyNumberState refCopyNumber = allosomalContigSet.contains(contig)
-                ? locatableBaselineIntegerCopyNumber.getIntegerCopyNumberState()
+                ? intervalCopyNumberGenotypingData.getBaselineIntegerCopyNumberState()
                 : refAutosomalCopyNumberState;
 
         final Allele allele;
@@ -170,66 +128,58 @@ public final class GermlineCNVIntervalVariantComposer extends GermlineCNVAbstrac
         genotypeBuilder.attribute(CNQ, GQ);
         final Genotype genotype = genotypeBuilder.make();
 
-        variantContextBuilder.attribute(VCFConstants.END_KEY, locatableCopyNumberPosteriorDistribution.getEnd());
+        variantContextBuilder.attribute(VCFConstants.END_KEY, intervalCopyNumberGenotypingData.getEnd());
         variantContextBuilder.genotypes(genotype);
         return variantContextBuilder.make();
     }
 
     /**
-     * Compute copy number log posterior scores
+     * Calculate copy-number log posterior scores
      *
-     * @param locatableCopyNumberPosteriorDistribution copy number posterior locatable record
-     * @param integerCopyNumberStateCollection copy number state collection
+     * @param copyNumberPosteriorDistribution copy-number log posterior distribution
      * @return a list of copy number log posterior scores
      */
     @VisibleForTesting
-    static List<Integer> getCopyNumberPLVector(
-            final LocatableCopyNumberPosteriorDistribution locatableCopyNumberPosteriorDistribution,
-            final IntegerCopyNumberStateCollection integerCopyNumberStateCollection) {
-        final Double largestLogProb = integerCopyNumberStateCollection.getCopyNumberStates().stream()
-                .mapToDouble(state -> locatableCopyNumberPosteriorDistribution.getCopyNumberPosteriors().getCopyNumberPosterior(state))
-                .max().getAsDouble();
-        final List<Integer> unnormalizedPL = integerCopyNumberStateCollection.getCopyNumberStates().stream()
-                .mapToDouble(state -> locatableCopyNumberPosteriorDistribution.getCopyNumberPosteriors()
-                        .getCopyNumberPosterior(state) - largestLogProb)
+    static List<Integer> calculateCopyNumberPLVector(final CopyNumberPosteriorDistribution copyNumberPosteriorDistribution) {
+        final Double largestLogProb = copyNumberPosteriorDistribution.getIntegerCopyNumberStateList().stream()
+                .mapToDouble(copyNumberPosteriorDistribution::getCopyNumberPosterior)
+                .max().orElse(Double.NaN);
+        return copyNumberPosteriorDistribution.getIntegerCopyNumberStateList().stream()
+                .mapToDouble(copyNumberPosteriorDistribution::getCopyNumberPosterior)
+                .map(value -> value - largestLogProb)
                 .mapToInt(GermlineCNVIntervalVariantComposer::convertLogProbabilityToPhredScore)
                 .boxed()
                 .collect(Collectors.toList());
-        return unnormalizedPL;
     }
 
     /**
-     * Compute MAP copy number state
+     * Find MAP copy-number state
      *
-     * @param locatableCopyNumberPosteriorDistribution copy number posterior locatable record
-     * @param integerCopyNumberStateCollection copy number state collection
+     * @param copyNumberPosteriorDistribution copy-number log posterior distribution
      * @return MAP copy number state
      */
     @VisibleForTesting
-    static int calculateMAPCopyNumberState(
-            final LocatableCopyNumberPosteriorDistribution locatableCopyNumberPosteriorDistribution,
-            final IntegerCopyNumberStateCollection integerCopyNumberStateCollection) {
-        final Optional<IntegerCopyNumberState> copyNumberStateMAP = integerCopyNumberStateCollection
-                .getCopyNumberStates().stream()
-                .max(Comparator.comparingDouble(state ->
-                        locatableCopyNumberPosteriorDistribution.getCopyNumberPosteriors().getCopyNumberPosterior(state)));
-        return copyNumberStateMAP.get().getCopyNumber();
+    static IntegerCopyNumberState calculateMAPCopyNumberState(
+            final CopyNumberPosteriorDistribution copyNumberPosteriorDistribution) {
+        final Optional<IntegerCopyNumberState> copyNumberStateMAP = copyNumberPosteriorDistribution
+                .getIntegerCopyNumberStateList()
+                .stream()
+                .max(Comparator.comparingDouble(copyNumberPosteriorDistribution::getCopyNumberPosterior));
+        return copyNumberStateMAP.get();
     }
 
     /**
      * Calculate genotype quality score defined as a difference of second smallest and smallest copy number log
      * posterior scores in phred-scale
      *
-     * @param locatableCopyNumberPosteriorDistribution copy number posterior locatable record
-     * @param integerCopyNumberStateCollection copy number state collection
+     * @param copyNumberPosteriorDistribution copy-number log posterior distribution
      * @return genotype quality score
      */
     @VisibleForTesting
-    static int calculateGenotypeQuality(final LocatableCopyNumberPosteriorDistribution locatableCopyNumberPosteriorDistribution,
-                                        final IntegerCopyNumberStateCollection integerCopyNumberStateCollection) {
-        final List<Integer> sortedPosteriors = getCopyNumberPLVector(locatableCopyNumberPosteriorDistribution,
-                integerCopyNumberStateCollection).stream().sorted().collect(Collectors.toList());
-        //sanity check
+    static int calculateGenotypeQuality(final CopyNumberPosteriorDistribution copyNumberPosteriorDistribution) {
+        final List<Integer> sortedPosteriors = calculateCopyNumberPLVector(copyNumberPosteriorDistribution).stream()
+                .sorted().collect(Collectors.toList());
+        /* sanity check */
         Utils.validate(sortedPosteriors.get(0) == 0, "Something went wrong. Smallest copy" +
                 " number posterior score must be 0");
         return sortedPosteriors.get(1);

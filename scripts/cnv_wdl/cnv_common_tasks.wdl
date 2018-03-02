@@ -238,7 +238,7 @@ task PostprocessGermlineCNVCalls {
     Array[File] gcnv_calls_tars
     Array[File] gcnv_model_tars
     File contig_ploidy_calls_tar
-    Array[String] allosomal_contigs
+    Array[String]? allosomal_contigs
     Int ref_copy_number_autosomal_contigs
     Int sample_index
     File? gatk4_jar_override
@@ -256,6 +256,7 @@ task PostprocessGermlineCNVCalls {
 
     String genotyped_intervals_vcf_filename = "genotyped-intervals-${entity_id}.vcf.gz"
     String genotyped_segments_vcf_filename = "genotyped-segments-${entity_id}.vcf.gz"
+    Boolean allosomal_contigs_specified = defined(allosomal_contigs) && length(select_first([allosomal_contigs, []])) > 0
 
     String dollar = "$" #WDL workaround for using array[@], see https://github.com/broadinstitute/cromwell/issues/1819
 
@@ -286,17 +287,12 @@ task PostprocessGermlineCNVCalls {
         mkdir extracted-contig-ploidy-calls
         tar xzf ${contig_ploidy_calls_tar} -C extracted-contig-ploidy-calls
 
-        allosomal_contigs_array=(${sep=" " allosomal_contigs})
-        allosomal_contigs_args=""
-        for index in ${dollar}{!allosomal_contigs_array[@]}; do
-            contig=${dollar}{allosomal_contigs_array[$index]}
-            allosomal_contigs_args="$allosomal_contigs_args --allosomal-contig $contig"
-        done
+        allosomal_contigs_args="--allosomal-contig ${sep=" --allosomal-contig " allosomal_contigs}"
 
         gatk --java-options "-Xmx${command_mem_mb}m" PostprocessGermlineCNVCalls \
             $calls_args \
             $model_args \
-            $allosomal_contigs_args \
+            ${true="$allosomal_contigs_args" false="" allosomal_contigs_specified} \
             --autosomal-ref-copy-number ${ref_copy_number_autosomal_contigs} \
             --contig-ploidy-calls extracted-contig-ploidy-calls \
             --sample-index ${sample_index} \

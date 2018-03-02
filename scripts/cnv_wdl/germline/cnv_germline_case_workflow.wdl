@@ -88,11 +88,11 @@ workflow CNVGermlineCaseWorkflow {
     Float? gcnv_caller_admixing_rate
     Boolean? gcnv_disable_annealing
 
-    ############################################################
-    #### required arguments for PostprocessGermlineCNVCalls ####
-    ############################################################
-    Array[String] allosomal_contigs
+    ###################################################
+    #### arguments for PostprocessGermlineCNVCalls ####
+    ###################################################
     Int ref_copy_number_autosomal_contigs
+    Array[String]? allosomal_contigs
 
     call CNVTasks.PreprocessIntervals {
         input:

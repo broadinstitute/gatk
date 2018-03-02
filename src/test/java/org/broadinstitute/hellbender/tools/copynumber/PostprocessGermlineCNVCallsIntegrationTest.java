@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
-import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
@@ -10,9 +9,11 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.IntStream;
 
 /**
  * Integration test for {@link PostprocessGermlineCNVCalls}
@@ -20,7 +21,7 @@ import java.util.List;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  * @author Andrey Smirnov &lt;asmirnov@broadinstitute.org&gt;
  */
-public class PostprocessGermlineCNVCallsIntegrationTest extends CommandLineProgramTest {
+public final class PostprocessGermlineCNVCallsIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_SUB_DIR = new File(toolsTestDir, "copynumber/gcnv-postprocess");
 
     private static final List<String> CALL_SHARDS = Arrays.asList(
@@ -62,8 +63,7 @@ public class PostprocessGermlineCNVCallsIntegrationTest extends CommandLineProgr
                                        final File intervalsOutputVCF,
                                        final File segmentsOutputVCF,
                                        final List<String> allosomalContigs,
-                                       final int refAutosomalCopyNumber,
-                                       final boolean dryRun) {
+                                       final int refAutosomalCopyNumber) {
         final ArgumentsBuilder argumentsBuilder = new ArgumentsBuilder();
         argumentsBuilder.addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE,
                 "false");
@@ -90,120 +90,101 @@ public class PostprocessGermlineCNVCallsIntegrationTest extends CommandLineProgr
         }
         argumentsBuilder.addArgument("verbosity", "DEBUG");
 
-        if (dryRun) {
-            argumentsBuilder.addArgument(PostprocessGermlineCNVCalls.DRY_RUN_LONG_NAME, "true");
-        }
-
         runCommandLine(argumentsBuilder.getArgsList());
     }
 
     @Test(dataProvider = "differentValidInput", groups = {"python"})
-    public void testDifferentValidInputIntervalsComplete(final List<String> callShards,
-                                                         final List<String> modelShards) throws IOException {
-        for (int sampleIndex = 0; sampleIndex < NUM_TEST_SAMPLES; sampleIndex++) {
-            final File actualIntervalsOutputVCF = createTempFile("intervals-output-vcf-" + sampleIndex, ".vcf");
-            final File actualSegmentsOutputVCF = createTempFile("segments-output-vcf-" + sampleIndex, ".vcf");
-            final File expectedIntervalsOutputVCF = INTERVALS_VCF_CORRECT_OUTPUTS.get(sampleIndex);
-            final File expectedSegmentsOutputVCF = SEGMENTS_VCF_CORRECT_OUTPUTS.get(sampleIndex);
-            runToolForSingleSample(callShards, modelShards, sampleIndex,
-                    actualIntervalsOutputVCF, actualSegmentsOutputVCF,
-                    ALLOSOMAL_CONTIGS, AUTOSOMAL_REF_COPY_NUMBER, false);
-            IntegrationTestSpec.assertEqualTextFiles(actualIntervalsOutputVCF, expectedIntervalsOutputVCF);
-            IntegrationTestSpec.assertEqualTextFiles(actualSegmentsOutputVCF, expectedSegmentsOutputVCF);
-        }
+    public void testDifferentValidInput(final int sampleIndex,
+                                        final List<String> callShards,
+                                        final List<String> modelShards) throws IOException {
+        final File actualIntervalsOutputVCF = createTempFile("intervals-output-vcf-" + sampleIndex, ".vcf");
+        final File actualSegmentsOutputVCF = createTempFile("segments-output-vcf-" + sampleIndex, ".vcf");
+        final File expectedIntervalsOutputVCF = INTERVALS_VCF_CORRECT_OUTPUTS.get(sampleIndex);
+        final File expectedSegmentsOutputVCF = SEGMENTS_VCF_CORRECT_OUTPUTS.get(sampleIndex);
+        runToolForSingleSample(callShards, modelShards, sampleIndex,
+                actualIntervalsOutputVCF, actualSegmentsOutputVCF,
+                ALLOSOMAL_CONTIGS, AUTOSOMAL_REF_COPY_NUMBER);
+        IntegrationTestSpec.assertEqualTextFiles(actualIntervalsOutputVCF, expectedIntervalsOutputVCF, "##");
+        IntegrationTestSpec.assertEqualTextFiles(actualSegmentsOutputVCF, expectedSegmentsOutputVCF, "##");
     }
 
-    @Test(dataProvider = "differentValidInput")
-    public void testDifferentValidInputIntervalsVCFOnly(final List<String> callShards,
-                                                        final List<String> modelShards) throws IOException {
-        for (int sampleIndex = 0; sampleIndex < NUM_TEST_SAMPLES; sampleIndex++) {
-            final File actualIntervalsOutputVCF = createTempFile("intervals-output-vcf-" + sampleIndex, ".vcf");
-            final File expectedIntervalsOutputVCF = INTERVALS_VCF_CORRECT_OUTPUTS.get(sampleIndex);
-            runToolForSingleSample(callShards, modelShards, sampleIndex,
-                    actualIntervalsOutputVCF, null,
-                    ALLOSOMAL_CONTIGS, AUTOSOMAL_REF_COPY_NUMBER, false);
-            IntegrationTestSpec.assertEqualTextFiles(actualIntervalsOutputVCF, expectedIntervalsOutputVCF);
-        }
-    }
-
-    @Test(dataProvider = "differentInvalidInput")
-    public void testDifferentInvalidInput(final List<String> callShards,
+    @Test(dataProvider = "differentInvalidInput", expectedExceptions = IllegalArgumentException.class, groups = {"python"})
+    public void testDifferentInvalidInput(final int sampleIndex,
+                                          final List<String> callShards,
                                           final List<String> modelShards) throws IOException {
-        /* dry run -- just input data validation */
-        for (int sampleIndex = 0; sampleIndex < NUM_TEST_SAMPLES; sampleIndex++) {
-            try {
-                runToolForSingleSample(callShards, modelShards, sampleIndex,
-                        createTempFile("intervals-output-vcf", ".vcf"),
-                        createTempFile("segments-output-vcf", ".vcf"),
-                        ALLOSOMAL_CONTIGS, AUTOSOMAL_REF_COPY_NUMBER, true);
-            } catch (final IllegalArgumentException ex) {
-                continue;
-            }
-            throw new AssertionError("The test should have failed on invalid input.");
-        }
+        runToolForSingleSample(callShards, modelShards, sampleIndex,
+                createTempFile("intervals-output-vcf", ".vcf"),
+                createTempFile("segments-output-vcf", ".vcf"),
+                ALLOSOMAL_CONTIGS, AUTOSOMAL_REF_COPY_NUMBER);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(expectedExceptions = IllegalArgumentException.class, groups = {"python"})
     public void testBadAutosomalContigs() {
         runToolForSingleSample(CALL_SHARDS, MODEL_SHARDS, 0,
                 createTempFile("intervals-output-vcf", ".vcf"),
                 createTempFile("segments-output-vcf", ".vcf"),
                 Collections.singletonList("Z"), /* unknown contig */
-                AUTOSOMAL_REF_COPY_NUMBER, true);
-    }
-
-    @Test(dataProvider = "badRefAutosomalCopyNumber")
-    public void testOutOfRangeRefState(final int badRefAutosomalCopyNumber) {
-        try {
-            runToolForSingleSample(CALL_SHARDS, MODEL_SHARDS, 0,
-                    createTempFile("intervals-output-vcf", ".vcf"),
-                    createTempFile("segments-output-vcf", ".vcf"),
-                    ALLOSOMAL_CONTIGS,
-                    badRefAutosomalCopyNumber, /* out of range */
-                    true);
-        } catch (final CommandLineException.OutOfRangeArgumentValue | IllegalArgumentException ex) {
-            return;
-        }
-        throw new AssertionError("The test should have failed on invalid input.");
-    }
-
-    @DataProvider(name = "badRefAutosomalCopyNumber")
-    public Object[][] getBadRefAutosomalCopyNumber() {
-        return new Object[][] {{-1}, {TEST_CALLS_MAX_COPY_NUMBER + 1}};
+                AUTOSOMAL_REF_COPY_NUMBER);
     }
 
     @DataProvider(name = "differentValidInput")
     public Object[][] getDifferentValidInputTestData() {
-        return new Object[][] {
-                { /* correct order */
+        final List<Object[]> testCases = new ArrayList<>();
+        IntStream.range(0, NUM_TEST_SAMPLES)
+                .mapToObj(sampleIndex ->  new Object[] {
+                        /* correct order */
+                        sampleIndex,
                         Arrays.asList(CALL_SHARDS.get(0), CALL_SHARDS.get(1), CALL_SHARDS.get(2)),
                         Arrays.asList(MODEL_SHARDS.get(0), MODEL_SHARDS.get(1), MODEL_SHARDS.get(2))
-                }, { /* permutation */
+                }).forEach(testCases::add);
+        IntStream.range(0, NUM_TEST_SAMPLES)
+                .mapToObj(sampleIndex ->  new Object[] {
+                        /* permutation */
+                        sampleIndex,
                         Arrays.asList(CALL_SHARDS.get(2), CALL_SHARDS.get(1), CALL_SHARDS.get(0)),
                         Arrays.asList(MODEL_SHARDS.get(2), MODEL_SHARDS.get(0), MODEL_SHARDS.get(1))
-                }, { /* another permutation */
+                }).forEach(testCases::add);
+        IntStream.range(0, NUM_TEST_SAMPLES)
+                .mapToObj(sampleIndex ->  new Object[] {
+                        /* permutation */
+                        sampleIndex,
                         Arrays.asList(CALL_SHARDS.get(1), CALL_SHARDS.get(2), CALL_SHARDS.get(0)),
                         Arrays.asList(MODEL_SHARDS.get(1), MODEL_SHARDS.get(0), MODEL_SHARDS.get(2))
-                }
-        };
+                }).forEach(testCases::add);
+        return testCases.toArray(new Object[testCases.size()][]);
     }
 
     @DataProvider(name = "differentInvalidInput")
     public Object[][] getDifferentInvalidInput() {
-        return new Object[][] {
-                { /* fewer model shards than call shards */
+        final List<Object[]> testCases = new ArrayList<>();
+        IntStream.range(0, NUM_TEST_SAMPLES)
+                .mapToObj(sampleIndex ->  new Object[] {
+                        /* fewer model shards than call shards */
+                        sampleIndex,
                         Arrays.asList(CALL_SHARDS.get(0), CALL_SHARDS.get(1), CALL_SHARDS.get(2)),
                         Arrays.asList(MODEL_SHARDS.get(0), MODEL_SHARDS.get(1))
-                }, { /* fewer call shards than model shards */
+                }).forEach(testCases::add);
+        IntStream.range(0, NUM_TEST_SAMPLES)
+                .mapToObj(sampleIndex ->  new Object[] {
+                        /* fewer call shards than model shards */
+                        sampleIndex,
                         Arrays.asList(CALL_SHARDS.get(0), CALL_SHARDS.get(1)),
                         Arrays.asList(MODEL_SHARDS.get(0), MODEL_SHARDS.get(1), MODEL_SHARDS.get(2))
-                }, { /* repeated calls */
+                }).forEach(testCases::add);
+        IntStream.range(0, NUM_TEST_SAMPLES)
+                .mapToObj(sampleIndex ->  new Object[]{
+                        /* repeated calls */
+                        sampleIndex,
                         Arrays.asList(CALL_SHARDS.get(2), CALL_SHARDS.get(2), CALL_SHARDS.get(1)),
                         Arrays.asList(MODEL_SHARDS.get(0), MODEL_SHARDS.get(1), MODEL_SHARDS.get(2))
-                }, { /* repeated models */
+                }).forEach(testCases::add);
+        IntStream.range(0, NUM_TEST_SAMPLES)
+                .mapToObj(sampleIndex ->  new Object[]{
+                        /* repeated models */
+                        sampleIndex,
                         Arrays.asList(CALL_SHARDS.get(0), CALL_SHARDS.get(1), CALL_SHARDS.get(2)),
                         Arrays.asList(MODEL_SHARDS.get(1), MODEL_SHARDS.get(1), MODEL_SHARDS.get(2))
-                }
-        };
+                }).forEach(testCases::add);
+        return testCases.toArray(new Object[testCases.size()][]);
     }
 }

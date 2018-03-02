@@ -1,17 +1,19 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.records;
 
 import org.apache.commons.math3.util.FastMath;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.gcnv.IntegerCopyNumberState;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * A record containing the integer copy-number posterior distribution for a single interval.
  *
  * @author Andrey Smirnov &lt;asmirnov@broadinstitute.org&gt;
+ * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
 public class CopyNumberPosteriorDistribution {
 
@@ -19,6 +21,11 @@ public class CopyNumberPosteriorDistribution {
      * Posterior distribution stores in log scale
      */
     private final Map<IntegerCopyNumberState, Double> copyNumberPosteriorDistribution;
+
+    /**
+     * Sorted list of contained integer copy-number states
+     */
+    private final List<IntegerCopyNumberState> integerCopyNumberStateList;
 
     /**
      * Tolerated error for checking equality of doubles
@@ -33,6 +40,9 @@ public class CopyNumberPosteriorDistribution {
      */
     public CopyNumberPosteriorDistribution(final Map<IntegerCopyNumberState, Double> copyNumberPosteriorDistribution) {
         this.copyNumberPosteriorDistribution = Utils.nonNull(copyNumberPosteriorDistribution);
+        integerCopyNumberStateList = copyNumberPosteriorDistribution.keySet().stream()
+                .sorted()
+                .collect(Collectors.toList());
         final double probabilitySum = this.copyNumberPosteriorDistribution.values().stream()
                 .mapToDouble(FastMath::exp).sum();
         if (MathUtils.compareDoubles(probabilitySum, 1.0, ERROR_TOLERANCE) != 0) {
@@ -46,6 +56,10 @@ public class CopyNumberPosteriorDistribution {
      */
     public double getCopyNumberPosterior(final IntegerCopyNumberState integerCopyNumberState) {
         return copyNumberPosteriorDistribution.get(integerCopyNumberState);
+    }
+
+    public List<IntegerCopyNumberState> getIntegerCopyNumberStateList() {
+        return integerCopyNumberStateList;
     }
 
     @Override
@@ -62,7 +76,6 @@ public class CopyNumberPosteriorDistribution {
         return copyNumberPosteriorDistribution != null
                 ? copyNumberPosteriorDistribution.equals(that.copyNumberPosteriorDistribution)
                 : that.copyNumberPosteriorDistribution == null;
-
     }
 
     @Override

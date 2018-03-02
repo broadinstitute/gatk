@@ -17,7 +17,7 @@ import java.util.List;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class IntegerCopyNumberSegmentCollectionUnitTest extends GATKBaseTest {
+public final class IntegerCopyNumberSegmentCollectionUnitTest extends GATKBaseTest {
     private static final File TEST_SUB_DIR = new File(toolsTestDir, "copynumber/formats/collections");
     public static final File TEST_INTEGER_COPY_NUMBER_SEGMENTS_FILE =
             new File(TEST_SUB_DIR, "test_copy_number_segments.tsv");

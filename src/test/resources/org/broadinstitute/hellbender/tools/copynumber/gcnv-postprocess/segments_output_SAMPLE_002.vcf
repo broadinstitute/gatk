@@ -2,10 +2,10 @@
 ##FORMAT=<ID=CN,Number=1,Type=Integer,Description="Segment most-likely copy-number call">
 ##FORMAT=<ID=GT,Number=1,Type=Integer,Description="Segment genotype">
 ##FORMAT=<ID=NP,Number=1,Type=Integer,Description="Number of points (i.e. targets or bins) in the segment">
-##FORMAT=<ID=QA,Number=1,Type=Integer,Description="Phred-scaled quality of all of the points in the segment agreeing with the most-likely copy-number call">
-##FORMAT=<ID=QS,Number=1,Type=Integer,Description="Phred-scaled quality of one or more of the points in the segment agreeing with the most-likely copy-number call (normalized by the number of points)">
-##FORMAT=<ID=QSE,Number=1,Type=Integer,Description="Phred-scaled quality of determining the segment end position">
-##FORMAT=<ID=QSS,Number=1,Type=Integer,Description="Phred-scaled quality of determining the segment start position">
+##FORMAT=<ID=QA,Number=1,Type=Integer,Description="Complementary Phred-scaled probability that all points (i.e. targets or bins) in the segment agree with the segment copy-number call">
+##FORMAT=<ID=QS,Number=1,Type=Integer,Description="Complementary Phred-scaled probability that at least one point (i.e. target or bin) in the segment agrees with the segment copy-number call, divided by the number of points in the segment">
+##FORMAT=<ID=QSE,Number=1,Type=Integer,Description="Complementary Phred-scaled probability that the segment end position is a genuine copy-number changepoint">
+##FORMAT=<ID=QSS,Number=1,Type=Integer,Description="Complementary Phred-scaled probability that the segment start position is a genuine copy-number changepoint">
 ##INFO=<ID=END,Number=1,Type=Integer,Description="End coordinate of the variant">
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE_002
 1	30365	CNV_1_30365_887982	N	<DEL>,<DUP>	.	.	END=887982	GT:CN:NP:QA:QS:QSE:QSS	0:2:27:46:51:92:99

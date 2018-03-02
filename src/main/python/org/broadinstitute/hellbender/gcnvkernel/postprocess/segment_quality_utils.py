@@ -88,7 +88,7 @@ class HMMSegmentationQualityCalculator:
                 and departure and destination states in X
             log_data_likelihood: log data likelihood of the unconstrained problem
 
-        The output is a non-positive scalar value that signifies the desired probability in the log space.
+        The output is a non-positive scalar value that signifies the desired probability in log space.
 
         Examples:
 

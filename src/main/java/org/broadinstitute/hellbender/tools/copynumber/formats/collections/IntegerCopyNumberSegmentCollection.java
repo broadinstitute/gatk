@@ -20,7 +20,7 @@ import java.util.function.Function;
 public final class IntegerCopyNumberSegmentCollection extends AbstractSampleLocatableCollection<IntegerCopyNumberSegment> {
     //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
     /**
-     * CONTIG, START, END, NUM_SPANNING_INTERVALS, CALL_COPY_NUMBER, BASELINE_COPY_NUMBER,
+     * CONTIG, START, END, NUM_POINTS, CALL_COPY_NUMBER, BASELINE_COPY_NUMBER,
      * QUALITY_SOME_CALLED, QUALITY_ALL_CALLED, QUALITY_START, QUALITY_END
      */
     enum IntegerCopyNumberSegmentTableColumn {

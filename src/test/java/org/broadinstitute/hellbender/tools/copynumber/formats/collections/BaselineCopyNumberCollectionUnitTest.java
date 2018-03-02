@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class BaselineCopyNumberCollectionUnitTest extends GATKBaseTest {
+public final class BaselineCopyNumberCollectionUnitTest extends GATKBaseTest {
     private static final File TEST_SUB_DIR = new File(toolsTestDir, "copynumber/formats/collections");
     private static final File TEST_BASELINE_COPY_NUMBER_FILE = new File(TEST_SUB_DIR, "test_baseline_copy_number.tsv");
     private static final int[] EXPECTED_BASELINE_COPY_NUMBERS = new int[] {1, 2, 3, 4, 5, 0, 5, 4, 3, 2, 1};

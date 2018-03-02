@@ -31,7 +31,7 @@ public final class BaselineCopyNumberCollection extends AbstractSampleRecordColl
     private static Function<DataLine, IntegerCopyNumberState> getBaselineCopyNumberRecordFromDataLineDecoder(final File inputFile) {
         return dataLine -> {
             try {
-                return new IntegerCopyNumberState(dataLine.getInt(0));
+                return new IntegerCopyNumberState(dataLine.getInt(GermlineCNVNamingConstants.BASELINE_COPY_NUMBER_TABLE_COLUMN));
             } catch (final IllegalArgumentException ex) {
                 throw new UserException.BadInput(
                         String.format("Error parsing baseline copy-number file (%s) at line %d.",

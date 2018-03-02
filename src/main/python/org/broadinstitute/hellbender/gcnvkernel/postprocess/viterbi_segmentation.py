@@ -1,9 +1,10 @@
 import itertools
 import logging
-import numpy as np
 import os
 import shutil
 from typing import List, Tuple, Dict, TypeVar, Generator
+
+import numpy as np
 
 from .segment_quality_utils import HMMSegmentationQualityCalculator
 from .. import types
@@ -126,7 +127,7 @@ class ViterbiSegmentationEngine:
             self.interval_list_sam_header_lines)
 
         for si in range(self.num_samples):
-            self.export_copy_number_segments_for_single_sample(si)
+            self.write_copy_number_segments_for_single_sample(si)
 
     def _viterbi_segments_generator_for_single_sample(self, sample_index: int)\
             -> Generator[IntegerCopyNumberSegment, None, None]:
@@ -227,7 +228,7 @@ class ViterbiSegmentationEngine:
 
                 yield segment
 
-    def export_copy_number_segments_for_single_sample(self, sample_index: int):
+    def write_copy_number_segments_for_single_sample(self, sample_index: int):
         """Performs Viterbi segmentation and segment quality calculation for a single sample in
         the call-set and saves the results to disk.
 

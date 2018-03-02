@@ -1,5 +1,4 @@
 import os
-import shutil
 
 # set theano flags
 os.environ["THEANO_FLAGS"] = "device=cpu,floatX=float64,optimizer=fast_run,compute_test_value=ignore,openmp=true"
@@ -71,4 +70,4 @@ if __name__ == "__main__":
 
     viterbi_engine = gcnvkernel.ViterbiSegmentationEngine(
         args.model_shards, args.calls_shards, sample_metadata_collection, args.output_path)
-    viterbi_engine.export_copy_number_segments_for_single_sample(args.sample_index)
+    viterbi_engine.write_copy_number_segments_for_single_sample(args.sample_index)

@@ -6,8 +6,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyNumberPosteriorDistribution;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.LocatableCopyNumberPosteriorDistribution;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.LocatableIntegerCopyNumber;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.IntervalCopyNumberGenotypingData;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
@@ -24,7 +23,7 @@ import java.util.stream.IntStream;
  *
  * @author Andrey Smirnov &lt;asmirnov@broadinstitute.org&gt;
  */
-public class GermlineCNVIntervalVariantComposerUnitTest extends CommandLineProgramTest {
+public final class GermlineCNVIntervalVariantComposerUnitTest extends CommandLineProgramTest {
     private static final SimpleInterval TEST_INTERVAL = new SimpleInterval("1", 1, 10000);
 
     /* sums up to unity in probability space */
@@ -52,23 +51,10 @@ public class GermlineCNVIntervalVariantComposerUnitTest extends CommandLineProgr
 
     private static final String TEST_SAMPLE_NAME = "TEST_SAMPLE_NAME";
 
-    private static final List<IntegerCopyNumberState> TEST_COPY_NUMBER_STATE_LIST = new ArrayList<>();
-    private static final IntegerCopyNumberStateCollection TEST_COPY_NUMBER_STATE_COLLECTION;
-    static {
-        IntStream.range(0, 6).forEach(cn -> TEST_COPY_NUMBER_STATE_LIST.add(new IntegerCopyNumberState(cn)));
-        TEST_COPY_NUMBER_STATE_COLLECTION = new IntegerCopyNumberStateCollection(TEST_COPY_NUMBER_STATE_LIST.stream()
-                .map(IntegerCopyNumberState::toString)
-                .collect(Collectors.toList()));
-    }
-
     private static final CopyNumberPosteriorDistribution TEST_DISTRIBUTION = new CopyNumberPosteriorDistribution(
             IntStream.range(0, TEST_VALID_LOG_POSTERIOR_VECTOR.length)
                     .boxed()
                     .collect(Collectors.toMap(IntegerCopyNumberState::new, cn -> TEST_VALID_LOG_POSTERIOR_VECTOR[cn])));
-
-    private static final LocatableCopyNumberPosteriorDistribution TEST_LOCATABLE_DISTRIBUTION =
-            new LocatableCopyNumberPosteriorDistribution(TEST_INTERVAL, TEST_DISTRIBUTION);
-
     /**
      * Assert that exception is thrown if normalized posterior probabilities do not add up to 1
      */
@@ -80,39 +66,18 @@ public class GermlineCNVIntervalVariantComposerUnitTest extends CommandLineProgr
                         cn -> TEST_INVALID_LOG_POSTERIOR_VECTOR[cn])));
     }
 
-    /**
-     * Assert that exception is thrown when a copy-number state collection has less than 3 states
-     */
-    @Test(expectedExceptions = IllegalStateException.class)
-    public void testIntegerCopyNumberStatesCollectionValidation() {
-        final File outputFile = createTempFile("test", ".vcf");
-        final VariantContextWriter outputWriter = GATKVariantContextUtils.createVCFWriter(outputFile, null, false);
-        final List<IntegerCopyNumberState> shortCopyNumberStateList = new ArrayList<>(
-                Arrays.asList(new IntegerCopyNumberState(0), new IntegerCopyNumberState(1)));
-        final IntegerCopyNumberStateCollection shortCopyNumberStateCollection =
-                new IntegerCopyNumberStateCollection(shortCopyNumberStateList.stream()
-                        .map(IntegerCopyNumberState::toString)
-                        .collect(Collectors.toList()));
-        final IntegerCopyNumberState testRefAutosomalCopyNumberState = new IntegerCopyNumberState(2);
-        final Set<String> testAllosomalContigsSet = Collections.emptySet();
-        new GermlineCNVIntervalVariantComposer(outputWriter, TEST_SAMPLE_NAME,
-                shortCopyNumberStateCollection, testRefAutosomalCopyNumberState, testAllosomalContigsSet);
-    }
-
     @Test(dataProvider = "alleleDeterminationTestData")
     public void testAlleleDetermination(final int refAutosomalCopyNumber,
                                         final Set<String> allosomalContigs,
                                         final int baselineCopyNumber,
                                         final Allele expectedAllele) {
         final File outputFile = createTempFile("test", ".vcf");
-        final LocatableIntegerCopyNumber baselineCopyNumberState = new LocatableIntegerCopyNumber(TEST_INTERVAL,
-                new IntegerCopyNumberState(baselineCopyNumber));
         final VariantContextWriter outputWriter = GATKVariantContextUtils.createVCFWriter(outputFile, null, false);
         final GermlineCNVIntervalVariantComposer variantComposer = new GermlineCNVIntervalVariantComposer(
-                outputWriter, "TEST_SAMPLE_NAME", TEST_COPY_NUMBER_STATE_COLLECTION,
-                new IntegerCopyNumberState(refAutosomalCopyNumber), allosomalContigs);
-        final VariantContext var = variantComposer.composeVariantContext(TEST_LOCATABLE_DISTRIBUTION,
-                baselineCopyNumberState, "TEST_CNV");
+                outputWriter, "TEST_SAMPLE_NAME", new IntegerCopyNumberState(refAutosomalCopyNumber), allosomalContigs);
+        final VariantContext var = variantComposer.composeVariantContext(
+                new IntervalCopyNumberGenotypingData(TEST_INTERVAL, TEST_DISTRIBUTION,
+                        new IntegerCopyNumberState(baselineCopyNumber)));
         final List<Allele> allAlleles = var.getAlleles();
         Assert.assertEquals(allAlleles, GermlineCNVIntervalVariantComposer.ALL_ALLELES);
         final Genotype gen = var.getGenotype(TEST_SAMPLE_NAME);
@@ -121,18 +86,15 @@ public class GermlineCNVIntervalVariantComposerUnitTest extends CommandLineProgr
     }
 
     @Test(dataProvider = "testCopyNumberPosteriorDistributionRecords")
-    public void testGenotyping(final LocatableCopyNumberPosteriorDistribution posteriorLocatableRecord,
-                               final IntegerCopyNumberStateCollection copyNumberStateCollection,
+    public void testGenotyping(final CopyNumberPosteriorDistribution copyNumberPosteriorDistribution,
                                final List<Integer> expectedPLs,
                                final int expectedMAPCopyNumber,
                                final int expectedGQ) {
-        final List<Integer> actualPLs = GermlineCNVIntervalVariantComposer.getCopyNumberPLVector(
-                posteriorLocatableRecord, copyNumberStateCollection);
-        final int actualMAPCopyNumber = GermlineCNVIntervalVariantComposer.calculateMAPCopyNumberState(
-                posteriorLocatableRecord, copyNumberStateCollection);
-        final int actualGQ = GermlineCNVIntervalVariantComposer.calculateGenotypeQuality(
-                posteriorLocatableRecord, copyNumberStateCollection);
-        Assert.assertEquals(actualMAPCopyNumber, expectedMAPCopyNumber);
+        final List<Integer> actualPLs = GermlineCNVIntervalVariantComposer.calculateCopyNumberPLVector(copyNumberPosteriorDistribution);
+        final IntegerCopyNumberState actualMAPCopyNumberState = GermlineCNVIntervalVariantComposer.calculateMAPCopyNumberState(
+                copyNumberPosteriorDistribution);
+        final int actualGQ = GermlineCNVIntervalVariantComposer.calculateGenotypeQuality(copyNumberPosteriorDistribution);
+        Assert.assertEquals(actualMAPCopyNumberState.getCopyNumber(), expectedMAPCopyNumber);
         IntStream.range(0, expectedPLs.size())
                 .forEach(i -> Assert.assertEquals(actualPLs.get(i).intValue(), expectedPLs.get(i).intValue()));
         Assert.assertEquals(actualGQ, expectedGQ);
@@ -141,8 +103,7 @@ public class GermlineCNVIntervalVariantComposerUnitTest extends CommandLineProgr
     @DataProvider(name = "testCopyNumberPosteriorDistributionRecords")
     public Object[][] getTestCopyNumberPosteriorDistributionRecords() {
         return new Object[][] {
-                {TEST_LOCATABLE_DISTRIBUTION, TEST_COPY_NUMBER_STATE_COLLECTION,
-                        TEST_EXPECTED_PLS, TEST_EXPECTED_MAP_CN, TEST_EXPECTED_GQ}};
+                {TEST_DISTRIBUTION, TEST_EXPECTED_PLS, TEST_EXPECTED_MAP_CN, TEST_EXPECTED_GQ}};
     }
 
     @DataProvider(name = "alleleDeterminationTestData")

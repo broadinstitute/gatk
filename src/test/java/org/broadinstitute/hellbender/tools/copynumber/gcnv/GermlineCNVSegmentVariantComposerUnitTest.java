@@ -24,7 +24,7 @@ import java.util.Set;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class GermlineCNVSegmentVariantComposerUnitTest extends GATKBaseTest {
+public final class GermlineCNVSegmentVariantComposerUnitTest extends GATKBaseTest {
     @Test(dataProvider = "variantCompositionSettings")
     public void testVariantComposition(final int refAutosomalCopyNumber,
                                        final Set<String> allosomalContigs) {
@@ -40,16 +40,16 @@ public class GermlineCNVSegmentVariantComposerUnitTest extends GATKBaseTest {
 
         /* compose segments and assert correctness */
         for (final IntegerCopyNumberSegment segment: collection.getRecords()) {
-            final VariantContext var = variantComposer.composeSegmentVariantContext(segment);
+            final VariantContext var = variantComposer.composeVariantContext(segment);
             Assert.assertEquals(var.getContig(), segment.getContig());
             Assert.assertEquals(var.getStart(), segment.getStart());
             Assert.assertEquals(var.getEnd(), segment.getEnd());
             Assert.assertEquals(var.getAlleles(), GermlineCNVSegmentVariantComposer.ALL_ALLELES);
 
-            final Genotype gen = var.getGenotype(IntegerCopyNumberSegmentCollectionUnitTest.EXPECTED_SAMPLE_NAME);
+            final Genotype gt = var.getGenotype(IntegerCopyNumberSegmentCollectionUnitTest.EXPECTED_SAMPLE_NAME);
 
             /* assert allele correctness */
-            final Allele actualAllele = gen.getAlleles().get(0);
+            final Allele actualAllele = gt.getAlleles().get(0);
             final int refCopyNumber = allosomalContigs.contains(segment.getContig())
                     ? segment.getBaselineIntegerCopyNumberState().getCopyNumber()
                     : refAutosomalCopyNumber;
@@ -65,17 +65,17 @@ public class GermlineCNVSegmentVariantComposerUnitTest extends GATKBaseTest {
 
             /* assert correctness of quality metrics */
             Assert.assertEquals(
-                    (int)(long)gen.getExtendedAttribute(GermlineCNVSegmentVariantComposer.QS),
-                    (int)FastMath.round(segment.getQualitySomeCalled()));
+                    (long) gt.getExtendedAttribute(GermlineCNVSegmentVariantComposer.QS),
+                    FastMath.round(segment.getQualitySomeCalled()));
             Assert.assertEquals(
-                    (int)(long)gen.getExtendedAttribute(GermlineCNVSegmentVariantComposer.QA),
-                    (int)FastMath.round(segment.getQualityAllCalled()));
+                    (long) gt.getExtendedAttribute(GermlineCNVSegmentVariantComposer.QA),
+                    FastMath.round(segment.getQualityAllCalled()));
             Assert.assertEquals(
-                    (int)(long)gen.getExtendedAttribute(GermlineCNVSegmentVariantComposer.QSS),
-                    (int)FastMath.round(segment.getQualityStart()));
+                    (long) gt.getExtendedAttribute(GermlineCNVSegmentVariantComposer.QSS),
+                    FastMath.round(segment.getQualityStart()));
             Assert.assertEquals(
-                    (int)(long)gen.getExtendedAttribute(GermlineCNVSegmentVariantComposer.QSE),
-                    (int)FastMath.round(segment.getQualityEnd()));
+                    (long) gt.getExtendedAttribute(GermlineCNVSegmentVariantComposer.QSE),
+                    FastMath.round(segment.getQualityEnd()));
         }
     }
 
