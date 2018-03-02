@@ -5,7 +5,7 @@ ARG DRELEASE
 ADD . /gatk
 
 WORKDIR /gatk
-RUN /gatk/gradlew clean compileTestJava installAll localJar createPythonPackageArchive -Drelease=$DRELEASE
+RUN /gatk/gradlew clean compileTestJava sparkJar localJar createPythonPackageArchive -Drelease=$DRELEASE
 
 WORKDIR /root
 
