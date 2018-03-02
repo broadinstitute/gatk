@@ -122,7 +122,7 @@ public class CNNVariantTrain extends CommandLineProgram {
         if (tensorMap == TensorMapEnum.reference) {
             arguments.addAll(Arrays.asList("--mode", "train_on_reference_tensors_and_annotations"));
         } else if (tensorMap == TensorMapEnum.read_tensor) {
-            arguments.addAll(Arrays.asList("--mode", "train_on_read_tensors_and_annotations"));
+            arguments.addAll(Arrays.asList("--mode", "train_tiny_model_on_read_tensors_and_annotations"));
         } else {
             throw new GATKException("Unknown tensor mapping mode:"+tensorMap.name());
         }
