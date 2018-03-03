@@ -27,8 +27,8 @@ public class GATKSVVCFUtilsUnitTest extends GATKBaseTest {
                         SPLIT_READ_SUPPORT, SYMB_ALT_ALLELE_DEL, SYMB_ALT_ALLELE_INS, SYMB_ALT_ALLELE_DUP, SYMB_ALT_ALLELE_INVDUP,
                         CONTIG_NAMES, TOTAL_MAPPINGS, MAPPING_QUALITIES, HQ_MAPPINGS, ALIGN_LENGTHS, MAX_ALIGN_LENGTH,
                         SEQ_ALT_HAPLOTYPE, INSERTED_SEQUENCE, INSERTED_SEQUENCE_MAPPINGS, HOMOLOGY, HOMOLOGY_LENGTH,
-                        DUP_REPEAT_UNIT_REF_SPAN, DUP_SEQ_CIGARS, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE,
-                        DUP_TAN_CONTRACTION_STRING, DUP_TAN_EXPANSION_STRING, DUP_INV_ORIENTATIONS, INV33, INV55, EXTERNAL_CNV_CALLS)
+                        DUP_REPEAT_UNIT_REF_SPAN, DUP_SEQ_CIGARS, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_IMPRECISE_AFFECTED_RANGE,
+                        DUP_TAN_CONTRACTION_STRING, DUP_TAN_EXPANSION_STRING, DUP_ORIENTATIONS, INV33, INV55, EXTERNAL_CNV_CALLS)
                         .sorted().collect(Collectors.toList()));
     }
 
@@ -48,6 +48,9 @@ public class GATKSVVCFUtilsUnitTest extends GATKBaseTest {
         final List<Path> vcfFiles = Files.walk(Paths.get(toolsTestDir + "spark/sv/integration/outputs"))
                 .filter(filePath -> filePath.toString().endsWith(".vcf") || filePath.toString().endsWith(".vcf.gz"))
                 .collect(Collectors.toList());
+        vcfFiles.addAll( Files.walk(Paths.get(toolsTestDir + "spark/sv/utils"))
+                .filter(filePath -> filePath.toString().endsWith(".vcf") || filePath.toString().endsWith(".vcf.gz"))
+                .collect(Collectors.toList()));
         vcfFiles.forEach(p -> data.add( new Object[]{p}));
         return data.toArray(new Object[data.size()][]);
     }

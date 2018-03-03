@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
@@ -19,10 +20,12 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyReferenceLocations;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleNovelAdjacencyInterpreter;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
@@ -101,7 +104,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
     private final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs =
             new DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection();
 
-    @Argument(doc = "sam file for aligned contigs", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+    @Argument(doc = "\"output path for discovery (non-genotyped) VCF", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String vcfOutputFileName;
 
@@ -164,15 +167,15 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
         final String sampleId = svDiscoveryInputData.sampleId;
         final Logger toolLogger = svDiscoveryInputData.toolLogger;
 
-        final JavaPairRDD<NovelAdjacencyReferenceLocations, Iterable<ChimericAlignment>> narlsAndSources =
+        final JavaPairRDD<NovelAdjacencyAndAltHaplotype, Iterable<ChimericAlignment>> narlsAndSources =
                 contigSeqAndChimeras
                         .flatMapToPair(tigSeqAndChimeras -> {
                             final byte[] contigSeq = tigSeqAndChimeras._1;
                             final List<ChimericAlignment> chimericAlignments = tigSeqAndChimeras._2;
-                            final Stream<Tuple2<NovelAdjacencyReferenceLocations, ChimericAlignment>> novelAdjacencyAndSourceChimera =
+                            final Stream<Tuple2<NovelAdjacencyAndAltHaplotype, ChimericAlignment>> novelAdjacencyAndSourceChimera =
                                     chimericAlignments.stream()
                                             .map(ca -> new Tuple2<>(
-                                                    new NovelAdjacencyReferenceLocations(ca, contigSeq,
+                                                    new NovelAdjacencyAndAltHaplotype(ca, contigSeq,
                                                             referenceSequenceDictionaryBroadcast.getValue()), ca));
                             return novelAdjacencyAndSourceChimera.iterator();
                         })
@@ -187,17 +190,17 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
             List<VariantContext> annotatedVariants =
                     narlsAndSources
                             .mapToPair(noveltyAndEvidence -> new Tuple2<>(noveltyAndEvidence._1,
-                                    new Tuple2<>(SimpleNovelAdjacencyInterpreter.inferSimpleTypeFromNovelAdjacency(noveltyAndEvidence._1), noveltyAndEvidence._2)))       // type inference based on novel adjacency and evidence alignments
+                                    new Tuple2<>(inferSimpleTypeFromNovelAdjacency(noveltyAndEvidence._1), noveltyAndEvidence._2)))       // type inference based on novel adjacency and evidence alignments
                             .map(noveltyTypeAndEvidence ->
                             {
-                                final NovelAdjacencyReferenceLocations novelAdjacency = noveltyTypeAndEvidence._1;
+                                final NovelAdjacencyAndAltHaplotype novelAdjacency = noveltyTypeAndEvidence._1;
                                 final SimpleSVType inferredSimpleType = noveltyTypeAndEvidence._2._1;
                                 final Iterable<ChimericAlignment> evidence = noveltyTypeAndEvidence._2._2;
                                 return AnnotatedVariantProducer
                                         .produceAnnotatedVcFromInferredTypeAndRefLocations(
-                                                novelAdjacency.leftJustifiedLeftRefLoc,
-                                                novelAdjacency.leftJustifiedRightRefLoc.getStart(),
-                                                novelAdjacency.complication,
+                                                novelAdjacency.getLeftJustifiedLeftRefLoc(),
+                                                novelAdjacency.getLeftJustifiedRightRefLoc().getStart(),
+                                                novelAdjacency.getComplication(),
                                                 inferredSimpleType,
                                                 null, // TODO: 1/21/18 implement this for InsDel
                                                 evidence,
@@ -211,6 +214,63 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
         } finally {
             narlsAndSources.unpersist();
         }
+    }
+
+    // TODO: 2/28/18 this function is now used only in this tool (and tested accordingly),
+    //      its updated version is
+    //      {@link BreakpointsInference#TypeInferredFromSimpleChimera()}, and
+    //      {@link SimpleNovelAdjacencyInterpreter#inferSimpleOrBNDTypesFromNovelAdjacency}
+    //      which should be tested accordingly
+    @VisibleForTesting
+    public static SimpleSVType inferSimpleTypeFromNovelAdjacency(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype) {
+
+        final int start = novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getEnd();
+        final int end = novelAdjacencyAndAltHaplotype.getLeftJustifiedRightRefLoc().getStart();
+        final StrandSwitch strandSwitch = novelAdjacencyAndAltHaplotype.getStrandSwitch();
+        final boolean hasNoInsertedSeq = ! novelAdjacencyAndAltHaplotype.hasInsertedSequence();
+        final boolean hasNoDupSeq = ! novelAdjacencyAndAltHaplotype.hasDuplicationAnnotation();
+
+        final SimpleSVType type;
+        if (strandSwitch == StrandSwitch.NO_SWITCH) { // no strand switch happening, so no inversion
+            if (start==end) { // something is inserted
+                if (hasNoDupSeq) {
+                    if (hasNoInsertedSeq) {
+                        throw new GATKException("Something went wrong in type inference, there's suspected insertion happening but no inserted sequence could be inferred "
+                                + novelAdjacencyAndAltHaplotype.toString());
+                    } else {
+                        final int svLength = novelAdjacencyAndAltHaplotype.getComplication().getInsertedSequenceForwardStrandRep().length();
+                        type = new SimpleSVType.Insertion(novelAdjacencyAndAltHaplotype, svLength); // simple insertion (no duplication)
+                    }
+                } else {
+                    final int svLength = NovelAdjacencyAndAltHaplotype.getLengthForDupTandem(novelAdjacencyAndAltHaplotype);
+                    type = new SimpleSVType.DuplicationTandem(novelAdjacencyAndAltHaplotype, svLength);
+                }
+            } else {
+                final int svLength = novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getEnd() -
+                        novelAdjacencyAndAltHaplotype.getLeftJustifiedRightRefLoc().getStart();
+                if (hasNoDupSeq) {
+                    if (hasNoInsertedSeq) {
+                        type = new SimpleSVType.Deletion(novelAdjacencyAndAltHaplotype, svLength); // clean deletion
+                    } else {
+                        type = new SimpleSVType.Deletion(novelAdjacencyAndAltHaplotype, svLength); // scarred deletion
+                    }
+                } else {
+                    if (hasNoInsertedSeq) {
+                        type = new SimpleSVType.Deletion(novelAdjacencyAndAltHaplotype, svLength); // clean contraction of repeat 2 -> 1, or complex contraction
+                    } else {
+                        throw new GATKException("Something went wrong in novel adjacency interpretation: " +
+                                " inferring simple SV type from a novel adjacency between two different reference locations, but annotated with both inserted sequence and duplication, which is NOT simple.\n"
+                                + novelAdjacencyAndAltHaplotype.toString());
+                    }
+                }
+            }
+        } else {
+            final int svLength = novelAdjacencyAndAltHaplotype.getLeftJustifiedRightRefLoc().getStart() -
+                    novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getEnd();
+            type = new SimpleSVType.Inversion(novelAdjacencyAndAltHaplotype, svLength);
+        }
+
+        return type;
     }
 
 }

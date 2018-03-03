@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.AssemblyContigAlignmentSignatureClassifier;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -79,7 +79,8 @@ public final class ContigAlignmentsModifier {
      *                        we follow the left align convention for the resulting strand-switch breakpoints;
      *                     b) when the two alignments' ref span do overlap,
      *                        we makes it so that the inverted duplicated reference span is minimized
-     *                        (this avoids over detection of inverted duplications as by {@link ChimericAlignment#isLikelyInvertedDuplication()}).
+     *                        (this avoids over detection of inverted duplications by
+     *                        {@link AssemblyContigAlignmentSignatureClassifier#isLikelyInvertedDuplication(AlignmentInterval, AlignmentInterval)}
      *                 </li>
      *             </ul>
      *         </li>

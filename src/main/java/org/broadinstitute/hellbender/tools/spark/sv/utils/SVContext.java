@@ -37,7 +37,7 @@ public final class SVContext extends VariantContext {
     private static final int MISSING_LENGTH = -2;
 
     /**
-     * Indicates that the variant does not have a length or this could not be determined.
+     * Indicates that the variant does not have a length or this could not be determined, e.g. for BND records.
      */
     public static final int NO_LENGTH = -1;
 

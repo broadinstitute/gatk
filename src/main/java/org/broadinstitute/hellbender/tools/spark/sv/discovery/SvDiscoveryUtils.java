@@ -3,7 +3,8 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyReferenceLocations;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.BreakpointComplications;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFReader;
@@ -16,7 +17,7 @@ public class SvDiscoveryUtils {
     //==================================================================================================================
 
     public static void evaluateIntervalsAndNarls(final List<SVInterval> assembledIntervals,
-                                                 final List<NovelAdjacencyReferenceLocations> narls,
+                                                 final List<NovelAdjacencyAndAltHaplotype> narls,
                                                  final SAMSequenceDictionary referenceSequenceDictionary,
                                                  final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection parameters,
                                                  final Logger toolLogger) {
@@ -35,18 +36,18 @@ public class SvDiscoveryUtils {
         }
     }
 
-    private static SVIntervalTree<String> readBreakpointsFromNarls(final List<NovelAdjacencyReferenceLocations> narls,
+    private static SVIntervalTree<String> readBreakpointsFromNarls(final List<NovelAdjacencyAndAltHaplotype> narls,
                                                                    final SAMSequenceDictionary dictionary,
                                                                    final int breakpointPadding) {
         final SVIntervalTree<String> breakpoints = new SVIntervalTree<>();
-        for ( final NovelAdjacencyReferenceLocations narl : narls ) {
-            final int padding = breakpointPadding + narl.complication.getLength();
+        for ( final NovelAdjacencyAndAltHaplotype narl : narls ) {
+            final int padding = breakpointPadding + getAmbiguity(narl.getComplication());
 
-            final SimpleInterval si1 = narl.leftJustifiedLeftRefLoc;
+            final SimpleInterval si1 = narl.getLeftJustifiedLeftRefLoc();
             breakpoints.put(
                     new SVInterval(dictionary.getSequenceIndex(si1.getContig()), si1.getStart()-padding, si1.getStart()+padding), null);
 
-            final SimpleInterval si2 = narl.leftJustifiedRightRefLoc;
+            final SimpleInterval si2 = narl.getLeftJustifiedRightRefLoc();
             breakpoints.put(
                     new SVInterval(dictionary.getSequenceIndex(si2.getContig()), si2.getStart()-padding, si2.getStart()+padding), null);
         }
@@ -77,5 +78,11 @@ public class SvDiscoveryUtils {
         final float falseNeg = 1.f - trueBreakpoints.overlapFraction(intervals);
         final int nTrue = trueBreakpoints.size();
         localLogger.info("Interval false negative rate = " + falseNeg + " (" + Math.round(falseNeg*nTrue) + "/" + nTrue + ")");
+    }
+
+    // TODO: consider dups and inserts as well as micro-homology (note this was moved from BC)
+    /** The uncertainty in location due to complications. */
+    private static int getAmbiguity(final BreakpointComplications complications) {
+        return complications.getHomologyForwardStrandRep().length();
     }
 }

@@ -41,7 +41,9 @@ public class ImpreciseVariantDetector {
     private static VariantContext createImpreciseDeletionVariant(final EvidenceTargetLink e,
                                                                  final ReadMetadata metadata,
                                                                  final ReferenceMultiSource reference) {
-        final SvType svType = new SimpleSVType.ImpreciseDeletion(e, metadata);
+        final int svLength = e.getPairedStrandedIntervals().getLeft().getInterval().midpoint() -
+                             e.getPairedStrandedIntervals().getRight().getInterval().midpoint();
+        final SvType svType = new SimpleSVType.ImpreciseDeletion(e, svLength, metadata);
         return AnnotatedVariantProducer
                 .produceAnnotatedVcFromEvidenceTargetLink(e, svType, metadata, reference);
     }
