@@ -141,12 +141,12 @@ public abstract class BreakpointComplications {
      *          Empty if they don't overlap on the contig.
      */
     @VisibleForTesting
-    static String inferHomology(final AlignmentInterval current, final AlignmentInterval next, final byte[] contigSequence) {
+    static String inferHomology(final AlignmentInterval first, final AlignmentInterval second, final byte[] contigSequence) {
 
-        if (current.endInAssembledContig >= next.startInAssembledContig) {
+        if (first.endInAssembledContig >= second.startInAssembledContig) {
             final byte[] homologyBytes = Arrays.copyOfRange(contigSequence,
-                    next.startInAssembledContig-1, current.endInAssembledContig);
-            return new String(reverseComplementIfNecessary(homologyBytes, current, next));
+                    second.startInAssembledContig-1, first.endInAssembledContig);
+            return new String(reverseComplementIfNecessary(homologyBytes, first, second));
         } else {
             return "";
         }
@@ -157,25 +157,30 @@ public abstract class BreakpointComplications {
      * @return Inserted sequence using two alignments of the same contig: as indicated by their separation on the the contig itself.
      */
     @VisibleForTesting
-    static String inferInsertedSequence(final AlignmentInterval current, final AlignmentInterval next, final byte[] contigSequence) {
+    static String inferInsertedSequence(final AlignmentInterval first, final AlignmentInterval second, final byte[] contigSequence) {
 
-        if (current.endInAssembledContig < next.startInAssembledContig - 1) {
+        if (first.endInAssembledContig < second.startInAssembledContig - 1) {
             final byte[] insertedSequenceBytes = Arrays.copyOfRange(contigSequence,
-                    current.endInAssembledContig, next.startInAssembledContig - 1);
-            return new String(reverseComplementIfNecessary(insertedSequenceBytes, current, next));
+                    first.endInAssembledContig, second.startInAssembledContig - 1);
+            return new String(reverseComplementIfNecessary(insertedSequenceBytes, first, second));
         } else {
             return "";
         }
     }
 
     private static byte[] reverseComplementIfNecessary(final byte[] seq,
-                                                       final AlignmentInterval current, final AlignmentInterval next) {
-        if ( current.forwardStrand == next.forwardStrand ) { // reference order switch
-            if (!current.forwardStrand) {
+                                                       final AlignmentInterval first, final AlignmentInterval second) {
+        if ( first.forwardStrand == second.forwardStrand ) { // reference order switch
+            if (!first.forwardStrand) {
                 SequenceUtil.reverseComplement(seq, 0, seq.length);
             }
-        } else if (current.referenceSpan.getStart() > next.referenceSpan.getStart()) {
-            SequenceUtil.reverseComplement(seq, 0, seq.length);
+        } else {
+
+            final boolean oneAfterTwo = first.referenceSpan.getStart() > second.referenceSpan.getStart();
+            final boolean firstAfterSecond = first.forwardStrand;
+            if (oneAfterTwo == firstAfterSecond) {
+                SequenceUtil.reverseComplement(seq, 0, seq.length);
+            }
         }
         return seq;
     }

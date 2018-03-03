@@ -7,7 +7,8 @@ import htsjdk.samtools.TextCigarCodec;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestDataProvider;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVTestUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryTestDataProvider;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.ContigAlignmentsModifier;
@@ -26,6 +27,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryTestDataProvider.*;
+
 
 public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
 
@@ -35,8 +38,8 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
      */
     @BeforeClass
     private void makeSureDataIsAvailable() {
-        if(!SVDiscoveryTestDataProvider.testDataInitialized) {
-            new SVDiscoveryTestDataProvider();
+        if(!testDataInitialized) {
+            new SimpleSVDiscoveryTestDataProvider();
         }
     }
 
@@ -78,8 +81,8 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
         final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("20", 20100, 20200), 101, 200, TextCigarCodec.decode("100M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         final ArrayList<String> insertionMappings = new ArrayList<>();
         insertionMappings.add(insertionMapping);
-        final ChimericAlignment breakpoint = new ChimericAlignment(region1, region2, insertionMappings, contigName, SVDiscoveryTestDataProvider.seqDict);
-        return new NovelAdjacencyAndAltHaplotype(breakpoint, SVDiscoveryTestDataProvider.makeDummySequence(200, (byte)'A'), SVDiscoveryTestDataProvider.seqDict);
+        final ChimericAlignment breakpoint = new ChimericAlignment(region1, region2, insertionMappings, contigName, b37_seqDict);
+        return new NovelAdjacencyAndAltHaplotype(breakpoint, SVTestUtils.makeDummySequence(200, (byte)'A'), b37_seqDict);
     }
 
     // -----------------------------------------------------------------------------------------------
@@ -88,7 +91,7 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
     @Test(groups = "sv")
     public void testGetBreakpoints_5to3Inversion_withSimpleInsertion() {
 
-        final NovelAdjacencyAndAltHaplotype breakpoints = SVDiscoveryTestDataProvider.forSimpleInversionWithNovelInsertion._3();
+        final NovelAdjacencyAndAltHaplotype breakpoints = forSimpleInversionWithNovelInsertion.biPathBubble;
         seeIfItWorksForNonSimpleTranslocations(breakpoints, StrandSwitch.FORWARD_TO_REVERSE,
                 new SimpleInterval("21", 69294, 69294), new SimpleInterval("21", 69364, 69364),
                 null, "", "T", 0, 0, null,
@@ -98,44 +101,53 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
     @Test(groups = "sv")
     public void testGetAssembledBreakpointFromAlignmentIntervalsStrangeLeftBreakpoint() {
 
-        final NovelAdjacencyAndAltHaplotype breakpoints = SVDiscoveryTestDataProvider.forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint._3();
+        final NovelAdjacencyAndAltHaplotype breakpoints = forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint.biPathBubble;
         seeIfItWorksForNonSimpleTranslocations(breakpoints, StrandSwitch.REVERSE_TO_FORWARD,
-                new SimpleInterval(SVDiscoveryTestDataProvider.chrForLongContig1, 20138006, 20138006),
-                new SimpleInterval(SVDiscoveryTestDataProvider.chrForLongContig1, 20152650, 20152650),
-                null, "TGAGGTCAGGAGTTCCTGATCCCATCTTTACTAAAAATACAAAACTTACCCAGGGTGGTTGTGCACACTTGTAATCCCAGCTACTTGGGAGGCTGAGGCAGGAGAATTGCTTGAACAAGGGAGGAAATGGTTGCAGTGAGCCATGATCATGCCACTGAACCCCAGCCTGGGCAAGAGAGTGAGACTGTCTCAAAAAAAAAAAAAACTGTTTAATTTTTATGAATGCAGGTTTTCTGCAAACACTACACATAACTATGCTAATTGTTCTGAAGTAATAAATAGAAAGCAAGGCACAACTACAGACTCCACTGTTCAGTTTATGCACTGAACTGTTCTTGCTTTTGCAGTGTAAGTATTTCTGCCTGCAAATACTGGATAATTACCTTGGATCATCAGATTTCTATCAAAGGAATTTAGTATCTTTTAGTCTTTATCATTTTGTATTGCTAAATTTATCTGTGTGTTAAGCTTCTGTGTGCTCTTAAAATGAGGTTTTATCTAAACAAACCTGTGTCTACTTTAAAAGACTAAACATGAAAAAACTAAACTTTTCAGAACCAAAAACAAAGCAATAAATCTGAAGTACTAGATAGTCTGGAGTGAGATTTATTTAGCTTTTTT",
+                new SimpleInterval(chrForLongContig1, 20138007, 20138007),
+                new SimpleInterval(chrForLongContig1, 20152651, 20152651),
+                null, homologyForLongContig1,
                 "", 0, 0, null,
                 new byte[0]);
     }
 
     /**
-     *  @see SVDiscoveryTestDataProvider#forSimpleInversionWithHomology(ByteArrayOutputStream)
+     *  @see SimpleSVDiscoveryTestDataProvider#forSimpleInversionWithHomology(ByteArrayOutputStream)
      */
     @Test(groups = "sv")
     public void testSimpleInversionWithHomologyBreakpointsIdentification_allFourRepresentations() {
 
-        final byte[] homology = "ACACA".getBytes();
-
-        // left flanking forward strand
-        final NovelAdjacencyAndAltHaplotype breakpointsIdentifiedFromLeftFlankingEvidenceAndForwardStrand = SVDiscoveryTestDataProvider.forSimpleInversionWithHom_leftPlus._3();
+        // left flanking forward strand representation
+        final NovelAdjacencyAndAltHaplotype breakpointsIdentifiedFromLeftFlankingEvidenceAndForwardStrand =
+                forSimpleInversionWithHom_leftPlus.biPathBubble;
         seeIfItWorksForNonSimpleTranslocations(breakpointsIdentifiedFromLeftFlankingEvidenceAndForwardStrand, StrandSwitch.FORWARD_TO_REVERSE,
                 new SimpleInterval("20", 200, 200), new SimpleInterval("20", 605, 605),
-                null, new String(homology), "", 0, 0, null,
+                null, "ACACA", "", 0, 0, null,
                 new byte[0]);
-
         // see if reverse strand changes anything
-        Assert.assertEquals(breakpointsIdentifiedFromLeftFlankingEvidenceAndForwardStrand, SVDiscoveryTestDataProvider.forSimpleInversionWithHom_leftMinus._3());
+        Assert.assertEquals(breakpointsIdentifiedFromLeftFlankingEvidenceAndForwardStrand,
+                forSimpleInversionWithHom_leftMinus.biPathBubble);
 
-        // see if right flanking evidence give the same breakpoint location and homology (up to RC)
-        // and see if the two strands give the same result
-        final NovelAdjacencyAndAltHaplotype breakpointsIdentifiedFromRightFlankingEvidenceAndForwardStrand = SVDiscoveryTestDataProvider.forSimpleInversionWithHom_rightPlus._3();
-        Assert.assertEquals(breakpointsIdentifiedFromLeftFlankingEvidenceAndForwardStrand.getLeftJustifiedLeftRefLoc(),
-                breakpointsIdentifiedFromRightFlankingEvidenceAndForwardStrand.getLeftJustifiedLeftRefLoc());
-        Assert.assertEquals(breakpointsIdentifiedFromLeftFlankingEvidenceAndForwardStrand.getLeftJustifiedRightRefLoc(),
-                breakpointsIdentifiedFromRightFlankingEvidenceAndForwardStrand.getLeftJustifiedRightRefLoc());
-        Assert.assertEquals(breakpointsIdentifiedFromLeftFlankingEvidenceAndForwardStrand.getComplication().getHomologyForwardStrandRep(),
-                new String(SVDiscoveryTestDataProvider.getReverseComplimentCopy(breakpointsIdentifiedFromRightFlankingEvidenceAndForwardStrand.getComplication().getHomologyForwardStrandRep().getBytes())));
+        // right flanking forward strand representation, and reverse strand representation
+        final NovelAdjacencyAndAltHaplotype breakpointsIdentifiedFromRightFlankingEvidenceAndForwardStrand =
+                forSimpleInversionWithHom_rightPlus.biPathBubble;
         Assert.assertEquals(breakpointsIdentifiedFromRightFlankingEvidenceAndForwardStrand.getStrandSwitch(), StrandSwitch.REVERSE_TO_FORWARD);
-        Assert.assertEquals(breakpointsIdentifiedFromRightFlankingEvidenceAndForwardStrand, SVDiscoveryTestDataProvider.forSimpleInversionWithHom_rightMinus._3());
+        Assert.assertEquals(breakpointsIdentifiedFromRightFlankingEvidenceAndForwardStrand,
+                forSimpleInversionWithHom_rightMinus.biPathBubble);
+
+        // two novel adjacencies detected by left and right assemblies differ by exactly one base
+        Assert.assertEquals(
+                shiftRightOneBase(breakpointsIdentifiedFromLeftFlankingEvidenceAndForwardStrand.getLeftJustifiedLeftRefLoc()),
+                breakpointsIdentifiedFromRightFlankingEvidenceAndForwardStrand.getLeftJustifiedLeftRefLoc());
+        Assert.assertEquals(
+                shiftRightOneBase(breakpointsIdentifiedFromLeftFlankingEvidenceAndForwardStrand.getLeftJustifiedRightRefLoc()),
+                breakpointsIdentifiedFromRightFlankingEvidenceAndForwardStrand.getLeftJustifiedRightRefLoc());
+        // and in this case should have the same homology
+        Assert.assertEquals(breakpointsIdentifiedFromLeftFlankingEvidenceAndForwardStrand.getComplication().getHomologyForwardStrandRep(),
+                breakpointsIdentifiedFromRightFlankingEvidenceAndForwardStrand.getComplication().getHomologyForwardStrandRep());
+    }
+
+    private static SimpleInterval shiftRightOneBase(final SimpleInterval toBeShifted) {
+        return new SimpleInterval(toBeShifted.getContig(), toBeShifted.getStart()+1, toBeShifted.getEnd()+1);
     }
 
     @Test(groups = "sv")
@@ -146,7 +158,7 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
         final AlignmentInterval region3 = new AlignmentInterval(new SimpleInterval("20", 23103633, 23104603), 556, 1525, TextCigarCodec.decode("555S970M"), true, 60, 3, 100, ContigAlignmentsModifier.AlnModType.NONE);
 
         final AlignedContig alignedContig = new AlignedContig("asm00001:tig0001", contigSequence, Arrays.asList(region1, region2, region3), false);
-        final List<ChimericAlignment> assembledBreakpointsFromAlignmentIntervals = ChimericAlignment.parseOneContig(alignedContig, SVDiscoveryTestDataProvider.seqDict, true, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, true);
+        final List<ChimericAlignment> assembledBreakpointsFromAlignmentIntervals = ChimericAlignment.parseOneContig(alignedContig, b37_seqDict, true, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, true);
         Assert.assertEquals(assembledBreakpointsFromAlignmentIntervals.size(), 1);
         final ChimericAlignment chimericAlignment = assembledBreakpointsFromAlignmentIntervals.get(0);
         Assert.assertEquals(chimericAlignment.sourceContigName, "asm00001:tig0001");
@@ -155,7 +167,7 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
         Assert.assertEquals(chimericAlignment.insertionMappings.size(), 1);
         final String expectedInsertionMappingsString = String.join(AlignmentInterval.PACKED_STRING_REP_SEPARATOR, "516", "557", "20:23103196-23103238", "-", "515S42M968S", "60", "2", "100", "O");
         Assert.assertEquals(chimericAlignment.insertionMappings.get(0), expectedInsertionMappingsString);
-        final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(chimericAlignment, contigSequence, SVDiscoveryTestDataProvider.seqDict);
+        final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(chimericAlignment, contigSequence, b37_seqDict);
         Assert.assertTrue(breakpoints.getComplication().getHomologyForwardStrandRep().isEmpty());
         Assert.assertEquals(breakpoints.getComplication().getInsertedSequenceForwardStrandRep().getBytes(), Arrays.copyOfRange(contigSequence, 519, 555));
         Assert.assertEquals(breakpoints.getAltHaplotypeSequence(), Arrays.copyOfRange(contigSequence, 519, 555));
@@ -166,9 +178,9 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
     public void testGetBreakpoints_5to3Inversion_simple() {
         final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("20", 101, 200), 1, 100, TextCigarCodec.decode("100M100S"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("20", 501, 600), 101, 200, TextCigarCodec.decode("100S100M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        final ChimericAlignment chimericAlignment = new ChimericAlignment(region1, region2, Collections.emptyList(), "1", SVDiscoveryTestDataProvider.seqDict);
+        final ChimericAlignment chimericAlignment = new ChimericAlignment(region1, region2, Collections.emptyList(), "1", b37_seqDict);
         final Tuple2<SimpleInterval, SimpleInterval> breakpoints =
-                BreakpointsInference.getInferenceClass(chimericAlignment, null, SVDiscoveryTestDataProvider.seqDict)
+                BreakpointsInference.getInferenceClass(chimericAlignment, null, b37_seqDict)
                 .getLeftJustifiedBreakpoints();
         Assert.assertEquals(breakpoints._1(), new SimpleInterval("20", 200, 200));
         Assert.assertEquals(breakpoints._2(), new SimpleInterval("20", 600, 600));
@@ -180,10 +192,10 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
 
         final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("20", 101, 156), 1, 56, TextCigarCodec.decode("56M50S"), true, 60, 0, 56, ContigAlignmentsModifier.AlnModType.NONE);
         final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("20", 501, 556), 51, 106, TextCigarCodec.decode("56M50S"), false, 60, 0, 56, ContigAlignmentsModifier.AlnModType.NONE);
-        final ChimericAlignment chimericAlignment = new ChimericAlignment(region1, region2, Collections.emptyList(), "1", SVDiscoveryTestDataProvider.seqDict);
+        final ChimericAlignment chimericAlignment = new ChimericAlignment(region1, region2, Collections.emptyList(), "1", b37_seqDict);
 
         final Tuple2<SimpleInterval, SimpleInterval> breakpoints =
-                BreakpointsInference.getInferenceClass(chimericAlignment, contigSeq, SVDiscoveryTestDataProvider.seqDict)
+                BreakpointsInference.getInferenceClass(chimericAlignment, contigSeq, b37_seqDict)
                         .getLeftJustifiedBreakpoints();
         Assert.assertEquals(breakpoints._1(), new SimpleInterval("20", 150, 150));
         Assert.assertEquals(breakpoints._2(), new SimpleInterval("20", 556, 556));
@@ -194,13 +206,13 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
     // -----------------------------------------------------------------------------------------------
 
     /**
-     * @see SVDiscoveryTestDataProvider#forSimpleDeletion(ByteArrayOutputStream)
+     * @see SimpleSVDiscoveryTestDataProvider#forSimpleDeletion(ByteArrayOutputStream)
      */
     @Test(groups = "sv")
     public void testGetBreakpoints_simpleDeletion() {
 
-        final NovelAdjacencyAndAltHaplotype breakpoints = SVDiscoveryTestDataProvider.forSimpleDeletion_plus._3();
-        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = SVDiscoveryTestDataProvider.forSimpleDeletion_minus._3();
+        final NovelAdjacencyAndAltHaplotype breakpoints = forSimpleDeletion_plus.biPathBubble;
+        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = forSimpleDeletion_minus.biPathBubble;
 
         seeIfItWorksForNonSimpleTranslocations(breakpoints, StrandSwitch.NO_SWITCH, new SimpleInterval("21", 100040, 100040), new SimpleInterval("21", 100060, 100060),
                 null, "", "", 0, 0, null,
@@ -209,15 +221,15 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
     }
 
     /**
-     * @see SVDiscoveryTestDataProvider#forSimpleInsertion(ByteArrayOutputStream)
+     * @see SimpleSVDiscoveryTestDataProvider#forSimpleInsertion(ByteArrayOutputStream)
      */
     @Test(groups = "sv")
     public void testGetBreakpoints_simpleInsertion() {
 
-        final byte[] insertedSeq  = SVDiscoveryTestDataProvider.makeDummySequence(50, (byte)'C');
+        final byte[] insertedSeq  = SVTestUtils.makeDummySequence(50, (byte)'C');
 
-        final NovelAdjacencyAndAltHaplotype breakpoints = SVDiscoveryTestDataProvider.forSimpleInsertion_plus._3();
-        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = SVDiscoveryTestDataProvider.forSimpleInsertion_minus._3();
+        final NovelAdjacencyAndAltHaplotype breakpoints = forSimpleInsertion_plus.biPathBubble;
+        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = forSimpleInsertion_minus.biPathBubble;
 
         seeIfItWorksForNonSimpleTranslocations(breakpoints, StrandSwitch.NO_SWITCH, new SimpleInterval("21", 100100, 100100), new SimpleInterval("21", 100100, 100100),
                 null, "", new String(insertedSeq), 0, 0, null,
@@ -226,14 +238,14 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
     }
 
     /**
-     * @see SVDiscoveryTestDataProvider#forLongRangeSubstitution()
+     * @see SimpleSVDiscoveryTestDataProvider#forLongRangeSubstitution()
      */
     @Test(groups = "sv")
     public void testGetBreakpoints_longRangeSubstitution() {
 
-        final byte[] substitution = SVDiscoveryTestDataProvider.makeDummySequence(10, (byte)'C');
-        final NovelAdjacencyAndAltHaplotype breakpoints = SVDiscoveryTestDataProvider.forLongRangeSubstitution_plus._3();
-        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = SVDiscoveryTestDataProvider.forLongRangeSubstitution_minus._3();
+        final byte[] substitution = SVTestUtils.makeDummySequence(10, (byte)'C');
+        final NovelAdjacencyAndAltHaplotype breakpoints = forLongRangeSubstitution_plus.biPathBubble;
+        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = forLongRangeSubstitution_minus.biPathBubble;
 
         seeIfItWorksForNonSimpleTranslocations(breakpoints, StrandSwitch.NO_SWITCH, new SimpleInterval("21", 100040, 100040), new SimpleInterval("21", 100060, 100060),
                 null, "", new String(substitution), 0, 0, null,
@@ -242,15 +254,15 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
     }
 
     /**
-     * @see SVDiscoveryTestDataProvider#forDeletionWithHomology(ByteArrayOutputStream)
+     * @see SimpleSVDiscoveryTestDataProvider#forDeletionWithHomology(ByteArrayOutputStream)
      */
     @Test(groups = "sv")
     public void testGetBreakpoints_simpleDeletion_withHomology() {
 
         final byte[] homology = "ATCG".getBytes();
 
-        final NovelAdjacencyAndAltHaplotype breakpoints = SVDiscoveryTestDataProvider.forDeletionWithHomology_plus._3();
-        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = SVDiscoveryTestDataProvider.forDeletionWithHomology_minus._3();
+        final NovelAdjacencyAndAltHaplotype breakpoints = forDeletionWithHomology_plus.biPathBubble;
+        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = forDeletionWithHomology_minus.biPathBubble;
 
         seeIfItWorksForNonSimpleTranslocations(breakpoints, StrandSwitch.NO_SWITCH, new SimpleInterval("21", 100040, 100040), new SimpleInterval("21", 100078, 100078),
                 null, new String(homology), "", 0, 0, null,
@@ -259,41 +271,41 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
     }
 
     /**
-     * @see SVDiscoveryTestDataProvider#forSimpleTandemDuplicationContraction()
+     * @see SimpleSVDiscoveryTestDataProvider#forSimpleTandemDuplicationContraction()
      */
     @Test(groups = "sv")
     public void testGetBreakpoints_tandemDuplication_contraction_simple() {
 
-        final NovelAdjacencyAndAltHaplotype breakpoints = SVDiscoveryTestDataProvider.forSimpleTanDupContraction_plus._3();
-        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = SVDiscoveryTestDataProvider.forSimpleTanDupContraction_minus._3();
+        final NovelAdjacencyAndAltHaplotype breakpoints = forSimpleTanDupContraction_plus.biPathBubble;
+        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = forSimpleTanDupContraction_minus.biPathBubble;
 
         seeIfItWorksForNonSimpleTranslocations(breakpoints, StrandSwitch.NO_SWITCH, new SimpleInterval("21", 100040, 100040), new SimpleInterval("21", 100050, 100050),
                 new SimpleInterval("21", 100041, 100050),
-                new String(SVDiscoveryTestDataProvider.makeDummySequence(10, (byte)'C')), "",
+                new String(SVTestUtils.makeDummySequence(10, (byte)'C')), "",
                 2, 1, Collections.emptyList(),
-                SVDiscoveryTestDataProvider.makeDummySequence(10, (byte)'C'));
+                SVTestUtils.makeDummySequence(10, (byte)'C'));
         Assert.assertEquals(breakpointsDetectedFromReverseStrand, breakpoints);
     }
 
     /**
-     * @see SVDiscoveryTestDataProvider#forSimpleTandemDuplicationExpansion(ByteArrayOutputStream)
+     * @see SimpleSVDiscoveryTestDataProvider#forSimpleTandemDuplicationExpansion(ByteArrayOutputStream)
      */
     @Test(groups = "sv")
     public void testGetBreakpoints_tandemDuplication_expansion_simple() {
 
-        final NovelAdjacencyAndAltHaplotype breakpoints = SVDiscoveryTestDataProvider.forSimpleTanDupExpansion_plus._3();
-        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = SVDiscoveryTestDataProvider.forSimpleTanDupExpansion_minus._3();
+        final NovelAdjacencyAndAltHaplotype breakpoints = forSimpleTanDupExpansion_plus.biPathBubble;
+        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = forSimpleTanDupExpansion_minus.biPathBubble;
 
         seeIfItWorksForNonSimpleTranslocations(breakpoints, StrandSwitch.NO_SWITCH, new SimpleInterval("21", 100040, 100040), new SimpleInterval("21", 100040, 100040),
                 new SimpleInterval("21", 100041, 100050),
                 "", "",
                 1, 2, Arrays.asList("10M", "10M"),
-                SVDiscoveryTestDataProvider.makeDummySequence(20, (byte)'C'));
+                SVTestUtils.makeDummySequence(20, (byte)'C'));
         Assert.assertEquals(breakpointsDetectedFromReverseStrand, breakpoints);
     }
 
     /**
-     * @see SVDiscoveryTestDataProvider#forSimpleTandemDuplicationExpansionWithNovelInsertion(ByteArrayOutputStream)
+     * @see SimpleSVDiscoveryTestDataProvider#forSimpleTandemDuplicationExpansionWithNovelInsertion(ByteArrayOutputStream)
      */
     @Test(groups = "sv")
     public void testGetBreakpoints_tandemDuplication_expansion_andNovelInsertion() {
@@ -302,8 +314,8 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
         final String dup = "AAAAGTAAATGTTATAAGAAATCTTAAGTATTATTTTCTTATGTTTCTAGCCTAATAAAGTGCTTTTATTAAAGCACTTTATTTAAAGG";    //89
         final String alt = dup + insertedSeq + dup;
 
-        final NovelAdjacencyAndAltHaplotype breakpoints = SVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_plus._3();
-        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = SVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_minus._3();
+        final NovelAdjacencyAndAltHaplotype breakpoints = forSimpleTanDupExpansionWithNovelIns_plus.biPathBubble;
+        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = forSimpleTanDupExpansionWithNovelIns_minus.biPathBubble;
 
         seeIfItWorksForNonSimpleTranslocations(breakpoints, StrandSwitch.NO_SWITCH, new SimpleInterval("21", 25297163, 25297163), new SimpleInterval("21", 25297163, 25297163),
                 new SimpleInterval("21", 25297164,25297252),
@@ -366,7 +378,7 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
 
 
     /**
-     * @see SVDiscoveryTestDataProvider#forComplexTandemDuplication()
+     * @see SimpleSVDiscoveryTestDataProvider#forComplexTandemDuplication()
      */
     @Test(groups = "sv")
     public void testGetBreakpoints_tandemDuplication_complex() {
@@ -379,7 +391,7 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
 
 
         // first test (the original observed event, but assigned to a different chromosome): expansion from 1 unit to 2 units with pseudo-homology
-        NovelAdjacencyAndAltHaplotype breakpoints = SVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_plus._3();
+        NovelAdjacencyAndAltHaplotype breakpoints = forComplexTanDup_1to2_pseudoHom_plus.biPathBubble;
         BreakpointComplications.SmallDuplicationBreakpointComplications complication =
                 (BreakpointComplications.SmallDuplicationBreakpointComplications) breakpoints.getComplication();
 
@@ -392,11 +404,11 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
         Assert.assertEquals(breakpoints.getLeftJustifiedRightRefLoc(), new SimpleInterval("20", 312609, 312609));
         Assert.assertEquals(breakpoints.getStrandSwitch(), StrandSwitch.NO_SWITCH);
         Assert.assertEquals(breakpoints.getAltHaplotypeSequence(), (firstRepeat+secondRepeat+pseudoHomology).getBytes());
-        NovelAdjacencyAndAltHaplotype breakpointsRev = SVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_minus._3();
+        NovelAdjacencyAndAltHaplotype breakpointsRev = forComplexTanDup_1to2_pseudoHom_minus.biPathBubble;
         Assert.assertEquals(breakpointsRev, breakpoints); // different representation, should lead to same result
 
         // second test: contraction from 2 units to 1 unit with pseudo-homology
-        breakpoints = SVDiscoveryTestDataProvider.forComplexTanDup_2to1_pseudoHom_plus._3();
+        breakpoints = forComplexTanDup_2to1_pseudoHom_plus.biPathBubble;
         complication = (BreakpointComplications.SmallDuplicationBreakpointComplications) breakpoints.getComplication();
         Assert.assertTrue(StringUtils.getLevenshteinDistance(complication.getHomologyForwardStrandRep(), firstRepeat+pseudoHomology)<=2);
         Assert.assertTrue(complication.getInsertedSequenceForwardStrandRep().isEmpty());
@@ -407,11 +419,11 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
         Assert.assertEquals(breakpoints.getLeftJustifiedRightRefLoc(), new SimpleInterval("20", 312705, 312705));
         Assert.assertEquals(breakpoints.getStrandSwitch(), StrandSwitch.NO_SWITCH);
         Assert.assertEquals(breakpoints.getAltHaplotypeSequence(), (firstRepeat+pseudoHomology).getBytes());
-        breakpointsRev = SVDiscoveryTestDataProvider.forComplexTanDup_2to1_pseudoHom_minus._3();
+        breakpointsRev = forComplexTanDup_2to1_pseudoHom_minus.biPathBubble;
         Assert.assertEquals(breakpointsRev, breakpoints); // different representation, should lead to same result
 
         // third test: contraction from 3 units to 2 units without pseudo-homology
-        breakpoints = SVDiscoveryTestDataProvider.forComplexTanDup_3to2_noPseudoHom_plus._3();
+        breakpoints = forComplexTanDup_3to2_noPseudoHom_plus.biPathBubble;
         complication = (BreakpointComplications.SmallDuplicationBreakpointComplications) breakpoints.getComplication();
         Assert.assertTrue(StringUtils.getLevenshteinDistance(complication.getHomologyForwardStrandRep(), firstRepeat+secondRepeat)<=2);
         Assert.assertTrue(complication.getInsertedSequenceForwardStrandRep().isEmpty());
@@ -422,11 +434,11 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
         Assert.assertEquals(breakpoints.getLeftJustifiedRightRefLoc(), new SimpleInterval("20", 312705, 312705));
         Assert.assertEquals(breakpoints.getStrandSwitch(), StrandSwitch.NO_SWITCH);
         Assert.assertEquals(breakpoints.getAltHaplotypeSequence(), (firstRepeat+secondRepeat).getBytes());
-        breakpointsRev = SVDiscoveryTestDataProvider.forComplexTanDup_3to2_noPseudoHom_minus._3();
+        breakpointsRev = forComplexTanDup_3to2_noPseudoHom_minus.biPathBubble;
         Assert.assertEquals(breakpointsRev, breakpoints); // different representation, should lead to same result
 
         // fourth test: expansion from 2 units to 3 units without pseudo-homology
-        breakpoints = SVDiscoveryTestDataProvider.forComplexTanDup_2to3_noPseudoHom_plus._3();
+        breakpoints = forComplexTanDup_2to3_noPseudoHom_plus.biPathBubble;
         complication = (BreakpointComplications.SmallDuplicationBreakpointComplications) breakpoints.getComplication();
         Assert.assertTrue(StringUtils.getLevenshteinDistance(complication.getHomologyForwardStrandRep(), firstRepeat)<=2);
         Assert.assertTrue(complication.getInsertedSequenceForwardStrandRep().isEmpty());
@@ -437,7 +449,7 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
         Assert.assertEquals(breakpoints.getLeftJustifiedRightRefLoc(), new SimpleInterval("20", 312609, 312609));
         Assert.assertEquals(breakpoints.getStrandSwitch(), StrandSwitch.NO_SWITCH);
         Assert.assertEquals(breakpoints.getAltHaplotypeSequence(), (firstRepeat+secondRepeat+firstRepeat).getBytes());
-        breakpointsRev = SVDiscoveryTestDataProvider.forComplexTanDup_2to3_noPseudoHom_minus._3();
+        breakpointsRev = forComplexTanDup_2to3_noPseudoHom_minus.biPathBubble;
         Assert.assertEquals(breakpointsRev, breakpoints); // different representation, should lead to same result
 
     }
@@ -453,10 +465,10 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
                 new SimpleInterval("chr21", 39192594, 39192692),
                 252 ,350,
                 TextCigarCodec.decode("251S99M26S"), true, 32, 1, 94, ContigAlignmentsModifier.AlnModType.NONE);
-        ChimericAlignment simpleChimera = new ChimericAlignment(region1, region2, Collections.emptyList(), "testContig", SVDiscoveryTestDataProvider.b38_seqDict);
+        ChimericAlignment simpleChimera = new ChimericAlignment(region1, region2, Collections.emptyList(), "testContig", b38_seqDict);
         NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(simpleChimera,
                 "TTCCTTAAAATGCAGGTGAATACAAGAATTAGGTTTCAGGTTTTATATATATATTCTGATATATATATATAATATAACCTGAGATATATATATAAATATATATATTAATATATATTAATATATATAAATATATATATATTAATATATATTTATATATAAATATATATATATTAATATATATAAATATATATAAATATATATATATTAATATATATTAATATATAAATATATATATATTAATATATATTAATATATATAAATATATATATTAATATATATAAATATATATATAAATATATATAAATATATAAATATATATATAAATATATATAAATATATATAAATATATATACACACATACATACACATATACATT".getBytes(),
-                SVDiscoveryTestDataProvider.b38_seqDict);
+                b38_seqDict);
         Assert.assertEquals(breakpoints.getLeftJustifiedLeftRefLoc(), new SimpleInterval("chr21", 39192594, 39192594));
         Assert.assertEquals(breakpoints.getLeftJustifiedRightRefLoc(), new SimpleInterval("chr21", 39477346, 39477346));
         Assert.assertEquals(breakpoints.getComplication().getHomologyForwardStrandRep(), "ATATATAAATATATATA");

@@ -1,23 +1,25 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
 import com.google.common.collect.Sets;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.StrandedInterval;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.mockito.Mockito;
@@ -25,13 +27,13 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import scala.Tuple4;
 
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryTestDataProvider.*;
 import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.*;
 import static org.mockito.Mockito.when;
 
@@ -43,8 +45,8 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
      */
     @BeforeClass
     private void makeSureDataIsAvailable() {
-        if(!SVDiscoveryTestDataProvider.testDataInitialized) {
-            new SVDiscoveryTestDataProvider();
+        if(!SimpleSVDiscoveryTestDataProvider.testDataInitialized) {
+            new SimpleSVDiscoveryTestDataProvider();
         }
     }
 
@@ -56,16 +58,17 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
      * Not an exhaustive test on all attributes, only tests:
      * MAPPING_QUALITIES, ALIGNMENT_LENGTH
      */
-    private static void seeIfItWorks_evidenceAnnotation(final Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyAndAltHaplotype, String> testData,
-                                                        final String[] expectedMappingQualitiesAsStrings,
-                                                        final String[] expectedAlignmentLengthsAsStrings) {
+    @Test(groups = "sv", dataProvider = "forEvidenceAnnotation")
+    public void testEvidenceAnnotation(final TestDataForSimpleSVs testData,
+                                       final String[] expectedMappingQualitiesAsStrings,
+                                       final String[] expectedAlignmentLengthsAsStrings) {
 
-        final AlignmentInterval region1 = testData._1();
-        final AlignmentInterval region2 = testData._2();
-        final byte[] contigSeq = null; // hack, as the contig sequence is really not necessary for this test purpose
+        final List<ChimericAlignment> chimericAlignments = Collections.singletonList(
+                new ChimericAlignment(testData.firstAlignment, testData.secondAlignment,
+                Collections.emptyList(), testData.evidenceAssemblyContigName, b37_seqDict));
 
         final Map<String, Object> attributeMap =
-                AnnotatedVariantProducer.getEvidenceRelatedAnnotations(Collections.singletonList(new ChimericAlignment(region1, region2, Collections.emptyList(), testData._4(), SVDiscoveryTestDataProvider.seqDict)));
+                AnnotatedVariantProducer.getEvidenceRelatedAnnotations(chimericAlignments);
 
         Assert.assertEquals(((String)attributeMap.get(MAPPING_QUALITIES)).split(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR),
                 expectedMappingQualitiesAsStrings);
@@ -73,186 +76,160 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
                 expectedAlignmentLengthsAsStrings);
     }
 
-    @Test(groups = "sv")
-    public void testGetEvidenceRelatedAnnotations() {
+    @DataProvider(name = "forEvidenceAnnotation")
+    private Object[][] dataForEvidenceAnnotation() {
+        final List<Object[]> data = new ArrayList<>(20);
 
         // inversion
-        Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyAndAltHaplotype, String> testData = SVDiscoveryTestDataProvider.forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint;
-
-        seeIfItWorks_evidenceAnnotation(testData, new String[]{"60"}, new String[]{String.valueOf(1984)});
+        data.add(new Object[]{forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint, new String[]{"60"}, new String[]{String.valueOf(1984)}});
 
         // simple deletion
-        testData = SVDiscoveryTestDataProvider.forSimpleDeletion_minus;
-
-        seeIfItWorks_evidenceAnnotation(testData, new String[]{"60"}, new String[]{String.valueOf(40)});
+        data.add(new Object[]{forSimpleDeletion_minus, new String[]{"60"}, new String[]{String.valueOf(40)}});
 
         // simple insertion
-        testData = SVDiscoveryTestDataProvider.forSimpleInsertion_plus;
-
-        seeIfItWorks_evidenceAnnotation(testData, new String[]{"60"}, new String[]{String.valueOf(100)});
+        data.add(new Object[]{forSimpleInsertion_plus, new String[]{"60"}, new String[]{String.valueOf(100)}});
 
         // long range substitution
-        testData = SVDiscoveryTestDataProvider.forLongRangeSubstitution_minus;
-
-        seeIfItWorks_evidenceAnnotation(testData, new String[]{"60"}, new String[]{String.valueOf(40)});
+        data.add(new Object[]{forLongRangeSubstitution_minus, new String[]{"60"}, new String[]{String.valueOf(40)}});
 
         // simple deletion with homology
-        testData = SVDiscoveryTestDataProvider.forDeletionWithHomology_plus;
-
-        seeIfItWorks_evidenceAnnotation(testData, new String[]{"60"}, new String[]{String.valueOf(40)});
+        data.add(new Object[]{forDeletionWithHomology_plus, new String[]{"60"}, new String[]{String.valueOf(40)}});
 
         // simple tandem dup contraction from 2 units to 1 unit
-        testData = SVDiscoveryTestDataProvider.forSimpleTanDupContraction_minus;
-
-        seeIfItWorks_evidenceAnnotation(testData, new String[]{"60"}, new String[]{String.valueOf(40)});
+        data.add(new Object[]{forSimpleTanDupContraction_minus, new String[]{"60"}, new String[]{String.valueOf(40)}});
 
         // simple tandem dup expansion from 1 unit to 2 units
-        testData = SVDiscoveryTestDataProvider.forSimpleTanDupExpansion_plus;
-
-        seeIfItWorks_evidenceAnnotation(testData, new String[]{"60"}, new String[]{String.valueOf(50)});
+        data.add(new Object[]{forSimpleTanDupExpansion_plus, new String[]{"60"}, new String[]{String.valueOf(50)}});
 
         // simple tandem dup expansion from 1 unit to 2 units and novel insertion
-        testData = SVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_minus;
-
-        seeIfItWorks_evidenceAnnotation(testData, new String[]{"60"}, new String[]{String.valueOf(137)});
+        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_minus, new String[]{"60"}, new String[]{String.valueOf(137)}});
 
         // tandem dup expansion from 1 unit to 2 units with pseudo-homology
-        testData = SVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_plus;
-
-        seeIfItWorks_evidenceAnnotation(testData, new String[]{"60"}, new String[]{String.valueOf(127)});
+        data.add(new Object[]{forComplexTanDup_1to2_pseudoHom_plus, new String[]{"60"}, new String[]{String.valueOf(127)}});
 
         // tandem dup contraction from 2 units to 1 unit with pseudo-homology
-        testData = SVDiscoveryTestDataProvider.forComplexTanDup_2to1_pseudoHom_minus;
-
-        seeIfItWorks_evidenceAnnotation(testData, new String[]{"60"}, new String[]{String.valueOf(31)});
+        data.add(new Object[]{forComplexTanDup_2to1_pseudoHom_minus, new String[]{"60"}, new String[]{String.valueOf(31)}});
 
         // tandem dup contraction from 3 units to 2 units
-        testData = SVDiscoveryTestDataProvider.forComplexTanDup_3to2_noPseudoHom_plus;
-
-        seeIfItWorks_evidenceAnnotation(testData, new String[]{"60"}, new String[]{String.valueOf(31)});
+        data.add(new Object[]{forComplexTanDup_3to2_noPseudoHom_plus, new String[]{"60"}, new String[]{String.valueOf(31)}});
 
         // tandem dup expansion from 2 units to 3 units
-        testData = SVDiscoveryTestDataProvider.forComplexTanDup_2to3_noPseudoHom_minus;
+        data.add(new Object[]{forComplexTanDup_2to3_noPseudoHom_minus, new String[]{"60"}, new String[]{String.valueOf(127)}});
 
-        seeIfItWorks_evidenceAnnotation(testData, new String[]{"60"}, new String[]{String.valueOf(127)});
+        return data.toArray(new Object[data.size()][]);
     }
 
     // -----------------------------------------------------------------------------------------------
     // Integrative test
     // -----------------------------------------------------------------------------------------------
-    private static void seeIfItWorks_integrative(final Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyAndAltHaplotype, String> testData,
-                                                 final List<String> expectedAttributeKeys, final String sampleId) throws IOException {
+    @Test(groups = "sv", dataProvider = "forIntegrativeTest")
+    public void testIntegrative(final TestDataForSimpleSVs testData,
+                                final List<String> expectedAttributeKeys,
+                                final byte[] altHaplotypeSeq,
+                                final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls,
+                                final Broadcast<ReferenceMultiSource> referenceBroadcast,
+                                final Broadcast<SAMSequenceDictionary> refSeqDictBroadcast) throws IOException {
 
-        final AlignmentInterval region1 = testData._1();
-        final AlignmentInterval region2 = testData._2();
-
-        final Iterable<ChimericAlignment> evidence = Collections.singletonList(new ChimericAlignment(region1, region2, Collections.emptyList(), testData._4(), SVDiscoveryTestDataProvider.seqDict));
-
-        final NovelAdjacencyAndAltHaplotype breakpoints = testData._3();
+        final NovelAdjacencyAndAltHaplotype breakpoints = testData.biPathBubble;
+        final List<ChimericAlignment> chimericAlignments = Collections.singletonList(
+                new ChimericAlignment(testData.firstAlignment, testData.secondAlignment,
+                        Collections.emptyList(), testData.evidenceAssemblyContigName, b37_seqDict));
+        final String sampleID = "testSample";
 
         final VariantContext variantContext =
-                AnnotatedVariantProducer.produceAnnotatedVcFromInferredTypeAndRefLocations(breakpoints.getLeftJustifiedLeftRefLoc(),
-                        breakpoints.getLeftJustifiedRightRefLoc().getStart(), breakpoints.getComplication(), DiscoverVariantsFromContigAlignmentsSAMSpark.inferSimpleTypeFromNovelAdjacency(breakpoints),
-                        null, evidence, SparkContextFactory.getTestSparkContext().broadcast(SVDiscoveryTestDataProvider.reference),
-                        SparkContextFactory.getTestSparkContext().broadcast(SVDiscoveryTestDataProvider.seqDict), null, sampleId);
+                AnnotatedVariantProducer
+                        .produceAnnotatedVcFromInferredTypeAndRefLocations(
+                                breakpoints.getLeftJustifiedLeftRefLoc(),
+                                breakpoints.getLeftJustifiedRightRefLoc().getStart(),
+                                breakpoints.getComplication(),
+                                DiscoverVariantsFromContigAlignmentsSAMSpark.inferSimpleTypeFromNovelAdjacency(breakpoints),
+                                altHaplotypeSeq, chimericAlignments,
+                                referenceBroadcast, refSeqDictBroadcast, broadcastCNVCalls, sampleID);
 
         final List<String> attributeKeys = variantContext.getAttributes().keySet().stream().sorted().collect(Collectors.toList());
 
         Assert.assertEquals(attributeKeys, expectedAttributeKeys);
     }
 
-    @Test(groups = "sv")
-    public void testIntegrative() throws IOException {
+    @DataProvider(name = "forIntegrativeTest")
+    private Object[][] dataForIntegrativeTest() {
+        final List<Object[]> data = new ArrayList<>(20);
 
-        final Set<String> commonAttributes = Sets.newHashSet(VCFConstants.END_KEY, SVLEN, SVTYPE,
-                TOTAL_MAPPINGS, HQ_MAPPINGS, MAPPING_QUALITIES,
-                ALIGN_LENGTHS, MAX_ALIGN_LENGTH, CONTIG_NAMES);
+        final JavaSparkContext testSparkContext = SparkContextFactory.getTestSparkContext();
+        final Broadcast<ReferenceMultiSource> referenceBroadcast = testSparkContext.broadcast(b37_reference);
+        final Broadcast<SAMSequenceDictionary> refSeqDictBroadcast = testSparkContext.broadcast(b37_seqDict);
 
-        final String sampleId = "sample";
-        
+        final byte[] altHaplotypeSeq = null;
+        final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls = null;
+
+        final Set<String> commonAttributes = Sets.newHashSet(VCFConstants.END_KEY, SVLEN, SVTYPE, TOTAL_MAPPINGS,
+                HQ_MAPPINGS, MAPPING_QUALITIES, ALIGN_LENGTHS, MAX_ALIGN_LENGTH, CONTIG_NAMES);
+
         // inversion
-        Tuple4<AlignmentInterval, AlignmentInterval, NovelAdjacencyAndAltHaplotype, String> testData = SVDiscoveryTestDataProvider.forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint;
-
-        seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(INV33, HOMOLOGY, HOMOLOGY_LENGTH).stream()).sorted().collect(Collectors.toList()), sampleId);
+        data.add(new Object[]{forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint, Stream.concat( commonAttributes.stream(),
+                Sets.newHashSet(INV33, HOMOLOGY, HOMOLOGY_LENGTH).stream()).sorted().collect(Collectors.toList()),
+                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // simple deletion
-        testData = SVDiscoveryTestDataProvider.forSimpleDeletion_minus;
-
-        seeIfItWorks_integrative(testData, commonAttributes.stream().sorted().collect(Collectors.toList()), sampleId);
+        data.add(new Object[]{forSimpleDeletion_minus, commonAttributes.stream().sorted().collect(Collectors.toList()),
+                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // simple insertion
-        testData = SVDiscoveryTestDataProvider.forSimpleInsertion_plus;
-
-        seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(INSERTED_SEQUENCE).stream())
-                .sorted().collect(Collectors.toList()), sampleId);
+        data.add(new Object[]{forSimpleInsertion_plus, Stream.concat( commonAttributes.stream(),
+                Sets.newHashSet(INSERTED_SEQUENCE).stream()).sorted().collect(Collectors.toList()),
+                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // long range substitution
-        testData = SVDiscoveryTestDataProvider.forLongRangeSubstitution_minus;
-
-        seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(INSERTED_SEQUENCE).stream())
-                .sorted().collect(Collectors.toList()), sampleId);
+        data.add(new Object[]{forLongRangeSubstitution_minus, Stream.concat( commonAttributes.stream(),
+                Sets.newHashSet(INSERTED_SEQUENCE).stream()).sorted().collect(Collectors.toList()),
+                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // simple deletion with homology
-        testData = SVDiscoveryTestDataProvider.forDeletionWithHomology_plus;
-
-        seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(HOMOLOGY, HOMOLOGY_LENGTH).stream())
-                .sorted().collect(Collectors.toList()), sampleId);
+        data.add(new Object[]{forDeletionWithHomology_plus, Stream.concat( commonAttributes.stream(),
+                Sets.newHashSet(HOMOLOGY, HOMOLOGY_LENGTH).stream()).sorted().collect(Collectors.toList()),
+                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // simple tandem dup contraction from 2 units to 1 unit
-        testData = SVDiscoveryTestDataProvider.forSimpleTanDupContraction_minus;
-
-        seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(DUP_TAN_CONTRACTION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, HOMOLOGY, HOMOLOGY_LENGTH, DUP_ORIENTATIONS).stream())
-                .sorted().collect(Collectors.toList()), sampleId);
+        data.add(new Object[]{forSimpleTanDupContraction_minus, Stream.concat( commonAttributes.stream(),
+                Sets.newHashSet(DUP_TAN_CONTRACTION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ORIENTATIONS, HOMOLOGY, HOMOLOGY_LENGTH).stream()).sorted().collect(Collectors.toList()),
+                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // simple tandem dup expansion from 1 unit to 2 units
-        testData = SVDiscoveryTestDataProvider.forSimpleTanDupExpansion_plus;
-
-        seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUP_SEQ_CIGARS, DUPLICATION_NUMBERS, DUP_ORIENTATIONS).stream())
-                .sorted().collect(Collectors.toList()), sampleId);
+        data.add(new Object[]{forSimpleTanDupExpansion_plus, Stream.concat( commonAttributes.stream(),
+                Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUP_SEQ_CIGARS, DUPLICATION_NUMBERS, DUP_ORIENTATIONS).stream()).sorted().collect(Collectors.toList()),
+                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // simple tandem dup expansion from 1 unit to 2 units and novel insertion
-        testData = SVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_minus;
-
-        seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUP_SEQ_CIGARS, DUPLICATION_NUMBERS, INSERTED_SEQUENCE, DUP_ORIENTATIONS).stream())
-                .sorted().collect(Collectors.toList()), sampleId);
+        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_minus, Stream.concat( commonAttributes.stream(),
+                Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUP_SEQ_CIGARS, DUPLICATION_NUMBERS, DUP_ORIENTATIONS, INSERTED_SEQUENCE).stream()).sorted().collect(Collectors.toList()),
+                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // tandem dup expansion from 1 unit to 2 units with pseudo-homology
-        testData = SVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_plus;
-
-        seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_IMPRECISE_AFFECTED_RANGE, HOMOLOGY, HOMOLOGY_LENGTH, DUP_ORIENTATIONS).stream())
-                .sorted().collect(Collectors.toList()), sampleId);
+        data.add(new Object[]{forComplexTanDup_1to2_pseudoHom_plus, Stream.concat( commonAttributes.stream(),
+                Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_ORIENTATIONS, HOMOLOGY, HOMOLOGY_LENGTH, DUP_IMPRECISE_AFFECTED_RANGE).stream()).sorted().collect(Collectors.toList()),
+                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // tandem dup contraction from 2 units to 1 unit with pseudo-homology
-        testData = SVDiscoveryTestDataProvider.forComplexTanDup_2to1_pseudoHom_minus;
-
-        seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(DUP_TAN_CONTRACTION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_IMPRECISE_AFFECTED_RANGE, HOMOLOGY, HOMOLOGY_LENGTH, DUP_ORIENTATIONS).stream())
-                .sorted().collect(Collectors.toList()), sampleId);
+        data.add(new Object[]{forComplexTanDup_2to1_pseudoHom_minus, Stream.concat( commonAttributes.stream(),
+                Sets.newHashSet(DUP_TAN_CONTRACTION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_ORIENTATIONS, HOMOLOGY, HOMOLOGY_LENGTH, DUP_IMPRECISE_AFFECTED_RANGE).stream()).sorted().collect(Collectors.toList()),
+                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // tandem dup contraction from 3 units to 2 units
-        testData = SVDiscoveryTestDataProvider.forComplexTanDup_3to2_noPseudoHom_plus;
-
-        seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(DUP_TAN_CONTRACTION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_IMPRECISE_AFFECTED_RANGE, HOMOLOGY, HOMOLOGY_LENGTH, DUP_ORIENTATIONS).stream())
-                .sorted().collect(Collectors.toList()), sampleId);
+        data.add(new Object[]{forComplexTanDup_3to2_noPseudoHom_plus, Stream.concat( commonAttributes.stream(),
+                Sets.newHashSet(DUP_TAN_CONTRACTION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_ORIENTATIONS, HOMOLOGY, HOMOLOGY_LENGTH, DUP_IMPRECISE_AFFECTED_RANGE).stream()).sorted().collect(Collectors.toList()),
+                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // tandem dup expansion from 2 units to 3 units
-        testData = SVDiscoveryTestDataProvider.forComplexTanDup_2to3_noPseudoHom_minus;
+        data.add(new Object[]{forComplexTanDup_2to3_noPseudoHom_minus, Stream.concat( commonAttributes.stream(),
+                Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_ORIENTATIONS, HOMOLOGY, HOMOLOGY_LENGTH, DUP_IMPRECISE_AFFECTED_RANGE).stream()).sorted().collect(Collectors.toList()),
+                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
-        seeIfItWorks_integrative(testData, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_IMPRECISE_AFFECTED_RANGE, HOMOLOGY, HOMOLOGY_LENGTH, DUP_ORIENTATIONS).stream())
-                .sorted().collect(Collectors.toList()), sampleId);
+        return data.toArray(new Object[data.size()][]);
     }
 
-
+    // -----------------------------------------------------------------------------------------------
+    // CI test
+    // -----------------------------------------------------------------------------------------------
     @DataProvider(name = "CIIntervals")
     public Object[][] getCIIntervalTests() {
         return new Object[][] {
@@ -281,7 +258,6 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
     // -----------------------------------------------------------------------------------------------
     // EvidenceTargetLink-based annotations
     // -----------------------------------------------------------------------------------------------
-    private static String twoBitRefURL = publicTestDir + "large/human_g1k_v37.20.21.2bit";
 
     @DataProvider(name = "evidenceTargetLinksAndPreciseVariants")
     public Object[][] getEvidenceTargetLinksAndPreciseVariants() {
@@ -349,9 +325,6 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
         final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection params =
                 new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection();
 
-        final ReferenceMultiSource referenceMultiSource = new ReferenceMultiSource(
-                twoBitRefURL, ReferenceWindowFunctions.IDENTITY_FUNCTION);
-
         ReadMetadata metadata = Mockito.mock(ReadMetadata.class);
         when(metadata.getMaxMedianFragmentSize()).thenReturn(300);
         when(metadata.getContigName(0)).thenReturn("20");
@@ -361,7 +334,7 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
 
         final List<VariantContext> processedVariantContexts =
                 AnnotatedVariantProducer.annotateBreakpointBasedCallsWithImpreciseEvidenceLinks(inputVariants,
-                        evidenceTree, metadata, referenceMultiSource, params, localLogger);
+                        evidenceTree, metadata, b37_reference, params, localLogger);
 
         VariantContextTestUtils.assertEqualVariants(processedVariantContexts, expectedVariants);
     }

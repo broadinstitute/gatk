@@ -1,9 +1,9 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment;
 
 import htsjdk.samtools.TextCigarCodec;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -81,8 +81,8 @@ public class AssemblyContigAlignmentsConfigPickerUnitTest extends GATKBaseTest {
         if (expectedConfigurationCount == 1) {
             final AlignedContig tig =
                     AssemblyContigAlignmentsConfigPicker.filterAndSplitGappedAlignmentInterval(
-                            SparkContextFactory.getTestSparkContext().parallelize(Collections.singletonList(contig))
-                            , null, null, 0.0).collect().get(0);
+                            SparkContextFactory.getTestSparkContext().parallelize(Collections.singletonList(contig)),
+                            null, null, 0.0).collect().get(0);
             assertEquals(tig.alignmentIntervals.size(), expectedAICount,
                     tig.alignmentIntervals.stream().map(AlignmentInterval::toPackedString).collect(Collectors.toList()).toString());
         }
