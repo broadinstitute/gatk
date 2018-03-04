@@ -1,17 +1,22 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment;
 
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVTestUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.junit.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import scala.Tuple2;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -104,5 +109,30 @@ public class AssemblyContigWithFineTunedAlignmentsUnitTest extends GATKBaseTest 
                 })
                 .map(read -> read.convertToSAMRecord(null))
                 .collect(Collectors.toList());
+    }
+
+    @Test
+    public void testSerialization() {
+        final AlignmentInterval one = SVTestUtils.fromSAMRecordString("asm002362:tig00002\t16\tchr2\t1422222\t60\t75M56I139M\t*\t0\t0\tATGCTGGGGAATTTGTGTGCTCCTTGGGTGGGGACGAGCATGGAAGGCGCGTGGGACTGAAGCCTTGAAGACCCCGCAGGCGCCTCTCCTGGACAGACCTCGTGCAGGCGCCTCTCCTGGACCGACCTCGTGCAGGCGCCTCTCCTGGACAGACCTCGTGCAGGCGCCTCTCCTGGACCGACCTCGTGCAGGCGCCGCGCTGGACCGACCTCGTGCAGGCGCCGCGCTGGGCCATGGGGAGAGCGAGAGCCTGGTGTGCCCCTCAGGGAC\t*\tSA:Z:chr2_KI270774v1_alt,105288,-,114M1I27M1I127M,56,13;\tMD:Z:214\tRG:Z:GATKSVContigAlignments\tNM:i:56\tAS:i:142\tXS:i:0\n",
+                true);
+        final AlignmentInterval two = SVTestUtils.fromSAMRecordString("asm002362:tig00002\t2064\tchr2_KI270774v1_alt\t105288\t56\t114M1I27M1I127M\t*\t0\t0\tATGCTGGGGAATTTGTGTGCTCCTTGGGTGGGGACGAGCATGGAAGGCGCGTGGGACTGAAGCCTTGAAGACCCCGCAGGCGCCTCTCCTGGACAGACCTCGTGCAGGCGCCTCTCCTGGACCGACCTCGTGCAGGCGCCTCTCCTGGACAGACCTCGTGCAGGCGCCTCTCCTGGACCGACCTCGTGCAGGCGCCGCGCTGGACCGACCTCGTGCAGGCGCCGCGCTGGGCCATGGGGAGAGCGAGAGCCTGGTGTGCCCCTCAGGGAC\t*\tSA:Z:chr2,1422222,-,75M56I139M,60,56;\tMD:Z:94C17G1G6T13T3G1G34A3T9T68T8\tRG:Z:GATKSVContigAlignments\tNM:i:13\tAS:i:179\tXS:i:142",
+                true);
+        final AlignedContig sourceTig = new AlignedContig("asm002362:tig00002", "GTCCCTGAGGGGCACACCAGGCTCTCGCTCTCCCCATGGCCCAGCGCGGCGCCTGCACGAGGTCGGTCCAGCGCGGCGCCTGCACGAGGTCGGTCCAGGAGAGGCGCCTGCACGAGGTCTGTCCAGGAGAGGCGCCTGCACGAGGTCGGTCCAGGAGAGGCGCCTGCACGAGGTCTGTCCAGGAGAGGCGCCTGCGGGGTCTTCAAGGCTTCAGTCCCACGCGCCTTCCATGCTCGTCCCCACCCAAGGAGCACACAAATTCCCCAGCAT".getBytes(),
+                Arrays.asList(one, two), false);
+        final List<AssemblyContigAlignmentsConfigPicker.GoodAndBadMappings> config = AssemblyContigAlignmentsConfigPicker.pickBestConfigurations(sourceTig, new HashSet<>(Collections.singletonList("chr2")), 0.);
+        final AssemblyContigWithFineTunedAlignments tig = AssemblyContigAlignmentsConfigPicker.reConstructContigFromPickedConfiguration(new Tuple2<>(new Tuple2<>(sourceTig.contigName, sourceTig.contigSequence),
+                config)).next();
+
+        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        final Output out = new Output(bos);
+        final Kryo kryo = new Kryo();
+        kryo.writeClassAndObject(out, tig);
+        out.flush();
+
+        final ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
+        final Input in = new Input(bis);
+        @SuppressWarnings("unchecked")
+        final AssemblyContigWithFineTunedAlignments roundTrip = (AssemblyContigWithFineTunedAlignments) kryo.readClassAndObject(in);
+        Assert.assertEquals(tig, roundTrip);
     }
 }

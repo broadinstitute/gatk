@@ -21,6 +21,8 @@ import scala.Tuple2;
 
 import java.util.*;
 
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY;
+
 /**
  * Each assembled contig should have at least one such accompanying structure, or 0 when it is unmapped.
  */
@@ -317,6 +319,12 @@ public final class AlignmentInterval {
         this.mismatches = mismatches;
         this.alnScore = alignerScore;
         this.alnModType = modType;
+    }
+
+    public boolean containsGapOfEqualOrLargerSize(final int gapSize) {
+        return cigarAlong5to3DirectionOfContig.getCigarElements().stream()
+                .anyMatch(cigarElement ->
+                        cigarElement.getOperator().isIndel() && cigarElement.getLength() >= gapSize);
     }
 
     public int getSizeOnRead() {

@@ -23,17 +23,19 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleNovelAdjacencyInterpreter;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
+import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
@@ -195,14 +197,18 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                             {
                                 final NovelAdjacencyAndAltHaplotype novelAdjacency = noveltyTypeAndEvidence._1;
                                 final SimpleSVType inferredSimpleType = noveltyTypeAndEvidence._2._1;
-                                final Iterable<ChimericAlignment> evidence = noveltyTypeAndEvidence._2._2;
+                                final List<Tuple2<ChimericAlignment, String>> evidence =
+                                        Utils.stream(noveltyTypeAndEvidence._2._2)
+                                                .map(ca -> new Tuple2<>(ca,
+                                                        AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME))
+                                                .collect(Collectors.toList());
                                 return AnnotatedVariantProducer
                                         .produceAnnotatedVcFromInferredTypeAndRefLocations(
                                                 novelAdjacency.getLeftJustifiedLeftRefLoc(),
                                                 novelAdjacency.getLeftJustifiedRightRefLoc().getStart(),
                                                 novelAdjacency.getComplication(),
                                                 inferredSimpleType,
-                                                null, // TODO: 1/21/18 implement this for InsDel
+                                                null,
                                                 evidence,
                                                 referenceBroadcast,
                                                 referenceSequenceDictionaryBroadcast,

@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.BreakpointComplications;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
@@ -46,7 +47,7 @@ public class AnnotatedVariantProducer implements Serializable {
      */
     public static List<VariantContext> produceAnnotatedBNDmatesVcFromNovelAdjacency(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype,
                                                                                     final Tuple2<BreakEndVariantType, BreakEndVariantType> breakendMates,
-                                                                                    final Iterable<ChimericAlignment> contigAlignments,
+                                                                                    final Iterable<Tuple2<ChimericAlignment, String>> contigAlignments,
                                                                                     final Broadcast<ReferenceMultiSource> broadcastReference,
                                                                                     final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
                                                                                     final String sampleId)
@@ -79,7 +80,8 @@ public class AnnotatedVariantProducer implements Serializable {
      * @param breakpointComplications           complications associated with this breakpoint
      * @param inferredType                      inferred type of variant
      * @param altHaplotypeSeq                   alt haplotype sequence (could be null)
-     * @param contigAlignments                  chimeric alignments from contigs used for generating this novel adjacency
+     * @param contigAlignments                  chimeric alignments from contigs used for generating this novel adjacency,
+     *                                          and for each pair, the second is a string describing a good mapping to non-canonical chromosome, if available
      * @param broadcastReference                broadcast reference
      * @param broadcastSequenceDictionary       broadcast reference sequence dictionary
      * @param broadcastCNVCalls                 broadcast of external CNV calls (can be null)
@@ -90,7 +92,7 @@ public class AnnotatedVariantProducer implements Serializable {
                                                                                    final BreakpointComplications breakpointComplications,
                                                                                    final SvType inferredType,
                                                                                    final byte[] altHaplotypeSeq,
-                                                                                   final Iterable<ChimericAlignment> contigAlignments,
+                                                                                   final Iterable<Tuple2<ChimericAlignment, String>> contigAlignments,
                                                                                    final Broadcast<ReferenceMultiSource> broadcastReference,
                                                                                    final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
                                                                                    final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls,
@@ -266,8 +268,9 @@ public class AnnotatedVariantProducer implements Serializable {
         final Integer minAL;
         final String sourceContigName;
         final List<String> insSeqMappings;
+        final String goodNonCanonicalMappingSATag;
 
-        ChimericContigAlignmentEvidenceAnnotations(final ChimericAlignment chimericAlignment){
+        ChimericContigAlignmentEvidenceAnnotations(final ChimericAlignment chimericAlignment, final String goodNonCanonicalMappingSATag){
             minMQ = Math.min(chimericAlignment.regionWithLowerCoordOnContig.mapQual,
                              chimericAlignment.regionWithHigherCoordOnContig.mapQual);
             minAL = Math.min(chimericAlignment.regionWithLowerCoordOnContig.referenceSpan.size(),
@@ -276,16 +279,18 @@ public class AnnotatedVariantProducer implements Serializable {
                                                         chimericAlignment.regionWithHigherCoordOnContig);
             sourceContigName = chimericAlignment.sourceContigName;
             insSeqMappings = chimericAlignment.insertionMappings;
+            this.goodNonCanonicalMappingSATag = goodNonCanonicalMappingSATag;
         }
     }
 
     @VisibleForTesting
-    static Map<String, Object> getEvidenceRelatedAnnotations(final Iterable<ChimericAlignment> splitAlignmentEvidence) {
+    static Map<String, Object> getEvidenceRelatedAnnotations(final Iterable<Tuple2<ChimericAlignment, String>> splitAlignmentEvidence) {
 
         final List<ChimericContigAlignmentEvidenceAnnotations> annotations =
                 Utils.stream(splitAlignmentEvidence)
-                        .sorted(Comparator.comparing(ca -> ca.sourceContigName))
-                        .map(ChimericContigAlignmentEvidenceAnnotations::new).collect(Collectors.toList());
+                        .sorted(Comparator.comparing(pair -> pair._1.sourceContigName))
+                        .map(pair -> new ChimericContigAlignmentEvidenceAnnotations(pair._1, pair._2))
+                        .collect(Collectors.toList());
 
         final Map<String, Object> attributeMap = new HashMap<>();
         attributeMap.put(GATKSVVCFConstants.TOTAL_MAPPINGS,    annotations.size());
@@ -300,6 +305,13 @@ public class AnnotatedVariantProducer implements Serializable {
         if (!insertionMappings.isEmpty()) {
             attributeMap.put(GATKSVVCFConstants.INSERTED_SEQUENCE_MAPPINGS, insertionMappings.stream().collect(Collectors.joining(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)));
         }
+
+        final List<String> goodCanonicalMapping = annotations.stream().map(annotation -> annotation.goodNonCanonicalMappingSATag)
+                .filter(s -> ! s.equals(AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME)).collect(Collectors.toList());
+        if (!goodCanonicalMapping.isEmpty()) {
+            attributeMap.put(GATKSVVCFConstants.CTG_GOOD_NONCANONICAL_MAPPING, goodCanonicalMapping.stream().collect(Collectors.joining(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)));
+        }
+
         return attributeMap;
     }
 }

@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
@@ -27,6 +28,7 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import scala.Tuple2;
 
 import java.io.IOException;
 import java.util.*;
@@ -63,9 +65,11 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
                                        final String[] expectedMappingQualitiesAsStrings,
                                        final String[] expectedAlignmentLengthsAsStrings) {
 
-        final List<ChimericAlignment> chimericAlignments = Collections.singletonList(
-                new ChimericAlignment(testData.firstAlignment, testData.secondAlignment,
-                Collections.emptyList(), testData.evidenceAssemblyContigName, b37_seqDict));
+        final List<Tuple2<ChimericAlignment, String>> chimericAlignments = Collections.singletonList(
+                new Tuple2<>(
+                        new ChimericAlignment(testData.firstAlignment, testData.secondAlignment,
+                                Collections.emptyList(), testData.evidenceAssemblyContigName, b37_seqDict),
+                        AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME));
 
         final Map<String, Object> attributeMap =
                 AnnotatedVariantProducer.getEvidenceRelatedAnnotations(chimericAlignments);
@@ -131,9 +135,10 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
                                 final Broadcast<SAMSequenceDictionary> refSeqDictBroadcast) throws IOException {
 
         final NovelAdjacencyAndAltHaplotype breakpoints = testData.biPathBubble;
-        final List<ChimericAlignment> chimericAlignments = Collections.singletonList(
-                new ChimericAlignment(testData.firstAlignment, testData.secondAlignment,
-                        Collections.emptyList(), testData.evidenceAssemblyContigName, b37_seqDict));
+        final List<Tuple2<ChimericAlignment, String>> chimericAlignments = Collections.singletonList(
+                new Tuple2<>(new ChimericAlignment(testData.firstAlignment, testData.secondAlignment,
+                        Collections.emptyList(), testData.evidenceAssemblyContigName, b37_seqDict),
+                        AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME));
         final String sampleID = "testSample";
 
         final VariantContext variantContext =
