@@ -3,16 +3,21 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery.inference;
 import com.google.common.collect.ImmutableSet;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVariantsFromContigAlignmentsSAMSpark;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestDataProvider;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryTestDataProvider;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvType;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
+
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryTestDataProvider.*;
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType.TYPES.*;
+import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.*;
 
 public class SvSimpleTypeInferenceUnitTest extends GATKBaseTest {
 
@@ -21,76 +26,65 @@ public class SvSimpleTypeInferenceUnitTest extends GATKBaseTest {
      */
     @BeforeClass
     private void makeSureDataIsAvailable() {
-        if(!SVDiscoveryTestDataProvider.testDataInitialized) {
-            new SVDiscoveryTestDataProvider();
+        if(!SimpleSVDiscoveryTestDataProvider.testDataInitialized) {
+            new SimpleSVDiscoveryTestDataProvider();
         }
     }
 
 
-    private static void seeIfItWorks_typeInference(final NovelAdjacencyAndAltHaplotype breakpoints,
-                                                   final String expectedTypeString,
-                                                   final Set<String> expectedFlags) {
+    @Test(groups = "sv", dataProvider = "forTypeInference")
+    public void testGetType(final NovelAdjacencyAndAltHaplotype breakpoints, final String expectedTypeString,
+                            final Set<String> expectedAttributeIDs) {
 
         final SvType variant = DiscoverVariantsFromContigAlignmentsSAMSpark.inferSimpleTypeFromNovelAdjacency(breakpoints);
         Assert.assertEquals(variant.toString(), expectedTypeString);
 
-        final Set<String> flags = variant.getTypeSpecificAttributes().keySet();
-        Assert.assertEquals(flags.size(), expectedFlags.size());
-        if (!expectedFlags.isEmpty()) Assert.assertTrue(flags.containsAll(expectedFlags));
+        final Set<String> attributeIDs = variant.getTypeSpecificAttributes().keySet();
+        Assert.assertEquals(attributeIDs, expectedAttributeIDs);
     }
 
-    @Test(groups = "sv")
-    public void testGetType() {
+    @DataProvider(name = "forTypeInference")
+    private Object[][] forTypeInference() {
+        final List<Object[]> data = new ArrayList<>(20);
 
         // inversion
-        NovelAdjacencyAndAltHaplotype breakpoints = SVDiscoveryTestDataProvider.forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint._3();
-        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.INV.name(), ImmutableSet.of(GATKSVVCFConstants.INV33));
+        data.add(new Object[]{forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint.biPathBubble, INV.name(), ImmutableSet.of(INV33)});
 
-        breakpoints = SVDiscoveryTestDataProvider.forSimpleInversionWithHom_leftPlus._3();
-        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.INV.name(), ImmutableSet.of(GATKSVVCFConstants.INV55));
+        data.add(new Object[]{forSimpleInversionWithHom_leftPlus.biPathBubble, INV.name(), ImmutableSet.of(INV55)});
 
         // simple deletion
-        breakpoints = SVDiscoveryTestDataProvider.forSimpleDeletion_plus._3();
-        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.DEL.name(), Collections.emptySet());
+        data.add(new Object[]{forSimpleDeletion_plus.biPathBubble, DEL.name(), Collections.emptySet()});
 
         // simple insertion
-        breakpoints = SVDiscoveryTestDataProvider.forSimpleInsertion_minus._3();
-        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.INS.name(), Collections.emptySet());
+        data.add(new Object[]{forSimpleInsertion_minus.biPathBubble, INS.name(), Collections.emptySet()});
 
         // long range substitution
-        breakpoints = SVDiscoveryTestDataProvider.forLongRangeSubstitution_plus._3();
-        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.DEL.name(), Collections.emptySet());
+        data.add(new Object[]{forLongRangeSubstitution_plus.biPathBubble, DEL.name(), Collections.emptySet()});
 
         // simple deletion with homology
-        breakpoints = SVDiscoveryTestDataProvider.forDeletionWithHomology_minus._3();
-        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.DEL.name(), Collections.emptySet());
+        data.add(new Object[]{forDeletionWithHomology_minus.biPathBubble, DEL.name(), Collections.emptySet()});
 
         // simple tandem dup contraction from 2 units to 1 unit
-        breakpoints = SVDiscoveryTestDataProvider.forSimpleTanDupContraction_plus._3();
-        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.DEL.name(), ImmutableSet.of(GATKSVVCFConstants.DUP_TAN_CONTRACTION_STRING));
+        data.add(new Object[]{forSimpleTanDupContraction_plus.biPathBubble, DEL.name(), ImmutableSet.of(DUP_TAN_CONTRACTION_STRING)});
 
         // simple tandem dup expansion from 1 unit to 2 units
-        breakpoints = SVDiscoveryTestDataProvider.forSimpleTanDupExpansion_minus._3();
-        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.DUP.name(), ImmutableSet.of(GATKSVVCFConstants.DUP_TAN_EXPANSION_STRING));
+        data.add(new Object[]{forSimpleTanDupExpansion_minus.biPathBubble, DUP.name(), ImmutableSet.of(DUP_TAN_EXPANSION_STRING)});
 
         // simple tandem dup expansion from 1 unit to 2 units and novel insertion
-        breakpoints = SVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_plus._3();
-        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.DUP.name(), ImmutableSet.of(GATKSVVCFConstants.DUP_TAN_EXPANSION_STRING));
+        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_plus.biPathBubble, DUP.name(), ImmutableSet.of(DUP_TAN_EXPANSION_STRING)});
 
         // tandem dup expansion from 1 unit to 2 units with pseudo-homology
-        breakpoints = SVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_minus._3();
-        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.DUP.name(), ImmutableSet.of(GATKSVVCFConstants.DUP_TAN_EXPANSION_STRING));
+        data.add(new Object[]{forComplexTanDup_1to2_pseudoHom_minus.biPathBubble, DUP.name(), ImmutableSet.of(DUP_TAN_EXPANSION_STRING)});
 
         // tandem dup contraction from 2 units to 1 unit with pseudo-homology
-        breakpoints = SVDiscoveryTestDataProvider.forComplexTanDup_2to1_pseudoHom_plus._3();
-        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.DEL.name(), ImmutableSet.of(GATKSVVCFConstants.DUP_TAN_CONTRACTION_STRING));
+        data.add(new Object[]{forComplexTanDup_2to1_pseudoHom_plus.biPathBubble, DEL.name(), ImmutableSet.of(DUP_TAN_CONTRACTION_STRING)});
 
         // tandem dup contraction from 3 units to 2 units
-        breakpoints = SVDiscoveryTestDataProvider.forComplexTanDup_3to2_noPseudoHom_minus._3();
-        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.DEL.name(), ImmutableSet.of(GATKSVVCFConstants.DUP_TAN_CONTRACTION_STRING));
+        data.add(new Object[]{forComplexTanDup_3to2_noPseudoHom_minus.biPathBubble, DEL.name(), ImmutableSet.of(DUP_TAN_CONTRACTION_STRING)});
 
         // tandem dup expansion from 2 units to 3 units
-        breakpoints = SVDiscoveryTestDataProvider.forComplexTanDup_2to3_noPseudoHom_plus._3();
-        seeIfItWorks_typeInference(breakpoints, SimpleSVType.TYPES.DUP.name(), ImmutableSet.of(GATKSVVCFConstants.DUP_TAN_EXPANSION_STRING));
+        data.add(new Object[]{forComplexTanDup_2to3_noPseudoHom_plus.biPathBubble, DUP.name(), ImmutableSet.of(DUP_TAN_EXPANSION_STRING)});
+
+        return data.toArray(new Object[data.size()][]);
     }
 }

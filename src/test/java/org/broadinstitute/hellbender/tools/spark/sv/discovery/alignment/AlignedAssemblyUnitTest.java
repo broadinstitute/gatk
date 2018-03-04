@@ -6,11 +6,11 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.TextCigarCodec;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestDataProvider;
+import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVTestUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -48,12 +48,12 @@ public class AlignedAssemblyUnitTest extends GATKBaseTest {
         final Cigar[] cigars = Arrays.stream(cigarStrings).map(TextCigarCodec::decode).toArray(Cigar[]::new);
 
         // these sequence are technically wrong the for the inversion event, but the test purpose is for serialization so it is irrelevant
-        final byte[] dummySequenceForContigOne = SVDiscoveryTestDataProvider.makeDummySequence(seqLen[0], (byte)'A');
+        final byte[] dummySequenceForContigOne = SVTestUtils.makeDummySequence(seqLen[0], (byte)'A');
 
-        final byte[] dummySequenceForContigTwo = SVDiscoveryTestDataProvider.makeDummySequence(seqLen[0], (byte)'T');
-        final byte[] dummySequenceForContigThree = SVDiscoveryTestDataProvider.makeDummySequence(seqLen[0], (byte)'C');
+        final byte[] dummySequenceForContigTwo = SVTestUtils.makeDummySequence(seqLen[0], (byte)'T');
+        final byte[] dummySequenceForContigThree = SVTestUtils.makeDummySequence(seqLen[0], (byte)'C');
 
-        final byte[] dummySequenceForContigFour = SVDiscoveryTestDataProvider.makeDummySequence(seqLen[0], (byte)'G');
+        final byte[] dummySequenceForContigFour = SVTestUtils.makeDummySequence(seqLen[0], (byte)'G');
 
 
         final List<AlignedContig> allContigs = new ArrayList<>();
