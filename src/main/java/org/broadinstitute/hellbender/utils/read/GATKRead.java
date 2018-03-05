@@ -9,6 +9,7 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
 
@@ -30,7 +31,7 @@ import java.util.List;
  * respectively. To access positions assigned to unmapped reads for sorting purposes, use {@link #getAssignedContig}
  * and {@link #getAssignedStart}.
  */
-public interface GATKRead extends Locatable {
+public interface GATKRead extends Locatable, Serializable {
 
     /**
      * @return The name of the read (equivalent to QNAME in SAM), or {@code null} if the read has no name.

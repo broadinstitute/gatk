@@ -22,7 +22,7 @@ import java.util.List;
 /**
  * Set of arguments for the {@link HaplotypeCallerEngine}
  */
-public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgumentCollection implements Serializable{
+public class  HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgumentCollection implements Serializable{
     private static final long serialVersionUID = 1L;
 
     /**

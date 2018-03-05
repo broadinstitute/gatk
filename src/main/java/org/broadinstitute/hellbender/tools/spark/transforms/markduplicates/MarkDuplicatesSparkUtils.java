@@ -4,9 +4,11 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.serializers.FieldSerializer;
 import com.google.common.collect.*;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.util.AccumulatorV2;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.metrics.MetricsUtils;
@@ -367,6 +369,7 @@ public class MarkDuplicatesSparkUtils {
      * Saves the metrics to a file.
      * Note: the SamFileHeader is needed in order to include libraries that didn't have any duplicates.
      * @param result metrics object, potentially pre-initialized with headers,
+     * @param metricsRDD
      */
     public static void saveMetricsRDD(final MetricsFile<DuplicationMetrics, Double> result, final SAMFileHeader header, final JavaPairRDD<String, DuplicationMetrics> metricsRDD, final String metricsOutputPath) {
         final LibraryIdGenerator libraryIdGenerator = new LibraryIdGenerator(header);
@@ -386,6 +389,51 @@ public class MarkDuplicatesSparkUtils {
 
         if (nonEmptyMetricsByLibrary.size() == 1) {
             result.setHistogram(nonEmptyMetricsByLibrary.values().iterator().next().calculateRoiHistogram());
+        }
+
+        MetricsUtils.saveMetrics(result, metricsOutputPath);
+    }
+
+
+    /**
+     * Saves the metrics to a file.
+     * Note: the SamFileHeader is needed in order to include libraries that didn't have any duplicates.
+     * @param result metrics object, potentially pre-initialized with headers,
+     * @param metricsRDD
+     */
+    public static void saveMetricsAccumulator(final MetricsFile<DuplicationMetrics, Double> result, final SAMFileHeader header, final AccumulatorV2<GATKRead, Map<String, DuplicationMetrics>> metricsRDD, final String metricsOutputPath) {
+        final LibraryIdGenerator libraryIdGenerator = new LibraryIdGenerator(header);
+
+        final Map<String, DuplicationMetrics> duplicationMetricsMap = metricsRDD.value();
+        final Map<String, DuplicationMetrics> emptyMapByLibrary = libraryIdGenerator.getMetricsByLibraryMap();//with null
+
+        // Cleaning up the values of the finally collected metrics
+        duplicationMetricsMap.forEach((key, value) -> {
+            value.LIBRARY = key;
+
+            // Divide these by 2 because they are counted for each read
+            // when they should be counted by pair.
+            value.READ_PAIRS_EXAMINED = value.READ_PAIRS_EXAMINED / 2;
+            value.READ_PAIR_DUPLICATES = value.READ_PAIR_DUPLICATES / 2;
+
+            value.calculateDerivedMetrics();
+            if (value.ESTIMATED_LIBRARY_SIZE == null) {
+                value.ESTIMATED_LIBRARY_SIZE = 0L;
+            }
+        });
+
+        final List<String> sortedListOfLibraryNames = new ArrayList<>(Sets.union(emptyMapByLibrary.keySet(), duplicationMetricsMap.keySet()));
+        sortedListOfLibraryNames.sort(Utils.COMPARE_STRINGS_NULLS_FIRST);
+        for (final String library : sortedListOfLibraryNames){
+            //if a non-empty exists, take it, otherwise take from the the empties. This is done to include libraries with zero data in them.
+            //But not all libraries are listed in the header (esp in testing data) so we union empty and non-empty
+            final DuplicationMetrics metricsToAdd = duplicationMetricsMap.containsKey(library) ? duplicationMetricsMap.get(library) : emptyMapByLibrary.get(library);
+            metricsToAdd.calculateDerivedMetrics();
+            result.addMetric(metricsToAdd);
+        }
+
+        if (duplicationMetricsMap.size() == 1) {
+            result.setHistogram(duplicationMetricsMap.values().iterator().next().calculateRoiHistogram());
         }
 
         MetricsUtils.saveMetrics(result, metricsOutputPath);
@@ -503,6 +551,131 @@ public class MarkDuplicatesSparkUtils {
             }
 
             return Integer.compare(first.getFirstStartPosition(), second.getFirstStartPosition());
+        }
+    }
+
+
+    /**
+     * Counter for storing metrics data
+     */
+    static class MetricsAccumulator extends AccumulatorV2<GATKRead, Map<String, DuplicationMetrics>> implements Serializable {
+        Map<String, DuplicationMetrics> libraryMap;
+        SAMFileHeader header;
+
+        public MetricsAccumulator(SAMFileHeader header) {
+            libraryMap = new HashMap<>();
+            this.header = header;
+        }
+
+        @Override
+        public boolean isZero() {
+            return libraryMap.isEmpty();
+        }
+
+        @Override
+        public AccumulatorV2<GATKRead, Map<String, DuplicationMetrics>> copy() {
+            MetricsAccumulator copy = new MetricsAccumulator(header);
+            copy.merge(this);
+            return copy;
+        }
+
+        @Override
+        public void reset() {
+
+        }
+
+        @Override
+        public void add(GATKRead read) {
+            if (!read.isSecondaryAlignment() && !read.isSupplementaryAlignment()) {
+                final String library = LibraryIdGenerator.getLibraryName(header, read.getReadGroup());
+                DuplicationMetrics metrics = libraryMap.getOrDefault(library, new DuplicationMetrics());
+                if (read.isUnmapped()) {
+                    ++metrics.UNMAPPED_READS;
+                } else if (!read.isPaired() || read.mateIsUnmapped()) {
+                    ++metrics.UNPAIRED_READS_EXAMINED;
+                } else {
+                    ++metrics.READ_PAIRS_EXAMINED;
+                }
+
+                if (read.isDuplicate()) {
+                    if (!read.isPaired() || read.mateIsUnmapped()) {
+                        ++metrics.UNPAIRED_READ_DUPLICATES;
+                    } else {
+                        ++metrics.READ_PAIR_DUPLICATES;
+                    }
+                }
+                if (read.hasAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME)) {
+                    metrics.READ_PAIR_OPTICAL_DUPLICATES +=
+                            read.getAttributeAsInteger(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME);
+                }
+                libraryMap.putIfAbsent(library, metrics);
+            }
+        }
+
+        @Override
+        public void merge(AccumulatorV2<GATKRead, Map<String, DuplicationMetrics>> otherMetrics){
+            if (libraryMap.isEmpty()) {
+                libraryMap = otherMetrics.value();
+            } else {
+                for (Map.Entry<String, DuplicationMetrics> entry :  otherMetrics.value().entrySet()) {
+                    if (libraryMap.containsKey(entry.getKey())) {
+                        DuplicationMetrics m = entry.getValue();
+                        DuplicationMetrics metricsSum = libraryMap.get(entry.getKey());
+                        metricsSum.UNMAPPED_READS += m.UNMAPPED_READS;
+                        metricsSum.UNPAIRED_READS_EXAMINED += m.UNPAIRED_READS_EXAMINED;
+                        metricsSum.READ_PAIRS_EXAMINED += m.READ_PAIRS_EXAMINED;
+                        metricsSum.UNPAIRED_READ_DUPLICATES += m.UNPAIRED_READ_DUPLICATES;
+                        metricsSum.READ_PAIR_DUPLICATES += m.READ_PAIR_DUPLICATES;
+                        metricsSum.READ_PAIR_OPTICAL_DUPLICATES += m.READ_PAIR_OPTICAL_DUPLICATES;
+                        //TODO check this
+                    } else {
+                        libraryMap.put(entry.getKey(), entry.getValue());
+                    }
+                }
+            }
+        }
+
+        @Override
+        public Map<String, DuplicationMetrics> value() {
+            return libraryMap;
+        }
+    }
+
+    /**
+     * Counter for storing metrics data
+     */
+    static public class DummyAccumulator extends AccumulatorV2<Integer, Integer> implements Serializable {
+        public static final long serialVersionUID = 1L;
+
+        @Override
+        public boolean isZero() {
+            return false;
+        }
+
+        @Override
+        public AccumulatorV2<Integer, Integer> copy() {
+            return null;
+        }
+
+
+        @Override
+        public void reset() {
+
+        }
+
+        @Override
+        public void add(Integer gatkRead) {
+
+        }
+
+        @Override
+        public void merge(AccumulatorV2<Integer, Integer> accumulatorV2) {
+
+        }
+
+        @Override
+        public Integer value() {
+            return null;
         }
     }
 }
