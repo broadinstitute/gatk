@@ -15,7 +15,6 @@ import java.util.Arrays;
  */
 public class CNNVariantScoreIntegrationTest extends CommandLineProgramTest {
     private static String architecture1D = packageMainResourcesDir + "tools/walkers/vqsr/1d_cnn_mix_train_full_bn.json";
-    //private static String architecture2D = packageMainResourcesDir + "tools/walkers/vqsr/2d_cnn_mix_train.json";
     private static final String architecture2D = largeFileTestDir + "VQSR/tiny_2d_tf_model.json";
     private static final String inputVCF = largeFileTestDir + "VQSR/recalibrated_chr20_start.vcf";
 

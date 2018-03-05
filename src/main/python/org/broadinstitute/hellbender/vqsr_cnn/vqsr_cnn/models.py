@@ -343,8 +343,9 @@ def train_model_from_generators(args, model, generate_train, generate_valid, sav
                                   steps_per_epoch=args.training_steps, epochs=args.epochs, verbose=1,
                                   validation_steps=args.validation_steps, validation_data=generate_valid,
                                   callbacks=get_callbacks(args, save_weight_hd5))
+    if args.image_dir:
+        plots.plot_metric_history(history, plots.weight_path_to_title(save_weight_hd5), prefix=args.image_dir)
 
-    plots.plot_metric_history(history, plots.weight_path_to_title(save_weight_hd5))
     serialize_model_semantics(args, save_weight_hd5)
     print('Model weights saved at: %s' % save_weight_hd5)
 

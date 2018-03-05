@@ -81,6 +81,8 @@ def parse_args():
                         help='Directory of tensors, must be split into test/valid/train sets with directories for each label within.')
     parser.add_argument('--output_dir', default='./weights/',
                         help='Directory to write models or other data out.')
+    parser.add_argument('--image_dir', default=None,
+                        help='Directory to write images and plots to.')
     parser.add_argument('--reference_fasta',
                         help='The reference FASTA file (e.g. HG19 or HG38).')
 

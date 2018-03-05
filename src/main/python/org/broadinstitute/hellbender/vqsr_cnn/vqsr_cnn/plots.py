@@ -320,8 +320,6 @@ def plot_precision_recall_per_class_predictions(predictions, truth, labels, titl
 
 
 def plot_metric_history(history, title, prefix='./figures/'):
-    # list all data in history
-    print(history.history.keys())
     num_plots = len ([k for k in history.history.keys() if not 'val' in k])
 
     row = 0

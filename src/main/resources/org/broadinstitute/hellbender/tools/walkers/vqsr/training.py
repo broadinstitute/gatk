@@ -223,7 +223,8 @@ def train_on_reference_tensors_and_annotations(args):
     model = vqsr_cnn.train_model_from_generators(args, model, generate_train, generate_valid, weight_path)
 
     test = load_dna_annotations_positions_from_class_dirs(args, test_paths, per_class_max=args.samples)
-    vqsr_cnn.plot_roc_per_class(model, [test[0], test[1]], test[2], args.labels, args.id)
+    if args.image_dir:
+        vqsr_cnn.plot_roc_per_class(model, [test[0], test[1]], test[2], args.labels, args.id, prefix=args.image_dir)
 
 
 
@@ -250,7 +251,8 @@ def train_on_read_tensors_and_annotations(args):
     model = vqsr_cnn.train_model_from_generators(args, model, generate_train, generate_valid, weight_path)
 
     test = load_tensors_and_annotations_from_class_dirs(args, test_paths, per_class_max=args.samples)
-    vqsr_cnn.plot_roc_per_class(model, [test[0], test[1]], test[2], args.labels, args.id, batch_size=args.batch_size)
+    if args.image_dir:
+        vqsr_cnn.plot_roc_per_class(model, [test[0], test[1]], test[2], args.labels, args.id, prefix=args.image_dir, batch_size=args.batch_size)
 
 
 def train_tiny_model_on_read_tensors_and_annotations(args):
@@ -276,7 +278,8 @@ def train_tiny_model_on_read_tensors_and_annotations(args):
     model = vqsr_cnn.train_model_from_generators(args, model, generate_train, generate_valid, weight_path)
 
     test = load_tensors_and_annotations_from_class_dirs(args, test_paths, per_class_max=args.samples)
-    vqsr_cnn.plot_roc_per_class(model, [test[0], test[1]], test[2], args.labels, args.id, batch_size=args.batch_size)
+    if args.image_dir:
+        vqsr_cnn.plot_roc_per_class(model, [test[0], test[1]], test[2], args.labels, args.id, prefix=args.image_dir, batch_size=args.batch_size)
 
 
 
@@ -416,7 +419,6 @@ def get_base_to_sort_by(read, variant):
 
 def clamp(n, minn, maxn):
     return max(min(maxn, n), minn)
-
 
 
 def good_reads_to_tensor(args, good_reads, ref_start, insert_dict):

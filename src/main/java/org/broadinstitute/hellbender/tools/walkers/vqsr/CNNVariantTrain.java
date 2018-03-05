@@ -66,15 +66,11 @@ public class CNNVariantTrain extends CommandLineProgram {
     @Argument(fullName = "input-data-dir", shortName = "input-data-dir", doc = "Directory of training tensors, created if write-tensors is true, otherwise read.")
     private String dataDir;
 
-    @Argument(fullName = "output-dir", shortName = "output-dir", doc = "Directory where models and plots will be saved.")
+    @Argument(fullName = "output-dir", shortName = "output-dir", doc = "Directory where models will be saved.")
     private String outputDir;
 
     @Argument(fullName = "tensor-name", shortName = "tensor-name", doc = "Name of the tensors to generate, reference for 1D reference tensors and read_tensor for 2D tensors.", optional = true)
     private TensorMapEnum tensorMap = TensorMapEnum.reference;
-
-    @Hidden
-    @Argument(fullName = "annotation-set", shortName = "annotation-set", doc = "Which set of annotations to use.", optional = true)
-    private String annotationSet = "best_practices";
 
     @Argument(fullName = "model-name", shortName = "model-name", doc = "Name of the model to be trained.", optional = true)
     private String modelName = "variant_filter_model";
@@ -88,8 +84,15 @@ public class CNNVariantTrain extends CommandLineProgram {
     @Argument(fullName = "validation-steps", shortName = "validation-steps", doc = "Number of validation steps per epoch.", optional = true, minValue = 0)
     private int validationSteps = 2;
 
+    @Argument(fullName = "image-dir", shortName = "image-dir", doc = "Path where plots and figures are saved.", optional = true)
+    private String imageDir = null;
+
     @Argument(fullName = "channels-last", shortName = "channels-last", doc = "Store the channels in the last axis of tensors, tensorflow->true, theano->false", optional = true)
     private boolean channelsLast = true;
+
+    @Hidden
+    @Argument(fullName = "annotation-set", shortName = "annotation-set", doc = "Which set of annotations to use.", optional = true)
+    private String annotationSet = "best_practices";
 
     // Start the Python executor. This does not actually start the Python process, but fails if python can't be located
     final PythonScriptExecutor pythonExecutor = new PythonScriptExecutor(true);
@@ -115,8 +118,12 @@ public class CNNVariantTrain extends CommandLineProgram {
 
         if(channelsLast){
             arguments.add("--channels_last");
-        } else{
+        } else {
             arguments.add("--channels_first");
+        }
+
+        if(imageDir != null){
+            arguments.addAll(Arrays.asList("--image_dir", imageDir));
         }
 
         if (tensorMap == TensorMapEnum.reference) {
