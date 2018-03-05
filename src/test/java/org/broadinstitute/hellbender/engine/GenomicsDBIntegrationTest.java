@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
-import com.intel.genomicsdb.GenomicsDBUtils;
+import com.intel.genomicsdb.GenomicsDBImporter;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.SelectVariants;
@@ -30,7 +30,7 @@ public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testGenomicsDBInClassPath(){
         final String path = "/"+System.mapLibraryName("tiledbgenomicsdb");
-        Assert.assertNotNull(GenomicsDBUtils.class.getResource(path), "Could not find the genomicsdb binary at " + path);
+        Assert.assertNotNull(GenomicsDBImporter.class.getResource(path), "Could not find the genomicsdb binary at " + path);
     }
 
     @Test

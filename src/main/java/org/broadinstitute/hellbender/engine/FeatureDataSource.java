@@ -386,13 +386,23 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         }
 
         try {
+            //GT field is populated from TileDB/GenomicsDB rather than set to missing
+            final boolean produceGT = false;
+            //Sites only query - https://github.com/broadinstitute/gatk/issues/3688
+            final boolean sitesOnlyQuery = false;
+            //https://github.com/Intel-HLS/GenomicsDB/issues/161
+            final boolean produceGTWithMinPLVvalueForSpanningDeletions = false;
             return new GenomicsDBFeatureReader<>(vidmapJson.getAbsolutePath(),
                                                  callsetJson.getAbsolutePath(),
                                                  workspace.getAbsolutePath(),
                                                  GenomicsDBConstants.DEFAULT_ARRAY_NAME,
                                                  reference.getAbsolutePath(),
                                                  vcfHeader.getAbsolutePath(),
-                                                 new BCF2Codec());
+                                                 new BCF2Codec(),
+                                                 produceGT,
+                                                 sitesOnlyQuery,
+                                                 produceGTWithMinPLVvalueForSpanningDeletions
+                                                 );
         } catch (final IOException e) {
             throw new UserException("Couldn't create GenomicsDBFeatureReader", e);
         }
