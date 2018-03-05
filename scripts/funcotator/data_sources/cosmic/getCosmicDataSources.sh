@@ -18,6 +18,20 @@ PASSWORD=""
 
 ################################################################################
 
+function usage() {
+	echo "This script creates the cosmic data sources for the Funcotator GATK tool."
+	echo "It will download the raw data files from the COSMIC SFTP repository and "
+	echo "create 3 folders in the current working directory, one for each data"
+	echo "source:"
+	echo "    cosmic"
+	echo "    cosmic_tissue"
+	echo "    cosmic_fusion"
+	echo "Note: This script requires an account with COSMIC and will prompt the "
+	echo "      user to input these credentials in order to download the raw data."
+}
+
+################################################################################
+
 function createConfigFile() {
 
     dataSourceName=$1
@@ -85,8 +99,16 @@ function createConfigFile() {
 
 ################################################################################
 
-echo "This script will create a \`cosmic\` folder with subfolders for each reference."
-echo "Then it will download the raw data sources from the COSMIC SFTP repository."
+if [[ $# -gt 0 ]] ; then
+	usage
+	exit 0
+fi
+
+################################################################################
+
+echo "This script creates the cosmic data sources for the Funcotator GATK tool."
+echo ""
+echo "For usage information run with the '-h' option"
 echo ""
 echo "To retrieve the COSMIC data sources you must have a COSMIC account."
 echo "Please enter your COSMIC account credentials:"

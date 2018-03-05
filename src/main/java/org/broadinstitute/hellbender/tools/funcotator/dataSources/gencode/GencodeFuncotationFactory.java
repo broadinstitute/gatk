@@ -920,21 +920,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         ParamUtils.isPositive(numberOfExonsInTranscript, "Number of exons in transcript must be positive (given: " +numberOfExonsInTranscript + ")");
         Utils.nonNull(sequenceComparison);
 
-//        // Get our start position:
-//        final int startPos = sequenceComparison.getAlleleStart();
-//
-//        // Determine end position based on whichever allele is longer:
-//        final int endPos;
-//        if ( altAllele.length() >= variant.getReference().length()  ) {
-//            endPos = sequenceComparison.getAlleleStart() + altAllele.length() - 1;
-//        }
-//        else {
-//            endPos = sequenceComparison.getAlleleStart() + variant.getReference().length() - 1;
-//        }
-
-//        // Calculate the number of inserted bases so we can account for them in the splice site calculations:
-//        final int numInsertedBases = (altAllele.length() > variant.getReference().length()) ? altAllele.length() - variant.getReference().length() : 0;
-
         GencodeFuncotation.VariantClassification varClass = null;
 
         boolean hasBeenClassified = false;
@@ -1293,9 +1278,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
             // Get the reference sequence:
              return new String(reference.getBases(
-//                    new SimpleInterval(reference.getWindow().getContig(),
-//                            reference.getWindow().getStart() - referenceWindow + deletionStartAdjustment,
-//                            reference.getWindow().getEnd() + referenceWindow)
                      new SimpleInterval(reference.getWindow().getContig(),
                              reference.getWindow().getStart() - referenceWindow,
                              reference.getWindow().getEnd() + endWindow)
@@ -1316,9 +1298,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             //       the front of the query interval.
             return ReadUtils.getBasesReverseComplement(
                     reference.getBases(
-//                            new SimpleInterval(reference.getWindow().getContig(),
-//                                    reference.getWindow().getStart() - referenceWindow + deletionStartAdjustment,
-//                                    reference.getWindow().getEnd() + referenceWindow)
                             new SimpleInterval(reference.getWindow().getContig(),
                                     reference.getWindow().getStart() - frontPadding,
                                     reference.getWindow().getEnd() + referenceWindow)

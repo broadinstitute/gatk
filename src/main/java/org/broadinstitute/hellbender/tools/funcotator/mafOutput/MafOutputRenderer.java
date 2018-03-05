@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFacto
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotator;
 import org.broadinstitute.hellbender.tools.funcotator.OutputRenderer;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -40,21 +41,6 @@ public class MafOutputRenderer extends OutputRenderer {
     // Private Static Members:
 
     /**
-     * The string representing a comment in a MAF file.
-     */
-    protected static final String COMMENT_STRING = "#";
-
-    /**
-     * Value to insert into columns with unspecified annotations.
-     */
-    protected static final String UNKNOWN_VALUE_STRING = "__UNKNOWN__";
-
-    /**
-     * Value to insert into unused annotation columns.
-     */
-    protected static final String UNUSED_STRING = "NA";
-
-    /**
      * Default set of columns to include in this {@link MafOutputRenderer}.
      * Order of the columns is preserved by the {@link LinkedHashMap}, while still being able to access each field via
      * the associated key.
@@ -71,11 +57,6 @@ public class MafOutputRenderer extends OutputRenderer {
      * dataSourceFieldName1 will be used as the outputField.
      */
     private static final Map<String, List<String>> outputFieldNameMap = new LinkedHashMap<>();
-
-    /**
-     * Delimiter for fields in the output MAF file.
-     */
-    private static final String FIELD_DELIMITER = "\t";
 
     //==================================================================================================================
     // Private Members:
@@ -177,7 +158,7 @@ public class MafOutputRenderer extends OutputRenderer {
                         }
                     }
                     if ( !found ) {
-                        defaultMap.put(field, UNKNOWN_VALUE_STRING);
+                        defaultMap.put(field, MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
                     }
                 }
             }
@@ -211,11 +192,11 @@ public class MafOutputRenderer extends OutputRenderer {
         }
 
         // Set values for unused fields:
-        defaultMap.put("Score", UNUSED_STRING);
-        defaultMap.put("BAM_File", UNUSED_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Score, MafOutputRendererConstants.UNUSED_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_BAM_File, MafOutputRendererConstants.UNUSED_STRING);
 
         // Cache the manual annotation string so we can pass it easily into any Funcotations:
-        manualAnnotationSerializedString = (manualAnnotations.size() != 0 ? FIELD_DELIMITER + String.join( FIELD_DELIMITER, manualAnnotations.values() ) + FIELD_DELIMITER : "");
+        manualAnnotationSerializedString = (manualAnnotations.size() != 0 ? MafOutputRendererConstants.FIELD_DELIMITER + String.join( MafOutputRendererConstants.FIELD_DELIMITER, manualAnnotations.values() ) + MafOutputRendererConstants.FIELD_DELIMITER : "");
     }
 
     //==================================================================================================================
@@ -285,7 +266,7 @@ public class MafOutputRenderer extends OutputRenderer {
 
             // Write the output (with manual annotations at the end):
             writeLine(
-                    mafCompliantOutputMap.values().stream().collect(Collectors.joining(FIELD_DELIMITER))
+                    mafCompliantOutputMap.values().stream().collect(Collectors.joining(MafOutputRendererConstants.FIELD_DELIMITER))
                     + manualAnnotationSerializedString
             );
         }
@@ -313,14 +294,15 @@ public class MafOutputRenderer extends OutputRenderer {
         }
 
         // Massage the OtherTranscripts field:
-        finalOutMap.put("Other_Transcripts", finalOutMap.get("Other_Transcripts").replaceAll(VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER, "|"));
+        finalOutMap.put(MafOutputRendererConstants.FieldName_Other_Transcripts, finalOutMap.get(MafOutputRendererConstants.FieldName_Other_Transcripts).replaceAll(VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER, MafOutputRendererConstants.FieldValue_Other_Transcripts_Delimiter));
 
         // Massage the start/end/alleles in the case of INDELs
         // (Because MAF has different conventions from VCF for start/end positions of INDELs)
-        if ( finalOutMap.get("Variant_Type").equals("INS") || finalOutMap.get("Variant_Type").equals("DEL") ) {
+        if ( finalOutMap.get(MafOutputRendererConstants.FieldName_Variant_Type).equals(MafOutputRendererConstants.FieldValue_Variant_Type_Insertion) ||
+             finalOutMap.get(MafOutputRendererConstants.FieldName_Variant_Type).equals(MafOutputRendererConstants.FieldValue_Variant_Type_Deletion) ) {
 
-            final int refAlleleLength = finalOutMap.get("Reference_Allele").length();
-            final int altAlleleLength = finalOutMap.get("Tumor_Seq_Allele2").length();
+            final int refAlleleLength = finalOutMap.get(MafOutputRendererConstants.FieldName_Reference_Allele).length();
+            final int altAlleleLength = finalOutMap.get(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele2).length();
 
             // TODO: port these changes to GencodeFuncotationFactory (issue: https://github.com/broadinstitute/gatk/issues/4378)
             // Check to see if it's an insertion:
@@ -330,10 +312,10 @@ public class MafOutputRenderer extends OutputRenderer {
                 //    Replace the ref_allele with "-"
                 //    Replace the Tumor_Seq_Allele1 with "-"
                 //    Set the End_Position to be Start_Position + 1 (All Insertions should have length 1 to represent the bases between which the insertion occurs).
-                finalOutMap.put("Tumor_Seq_Allele2", finalOutMap.get("Tumor_Seq_Allele2").substring(refAlleleLength));
-                finalOutMap.put("Reference_Allele", "-");
-                finalOutMap.put("Tumor_Seq_Allele1", "-");
-                finalOutMap.put("End_Position", String.valueOf(Integer.valueOf(finalOutMap.get("Start_Position")) + 1));
+                finalOutMap.put(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele2, finalOutMap.get(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele2).substring(refAlleleLength));
+                finalOutMap.put(MafOutputRendererConstants.FieldName_Reference_Allele,  MafOutputRendererConstants.EmptyAllele);
+                finalOutMap.put(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele1, MafOutputRendererConstants.EmptyAllele);
+                finalOutMap.put(MafOutputRendererConstants.FieldName_End_Position, String.valueOf(Integer.valueOf(finalOutMap.get(MafOutputRendererConstants.FieldName_Start_Position)) + 1));
             }
             // Check to see if it's a deletion:
             else if ( refAlleleLength > altAlleleLength ) {
@@ -343,11 +325,11 @@ public class MafOutputRenderer extends OutputRenderer {
                 //    Replace the alt_allele with "-"
                 //    Increment the Start_Position by 1 (start position should be inclusive of the first base deleted)
                 //    Increment the End_Position by M-1 where M = length(ref_allele) (end position should be inclusive of the last base deleted)
-                finalOutMap.put("Reference_Allele", finalOutMap.get("Reference_Allele").substring(altAlleleLength));
-                finalOutMap.put("Tumor_Seq_Allele1", finalOutMap.get("Tumor_Seq_Allele1").substring(altAlleleLength));
-                finalOutMap.put("Tumor_Seq_Allele2", "-");
-                finalOutMap.put("Start_Position", String.valueOf(Integer.valueOf(finalOutMap.get("Start_Position")) + 1));
-                finalOutMap.put("End_Position", String.valueOf(Integer.valueOf(finalOutMap.get("End_Position")) + refAlleleLength - 1));
+                finalOutMap.put(MafOutputRendererConstants.FieldName_Reference_Allele, finalOutMap.get(MafOutputRendererConstants.FieldName_Reference_Allele).substring(altAlleleLength));
+                finalOutMap.put(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele1, finalOutMap.get(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele1).substring(altAlleleLength));
+                finalOutMap.put(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele2, MafOutputRendererConstants.EmptyAllele);
+                finalOutMap.put(MafOutputRendererConstants.FieldName_Start_Position, String.valueOf(Integer.valueOf(finalOutMap.get(MafOutputRendererConstants.FieldName_Start_Position)) + 1));
+                finalOutMap.put(MafOutputRendererConstants.FieldName_End_Position, String.valueOf(Integer.valueOf(finalOutMap.get(MafOutputRendererConstants.FieldName_End_Position)) + refAlleleLength - 1));
             }
         }
 
@@ -361,58 +343,43 @@ public class MafOutputRenderer extends OutputRenderer {
      * @return The MAF-valid equivalent of the given {@code value}.
      */
     private String mafTransform(final String key, final String value) {
-        if ( key.equals("Variant_Classification") ) {
-            switch(value) {
-                case "IN_FRAME_DEL":             return "In_Frame_Del";
-                case "IN_FRAME_INS":             return "In_Frame_Ins";
-                case "FRAME_SHIFT_INS":          return "Frame_Shift_Ins";
-                case "FRAME_SHIFT_DEL":          return "Frame_Shift_Del";
-                case "MISSENSE":                 return "Missense_Mutation";
-                case "NONSENSE":                 return "Nonsense_Mutation";
-                case "SILENT":                   return "Silent";
-                case "SPLICE_SITE":              return "Splice_Site";
-                case "DE_NOVO_START_IN_FRAME":
-                case "DE_NOVO_START_OUT_FRAME":
-                case "START_CODON_SNP":
-                case "START_CODON_INS":
-                case "START_CODON_DEL":          return "Translation_Start_Site";
-                case "NONSTOP":                  return "Nonstop_Mutation";
-                case "FIVE_PRIME_UTR":           return "5'UTR";
-                case "THREE_PRIME_UTR":          return "3'UTR";
-                case "FIVE_PRIME_FLANK":         return "5'Flank";
-                case "INTRON":                   return "Intron";
-                case "LINCRNA":                  return "RNA";
-            }
-        }
-        else if ( key.equals("Chromosome") ) {
-            if ( value.equals("chrM") ) {
-                return "MT";
-            }
-            else if (value.startsWith("chr")) {
-                return value.substring(3);
-            }
-        }
-        else if ( key.equals("Other_Transcripts") ) {
-            return value.replaceAll("IN_FRAME_DEL", "In_Frame_Del")
-                .replaceAll( "IN_FRAME_DEL", "In_Frame_Del" )
-                .replaceAll( "IN_FRAME_INS", "In_Frame_Ins" )
-                .replaceAll( "FRAME_SHIFT_INS", "Frame_Shift_Ins" )
-                .replaceAll( "FRAME_SHIFT_DEL", "Frame_Shift_Del" )
-                .replaceAll( "MISSENSE", "Missense_Mutation" )
-                .replaceAll( "NONSENSE", "Nonsense_Mutation" )
-                .replaceAll( "SILENT", "Silent" )
-                .replaceAll( "SPLICE_SITE", "Splice_Site" )
-                .replaceAll( "DE_NOVO_START_IN_FRAME", "Translation_Start_Site" )
-                .replaceAll( "DE_NOVO_START_OUT_FRAME", "Translation_Start_Site" )
-                .replaceAll( "START_CODON_SNP", "Translation_Start_Site" )
-                .replaceAll( "START_CODON_INS", "Translation_Start_Site" )
-                .replaceAll( "START_CODON_DEL", "Translation_Start_Site" )
-                .replaceAll( "NONSTOP", "Nonstop_Mutation" )
-                .replaceAll( "FIVE_PRIME_UTR", "5'UTR" )
-                .replaceAll( "THREE_PRIME_UTR", "3'UTR" )
-                .replaceAll( "FIVE_PRIME_FLANK", "5'Flank" )
-                .replaceAll( "INTRON", "Intron" )
-                .replaceAll( "LINCRNA", "RNA" );
+
+        switch (key) {
+            case MafOutputRendererConstants.FieldName_Variant_Classification:
+                if ( MafOutputRendererConstants.VariantClassificationMap.containsKey(value)) {
+                    return MafOutputRendererConstants.VariantClassificationMap.get(value);
+                }
+                break;
+                
+            case MafOutputRendererConstants.FieldName_Chromosome:
+                if ( value.equals(MafOutputRendererConstants.FieldValue_Gencode_Chromosome_Mito) ) {
+                    return MafOutputRendererConstants.FieldValue_Chromosome_Mito;
+                }
+                else if ( value.startsWith("chr") ) {
+                    return value.substring(3);
+                }
+                break;
+            case MafOutputRendererConstants.FieldName_Other_Transcripts:
+                return value.replaceAll( GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString(),        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString()) )
+                        .replaceAll( GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString(),            MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString()) )
+                        .replaceAll( GencodeFuncotation.VariantClassification.IN_FRAME_INS.toString(),            MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.IN_FRAME_INS.toString()) )
+                        .replaceAll( GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS.toString(),         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS.toString()) )
+                        .replaceAll( GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL.toString(),         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL.toString()) )
+                        .replaceAll( GencodeFuncotation.VariantClassification.MISSENSE.toString(),                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.MISSENSE.toString()) )
+                        .replaceAll( GencodeFuncotation.VariantClassification.NONSENSE.toString(),                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.NONSENSE.toString()) )
+                        .replaceAll( GencodeFuncotation.VariantClassification.SILENT.toString(),                  MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.SILENT.toString()) )
+                        .replaceAll( GencodeFuncotation.VariantClassification.SPLICE_SITE.toString(),             MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.SPLICE_SITE.toString()) )
+                        .replaceAll( GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME.toString(),  MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME.toString()) )
+                        .replaceAll( GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME.toString(), MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME.toString()) )
+                        .replaceAll( GencodeFuncotation.VariantClassification.START_CODON_SNP.toString(),         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.START_CODON_SNP.toString()) )
+                        .replaceAll( GencodeFuncotation.VariantClassification.START_CODON_INS.toString(),         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.START_CODON_INS.toString()) )
+                        .replaceAll( GencodeFuncotation.VariantClassification.START_CODON_DEL.toString(),         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.START_CODON_DEL.toString()) )
+                        .replaceAll( GencodeFuncotation.VariantClassification.NONSTOP.toString(),                 MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.NONSTOP.toString()) )
+                        .replaceAll( GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR.toString(),          MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR.toString()) )
+                        .replaceAll( GencodeFuncotation.VariantClassification.THREE_PRIME_UTR.toString(),         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.THREE_PRIME_UTR.toString()) )
+                        .replaceAll( GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK.toString(),        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK.toString()) )
+                        .replaceAll( GencodeFuncotation.VariantClassification.INTRON.toString(),                  MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.INTRON.toString()) )
+                        .replaceAll( GencodeFuncotation.VariantClassification.LINCRNA.toString(),                 MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.LINCRNA.toString()) );
         }
 
         return value;
@@ -434,7 +401,7 @@ public class MafOutputRenderer extends OutputRenderer {
             outputMap.put(key, value);
         }
         else {
-            outputMap.put(key, UNKNOWN_VALUE_STRING);
+            outputMap.put(key, MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
         }
     }
 
@@ -452,28 +419,28 @@ public class MafOutputRenderer extends OutputRenderer {
      */
     protected void writeHeader(final LinkedHashMap<String, String> outputMap) {
         // Write out version:
-        writeLine(COMMENT_STRING + "version " + VERSION);
-        writeLine(COMMENT_STRING + COMMENT_STRING);
+        writeLine(MafOutputRendererConstants.COMMENT_STRING + "version " + VERSION);
+        writeLine(MafOutputRendererConstants.COMMENT_STRING + MafOutputRendererConstants.COMMENT_STRING);
 
         // Write previous header info:
         for ( final VCFHeaderLine line : inputFileHeader.getMetaDataInInputOrder() ) {
-            printWriter.write(COMMENT_STRING);
-            printWriter.write(COMMENT_STRING);
+            printWriter.write(MafOutputRendererConstants.COMMENT_STRING);
+            printWriter.write(MafOutputRendererConstants.COMMENT_STRING);
             printWriter.write(" ");
             writeLine( line.toString() );
         }
 
         // Write any default tool header lines:
         for ( final String line : toolHeaderLines ) {
-            printWriter.write(COMMENT_STRING);
-            printWriter.write(COMMENT_STRING);
+            printWriter.write(MafOutputRendererConstants.COMMENT_STRING);
+            printWriter.write(MafOutputRendererConstants.COMMENT_STRING);
             printWriter.write(" ");
             writeLine(line);
         }
 
         // Write tool name and the data sources with versions:
-        printWriter.write(COMMENT_STRING);
-        printWriter.write(COMMENT_STRING);
+        printWriter.write(MafOutputRendererConstants.COMMENT_STRING);
+        printWriter.write(MafOutputRendererConstants.COMMENT_STRING);
         printWriter.write(" ");
         printWriter.write(" Funcotator ");
         printWriter.write(Funcotator.VERSION);
@@ -483,8 +450,8 @@ public class MafOutputRenderer extends OutputRenderer {
         writeLine("");
 
         // Write the column headers for our output set and our manual annotations:
-        printWriter.write( outputMap.keySet().stream().collect(Collectors.joining(FIELD_DELIMITER)) );
-        writeLine(FIELD_DELIMITER + manualAnnotations.keySet().stream().collect(Collectors.joining(FIELD_DELIMITER)));
+        printWriter.write( outputMap.keySet().stream().collect(Collectors.joining(MafOutputRendererConstants.FIELD_DELIMITER)) );
+        writeLine(MafOutputRendererConstants.FIELD_DELIMITER + manualAnnotations.keySet().stream().collect(Collectors.joining(MafOutputRendererConstants.FIELD_DELIMITER)));
 
         // Make sure we keep track of the fact that we've now written the header:
         hasWrittenHeader = true;
@@ -496,87 +463,88 @@ public class MafOutputRenderer extends OutputRenderer {
     protected void initializeDefaultMapWithKeys() {
         
         // Baseline required fields:
-        defaultMap.put("Hugo_Symbol",                                 UNKNOWN_VALUE_STRING );
-        defaultMap.put("Entrez_Gene_Id",                              UNKNOWN_VALUE_STRING );
-        defaultMap.put("Center",                                      UNKNOWN_VALUE_STRING );
-        defaultMap.put("NCBI_Build",                                  UNKNOWN_VALUE_STRING );
-        defaultMap.put("Chromosome",                                  UNKNOWN_VALUE_STRING );
-        defaultMap.put("Start_Position",                              UNKNOWN_VALUE_STRING );
-        defaultMap.put("End_Position",                                UNKNOWN_VALUE_STRING );
-        defaultMap.put("Strand",                                      "+" );
-        defaultMap.put("Variant_Classification",                      UNKNOWN_VALUE_STRING );
-        defaultMap.put("Variant_Type",                                UNKNOWN_VALUE_STRING );
-        defaultMap.put("Reference_Allele",                            UNKNOWN_VALUE_STRING );
-        defaultMap.put("Tumor_Seq_Allele1",                           UNKNOWN_VALUE_STRING );
-        defaultMap.put("Tumor_Seq_Allele2",                           UNKNOWN_VALUE_STRING );
-        defaultMap.put("dbSNP_RS",                                    UNKNOWN_VALUE_STRING );
-        defaultMap.put("dbSNP_Val_Status",                            UNKNOWN_VALUE_STRING );
-        defaultMap.put("Tumor_Sample_Barcode",                        UNKNOWN_VALUE_STRING );
-        defaultMap.put("Matched_Norm_Sample_Barcode",                 UNKNOWN_VALUE_STRING );
-        defaultMap.put("Match_Norm_Seq_Allele1",                      UNKNOWN_VALUE_STRING );
-        defaultMap.put("Match_Norm_Seq_Allele2",                      UNKNOWN_VALUE_STRING );
-        defaultMap.put("Tumor_Validation_Allele1",                    UNKNOWN_VALUE_STRING );
-        defaultMap.put("Tumor_Validation_Allele2",                    UNKNOWN_VALUE_STRING );
-        defaultMap.put("Match_Norm_Validation_Allele1",               UNKNOWN_VALUE_STRING );
-        defaultMap.put("Match_Norm_Validation_Allele2",               UNKNOWN_VALUE_STRING );
-        defaultMap.put("Verification_Status",                         UNKNOWN_VALUE_STRING );
-        defaultMap.put("Validation_Status",                           UNKNOWN_VALUE_STRING );
-        defaultMap.put("Mutation_Status",                             UNKNOWN_VALUE_STRING );
-        defaultMap.put("Sequencing_Phase",                            UNKNOWN_VALUE_STRING );
-        defaultMap.put("Sequence_Source",                             UNKNOWN_VALUE_STRING );
-        defaultMap.put("Validation_Method",                           UNKNOWN_VALUE_STRING );
-        defaultMap.put("Score",                                       UNKNOWN_VALUE_STRING );
-        defaultMap.put("BAM_File",                                    UNKNOWN_VALUE_STRING );
-        defaultMap.put("Sequencer",                                   UNKNOWN_VALUE_STRING );
-        defaultMap.put("Tumor_Sample_UUID",                           UNKNOWN_VALUE_STRING );
-        defaultMap.put("Matched_Norm_Sample_UUID",                    UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Hugo_Symbol                   ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Entrez_Gene_Id                ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Center                        ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_NCBI_Build                    ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Chromosome                    ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Start_Position                ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_End_Position                  ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Strand                        ,               MafOutputRendererConstants.FieldValue_Strand );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Variant_Classification        ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Variant_Type                  ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Reference_Allele              ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele1             ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele2             ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_dbSNP_RS                      ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_dbSNP_Val_Status              ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Tumor_Sample_Barcode          ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Matched_Norm_Sample_Barcode   ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Match_Norm_Seq_Allele1        ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Match_Norm_Seq_Allele2        ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Tumor_Validation_Allele1      ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Tumor_Validation_Allele2      ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Match_Norm_Validation_Allele1 ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Match_Norm_Validation_Allele2 ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Verification_Status           ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Validation_Status             ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Mutation_Status               ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Sequencing_Phase              ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Sequence_Source               ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Validation_Method             ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Score                         ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_BAM_File                      ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Sequencer                     ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Tumor_Sample_UUID             ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Matched_Norm_Sample_UUID      ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
 
         // Required "optional" fields:
-        defaultMap.put("Genome_Change",                               UNKNOWN_VALUE_STRING);
-        defaultMap.put("Annotation_Transcript",                       UNKNOWN_VALUE_STRING);
-        defaultMap.put("Transcript_Strand",                           UNKNOWN_VALUE_STRING);
-        defaultMap.put("Transcript_Exon",                             UNKNOWN_VALUE_STRING);
-        defaultMap.put("Transcript_Position",                         UNKNOWN_VALUE_STRING);
-        defaultMap.put("cDNA_Change",                                 UNKNOWN_VALUE_STRING);
-        defaultMap.put("Codon_Change",                                UNKNOWN_VALUE_STRING);
-        defaultMap.put("Protein_Change",                              UNKNOWN_VALUE_STRING);
-        defaultMap.put("Other_Transcripts",                           UNKNOWN_VALUE_STRING);
-        defaultMap.put("Refseq_mRNA_Id",                              UNKNOWN_VALUE_STRING);
-        defaultMap.put("Refseq_prot_Id",                              UNKNOWN_VALUE_STRING);
-        defaultMap.put("SwissProt_acc_Id",                            UNKNOWN_VALUE_STRING);
-        defaultMap.put("SwissProt_entry_Id",                          UNKNOWN_VALUE_STRING);
-        defaultMap.put("Description",                                 UNKNOWN_VALUE_STRING);
-        defaultMap.put("UniProt_AApos",                               UNKNOWN_VALUE_STRING);
-        defaultMap.put("UniProt_Region",                              UNKNOWN_VALUE_STRING);
-        defaultMap.put("UniProt_Site",                                UNKNOWN_VALUE_STRING);
-        defaultMap.put("UniProt_Natural_Variations",                  UNKNOWN_VALUE_STRING);
-        defaultMap.put("UniProt_Experimental_Info",                   UNKNOWN_VALUE_STRING);
-        defaultMap.put("GO_Biological_Process",                       UNKNOWN_VALUE_STRING);
-        defaultMap.put("GO_Cellular_Component",                       UNKNOWN_VALUE_STRING);
-        defaultMap.put("GO_Molecular_Function",                       UNKNOWN_VALUE_STRING);
-        defaultMap.put("COSMIC_overlapping_mutations",                UNKNOWN_VALUE_STRING);
-        defaultMap.put("COSMIC_fusion_genes",                         UNKNOWN_VALUE_STRING);
-        defaultMap.put("COSMIC_tissue_types_affected",                UNKNOWN_VALUE_STRING);
-        defaultMap.put("COSMIC_total_alterations_in_gene",            UNKNOWN_VALUE_STRING);
-        defaultMap.put("Tumorscape_Amplification_Peaks",              UNKNOWN_VALUE_STRING);
-        defaultMap.put("Tumorscape_Deletion_Peaks",                   UNKNOWN_VALUE_STRING);
-        defaultMap.put("TCGAscape_Amplification_Peaks",               UNKNOWN_VALUE_STRING);
-        defaultMap.put("TCGAscape_Deletion_Peaks",                    UNKNOWN_VALUE_STRING);
-        defaultMap.put("DrugBank",                                    UNKNOWN_VALUE_STRING);
-        defaultMap.put("ref_context",                                 UNKNOWN_VALUE_STRING);
-        defaultMap.put("gc_content",                                  UNKNOWN_VALUE_STRING);
-        defaultMap.put("CCLE_ONCOMAP_overlapping_mutations",          UNKNOWN_VALUE_STRING);
-        defaultMap.put("CCLE_ONCOMAP_total_mutations_in_gene",        UNKNOWN_VALUE_STRING);
-        defaultMap.put("CGC_Mutation_Type",                           UNKNOWN_VALUE_STRING);
-        defaultMap.put("CGC_Translocation_Partner",                   UNKNOWN_VALUE_STRING);
-        defaultMap.put("CGC_Tumor_Types_Somatic",                     UNKNOWN_VALUE_STRING);
-        defaultMap.put("CGC_Tumor_Types_Germline",                    UNKNOWN_VALUE_STRING);
-        defaultMap.put("CGC_Other_Diseases",                          UNKNOWN_VALUE_STRING);
-        defaultMap.put("DNARepairGenes_Activity_linked_to_OMIM",      UNKNOWN_VALUE_STRING);
-        defaultMap.put("FamilialCancerDatabase_Syndromes",            UNKNOWN_VALUE_STRING);
-        defaultMap.put("MUTSIG_Published_Results",                    UNKNOWN_VALUE_STRING);
-        defaultMap.put("OREGANNO_ID",                                 UNKNOWN_VALUE_STRING);
-        defaultMap.put("OREGANNO_Values",                             UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Genome_Change                          ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Annotation_Transcript                  ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Transcript_Strand                      ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Transcript_Exon                        ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Transcript_Position                    ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_cDNA_Change                            ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Codon_Change                           ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Protein_Change                         ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Other_Transcripts                      ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Refseq_mRNA_Id                         ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Refseq_prot_Id                         ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_SwissProt_acc_Id                       ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_SwissProt_entry_Id                     ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Description                            ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_UniProt_AApos                          ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_UniProt_Region                         ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_UniProt_Site                           ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_UniProt_Natural_Variations             ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_UniProt_Experimental_Info              ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_GO_Biological_Process                  ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_GO_Cellular_Component                  ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_GO_Molecular_Function                  ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_COSMIC_overlapping_mutations           ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_COSMIC_fusion_genes                    ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_COSMIC_tissue_types_affected           ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_COSMIC_total_alterations_in_gene       ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Tumorscape_Amplification_Peaks         ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Tumorscape_Deletion_Peaks              ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_TCGAscape_Amplification_Peaks          ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_TCGAscape_Deletion_Peaks               ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_DrugBank                               ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_ref_context                            ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_gc_content                             ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_CCLE_ONCOMAP_overlapping_mutations     ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_CCLE_ONCOMAP_total_mutations_in_gene   ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_CGC_Mutation_Type                      ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_CGC_Translocation_Partner              ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_CGC_Tumor_Types_Somatic                ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_CGC_Tumor_Types_Germline               ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_CGC_Other_Diseases                     ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_DNARepairGenes_Activity_linked_to_OMIM ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_FamilialCancerDatabase_Syndromes       ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_MUTSIG_Published_Results               ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_OREGANNO_ID                            ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_OREGANNO_Values                        ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_tumor_f                                ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
     }
 
     /**
@@ -584,91 +552,91 @@ public class MafOutputRenderer extends OutputRenderer {
      */
     private void initializeOutputFieldNameMap() {
 
-        outputFieldNameMap.put( "Hugo_Symbol",                             Arrays.asList("Hugo_Symbol", "Gencode_19_hugoSymbol", "gene", "Gene") );
-        outputFieldNameMap.put( "Entrez_Gene_Id",                          Arrays.asList("Entrez_Gene_Id", "HGNC_Entrez_Gene_ID", "HGNC_Entrez Gene ID", "HGNC_Entrez_Gene_ID(supplied_by_NCBI)", "HGNC_Entrez Gene ID(supplied by NCBI)", "entrez_id", "gene_id") );
-        outputFieldNameMap.put( "Center",                                  Arrays.asList("Center", "center") );
-        outputFieldNameMap.put( "NCBI_Build",                              Arrays.asList("NCBI_Build", "Gencode_19_ncbiBuild", "ncbi_build") );
-        outputFieldNameMap.put( "Chromosome",                              Arrays.asList("Chromosome", "Gencode_19_chromosome", "chr", "contig", "chromosome", "chrom", "Chrom") );
-        outputFieldNameMap.put( "Start_Position",                          Arrays.asList("Start_position", "Gencode_19_start", "start", "Start", "start_pos", "pos") );
-        outputFieldNameMap.put( "End_Position",                            Arrays.asList("End_position", "Gencode_19_end", "end", "End", "end_pos") );
-        outputFieldNameMap.put( "Strand",                                  Collections.singletonList("Strand") );
-        outputFieldNameMap.put( "Variant_Classification",                  Arrays.asList("Variant_Classification", "Gencode_19_variantClassification", "variant_classification") );
-        outputFieldNameMap.put( "Variant_Type",                            Arrays.asList("Variant_Type", "Gencode_19_variantType", "variant_type") );
-        outputFieldNameMap.put( "Reference_Allele",                        Arrays.asList("Reference_Allele", "Gencode_19_refAllele", "ref", "ref_allele", "reference_allele") );
-        outputFieldNameMap.put( "Tumor_Seq_Allele1",                       Arrays.asList("Tumor_Seq_Allele1", "Gencode_19_tumorSeqAllele1", "ref", "ref_allele", "reference_allele") );
-        outputFieldNameMap.put( "Tumor_Seq_Allele2",                       Arrays.asList("Tumor_Seq_Allele2", "Gencode_19_tumorSeqAllele2", "alt", "alt_allele", "alt2", "alt_allele2", "alternate_allele2", "observed_allele2", "alternate_allele", "observed_allele", "alt1", "alt_allele1", "alternate_allele1", "observed_allele1") );
-        outputFieldNameMap.put( "dbSNP_RS",                                Arrays.asList("dbSNP_RS", "dbsnp_rs") );
-        outputFieldNameMap.put( "dbSNP_Val_Status",                        Arrays.asList("dbSNP_Val_Status", "dbsnp_val_status") );
-        outputFieldNameMap.put( "Tumor_Sample_Barcode",                    Arrays.asList("Tumor_Sample_Barcode", "tumor_barcode", "tumor_id", "case_barcode", "case_id", "tumor_name") );
-        outputFieldNameMap.put( "Matched_Norm_Sample_Barcode",             Arrays.asList("Matched_Norm_Sample_Barcode", "normal_barcode", "normal_id", "control_barcode", "control_id", "normal_name", "sample_name") );
-        outputFieldNameMap.put( "Match_Norm_Seq_Allele1",                  Arrays.asList("Match_Norm_Seq_Allele1", "Match_Norm_Seq_Allele1") );
-        outputFieldNameMap.put( "Match_Norm_Seq_Allele2",                  Arrays.asList("Match_Norm_Seq_Allele2", "Match_Norm_Seq_Allele2") );
-        outputFieldNameMap.put( "Tumor_Validation_Allele1",                Arrays.asList("Tumor_Validation_Allele1", "Tumor_Validation_Allele1") );
-        outputFieldNameMap.put( "Tumor_Validation_Allele2",                Arrays.asList("Tumor_Validation_Allele2", "Tumor_Validation_Allele2") );
-        outputFieldNameMap.put( "Match_Norm_Validation_Allele1",           Arrays.asList("Match_Norm_Validation_Allele1", "Match_Norm_Validation_Allele1") );
-        outputFieldNameMap.put( "Match_Norm_Validation_Allele2",           Arrays.asList("Match_Norm_Validation_Allele2", "Match_Norm_Validation_Allele2") );
-        outputFieldNameMap.put( "Verification_Status",                     Arrays.asList("Verification_Status", "Verification_Status") );
-        outputFieldNameMap.put( "Validation_Status",                       Arrays.asList("Validation_Status", "validation_status") );
-        outputFieldNameMap.put( "Mutation_Status",                         Arrays.asList("Mutation_Status", "status") );
-        outputFieldNameMap.put( "Sequencing_Phase",                        Arrays.asList("Sequencing_Phase", "phase") );
-        outputFieldNameMap.put( "Sequence_Source",                         Arrays.asList("Sequence_Source", "source") );
-        outputFieldNameMap.put( "Validation_Method",                       Arrays.asList("Validation_Method", "Validation_Method") );
-        outputFieldNameMap.put( "Score",                                   Arrays.asList("Score", "Score") );
-        outputFieldNameMap.put( "BAM_file",                                Arrays.asList("BAM_file", "bam", "bam_file") );
-        outputFieldNameMap.put( "Sequencer",                               Arrays.asList("Sequencer", "sequencer", "platform") );
-        outputFieldNameMap.put( "Tumor_Sample_UUID",                       Arrays.asList("Tumor_Sample_UUID", "tumor_uuid", "case_uuid", "tumor_barcode", "tumor_id", "case_barcode", "case_id", "tumor_name", "Tumor_Sample_Barcode") );
-        outputFieldNameMap.put( "Matched_Norm_Sample_UUID",                Arrays.asList("Matched_Norm_Sample_UUID", "normal_uuid", "control_uuid", "normal_barcode", "normal_id", "control_barcode", "control_id", "normal_name", "sample_name", "Matched_Norm_Sample_Barcode") );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Hugo_Symbol                            , MafOutputRendererConstants.OutputFieldNameMap_Hugo_Symbol );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Entrez_Gene_Id                         , MafOutputRendererConstants.OutputFieldNameMap_Entrez_Gene_Id );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Center                                 , MafOutputRendererConstants.OutputFieldNameMap_Center );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_NCBI_Build                             , MafOutputRendererConstants.OutputFieldNameMap_NCBI_Build );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Chromosome                             , MafOutputRendererConstants.OutputFieldNameMap_Chromosome );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Start_Position                         , MafOutputRendererConstants.OutputFieldNameMap_Start_Position );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_End_Position                           , MafOutputRendererConstants.OutputFieldNameMap_End_Position );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Strand                                 , MafOutputRendererConstants.OutputFieldNameMap_Strand );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Variant_Classification                 , MafOutputRendererConstants.OutputFieldNameMap_Variant_Classification );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Variant_Type                           , MafOutputRendererConstants.OutputFieldNameMap_Variant_Type );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Reference_Allele                       , MafOutputRendererConstants.OutputFieldNameMap_Reference_Allele );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Tumor_Seq_Allele1                      , MafOutputRendererConstants.OutputFieldNameMap_Tumor_Seq_Allele1 );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Tumor_Seq_Allele2                      , MafOutputRendererConstants.OutputFieldNameMap_Tumor_Seq_Allele2 );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_dbSNP_RS                               , MafOutputRendererConstants.OutputFieldNameMap_dbSNP_RS );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_dbSNP_Val_Status                       , MafOutputRendererConstants.OutputFieldNameMap_dbSNP_Val_Status );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Tumor_Sample_Barcode                   , MafOutputRendererConstants.OutputFieldNameMap_Tumor_Sample_Barcode );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Matched_Norm_Sample_Barcode            , MafOutputRendererConstants.OutputFieldNameMap_Matched_Norm_Sample_Barcode );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Match_Norm_Seq_Allele1                 , MafOutputRendererConstants.OutputFieldNameMap_Match_Norm_Seq_Allele1 );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Match_Norm_Seq_Allele2                 , MafOutputRendererConstants.OutputFieldNameMap_Match_Norm_Seq_Allele2 );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Tumor_Validation_Allele1               , MafOutputRendererConstants.OutputFieldNameMap_Tumor_Validation_Allele1 );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Tumor_Validation_Allele2               , MafOutputRendererConstants.OutputFieldNameMap_Tumor_Validation_Allele2 );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Match_Norm_Validation_Allele1          , MafOutputRendererConstants.OutputFieldNameMap_Match_Norm_Validation_Allele1 );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Match_Norm_Validation_Allele2          , MafOutputRendererConstants.OutputFieldNameMap_Match_Norm_Validation_Allele2 );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Verification_Status                    , MafOutputRendererConstants.OutputFieldNameMap_Verification_Status );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Validation_Status                      , MafOutputRendererConstants.OutputFieldNameMap_Validation_Status );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Mutation_Status                        , MafOutputRendererConstants.OutputFieldNameMap_Mutation_Status );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Sequencing_Phase                       , MafOutputRendererConstants.OutputFieldNameMap_Sequencing_Phase );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Sequence_Source                        , MafOutputRendererConstants.OutputFieldNameMap_Sequence_Source );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Validation_Method                      , MafOutputRendererConstants.OutputFieldNameMap_Validation_Method );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Score                                  , MafOutputRendererConstants.OutputFieldNameMap_Score );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_BAM_File                               , MafOutputRendererConstants.OutputFieldNameMap_BAM_File );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Sequencer                              , MafOutputRendererConstants.OutputFieldNameMap_Sequencer );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Tumor_Sample_UUID                      , MafOutputRendererConstants.OutputFieldNameMap_Tumor_Sample_UUID );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Matched_Norm_Sample_UUID               , MafOutputRendererConstants.OutputFieldNameMap_Matched_Norm_Sample_UUID );
 
-        outputFieldNameMap.put( "Genome_Change",                           Arrays.asList("Genome_Change", "Gencode_19_genomeChange", "genome_change") );
-        outputFieldNameMap.put( "Annotation_Transcript",                   Arrays.asList("Annotation_Transcript", "Gencode_19_annotationTranscript", "annotation_transcript", "transcript_id") );
-        outputFieldNameMap.put( "Transcript_Strand",                       Arrays.asList("Transcript_Strand", "Gencode_19_transcriptStrand", "transcript_strand") );
-        outputFieldNameMap.put( "Transcript_Exon",                         Arrays.asList("Transcript_Exon", "Gencode_19_transcriptExon", "transcript_exon") );
-        outputFieldNameMap.put( "Transcript_Position",                     Arrays.asList("Transcript_Position", "Gencode_19_transcriptPos", "transcript_position") );
-        outputFieldNameMap.put( "cDNA_Change",                             Arrays.asList("cDNA_Change", "Gencode_19_cDnaChange", "transcript_change") );
-        outputFieldNameMap.put( "Codon_Change",                            Arrays.asList("Codon_Change", "Gencode_19_codonChange", "codon_change") );
-        outputFieldNameMap.put( "Protein_Change",                          Arrays.asList("Protein_Change", "Gencode_19_proteinChange", "protein_change") );
-        outputFieldNameMap.put( "Other_Transcripts",                       Arrays.asList("Other_Transcripts", "Gencode_19_otherTranscripts", "other_transcripts") );
-        outputFieldNameMap.put( "Refseq_mRNA_Id",                          Arrays.asList("Refseq_mRNA_Id", "Gencode_XRefSeq_mRNA_id", "gencode_xref_refseq_mRNA_id", "ENSEMBL_RefSeq_mRNA_accession", "RefSeq_mRNA_Id", "HGNC_RefSeq IDs") );
-        outputFieldNameMap.put( "Refseq_prot_Id",                          Arrays.asList("Refseq_prot_Id", "Gencode_XRefSeq_prot_acc", "gencode_xref_refseq_prot_acc", "ENSEMBL_RefSeq_protein_accession", "RefSeq_prot_Id") );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Genome_Change                          , MafOutputRendererConstants.OutputFieldNameMap_Genome_Change );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Annotation_Transcript                  , MafOutputRendererConstants.OutputFieldNameMap_Annotation_Transcript );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Transcript_Strand                      , MafOutputRendererConstants.OutputFieldNameMap_Transcript_Strand );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Transcript_Exon                        , MafOutputRendererConstants.OutputFieldNameMap_Transcript_Exon );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Transcript_Position                    , MafOutputRendererConstants.OutputFieldNameMap_Transcript_Position );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_cDNA_Change                            , MafOutputRendererConstants.OutputFieldNameMap_cDNA_Change );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Codon_Change                           , MafOutputRendererConstants.OutputFieldNameMap_Codon_Change );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Protein_Change                         , MafOutputRendererConstants.OutputFieldNameMap_Protein_Change );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Other_Transcripts                      , MafOutputRendererConstants.OutputFieldNameMap_Other_Transcripts );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Refseq_mRNA_Id                         , MafOutputRendererConstants.OutputFieldNameMap_Refseq_mRNA_Id );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Refseq_prot_Id                         , MafOutputRendererConstants.OutputFieldNameMap_Refseq_prot_Id );
 
-        outputFieldNameMap.put( "SwissProt_acc_Id",                        Arrays.asList("SwissProt_acc_Id", "Simple_Uniprot_uniprot_accession", "uniprot_accession", "UniProt_uniprot_accession") );
-        outputFieldNameMap.put( "SwissProt_entry_Id",                      Arrays.asList("SwissProt_entry_Id", "Simple_Uniprot_uniprot_entry_name", "uniprot_entry_name", "UniProt_uniprot_entry_name") );
-        outputFieldNameMap.put( "Description",                             Arrays.asList("Description", "RefSeq_Description", "HGNC_Approved_Name", "HGNC_Approved Name") );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_SwissProt_acc_Id                       , MafOutputRendererConstants.OutputFieldNameMap_SwissProt_acc_Id );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_SwissProt_entry_Id                     , MafOutputRendererConstants.OutputFieldNameMap_SwissProt_entry_Id );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Description                            , MafOutputRendererConstants.OutputFieldNameMap_Description );
 
-        outputFieldNameMap.put( "UniProt_AApos",                           Arrays.asList("UniProt_AApos", "UniProt_AAxform_aapos", "uniprot_AA_pos") );
-        outputFieldNameMap.put( "UniProt_Region",                          Arrays.asList("UniProt_Region", "UniProt_AA_region") );
-        outputFieldNameMap.put( "UniProt_Site",                            Arrays.asList("UniProt_Site", "UniProt_AA_site") );
-        outputFieldNameMap.put( "UniProt_Natural_Variations",              Arrays.asList("UniProt_Natural_Variations", "UniProt_AA_natural_variation") );
-        outputFieldNameMap.put( "UniProt_Experimental_Info",               Arrays.asList("UniProt_Experimental_Info", "UniProt_AA_experimental_info") );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_UniProt_AApos                          , MafOutputRendererConstants.OutputFieldNameMap_UniProt_AApos );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_UniProt_Region                         , MafOutputRendererConstants.OutputFieldNameMap_UniProt_Region );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_UniProt_Site                           , MafOutputRendererConstants.OutputFieldNameMap_UniProt_Site );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_UniProt_Natural_Variations             , MafOutputRendererConstants.OutputFieldNameMap_UniProt_Natural_Variations );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_UniProt_Experimental_Info              , MafOutputRendererConstants.OutputFieldNameMap_UniProt_Experimental_Info );
 
-        outputFieldNameMap.put( "GO_Biological_Process",                   Arrays.asList("GO_Biological_Process", "Simple_Uniprot_GO_Biological_Process", "UniProt_GO_Biological_Process") );
-        outputFieldNameMap.put( "GO_Cellular_Component",                   Arrays.asList("GO_Cellular_Component", "Simple_Uniprot_GO_Cellular_Component", "UniProt_GO_Cellular_Component") );
-        outputFieldNameMap.put( "GO_Molecular_Function",                   Arrays.asList("GO_Molecular_Function", "Simple_Uniprot_GO_Molecular_Function", "UniProt_GO_Molecular_Function") );
-        outputFieldNameMap.put( "COSMIC_overlapping_mutations",            Arrays.asList("Cosmic_overlapping_mutations", "COSMIC_overlapping_mutations", "COSMIC_overlapping_mutation_AAs") );
-        outputFieldNameMap.put( "COSMIC_fusion_genes",                     Arrays.asList("COSMIC_fusion_genes", "CosmicFusion_fusion_genes", "COSMIC_FusionGenes_fusion_genes") );
-        outputFieldNameMap.put( "COSMIC_tissue_types_affected",            Arrays.asList("CosmicTissue_tissue_types_affected", "COSMIC_tissue_types_affected", "COSMIC_Tissue_tissue_types_affected") );
-        outputFieldNameMap.put( "COSMIC_total_alterations_in_gene",        Arrays.asList("CosmicTissue_total_alterations_in_gene", "COSMIC_total_alterations_in_gene", "COSMIC_Tissue_total_alterations_in_gene") );
-        outputFieldNameMap.put( "Tumorscape_Amplification_Peaks",          Arrays.asList("Tumorscape_Amplification_Peaks", "TUMORScape_Amplification_Peaks") );
-        outputFieldNameMap.put( "Tumorscape_Deletion_Peaks",               Arrays.asList("Tumorscape_Deletion_Peaks", "TUMORScape_Deletion_Peaks") );
-        outputFieldNameMap.put( "TCGAscape_Amplification_Peaks",           Arrays.asList("TCGAscape_Amplification_Peaks", "TCGAScape_Amplification_Peaks") );
-        outputFieldNameMap.put( "TCGAscape_Deletion_Peaks",                Arrays.asList("TCGAscape_Deletion_Peaks", "TCGAScape_Deletion_Peaks") );
-        outputFieldNameMap.put( "DrugBank",                                Arrays.asList("DrugBank", "Simple_Uniprot_DrugBank", "UniProt_DrugBank") );
-        outputFieldNameMap.put( "ref_context",                             Arrays.asList("ref_context", "Gencode_19_referenceContext", "ref_context") );
-        outputFieldNameMap.put( "gc_content",                              Arrays.asList("gc_content", "Gencode_19_gcContent", "gc_content") );
-        outputFieldNameMap.put( "CCLE_ONCOMAP_overlapping_mutations",      Arrays.asList("CCLE_ONCOMAP_overlapping_mutations", "CCLE_By_GP_overlapping_mutations") );
-        outputFieldNameMap.put( "CCLE_ONCOMAP_total_mutations_in_gene",    Arrays.asList("CCLE_ONCOMAP_total_mutations_in_gene", "CCLE_By_Gene_total_mutations_in_gene") );
-        outputFieldNameMap.put( "CGC_Mutation_Type",                       Arrays.asList("CGC_Mutation_Type", "CGC_Mutation Type") );
-        outputFieldNameMap.put( "CGC_Translocation_Partner",               Arrays.asList("CGC_Translocation_Partner", "CGC_Translocation Partner") );
-        outputFieldNameMap.put( "CGC_Tumor_Types_Somatic",                 Arrays.asList("CGC_Tumor_Types_Somatic", "CGC_Tumour Types  (Somatic Mutations)") );
-        outputFieldNameMap.put( "CGC_Tumor_Types_Germline",                Arrays.asList("CGC_Tumor_Types_Germline", "CGC_Tumour Types (Germline Mutations)") );
-        outputFieldNameMap.put( "CGC_Other_Diseases",                      Arrays.asList("CGC_Other_Diseases", "CGC_Other Syndrome/Disease") );
-        outputFieldNameMap.put( "DNARepairGenes_Activity_linked_to_OMIM",  Collections.singletonList("DNARepairGenes_Activity_linked_to_OMIM") );
-        outputFieldNameMap.put( "FamilialCancerDatabase_Syndromes",        Arrays.asList("FamilialCancerDatabase_Syndromes", "Familial_Cancer_Genes_Syndrome") );
-        outputFieldNameMap.put( "MUTSIG_Published_Results",                Arrays.asList("MUTSIG_Published_Results", "MutSig Published Results_Published_Results") );
-        outputFieldNameMap.put( "OREGANNO_ID",                             Arrays.asList("OREGANNO_ID", "Oreganno_ID", "ORegAnno_ID") );
-        outputFieldNameMap.put( "OREGANNO_Values",                         Arrays.asList("OREGANNO_Values", "Oreganno_Values", "ORegAnno_Values") );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_GO_Biological_Process                  , MafOutputRendererConstants.OutputFieldNameMap_GO_Biological_Process );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_GO_Cellular_Component                  , MafOutputRendererConstants.OutputFieldNameMap_GO_Cellular_Component );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_GO_Molecular_Function                  , MafOutputRendererConstants.OutputFieldNameMap_GO_Molecular_Function );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_COSMIC_overlapping_mutations           , MafOutputRendererConstants.OutputFieldNameMap_COSMIC_overlapping_mutations );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_COSMIC_fusion_genes                    , MafOutputRendererConstants.OutputFieldNameMap_COSMIC_fusion_genes );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_COSMIC_tissue_types_affected           , MafOutputRendererConstants.OutputFieldNameMap_COSMIC_tissue_types_affected );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_COSMIC_total_alterations_in_gene       , MafOutputRendererConstants.OutputFieldNameMap_COSMIC_total_alterations_in_gene );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Tumorscape_Amplification_Peaks         , MafOutputRendererConstants.OutputFieldNameMap_Tumorscape_Amplification_Peaks );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_Tumorscape_Deletion_Peaks              , MafOutputRendererConstants.OutputFieldNameMap_Tumorscape_Deletion_Peaks );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_TCGAscape_Amplification_Peaks          , MafOutputRendererConstants.OutputFieldNameMap_TCGAscape_Amplification_Peaks );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_TCGAscape_Deletion_Peaks               , MafOutputRendererConstants.OutputFieldNameMap_TCGAscape_Deletion_Peaks );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_DrugBank                               , MafOutputRendererConstants.OutputFieldNameMap_DrugBank );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_ref_context                            , MafOutputRendererConstants.OutputFieldNameMap_ref_context );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_gc_content                             , MafOutputRendererConstants.OutputFieldNameMap_gc_content );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_CCLE_ONCOMAP_overlapping_mutations     , MafOutputRendererConstants.OutputFieldNameMap_CCLE_ONCOMAP_overlapping_mutations );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_CCLE_ONCOMAP_total_mutations_in_gene   , MafOutputRendererConstants.OutputFieldNameMap_CCLE_ONCOMAP_total_mutations_in_gene );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_CGC_Mutation_Type                      , MafOutputRendererConstants.OutputFieldNameMap_CGC_Mutation_Type );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_CGC_Translocation_Partner              , MafOutputRendererConstants.OutputFieldNameMap_CGC_Translocation_Partner );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_CGC_Tumor_Types_Somatic                , MafOutputRendererConstants.OutputFieldNameMap_CGC_Tumor_Types_Somatic );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_CGC_Tumor_Types_Germline               , MafOutputRendererConstants.OutputFieldNameMap_CGC_Tumor_Types_Germline );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_CGC_Other_Diseases                     , MafOutputRendererConstants.OutputFieldNameMap_CGC_Other_Diseases );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_DNARepairGenes_Activity_linked_to_OMIM , MafOutputRendererConstants.OutputFieldNameMap_DNARepairGenes_Activity_linked_to_OMIM );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_FamilialCancerDatabase_Syndromes       , MafOutputRendererConstants.OutputFieldNameMap_FamilialCancerDatabase_Syndromes );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_MUTSIG_Published_Results               , MafOutputRendererConstants.OutputFieldNameMap_MUTSIG_Published_Results );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_OREGANNO_ID                            , MafOutputRendererConstants.OutputFieldNameMap_OREGANNO_ID );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_OREGANNO_Values                        , MafOutputRendererConstants.OutputFieldNameMap_OREGANNO_Values );
 
-        outputFieldNameMap.put( "tumor_f",                                 Arrays.asList("tumor_f", "sample_allelic_fraction", "AF") );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_tumor_f                                , MafOutputRendererConstants.OutputFieldNameMap_tumor_f );
     }
 
     //==================================================================================================================
@@ -760,5 +728,6 @@ public class MafOutputRenderer extends OutputRenderer {
 //78    MUTSIG_Published_Results
 //79    OREGANNO_ID
 //80    OREGANNO_Values
+//81    tumor_f
 
 }
