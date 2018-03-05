@@ -773,6 +773,88 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    @DataProvider
+    public Object[][] getMaxAlternateAllelesData() {
+        return new Object[][] {
+                // bam, reference, interval string, max alternate alleles, GVCF mode toggle
+                { NA12878_20_21_WGS_bam, b37_reference_20_21, "20:10000000-10010000", 1, false },
+                { NA12878_20_21_WGS_bam, b37_reference_20_21, "20:10000000-10010000", 2, true }
+        };
+    }
+
+    /*
+     * Test for the --max-alternate-alleles argument
+     */
+    @Test(dataProvider = "getMaxAlternateAllelesData")
+    public void testMaxAlternateAlleles(final String bam, final String reference, final String intervalString,
+                                        final int maxAlternateAlleles, final boolean gvcfMode) {
+        final File outputNoMaxAlternateAlleles = createTempFile("testMaxAlternateAllelesNoMaxAlternateAlleles", (gvcfMode ? ".g.vcf" : ".vcf"));
+        final File outputWithMaxAlternateAlleles = createTempFile("testMaxAlternateAllelesWithMaxAlternateAlleles", (gvcfMode ? ".g.vcf" : ".vcf"));
+
+        // Run both with and without --max-alternate-alleles over our interval, so that we can
+        // prove that the argument is working as intended.
+        final String[] argsNoMaxAlternateAlleles = {
+                "-I", bam,
+                "-R", reference,
+                "-L", intervalString,
+                "-O", outputNoMaxAlternateAlleles.getAbsolutePath(),
+                "-ERC", (gvcfMode ? "GVCF" : "NONE")
+        };
+        runCommandLine(argsNoMaxAlternateAlleles);
+
+        final String[] argsWithMaxAlternateAlleles = {
+                "-I", bam,
+                "-R", reference,
+                "-L", intervalString,
+                "-O", outputWithMaxAlternateAlleles.getAbsolutePath(),
+                "--max-alternate-alleles", Integer.toString(maxAlternateAlleles),
+                "-ERC", (gvcfMode ? "GVCF" : "NONE")
+        };
+        runCommandLine(argsWithMaxAlternateAlleles);
+
+        final List<VariantContext> callsNoMaxAlternateAlleles = VariantContextTestUtils.readEntireVCFIntoMemory(outputNoMaxAlternateAlleles.getAbsolutePath()).getRight();
+        final List<VariantContext> callsWithMaxAlternateAlleles = VariantContextTestUtils.readEntireVCFIntoMemory(outputWithMaxAlternateAlleles.getAbsolutePath()).getRight();
+
+        // First, assert that there is at least one call in the VCF produced WITHOUT --max-alternate-alleles
+        // that has more than maxAlternateAlleles alt alleles, excluding NON_REF (otherwise the test below
+        // won't be meaningful).
+        boolean sawTooManyAllelesWithoutMaxAlternateArg = false;
+        for ( final VariantContext vc : callsNoMaxAlternateAlleles ) {
+            if ( getNumAltAllelesExcludingNonRef(vc) > maxAlternateAlleles ) {
+                sawTooManyAllelesWithoutMaxAlternateArg = true;
+            }
+        }
+        Assert.assertTrue(sawTooManyAllelesWithoutMaxAlternateArg,
+                "Without --max-alternate-alleles, there should be at least one call in the output with more than " + maxAlternateAlleles +
+                        " alt alleles in order for this test to be meaningful");
+
+        // Then, assert that in the VCF produced WITH --max-alternate-alleles, there are no calls with
+        // more than maxAlternateAlleles alt alleles, excluding NON_REF
+        for ( final VariantContext vc : callsWithMaxAlternateAlleles ) {
+            Assert.assertTrue(getNumAltAllelesExcludingNonRef(vc) <= maxAlternateAlleles,
+                    "Number of alt alleles exceeds --max-alternate-alleles " + maxAlternateAlleles + " for VariantContext: " + vc);
+        }
+    }
+
+    /**
+     * Helper method for testMaxAlternateAlleles
+     *
+     * @param vc VariantContext to check
+     * @return number of alt alleles in vc, excluding NON_REF (if present)
+     */
+    private int getNumAltAllelesExcludingNonRef( final VariantContext vc ) {
+        final List<Allele> altAlleles = vc.getAlternateAlleles();
+        int numAltAllelesExcludingNonRef = 0;
+
+        for ( final Allele altAllele : altAlleles ) {
+            if ( ! altAllele.equals(Allele.NON_REF_ALLELE) ) {
+                ++numAltAllelesExcludingNonRef;
+            }
+        }
+
+        return numAltAllelesExcludingNonRef;
+    }
+
     /*
      * Calculate rough concordance between two vcfs, comparing only the positions, alleles, and the first genotype.
      */
