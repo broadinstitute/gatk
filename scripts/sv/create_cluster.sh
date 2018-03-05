@@ -99,7 +99,8 @@ gcloud beta dataproc clusters create ${CLUSTER_NAME} \
     --initialization-actions ${INIT_ACTION} \
     --initialization-action-timeout 10m \
     --max-age ${MAX_LIFE_HOURS} \
-    --max-idle ${MAX_IDLE_MINUTES}
+    --max-idle ${MAX_IDLE_MINUTES} \
+    --properties yarn:yarn.resourcemanager.am.max-attempts=5,mapred:mapreduce.map.maxattempts=8,mapred:mapreduce.reduce.maxattempts=8,spark:spark.task.maxFailures=8,spark:spark.stage.maxConsecutiveAttempts=8
 
 MASTER_NODE="hdfs://""$CLUSTER_NAME""-m:8020"
 
