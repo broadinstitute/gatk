@@ -137,8 +137,8 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
         Broadcast<SAMFileHeader> bHeader = ctx.broadcast(getHeaderForReads());
         // Group the reads of each BAM by MarkDuplicates key, then pair up the the reads for each BAM.
         //TODO these are probably horribly broken forever and they should be checked given the new key scheme
-        JavaPairRDD<Integer, GATKRead> firstKeyed = firstReads.mapToPair(read -> new Tuple2<>(ReadsKey.keyForFragment(bHeader.getValue(), read, ReadUtils.getStrandedUnclippedStart(read)), read));
-        JavaPairRDD<Integer, GATKRead> secondKeyed = secondReads.mapToPair(read -> new Tuple2<>(ReadsKey.keyForFragment(bHeader.getValue(), read, ReadUtils.getStrandedUnclippedStart(read)), read));
+        JavaPairRDD<Integer, GATKRead> firstKeyed = firstReads.mapToPair(read -> new Tuple2<>(ReadsKey.hashKeyForFragment(bHeader.getValue(), read), read));
+        JavaPairRDD<Integer, GATKRead> secondKeyed = secondReads.mapToPair(read -> new Tuple2<>(ReadsKey.hashKeyForFragment(bHeader.getValue(), read), read));
         JavaPairRDD<Integer, Tuple2<Iterable<GATKRead>, Iterable<GATKRead>>> cogroup = firstKeyed.cogroup(secondKeyed, getRecommendedNumReducers());
 
 

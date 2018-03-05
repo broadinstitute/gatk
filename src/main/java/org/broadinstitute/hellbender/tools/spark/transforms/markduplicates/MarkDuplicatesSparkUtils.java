@@ -84,7 +84,7 @@ public class MarkDuplicatesSparkUtils {
                                 PairedEnds.newFragment(read, header, readWithIndex.getIndex(), scoringStrategy);
 
                         out.add(new Tuple2<>(fragment.isEmpty() ?
-                                                     ReadsKey.keyForFragment(header, read, fragment.getUnclippedStartPosition()) :
+                                                     ReadsKey.hashKeyForFragment(header, read) :
                                                      fragment.keyForFragment(header), fragment));
                     })
                     .filter(readWithIndex -> ReadUtils.readHasMappedMate(readWithIndex.getValue()))
