@@ -26,7 +26,7 @@ public final class DenoiseReadCountsIntegrationTest extends CommandLineProgramTe
     private static final File WGS_ANNOTATED_INTERVALS_FILE = new File(TEST_SUB_DIR, "denoise-read-counts-wgs-annotated-intervals.tsv");
     private static final File WGS_NO_GC_PON_FILE = new File(largeFileTestDir, "cnv_somatic_workflows_test_files/wgs-no-gc.pon.hdf5");
     private static final File WGS_DO_GC_PON_FILE = new File(largeFileTestDir, "cnv_somatic_workflows_test_files/wgs-do-gc.pon.hdf5");
-    private static final List<Integer> NUMBER_OF_EIGENVALUES_LIST = Arrays.asList(null, 1, 10);
+    private static final List<Integer> NUMBER_OF_EIGENVALUES_LIST = Arrays.asList(null, 0, 1, 10);
 
     //create all combinations of arguments
     @DataProvider(name = "dataDenoiseReadCounts")
@@ -47,7 +47,7 @@ public final class DenoiseReadCountsIntegrationTest extends CommandLineProgramTe
                         if (numberOfEigenvalues != null) {
                             arguments.addArgument(CopyNumberStandardArgument.NUMBER_OF_EIGENSAMPLES_LONG_NAME, numberOfEigenvalues.toString());
                         }
-                        data.add(Arrays.asList(arguments, ponFile == null));    //set isStandardizedEqualsDenoised = true if no PoN
+                        data.add(Arrays.asList(arguments, ponFile == null || (numberOfEigenvalues != null && numberOfEigenvalues == 0)));    //set isStandardizedEqualsDenoised = true if no PoN or if number of eigenvalues is zero
                     }
                 }
             }
