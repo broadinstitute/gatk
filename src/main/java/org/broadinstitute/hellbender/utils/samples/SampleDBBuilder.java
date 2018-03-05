@@ -53,6 +53,20 @@ public class SampleDBBuilder {
         }
     }
 
+    /**
+     * Integrates the collection of sample names with the samples already present
+     */
+    public SampleDBBuilder addSamplesFromSampleNames(final Collection<String> sampleNames) {
+        for (final String sampleName : sampleNames) {
+            if (sampleDB.getSample(sampleName) == null) {
+                final Sample newSample = new Sample(sampleName, null, null, null, Sex.UNKNOWN);
+                sampleDB.addSample(newSample);
+                samplesFromDataSources.add(newSample); // keep track of data source samples
+            }
+        }
+        return this;
+    }
+
     private Collection<Sample> addSamplesFromPedigreeArgument(final String string) {
         final PedReader reader = new PedReader();
         return reader.parse(string, getMissingFields(string), sampleDB);

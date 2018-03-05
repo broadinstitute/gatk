@@ -527,8 +527,6 @@ public final class IntervalUtils {
      */
     public static boolean isIntervalFile(final String str, final boolean checkExists) {
         Utils.nonNull(str);
-        final Path path = IOUtils.getPath(str);
-
         boolean hasIntervalFileExtension = false;
         for ( final String extension : INTERVAL_FILE_EXTENSIONS ) {
             if ( str.toLowerCase().endsWith(extension) ) {
@@ -537,6 +535,7 @@ public final class IntervalUtils {
         }
 
         if ( hasIntervalFileExtension ) {
+            final Path path = IOUtils.getPath(str);
             if ( ! checkExists || Files.exists(path) ) {
                 return true;
             } else {

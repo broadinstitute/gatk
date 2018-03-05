@@ -112,6 +112,15 @@ public class SampleDBUnitTest extends GATKBaseTest {
     }
 
     @Test()
+    public void loadPEDFromNames() {
+        List<String> names = new ArrayList<>();
+        testSAMSamples.forEach(s -> names.add(s.getID()));
+        builder.addSamplesFromSampleNames(names);
+        SampleDB db = builder.getFinalSampleDB();
+        Assert.assertEquals(testSAMSamples, db.getSamples());
+    }
+
+    @Test()
     public void loadDuplicateData() {
         builder.addSamplesFromPedigreeFiles(Arrays.asList(testPED));
         builder.addSamplesFromPedigreeFiles(Arrays.asList(testPED));
