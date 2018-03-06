@@ -31,7 +31,7 @@ import java.util.List;
  * respectively. To access positions assigned to unmapped reads for sorting purposes, use {@link #getAssignedContig}
  * and {@link #getAssignedStart}.
  */
-public interface GATKRead extends Locatable, Serializable {
+public interface GATKRead extends Locatable{
 
     /**
      * @return The name of the read (equivalent to QNAME in SAM), or {@code null} if the read has no name.

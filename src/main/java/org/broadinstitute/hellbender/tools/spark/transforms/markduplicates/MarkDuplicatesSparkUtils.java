@@ -559,6 +559,8 @@ public class MarkDuplicatesSparkUtils {
      * Counter for storing metrics data
      */
     static class MetricsAccumulator extends AccumulatorV2<GATKRead, Map<String, DuplicationMetrics>> implements Serializable {
+        private static final long serialVersionUID = 1L;
+
         Map<String, DuplicationMetrics> libraryMap;
         SAMFileHeader header;
 
@@ -638,44 +640,6 @@ public class MarkDuplicatesSparkUtils {
         @Override
         public Map<String, DuplicationMetrics> value() {
             return libraryMap;
-        }
-    }
-
-    /**
-     * Counter for storing metrics data
-     */
-    static public class DummyAccumulator extends AccumulatorV2<Integer, Integer> implements Serializable {
-        public static final long serialVersionUID = 1L;
-
-        @Override
-        public boolean isZero() {
-            return false;
-        }
-
-        @Override
-        public AccumulatorV2<Integer, Integer> copy() {
-            return null;
-        }
-
-
-        @Override
-        public void reset() {
-
-        }
-
-        @Override
-        public void add(Integer gatkRead) {
-
-        }
-
-        @Override
-        public void merge(AccumulatorV2<Integer, Integer> accumulatorV2) {
-
-        }
-
-        @Override
-        public Integer value() {
-            return null;
         }
     }
 }
