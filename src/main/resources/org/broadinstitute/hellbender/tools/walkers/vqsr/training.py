@@ -11,10 +11,8 @@ import numpy as np
 from Bio import Seq, SeqIO
 from collections import Counter
 
-
 # Keras Imports
 import keras.backend as K
-
 
 def run():
     args = vqsr_cnn.parse_args()
@@ -34,7 +32,7 @@ def run():
 
 def write_reference_and_annotation_tensors(args, include_dna=True, include_annotations=True):
     if not args.tensor_name in vqsr_cnn.TENSOR_MAPS_1D:
-        raise ValueError('Tensor map: ', args.tensor_name, ' is not one of the known 1D Tensor Maps:', str(vqsr_cnn.TENSOR_MAPS_1D))
+        raise ValueError('Unknown tensor name:', args.tensor_name, '1d maps must be in:', str(vqsr_cnn.TENSOR_MAPS_1D))
 
     record_dict = SeqIO.to_dict(SeqIO.parse(args.reference_fasta, "fasta"))
     if os.path.splitext(args.input_vcf)[-1].lower() == '.gz':
@@ -66,7 +64,8 @@ def write_reference_and_annotation_tensors(args, include_dna=True, include_annot
                 continue
 
             if include_annotations:
-                if all(map(lambda x: x not in variant.INFO and x not in variant.FORMAT and x != "QUAL", args.annotations)):
+                if all(map(
+                        lambda x: x not in variant.INFO and x not in variant.FORMAT and x != "QUAL", args.annotations)):
                     stats['Missing ALL annotations'] += 1
                     continue # Require at least 1 annotation...
                 annotation_data = get_annotation_data(args, variant, stats)
@@ -81,13 +80,13 @@ def write_reference_and_annotation_tensors(args, include_dna=True, include_annot
                     else:
                         raise ValueError('Error! Unknown code:', b)
 
-            tensor_path = get_path_to_train_valid_or_test(args.data_dir)
-            tensor_path += cur_label_key +'/'+ plain_name(args.input_vcf) +'_'+ plain_name(args.train_vcf)
-            tensor_path += '_allele_' + str(allele_idx) +'-'+ variant.CHROM +'_'+ str(variant.POS) + vqsr_cnn.TENSOR_SUFFIX
-            if not os.path.exists(os.path.dirname(tensor_path)):
-                os.makedirs(os.path.dirname(tensor_path))
+            tp = get_path_to_train_valid_or_test(args.data_dir)
+            tp += cur_label_key +'/'+ plain_name(args.input_vcf) +'_'+ plain_name(args.train_vcf)
+            tp += '_allele_' + str(allele_idx) +'-'+ variant.CHROM +'_'+ str(variant.POS) + vqsr_cnn.TENSOR_SUFFIX
+            if not os.path.exists(os.path.dirname(tp)):
+                os.makedirs(os.path.dirname(tp))
 
-            with h5py.File(tensor_path, 'w') as hf:
+            with h5py.File(tp, 'w') as hf:
                 if include_annotations:
                     hf.create_dataset(args.annotation_set, data=annotation_data, compression='gzip')
                 if include_dna:
@@ -152,7 +151,8 @@ def write_read_and_annotation_tensors(args, include_annotations=True, pileup=Fal
                 continue
 
             if include_annotations:
-                if all(map(lambda x: x not in variant.INFO and x not in variant.FORMAT and x != "QUAL", args.annotations)):
+                if all(map(
+                        lambda x: x not in variant.INFO and x not in variant.FORMAT and x != "QUAL", args.annotations)):
                     stats['Missing ALL annotations'] += 1
                     continue # Require at least 1 annotation...
                 annotation_data = get_annotation_data(args, variant, stats)
@@ -175,8 +175,10 @@ def write_read_and_annotation_tensors(args, include_annotations=True, pileup=Fal
             reference_sequence_into_tensor(args, reference_seq, read_tensor)
 
             tensor_path = get_path_to_train_valid_or_test(args.data_dir)
-            tensor_prefix = plain_name(args.input_vcf) +'_'+ plain_name(args.train_vcf) + '_allele_' + str(allele_idx) + '-' + cur_label_key
-            tensor_path += cur_label_key + '/' + tensor_prefix + '-' + variant.CHROM + '_' + str(variant.POS) + vqsr_cnn.TENSOR_SUFFIX
+            tensor_prefix = plain_name(args.input_vcf) +'_'+ plain_name(args.train_vcf)
+            tensor_prefix += '_allele_' + str(allele_idx) + '-' + cur_label_key
+            tensor_path += cur_label_key + '/' + tensor_prefix + '-' + variant.CHROM
+            tensor_path += '_' + str(variant.POS) + vqsr_cnn.TENSOR_SUFFIX
             stats[cur_label_key] += 1
 
             if not os.path.exists(os.path.dirname(tensor_path)):
@@ -252,7 +254,8 @@ def train_on_read_tensors_and_annotations(args):
 
     test = load_tensors_and_annotations_from_class_dirs(args, test_paths, per_class_max=args.samples)
     if args.image_dir:
-        vqsr_cnn.plot_roc_per_class(model, [test[0], test[1]], test[2], args.labels, args.id, prefix=args.image_dir, batch_size=args.batch_size)
+        vqsr_cnn.plot_roc_per_class(model, [test[0], test[1]], test[2], args.labels, args.id,
+                                    prefix=args.image_dir, batch_size=args.batch_size)
 
 
 def train_tiny_model_on_read_tensors_and_annotations(args):
@@ -279,7 +282,8 @@ def train_tiny_model_on_read_tensors_and_annotations(args):
 
     test = load_tensors_and_annotations_from_class_dirs(args, test_paths, per_class_max=args.samples)
     if args.image_dir:
-        vqsr_cnn.plot_roc_per_class(model, [test[0], test[1]], test[2], args.labels, args.id, prefix=args.image_dir, batch_size=args.batch_size)
+        vqsr_cnn.plot_roc_per_class(model, [test[0], test[1]], test[2], args.labels, args.id,
+                                    prefix=args.image_dir, batch_size=args.batch_size)
 
 
 
@@ -294,41 +298,38 @@ def get_annotation_data(args, annotation_variant, stats):
     Returns:
         annotation_data: numpy array of annotation values
     '''
-    annotation_data = np.zeros(( len(args.annotations), ))
-    try:
-        for i,a in enumerate(args.annotations):
-            if a == 'QUAL':
-                annotation_data[i] = annotation_variant.QUAL
-            elif a == 'AF':
-                annotation_data[i] = annotation_variant.INFO[a][0]
-            elif a in annotation_variant.INFO and not math.isnan(annotation_variant.INFO[a]):
-                annotation_data[i] = annotation_variant.INFO[a]
-            elif a == 'MBQ':
-                call = annotation_variant.genotype(args.sample_name)
-                annotation_data[i] = call.data.MBQ
-            elif a == 'MPOS':
-                call = annotation_variant.genotype(args.sample_name)
-                annotation_data[i] = call.data.MPOS
-            elif a == 'MMQ':
-                call = annotation_variant.genotype(args.sample_name)
-                annotation_data[i] = call.data.MMQ
-            elif a == 'MFRL_0':
-                call = annotation_variant.genotype(args.sample_name)
-                annotation_data[i] = call.data.MFRL[0]
-            elif a == 'MFRL_1':
-                call = annotation_variant.genotype(args.sample_name)
-                annotation_data[i] = call.data.MFRL[1]
-            elif a == 'AD_0':
-                call = annotation_variant.genotype(args.sample_name)
-                annotation_data[i] = call.data.AD[0]
-            elif a == 'AD_1':
-                call = annotation_variant.genotype(args.sample_name)
-                annotation_data[i] = call.data.AD[1]
-            else:
-                stats['Could not find annotation:'+a] += 1
+    annotation_data = np.zeros((len(args.annotations),))
 
-    except ValueError as e:
-        print(str(e) + '\nERROR! at variant:', annotation_variant, '\n format stuff:', annotation_variant.genotype(args.sample_name))
+    for i, a in enumerate(args.annotations):
+        if a == 'QUAL':
+            annotation_data[i] = annotation_variant.QUAL
+        elif a == 'AF':
+            annotation_data[i] = annotation_variant.INFO[a][0]
+        elif a in annotation_variant.INFO and not math.isnan(annotation_variant.INFO[a]):
+            annotation_data[i] = annotation_variant.INFO[a]
+        elif a == 'MBQ':
+            call = annotation_variant.genotype(args.sample_name)
+            annotation_data[i] = call.data.MBQ
+        elif a == 'MPOS':
+            call = annotation_variant.genotype(args.sample_name)
+            annotation_data[i] = call.data.MPOS
+        elif a == 'MMQ':
+            call = annotation_variant.genotype(args.sample_name)
+            annotation_data[i] = call.data.MMQ
+        elif a == 'MFRL_0':
+            call = annotation_variant.genotype(args.sample_name)
+            annotation_data[i] = call.data.MFRL[0]
+        elif a == 'MFRL_1':
+            call = annotation_variant.genotype(args.sample_name)
+            annotation_data[i] = call.data.MFRL[1]
+        elif a == 'AD_0':
+            call = annotation_variant.genotype(args.sample_name)
+            annotation_data[i] = call.data.AD[0]
+        elif a == 'AD_1':
+            call = annotation_variant.genotype(args.sample_name)
+            annotation_data[i] = call.data.AD[1]
+        else:
+            stats['Could not find annotation:' + a] += 1
 
     return annotation_data
 
@@ -381,7 +382,8 @@ def get_good_reads(args, samfile, variant, sort_by='base'):
                     elif insert_dict[insert_idx] < t[1]:
                         insert_dict[insert_idx] = t[1]
 
-                if t[0] in [vqsr_cnn.CIGAR_CODE['M'], vqsr_cnn.CIGAR_CODE['I'], vqsr_cnn.CIGAR_CODE['S'], vqsr_cnn.CIGAR_CODE['D']]:
+                if t[0] in [vqsr_cnn.CIGAR_CODE['M'], vqsr_cnn.CIGAR_CODE['I'],
+                            vqsr_cnn.CIGAR_CODE['S'], vqsr_cnn.CIGAR_CODE['D']]:
                     cur_idx += t[1]
 
         good_reads.append(read)
@@ -491,14 +493,13 @@ def good_reads_to_tensor(args, good_reads, ref_start, insert_dict):
                     tensor[channel_map[flag_str], j,  flag_start:flag_end] = 1.0
 
         if 'mapping_quality' in channel_map:
+            mq = float(read.mapping_quality)/vqsr_cnn.MAPPING_QUALITY_MAX
             if K.image_data_format() == 'channels_last':
-                tensor[j, flag_start:flag_end, channel_map['mapping_quality']] = float(read.mapping_quality)/vqsr_cnn.MAPPING_QUALITY_MAX
+                tensor[j, flag_start:flag_end, channel_map['mapping_quality']] = mq
             else:
-                tensor[channel_map['mapping_quality'], j, flag_start:flag_end] = float(read.mapping_quality)/vqsr_cnn.MAPPING_QUALITY_MAX
+                tensor[channel_map['mapping_quality'], j, flag_start:flag_end] = mq
 
     return tensor
-
-
 
 
 def sequence_and_qualities_from_read(args, read, ref_start, insert_dict):
@@ -513,7 +514,8 @@ def sequence_and_qualities_from_read(args, read, ref_start, insert_dict):
             my_indel_dict[my_ref_idx] = insert_dict[my_ref_idx] - t[1]
         elif t[0] == vqsr_cnn.CIGAR_CODE['D']:
             my_indel_dict[my_ref_idx] = t[1]
-        if t[0] in [vqsr_cnn.CIGAR_CODE['M'], vqsr_cnn.CIGAR_CODE['I'], vqsr_cnn.CIGAR_CODE['S'], vqsr_cnn.CIGAR_CODE['D']]:
+        if t[0] in [vqsr_cnn.CIGAR_CODE['M'], vqsr_cnn.CIGAR_CODE['I'],
+                    vqsr_cnn.CIGAR_CODE['S'], vqsr_cnn.CIGAR_CODE['D']]:
             cur_idx += t[1]
 
     for k in insert_dict.keys():
@@ -541,8 +543,6 @@ def sequence_and_qualities_from_read(args, read, ref_start, insert_dict):
     return rseq, rqual
 
 
-
-
 def read_tensor_to_pileup(args, read_tensor):
     tensor_map = vqsr_cnn.get_tensor_channel_map_from_args(args)
     channels = vqsr_cnn.get_reference_and_read_channels(args)
@@ -564,10 +564,7 @@ def read_tensor_to_pileup(args, read_tensor):
             else:
                 raise ValueError('Error unexpected key:'+key)
 
-
     return pileup_tensor
-
-
 
 
 def reference_sequence_into_tensor(args, reference_seq, tensor):
@@ -581,10 +578,12 @@ def reference_sequence_into_tensor(args, reference_seq, tensor):
             else:
                 tensor[ref_offset+args.input_symbols[b], :, i] = 1.0
         elif b in vqsr_cnn.AMBIGUITY_CODES:
+            ambiguous_vector = np.transpose(np.tile(vqsr_cnn.AMBIGUITY_CODES[b], (args.read_limit, 1)))
             if K.image_data_format() == 'channels_last':
-                tensor[:, i, ref_offset:ref_offset+4] = np.transpose(np.tile(vqsr_cnn.AMBIGUITY_CODES[b], (args.read_limit, 1)))
+                tensor[:, i, ref_offset:ref_offset+4] = ambiguous_vector
             else:
-                tensor[ref_offset:ref_offset+4, :, i] = np.transpose(np.tile(vqsr_cnn.AMBIGUITY_CODES[b], (args.read_limit, 1)))
+                tensor[ref_offset:ref_offset+4, :, i] = ambiguous_vector
+
 
 def flag_to_array(flag):
     flags = []
@@ -741,7 +740,6 @@ def downsample(args, cur_label_key, stats):
             stats['Downsampled NOT_INDELs'] += 1
             return True
 
-
     return False
 
 
@@ -792,7 +790,6 @@ def in_bed_file(bed_dict, contig, pos):
     lows = bed_dict[contig][0]
     ups = bed_dict[contig][1]
     return np.any((lows <= pos) & (pos < ups))
-
 
 
 def allele_in_vcf(allele, variant, vcf_ram):
@@ -857,7 +854,8 @@ def dna_annotation_generator(args, train_paths):
             continue
         label = args.labels[label_key]
 
-        tensors[label] = [os.path.join(tp, t) for t in os.listdir(tp) if os.path.splitext(t)[1] == vqsr_cnn.TENSOR_SUFFIX]
+        tensors[label] = [os.path.join(tp, t) for t in os.listdir(tp)
+                          if os.path.splitext(t)[1] == vqsr_cnn.TENSOR_SUFFIX]
         tensor_counts[label] = 0
         print('Found ', len(tensors[label]), 'examples of label:', label, 'in:', tp)
 
@@ -875,7 +873,8 @@ def dna_annotation_generator(args, train_paths):
                 tensor_counts[label] += 1
                 if tensor_counts[label] == len(tensors[label]):
                     np.random.shuffle(tensors[label])
-                    print('\n\nGenerator shuffled & looped over:', tensor_counts[label], 'examples of label:', label, '\n\nLast tensor was:', tensor_path)
+                    print('\nGenerator shuffled & looped over:', tensor_counts[label],
+                          'examples of label:',label, '\nLast tensor was:', tensor_path)
                     tensor_counts[label] = 0
                 cur_example += 1
                 if cur_example == args.batch_size:
@@ -905,8 +904,6 @@ def tensor_generator_from_label_dirs_and_args(args, train_paths, with_positions=
         A tuple with a dict of the input tensors
         and a 1-Hot matrix (2D numpy array) of the labels.
     """
-    debug = False
-
     batch = {}
     tensors = {}
     tensor_counts = Counter()
@@ -931,7 +928,8 @@ def tensor_generator_from_label_dirs_and_args(args, train_paths, with_positions=
             print('Skipping label directory:', label_key, ' which is not in args label set:', args.labels.keys())
             continue
         label = args.labels[label_key]
-        tensors[label] = [os.path.join(tp, t) for t in os.listdir(tp) if os.path.splitext(t)[1] == vqsr_cnn.TENSOR_SUFFIX]
+        tensors[label] = [os.path.join(tp, t) for t in os.listdir(tp)
+                          if os.path.splitext(t)[1] == vqsr_cnn.TENSOR_SUFFIX]
         tensor_counts[label] = 0
         print('Found ', len(tensors[label]), 'examples of label:', label, 'in:', tp)
 
@@ -949,7 +947,8 @@ def tensor_generator_from_label_dirs_and_args(args, train_paths, with_positions=
                 tensor_counts[label] += 1
                 if tensor_counts[label] == len(tensors[label]):
                     np.random.shuffle(tensors[label])
-                    print('\n\nGenerator looped over:', tensor_counts[label], 'examples of label:', label, '\n\nShuffled them. Last tensor was:', tensor_path)
+                    print('\nGenerator looped over:', tensor_counts[label],
+                          'examples of label:', label, '\nShuffled them. Last tensor was:', tensor_path)
                     tensor_counts[label] = 0
 
                 if with_positions:
@@ -958,9 +957,6 @@ def tensor_generator_from_label_dirs_and_args(args, train_paths, with_positions=
                 cur_example += 1
                 if cur_example == args.batch_size:
                     break
-
-        if debug:
-            print('Tensor counts are:', tensor_counts, ' cur example:', cur_example, ' per b per label:', per_batch_per_label)
 
         if with_positions:
             yield (batch, label_matrix, positions)
@@ -976,8 +972,8 @@ def tensor_generator_from_label_dirs_and_args(args, train_paths, with_positions=
             batch[args.annotation_set] = np.zeros((args.batch_size, len(args.annotations)))
 
 
-
-def load_dna_annotations_positions_from_class_dirs(args, train_paths, per_class_max=4000, include_dna=True, include_annotations=True):
+def load_dna_annotations_positions_from_class_dirs(args, train_paths,
+                                                   per_class_max=4000, include_dna=True, include_annotations=True):
     count = 0
 
     annotation_data = []
@@ -1011,17 +1007,17 @@ def load_dna_annotations_positions_from_class_dirs(args, train_paths, per_class_
                 if include_dna:
                     reference_data.append(np.array(hf.get(args.tensor_name)))
 
-            y_vector = np.zeros(len(args.labels)) # One hot Y vector of size labels, correct label is 1 all others are 0
+            y_vector = np.zeros(len(args.labels)) # One hot Y vector of size labels, correct label is 1 others are 0
             y_vector[label] = 1.0
             labels_data.append(y_vector)
             positions.append(position_string_from_tensor_name(t))
 
     if include_dna and include_annotations:
-        return (np.asarray(reference_data), np.asarray(annotation_data), np.asarray(labels_data), np.asarray(positions))
+        return np.asarray(reference_data), np.asarray(annotation_data), np.asarray(labels_data), np.asarray(positions)
     elif include_annotations:
-        return (np.asarray(annotation_data), np.asarray(labels_data), np.asarray(positions))
+        return np.asarray(annotation_data), np.asarray(labels_data), np.asarray(positions)
     elif include_dna:
-        return (np.asarray(reference_data), np.asarray(labels_data), np.asarray(positions))
+        return np.asarray(reference_data), np.asarray(labels_data), np.asarray(positions)
 
 
 def load_tensors_and_annotations_from_class_dirs(args, train_paths, per_class_max=2500, position_dict=None):
@@ -1062,8 +1058,7 @@ def load_tensors_and_annotations_from_class_dirs(args, train_paths, per_class_ma
 
         print(count, " dir out of:", len(train_paths), tp, "has:", len(imgs), 'Loaded:', this_t)
 
-    return (np.asarray(tensors), np.asarray(annotations), np.asarray(labels), np.asarray(positions))
-
+    return np.asarray(tensors), np.asarray(annotations), np.asarray(labels), np.asarray(positions)
 
 
 def position_string_from_tensor_name(tensor_name):
@@ -1092,8 +1087,6 @@ def position_string_from_tensor_name(tensor_name):
             pos_str += '_'+str(gsplit[i+1])
 
     return pos_str
-
-
 
 
 def get_path_to_train_valid_or_test(path, valid_ratio=0.1, test_ratio=0.2, valid_contig='-19_', test_contig='-20_'):

@@ -1,20 +1,20 @@
 import os
 import json
 
-from . import plots
-from . import defines
-from . import arguments
-from . import tensor_maps
-
 # Keras Imports
 from keras import layers
 from keras import metrics
 import keras.backend as K
-from keras.optimizers import SGD, Adam, RMSprop
-from keras.models import Sequential, Model, load_model
+from keras.optimizers import Adam
+from keras.models import Model, load_model
+from keras.layers.convolutional import Conv1D, Conv2D,  MaxPooling1D, MaxPooling2D
 from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard, ReduceLROnPlateau
-from keras.layers.convolutional import Conv1D, Conv2D, ZeroPadding2D, UpSampling1D, UpSampling2D, Conv2DTranspose,  MaxPooling1D, MaxPooling2D, AveragePooling2D
-from keras.layers import Input, Dense, Dropout, BatchNormalization, SpatialDropout2D, SpatialDropout1D, Activation, Flatten, Reshape, LSTM, merge, Permute, GlobalAveragePooling2D
+from keras.layers import Input, Dense, Dropout, BatchNormalization, SpatialDropout2D, Activation, Flatten
+
+from . import plots
+from . import defines
+from . import arguments
+from . import tensor_maps
 
 
 def args_and_model_from_semantics(semantics_json):
@@ -70,7 +70,6 @@ def set_args_and_get_model_from_semantics(args, semantics_json):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~ Models ~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 def build_reference_annotation_model(args):
     '''Build Reference 1d CNN model for classifying variants with skip connected annotations.
 
@@ -159,14 +158,14 @@ def build_read_tensor_2d_and_annotations_model(args):
     read_conv_width = 16
     conv_dropout = 0.2
     fc_dropout = 0.3
-    x = Conv2D(216, (read_conv_width, 1), padding='valid', activation="relu", kernel_initializer="he_normal")(read_tensor)
-    x = Conv2D(160, (1, read_conv_width), padding='valid', activation="relu", kernel_initializer="he_normal")(x)
-    x = Conv2D(128, (read_conv_width, 1), padding='valid', activation="relu", kernel_initializer="he_normal")(x)
+    x = Conv2D(216, (read_conv_width, 1), padding='valid', activation="relu")(read_tensor)
+    x = Conv2D(160, (1, read_conv_width), padding='valid', activation="relu")(x)
+    x = Conv2D(128, (read_conv_width, 1), padding='valid', activation="relu")(x)
     x = MaxPooling2D((2,1))(x)
-    x = Conv2D(96, (1, read_conv_width), padding='valid', activation="relu", kernel_initializer="he_normal")(x)
+    x = Conv2D(96, (1, read_conv_width), padding='valid', activation="relu")(x)
     x = MaxPooling2D((2,1))(x)
     x = Dropout(conv_dropout)(x)
-    x = Conv2D(64, (read_conv_width, 1), padding='valid', activation="relu", kernel_initializer="he_normal")(x)
+    x = Conv2D(64, (read_conv_width, 1), padding='valid', activation="relu")(x)
     x = MaxPooling2D((2,1))(x)
     x = Dropout(conv_dropout)(x)
 
@@ -394,12 +393,12 @@ def per_class_recall(labels):
 
     for label_key in labels:
         label_idx = labels[label_key]
-        string_fxn = 'def '+ label_key + '_recall(y_true, y_pred):\n'
-        string_fxn += '\ttrue_positives = K.sum(K.round(K.clip(y_true*y_pred, 0, 1)), axis=0)\n'
-        string_fxn += '\tpossible_positives = K.sum(K.round(K.clip(y_true, 0, 1)), axis=0)\n'
-        string_fxn += '\treturn true_positives['+str(label_idx)+'] / (possible_positives['+str(label_idx)+'] + K.epsilon())\n'
+        fxn = 'def '+ label_key + '_recall(y_true, y_pred):\n'
+        fxn += '\ttrue_positives = K.sum(K.round(K.clip(y_true*y_pred, 0, 1)), axis=0)\n'
+        fxn += '\tpossible_positives = K.sum(K.round(K.clip(y_true, 0, 1)), axis=0)\n'
+        fxn += '\treturn true_positives['+str(label_idx)+'] / (possible_positives['+str(label_idx)+'] + K.epsilon())\n'
 
-        exec(string_fxn)
+        exec(fxn)
         recall_fxn = eval(label_key + '_recall')
         recall_fxns.append(recall_fxn)
 
@@ -411,12 +410,12 @@ def per_class_precision(labels):
 
     for label_key in labels:
         label_idx = labels[label_key]
-        string_fxn = 'def '+ label_key + '_precision(y_true, y_pred):\n'
-        string_fxn += '\ttrue_positives = K.sum(K.round(K.clip(y_true*y_pred, 0, 1)), axis=0)\n'
-        string_fxn += '\tpredicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)), axis=0)\n'
-        string_fxn += '\treturn true_positives['+str(label_idx)+'] / (predicted_positives['+str(label_idx)+'] + K.epsilon())\n'
+        fxn = 'def '+ label_key + '_precision(y_true, y_pred):\n'
+        fxn += '\ttrue_positives = K.sum(K.round(K.clip(y_true*y_pred, 0, 1)), axis=0)\n'
+        fxn += '\tpredicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)), axis=0)\n'
+        fxn += '\treturn true_positives['+str(label_idx)+'] / (predicted_positives['+str(label_idx)+'] + K.epsilon())\n'
 
-        exec(string_fxn)
+        exec(fxn)
         precision_fxn = eval(label_key + '_precision')
         precision_fxns.append(precision_fxn)
     return precision_fxns
@@ -437,12 +436,12 @@ def per_class_recall_3d(labels):
 
     for label_key in labels:
         label_idx = labels[label_key]
-        string_fxn = 'def '+ label_key + '_recall(y_true, y_pred):\n'
-        string_fxn += '\ttrue_positives = K.sum(K.sum(K.round(K.clip(y_true*y_pred, 0, 1)), axis=0), axis=0)\n'
-        string_fxn += '\tpossible_positives = K.sum(K.sum(K.round(K.clip(y_true, 0, 1)), axis=0), axis=0)\n'
-        string_fxn += '\treturn true_positives['+str(label_idx)+'] / (possible_positives['+str(label_idx)+'] + K.epsilon())\n'
+        fxn = 'def '+ label_key + '_recall(y_true, y_pred):\n'
+        fxn += '\ttrue_positives = K.sum(K.sum(K.round(K.clip(y_true*y_pred, 0, 1)), axis=0), axis=0)\n'
+        fxn += '\tpossible_positives = K.sum(K.sum(K.round(K.clip(y_true, 0, 1)), axis=0), axis=0)\n'
+        fxn += '\treturn true_positives['+str(label_idx)+'] / (possible_positives['+str(label_idx)+'] + K.epsilon())\n'
 
-        exec(string_fxn)
+        exec(fxn)
         recall_fxn = eval(label_key + '_recall')
         recall_fxns.append(recall_fxn)
 
@@ -454,12 +453,12 @@ def per_class_precision_3d(labels):
 
     for label_key in labels:
         label_idx = labels[label_key]
-        string_fxn = 'def '+ label_key + '_precision(y_true, y_pred):\n'
-        string_fxn += '\ttrue_positives = K.sum(K.sum(K.round(K.clip(y_true*y_pred, 0, 1)), axis=0), axis=0)\n'
-        string_fxn += '\tpredicted_positives = K.sum(K.sum(K.round(K.clip(y_pred, 0, 1)), axis=0), axis=0)\n'
-        string_fxn += '\treturn true_positives['+str(label_idx)+'] / (predicted_positives['+str(label_idx)+'] + K.epsilon())\n'
+        fxn = 'def '+ label_key + '_precision(y_true, y_pred):\n'
+        fxn += '\ttrue_positives = K.sum(K.sum(K.round(K.clip(y_true*y_pred, 0, 1)), axis=0), axis=0)\n'
+        fxn += '\tpredicted_positives = K.sum(K.sum(K.round(K.clip(y_pred, 0, 1)), axis=0), axis=0)\n'
+        fxn += '\treturn true_positives['+str(label_idx)+'] / (predicted_positives['+str(label_idx)+'] + K.epsilon())\n'
 
-        exec(string_fxn)
+        exec(fxn)
         precision_fxn = eval(label_key + '_precision')
         precision_fxns.append(precision_fxn)
 

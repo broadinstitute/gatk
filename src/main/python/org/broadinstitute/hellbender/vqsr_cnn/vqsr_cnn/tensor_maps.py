@@ -1,8 +1,8 @@
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~ Tensor Maps ~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from . import defines
 import keras.backend as K
+from . import defines
 
 def get_tensor_channel_map_from_args(args):
     '''Return tensor mapping dict given args.tensor_name'''

@@ -61,7 +61,8 @@ def write_tranches(args, variant_type='SNP'):
     for variant in vcf_reader:
         if score_key in variant.info:
             if variant_type == 'SNP' and is_snp(variant) or variant_type == 'INDEL' and is_indel(variant):
-                variant.filter.add(score_to_filter_status(variant.info[score_key], score_key, variant_type, tranches, thresholds))
+                variant.filter.add(score_to_filter_status(variant.info[score_key],
+                                                          score_key, variant_type, tranches, thresholds))
 
         vcf_writer.write(variant)
 

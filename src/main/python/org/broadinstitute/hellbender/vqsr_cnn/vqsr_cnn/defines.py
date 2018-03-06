@@ -15,9 +15,11 @@ INPUT_SYMBOLS = {
 }
 
 # Base calling ambiguities, See https://www.bioinformatics.org/sms/iupac.html
-AMBIGUITY_CODES = {'K':[0, 0, 0.5, 0.5], 'M':[0.5, 0.5, 0, 0], 'R':[0.5, 0, 0, 0.5], 'Y':[0, 0.5, 0.5, 0], 'S':[0, 0.5, 0, 0.5], 'W':[0.5, 0, 0.5, 0],
-                   'B':[0,0.333,0.333,0.334], 'V':[0.333,0.333,0,0.334],'H':[0.333,0.333,0.334,0],'D':[0.333,0,0.333,0.334],
-                   'X':[0.25,0.25,0.25,0.25], 'N':[0.25,0.25,0.25,0.25]}
+AMBIGUITY_CODES = {
+    'K':[0, 0, 0.5, 0.5], 'M':[0.5, 0.5, 0, 0], 'R':[0.5, 0, 0, 0.5], 'Y':[0, 0.5, 0.5, 0], 'S':[0, 0.5, 0, 0.5],
+    'W':[0.5, 0, 0.5, 0], 'B':[0,0.333,0.333,0.334], 'V':[0.333,0.333,0,0.334], 'H':[0.333,0.333,0.334,0],
+    'D':[0.333,0,0.333,0.334], 'X':[0.25,0.25,0.25,0.25], 'N':[0.25,0.25,0.25,0.25]
+}
 
 
 # Annotation sets
@@ -43,5 +45,5 @@ INDEL_CHAR = '*'
 SEPARATOR_CHAR = '\t'
 
 MAPPING_QUALITY_MAX = 60.0 # Mapping qualities from BWA are typically capped at 60
-READ_FLAGS = 12 # Total number of boolean bit-packed read flags, actual flags used is determined by the tensor map https://broadinstitute.github.io/picard/explain-flags.html
+READ_FLAGS = 12 # Total number of read flags, actual flags used is determined by the tensor map
 
