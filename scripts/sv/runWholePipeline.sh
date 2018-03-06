@@ -18,7 +18,7 @@ if [[ "$#" -lt 6 ]]; then
     echo -e "      /test-sample \\"
     echo -e "      /data/NA12878_test.bam \\"
     echo -e "      /reference/Homo_sapiens_assembly38.2bit"
-    echo -e "      /mnt/1/reference/Homo_sapiens_assembly38.fasta.img (the /mnt/1/ prefix is the default mounting location of the ssd if the cluster is created with a local ssd for the worker nodes)"
+    echo -e "      /reference/Homo_sapiens_assembly38.fasta.img"
     exit 1
 fi
 
