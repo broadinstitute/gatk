@@ -583,7 +583,7 @@ public class MarkDuplicatesSparkUtils {
 
         @Override
         public void reset() {
-
+            libraryMap = new HashMap<>();
         }
 
         @Override
