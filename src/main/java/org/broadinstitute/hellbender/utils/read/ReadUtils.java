@@ -704,7 +704,8 @@ public final class ReadUtils {
             if (allowGoalNotReached) {
                 return new MutablePair<>(CLIPPING_GOAL_NOT_REACHED, false);
             } else {
-                throw new GATKException("Somehow the requested coordinate is not covered by the read. Too many deletions?");
+                throw new GATKException(String.format("Somehow the requested coordinate is not covered by the read. Too many deletions? alignment Start: %d, Cigar: %s, refCoord: %s ",
+                        alignmentStart, cigar.toString(), refCoord));
             }
         }
         boolean goalReached = refBases == goal;
