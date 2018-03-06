@@ -217,10 +217,7 @@ public class MarkDuplicatesSparkUtils {
 
             /////// Fragments ////////
             if (!fragments.isEmpty()) { // fragments
-                Tuple2<IndexPair<String>, Integer> fragmentNonDuplicate = handleFragments(fragments, pairedEndsComparator);
-                if (fragmentNonDuplicate!=null) {
-                    out.add(fragmentNonDuplicate);
-                }
+                handleFragments(fragments, pairedEndsComparator, out);
             }
 
             /////// ReadPairs ////////
@@ -228,9 +225,6 @@ public class MarkDuplicatesSparkUtils {
                 final Collection<List<PairedEnds>> groups = pairs.stream()
                         .collect(Collectors.groupingBy(PairedEnds::getUnclippedStartPosition)).values();
 
-                if(groups.size() >1 ){
-                    throw new GATKException("We're having hash collisions and we don't handle them properly.");
-                }
                 for (List<PairedEnds> pairGroup : groups) {
 
                     PairedEnds bestPair = null;
@@ -285,19 +279,15 @@ public class MarkDuplicatesSparkUtils {
         return numOpticalDuplicates;
     }
 
-    private static Tuple2<IndexPair<String>,Integer> handleFragments(Iterable<PairedEnds> pairedEnds, Comparator<PairedEnds> comparator) {
+    private static void handleFragments(Iterable<PairedEnds> pairedEnds, Comparator<PairedEnds> comparator, List<Tuple2<IndexPair<String>, Integer>> output) {
 
         final Collection<List<PairedEnds>> groups = Utils.stream(pairedEnds)
                 .collect(Collectors.groupingBy(PairedEnds::getUnclippedStartPosition))
                 .values();
 
-        //todo this is broken and only emits for the first key
         //adding throw here to check if we're hitting it
-        if (groups.size() > 1){
-            throw new GATKException("We've had bad luck and are exploding because we had a hash collision, please fix this brokenness");
-        }
         for (List<PairedEnds> duplicateFragmentGroup : groups) {
-            //empty PairedEnds signify a pair that has additional
+            //empty PairedEnds signify that a pair has a mate somewhere else
             final Map<Boolean, List<PairedEnds>> byPairing  = duplicateFragmentGroup.stream()
                     .collect(Collectors.partitioningBy(PairedEnds::isEmpty));
 
@@ -305,13 +295,12 @@ public class MarkDuplicatesSparkUtils {
             boolean computeScore = byPairing.get(true).isEmpty();
 
             if (computeScore) {
-                return byPairing.get(false).stream()
+                output.add(byPairing.get(false).stream()
                         .max(comparator)
                         .map(best -> new Tuple2<>( new IndexPair<>(best.getName(), best.getPartitionIndex()), -1))
-                        .orElse(null);
+                        .orElse(null));
             }
         }
-        return null;
 
     }
 
