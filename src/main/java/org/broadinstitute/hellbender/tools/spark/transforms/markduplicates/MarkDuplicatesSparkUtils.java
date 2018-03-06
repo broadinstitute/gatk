@@ -124,13 +124,13 @@ public class MarkDuplicatesSparkUtils {
             // reads are already grouped by name, so perform grouping within the partition (no shuffle)
             keyedReads = spanReadsByKey(header, indexedReads);
         } else {
-            throw new UserException("MarkDuplicatesSpark requires input to be in queryname or querygroup order.  " +
-                                            "This bam has SortOrder=" + header.getSortOrder() + " GroupOrder=" + header.getGroupOrder());
-            //TODO fix this so that it works and groups reads correctly instead of the error.
-                // sort by group and name (incurs a shuffle)
-//                JavaPairRDD<String, IndexPair<GATKRead>> keyReadPairs = indexedReads.mapToPair(read -> new Tuple2<>(
-//                    ReadsKey.keyForRead(header, read.getValue()), read));
-//                keyedReads = keyReadPairs.groupByKey(numReducers);
+//            throw new UserException("MarkDuplicatesSpark requires input to be in queryname or querygroup order.  " +
+//                                            "This bam has SortOrder=" + header.getSortOrder() + " GroupOrder=" + header.getGroupOrder());
+//            //TODO fix this so that it works and groups reads correctly instead of the error.
+                 //sort by group and name (incurs a shuffle)
+                JavaPairRDD<String, IndexPair<GATKRead>> keyReadPairs = indexedReads.mapToPair(read -> new Tuple2<>(
+                    ReadsKey.keyForRead(header, read.getValue()), read));
+                keyedReads = keyReadPairs.groupByKey(numReducers);
         }
         return keyedReads;
     }
