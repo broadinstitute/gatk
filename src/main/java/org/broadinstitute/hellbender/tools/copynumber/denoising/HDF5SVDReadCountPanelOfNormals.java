@@ -14,6 +14,7 @@ import org.apache.spark.mllib.linalg.Matrix;
 import org.apache.spark.mllib.linalg.SingularValueDecomposition;
 import org.apache.spark.mllib.linalg.distributed.RowMatrix;
 import org.broadinstitute.hdf5.HDF5File;
+import org.broadinstitute.hdf5.HDF5LibException;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.CreateReadCountPanelOfNormals;
@@ -155,7 +156,15 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
 
     @Override
     public int getNumEigensamples() {
-        return (int) file.readDouble(PANEL_NUM_EIGENSAMPLES_PATH);
+        try {
+            return (int) file.readDouble(PANEL_NUM_EIGENSAMPLES_PATH);
+        } catch (final HDF5LibException e) {
+            //if the panel only contains a single sample or zero eigensamples were requested,
+            //we do not store singular values or eigenvectors in the panel;
+            //in this case, no value is written to PANEL_NUM_EIGENSAMPLES_PATH and an exception
+            //is thrown when we attempt to read it
+            return 0;
+        }
     }
 
     @Override
@@ -193,11 +202,19 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
 
     @Override
     public double[] getSingularValues() {
+        if (getNumEigensamples() == 0) {
+            throw new UnsupportedOperationException("No singular values were available.  " +
+                    "This is because the panel only contains a single sample or no eigensamples were requested upon panel creation.");
+        }
         return file.readDoubleArray(PANEL_SINGULAR_VALUES_PATH);
     }
 
     @Override
     public double[][] getEigensampleVectors() {
+        if (getNumEigensamples() == 0) {
+            throw new UnsupportedOperationException("No eigensample vectors were available.  " +
+                    "This is because the panel only contains a single sample or no eigensamples were requested upon panel creation.");
+        }
         return new Array2DRowRealMatrix(
                 HDF5Utils.readChunkedDoubleMatrix(file, PANEL_EIGENSAMPLE_VECTORS_PATH), false)
                 .transpose().getData();
@@ -307,13 +324,11 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
             }
             logger.info(String.format("Performing SVD (truncated at %d eigensamples) of standardized counts (transposed to %d x %d)...",
                     numEigensamples, numPanelIntervals, numPanelSamples));
-            final double[] singularValues;
-            final double[][] eigensampleVectors;
-            if (numPanelSamples > 1) {
+            if (numPanelSamples > 1 && numEigensamples > 0) {
                 final SingularValueDecomposition<RowMatrix, Matrix> svd = SparkConverter.convertRealMatrixToSparkRowMatrix(
                         ctx, preprocessedStandardizedResult.preprocessedStandardizedValues.transpose(), NUM_SLICES_FOR_SPARK_MATRIX_CONVERSION)
                         .computeSVD(numEigensamples, true, EPSILON);
-                singularValues = svd.s().toArray();    //should be in decreasing order (with corresponding matrices below)
+                final double[] singularValues = svd.s().toArray();    //should be in decreasing order (with corresponding matrices below)
                 if (singularValues.length == 0 || Arrays.stream(singularValues).noneMatch(s -> s > EPSILON)) {
                     //if the panel contains more than one sample, we require that at least one non-negligible singular value is found
                     throw new UserException(String.format("No non-zero singular values were found.  It may be necessary to use stricter parameters for filtering.  " +
@@ -323,18 +338,18 @@ public final class HDF5SVDReadCountPanelOfNormals implements SVDReadCountPanelOf
                     logger.warn(String.format("Attempted to truncate at %d eigensamples, but only %d non-zero singular values were found...",
                             numEigensamples, singularValues.length));
                 }
-                eigensampleVectors = SparkConverter.convertSparkRowMatrixToRealMatrix(svd.U(), numPanelIntervals).getData();
+                final double[][] eigensampleVectors = SparkConverter.convertSparkRowMatrixToRealMatrix(svd.U(), numPanelIntervals).getData();
+
+                logger.info(String.format("Writing singular values (%d)...", singularValues.length));
+                pon.writeSingularValues(singularValues);
+
+                logger.info(String.format("Writing eigensample vectors (transposed to %d x %d)...", eigensampleVectors[0].length, eigensampleVectors.length));
+                pon.writeEigensampleVectors(eigensampleVectors, maximumChunkSize);
             } else {
-                //if the panel only contains a single sample, take zero for singular value and zero vector for eigensample vector
-                singularValues = new double[numPanelSamples];
-                eigensampleVectors = new double[numPanelIntervals][numPanelSamples];
+                //if the panel only contains a single sample or zero eigensamples were requested,
+                //we do not store singular values or eigenvectors in the panel
+                logger.info("No eigensamples could be computed because only a single sample was provided or no eigensamples were requested.");
             }
-
-            logger.info(String.format("Writing singular values (%d)...", singularValues.length));
-            pon.writeSingularValues(singularValues);
-
-            logger.info(String.format("Writing eigensample vectors (transposed to %d x %d)...", eigensampleVectors[0].length, eigensampleVectors.length));
-            pon.writeEigensampleVectors(eigensampleVectors, maximumChunkSize);
         } catch (final RuntimeException exception) {
             //if any exceptions encountered, delete partial output and rethrow
             logger.warn(String.format("Exception encountered during creation of panel of normals (%s).  Attempting to delete partial output in %s...",

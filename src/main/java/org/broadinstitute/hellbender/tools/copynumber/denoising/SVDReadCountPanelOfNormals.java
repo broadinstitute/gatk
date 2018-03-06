@@ -63,6 +63,8 @@ public interface SVDReadCountPanelOfNormals {
     /**
      * Returns a modifiable copy of an array of the singular values of the eigensamples in decreasing order.
      * This array has length {@code K}.
+     * @throws UnsupportedOperationException    if the panel only contains a single sample
+     *                                          or if no eigensamples were requested upon panel creation
      */
     double[] getSingularValues();
 
@@ -72,9 +74,15 @@ public interface SVDReadCountPanelOfNormals {
      * where {@code M} is the number of panel intervals (after filtering)
      * and {@code K} is the number of eigensamples.
      * Columns are sorted by singular value in decreasing order.
+     * @throws UnsupportedOperationException    if the panel only contains a single sample
+     *                                          or if no eigensamples were requested upon panel creation
      */
     double[][] getEigensampleVectors();
 
+    /**
+     * Standardizes and denoises {@code readCounts} using {@code numEigensamples} of the eigensamples.
+     * If no eigensamples are available, the denoised output should be identical to the standardized output.
+     */
     default SVDDenoisedCopyRatioResult denoise(final SimpleCountCollection readCounts,
                                                final int numEigensamples) {
         return SVDDenoisingUtils.denoise(this, readCounts, numEigensamples);

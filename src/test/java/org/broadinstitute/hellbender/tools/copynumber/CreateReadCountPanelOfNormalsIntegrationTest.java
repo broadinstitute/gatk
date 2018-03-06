@@ -264,6 +264,46 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
         runCommandLine(argsBuilder);                                                //just check that we can build the panel; no other assertions checked
     }
 
+    @Test(dataProvider = "dataPanelOfNormals")
+    public void testZeroEigensamples(final List<File> inputFiles,
+                                     final File annotatedIntervalsFile,
+                                     final int expectedNumberOfEigenvalues) {   //ignored in this test
+        final File resultOutputFile = createTempFile("create-read-count-panel-of-normals-test", ".tsv");
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
+                .addArgument(CreateReadCountPanelOfNormals.MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(MINIMUM_INTERVAL_MEDIAN_PERCENTILE))
+                .addArgument(CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE_LONG_NAME, Double.toString(MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE))
+                .addArgument(CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE_LONG_NAME, Double.toString(MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE))
+                .addArgument(CreateReadCountPanelOfNormals.EXTREME_SAMPLE_MEDIAN_PERCENTILE_LONG_NAME, Double.toString(EXTREME_SAMPLE_MEDIAN_PERCENTILE))
+                .addArgument(CopyNumberStandardArgument.NUMBER_OF_EIGENSAMPLES_LONG_NAME, "0")
+                .addOutput(resultOutputFile);
+        if (annotatedIntervalsFile != null) {
+            argsBuilder.addFileArgument(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME, annotatedIntervalsFile);
+        }
+        inputFiles.forEach(argsBuilder::addInput);
+        runCommandLine(argsBuilder);
+        try (final HDF5File hdf5PanelOfNormalsFile = new HDF5File(resultOutputFile)) {
+            final SVDReadCountPanelOfNormals panelOfNormals = HDF5SVDReadCountPanelOfNormals.read(hdf5PanelOfNormalsFile);
+
+            Assert.assertEquals(panelOfNormals.getNumEigensamples(), 0);
+
+            //denoise last sample (which is not a bad sample) in original counts using zero eigensamples
+            final RealMatrix counts = new Array2DRowRealMatrix(panelOfNormals.getOriginalReadCounts());
+            final List<SimpleInterval> originalIntervals = panelOfNormals.getOriginalIntervals();
+            final SimpleCountCollection sampleCounts = new SimpleCountCollection(
+                    new SimpleSampleLocatableMetadata("test-sample", SEQUENCE_DICTIONARY),
+                    IntStream.range(0, NUM_INTERVALS)
+                            .mapToObj(i -> new SimpleCount(originalIntervals.get(i), (int) counts.getEntry(counts.getRowDimension() - 1, i)))
+                            .collect(Collectors.toList()));
+            final SVDDenoisedCopyRatioResult denoisedResult = panelOfNormals.denoise(sampleCounts, 0);
+            //check that the denoised copy ratios are identical to the standardized copy ratios
+            Assert.assertEquals(denoisedResult.getDenoisedCopyRatios(), denoisedResult.getStandardizedCopyRatios());
+
+            //check that exceptions are thrown when attempting to get singular values and eigenvectors
+            Assert.assertThrows(UnsupportedOperationException.class, panelOfNormals::getSingularValues);
+            Assert.assertThrows(UnsupportedOperationException.class, panelOfNormals::getEigensampleVectors);
+        }
+    }
+
     private void testPanelOfNormals(final File annotatedIntervalsFile,
                                     final int expectedNumberOfEigenvalues,
                                     final File resultOutputFile) {
