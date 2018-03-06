@@ -34,7 +34,7 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     /**
      * The PairHMM implementation to use for genotype likelihood calculations. The various implementations balance a tradeoff of accuracy and runtime.
      */
-    @Hidden
+    @Advanced
     @Argument(fullName = "pair-hmm-implementation", shortName = "pairHMM", doc = "The PairHMM implementation to use for genotype likelihood calculations", optional = true)
     public PairHMM.Implementation pairHMM = PairHMM.Implementation.FASTEST_AVAILABLE;
 
