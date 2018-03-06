@@ -164,7 +164,7 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
 
     @Argument(
             doc = "Genomic intervals with a median (across samples) of fractional coverage (optionally corrected for GC bias) " +
-                    "below this percentile are filtered out.  " +
+                    "less than or equal to this percentile are filtered out.  " +
                     "(This is the first filter applied.)",
             fullName = MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME,
             minValue = 0.,

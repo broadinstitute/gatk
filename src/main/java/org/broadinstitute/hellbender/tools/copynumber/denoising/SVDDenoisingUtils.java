@@ -208,12 +208,12 @@ public final class SVDDenoisingUtils {
             logger.info(String.format("A value of 0 was provided for argument %s, so the corresponding filtering step will be skipped...",
                     CreateReadCountPanelOfNormals.MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME));
         } else {
-            logger.info(String.format("Filtering intervals with median (across samples) below the %.2f percentile...", minimumIntervalMedianPercentile));
+            logger.info(String.format("Filtering intervals with median (across samples) less than or equal to the %.2f percentile...", minimumIntervalMedianPercentile));
             //calculate percentile
             final double minimumIntervalMedianThreshold = new Percentile(minimumIntervalMedianPercentile).evaluate(originalIntervalMedians);
             //filter intervals
             IntStream.range(0, numOriginalIntervals)
-                    .filter(intervalIndex -> originalIntervalMedians[intervalIndex] < minimumIntervalMedianThreshold)
+                    .filter(intervalIndex -> originalIntervalMedians[intervalIndex] <= minimumIntervalMedianThreshold)
                     .forEach(intervalIndex -> filterIntervals[intervalIndex] = true);
             logger.info(String.format("After filtering, %d out of %d intervals remain...", countNumberPassingFilter(filterIntervals), numOriginalIntervals));
         }
