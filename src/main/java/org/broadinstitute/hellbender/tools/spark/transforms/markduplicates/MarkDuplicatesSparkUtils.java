@@ -27,6 +27,8 @@ public class MarkDuplicatesSparkUtils {
 
     // Used to set an attribute on the GATKRead marking this read as an optical duplicate.
     public static final String OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME = "OD";
+    private static final Comparator<PairedEnds> PAIRED_ENDS_SCORE_COMPARATOR = Comparator.comparing(PairedEnds::getScore).reversed()
+            .thenComparing(PairedEndsCoordinateComparator.INSTANCE);
 
 
     @DefaultSerializer(FieldSerializer.class)
@@ -203,71 +205,70 @@ public class MarkDuplicatesSparkUtils {
                                                                           final OpticalDuplicateFinder finder, final SAMFileHeader header) {
         return keyedPairs.flatMapToPair(keyedPair -> {
             Iterable<PairedEnds> pairedEnds = keyedPair._2();
-            final ImmutableListMultimap<Boolean, PairedEnds> stratifiedByFragments = Multimaps.index(pairedEnds, PairedEnds::isFragment);
-
-            // Tie breaker
-            final Comparator<PairedEnds> pairedEndsComparator =
-                    Comparator.comparing(PairedEnds::getScore).reversed()
-                            .thenComparing(PairedEndsCoordinateComparator.INSTANCE);
 
             final List<Tuple2<IndexPair<String>, Integer>> nonDuplicates = Lists.newArrayList();
 
-            // Each key corresponds to either fragments or paired ends, not a mixture of both.
-            final ImmutableList<PairedEnds> fragments = stratifiedByFragments.get(true);
-            final ImmutableList<PairedEnds> pairs = stratifiedByFragments.get(false);
+            //since we grouped by a non-unique hash code for efficiency we need to regroup by the actual criteria
+            //todo this should use library and contig as well probably
+            final Collection<List<PairedEnds>> groups = Utils.stream(pairedEnds)
+                    .collect(Collectors.groupingBy(PairedEnds::getUnclippedStartPosition)).values();
 
-            if (!fragments.isEmpty()) { // fragments
-                handleFragments(fragments, pairedEndsComparator, nonDuplicates);
+            for (List<PairedEnds> duplicateGroup : groups) {
+                final ImmutableListMultimap<Boolean, PairedEnds> stratifiedByFragments = Multimaps.index(duplicateGroup, PairedEnds::isFragment);
+
+                // Each key corresponds to either fragments or paired ends, not a mixture of both.
+                final ImmutableList<PairedEnds> fragments = stratifiedByFragments.get(true);
+                final ImmutableList<PairedEnds> pairs = stratifiedByFragments.get(false);
+
+                if (!fragments.isEmpty()) { // fragments
+                    nonDuplicates.add(handleFragments(fragments));
+                }
+
+                if (!pairs.isEmpty()) {
+                    handlePairs(pairs, finder, nonDuplicates);
+                }
             }
 
-            if (!pairs.isEmpty()) {
-                handlePairs(finder, pairedEndsComparator, nonDuplicates, pairs);
-            }
             return nonDuplicates.iterator();
         });
     }
 
-    private static void handlePairs(OpticalDuplicateFinder finder, Comparator<PairedEnds> pairedEndsComparator, List<Tuple2<IndexPair<String>, Integer>> out, ImmutableList<PairedEnds> pairs) {
-        final Collection<List<PairedEnds>> groups = pairs.stream()
-                .collect(Collectors.groupingBy(PairedEnds::getUnclippedStartPosition)).values();
+    private static void handlePairs(List<PairedEnds> pairs, OpticalDuplicateFinder finder, List<Tuple2<IndexPair<String>, Integer>> nonDuplicates) {
 
-        for (List<PairedEnds> pairGroup : groups) {
-
-            PairedEnds bestPair = null;
-            for (PairedEnds pair : pairGroup) {
-                // As in Picard, unpaired ends left alone.
-                if (!pair.hasSecondRead()) {
-                    out.add(new Tuple2<>(new IndexPair<>(pair.getName(), pair.getPartitionIndex()), -1));
-                    // Order by score using ReadCoordinateComparator for tie-breaking.
+        PairedEnds bestPair = null;
+        for (PairedEnds pair : pairs) {
+            // As in Picard, unpaired ends left alone.
+            if (!pair.hasSecondRead()) {
+                nonDuplicates.add(new Tuple2<>(new IndexPair<>(pair.getName(), pair.getPartitionIndex()), -1));
+                // Order by score using ReadCoordinateComparator for tie-breaking.
+            } else {
+                // There are no paired reads, mark all but the highest scoring fragment as duplicate.
+                if (bestPair != null) {
+                    bestPair = (PAIRED_ENDS_SCORE_COMPARATOR.compare(pair, bestPair) > 0) ? bestPair : pair;
                 } else {
-                    // There are no paired reads, mark all but the highest scoring fragment as duplicate.
-                    if (bestPair != null) {
-                        bestPair = (pairedEndsComparator.compare(pair, bestPair) > 0) ? bestPair : pair;
-                    } else {
-                        bestPair = pair;
-                    }
-
-                    finder.addLocationInformation(pair.getName(), pair);//TODO this needs me to handle the name better
+                    bestPair = pair;
                 }
-            }
-            if (bestPair != null) {
 
-                // This must happen last, as findOpticalDuplicates mutates the list.
-                // Split by orientation and count duplicates in each group separately.
-                // TODO could be better
-                List<PairedEnds> scored = pairs.stream().filter(PairedEnds::hasSecondRead).collect(Collectors.toList());
-                final ImmutableListMultimap<Byte, PairedEnds> groupByOrientation = Multimaps.index(scored, PairedEnds::getOrientationForOpticalDuplicates);
-                final int numOpticalDuplicates;
-                if (groupByOrientation.containsKey(ReadEnds.FR) && groupByOrientation.containsKey(ReadEnds.RF)) {
-                    final List<PairedEnds> peFR = new ArrayList<>(groupByOrientation.get(ReadEnds.FR));
-                    final List<PairedEnds> peRF = new ArrayList<>(groupByOrientation.get(ReadEnds.RF));
-                    numOpticalDuplicates = countOpticalDuplicates(finder, peFR) + countOpticalDuplicates(finder, peRF);
-                } else {
-                    numOpticalDuplicates = countOpticalDuplicates(finder, scored);
-                }
-                //bestPair.first().setAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, numOpticalDuplicates);
-                out.add(new Tuple2<>(new IndexPair<>(bestPair.getName(), bestPair.getPartitionIndex()), numOpticalDuplicates));
+                finder.addLocationInformation(pair.getName(), pair);//TODO this needs me to handle the name better
             }
+        }
+        if (bestPair != null) {
+
+            // This must happen last, as findOpticalDuplicates mutates the list.
+            // Split by orientation and count duplicates in each group separately.
+            // TODO could be better
+            List<PairedEnds> scored = pairs.stream().filter(PairedEnds::hasSecondRead).collect(Collectors.toList());
+            final ImmutableListMultimap<Byte, PairedEnds> groupByOrientation = Multimaps.index(scored, PairedEnds::getOrientationForOpticalDuplicates);
+            final int numOpticalDuplicates;
+            if (groupByOrientation.containsKey(ReadEnds.FR) && groupByOrientation.containsKey(ReadEnds.RF)) {
+                final List<PairedEnds> peFR = new ArrayList<>(groupByOrientation.get(ReadEnds.FR));
+                final List<PairedEnds> peRF = new ArrayList<>(groupByOrientation.get(ReadEnds.RF));
+                numOpticalDuplicates = countOpticalDuplicates(finder, peFR) + countOpticalDuplicates(finder, peRF);
+            } else {
+                numOpticalDuplicates = countOpticalDuplicates(finder, scored);
+            }
+            //bestPair.first().setAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, numOpticalDuplicates);
+            nonDuplicates.add(new Tuple2<>(new IndexPair<>(bestPair.getName(), bestPair.getPartitionIndex()), numOpticalDuplicates));
         }
     }
 
@@ -282,28 +283,19 @@ public class MarkDuplicatesSparkUtils {
         return numOpticalDuplicates;
     }
 
-    private static void handleFragments(Iterable<PairedEnds> pairedEnds, Comparator<PairedEnds> comparator, List<Tuple2<IndexPair<String>, Integer>> nonDuplicates) {
+    private static Tuple2<IndexPair<String>, Integer> handleFragments(List<PairedEnds> duplicateFragmentGroup) {
+        //empty PairedEnds signify that a pair has a mate somewhere else
+        // If there are any non-fragment placeholders at this site, mark everything as duplicates, otherwise compute the best score
+        final boolean computeScore = duplicateFragmentGroup.stream().anyMatch(PairedEnds::isEmpty);
 
-        //since we grouped by a non-unique hash code we need to split into potentially multiple duplicate groups
-        //todo also split by library and contig here too?
-        final Collection<List<PairedEnds>> groups = Utils.stream(pairedEnds)
-                .collect(Collectors.groupingBy(PairedEnds::getUnclippedStartPosition))
-                .values();
-
-        //adding throw here to check if we're hitting it
-        for (List<PairedEnds> duplicateFragmentGroup : groups) {
-            //empty PairedEnds signify that a pair has a mate somewhere else
-            // If there are any non-fragment placeholders at this site, mark everything as duplicates, otherwise compute the best score
-            final boolean computeScore = duplicateFragmentGroup.stream().anyMatch(PairedEnds::isEmpty);
-
-            if (computeScore) {
-                nonDuplicates.add(duplicateFragmentGroup.stream()
-                        .max(comparator)
-                        .map(best -> new Tuple2<>( new IndexPair<>(best.getName(), best.getPartitionIndex()), -1))
-                        .orElse(null));
-            }
+        if (computeScore) {
+            return duplicateFragmentGroup.stream()
+                    .max(PAIRED_ENDS_SCORE_COMPARATOR)
+                    .map(best -> new Tuple2<>(new IndexPair<>(best.getName(), best.getPartitionIndex()), -1))
+                    .orElse(null);
+        } else {
+            return null;
         }
-
     }
 
     static JavaPairRDD<String, DuplicationMetrics> generateMetrics(final SAMFileHeader header, final JavaRDD<GATKRead> reads) {
