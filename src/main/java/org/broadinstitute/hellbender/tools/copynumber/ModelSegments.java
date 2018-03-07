@@ -69,9 +69,10 @@ import java.util.stream.Stream;
  * <p>
  *     If both copy ratios and allele fractions are available, we perform segmentation using a combined kernel
  *     that is sensitive to changes that occur not only in either of the two but also in both.  However, in this case,
- *     we simply discard all allele fractions that lie outside of the available copy-ratio intervals
- *     (rather than imputing the missing copy-ratio data).  This can have implications for analyses involving
- *     the sex chromosomes; see comments in {@link CreateReadCountPanelOfNormals}.
+ *     we simply discard all allele fractions at sites that lie outside of the available copy-ratio intervals
+ *     (rather than imputing the missing copy-ratio data); these sites are filtered out during the genotyping step
+ *     discussed above.  This can have implications for analyses involving the sex chromosomes;
+ *     see comments in {@link CreateReadCountPanelOfNormals}.
  * </p>
  *
  * <p>
@@ -148,7 +149,7 @@ import java.util.stream.Stream;
  *         This is a tab-separated values (TSV) file with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link AllelicCountCollection.AllelicCountTableColumn},
  *         and the corresponding entry rows.
- *         This is only output if normal allelic counts are provided as input.
+ *         This is only output if allelic counts are provided as input.
  *     </li>
  *     <li>
  *         (Optional) Allelic-counts file containing the counts at sites genotyped as heterozygous in the matched-normal sample (.hets.normal.tsv).
@@ -595,19 +596,18 @@ public final class ModelSegments extends CommandLineProgram {
                         .filter(ac -> ac.getTotalReadCount() >= minTotalAlleleCount)
                         .collect(Collectors.toList()));
         logger.info(String.format("Retained %d / %d sites after filtering on total count...",
-                filteredAllelicCounts.getRecords().size(), allelicCounts.getRecords().size()));
+                filteredAllelicCounts.size(), allelicCounts.size()));
 
         //filter on overlap with copy-ratio intervals, if available
         if (denoisedCopyRatios != null) {
             logger.info("Filtering allelic-count sites not overlapping with copy-ratio intervals...");
-            final OverlapDetector<CopyRatio> copyRatioOverlapDetector = denoisedCopyRatios.getOverlapDetector();
             filteredAllelicCounts = new AllelicCountCollection(
                     metadata,
                     filteredAllelicCounts.getRecords().stream()
-                            .filter(copyRatioOverlapDetector::overlapsAny)
+                            .filter(ac -> denoisedCopyRatios.getOverlapDetector().overlapsAny(ac))
                             .collect(Collectors.toList()));
             logger.info(String.format("Retained %d / %d sites after filtering on overlap with copy-ratio intervals...",
-                    filteredAllelicCounts.getRecords().size(), allelicCounts.getRecords().size()));
+                    filteredAllelicCounts.size(), allelicCounts.size()));
         }
 
         final AllelicCountCollection hetAllelicCounts;
@@ -623,7 +623,7 @@ public final class ModelSegments extends CommandLineProgram {
             final File hetAllelicCountsFile = new File(outputDir, outputPrefix + HET_ALLELIC_COUNTS_FILE_SUFFIX);
             hetAllelicCounts.write(hetAllelicCountsFile);
             logger.info(String.format("Retained %d / %d sites after testing for heterozygosity...",
-                    hetAllelicCounts.getRecords().size(), allelicCounts.getRecords().size()));
+                    hetAllelicCounts.size(), allelicCounts.size()));
             logger.info(String.format("Heterozygous allelic counts written to %s.", hetAllelicCountsFile));
         } else {
             //use matched normal
@@ -641,13 +641,25 @@ public final class ModelSegments extends CommandLineProgram {
 
             //filter on total count in matched normal
             logger.info(String.format("Filtering allelic counts in matched normal with total count less than %d...", minTotalAlleleCount));
-            final AllelicCountCollection filteredNormalAllelicCounts = new AllelicCountCollection(
+            AllelicCountCollection filteredNormalAllelicCounts = new AllelicCountCollection(
                     normalMetadata,
                     normalAllelicCounts.getRecords().stream()
                             .filter(ac -> ac.getTotalReadCount() >= minTotalAlleleCount)
                             .collect(Collectors.toList()));
             logger.info(String.format("Retained %d / %d sites in matched normal after filtering on total count...",
-                    filteredNormalAllelicCounts.getRecords().size(), normalAllelicCounts.getRecords().size()));
+                    filteredNormalAllelicCounts.size(), normalAllelicCounts.size()));
+
+            //filter matched normal on overlap with copy-ratio intervals, if available
+            if (denoisedCopyRatios != null) {
+                logger.info("Filtering allelic-count sites in matched normal not overlapping with copy-ratio intervals...");
+                filteredNormalAllelicCounts = new AllelicCountCollection(
+                        normalMetadata,
+                        filteredNormalAllelicCounts.getRecords().stream()
+                                .filter(ac -> denoisedCopyRatios.getOverlapDetector().overlapsAny(ac))
+                                .collect(Collectors.toList()));
+                logger.info(String.format("Retained %d / %d sites in matched normal after filtering on overlap with copy-ratio intervals...",
+                        filteredNormalAllelicCounts.size(), normalAllelicCounts.size()));
+            }
 
             //filter on homozygosity in matched normal
             final AllelicCountCollection hetNormalAllelicCounts = new AllelicCountCollection(
@@ -658,16 +670,15 @@ public final class ModelSegments extends CommandLineProgram {
             final File hetNormalAllelicCountsFile = new File(outputDir, outputPrefix + NORMAL_HET_ALLELIC_COUNTS_FILE_SUFFIX);
             hetNormalAllelicCounts.write(hetNormalAllelicCountsFile);
             logger.info(String.format("Retained %d / %d sites in matched normal after testing for heterozygosity...",
-                    hetNormalAllelicCounts.getRecords().size(), normalAllelicCounts.getRecords().size()));
+                    hetNormalAllelicCounts.size(), normalAllelicCounts.size()));
             logger.info(String.format("Heterozygous allelic counts for matched normal written to %s.", hetNormalAllelicCountsFile));
 
             //retrieve sites in case sample
             logger.info("Retrieving allelic counts at these sites in case sample...");
-            final Set<SimpleInterval> hetNormalAllelicCountSites = new HashSet<>(hetNormalAllelicCounts.getIntervals());
             hetAllelicCounts = new AllelicCountCollection(
                     metadata,
                     filteredAllelicCounts.getRecords().stream()
-                            .filter(ac -> hetNormalAllelicCountSites.contains(ac.getInterval()))
+                            .filter(ac -> hetNormalAllelicCounts.getOverlapDetector().overlapsAny(ac))
                             .collect(Collectors.toList()));
             final File hetAllelicCountsFile = new File(outputDir, outputPrefix + HET_ALLELIC_COUNTS_FILE_SUFFIX);
             hetAllelicCounts.write(hetAllelicCountsFile);

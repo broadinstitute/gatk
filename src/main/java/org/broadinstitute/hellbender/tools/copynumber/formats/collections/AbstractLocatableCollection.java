@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.Lazy;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
@@ -28,6 +29,8 @@ import java.util.stream.Collectors;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public abstract class AbstractLocatableCollection<METADATA extends LocatableMetadata, RECORD extends Locatable> extends AbstractRecordCollection<METADATA, RECORD> {
+    private final Lazy<OverlapDetector<RECORD>> overlapDetector;
+
     /**
      * @param metadata records are sorted using the contained {@link SAMSequenceDictionary}
      */
@@ -38,6 +41,7 @@ public abstract class AbstractLocatableCollection<METADATA extends LocatableMeta
                                 final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         super(metadata, sortRecords(records, metadata.getSequenceDictionary()), mandatoryColumns, recordFromDataLineDecoder, recordToDataLineEncoder);
         CopyNumberArgumentValidationUtils.validateIntervals(getRecords(), metadata.getSequenceDictionary());
+        this.overlapDetector = new Lazy<>(() -> OverlapDetector.create(getRecords()));
     }
 
     /**
@@ -49,6 +53,7 @@ public abstract class AbstractLocatableCollection<METADATA extends LocatableMeta
                                 final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         super(inputFile, mandatoryColumns, recordFromDataLineDecoder, recordToDataLineEncoder);
         CopyNumberArgumentValidationUtils.validateIntervals(getRecords(), getMetadata().getSequenceDictionary());
+        this.overlapDetector = new Lazy<>(() -> OverlapDetector.create(getRecords()));
     }
 
     private static <T extends Locatable> List<T> sortRecords(final List<T> records,
@@ -70,8 +75,11 @@ public abstract class AbstractLocatableCollection<METADATA extends LocatableMeta
                 .collect(Collectors.toList());
     }
 
+    /**
+     * @return a lazily-created {@link OverlapDetector} of the contained records
+     */
     public OverlapDetector<RECORD> getOverlapDetector() {
-        return OverlapDetector.create(getRecords());
+        return overlapDetector.get();
     }
 
     public Comparator<Locatable> getComparator() {
