@@ -76,13 +76,13 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         
         return reads.zipPartitions(repartitionedReadNames, (readsIter, readNamesIter)  -> {
             final Set<String> namesOfNonDuplicateReads = Utils.stream(readNamesIter).collect(Collectors.toSet());
-            return Utils.stream(readsIter).map( read -> {
-                if( namesOfNonDuplicateReads.contains(read.getName())) {
+            return Utils.stream(readsIter).peek(read -> {
+                if( namesOfNonDuplicateReads.contains(read.getName())
+                        || MarkDuplicatesSparkUtils.readAndMateAreUnmapped(read)) {
                     read.setIsDuplicate(false);
-                } else {
+                } else{
                     read.setIsDuplicate(true);
                 }
-                return read;
             }).iterator();
         });
     }

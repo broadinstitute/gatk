@@ -69,8 +69,12 @@ public class MarkDuplicatesSparkUtils {
      *   (b) Determine which duplicates are optical duplicates and increase the overall count.
      */
     static JavaPairRDD<IndexPair<String>, Integer> transformToDuplicateNames(final SAMFileHeader header, final MarkDuplicatesScoringStrategy scoringStrategy, final OpticalDuplicateFinder finder, final JavaRDD<GATKRead>  reads, final int numReducers) {
+        //remove reads that are unmapped and have unmapped or no mates
+        // we treat these specially and don't mark them as duplicates
+        final JavaRDD<GATKRead> readsWithUnplaceableReadsRemoved = reads.filter(read -> !readAndMateAreUnmapped(read));
 
-        JavaPairRDD<String, Iterable<IndexPair<GATKRead>>> keyedReads = getReadsGroupedByName(header, reads, numReducers);
+        final JavaPairRDD<String, Iterable<IndexPair<GATKRead>>> keyedReads = getReadsGroupedByName(header, readsWithUnplaceableReadsRemoved, numReducers);
+
 
         // Place all the reads into a single RDD separated
         final JavaPairRDD<Integer, PairedEnds> pairedEnds = keyedReads.flatMapToPair(keyedRead -> {
@@ -113,6 +117,10 @@ public class MarkDuplicatesSparkUtils {
         final JavaPairRDD<Integer, Iterable<PairedEnds>> keyedPairs = pairedEnds.groupByKey(); //TODO make this a proper aggregate by key
 
         return markPairedEnds(keyedPairs, finder, header);
+    }
+
+    public static boolean readAndMateAreUnmapped(GATKRead read) {
+        return read.isUnmapped() && (!read.isPaired() || read.mateIsUnmapped());
     }
 
     private static JavaPairRDD<String, Iterable<IndexPair<GATKRead>>> getReadsGroupedByName(SAMFileHeader header, JavaRDD<GATKRead> reads, int numReducers) {
