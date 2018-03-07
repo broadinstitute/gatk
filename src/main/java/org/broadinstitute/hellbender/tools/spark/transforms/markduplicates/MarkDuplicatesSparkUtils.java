@@ -124,13 +124,9 @@ public class MarkDuplicatesSparkUtils {
             // reads are already grouped by name, so perform grouping within the partition (no shuffle)
             keyedReads = spanReadsByKey(header, indexedReads);
         } else {
-            throw new UserException("MarkDuplicatesSpark requires input to be in queryname or querygroup order.  " +
-                                            "This bam has SortOrder=" + header.getSortOrder() + " GroupOrder=" + header.getGroupOrder());
-            //TODO fix this so that it works and groups reads correctly instead of the error.
-                // sort by group and name (incurs a shuffle)
-//                JavaPairRDD<String, IndexPair<GATKRead>> keyReadPairs = indexedReads.mapToPair(read -> new Tuple2<>(
-//                    ReadsKey.keyForRead(header, read.getValue()), read));
-//                keyedReads = keyReadPairs.groupByKey(numReducers);
+            // sort by group and name (incurs a shuffle)
+            JavaPairRDD<String, IndexPair<GATKRead>> keyReadPairs = indexedReads.mapToPair(read -> new Tuple2<>(ReadsKey.keyForRead(header, read.getValue()), read));
+            keyedReads = keyReadPairs.groupByKey(numReducers);
         }
         return keyedReads;
     }
@@ -214,18 +210,26 @@ public class MarkDuplicatesSparkUtils {
                     .collect(Collectors.groupingBy(PairedEnds::getUnclippedStartPosition)).values();
 
             for (List<PairedEnds> duplicateGroup : groups) {
-                final ImmutableListMultimap<Boolean, PairedEnds> stratifiedByFragments = Multimaps.index(duplicateGroup, PairedEnds::isFragment);
+                final Map<PairedEndsType, List<PairedEnds>> stratifiedByType = duplicateGroup.stream().collect(Collectors.groupingBy(PairedEndsType::getType));
 
                 // Each key corresponds to either fragments or paired ends, not a mixture of both.
-                final ImmutableList<PairedEnds> fragments = stratifiedByFragments.get(true);
-                final ImmutableList<PairedEnds> pairs = stratifiedByFragments.get(false);
+                final List<PairedEnds> fragments = stratifiedByType.get(PairedEndsType.FRAGMENT);
+                final List<PairedEnds> pairs = stratifiedByType.get(PairedEndsType.PAIR);
+                final List<PairedEnds> pairsMissingSecondRead = stratifiedByType.get(PairedEndsType.PAIRED_BUT_MISSING_SECOND_READ);
 
-                if (!fragments.isEmpty()) { // fragments
-                    nonDuplicates.add(handleFragments(fragments));
+                if (fragments != null && !fragments.isEmpty()) { // fragments
+                    final Tuple2<IndexPair<String>, Integer> bestFragment = handleFragments(fragments);
+                    if( bestFragment != null) {
+                        nonDuplicates.add(bestFragment);
+                    }
                 }
 
-                if (!pairs.isEmpty()) {
-                    handlePairs(pairs, finder, nonDuplicates);
+                if (pairs != null && !pairs.isEmpty()) {
+                    nonDuplicates.add(handlePairs(pairs, finder));
+                }
+
+                if ( pairsMissingSecondRead != null && !pairsMissingSecondRead.isEmpty()){
+                    nonDuplicates.addAll(handlePairsMissingSecondRead(pairsMissingSecondRead));
                 }
             }
 
@@ -233,43 +237,48 @@ public class MarkDuplicatesSparkUtils {
         });
     }
 
-    private static void handlePairs(List<PairedEnds> pairs, OpticalDuplicateFinder finder, List<Tuple2<IndexPair<String>, Integer>> nonDuplicates) {
+    private static List<Tuple2<IndexPair<String>,Integer>> handlePairsMissingSecondRead(List<PairedEnds> pairsMissingSecondRead) {
+        // As in Picard, unpaired ends left alone.
+        return pairsMissingSecondRead.stream()
+                .map(pair -> new Tuple2<>(new IndexPair<>(pair.getName(), pair.getPartitionIndex()), -1))
+                .collect(Collectors.toList());
+    }
 
-        PairedEnds bestPair = null;
-        for (PairedEnds pair : pairs) {
-            // As in Picard, unpaired ends left alone.
-            if (!pair.hasSecondRead()) {
-                nonDuplicates.add(new Tuple2<>(new IndexPair<>(pair.getName(), pair.getPartitionIndex()), -1));
-                // Order by score using ReadCoordinateComparator for tie-breaking.
+    private enum PairedEndsType{
+        FRAGMENT, PAIR, PAIRED_BUT_MISSING_SECOND_READ;
+
+        static PairedEndsType getType(PairedEnds pair){
+            if(pair.isFragment()){
+                return FRAGMENT;
+            } else if (pair.hasSecondRead()) {
+                return PAIR;
             } else {
-                // There are no paired reads, mark all but the highest scoring fragment as duplicate.
-                if (bestPair != null) {
-                    bestPair = (PAIRED_ENDS_SCORE_COMPARATOR.compare(pair, bestPair) > 0) ? bestPair : pair;
-                } else {
-                    bestPair = pair;
-                }
-
-                finder.addLocationInformation(pair.getName(), pair);//TODO this needs me to handle the name better
+                return PAIRED_BUT_MISSING_SECOND_READ;
             }
         }
-        if (bestPair != null) {
+    }
 
-            // This must happen last, as findOpticalDuplicates mutates the list.
-            // Split by orientation and count duplicates in each group separately.
-            // TODO could be better
-            List<PairedEnds> scored = pairs.stream().filter(PairedEnds::hasSecondRead).collect(Collectors.toList());
-            final ImmutableListMultimap<Byte, PairedEnds> groupByOrientation = Multimaps.index(scored, PairedEnds::getOrientationForOpticalDuplicates);
-            final int numOpticalDuplicates;
-            if (groupByOrientation.containsKey(ReadEnds.FR) && groupByOrientation.containsKey(ReadEnds.RF)) {
-                final List<PairedEnds> peFR = new ArrayList<>(groupByOrientation.get(ReadEnds.FR));
-                final List<PairedEnds> peRF = new ArrayList<>(groupByOrientation.get(ReadEnds.RF));
-                numOpticalDuplicates = countOpticalDuplicates(finder, peFR) + countOpticalDuplicates(finder, peRF);
-            } else {
-                numOpticalDuplicates = countOpticalDuplicates(finder, scored);
-            }
-            //bestPair.first().setAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, numOpticalDuplicates);
-            nonDuplicates.add(new Tuple2<>(new IndexPair<>(bestPair.getName(), bestPair.getPartitionIndex()), numOpticalDuplicates));
+    private static Tuple2<IndexPair<String>, Integer> handlePairs(List<PairedEnds> pairs, OpticalDuplicateFinder finder) {
+        final PairedEnds bestPair = pairs.stream()
+                .max(PAIRED_ENDS_SCORE_COMPARATOR)
+                .orElseThrow(() -> new GATKException.ShouldNeverReachHereException("There was no best pair because the stream was empty, but it shouldn't have been empty."));
+
+        // This must happen last, as findOpticalDuplicates mutates the list.
+        // Split by orientation and count duplicates in each group separately.
+        // TODO could be better
+        final Map<Byte, List<PairedEnds>> groupByOrientation = pairs.stream()
+                .peek(pair -> finder.addLocationInformation(pair.getName(), pair))//TODO this needs me to handle the name better
+                .collect(Collectors.groupingBy(PairedEnds::getOrientationForOpticalDuplicates));
+        final int numOpticalDuplicates;
+        //todo do we not have to split the reporting of these by orientation?
+        if (groupByOrientation.containsKey(ReadEnds.FR) && groupByOrientation.containsKey(ReadEnds.RF)) {
+            final List<PairedEnds> peFR = new ArrayList<>(groupByOrientation.get(ReadEnds.FR));
+            final List<PairedEnds> peRF = new ArrayList<>(groupByOrientation.get(ReadEnds.RF));
+            numOpticalDuplicates = countOpticalDuplicates(finder, peFR) + countOpticalDuplicates(finder, peRF);
+        } else {
+            numOpticalDuplicates = countOpticalDuplicates(finder, pairs);
         }
+        return (new Tuple2<>(new IndexPair<>(bestPair.getName(), bestPair.getPartitionIndex()), numOpticalDuplicates));
     }
 
     private static int countOpticalDuplicates(OpticalDuplicateFinder finder, List<PairedEnds> scored) {
@@ -286,7 +295,7 @@ public class MarkDuplicatesSparkUtils {
     private static Tuple2<IndexPair<String>, Integer> handleFragments(List<PairedEnds> duplicateFragmentGroup) {
         //empty PairedEnds signify that a pair has a mate somewhere else
         // If there are any non-fragment placeholders at this site, mark everything as duplicates, otherwise compute the best score
-        final boolean computeScore = duplicateFragmentGroup.stream().anyMatch(PairedEnds::isEmpty);
+        final boolean computeScore = duplicateFragmentGroup.stream().noneMatch(PairedEnds::isEmpty);
 
         if (computeScore) {
             return duplicateFragmentGroup.stream()
