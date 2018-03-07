@@ -4,6 +4,7 @@ import com.google.cloud.storage.StorageException;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.DeprecatedToolsRegistry;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgramExecutor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.PicardNonZeroExitException;
@@ -465,6 +466,28 @@ public class Main {
     }
 
     /**
+     * Get deprecation message for a tool
+     * @param toolName command specified by the user
+     * @return deprecation message string, or null if none
+     */
+    public String getToolDeprecationMessage(final String toolName) {
+        return DeprecatedToolsRegistry.getToolDeprecationInfo(toolName);
+    }
+
+    /**
+     * When a command does not match any known command, searches for a deprecation message, if any, or for similar
+     * commands.
+     * @return returns an error message including the closes match if relevant.
+     */
+    public String getUnknownCommandMessage(final Set<Class<?>> classes, final String command) {
+        final String deprecationMessage = getToolDeprecationMessage(command);
+        if (deprecationMessage != null) {
+            return deprecationMessage;
+        }
+        return getSuggestedAlternateCommand(classes, command);
+    }
+
+    /**
      * similarity floor for matching in getUnknownCommandMessage *
      */
     private static final int HELP_SIMILARITY_FLOOR = 7;
@@ -474,7 +497,7 @@ public class Main {
      * When a command does not match any known command, searches for similar commands, using the same method as GIT *
      * @return returns an error message including the closes match if relevant.
      */
-    public static String getUnknownCommandMessage(final Set<Class<?>> classes, final String command) {
+    public String getSuggestedAlternateCommand(final Set<Class<?>> classes, final String command) {
         final Map<Class<?>, Integer> distances = new LinkedHashMap<>();
 
         int bestDistance = Integer.MAX_VALUE;
