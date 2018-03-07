@@ -110,7 +110,7 @@ workflow Mutect2 {
     String gatk_docker
     String basic_bash_docker = "ubuntu:16.04"
     String? oncotator_docker
-    String oncotator_docker_or_default = select_first([oncotator_docker, "broadinstitute/oncotator:1.9.7.0"])
+    String oncotator_docker_or_default = select_first([oncotator_docker, "broadinstitute/oncotator:1.9.8.0"])
     Boolean? filter_oncotator_maf
     Boolean filter_oncotator_maf_or_default = select_first([filter_oncotator_maf, true])
     String? oncotator_extra_args
