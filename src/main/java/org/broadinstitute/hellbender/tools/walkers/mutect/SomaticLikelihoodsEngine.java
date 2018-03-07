@@ -1,12 +1,15 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 
 import java.util.Arrays;
+import java.util.Collections;
 
 /**
  * Created by David Benjamin on 3/9/17.
@@ -58,12 +61,6 @@ public class SomaticLikelihoodsEngine {
         final double[] effectiveLog10Weights = new Dirichlet(dirichletPrior).effectiveLog10MultinomialWeights();
         return MathUtils.sumArrayFunction(0, log10Likelihoods.getColumnDimension(),
                 read -> MathUtils.posteriors(effectiveLog10Weights, log10Likelihoods.getColumn(read)));
-    }
-
-    // same but with flat prior
-    public static double[] getEffectiveCounts(RealMatrix log10Likelihoods) {
-        return MathUtils.sumArrayFunction(0, log10Likelihoods.getColumnDimension(),
-                read -> MathUtils.normalizeFromLog10ToLinearSpace(log10Likelihoods.getColumn(read)));
     }
 
 

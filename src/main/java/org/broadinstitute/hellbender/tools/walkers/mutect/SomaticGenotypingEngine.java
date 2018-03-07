@@ -53,8 +53,6 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
         public AFCalculator getInstance(final int ploidy, final int maximumAltAlleles) { return null; }
     };
 
-    private static final Logger logger = Logger.getLogger(SomaticGenotypingEngine.class);
-
     @Override
     protected String callSourceString() {
         return "M2_call";
@@ -130,7 +128,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
             final List<Allele> somaticAltAlleles = mergedVC.getAlternateAlleles().stream()
                     .filter(allele -> tumorLog10Odds.getAlt(allele) > MTAC.emissionLodThreshold)
-                    .filter(allele -> !hasNormal || normalLog10Odds.get().getAlt(allele) > MTAC.normalLodThreshold)
+                    .filter(allele -> !hasNormal || MTAC.genotypeGermlineSites || normalLog10Odds.get().getAlt(allele) > MTAC.normalLodThreshold)
                     .collect(Collectors.toList());
             final List<Allele> allSomaticAlleles = ListUtils.union(Arrays.asList(mergedVC.getReference()), somaticAltAlleles);
             if (somaticAltAlleles.isEmpty()) {
@@ -198,7 +196,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
     private void addGenotypes(final LikelihoodMatrix<Allele> tumorLog10Matrix,
                                         final Optional<LikelihoodMatrix<Allele>> normalLog10Matrix,
                                         final VariantContextBuilder callVcb) {
-        final double[] tumorAlleleCounts = SomaticLikelihoodsEngine.getEffectiveCounts(getAsRealMatrix(tumorLog10Matrix));
+        final double[] tumorAlleleCounts = getEffectiveCounts(tumorLog10Matrix);
         final Genotype tumorGenotype = new GenotypeBuilder(tumorSampleName, tumorLog10Matrix.alleles())
                 .AD(Arrays.stream(tumorAlleleCounts).mapToInt(x -> (int) FastMath.round(x)).toArray())
                 .attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, getAltAlleleFractions(tumorAlleleCounts))
@@ -211,7 +209,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
         // if we are calling with a normal, build the genotype for the sample to appear in vcf
         if (hasNormal) {
-            final double[] normalAlleleCounts = SomaticLikelihoodsEngine.getEffectiveCounts(getAsRealMatrix(normalLog10Matrix.get()));
+            final double[] normalAlleleCounts = getEffectiveCounts(normalLog10Matrix.get());
             final Genotype normalGenotype = new GenotypeBuilder(matchedNormalSampleName, homRefAllelesforNormalGenotype)
                     .AD(Arrays.stream(normalAlleleCounts).mapToInt(x -> (int) FastMath.round(x)).toArray())
                     .attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, getAltAlleleFractions(normalAlleleCounts))
@@ -222,6 +220,14 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
         callVcb.genotypes(genotypes);
     }
 
+    public static double[] getEffectiveCounts(final LikelihoodMatrix<Allele> log10LikelihoodMatrix) {
+        if (log10LikelihoodMatrix.numberOfReads() == 0) {
+            return new double[log10LikelihoodMatrix.numberOfAlleles()]; // zero couns for each allele
+        }
+        final RealMatrix log10Likelihoods = getAsRealMatrix(log10LikelihoodMatrix);
+        return MathUtils.sumArrayFunction(0, log10Likelihoods.getColumnDimension(),
+                read -> MathUtils.normalizeFromLog10ToLinearSpace(log10Likelihoods.getColumn(read)));
+    }
 
     private static double[] getAltAlleleFractions(final double[] alleleCounts) {
         final double[] allAlleleFractions = MathUtils.normalizeFromRealSpace(alleleCounts);
