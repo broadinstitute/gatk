@@ -8,6 +8,7 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
+import org.apache.spark.storage.StorageLevel;
 import org.apache.spark.util.AccumulatorV2;
 import org.apache.spark.util.LongAccumulator;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -126,6 +127,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         reads.context().register(metrics, "metrics");
 
         final JavaRDD<GATKRead> finalReadsForMetrics = mark(reads, getHeaderForReads(), duplicatesScoringStrategy, finder, getRecommendedNumReducers());
+        finalReadsForMetrics.persist(StorageLevel.MEMORY_ONLY());
         //finalReadsForMetrics.repartition(new RangePartitioner<>())
 //        if (metricsFile != null) {
 //            final JavaPairRDD<String, DuplicationMetrics> metricsByLibrary = MarkDuplicatesSparkUtils.generateMetrics(getHeaderForReads(), finalReadsForMetrics);
