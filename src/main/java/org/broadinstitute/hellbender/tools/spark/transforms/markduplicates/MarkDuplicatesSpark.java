@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.transforms.markduplicates;
 
+import com.google.common.collect.Lists;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.metrics.MetricsFile;
@@ -127,7 +128,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         reads.context().register(metrics, "metrics");
 
         final JavaRDD<GATKRead> finalReadsForMetrics = mark(reads, getHeaderForReads(), duplicatesScoringStrategy, finder, getRecommendedNumReducers());
-        finalReadsForMetrics.persist(StorageLevel.MEMORY_ONLY());
+        //finalReadsForMetrics.persist(StorageLevel.MEMORY_ONLY());
         //finalReadsForMetrics.repartition(new RangePartitioner<>())
 //        if (metricsFile != null) {
 //            final JavaPairRDD<String, DuplicationMetrics> metricsByLibrary = MarkDuplicatesSparkUtils.generateMetrics(getHeaderForReads(), finalReadsForMetrics);
@@ -136,7 +137,9 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
 //        }
 
         JavaRDD<GATKRead> finalReads = (metricsFile == null)? finalReadsForMetrics :
-                finalReadsForMetrics.mapPartitions(partition -> {metrics.addAll(header, partition); return partition;});
+                finalReadsForMetrics.mapPartitions(partition -> {
+                    List<GATKRead> collectedRead = Lists.newArrayList(partition);
+                    metrics.addAll(header, collectedRead); return collectedRead.iterator();});
         writeReads(ctx, output, finalReads);
 
         if (metricsFile != null) {
