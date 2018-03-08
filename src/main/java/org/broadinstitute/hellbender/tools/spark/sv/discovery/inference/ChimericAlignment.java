@@ -296,11 +296,11 @@ public class ChimericAlignment {
             throw new IllegalArgumentException("assembly contig sent to the wrong path: assumption that contig has only 2 good alignments is violated for\n" +
                     contig.toString());
 
-        final AlignmentInterval alignmentOne = contig.getSourceContig().alignmentIntervals.get(0);
-        final AlignmentInterval alignmentTwo = contig.getSourceContig().alignmentIntervals.get(1);
+        final AlignmentInterval alignmentOne = contig.getAlignments().get(0);
+        final AlignmentInterval alignmentTwo = contig.getAlignments().get(1);
 
         return new ChimericAlignment(alignmentOne, alignmentTwo, contig.getInsertionMappings(),
-                contig.getSourceContig().contigName, referenceDictionary);
+                contig.getContigName(), referenceDictionary);
     }
 
     // =================================================================================================================

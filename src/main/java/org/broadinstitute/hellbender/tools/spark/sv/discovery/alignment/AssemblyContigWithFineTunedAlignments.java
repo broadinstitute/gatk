@@ -69,6 +69,22 @@ public final class AssemblyContigWithFineTunedAlignments {
         return sourceTig.alignmentIntervals;
     }
 
+    public AlignmentInterval getHeadAlignment() {
+        return sourceTig.getHeadAlignment();
+    }
+
+    public AlignmentInterval getTailAlignment() {
+        return sourceTig.getTailAlignment();
+    }
+
+    public String getContigName() {
+        return sourceTig.contigName;
+    }
+
+    public byte[] getContigSequence() {
+        return sourceTig.contigSequence;
+    }
+
     public List<String> getInsertionMappings() {
         return insertionMappings;
     }
