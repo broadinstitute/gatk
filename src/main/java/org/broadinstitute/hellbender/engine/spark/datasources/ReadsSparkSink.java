@@ -9,6 +9,8 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapred.FileAlreadyExistsException;
 import org.apache.hadoop.mapreduce.*;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.parquet.avro.AvroParquetOutputFormat;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -18,6 +20,7 @@ import org.bdgenomics.adam.models.RecordGroupDictionary;
 import org.bdgenomics.adam.models.SequenceDictionary;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -38,6 +41,8 @@ import java.util.Comparator;
  * read writing code as well as from bigdatagenomics/adam.
  */
 public final class ReadsSparkSink {
+
+    private final static Logger logger = LogManager.getLogger(ReadsSparkSink.class);
 
     // Output format class for writing BAM files through saveAsNewAPIHadoopFile. Must be public.
     public static class SparkBAMOutputFormat extends KeyIgnoringBAMOutputFormat<NullWritable> {
@@ -228,7 +233,9 @@ public final class ReadsSparkSink {
         final JavaRDD<SAMRecord> sortedReads = SparkUtils.sortReads(reads, header, numReducers);
         final String outputPartsDirectory = outputFile + ".parts/";
         saveAsShardedHadoopFiles(ctx, outputPartsDirectory, referenceFile, samOutputFormat, sortedReads,  header, false);
+        logger.info("Finished sorting the bam file and dumping read shards to disk, proceeding to merge the shards into a single file using the master thread");
         SAMFileMerger.mergeParts(outputPartsDirectory, outputFile, samOutputFormat, header);
+        logger.info("Finished merging shards into a single output bam");
     }
 
     private static Class<? extends OutputFormat<NullWritable, SAMRecordWritable>> getOutputFormat(final SAMFormat samFormat, final boolean writeHeader) {
