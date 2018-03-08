@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.transforms.markduplicates;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.Partitioner;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -19,6 +20,7 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
@@ -27,6 +29,7 @@ import scala.Tuple2;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -67,17 +70,25 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
 
         JavaPairRDD<MarkDuplicatesSparkUtils.IndexPair<String>, Integer> namesOfNonDuplicates = MarkDuplicatesSparkUtils.transformToDuplicateNames(header, scoringStrategy, opticalDuplicateFinder, reads, numReducers);
 
-        final JavaRDD<String> repartitionedReadNames = namesOfNonDuplicates.keys()
-                .mapToPair(pair -> new Tuple2<>(pair.getIndex(), pair.getValue()))
+        final JavaRDD<Tuple2<String,Integer>> repartitionedReadNames = namesOfNonDuplicates
+                .mapToPair(pair -> new Tuple2<>(pair._1.getIndex(), new Tuple2<>(pair._1.getValue(),pair._2)))
                 .partitionBy(new KnownIndexPartitioner(reads.getNumPartitions()))
                 .values();
         
         return reads.zipPartitions(repartitionedReadNames, (readsIter, readNamesIter)  -> {
-            final Set<String> namesOfNonDuplicateReads = Utils.stream(readNamesIter).collect(Collectors.toSet());
+            final Map<String,Integer> namesOfNonDuplicateReadsAndOpticlCounts = Utils.stream(readNamesIter).collect(Collectors.toMap(Tuple2::_1,Tuple2::_2));
             return Utils.stream(readsIter).peek(read -> {
-                if( namesOfNonDuplicateReads.contains(read.getName())
-                        || read.isUnmapped()) { //todo figure out if we should be marking the unmapped mates of duplicate reads as duplicates
+                // Handle read that arent duplicates (and thus may be marked as containing opticalDuplicates)
+                if( namesOfNonDuplicateReadsAndOpticlCounts.containsKey(read.getName())) { //todo figure out if we should be marking the unmapped mates of duplicate reads as duplicates
                     read.setIsDuplicate(false);
+                    int dupCount = namesOfNonDuplicateReadsAndOpticlCounts.replace(read.getName(), -1);
+                    if (dupCount>-1) {
+                        ((SAMRecordToGATKReadAdapter) read).setTransientAttribute(MarkDuplicatesSparkUtils.OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, dupCount);
+                    }
+                    // Mark unmapped reads as non-duplicates
+                } else if (read.isUnmapped()) {
+                    read.setIsDuplicate(false);
+                    // Everything else is a duplicate
                 } else{
                     read.setIsDuplicate(true);
                 }

@@ -717,4 +717,18 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
         samRecord.setHeaderStrict(header);
     }
+
+    public Object getTransientAttribute(Object key) {
+        if (samRecord==null) {
+            throw new GATKException("Underlying sam record cannot be null when setting transient attributes");
+        }
+        return samRecord.getTransientAttribute(key);
+    }
+
+    public void setTransientAttribute(Object key, Object value) {
+        if (samRecord==null) {
+            throw new GATKException("Underlying sam record cannot be null when setting transient attributes");
+        }
+        samRecord.setTransientAttribute(key, value);
+    }
 }

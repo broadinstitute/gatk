@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.metrics.MetricsUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.markduplicates.*;
 import scala.Tuple2;
 
@@ -220,7 +221,7 @@ public class MarkDuplicatesSparkUtils {
             //since we grouped by a non-unique hash code for efficiency we need to regroup by the actual criteria
             //todo this should use library and contig as well probably
             final Collection<List<PairedEnds>> groups = Utils.stream(pairedEnds)
-                    .collect(Collectors.groupingBy(PairedEnds::getUnclippedStartPosition)).values();
+                    .collect(Collectors.groupingBy(pe -> pe.getUnclippedStartPosition() << 8 | pe.getFirstRefIndex())).values();
 
             for (List<PairedEnds> duplicateGroup : groups) {
                 final Map<PairedEnds.Type, List<PairedEnds>> stratifiedByType = splitByType(duplicateGroup);
@@ -347,9 +348,9 @@ public class MarkDuplicatesSparkUtils {
                             ++metrics.READ_PAIR_DUPLICATES;
                         }
                     }
-                    if (read.hasAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME)) {
+                    if (((SAMRecordToGATKReadAdapter) read).getTransientAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME)!=null) {
                         metrics.READ_PAIR_OPTICAL_DUPLICATES +=
-                                read.getAttributeAsInteger(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME);
+                                (int)((SAMRecordToGATKReadAdapter) read).getTransientAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME);
                     }
                     return new Tuple2<>(library, metrics);
                 })
