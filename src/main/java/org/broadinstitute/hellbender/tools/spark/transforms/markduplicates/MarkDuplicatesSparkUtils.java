@@ -639,6 +639,13 @@ public class MarkDuplicatesSparkUtils {
             }
         }
 
+        public void addAll(SAMFileHeader header, Iterator<GATKRead> reads) {
+            for (Iterator<GATKRead> it = reads; it.hasNext(); ) {
+                GATKRead read = it.next();
+                add(LibraryIdGenerator.getLibraryName(header, read.getReadGroup()), read);
+            }
+        }
+
         @Override
         public void merge(AccumulatorV2<GATKRead, Map<String, DuplicationMetrics>> otherMetrics){
             if (libraryMap.isEmpty()) {

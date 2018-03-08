@@ -133,8 +133,8 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
 //            MarkDuplicatesSparkUtils.saveMetricsRDD(resultMetrics, getHeaderForReads(), metricsByLibrary, metricsFile);
 //        }
 
-        JavaRDD<GATKRead> finalReads = (metricsFile == null)? finalReadsForMetrics : finalReadsForMetrics.map(read ->
-        {metrics.add(LibraryIdGenerator.getLibraryName(header, read.getReadGroup()),read); return read;});
+        JavaRDD<GATKRead> finalReads = (metricsFile == null)? finalReadsForMetrics :
+                finalReadsForMetrics.mapPartitions(partition -> {metrics.addAll(header, partition); return partition;});
         writeReads(ctx, output, finalReads);
 
         if (metricsFile != null) {
