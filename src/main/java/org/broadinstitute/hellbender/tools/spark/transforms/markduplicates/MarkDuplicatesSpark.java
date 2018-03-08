@@ -78,7 +78,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
             final Set<String> namesOfNonDuplicateReads = Utils.stream(readNamesIter).collect(Collectors.toSet());
             return Utils.stream(readsIter).peek(read -> {
                 if( namesOfNonDuplicateReads.contains(read.getName())
-                        || MarkDuplicatesSparkUtils.readAndMateAreUnmapped(read)) {
+                        || read.isUnmapped()) { //todo figure out if we should be marking the unmapped mates of duplicate reads as duplicates
                     read.setIsDuplicate(false);
                 } else{
                     read.setIsDuplicate(true);
