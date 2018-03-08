@@ -24,6 +24,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
+import org.broadinstitute.hellbender.utils.read.markduplicates.LibraryIdGenerator;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
@@ -119,7 +120,9 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                 new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
         //reads.partitions().get(0).
         //.mapToPair(read -> new Tuple2<String, GATKRead>(ReadsKey.keyForRead(getHeaderForReads(), read), read)
-        MarkDuplicatesSparkUtils.MetricsAccumulator metrics = new MarkDuplicatesSparkUtils.MetricsAccumulator(getHeaderForReads());
+        SAMFileHeader header = getHeaderForReads();
+        //reads.context().broadcast(header,);
+        MarkDuplicatesSparkUtils.MetricsAccumulator metrics = new MarkDuplicatesSparkUtils.MetricsAccumulator();
         reads.context().register(metrics, "metrics");
 
         final JavaRDD<GATKRead> finalReadsForMetrics = mark(reads, getHeaderForReads(), duplicatesScoringStrategy, finder, getRecommendedNumReducers());
@@ -130,7 +133,8 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
 //            MarkDuplicatesSparkUtils.saveMetricsRDD(resultMetrics, getHeaderForReads(), metricsByLibrary, metricsFile);
 //        }
 
-        JavaRDD<GATKRead> finalReads = (metricsFile == null)? finalReadsForMetrics : finalReadsForMetrics.map(read -> {metrics.add(read); return read;});
+        JavaRDD<GATKRead> finalReads = (metricsFile == null)? finalReadsForMetrics : finalReadsForMetrics.map(read ->
+        {metrics.add(LibraryIdGenerator.getLibraryName(header, read.getReadGroup()),read); return read;});
         writeReads(ctx, output, finalReads);
 
         if (metricsFile != null) {

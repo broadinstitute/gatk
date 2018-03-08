@@ -562,11 +562,9 @@ public class MarkDuplicatesSparkUtils {
         private static final long serialVersionUID = 1L;
 
         Map<String, DuplicationMetrics> libraryMap;
-        SAMFileHeader header;
 
-        public MetricsAccumulator(SAMFileHeader header) {
+        public MetricsAccumulator() {
             libraryMap = new HashMap<>();
-            this.header = header;
         }
 
         @Override
@@ -576,7 +574,7 @@ public class MarkDuplicatesSparkUtils {
 
         @Override
         public AccumulatorV2<GATKRead, Map<String, DuplicationMetrics>> copy() {
-            MetricsAccumulator copy = new MetricsAccumulator(header);
+            MetricsAccumulator copy = new MetricsAccumulator();
             copy.merge(this);
             return copy;
         }
@@ -588,8 +586,35 @@ public class MarkDuplicatesSparkUtils {
 
         @Override
         public void add(GATKRead read) {
+//            if (!read.isSecondaryAlignment() && !read.isSupplementaryAlignment()) {
+//                final String library = LibraryIdGenerator.getLibraryName(header, read.getReadGroup());
+//                DuplicationMetrics metrics = libraryMap.getOrDefault(library, new DuplicationMetrics());
+//                if (read.isUnmapped()) {
+//                    ++metrics.UNMAPPED_READS;
+//                } else if (!read.isPaired() || read.mateIsUnmapped()) {
+//                    ++metrics.UNPAIRED_READS_EXAMINED;
+//                } else {
+//                    ++metrics.READ_PAIRS_EXAMINED;
+//                }
+//
+//                if (read.isDuplicate()) {
+//                    if (!read.isPaired() || read.mateIsUnmapped()) {
+//                        ++metrics.UNPAIRED_READ_DUPLICATES;
+//                    } else {
+//                        ++metrics.READ_PAIR_DUPLICATES;
+//                    }
+//                }
+//                if (read.hasAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME)) {
+//                    metrics.READ_PAIR_OPTICAL_DUPLICATES +=
+//                            read.getAttributeAsInteger(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME);
+//                }
+//                libraryMap.putIfAbsent(library, metrics);
+//            }
+            throw new GATKException("Dummy do not use for now");
+        }
+
+        public void add(String library, GATKRead read) {
             if (!read.isSecondaryAlignment() && !read.isSupplementaryAlignment()) {
-                final String library = LibraryIdGenerator.getLibraryName(header, read.getReadGroup());
                 DuplicationMetrics metrics = libraryMap.getOrDefault(library, new DuplicationMetrics());
                 if (read.isUnmapped()) {
                     ++metrics.UNMAPPED_READS;
