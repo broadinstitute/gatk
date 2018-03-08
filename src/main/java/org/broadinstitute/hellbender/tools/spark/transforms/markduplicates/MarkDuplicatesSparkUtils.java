@@ -7,6 +7,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.metrics.MetricsUtils;
@@ -71,7 +72,7 @@ public class MarkDuplicatesSparkUtils {
     static JavaPairRDD<IndexPair<String>, Integer> transformToDuplicateNames(final SAMFileHeader header, final MarkDuplicatesScoringStrategy scoringStrategy, final OpticalDuplicateFinder finder, final JavaRDD<GATKRead>  reads, final int numReducers) {
         //remove reads that are unmapped and have unmapped or no mates
         // we treat these specially and don't mark them as duplicates
-        final JavaRDD<GATKRead> readsWithUnplaceableReadsRemoved = reads.filter(read -> !readAndMateAreUnmapped(read));
+        final JavaRDD<GATKRead> readsWithUnplaceableReadsRemoved = reads.filter(ReadFilterLibrary.MAPPED::test);
 
         final JavaPairRDD<String, Iterable<IndexPair<GATKRead>>> keyedReads = getReadsGroupedByName(header, readsWithUnplaceableReadsRemoved, numReducers);
 

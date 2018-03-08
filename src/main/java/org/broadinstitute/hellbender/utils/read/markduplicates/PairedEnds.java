@@ -228,4 +228,9 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   public int getFirstRefIndex() {
     return firstRefIndex;
   }
+
+  @Override
+  public String toString() {
+    return name + " " + firstUnclippedStartPosition + " " + (secondUnclippedStartPosition == -1 ? "" : secondUnclippedStartPosition);
+  }
 }
