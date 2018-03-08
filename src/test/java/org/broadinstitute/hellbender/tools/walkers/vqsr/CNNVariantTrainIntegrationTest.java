@@ -15,8 +15,8 @@ public class CNNVariantTrainIntegrationTest extends CommandLineProgramTest {
     @Test(groups = {"python"}, dependsOnGroups = {"writeTensors"})
     public void testTrainingReferenceModel() throws IOException{
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        argsBuilder.addArgument("input-data-dir", CNNVariantWriteTensorsIntegrationTest.referenceTensorDir)
-                .addArgument("tensor-name", TensorMapEnum.reference.name())
+        argsBuilder.addArgument("input-tensor-dir", CNNVariantWriteTensorsIntegrationTest.referenceTensorDir)
+                .addArgument("tensor-type", TensorType.reference.name())
                 .addArgument("epochs", "1")
                 .addArgument("training-steps", "30")
                 .addArgument("model-name", "test_reference_model")
@@ -29,8 +29,8 @@ public class CNNVariantTrainIntegrationTest extends CommandLineProgramTest {
     @Test(groups = {"python"}, dependsOnGroups = {"writeTensors"})
     public void testTrainingReadModel() throws IOException{
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-        argsBuilder.addArgument("input-data-dir", CNNVariantWriteTensorsIntegrationTest.readTensorDir)
-                .addArgument("tensor-name", TensorMapEnum.read_tensor.name())
+        argsBuilder.addArgument("input-tensor-dir", CNNVariantWriteTensorsIntegrationTest.readTensorDir)
+                .addArgument("tensor-type", TensorType.read_tensor.name())
                 .addArgument("epochs", "1")
                 .addArgument("training-steps", "5")
                 .addArgument("validation-steps", "2")

@@ -1,14 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.apache.commons.io.FileUtils;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
-import java.util.Arrays;
 
 /**
  * Created by sam on 2/7/18.
@@ -28,8 +25,8 @@ public class CNNVariantWriteTensorsIntegrationTest extends CommandLineProgramTes
                 .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
                 .addArgument("truth-vcf", truthVCF)
                 .addArgument("truth-bed", truthBED)
-                .addArgument("tensor-name", TensorMapEnum.reference.name())
-                .addArgument("data-dir", referenceTensorDir);
+                .addArgument("tensor-type", TensorType.reference.name())
+                .addArgument("output-tensor-dir", referenceTensorDir);
 
         runCommandLine(argsBuilder);
     }
@@ -43,8 +40,8 @@ public class CNNVariantWriteTensorsIntegrationTest extends CommandLineProgramTes
                 .addArgument("truth-bed", truthBED)
                 .addArgument("bam-file", bamFile)
                 .addArgument("max-tensors", "4000")
-                .addArgument("tensor-name", TensorMapEnum.read_tensor.name())
-                .addArgument("data-dir", readTensorDir)
+                .addArgument("tensor-type", TensorType.read_tensor.name())
+                .addArgument("output-tensor-dir", readTensorDir)
                 .addArgument("channels-last", "true");
 
         runCommandLine(argsBuilder);

@@ -25,22 +25,44 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.StreamSupport;
 
 /**
- * Annotate a VCF with scores from a Convolutional Neural Network.
+ * Annotate a VCF with scores from a Convolutional Neural Network (CNN).
  *
  * This tool streams variants and their reference context to a python program
  * which evaluates a pre-trained neural network on each variant.
- * The neural network performs 1D convolutions over the reference sequence surrounding the variant
+ * The neural network performs convolutions over the reference sequence surrounding the variant
  * and combines those features with a multilayer perceptron on the variant annotations.
  *
+ * 2D models convolve over aligned reads as well as the reference sequence, and variant annotations.
+ * 2D models require a SAM/BAM file as input and for the --tensor-type argument to be set
+ * to a tensor type which requires reads, as in the example below.
  *
- * <h3>Example</h3>
+ * Pre-trained 1D and 2D models are included in the distribution.
+ * It is possible to train your own models by using the tools:
+ * {@link CNNVariantWriteTensors} and {@link CNNVariantTrain}.
+ *
+ *
+ * <h3>1D Model Example</h3>
  *
  * <pre>
  * gatk CNNVariantScore\
  *   -V vcf_to_annotate.vcf.gz \
  *   -R reference.fasta \
  *   -O annotated.vcf \
- *   --architecture src/main/resources/org/broadinstitute/hellbender/tools/walkers/vqsr/cnn_1d_annotations.hd5
+ *   --architecture src/main/resources/org/broadinstitute/hellbender/tools/walkers/vqsr/cnn_1d_annotations.json
+ * </pre>
+ *
+ * <h3>2D Model Example</h3>
+ *
+ * <pre>
+ * gatk CNNVariantScore\
+ *   -I aligned_reads.bam \
+ *   -V vcf_to_annotate.vcf.gz \
+ *   -R reference.fasta \
+ *   -O annotated.vcf \
+ *   -inference-batch-size 2 \
+ *   -transfer-batch-size 2 \
+ *   -tensor-type read-tensor \
+ *   --architecture src/test/resources/large/VQSR/tiny_2d_wgs_tf_model.json
  * </pre>
  *
  */
@@ -54,37 +76,41 @@ import java.util.stream.StreamSupport;
 
 public class CNNVariantScore extends VariantWalker {
     private final static String NL = String.format("%n");
-    static final String USAGE_ONE_LINE_SUMMARY = "Apply 1d Convolutional Neural Net to filter annotated variants";
-    static final String USAGE_SUMMARY = "Annotate a VCF with scores from 1d Convolutional Neural Network (CNN)." +
-            "The CNN will look at the reference sequence and variant annotations to determine a Log Odds Score for each variant.";
+    static final String USAGE_ONE_LINE_SUMMARY = "Apply a Convolutional Neural Net to filter annotated variants";
+    static final String USAGE_SUMMARY = "Annotate a VCF with scores from a Convolutional Neural Network (CNN)." +
+            "The CNN determines a Log Odds Score for each variant." +
+            "Pre-trained models (1D or 2D) are specified via the architecture argument." +
+            "1D models will look at the reference sequence and variant annotations." +
+            "2D models look at aligned reads, reference sequence, and variant annotations." +
+            "2D models require a BAM file as input as well as the tensor-type argument to be set.";
 
     private static final int CONTIG_INDEX = 0;
     private static final int POS_INDEX = 1;
     private static final int REF_INDEX = 2;
     private static final int ALT_INDEX = 3;
     private static final int KEY_INDEX = 4;
-    private static final int FIFO_STRING_CAPACITY = 1024;
+    private static final int FIFO_STRING_INITIAL_CAPACITY = 1024;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "Output file")
-    private String outputFile = null; // output file produced by Python code
+    private String outputFile;
 
     @Argument(fullName = "architecture", shortName = "architecture", doc = "Neural Net architecture configuration json file", optional = false)
-    private String architecture = null;
+    private String architecture;
 
-    @Argument(fullName = "use-reads", shortName = "use-reads", doc = "Make tensor with reads or just from reference.", optional = true)
-    private boolean useReads = false;
+    @Argument(fullName = "tensor-type", shortName = "tensor-type", doc = "Name of the tensors to generate, reference for 1D reference tensors and read_tensor for 2D tensors.", optional = true)
+    private TensorType tensorType = TensorType.reference;
 
     @Argument(fullName = "window-size", shortName = "window-size", doc = "Neural Net input window size", minValue = 0, optional = true)
     private int windowSize = 128;
 
     @Advanced
-    @Argument(fullName = "inference-batch-size", shortName = "inference-batch-size", doc = "Size of batches for python to do inference on.", minValue = 1, maxValue=4096, optional = true)
+    @Argument(fullName = "inference-batch-size", shortName = "inference-batch-size", doc = "Size of batches for python to do inference on.", minValue = 1, maxValue = 4096, optional = true)
     private int inferenceBatchSize = 256;
 
     @Advanced
-    @Argument(fullName = "transfer-batch-size", shortName = "transfer-batch-size", doc = "Size of data to queue for python streaming.", minValue = 1, maxValue=8192, optional = true)
+    @Argument(fullName = "transfer-batch-size", shortName = "transfer-batch-size", doc = "Size of data to queue for python streaming.", minValue = 1, maxValue = 8192, optional = true)
     private int transferBatchSize = 512;
 
     @Hidden
@@ -104,31 +130,30 @@ public class CNNVariantScore extends VariantWalker {
     private List<String> batchList = new ArrayList<>(inferenceBatchSize);
 
     private int curBatchSize = 0;
-    private int windowEnd = windowSize/2;
-    private int windowStart = (windowSize/2)-1;
+    private int windowEnd = windowSize / 2;
+    private int windowStart = (windowSize / 2) - 1;
     private boolean waitforBatchCompletion = false;
     private File scoreFile;
 
     private String scoreKey;
 
     @Override
-    protected String[] customCommandLineValidation(){
-        if(inferenceBatchSize > transferBatchSize){
-            String[] errors = {"Inference batch size must be less than or equal to transfer batch size."};
-            return errors;
+    protected String[] customCommandLineValidation() {
+        if (inferenceBatchSize > transferBatchSize) {
+            return new String[]{"Inference batch size must be less than or equal to transfer batch size."};
         }
 
         return null;
     }
 
     @Override
-    public boolean requiresReference(){
+    public boolean requiresReference() {
         return true;
     }
 
     @Override
     public void onTraversalStart() {
-        setScoreKeyAndCheckModelAndReadsHarmony();
+        scoreKey = getScoreKeyAndCheckModelAndReadsHarmony();
 
         // Start the Python process, and get a FIFO from the executor to use to send data to Python. The lifetime
         // of the FIFO is managed by the executor; the FIFO will be destroyed when the executor is destroyed.
@@ -142,7 +167,7 @@ public class CNNVariantScore extends VariantWalker {
         pythonExecutor.sendAsynchronousCommand(String.format("fifoFile = open('%s', 'r')" + NL, fifoFile.getAbsolutePath()));
         try {
             fifoWriter = new FileOutputStream(fifoFile);
-        } catch ( IOException e ) {
+        } catch (IOException e) {
             throw new GATKException("Failure opening FIFO for writing", e);
         }
 
@@ -154,10 +179,10 @@ public class CNNVariantScore extends VariantWalker {
         // from the FIFO. <code sendSynchronousCommand/>
         try {
             scoreFile = File.createTempFile(outputFile, ".temp");
-            if (!keepTempFile){
+            if (!keepTempFile) {
                 scoreFile.deleteOnExit();
-            } else{
-                logger.info("Saving temp file from python:"+scoreFile.getAbsolutePath());
+            } else {
+                logger.info("Saving temp file from python:" + scoreFile.getAbsolutePath());
             }
             pythonExecutor.sendSynchronousCommand(String.format("tempFile = open('%s', 'w+')" + NL, scoreFile.getAbsolutePath()));
             pythonExecutor.sendSynchronousCommand("import vqsr_cnn" + NL);
@@ -172,7 +197,7 @@ public class CNNVariantScore extends VariantWalker {
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
         referenceContext.setWindow(windowStart, windowEnd);
-        if(useReads){
+        if (tensorType.isReadsRequired()) {
             transferReadsToPythonViaFifo(variant, readsContext, referenceContext);
         } else {
             transferToPythonViaFifo(variant, referenceContext);
@@ -195,7 +220,7 @@ public class CNNVariantScore extends VariantWalker {
 
     }
 
-    private void sendBatchIfReady(){
+    private void sendBatchIfReady() {
         if (curBatchSize == transferBatchSize) {
             if (waitforBatchCompletion == true) {
                 // wait for the last batch to complete before we start a new one
@@ -211,7 +236,7 @@ public class CNNVariantScore extends VariantWalker {
     }
 
     private void transferReadsToPythonViaFifo(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext) {
-        StringBuilder sb = new StringBuilder(FIFO_STRING_CAPACITY);
+        StringBuilder sb = new StringBuilder(FIFO_STRING_INITIAL_CAPACITY);
         try {
             sb.append(String.format("%s\t%s\t%s\t%s\t",
                     getVariantDataString(variant),
@@ -222,7 +247,10 @@ public class CNNVariantScore extends VariantWalker {
             throw new GATKException("Trying to make string from reference, but unsupported encoding UTF-8.", e);
         }
         Iterator<GATKRead> readIt = readsContext.iterator();
-        while(readIt.hasNext()){
+        if (!readIt.hasNext()) {
+            logger.warn("No reads at contig:" + variant.getContig() + "site:" + String.valueOf(variant.getStart()));
+        }
+        while (readIt.hasNext()) {
             sb.append(GATKReadToString(readIt.next()));
         }
         sb.append("\n");
@@ -230,10 +258,10 @@ public class CNNVariantScore extends VariantWalker {
         curBatchSize++;
     }
 
-    private String GATKReadToString(GATKRead read){
-        StringBuilder sb = new StringBuilder(FIFO_STRING_CAPACITY);
+    private String GATKReadToString(GATKRead read) {
+        StringBuilder sb = new StringBuilder(FIFO_STRING_INITIAL_CAPACITY);
         sb.append(read.getBasesString() + "\t");
-        sb.append(baseQualityBytesToString(read.getBaseQualities())+ "\t");
+        sb.append(baseQualityBytesToString(read.getBaseQualities()) + "\t");
         sb.append(read.getCigar().toString() + "\t");
         sb.append(read.isReverseStrand() + "\t");
         sb.append((read.isPaired() ? read.mateIsReverseStrand() : "false") + "\t");
@@ -244,28 +272,15 @@ public class CNNVariantScore extends VariantWalker {
 
     }
 
-    private String baseQualityBytesToString(byte[] qualities){
+    private String baseQualityBytesToString(byte[] qualities) {
         String qualityString = "";
-        for(int i = 0; i < qualities.length; i++){
+        for (int i = 0; i < qualities.length; i++) {
             qualityString += Integer.toString(qualities[i]) + ",";
         }
-        return qualityString.substring(0, qualityString.length()-1);
+        return qualityString.substring(0, qualityString.length() - 1);
     }
 
-    private String referenceAndAnnotationsToString(final VariantContext variant, final ReferenceContext referenceContext){
-        try {
-            final String refAnnoString = String.format("%s\t%s\t%s\t%s\n",
-                getVariantDataString(variant),
-                new String(Arrays.copyOfRange(referenceContext.getBases(), 0, windowSize), "UTF-8"),
-                getVariantInfoString(variant),
-                variant.isSNP() ? "SNP" : variant.isIndel() ? "INDEL" : "OTHER");
-            return refAnnoString;
-        } catch (UnsupportedEncodingException e) {
-            throw new GATKException("Trying to make string from reference, but unsupported encoding UTF-8.", e);
-        }
-    }
-
-    private String getVariantDataString(final VariantContext variant){
+    private String getVariantDataString(final VariantContext variant) {
         return String.format("%s\t%d\t%s\t%s",
                 variant.getContig(),
                 variant.getStart(),
@@ -275,7 +290,7 @@ public class CNNVariantScore extends VariantWalker {
 
     }
 
-    private String getVariantInfoString(final VariantContext variant){
+    private String getVariantInfoString(final VariantContext variant) {
         // Create a string that will easily be parsed as a python dictionary
         String varInfo = "";
         for (final String attributeKey : variant.getAttributes().keySet()) {
@@ -290,7 +305,7 @@ public class CNNVariantScore extends VariantWalker {
             asyncWriter.waitForPreviousBatchCompletion(1, TimeUnit.MINUTES);
             pythonExecutor.getAccumulatedOutput();
         }
-        if (curBatchSize > 0){
+        if (curBatchSize > 0) {
             executePythonCommand();
             asyncWriter.waitForPreviousBatchCompletion(1, TimeUnit.MINUTES);
             pythonExecutor.getAccumulatedOutput();
@@ -305,7 +320,7 @@ public class CNNVariantScore extends VariantWalker {
         return true;
     }
 
-    private void executePythonCommand(){
+    private void executePythonCommand() {
         final String pythonCommand = String.format(
                 "vqsr_cnn.score_and_write_batch(args, model, tempFile, fifoFile, %d, %d)", curBatchSize, inferenceBatchSize) + NL;
         pythonExecutor.sendAsynchronousCommand(pythonCommand);
@@ -313,7 +328,7 @@ public class CNNVariantScore extends VariantWalker {
     }
 
 
-    private void writeOutputVCFWithScores(){
+    private void writeOutputVCFWithScores() {
         try (final Scanner scoreScan = new Scanner(scoreFile);
              final VariantContextWriter vcfWriter = createVCFWriter(new File(outputFile))) {
             scoreScan.useDelimiter("\\n");
@@ -326,7 +341,7 @@ public class CNNVariantScore extends VariantWalker {
                     .forEach(variant -> {
                         String sv = scoreScan.nextLine();
                         String[] scoredVariant = sv.split("\\t");
-                        if(variant.getContig().equals(scoredVariant[CONTIG_INDEX])
+                        if (variant.getContig().equals(scoredVariant[CONTIG_INDEX])
                                 && Integer.toString(variant.getStart()).equals(scoredVariant[POS_INDEX])
                                 && variant.getReference().getBaseString().equals(scoredVariant[REF_INDEX])
                                 && variant.getAlternateAlleles().toString().equals(scoredVariant[ALT_INDEX])) {
@@ -334,7 +349,7 @@ public class CNNVariantScore extends VariantWalker {
                             builder.attribute(scoreKey, scoredVariant[KEY_INDEX]);
                             vcfWriter.add(builder.make());
                         } else {
-                            String errorMsg = "Score file out of sync with original VCF. Score file has:"+sv;
+                            String errorMsg = "Score file out of sync with original VCF. Score file has:" + sv;
                             errorMsg += "\n But VCF has:" + variant.toStringWithoutGenotypes();
                             throw new GATKException(errorMsg);
                         }
@@ -346,7 +361,7 @@ public class CNNVariantScore extends VariantWalker {
 
     }
 
-    private void writeVCFHeader(VariantContextWriter vcfWriter){
+    private void writeVCFHeader(VariantContextWriter vcfWriter) {
         // setup the header fields
         final VCFHeader inputHeader = getHeaderForVariants();
         final Set<VCFHeaderLine> inputHeaders = inputHeader.getMetaDataInSortedOrder();
@@ -360,16 +375,14 @@ public class CNNVariantScore extends VariantWalker {
         vcfWriter.writeHeader(vcfHeader);
     }
 
-    private void setScoreKeyAndCheckModelAndReadsHarmony(){
-        if (useReads && this.hasReads()){
-            scoreKey = GATKVCFConstants.CNN_2D_KEY;
-        } else if (!useReads && !this.hasReads()){
-            scoreKey = GATKVCFConstants.CNN_1D_KEY;
-        } else if (useReads){
-            throw new GATKException("2D Models require a SAM/BAM file specified via -I (-input) argument.");
+    private String getScoreKeyAndCheckModelAndReadsHarmony() {
+        if (tensorType.isReadsRequired() && this.hasReads()) {
+            return GATKVCFConstants.CNN_2D_KEY;
+        } else if (!tensorType.isReadsRequired()) {
+            return GATKVCFConstants.CNN_1D_KEY;
         } else {
-            throw new GATKException("1D Models cannot use SAM/BAM files, don't use the -I argument for 1D models.");
+            throw new GATKException("2D Models require a SAM/BAM file specified via -I (-input) argument.");
         }
     }
-
 }
+

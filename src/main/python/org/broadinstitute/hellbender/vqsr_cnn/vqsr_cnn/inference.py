@@ -74,7 +74,7 @@ def score_and_write_batch(args, model, file_out, fifo, batch_size, python_batch_
     elif args.tensor_name in defines.TENSOR_MAPS_2D:
         if len(read_batch) > 0:
             predictions = model.predict(
-                {'read_tensor':np.array(read_batch), 'annotations':np.array(annotation_batch)},
+                {args.tensor_name:np.array(read_batch), args.annotation_set:np.array(annotation_batch)},
                 batch_size=python_batch_size)
     else:
         raise ValueError('Unknown tensor mapping.  Check architecture file.', args.tensor_name)
@@ -158,7 +158,6 @@ def get_inserts(args, read_tuples, variant, sort_by='base'):
                 if t[0] in CIGAR_CODES_TO_COUNT:
                     cur_idx += t[1]
 
-
     read_tuples.sort(key=lambda read: read.reference_start)
     if sort_by == 'base':
         read_tuples.sort(key=lambda read: get_base_to_sort_by(read, variant))
@@ -201,8 +200,10 @@ def get_variant_window(args, variant):
     reference_end = variant.pos+index_offset
     return index_offset, reference_start, reference_end
 
+
 def bool_from_java(val):
     return val == 'true'
+
 
 def clamp(n, minn, maxn):
     return max(min(maxn, n), minn)
@@ -216,7 +217,7 @@ def read_tuples_to_read_tensor(args, read_tuples, ref_start, insert_dict):
 
     Arguments:
         args.read_limit: maximum number of reads to return
-        good_reads: list of reads to make arrays from
+        read_tuples: list of reads to make arrays from
         ref_start: the beginning of the window in reference coordinates
         insert_dict: a dict mapping read indices to max insertions at that point.
 
@@ -224,7 +225,10 @@ def read_tuples_to_read_tensor(args, read_tuples, ref_start, insert_dict):
         tensor: 3D read tensor.
     '''
     channel_map = tensor_maps.get_tensor_channel_map_from_args(args)
-    tensor = np.zeros( tensor_maps.tensor_shape_from_args(args) )
+    tensor = np.zeros(tensor_maps.tensor_shape_from_args(args))
+
+    if len(read_tuples) > args.read_limit:
+        read_tuples = np.random.choice(read_tuples, size=args.read_limit, replace=False).tolist()
 
     for j,read in enumerate(read_tuples):
         rseq, rqual = sequence_and_qualities_from_read(args, read, ref_start, insert_dict)

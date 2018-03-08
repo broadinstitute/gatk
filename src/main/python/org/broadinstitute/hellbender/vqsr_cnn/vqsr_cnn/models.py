@@ -53,12 +53,17 @@ def set_args_and_get_model_from_semantics(args, semantics_json):
 
     if 'input_annotations' in semantics:
         args.annotations = semantics['input_annotations']
+        args.annotation_set = semantics['input_annotation_set']
 
     args.input_symbols = semantics['input_symbols']
     args.labels = semantics['output_labels']
 
     if 'channels_last' in semantics:
         args.channels_last = semantics['channels_last']
+        if args.channels_last:
+            K.set_image_data_format('channels_last')
+        else:
+            K.set_image_data_format('channels_first')
 
     weight_path_hd5 = os.path.join(os.path.dirname(semantics_json), semantics['architecture'])
     print('Loading keras weight file from:', weight_path_hd5)
@@ -235,14 +240,15 @@ def read_tensor_2d_annotation_model_from_args(args,
     Uses the functional API. Supports theano or tensorflow channel ordering.
     Prints out model summary.
 
-    Arguments
+    Arguments:
         args.window_size: Length in base-pairs of sequence centered at the variant to use as input.
         args.labels: The output labels (e.g. SNP, NOT_SNP, INDEL, NOT_INDEL)
         args.weights_hd5: An existing model file to load weights from
         args.channels_last: Theano->False or Tensorflow->True channel ordering flag
         conv_layers: list of number of convolutional filters in each layer
         batch_normalization: Boolean whether to apply batch normalization or not
-    Returns
+
+    Returns:
         The keras model
     '''
     in_channels = tensor_maps.total_input_channels_from_args(args)

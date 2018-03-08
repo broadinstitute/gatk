@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.argparser.ExperimentalFeature;
-import org.broadinstitute.barclay.argparser.Hidden;
+import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -18,6 +15,7 @@ import java.util.List;
 
 /**
  * Write variant tensors for training a Convolutional Neural Network (CNN) for filtering variants.
+ * After running this tool, a model can be trained with the {@link CNNVariantTrain} tool.
  *
  *
  * <h3>Inputs</h3>
@@ -52,7 +50,7 @@ import java.util.List;
  *   -truth-vcf platinum-genomes.vcf \
  *   -truth-bed platinum-confident-region.bed \
  *   -tensor-name reference \
- *   -data-dir my-tensor-folder
+ *   -output-tensor-dir my-tensor-folder
  * </pre>
  *
  * <h4>Write Read Tensors</h4>
@@ -64,7 +62,7 @@ import java.util.List;
  *   -truth-bed platinum-confident-region.bed \
  *   -tensor-name read_tensor \
  *   -bam-file input.bam \
- *   -data-dir my-tensor-folder
+ *   -output-tensor-dir my-tensor-folder
  * </pre>
  *
  */
@@ -80,32 +78,33 @@ public class CNNVariantWriteTensors extends CommandLineProgram {
     @Argument(fullName = StandardArgumentDefinitions.REFERENCE_LONG_NAME,
             shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME,
             doc = "Reference fasta file.")
-    private String reference = "";
+    private String reference;
 
     @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME,
             shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME,
             doc = "Input VCF file")
-    private String inputVcf = "";
+    private String inputVcf;
 
-    @Argument(fullName = "data-dir", shortName = "data-dir", doc = "Directory of training tensors. Subdivided into train, valid and test sets.")
-    private String dataDir = "";
+    @Argument(fullName = "output-tensor-dir", shortName = "output-tensor-dir", doc = "Directory of training tensors. Subdivided into train, valid and test sets.")
+    private String outputTensorsDir;
 
     @Argument(fullName = "truth-vcf", shortName = "truth-vcf", doc = "Validated VCF file.")
-    private String truthVcf = "";
+    private String truthVcf;
 
     @Argument(fullName = "truth-bed", shortName = "truth-bed", doc = "Confident region of the validated VCF file.")
-    private String truthBed = "";
+    private String truthBed;
 
     @Argument(fullName = "bam-file", shortName = "bam-file", doc = "BAM or BAMout file to use for read data when generating 2D tensors.", optional = true)
     private String bamFile = "";
 
-    @Argument(fullName = "tensor-name", shortName = "tensor-name", doc = "Name of the tensors to generate.")
-    private TensorMapEnum tensorMap = TensorMapEnum.reference;
+    @Argument(fullName = "tensor-type", shortName = "tensor-type", doc = "Name of the tensors to generate.")
+    private TensorType tensorType = TensorType.reference;
 
+    @Advanced
     @Argument(fullName = "channels-last", shortName = "channels-last", doc = "Store the channels in the last axis of tensors, tensorflow->true, theano->false", optional = true)
     private boolean channelsLast = true;
 
-    @Hidden
+    @Advanced
     @Argument(fullName = "annotation-set", shortName = "annotation-set", doc = "Which set of annotations to use.", optional = true)
     private String annotationSet = "best_practices";
 
@@ -129,10 +128,10 @@ public class CNNVariantWriteTensors extends CommandLineProgram {
                 "--bam_file", bamFile,
                 "--train_vcf", truthVcf,
                 "--bed_file", truthBed,
-                "--tensor_name", tensorMap.name(),
+                "--tensor_name", tensorType.name(),
                 "--annotation_set", annotationSet,
                 "--samples", Integer.toString(maxTensors),
-                "--data_dir", dataDir));
+                "--data_dir", outputTensorsDir));
 
         if(channelsLast){
             arguments.add("--channels_last");
@@ -140,12 +139,12 @@ public class CNNVariantWriteTensors extends CommandLineProgram {
             arguments.add("--channels_first");
         }
 
-        if (tensorMap == TensorMapEnum.reference) {
+        if (tensorType == TensorType.reference) {
             arguments.addAll(Arrays.asList("--mode", "write_reference_and_annotation_tensors"));
-        } else if (tensorMap == TensorMapEnum.read_tensor) {
+        } else if (tensorType == TensorType.read_tensor) {
             arguments.addAll(Arrays.asList("--mode", "write_read_and_annotation_tensors"));
         } else {
-            throw new GATKException("Unknown tensor mapping mode:"+tensorMap.name());
+            throw new GATKException("Unknown tensor mapping mode:"+ tensorType.name());
         }
 
         logger.info("Args are:"+ Arrays.toString(arguments.toArray()));

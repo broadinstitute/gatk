@@ -72,6 +72,7 @@ public class CNNVariantScoreIntegrationTest extends CommandLineProgramTest {
      */
     @Test(groups = {"python"}, enabled = true)
     public void testInference2d() throws IOException{
+        TensorType tt = TensorType.read_tensor;
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
                 .addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, largeFileTestDir + "VQSR/g94982_chr20_1m_10m_bamout.bam")
@@ -81,7 +82,7 @@ public class CNNVariantScoreIntegrationTest extends CommandLineProgramTest {
                 .addArgument("architecture", architecture2D)
                 .addArgument("inference-batch-size", "1")
                 .addArgument("transfer-batch-size", "1")
-                .addArgument("use-reads", "true")
+                .addArgument("tensor-type", tt.name())
                 .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 
 //        runCommandLine(argsBuilder);

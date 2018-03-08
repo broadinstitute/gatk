@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.File;
@@ -33,22 +34,15 @@ import java.util.stream.Collectors;
  * <h3>Inputs</h3>
  * <ul>
  *      <li>The input variants to tranche filter.</li>
- *      <li>The truth VCF has validated variant calls, like those in the genomes in a bottle,
- *      platinum genomes, or CHM VCFs.  Variants in both the input VCF and the truth VCF
- *      will be used as positive training data.</li>
- *      <li>The truth BED is a bed file define the confident region for the validated calls.
- *      Variants from the input VCF inside this region, but not included in the truth VCF
- *      will be used as negative training data.</li>
- *      <li>The tensor-name argument determines what types of tensors will be written.
- *      Set it to "reference" to write 1D tensors or "read_tensor" to write 2D tensors.</li>
- *      <li>The bam-file argument is necessary to write 2D tensors which incorporate read data.</li>
+ *      <li>snp-truth-vcf A VCF containing known common SNP sites</li>
+ *      <li>indel-truth-vcf A VCF containing known and common INDEL sites.</li>
+ *      <li>info-key The key from the INFO field of the VCF which contains the values that will be used to filter.</li>
+ *      <li>tranche List of percent sensitivities to the known sites at which we will filter.  Must be between 0 and 100.</li>
  * </ul>
  *
  * <h3>Outputs</h3>
  * <ul>
- * <li>data-dir This directory is created and populated with variant tensors.
- *  it will be divided into training, validation and test sets and each set will be further divided into
- *  positive and negative SNPs and INDELs.</li>
+ * <li>A tranche filtered VCF.</li>
  * </ul>
  *
  * <h3>Usage example</h3>
@@ -92,7 +86,7 @@ public class VariantTranchesFromInfoKey extends CommandLineProgram {
     private String indelTruthVcf = null;
 
     @Argument(fullName = "info-key", shortName = "info-key", doc = "The key must be in the INFO field of the input VCF.")
-    private String infoKey = "CNN_1D";
+    private String infoKey = GATKVCFConstants.CNN_1D_KEY;
 
     @Argument(fullName = "max-sites", shortName = "max-sites", doc = "Maximum number of truth VCF sites to check.")
     private int maxSites = 1200;
