@@ -17,6 +17,9 @@ public class FuncotatorTestConstants {
 
     public static final String FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "funcotator_dataSources" + File.separator;
 
+    public static final String REFERENCE_VERSION_HG19 = "hg19";
+    public static final String REFERENCE_VERSION_HG38 = "hg38";
+
     public static final SimpleInterval MUC16_POSITION = new SimpleInterval("chr19", 8959520, 9092018);
     public static final String MUC16_GENCODE_ANNOTATIONS_FILE_NAME = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "gencode_muc16" + File.separator + "hg19" + File.separator + "gencode.v19.MUC16.gtf";
     public static final String MUC16_GENCODE_TRANSCRIPT_FASTA_FILE = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "gencode_muc16" + File.separator + "hg19" + File.separator + "gencode.v19.MUC16_transcript.fasta";
@@ -39,8 +42,6 @@ public class FuncotatorTestConstants {
     // ----------------------------------------------------------------------
     // Data source variables:
 
-    public static final String DATA_SOURCES_PATH = "/Users/jonn/Development/funcotator_dataSources";
-
     public static final String XSV_CSV_FILE_PATH = FUNCOTATOR_TEST_DIR + "xsv_CSV_testFile.csv";
     public static final String XSV_TSV_FILE_PATH = FUNCOTATOR_TEST_DIR + "xsv_TSV_testFile.csv";
     public static final String XSV_DEADBEEFSV_FILE_PATH = FUNCOTATOR_TEST_DIR + "xsv_DEADBEEFSV_testFile.csv";
@@ -50,10 +51,6 @@ public class FuncotatorTestConstants {
     public static final String XSV_LOCATABLE_TEST_FILE1_PATH = FUNCOTATOR_TEST_DIR + "xsv_locatable_test.csv";
     public static final String XSV_LOCATABLE_TEST_FILE2_PATH = FUNCOTATOR_TEST_DIR + "xsv_locatable_test2.csv";
     public static final String XSV_LOCATABLE_TEST_FILE3_PATH = FUNCOTATOR_TEST_DIR + "xsv_locatable_test3.tsv";
-
-    public static final String DATA_SOURCES_FOLDER_PATH = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "dataSources" + File.separator;
-    public static final String HGNC_HG19_TSV_PATH = DATA_SOURCES_FOLDER_PATH + "hgnc" + File.separator + "hg19" + File.separator + "hgnc_download_Nov302017.tsv";
-    public static final String SIMPLE_UNIPROT_HG19_TSV_PATH = DATA_SOURCES_FOLDER_PATH + "simple_uniprot" + File.separator + "hg19" + File.separator + "simple_uniprot_Dec012014.tsv";
 
     public static final String COSMIC_TEST_DB = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "cosmic" + File.separator + "hg19" + File.separator + "CosmicTest.db";
 

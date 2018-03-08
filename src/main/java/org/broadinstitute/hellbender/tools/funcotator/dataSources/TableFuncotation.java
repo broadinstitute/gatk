@@ -31,15 +31,15 @@ public class TableFuncotation implements Funcotation {
     /**
      * Name of the factory that created this {@link TableFuncotation}.
      */
-    private String dataSourceName;
+    final private String dataSourceName;
 
     /**
      * Names of the fields in this {@link TableFuncotation}.
      */
-    private LinkedHashMap<String, String> fieldMap;
+    final private LinkedHashMap<String, String> fieldMap;
 
     /** The alternate {@link Allele} associated with this {@link TableFuncotation} */
-    private Allele altAllele;
+    final private Allele altAllele;
 
     //==================================================================================================================
     // Constructors:

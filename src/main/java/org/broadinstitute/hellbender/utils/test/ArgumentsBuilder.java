@@ -38,13 +38,23 @@ public final class ArgumentsBuilder {
     public ArgumentsBuilder add(String arg){
         List<String> chunks = Arrays.asList(StringUtils.split(arg.trim()));
         for (String chunk : chunks){
-            if(chunk.contains("=")){
-                String tmp = "--"+chunk;
-                args.addAll(Arrays.asList(tmp.split("=")));
-            }
-            else{
-                args.add(chunk);
-            }
+            addRaw(chunk);
+        }
+        return this;
+    }
+
+    /**
+     * Add a string to the arguments list without processing the string itself.
+     * @param arg A string representing one or more arguments
+     * @return the ArgumentsBuilder
+     */
+    public ArgumentsBuilder addRaw(final String arg){
+        if(arg.contains("=")){
+            final String tmp = "--"+arg;
+            args.addAll(Arrays.asList(tmp.split("=")));
+        }
+        else{
+            args.add(arg);
         }
         return this;
     }
@@ -111,6 +121,17 @@ public final class ArgumentsBuilder {
         Utils.nonNull(argumentName);
         add("--" + argumentName);
         add(argumentValue);
+        return this;
+    }
+
+    /**
+     * Add an argument with a given value to this builder without processing the value string.
+     */
+    public ArgumentsBuilder addArgumentWithRawValue(final String argumentName, final String argumentValue) {
+        Utils.nonNull(argumentValue);
+        Utils.nonNull(argumentName);
+        add("--" + argumentName);
+        addRaw(argumentValue);
         return this;
     }
 

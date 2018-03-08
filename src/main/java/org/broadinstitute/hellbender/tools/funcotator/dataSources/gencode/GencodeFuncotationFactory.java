@@ -123,7 +123,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * For more information on the specifics of the differences go here:
      * https://gatkforums.broadinstitute.org/gatk/discussion/4220/what-is-the-difference-between-tx-mode-best-effect-vs-canonical
      */
-    private final FuncotatorArgumentDefinitions.TranscriptSelectionMode transcriptSelectionMode;
+    private final TranscriptSelectionMode transcriptSelectionMode;
 
     /**
      * {@link List} of Transcript IDs that the user has requested that we annotate.
@@ -145,7 +145,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     /**
      * Comparator to be used when sorting {@link Funcotation}s created by this {@link GencodeFuncotationFactory}.
-     * Will be either {@link BestEffectGencodeFuncotationComparator} or {@link CannonicalGencodeFuncotationComparator}.
+     * Will be either {@link TranscriptSelectionMode.BestEffectGencodeFuncotationComparator} or {@link TranscriptSelectionMode.CannonicalGencodeFuncotationComparator}.
      */
     private final Comparator<GencodeFuncotation> gencodeFuncotationComparator;
 
@@ -160,20 +160,20 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         this(gencodeTranscriptFastaFile, version, FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE, userRequestedTranscripts, new LinkedHashMap<>());
     }
 
-    public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFile, final String version,final FuncotatorArgumentDefinitions.TranscriptSelectionMode transcriptSelectionMode) {
+    public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFile, final String version,final TranscriptSelectionMode transcriptSelectionMode) {
         this(gencodeTranscriptFastaFile, version, transcriptSelectionMode, new HashSet<>(), new LinkedHashMap<>());
     }
 
     public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFile,
                                      final String version,
-                                     final FuncotatorArgumentDefinitions.TranscriptSelectionMode transcriptSelectionMode,
+                                     final TranscriptSelectionMode transcriptSelectionMode,
                                      final Set<String> userRequestedTranscripts) {
         this(gencodeTranscriptFastaFile, version, transcriptSelectionMode, userRequestedTranscripts, new LinkedHashMap<>());
     }
 
     public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFile,
                                      final String version,
-                                     final FuncotatorArgumentDefinitions.TranscriptSelectionMode transcriptSelectionMode,
+                                     final TranscriptSelectionMode transcriptSelectionMode,
                                      final Set<String> userRequestedTranscripts,
                                      final LinkedHashMap<String, String> annotationOverrides) {
 
@@ -189,16 +189,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Go through each requested transcript and remove the version numbers from them if they exist:
         this.userRequestedTranscripts = new HashSet<>();
         for ( final String transcript : userRequestedTranscripts ) {
-            this.userRequestedTranscripts.add( getTranscriptIdWithoutVersionNumber(transcript) );
+            this.userRequestedTranscripts.add( FuncotatorUtils.getTranscriptIdWithoutVersionNumber(transcript) );
         }
 
         // Set our comparator for outputting our funcotations in the right order with the correct "best" transcript:
-        if ( transcriptSelectionMode == FuncotatorArgumentDefinitions.TranscriptSelectionMode.BEST_EFFECT ) {
-            gencodeFuncotationComparator = new BestEffectGencodeFuncotationComparator(userRequestedTranscripts);
-        }
-        else {
-            gencodeFuncotationComparator = new CannonicalGencodeFuncotationComparator(userRequestedTranscripts);
-        }
+        gencodeFuncotationComparator = transcriptSelectionMode.getComparator(userRequestedTranscripts);
 
         // Initialize overrides / defaults:
         initializeAnnotationOverrides( annotationOverrides );
@@ -321,34 +316,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     static void filterAnnotationsByUserTranscripts( final List<GencodeFuncotation> funcotations,
                                                     final Set<String> selectedTranscripts ) {
         if ( (selectedTranscripts != null) && (!selectedTranscripts.isEmpty()) ) {
-            funcotations.removeIf( f -> !isFuncotationInTranscriptList(f, selectedTranscripts) );
+            funcotations.removeIf( f -> !FuncotatorUtils.isFuncotationInTranscriptList(f, selectedTranscripts) );
         }
-    }
-
-    /**
-     * Determines whether the given {@code funcotation} has a transcript ID that is in the given {@code acceptableTranscripts}.
-     * Ignores transcript version numbers.
-     * @param funcotation The {@link GencodeFuncotation} to check against the set of {@code acceptableTranscripts}.
-     * @param acceptableTranscripts The {@link Set} of transcript IDs that are OK to keep.
-     * @return {@code true} if funcotation.annotationTranscript is in {@code acceptableTranscripts} (ignoring transcript version); {@code false} otherwise.
-     */
-    static boolean isFuncotationInTranscriptList( final GencodeFuncotation funcotation,
-                                                  final Set<String> acceptableTranscripts ) {
-        if ( funcotation.getAnnotationTranscript() != null ) {
-            return acceptableTranscripts.contains( getTranscriptIdWithoutVersionNumber(funcotation.getAnnotationTranscript()) );
-        }
-        else {
-            return false;
-        }
-    }
-
-    /**
-     * Removes the transcript ID version number from the given transcript ID (if it exists).
-     * @param transcriptId The transcript from which to remove the version number.
-     * @return The {@link String} corresponding to the given {@code transcriptId} without a version number.
-     */
-    static String getTranscriptIdWithoutVersionNumber( final String transcriptId ) {
-        return transcriptId.replaceAll("\\.\\d+$", "");
     }
 
     /**
@@ -430,37 +399,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         transcriptIdInfo.has5pUtr = has5pUtr;
 
         return transcriptIdInfo;
-    }
-
-    /**
-     * Get the whole sequence from the GENCODE Transcript FASTA file for a given {@code transcriptId}.
-     * This will get ALL bases in the sequence of the given {@code transcriptId}, including any UTRs and the coding region.
-     * @param transcriptId The ID of the transcript to get from the FASTA file.
-     * @param transcriptIdMap A map from transcriptId to MappedTranscriptIdInfo, which tells us how to pull information for the given {@code transcriptId} out of the given {@code transcriptFastaReferenceDataSource}.
-     * @param transcriptFastaReferenceDataSource A {@link ReferenceDataSource} for the GENCODE transcript FASTA file.
-     * @return The whole sequence for the given {@code transcriptId} as represented in the GENCODE transcript FASTA file.
-     */
-    private static String getWholeSequenceFromTranscriptFasta( final String transcriptId,
-                                                                final Map<String, MappedTranscriptIdInfo> transcriptIdMap,
-                                                                final ReferenceDataSource transcriptFastaReferenceDataSource) {
-
-        final MappedTranscriptIdInfo transcriptMapIdAndMetadata = transcriptIdMap.get(transcriptId);
-
-        if ( transcriptMapIdAndMetadata == null ) {
-            throw new UserException.BadInput( "Unable to find the given Transcript ID in our transcript list (not in given transcript FASTA file): " + transcriptId );
-        }
-
-        int end = transcriptMapIdAndMetadata.fivePrimeUtrEnd;
-        end = transcriptMapIdAndMetadata.codingSequenceEnd > end ? transcriptMapIdAndMetadata.codingSequenceEnd : end;
-        end = transcriptMapIdAndMetadata.threePrimeUtrEnd > end ? transcriptMapIdAndMetadata.threePrimeUtrEnd : end;
-
-        final SimpleInterval transcriptInterval = new SimpleInterval(
-                transcriptMapIdAndMetadata.mapKey,
-                1,
-                end
-        );
-
-        return transcriptFastaReferenceDataSource.queryAndPrefetch( transcriptInterval ).getBaseString();
     }
 
     /**
@@ -777,7 +715,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Get the list of exons by their locations so we can use them to determine our location in the transcript and get
         // the transcript code itself:
         final List<? extends Locatable> exonPositionList = getSortedExonAndStartStopPositions(transcript);
-//        final List<? extends Locatable> exonPositionList = transcript.getExons();
 
         // NOTE: Regardless of strandedness, we always report the alleles as if they appeared in the forward direction.
         final GencodeFuncotation.VariantType variantType =
@@ -1103,7 +1040,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         gencodeFuncotationBuilder.setGcContent( calculateGcContent( reference, gcContentWindowSizeBases ) );
 
         // Determine the strand for the variant:
-        final Strand strand = Strand.decode( transcript.getGenomicStrand().toString() );
+        final Strand strand = transcript.getGenomicStrand() == GencodeGtfFeature.GenomicStrand.FORWARD ? Strand.POSITIVE : Strand.NEGATIVE;
         FuncotatorUtils.assertValidStrand(strand);
 
         // Get the strand-corrected alleles from the inputs.
@@ -1192,7 +1129,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                                        final ReferenceContext referenceContext) {
 
         // Determine the strand for the variant:
-        final Strand strand = Strand.decode( transcript.getGenomicStrand().toString() );
+        final Strand strand = transcript.getGenomicStrand() == GencodeGtfFeature.GenomicStrand.FORWARD ? Strand.POSITIVE : Strand.NEGATIVE;
         FuncotatorUtils.assertValidStrand(strand);
 
         // Get the strand-corrected alleles from the inputs.
@@ -1267,14 +1204,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Adjustment for the start of the variant based on whether it's a deletion or not.
         // NOTE: This is an artifact of the GATK representation of variants (that they must be at least 1 base)
-        final int deletionStartAdjustment =  GATKVariantContextUtils.isDeletion(refAllele, altAllele) ? 1 : 0;
+        final int deletionStartAdjustment = GATKVariantContextUtils.isDeletion(refAllele, altAllele) ? 1 : 0;
 
         if ( strand == Strand.POSITIVE ) {
 
-            final int endWindow =
-                    refAllele.length() >= altAllele.length() ?
-                            referenceWindow + refAllele.length() - 1 :
-                            referenceWindow + altAllele.length() - 1;
+            final int endWindow = Math.max(refAllele.length(), altAllele.length()) + referenceWindow - 1;
 
             // Get the reference sequence:
              return new String(reference.getBases(
@@ -1286,10 +1220,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         }
         else {
             // Calculate our window to include any extra bases but also have the right referenceWindow.
-            final int frontPadding =
-                    refAllele.length() >= altAllele.length() ?
-                            referenceWindow + refAllele.length() - 1 :
-                            referenceWindow + altAllele.length() - 1;
+            final int frontPadding = Math.max(refAllele.length(), altAllele.length()) + referenceWindow - 1;
 
             // Get the reference sequence:
             // NOTE: The "frontPadding" actually adds padding to the back of the coding sequence because the strand
@@ -1360,7 +1291,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             // where this overlaps something more meaningful.
             // For example, see HG19 - chr19:8959608
             for (final GencodeGtfExonFeature exon : transcript.getExons()) {
-                // TODO: It would be really nice if you could make this work for the OVERLAPS method not just the CONTAINS method.  This is in here for issue #4307.
+                // TODO: This `contains` is here for issue #4307 - https://github.com/broadinstitute/gatk/issues/4307
                 if ((exon.getCds() != null) && (exon.getCds().contains(variant))) {
                     subFeature = exon;
                     determinedRegionAlready = true;
@@ -1411,7 +1342,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         sequenceComparison.setContig(variant.getContig());
 
         // Get the strand:
-        final Strand strand = Strand.decode(transcript.getGenomicStrand().toString());
+        final Strand strand = transcript.getGenomicStrand() == GencodeGtfFeature.GenomicStrand.FORWARD ? Strand.POSITIVE : Strand.NEGATIVE;
         sequenceComparison.setStrand(strand);
 
         // Get the alleles from the inputs
@@ -1610,7 +1541,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
          //TODO: Add gtfFeature.getGeneType() as an annotation field in the GencodeFuncotation - Issue #4408
 
          final GencodeFuncotationBuilder gencodeFuncotationBuilder = new GencodeFuncotationBuilder();
-         final Strand strand = Strand.decode(transcript.getGenomicStrand().toString());
+         final Strand strand = transcript.getGenomicStrand() == GencodeGtfFeature.GenomicStrand.FORWARD ? Strand.POSITIVE : Strand.NEGATIVE;
 
          gencodeFuncotationBuilder.setRefAllele(variant.getReference())
                  .setStrand(strand)
@@ -1647,7 +1578,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
          // NOTE: We add 1 because of genomic cordinates:
         gencodeFuncotationBuilder.setTranscriptLength(
                 transcript.getExons().stream()
-                .mapToInt(e -> e.getEnd() - e.getStart() + 1) // Add 1 because it's inclusive.
+                .mapToInt(Locatable::getLengthOnReference)
                 .sum()
         );
 
@@ -1979,229 +1910,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     //==================================================================================================================
     // Helper Data Types:
-
-    /**
-     * Comparator class for Best Effect order.
-     * Complex enough that a Lambda would be utter madness.
-     */
-    static class BestEffectGencodeFuncotationComparator implements Comparator<GencodeFuncotation> {
-
-        final Set<String> userRequestedTranscripts;
-
-        public BestEffectGencodeFuncotationComparator( final Set<String> userRequestedTranscripts ) {
-            this.userRequestedTranscripts = userRequestedTranscripts;
-        }
-
-        @Override
-        public int compare( final GencodeFuncotation a, final GencodeFuncotation b ) {
-            // 0)
-            // Choose the transcript that is on the custom list specified by the user:
-            if ( isFuncotationInTranscriptList(a, userRequestedTranscripts) && (!isFuncotationInTranscriptList(b, userRequestedTranscripts)) ) {
-                return -1;
-            }
-            else if ( (!isFuncotationInTranscriptList(a, userRequestedTranscripts)) && isFuncotationInTranscriptList(b, userRequestedTranscripts) ) {
-                return 1;
-            }
-
-            // 1a)
-            // Check to see if one is an IGR.  IGR's have only a subset of the information in them, so it's easier to
-            // order them if they're IGRs:
-            else if ( (b.getVariantClassification().equals(GencodeFuncotation.VariantClassification.IGR)) &&
-                    (!a.getVariantClassification().equals(GencodeFuncotation.VariantClassification.IGR)) ) {
-                return -1;
-            }
-            else if ( (a.getVariantClassification().equals(GencodeFuncotation.VariantClassification.IGR)) &&
-                    (!b.getVariantClassification().equals(GencodeFuncotation.VariantClassification.IGR)) ) {
-                return 1;
-            }
-
-            // 1b)
-            // Check highest variant classification:
-            else if ( a.getVariantClassification().getSeverity() < b.getVariantClassification().getSeverity() ) {
-                return -1;
-            }
-            else if ( a.getVariantClassification().getSeverity() > b.getVariantClassification().getSeverity() ) {
-                return 1;
-            }
-
-            // 2a) Is it protein coding?
-            final boolean isAProteinCoding = a.getGeneTranscriptType() == GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING;
-            final boolean isBProteinCoding = b.getGeneTranscriptType() == GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING;
-            if ( isAProteinCoding != isBProteinCoding ) {
-                if ( isAProteinCoding ) {
-                    return -1;
-                }
-                else {
-                    return 1;
-                }
-            }
-
-            // 2b)
-            // Check locus/curation levels:
-            // NOTE: For this field you want LOW, not high.  Therefore the final comparison starts with `b`, not `a`:
-            else if ( (a.getLocusLevel() != null) && (b.getLocusLevel() == null) ) {
-                return -1;
-            }
-            else if ( (a.getLocusLevel() == null ) && (b.getLocusLevel() != null) ) {
-                return 1;
-            }
-            else if ( (a.getLocusLevel() != null) && (b.getLocusLevel() != null) && (!a.getLocusLevel().equals(b.getLocusLevel())) ) {
-                return b.getLocusLevel().compareTo( a.getLocusLevel() );
-            }
-
-            // 3)
-            // Check the appris annotation:
-            else if ( (a.getApprisRank() != null) && (b.getApprisRank() == null) ) {
-                return -1;
-            }
-            else if ( (a.getApprisRank() == null ) && (b.getApprisRank() != null) ) {
-                return 1;
-            }
-            else if ( (a.getApprisRank() != null) && (b.getApprisRank() != null) && (!a.getApprisRank().equals(b.getApprisRank())) ) {
-                return a.getApprisRank().compareTo( b.getApprisRank() );
-            }
-
-            // 4)
-            // Check transcript sequence length:
-            else if ( (a.getTranscriptLength() != null) && (b.getTranscriptLength() == null) ) {
-                return -1;
-            }
-            else if ( (a.getTranscriptLength() == null ) && (b.getTranscriptLength() != null) ) {
-                return 1;
-            }
-            else if ( (a.getTranscriptLength() != null) && (b.getTranscriptLength() != null) && (!a.getTranscriptLength().equals(b.getTranscriptLength())) ) {
-                return b.getTranscriptLength().compareTo( a.getTranscriptLength() );
-            }
-
-            // 5)
-            // Default to ABC order by transcript name:
-            else if ( (a.getAnnotationTranscript() != null) && (b.getAnnotationTranscript() == null) ) {
-                return -1;
-            }
-            else if ( (a.getAnnotationTranscript() == null ) && (b.getAnnotationTranscript() != null) ) {
-                return 1;
-            }
-            // Need a default case in case all the comparison criteria are the same:
-            else if ( (a.getAnnotationTranscript() == null ) && (b.getAnnotationTranscript() == null) ) {
-                return -1;
-            }
-            else {
-                return a.getAnnotationTranscript().compareTo(b.getAnnotationTranscript());
-            }
-        }
-    }
-
-    /**
-     * Comparator class for Cannonical order.
-     * Complex enough that a Lambda would be utter madness.
-     */
-    static class CannonicalGencodeFuncotationComparator implements Comparator<GencodeFuncotation> {
-
-        final Set<String> userRequestedTranscripts;
-
-        public CannonicalGencodeFuncotationComparator( final Set<String> userRequestedTranscripts ) {
-            this.userRequestedTranscripts = userRequestedTranscripts;
-        }
-
-        @Override
-        public int compare( final GencodeFuncotation a, final GencodeFuncotation b ) {
-
-            // 0)
-            // Choose the transcript that is on the custom list specified by the user:
-            if ( isFuncotationInTranscriptList(a, userRequestedTranscripts) && (!isFuncotationInTranscriptList(b, userRequestedTranscripts)) ) {
-                return -1;
-            }
-            else if ( (!isFuncotationInTranscriptList(a, userRequestedTranscripts)) && isFuncotationInTranscriptList(b, userRequestedTranscripts) ) {
-                return 1;
-            }
-
-            // 1a) Is it protein coding?
-            final boolean isAProteinCoding = a.getGeneTranscriptType() == GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING;
-            final boolean isBProteinCoding = b.getGeneTranscriptType() == GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING;
-            if ( isAProteinCoding != isBProteinCoding ) {
-                if ( isAProteinCoding ) {
-                    return -1;
-                }
-                else {
-                    return 1;
-                }
-            }
-
-            // 1b)
-            // Check locus/curation levels.
-            // NOTE: For this field you want LOW, not high.  Therefore the final comparison starts with `b`, not `a`:
-            else if ( (a.getLocusLevel() != null) && (b.getLocusLevel() == null) ) {
-                return -1;
-            }
-            else if ( (a.getLocusLevel() == null ) && (b.getLocusLevel() != null) ) {
-                return 1;
-            }
-            else if ( (a.getLocusLevel() != null) && (b.getLocusLevel() != null) && (!a.getLocusLevel().equals(b.getLocusLevel())) ) {
-                return b.getLocusLevel().compareTo( a.getLocusLevel() );
-            }
-
-            // 2)
-            // Check the appris annotation:
-            else if ( (a.getApprisRank() != null) && (b.getApprisRank() == null) ) {
-                return -1;
-            }
-            else if ( (a.getApprisRank() == null ) && (b.getApprisRank() != null) ) {
-                return 1;
-            }
-            else if ( (a.getApprisRank() != null) && (b.getApprisRank() != null) && (!a.getApprisRank().equals(b.getApprisRank())) ) {
-                return a.getApprisRank().compareTo( b.getApprisRank() );
-            }
-
-            // 3a)
-            // Check to see if one is an IGR.  IGR's have only a subset of the information in them, so it's easier to
-            // order them if they're IGRs:
-            if ( (b.getVariantClassification().equals(GencodeFuncotation.VariantClassification.IGR)) &&
-                    (!a.getVariantClassification().equals(GencodeFuncotation.VariantClassification.IGR)) ) {
-                return -1;
-            }
-            else if ( (a.getVariantClassification().equals(GencodeFuncotation.VariantClassification.IGR)) &&
-                    (!b.getVariantClassification().equals(GencodeFuncotation.VariantClassification.IGR)) ) {
-                return 1;
-            }
-
-            // 3b)
-            // Check highest variant classification:
-            else if ( a.getVariantClassification().getSeverity() < b.getVariantClassification().getSeverity() ) {
-                return -1;
-            }
-            else if ( a.getVariantClassification().getSeverity() > b.getVariantClassification().getSeverity() ) {
-                return 1;
-            }
-
-            // 4)
-            // Check transcript sequence length:
-            else if ( (a.getTranscriptLength() != null) && (b.getTranscriptLength() == null) ) {
-                return -1;
-            }
-            else if ( (a.getTranscriptLength() == null ) && (b.getTranscriptLength() != null) ) {
-                return 1;
-            }
-            else if ( (a.getTranscriptLength() != null) && (b.getTranscriptLength() != null) && (!a.getTranscriptLength().equals(b.getTranscriptLength())) ) {
-                return b.getTranscriptLength().compareTo( a.getTranscriptLength() );
-            }
-
-            // 5)
-            // Default to ABC order by transcript name:
-            else if ( (a.getAnnotationTranscript() != null) && (b.getAnnotationTranscript() == null) ) {
-                return -1;
-            }
-            else if ( (a.getAnnotationTranscript() == null ) && (b.getAnnotationTranscript() != null) ) {
-                return 1;
-            }
-            // Need a default case in case all the comparison criteria are the same:
-            else if ( (a.getAnnotationTranscript() == null ) && (b.getAnnotationTranscript() == null) ) {
-                return -1;
-            }
-            else {
-                return a.getAnnotationTranscript().compareTo(b.getAnnotationTranscript());
-            }
-        }
-    }
 
     /**
      * A simple data object class to hold information about the transcripts in the

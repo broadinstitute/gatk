@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature;
 import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfGeneFeature;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -53,6 +54,8 @@ public class GencodeFuncotation implements Funcotation {
     private String                  referenceContext;                   // Already calculated.
 
     private List<String>            otherTranscripts;                   // TRIVIAL
+
+    private HashMap<String, String> fieldOverrideMap;
 
     //------------------------------------------------------------
     // Non-serialized fields:
@@ -205,28 +208,28 @@ public class GencodeFuncotation implements Funcotation {
         final String shortFieldName = fieldName.replaceAll("^" + GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_", "");
 
         switch (shortFieldName) {
-            case "hugoSymbol": hugoSymbolSerializedOverride = overrideValue; break;
-            case "ncbiBuild": ncbiBuildSerializedOverride = overrideValue; break;
-            case "chromosome": chromosomeSerializedOverride = overrideValue; break;
-            case "start": startSerializedOverride = overrideValue; break;
-            case "end": endSerializedOverride = overrideValue; break;
-            case "variantClassification": variantClassificationSerializedOverride = overrideValue; break;
+            case "hugoSymbol":                     hugoSymbolSerializedOverride = overrideValue;                     break;
+            case "ncbiBuild":                      ncbiBuildSerializedOverride = overrideValue;                      break;
+            case "chromosome":                     chromosomeSerializedOverride = overrideValue;                     break;
+            case "start":                          startSerializedOverride = overrideValue;                          break;
+            case "end":                            endSerializedOverride = overrideValue;                            break;
+            case "variantClassification":          variantClassificationSerializedOverride = overrideValue;          break;
             case "secondaryVariantClassification": secondaryVariantClassificationSerializedOverride = overrideValue; break;
-            case "variantType": variantTypeSerializedOverride = overrideValue; break;
-            case "refAllele": refAlleleSerializedOverride = overrideValue; break;
-            case "tumorSeqAllele1": tumorSeqAllele1SerializedOverride = overrideValue; break;
-            case "tumorSeqAllele2": tumorSeqAllele2SerializedOverride = overrideValue; break;
-            case "genomeChange": genomeChangeSerializedOverride = overrideValue; break;
-            case "annotationTranscript": annotationTranscriptSerializedOverride = overrideValue; break;
-            case "transcriptStrand": transcriptStrandSerializedOverride = overrideValue; break;
-            case "transcriptExon": transcriptExonSerializedOverride = overrideValue; break;
-            case "transcriptPos": transcriptPosSerializedOverride = overrideValue; break;
-            case "cDnaChange": cDnaChangeSerializedOverride = overrideValue; break;
-            case "codonChange": codonChangeSerializedOverride = overrideValue; break;
-            case "proteinChange": proteinChangeSerializedOverride = overrideValue; break;
-            case "gcContent": gcContentSerializedOverride = overrideValue; break;
-            case "referenceContext": referenceContextSerializedOverride = overrideValue; break;
-            case "otherTranscripts": otherTranscriptsSerializedOverride = overrideValue; break;
+            case "variantType":                    variantTypeSerializedOverride = overrideValue;                    break;
+            case "refAllele":                      refAlleleSerializedOverride = overrideValue;                      break;
+            case "tumorSeqAllele1":                tumorSeqAllele1SerializedOverride = overrideValue;                break;
+            case "tumorSeqAllele2":                tumorSeqAllele2SerializedOverride = overrideValue;                break;
+            case "genomeChange":                   genomeChangeSerializedOverride = overrideValue;                   break;
+            case "annotationTranscript":           annotationTranscriptSerializedOverride = overrideValue;           break;
+            case "transcriptStrand":               transcriptStrandSerializedOverride = overrideValue;               break;
+            case "transcriptExon":                 transcriptExonSerializedOverride = overrideValue;                 break;
+            case "transcriptPos":                  transcriptPosSerializedOverride = overrideValue;                  break;
+            case "cDnaChange":                     cDnaChangeSerializedOverride = overrideValue;                     break;
+            case "codonChange":                    codonChangeSerializedOverride = overrideValue;                    break;
+            case "proteinChange":                  proteinChangeSerializedOverride = overrideValue;                  break;
+            case "gcContent":                      gcContentSerializedOverride = overrideValue;                      break;
+            case "referenceContext":               referenceContextSerializedOverride = overrideValue;               break;
+            case "otherTranscripts":               otherTranscriptsSerializedOverride = overrideValue;               break;
             default: throw new UserException("Attempted to override invalid field in this GencodeFuncotation: " + fieldName + " (value was: " + overrideValue + ")");
         }
     }
@@ -737,6 +740,37 @@ public class GencodeFuncotation implements Funcotation {
 
     public void setGeneTranscriptType(final GencodeGtfFeature.GeneTranscriptType geneTranscriptType) {
         this.geneTranscriptType = geneTranscriptType;
+    }
+
+    //==================================================================================================================
+
+    /**
+     * The names of the fields in this GencodeFuncotation.
+     * Used to access the field map.
+     */
+    private enum FieldNames {
+        hugoSymbol,
+        ncbiBuild,
+        chromosome,
+        start,
+        end,
+        variantClassification,
+        secondaryVariantClassification,
+        variantType,
+        refAllele,
+        tumorSeqAllele1,
+        tumorSeqAllele2,
+        genomeChange,
+        annotationTranscript,
+        transcriptStrand,
+        transcriptExon,
+        transcriptPos,
+        cDnaChange,
+        codonChange,
+        proteinChange,
+        gcContent,
+        referenceContext,
+        otherTranscripts;
     }
 
     //==================================================================================================================

@@ -1,9 +1,9 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyXsvFuncotationFactory;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -63,60 +63,36 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         return outputFile;
     }
 
-    private static void addManualAnnotationsToArguments(final List<String> arguments) {
+    private static void addManualAnnotationsToArguments(final ArgumentsBuilder arguments) {
 
         // ================================================================================
         // Annotation Defaults:
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-        arguments.add("dbSNP_RS:0");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME );
-        arguments.add("dbSNP_Val_Status:No Value");
-
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-        arguments.add("Center:broad.mit.edu");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-        arguments.add("source:WES");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-        arguments.add("normal_barcode:normal_sample");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-        arguments.add("tumor_barcode:tumor_sample");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-        arguments.add("NCBI_Build:37");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-        arguments.add("Strand:+");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-        arguments.add("status:Somatic");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-        arguments.add("phase:Phase_I");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-        arguments.add("sequencer:Illumina");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-        arguments.add("Tumor_Validation_Allele1:");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-        arguments.add("Tumor_Validation_Allele2:");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-        arguments.add("Match_Norm_Validation_Allele1:");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-        arguments.add("Match_Norm_Validation_Allele2:");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-        arguments.add("Verification_Status:");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-        arguments.add("Validation_Status:");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-        arguments.add("Validation_Method:");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-        arguments.add("Score:");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-        arguments.add("BAM_file:");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-        arguments.add("Match_Norm_Seq_Allele1:");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-        arguments.add("Match_Norm_Seq_Allele2:");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "dbSNP_RS:0");
+        arguments.addArgumentWithRawValue(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME ,"dbSNP_Val_Status:No Value");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Center:broad.mit.edu");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "source:WES");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "normal_barcode:normal_sample");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "tumor_barcode:tumor_sample");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "NCBI_Build:37");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Strand:+");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "status:Somatic");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "phase:Phase_I");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "sequencer:Illumina");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Tumor_Validation_Allele1:");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Tumor_Validation_Allele2:");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Match_Norm_Validation_Allele1:");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Match_Norm_Validation_Allele2:");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Verification_Status:");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Validation_Status:");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Validation_Method:");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Score:");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "BAM_file:");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Match_Norm_Seq_Allele1:");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Match_Norm_Seq_Allele2:");
 
         // ================================================================================
         // Annotation Overrides:
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_LONG_NAME);
-        arguments.add("Oreganno_Build:BUILDED_GOOD_REAL_BIG");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_LONG_NAME, "Oreganno_Build:BUILDED_GOOD_REAL_BIG");
     }
 
     //==================================================================================================================
@@ -175,7 +151,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 testCases.add(
                         new Object[]{
                                 FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
-                                "hg19",
+                                FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                                 FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME,
                                 FuncotatorTestConstants.VARIANT_FILE_HG19_CHR3,
                                 FuncotatorTestConstants.PIK3CA_TRANSCRIPT,
@@ -187,7 +163,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 testCases.add(
                         new Object[]{
                                 FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
-                                "hg19",
+                                FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                                 FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME,
                                 FuncotatorTestConstants.VARIANT_FILE_HG19_CHR19,
                                 FuncotatorTestConstants.MUC16_TRANSCRIPT,
@@ -223,20 +199,14 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
         final File outputFile = getOutputFile(outputFormatType);
 
-        final List<String> arguments = new ArrayList<>();
+        final ArgumentsBuilder arguments = new ArgumentsBuilder();
 
-        arguments.add("--" + FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME);
-        arguments.add(dataSourcesPath);
-        arguments.add("--" + FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME);
-        arguments.add(refVer);
-        arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
-        arguments.add(referenceFileName);
-        arguments.add("-" + StandardArgumentDefinitions.VARIANT_SHORT_NAME);
-        arguments.add(variantFileName);
-        arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
-        arguments.add(outputFile.getAbsolutePath());
-        arguments.add("-" + FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME);
-        arguments.add(outputFormatType.toString());
+        arguments.addVCF(new File(variantFileName));
+        arguments.addOutput(outputFile);
+        arguments.addReference(new File(referenceFileName));
+        arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, dataSourcesPath);
+        arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, refVer);
+        arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
 
         runCommandLine(arguments);
     }
@@ -263,30 +233,19 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 outputFile = getOutputFile("funcotator_tmp_out_spot_check.maf", "tsv");
             }
 
-            final List<String> arguments = new ArrayList<>();
+            final ArgumentsBuilder arguments = new ArgumentsBuilder();
 
-            arguments.add("-" + StandardArgumentDefinitions.VARIANT_SHORT_NAME);
+            arguments.addVCF(new File("/Users/jonn/Development/M2_01115161-TA1-filtered.vcf"));
 
-//        arguments.add("/Users/jonn/Development/oncotator_testing/BENCHMARK_INPUT.funcotator.vcf");
-            arguments.add("/Users/jonn/Development/M2_01115161-TA1-filtered.vcf");
-//            arguments.add("/Users/jonn/Development/M2_01115161-TA1-filtered.oneRecord.vcf");
-//            arguments.add("/Users/jonn/Development/M2_01115161-TA1-filtered.badRecord.vcf");
-//
-            arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
-            arguments.add("/Users/jonn/Development/references/Homo_sapiens_assembly19.fasta");
+            arguments.addReference(new File("/Users/jonn/Development/references/Homo_sapiens_assembly19.fasta"));
 
-            arguments.add("--" + FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME);
-//            arguments.add(FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER);
-            arguments.add("/Users/jonn/Development/funcotator_dataSources.v1.0.20180105");
+            arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, "/Users/jonn/Development/funcotator_dataSources.v1.0.20180105");
 
-            arguments.add("--" + FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME);
+            arguments.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME, true);
 
-            arguments.add("--" + FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME);
-            arguments.add("hg19");
-            arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
-            arguments.add(outputFile.getAbsolutePath());
-            arguments.add("-" + FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME);
-            arguments.add(outFormat.toString());
+            arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19);
+            arguments.addOutput(outputFile);
+            arguments.addArgument( FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outFormat.toString() );
 
             // Add our manual annotations to the arguments:
             addManualAnnotationsToArguments(arguments);
@@ -308,78 +267,49 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         long startTime = 0, endTime = 0;
         final long overallStartTime = System.nanoTime();
 
-//        final String inputFile = "/Users/jonn/Development/data_to_run/C828.TCGA-D3-A2JP-06A-11D-A19A-08.3-filtered.vcf";
-//        final String inputFile = "/Users/jonn/Development/data_to_run/C828.TCGA-D3-A2JP-06A-11D-A19A-08.3-filtered.badRecord.vcf";
         final String inputFile = "/Users/jonn/Development/data_to_run/C828.TCGA-D3-A2JP-06A-11D-A19A-08.3-filtered.PASS.vcf";
 
         startTime = System.nanoTime();
 
         final File outputFile = new File(inputFile + ".funcotator.maf.tsv");
 
-        final List<String> arguments = new ArrayList<>();
+        final ArgumentsBuilder arguments = new ArgumentsBuilder();
 
-        arguments.add("-" + StandardArgumentDefinitions.VARIANT_SHORT_NAME);
-        arguments.add(inputFile);
+        arguments.addVCF(new File(inputFile));
+        arguments.addReference(new File("/Users/jonn/Development/references/Homo_sapiens_assembly19.fasta"));
 
-        arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
-        arguments.add("/Users/jonn/Development/references/Homo_sapiens_assembly19.fasta");
+        arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, "/Users/jonn/Development/funcotator_dataSources.v1.1.20180208");
 
-        arguments.add("--" + FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME);
-        arguments.add("/Users/jonn/Development/funcotator_dataSources.v1.1.20180208");
+        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME, true);
 
-        arguments.add("--" + FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME);
+        arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19);
 
-        arguments.add("--" + FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME);
-        arguments.add("hg19");
+        arguments.addOutput(outputFile);
 
-        arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
-        arguments.add(outputFile.getAbsolutePath());
+        arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, FuncotatorArgumentDefinitions.OutputFormatType.MAF.toString());
 
-        arguments.add("-" + FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME);
-        arguments.add(FuncotatorArgumentDefinitions.OutputFormatType.MAF.toString());
+        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.IGNORE_FILTERED_VARIANTS_LONG_NAME, true);
 
-        arguments.add("--" + FuncotatorArgumentDefinitions.IGNORE_FILTERED_VARIANTS_LONG_NAME);
-
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-		arguments.add("Center:broad.mit.edu");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-		arguments.add("source:WES");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-		arguments.add("normal_barcode:normal_sample");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-		arguments.add("tumor_barcode:tumor_sample");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_LONG_NAME);
-		arguments.add("NCBI_Build:37");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-		arguments.add("Strand:+");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-		arguments.add("status:Somatic");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-		arguments.add("phase:Phase_I");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-		arguments.add("sequencer:Illumina");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-		arguments.add("Tumor_Validation_Allele1:");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-		arguments.add("Tumor_Validation_Allele2:");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-		arguments.add("Match_Norm_Validation_Allele1:");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-		arguments.add("Match_Norm_Validation_Allele2:");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-		arguments.add("Verification_Status:");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-		arguments.add("Validation_Status:");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-		arguments.add("Validation_Method:");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-		arguments.add("Score:");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-		arguments.add("BAM_file:");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-		arguments.add("Match_Norm_Seq_Allele1:");
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-		arguments.add("Match_Norm_Seq_Allele2:");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Center:broad.mit.edu");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "source:WES");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "normal_barcode:normal_sample");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "tumor_barcode:tumor_sample");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_LONG_NAME, "NCBI_Build:37");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Strand:+");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "status:Somatic");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "phase:Phase_I");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "sequencer:Illumina");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Tumor_Validation_Allele1:");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Tumor_Validation_Allele2:");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Match_Norm_Validation_Allele1:");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Match_Norm_Validation_Allele2:");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Verification_Status:");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Validation_Status:");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Validation_Method:");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Score:");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "BAM_file:");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Match_Norm_Seq_Allele1:");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Match_Norm_Seq_Allele2:");
 
         // Run the tool with our args:
         runCommandLine(arguments);
@@ -411,35 +341,24 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
             bw.write(transcriptName);
         }
 
-        final List<String> arguments = new ArrayList<>();
+        final ArgumentsBuilder arguments = new ArgumentsBuilder();
 
         // Required Args:
-        arguments.add("--" + FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME);
-        arguments.add(dataSourcesPath);
-        arguments.add("--" + FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME);
-        arguments.add(refVer);
-        arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
-        arguments.add(referenceFileName);
-        arguments.add("-" + StandardArgumentDefinitions.VARIANT_SHORT_NAME);
-        arguments.add(variantFileName);
-        arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
-        arguments.add(outputFile.getAbsolutePath());
-        arguments.add("-" + FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME);
-        arguments.add(outputFormatType.toString());
+        arguments.addVCF(new File(variantFileName));
+        arguments.addOutput(outputFile);
+        arguments.addReference(new File(referenceFileName));
+
+        arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, dataSourcesPath );
+        arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, refVer );
+        arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
 
         // Transcript selection:
-        arguments.add("--" + FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME);
-        arguments.add(FuncotatorArgumentDefinitions.TranscriptSelectionMode.BEST_EFFECT.toString());
-
-        arguments.add("--" + FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_LONG_NAME);
-        arguments.add(transcriptIdFile.toString());
+        arguments.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.BEST_EFFECT.toString());
+        arguments.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_LONG_NAME, transcriptIdFile.toString());
 
         // Annotation Defaults and Overrides:
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME);
-        arguments.add("GARBAGEDAY:SPUMONI");
-
-        arguments.add("--" + FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_LONG_NAME);
-        arguments.add("Oreganno_Build:BUILDED_GOOD_REAL_BIG");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "GARBAGEDAY:SPUMONI");
+        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_LONG_NAME, "Oreganno_Build:BUILDED_GOOD_REAL_BIG");
 
         // Run the beast:
         runCommandLine(arguments);

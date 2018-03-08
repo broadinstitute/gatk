@@ -37,10 +37,10 @@ public interface ReferenceDataSource extends GATKDataSource<Byte>, AutoCloseable
      * NOTE: Most GATK tools do not support data created by setting {@code preserveFileBases} to {@code true}.
      *
      * @param fastaPath reference fasta Path
-     * @param preserveFileBases Whether to preserve the original bases in the given reference file path.
+     * @param preserveAmbiguityCodesAndCapitalization Whether to preserve the original bases in the given reference file path.
      */
-    public static ReferenceDataSource of(final Path fastaPath, final boolean preserveFileBases) {
-        return new ReferenceFileSource(fastaPath, preserveFileBases);
+    public static ReferenceDataSource of(final Path fastaPath, final boolean preserveAmbiguityCodesAndCapitalization) {
+        return new ReferenceFileSource(fastaPath, preserveAmbiguityCodesAndCapitalization);
     }
 
     /**

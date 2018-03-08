@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator.mafOutput;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
@@ -94,30 +95,16 @@ public class MafOutputRenderer extends OutputRenderer {
      * Create a {@link MafOutputRenderer}.
      * @param outputFilePath {@link Path} to output file (must not be null).
      * @param dataSources {@link List} of {@link DataSourceFuncotationFactory} to back our annotations (must not be null).
-     * @param unaccountedForDefaultAnnotations {@link LinkedHashMap} of default annotations that must be added.
-     * @param unaccountedForOverrideAnnotations {@link LinkedHashMap} of override annotations that must be added.
-     */
-    public MafOutputRenderer(final Path outputFilePath,
-                             final List<DataSourceFuncotationFactory> dataSources,
-                             final LinkedHashMap<String, String> unaccountedForDefaultAnnotations,
-                             final LinkedHashMap<String, String> unaccountedForOverrideAnnotations) {
-        this(outputFilePath, dataSources, unaccountedForDefaultAnnotations, unaccountedForOverrideAnnotations, new VCFHeader(Collections.emptySet()), new LinkedHashSet<>());
-    }
-
-    /**
-     * Create a {@link MafOutputRenderer}.
-     * @param outputFilePath {@link Path} to output file (must not be null).
-     * @param dataSources {@link List} of {@link DataSourceFuncotationFactory} to back our annotations (must not be null).
-     * @param unaccountedForDefaultAnnotations {@link LinkedHashMap} of default annotations that must be added.
-     * @param unaccountedForOverrideAnnotations {@link LinkedHashMap} of override annotations that must be added.
      * @param inputFileHeader {@link VCFHeader} of input VCF file to preserve.
+     * @param unaccountedForDefaultAnnotations {@link LinkedHashMap} of default annotations that must be added.
+     * @param unaccountedForOverrideAnnotations {@link LinkedHashMap} of override annotations that must be added.
      * @param toolHeaderLines Lines to add to the header with information about Funcotator.
      */
     public MafOutputRenderer(final Path outputFilePath,
                              final List<DataSourceFuncotationFactory> dataSources,
+                             final VCFHeader inputFileHeader,
                              final LinkedHashMap<String, String> unaccountedForDefaultAnnotations,
                              final LinkedHashMap<String, String> unaccountedForOverrideAnnotations,
-                             final VCFHeader inputFileHeader,
                              final Set<String> toolHeaderLines) {
 
         // Set our internal variables from the input:
@@ -284,7 +271,8 @@ public class MafOutputRenderer extends OutputRenderer {
      * @param outputMap The {@link Map} of output field -> values to be checked for MAF compliance.
      * @return A {@link LinkedHashMap} of output field strings -> values to be written to the MAF file.
      */
-    private LinkedHashMap<String, String> replaceFuncotationValuesWithMafCompliantValues(final Map<String, Object> outputMap ) {
+    @VisibleForTesting
+    LinkedHashMap<String, String> replaceFuncotationValuesWithMafCompliantValues( final Map<String, Object> outputMap ) {
 
         final LinkedHashMap<String, String> finalOutMap = new LinkedHashMap<>(outputMap.size());
 
@@ -294,12 +282,17 @@ public class MafOutputRenderer extends OutputRenderer {
         }
 
         // Massage the OtherTranscripts field:
-        finalOutMap.put(MafOutputRendererConstants.FieldName_Other_Transcripts, finalOutMap.get(MafOutputRendererConstants.FieldName_Other_Transcripts).replaceAll(VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER, MafOutputRendererConstants.FieldValue_Other_Transcripts_Delimiter));
+        if ( finalOutMap.containsKey(MafOutputRendererConstants.FieldName_Other_Transcripts) ) {
+            finalOutMap.put(
+                    MafOutputRendererConstants.FieldName_Other_Transcripts, finalOutMap.get(MafOutputRendererConstants.FieldName_Other_Transcripts)
+                            .replaceAll(VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER, MafOutputRendererConstants.FieldValue_Other_Transcripts_Delimiter)
+            );
+        }
 
         // Massage the start/end/alleles in the case of INDELs
         // (Because MAF has different conventions from VCF for start/end positions of INDELs)
-        if ( finalOutMap.get(MafOutputRendererConstants.FieldName_Variant_Type).equals(MafOutputRendererConstants.FieldValue_Variant_Type_Insertion) ||
-             finalOutMap.get(MafOutputRendererConstants.FieldName_Variant_Type).equals(MafOutputRendererConstants.FieldValue_Variant_Type_Deletion) ) {
+        if ( finalOutMap.getOrDefault(MafOutputRendererConstants.FieldName_Variant_Type, "").equals(MafOutputRendererConstants.FieldValue_Variant_Type_Insertion) ||
+             finalOutMap.getOrDefault(MafOutputRendererConstants.FieldName_Variant_Type, "").equals(MafOutputRendererConstants.FieldValue_Variant_Type_Deletion) ) {
 
             final int refAlleleLength = finalOutMap.get(MafOutputRendererConstants.FieldName_Reference_Allele).length();
             final int altAlleleLength = finalOutMap.get(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele2).length();
@@ -342,7 +335,8 @@ public class MafOutputRenderer extends OutputRenderer {
      * @param value The {@code value} to transform into a MAF-valid value.
      * @return The MAF-valid equivalent of the given {@code value}.
      */
-    private String mafTransform(final String key, final String value) {
+    @VisibleForTesting
+    String mafTransform(final String key, final String value) {
 
         switch (key) {
             case MafOutputRendererConstants.FieldName_Variant_Classification:

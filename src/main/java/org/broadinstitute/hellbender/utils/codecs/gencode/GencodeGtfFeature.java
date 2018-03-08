@@ -763,6 +763,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
             }
         };
 
+        private static final FeatureType[] valueArray = values();
+
         private String serialized;
 
         FeatureType(final String serializedValue) { serialized = serializedValue; }
@@ -771,7 +773,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         public String toString() { return serialized; }
 
         public static FeatureType getEnum(final String s) {
-            for( final FeatureType val : values() ) {
+            for( final FeatureType val : valueArray ) {
                 if(val.serialized.equalsIgnoreCase(s)) {
                     return val;
                 }
@@ -805,6 +807,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         FORWARD("+"),
         BACKWARD("-");
 
+        private static final GenomicStrand[] valueArray = values();
+
         private final String serialized;
 
         GenomicStrand(final String serializedValue) {
@@ -817,7 +821,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         }
 
         public static GenomicStrand getEnum(final String s) {
-            for( final GenomicStrand val : values() ) {
+            for( final GenomicStrand val : valueArray ) {
                 if(val.serialized.equalsIgnoreCase(s)) {
                     return val;
                 }
@@ -840,6 +844,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         TWO ("2"),
         DOT (".");
 
+        private static final GenomicPhase[] valueArray = values();
+
         private final String serialized;
 
         GenomicPhase(final String serializedValue) {
@@ -852,7 +858,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         }
 
         public static GenomicPhase getEnum(final String s) {
-            for( final GenomicPhase val : values() ) {
+            for( final GenomicPhase val : valueArray ) {
                 if(val.serialized.equalsIgnoreCase(s)) {
                     return val;
                 }
@@ -996,6 +1002,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         // A non-coding locus that originates from within the promoter region of a protein-coding gene, with transcription proceeding in the opposite direction on the other strand.
         BIDIRECTIONAL_PROMOTER_LNCRNA("bidirectional_promoter_lncRNA");
 
+        private static final GeneTranscriptType[] valueArray = values();
+
         private final String serialized;
 
         GeneTranscriptType(final String serializedValue) {
@@ -1008,7 +1016,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         }
 
         public static GeneTranscriptType getEnum(final String s) {
-            for( final GeneTranscriptType val : values() ) {
+            for( final GeneTranscriptType val : valueArray ) {
                 if(val.serialized.equalsIgnoreCase(s)) {
                     return val;
                 }
@@ -1054,6 +1062,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         /** Automatically annotated locus */
         AUTOMATICALLY_ANNOTATED("3");
 
+        private static final LocusLevel[] valueArray = values();
+
         private final String serialized;
 
         LocusLevel(final String serializedValue) {
@@ -1066,7 +1076,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         }
 
         public static LocusLevel getEnum(final String s) {
-            for( final LocusLevel val : values() ) {
+            for( final LocusLevel val : valueArray ) {
                 if(val.serialized.equalsIgnoreCase(s)) {
                     return val;
                 }
@@ -1293,6 +1303,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         /** a low confidence upstream ATG existing in other coding variant would lead to NMD in this trancript, that uses the high */
         UPSTREAM_UORF("upstream_uORF");
 
+        private static final FeatureTag[] valueArray = values();
+
         private final String serialized;
 
         FeatureTag(final String serializedValue) {
@@ -1305,7 +1317,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         }
 
         public static FeatureTag getEnum(final String s) {
-            for( final FeatureTag val : values() ) {
+            for( final FeatureTag val : valueArray ) {
                 if(val.serialized.equalsIgnoreCase(s)) {
                     return val;
                 }
@@ -1340,6 +1352,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         /** the transcript was not analyzed */
         NA("NA");
 
+        private static final TranscriptSupportLevel[] valueArray = values();
+
         private final String serialized;
 
         TranscriptSupportLevel(final String serializedValue) {
@@ -1352,7 +1366,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         }
 
         public static TranscriptSupportLevel getEnum(final String s) {
-            for( final TranscriptSupportLevel val : values() ) {
+            for( final TranscriptSupportLevel val : valueArray ) {
                 if(val.serialized.equalsIgnoreCase(s)) {
                     return val;
                 }
@@ -1420,6 +1434,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
          */
         PSEUDOGENE("pseudogene");
 
+        private static final RemapStatus[] valueArray = values();
+
         private final String serialized;
 
         RemapStatus(final String serializedValue) { serialized = serializedValue; }
@@ -1430,7 +1446,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         }
 
         public static RemapStatus getEnum(final String s) {
-            for( final RemapStatus val : values() ) {
+            for( final RemapStatus val : valueArray ) {
                 if(val.serialized.equalsIgnoreCase(s)) {
                     return val;
                 }
@@ -1469,6 +1485,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
          */
         NONOVERLAP("nonOverlap");
 
+        private static final RemapTargetStatus[] valueArray = values();
+
         private final String serialized;
 
         RemapTargetStatus(final String serializedValue) {
@@ -1481,7 +1499,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         }
 
         public static RemapTargetStatus getEnum(final String s) {
-            for( final RemapTargetStatus val : values() ) {
+            for( final RemapTargetStatus val : valueArray ) {
                 if(val.serialized.equalsIgnoreCase(s)) {
                     return val;
                 }

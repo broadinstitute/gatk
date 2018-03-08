@@ -12,6 +12,7 @@ import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -1581,9 +1582,12 @@ public final class FuncotatorUtils {
         }
 
         // Add up the lengths of all exons before the last one:
-        for ( int i = 0; i < sortedFilteredExons.size() - 1; ++i ) {
+        final int numExonsBeforeLast = sortedFilteredExons.size() - 1;
+        for ( int i = 0; i < numExonsBeforeLast; ++i ) {
+            final Locatable exon = sortedFilteredExons.get(i);
+
             // Add 1 to position to account for inclusive values:
-            position += sortedFilteredExons.get(i).getEnd() - sortedFilteredExons.get(i).getStart() + 1;
+            position += exon.getEnd() - exon.getStart() + 1;
         }
 
         return position;
@@ -1715,11 +1719,7 @@ public final class FuncotatorUtils {
      * @return The HG19 equivalent of the given B37 contig name, if such an equivalent name exists.  If no equivalent name exists, returns the given {@code b37Contig}.
      */
     public static String convertB37ContigToHg19Contig( final String b37Contig ) {
-        if ( B37_To_HG19_CONTIG_NAME_MAP.containsKey(b37Contig) ) {
-            return B37_To_HG19_CONTIG_NAME_MAP.get(b37Contig);
-        }
-        // Couldn't find it in our map, so we just return the original:
-        return b37Contig;
+        return B37_To_HG19_CONTIG_NAME_MAP.getOrDefault(b37Contig, b37Contig);
     }
 
     /**
@@ -1937,6 +1937,31 @@ public final class FuncotatorUtils {
         }
     }
 
+    /**
+     * Determines whether the given {@code funcotation} has a transcript ID that is in the given {@code acceptableTranscripts}.
+     * Ignores transcript version numbers.
+     * @param funcotation The {@link GencodeFuncotation} to check against the set of {@code acceptableTranscripts}.
+     * @param acceptableTranscripts The {@link Set} of transcript IDs that are OK to keep.
+     * @return {@code true} if funcotation.annotationTranscript is in {@code acceptableTranscripts} (ignoring transcript version); {@code false} otherwise.
+     */
+    public static boolean isFuncotationInTranscriptList( final GencodeFuncotation funcotation,
+                                                  final Set<String> acceptableTranscripts ) {
+        if ( funcotation.getAnnotationTranscript() != null ) {
+            return acceptableTranscripts.contains( getTranscriptIdWithoutVersionNumber(funcotation.getAnnotationTranscript()) );
+        }
+        else {
+            return false;
+        }
+    }
+
+    /**
+     * Removes the transcript ID version number from the given transcript ID (if it exists).
+     * @param transcriptId The transcript from which to remove the version number.
+     * @return The {@link String} corresponding to the given {@code transcriptId} without a version number.
+     */
+    public static String getTranscriptIdWithoutVersionNumber( final String transcriptId ) {
+        return transcriptId.replaceAll("\\.\\d+$", "");
+    }
     // ========================================================================================
 
     /**

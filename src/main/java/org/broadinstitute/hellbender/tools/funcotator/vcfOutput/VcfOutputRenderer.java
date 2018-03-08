@@ -49,23 +49,23 @@ public class VcfOutputRenderer extends OutputRenderer {
 
     //==================================================================================================================
 
-    public VcfOutputRenderer(final VCFHeader existingHeader,
-                             final VariantContextWriter vcfWriter,
+    public VcfOutputRenderer(final VariantContextWriter vcfWriter,
+                             final VCFHeader existingHeader,
                              final List<DataSourceFuncotationFactory> dataSources) {
-        this(existingHeader, vcfWriter, dataSources, new LinkedHashMap<>(), new LinkedHashMap<>());
+        this(vcfWriter, dataSources, existingHeader, new LinkedHashMap<>(), new LinkedHashMap<>());
     }
 
-    public VcfOutputRenderer(final VCFHeader existingHeader,
-                             final VariantContextWriter vcfWriter,
+    public VcfOutputRenderer(final VariantContextWriter vcfWriter,
                              final List<DataSourceFuncotationFactory> dataSources,
+                             final VCFHeader existingHeader,
                              final LinkedHashMap<String, String> unaccountedForDefaultAnnotations,
                              final LinkedHashMap<String, String> unaccountedForOverrideAnnotations) {
-        this(existingHeader, vcfWriter, dataSources, unaccountedForDefaultAnnotations, unaccountedForOverrideAnnotations, new LinkedHashSet<>());
+        this(vcfWriter, dataSources, existingHeader, unaccountedForDefaultAnnotations, unaccountedForOverrideAnnotations, new LinkedHashSet<>());
     }
 
-    public VcfOutputRenderer(final VCFHeader existingHeader,
-                             final VariantContextWriter vcfWriter,
+    public VcfOutputRenderer(final VariantContextWriter vcfWriter,
                              final List<DataSourceFuncotationFactory> dataSources,
+                             final VCFHeader existingHeader,
                              final LinkedHashMap<String, String> unaccountedForDefaultAnnotations,
                              final LinkedHashMap<String, String> unaccountedForOverrideAnnotations,
                              final Set<VCFHeaderLine> defaultToolVcfHeaderLines) {

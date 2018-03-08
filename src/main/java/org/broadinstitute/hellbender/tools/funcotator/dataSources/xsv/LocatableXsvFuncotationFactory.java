@@ -118,9 +118,11 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
     public List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList) {
         final List<Funcotation> outputFuncotations = new ArrayList<>();
 
+        final List<Allele> alternateAlleles = variant.getAlternateAlleles();
+
         // Create a set to put our annotated Alternate alleles in.
         // We'll use this to determine if the alt allele has been annotated.
-        final Set<Allele> annotatedAltAlleles = new HashSet<>(variant.getAlternateAlleles().size());
+        final Set<Allele> annotatedAltAlleles = new HashSet<>(alternateAlleles.size());
 
         if ( !featureList.isEmpty() ) {
             for ( final Feature feature : featureList ) {
@@ -133,7 +135,7 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
                     if ( tableFeature.getDataSourceName().equals(name) ) {
 
                         // Now we create one funcotation for each Alternate allele:
-                        for ( final Allele altAllele : variant.getAlternateAlleles() ) {
+                        for ( final Allele altAllele : alternateAlleles ) {
                             outputFuncotations.add(new TableFuncotation(tableFeature, altAllele, name));
                             annotatedAltAlleles.add(altAllele);
                         }
@@ -144,8 +146,8 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
 
         // If we didn't add funcotations for an allele, we should add in blank funcotations to that allele for each field that can be produced
         // by this LocatableXsvFuncotationFactory:
-        if ( annotatedAltAlleles.size() != variant.getAlternateAlleles().size() ) {
-            for ( final Allele altAllele : variant.getAlternateAlleles() ) {
+        if ( annotatedAltAlleles.size() != alternateAlleles.size() ) {
+            for ( final Allele altAllele : alternateAlleles ) {
                 if ( !annotatedAltAlleles.contains(altAllele) ) {
                     outputFuncotations.add(new TableFuncotation(supportedFieldNameList, emptyFieldList, altAllele, name));
                 }
@@ -197,40 +199,7 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
                         final String delimiter      = configProperties.getProperty(XsvLocatableTableCodec.CONFIG_FILE_DELIMITER_KEY);
                         final String dataSourceName = configProperties.getProperty(XsvLocatableTableCodec.CONFIG_FILE_DATA_SOURCE_NAME_KEY);
 
-                        // Create our index to remove list:
-                        final Set<Integer> indicesToRemove = new HashSet<>(Arrays.asList(contigColumn, startColumn, endColumn));
-
-                        // Get the raw header:
-                        List<String> header = null;
-                        try( final BufferedReader inputReader =
-                                     new BufferedReader(new InputStreamReader(Files.newInputStream(dataPath, StandardOpenOption.READ))) ) {
-
-                            String line = inputReader.readLine();
-                            while (line != null) {
-                                if ( !line.startsWith(XsvLocatableTableCodec.COMMENT_DELIMITER) ) {
-                                    header = Arrays.stream(line.split(delimiter))
-                                            .map(x -> dataSourceName + "_" + x)
-                                            .collect(Collectors.toCollection(ArrayList::new));
-                                    break;
-                                }
-                                line = inputReader.readLine();
-                            }
-                        }
-                        catch (final Exception ex) {
-                            throw new UserException.BadInput("Error while reading from input data file: " + dataPath.toUri().toString(), ex);
-                        }
-
-                        // Make sure we actually read the header:
-                        if ( header == null ) {
-                            throw new UserException.MalformedFile("Could not read header from data file: " + dataPath.toUri().toString());
-                        }
-
-                        // Add the header fields to the supportedFieldNames:
-                        for ( int i = 0 ; i < header.size() ; ++i ) {
-                            if ( !indicesToRemove.contains(i) ) {
-                                supportedFieldNames.add(header.get(i));
-                            }
-                        }
+                        initializeSupportedFieldNamesWithIncludedIndices(dataPath, contigColumn, startColumn, endColumn, delimiter, dataSourceName);
                     }
 
                     // Initialize our field name lists:
@@ -240,6 +209,44 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
                     // responsible for:
                     annotationOverrideMap.entrySet().removeIf( e -> !supportedFieldNames.contains(e.getKey()) );
                 }
+            }
+        }
+    }
+
+    private void initializeSupportedFieldNamesWithIncludedIndices(final Path dataPath, final int contigColumn, final int startColumn, final int endColumn, final String delimiter, final String dataSourceName) {
+
+        // Create our index to remove list:
+        final Set<Integer> indicesToRemove = new HashSet<>(Arrays.asList(contigColumn, startColumn, endColumn));
+
+        // Get the raw header:
+        List<String> header = null;
+        try( final BufferedReader inputReader =
+                     new BufferedReader(new InputStreamReader(Files.newInputStream(dataPath, StandardOpenOption.READ))) ) {
+
+            String line = inputReader.readLine();
+            while (line != null) {
+                if ( !line.startsWith(XsvLocatableTableCodec.COMMENT_DELIMITER) ) {
+                    header = Arrays.stream(line.split(delimiter))
+                            .map(x -> dataSourceName + "_" + x)
+                            .collect(Collectors.toCollection(ArrayList::new));
+                    break;
+                }
+                line = inputReader.readLine();
+            }
+        }
+        catch (final Exception ex) {
+            throw new UserException.BadInput("Error while reading from input data file: " + dataPath.toUri().toString(), ex);
+        }
+
+        // Make sure we actually read the header:
+        if ( header == null ) {
+            throw new UserException.MalformedFile("Could not read header from data file: " + dataPath.toUri().toString());
+        }
+
+        // Add the header fields to the supportedFieldNames:
+        for ( int i = 0 ; i < header.size() ; ++i ) {
+            if ( !indicesToRemove.contains(i) ) {
+                supportedFieldNames.add(header.get(i));
             }
         }
     }
