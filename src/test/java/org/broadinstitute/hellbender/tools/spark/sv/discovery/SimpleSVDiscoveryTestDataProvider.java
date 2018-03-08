@@ -17,10 +17,9 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryUtils.getCanonicalChromosomes;
 
 /**
  * Provides test data for testing several methods involved in the SV variant caller,
@@ -47,10 +46,12 @@ public final class SimpleSVDiscoveryTestDataProvider {
     public static final ReferenceMultiSource b37_reference = new ReferenceMultiSource(
             GATKBaseTest.b37_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
     public static final SAMSequenceDictionary b37_seqDict = b37_reference.getReferenceSequenceDictionary(null);
+    public static final Set<String> canonicalChromosomes = getCanonicalChromosomes(null, b37_seqDict);
 
     public static final ReferenceMultiSource b38_reference = new ReferenceMultiSource(
             GATKBaseTest.b38_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
     public static final SAMSequenceDictionary b38_seqDict = b38_reference.getReferenceSequenceDictionary(null);
+    public static final Set<String> b38_canonicalChromosomes = getCanonicalChromosomes(null, b38_seqDict);
 
     // the chromosome that the long contig1 is supposed to be mapped to is actually chr19, but to make tests runnable, we could only use "20" or "21"
     // todo: this should be fixed, but since the exact mapped to chromosome is not important now, we push it to later

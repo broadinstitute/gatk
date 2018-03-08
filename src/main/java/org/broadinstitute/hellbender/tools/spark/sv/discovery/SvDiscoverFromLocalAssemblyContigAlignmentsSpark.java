@@ -171,11 +171,11 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         final Logger toolLogger = svDiscoveryInputData.toolLogger;
 
         // filter alignments and split the gaps, hence the name "reconstructed"
-        final JavaRDD<AlignedContig> contigsWithChimericAlignmentsReconstructed =
+        final JavaRDD<AssemblyContigWithFineTunedAlignments> contigsWithChimericAlignmentsReconstructed =
                 AssemblyContigAlignmentsConfigPicker
                         .createOptimalCoverageAlignmentSetsForContigs(assemblyRawAlignments, headerBroadcast.getValue(),
                                 nonCanonicalChromosomeNamesFile, 0.0, toolLogger)
-                        .filter(lr -> lr.alignmentIntervals.size() > 1).cache();
+                        .filter(AssemblyContigWithFineTunedAlignments::isInformative).cache();
         toolLogger.info( contigsWithChimericAlignmentsReconstructed.count() +
                 " contigs with chimeric alignments potentially giving SV signals.");
 
@@ -252,41 +252,53 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         final List<VariantContext> annotatedSimpleVariants =
                 new SimpleNovelAdjacencyInterpreter()
                         .inferTypeFromSingleContigSimpleChimera(nonComplexSignatures, svDiscoveryInputData)
-                        // this implementation is the 1st step going towards allowing re-interpretation,
-                        // below we simply take the inferred type and turn it to a VC,
-                        // future implementation may integrate other types of evidence and re-interpret if necessary
-                        .flatMap(pair -> {
-                            final List<SvType> svTypes = pair._2;
-                            final SimpleNovelAdjacencyAndChimericAlignmentEvidence simpleNovelAdjacencyAndChimericAlignmentEvidence = pair._1;
-                            if (svTypes.size() == 1) { // simple SV type
-                                final SvType inferredType = svTypes.get(0);
-                                final NovelAdjacencyAndAltHaplotype narl = simpleNovelAdjacencyAndChimericAlignmentEvidence.getNovelAdjacencyReferenceLocations();
-                                final SimpleInterval variantPos = narl.getLeftJustifiedLeftRefLoc();
-                                final int end = narl.getLeftJustifiedRightRefLoc().getEnd();
-                                final VariantContext variantContext = AnnotatedVariantProducer
-                                        .produceAnnotatedVcFromInferredTypeAndRefLocations(variantPos, end, narl.getComplication(),
-                                                inferredType, simpleNovelAdjacencyAndChimericAlignmentEvidence.getAltHaplotypeSequence(),
-                                                simpleNovelAdjacencyAndChimericAlignmentEvidence.getAlignmentEvidence(),
-                                                referenceBroadcast, referenceSequenceDictionaryBroadcast, cnvCallsBroadcast, sampleId);
-                                return Collections.singletonList(variantContext).iterator();
-                            } else { // BND mate pair
-                                final BreakEndVariantType firstMate = (BreakEndVariantType) svTypes.get(0);
-                                final BreakEndVariantType secondMate = (BreakEndVariantType) svTypes.get(1);
-
-                                final Tuple2<BreakEndVariantType, BreakEndVariantType> bndMates = new Tuple2<>(firstMate, secondMate);
-                                final List<VariantContext> variantContexts = AnnotatedVariantProducer
-                                        .produceAnnotatedBNDmatesVcFromNovelAdjacency(
-                                                simpleNovelAdjacencyAndChimericAlignmentEvidence.getNovelAdjacencyReferenceLocations(),
-                                                bndMates,
-                                                simpleNovelAdjacencyAndChimericAlignmentEvidence.getAlignmentEvidence(),
-                                                referenceBroadcast, referenceSequenceDictionaryBroadcast, sampleId);
-                                return variantContexts.iterator();
-                            }
-                        })
+                        .flatMap(pair ->
+                            getVariantContextIterator(pair, sampleId, referenceBroadcast,
+                                    referenceSequenceDictionaryBroadcast, cnvCallsBroadcast)
+                        )
                         .collect();
 
         SVVCFWriter.writeVCF(annotatedSimpleVariants, svDiscoveryInputData.outputPath,
                 svDiscoveryInputData.referenceSequenceDictionaryBroadcast.getValue(), svDiscoveryInputData.toolLogger);
+    }
+
+    /**
+     * This implementation is the 1st step going towards allowing re-interpretation,
+     * below we simply take the inferred type and turn it to a VC,
+     * future implementation may integrate other types of evidence and re-interpret if necessary
+     */
+    private static Iterator<VariantContext> getVariantContextIterator(final Tuple2<SimpleNovelAdjacencyAndChimericAlignmentEvidence, List<SvType>> pair,
+                                                                      final String sampleId,
+                                                                      final Broadcast<ReferenceMultiSource> referenceBroadcast,
+                                                                      final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast,
+                                                                      final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast)
+            throws IOException {
+        final SimpleNovelAdjacencyAndChimericAlignmentEvidence simpleNovelAdjacencyAndChimericAlignmentEvidence = pair._1;
+        final List<SvType> svTypes = pair._2;
+        if (svTypes.size() == 1) { // simple SV type
+            final SvType inferredType = svTypes.get(0);
+            final NovelAdjacencyAndAltHaplotype narl = simpleNovelAdjacencyAndChimericAlignmentEvidence.getNovelAdjacencyReferenceLocations();
+            final SimpleInterval variantPos = narl.getLeftJustifiedLeftRefLoc();
+            final int end = narl.getLeftJustifiedRightRefLoc().getEnd();
+            final VariantContext variantContext = AnnotatedVariantProducer
+                    .produceAnnotatedVcFromInferredTypeAndRefLocations(variantPos, end, narl.getComplication(),
+                            inferredType, simpleNovelAdjacencyAndChimericAlignmentEvidence.getAltHaplotypeSequence(),
+                            simpleNovelAdjacencyAndChimericAlignmentEvidence.getAlignmentEvidence(),
+                            referenceBroadcast, referenceSequenceDictionaryBroadcast, cnvCallsBroadcast, sampleId);
+            return Collections.singletonList(variantContext).iterator();
+        } else { // BND mate pair
+            final BreakEndVariantType firstMate = (BreakEndVariantType) svTypes.get(0);
+            final BreakEndVariantType secondMate = (BreakEndVariantType) svTypes.get(1);
+
+            final Tuple2<BreakEndVariantType, BreakEndVariantType> bndMates = new Tuple2<>(firstMate, secondMate);
+            final List<VariantContext> variantContexts = AnnotatedVariantProducer
+                    .produceAnnotatedBNDmatesVcFromNovelAdjacency(
+                            simpleNovelAdjacencyAndChimericAlignmentEvidence.getNovelAdjacencyReferenceLocations(),
+                            bndMates,
+                            simpleNovelAdjacencyAndChimericAlignmentEvidence.getAlignmentEvidence(),
+                            referenceBroadcast, referenceSequenceDictionaryBroadcast, sampleId);
+            return variantContexts.iterator();
+        }
     }
 
     //==================================================================================================================

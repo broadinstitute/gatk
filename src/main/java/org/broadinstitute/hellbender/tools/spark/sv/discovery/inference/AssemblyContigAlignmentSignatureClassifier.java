@@ -4,10 +4,9 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.function.Function;
 import org.apache.spark.broadcast.Broadcast;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.RDDUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
@@ -16,6 +15,24 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public final class AssemblyContigAlignmentSignatureClassifier {
+
+    static final int ALIGNMENT_MAPQUAL_THREHOLD = 20;
+    static final int ALIGNMENT_READSPAN_THRESHOLD = 10;
+
+    /**
+     * Splits the {@code input} RDD into two based on a filtering predicate.
+     * @param input              input RDD to be split
+     * @param predicate          filtering criteria
+     * @return a pair of RDD that where the first has all its elements evaluate to "true" given the predicate,
+     *         and the second is the compliment
+     */
+    private static <T> Tuple2<JavaRDD<T>, JavaRDD<T>> split(final JavaRDD<T> input, final Function<T, Boolean> predicate) {
+
+        final JavaRDD<T> first = input.filter(predicate);
+        final JavaRDD<T> second = input.filter(t -> !predicate.call(t));
+
+        return new Tuple2<>(first, second);
+    }
 
     public enum RawTypes {
         InsDel,                 // 2 alignments, indicating ins/del, simple duplication expansion/contractions
@@ -27,24 +44,25 @@ public final class AssemblyContigAlignmentSignatureClassifier {
         MisAssemblySuspect;     // suspected to be misassembly due to alignment signature that despite multiple alignments, no or only 1 good alignment
     }
 
-    public static EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> classifyContigs(final JavaRDD<AlignedContig> contigs,
+    public static EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> classifyContigs(final JavaRDD<AssemblyContigWithFineTunedAlignments> contigs,
                                                                                                     final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
                                                                                                     final Logger toolLogger) {
 
         // long reads with only 1 best configuration
-        final JavaRDD<AlignedContig> contigsWithOnlyOneBestConfig =
-                contigs.filter(lr -> !lr.hasEquallyGoodAlnConfigurations).cache();
+        final Tuple2<JavaRDD<AssemblyContigWithFineTunedAlignments>, JavaRDD<AssemblyContigWithFineTunedAlignments>> split =
+                split(contigs, AssemblyContigWithFineTunedAlignments::hasEquallyGoodAlnConfigurations);
 
+        final JavaRDD<AssemblyContigWithFineTunedAlignments> contigsWithOnlyOneBestConfig = split._2;
         // primary split between 2 vs more than 2 alignments
-        final Tuple2<JavaRDD<AlignedContig>, JavaRDD<AlignedContig>> twoAlignmentsOrMore =
-                RDDUtils.split(contigsWithOnlyOneBestConfig, AlignedContig::hasOnly2Alignments, true);
+        final Tuple2<JavaRDD<AssemblyContigWithFineTunedAlignments>, JavaRDD<AssemblyContigWithFineTunedAlignments>> twoAlignmentsOrMore =
+                split(contigsWithOnlyOneBestConfig, AssemblyContigWithFineTunedAlignments::hasOnly2GoodAlignments);
 
         // special treatment for alignments with more than 2 alignments
-        final JavaRDD<AlignedContig> moreThanTwoAlignments = twoAlignmentsOrMore._2;
+        final JavaRDD<AssemblyContigWithFineTunedAlignments> moreThanTwoAlignments = twoAlignmentsOrMore._2;
         final EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> contigsByRawTypesFromMultiAlignment = new EnumMap<>(RawTypes.class);
         final MultipleAlignmentReclassificationResults multipleAlignmentReclassificationResults =
                 reClassifyContigsWithMultipleAlignments(moreThanTwoAlignments,
-                        AssemblyContigAlignmentsConfigPicker.ALIGNMENT_MAPQUAL_THREHOLD, AssemblyContigAlignmentsConfigPicker.ALIGNMENT_READSPAN_THRESHOLD);
+                        ALIGNMENT_MAPQUAL_THREHOLD, ALIGNMENT_READSPAN_THRESHOLD);
         contigsByRawTypesFromMultiAlignment.put(RawTypes.MisAssemblySuspect,
                 multipleAlignmentReclassificationResults.nonInformativeContigs);
         contigsByRawTypesFromMultiAlignment.put(RawTypes.Incomplete,
@@ -54,8 +72,7 @@ public final class AssemblyContigAlignmentSignatureClassifier {
 
         // merge the two sources of contigs with two alignments
         final JavaRDD<AssemblyContigWithFineTunedAlignments> twoAlignmentsUnion =
-                twoAlignmentsOrMore._1.map(AssemblyContigWithFineTunedAlignments::new)
-                        .union(multipleAlignmentReclassificationResults.contigsWithTwoGoodAlignments);
+                twoAlignmentsOrMore._1.union(multipleAlignmentReclassificationResults.contigsWithTwoGoodAlignments);
 
         final EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> contigsByRawTypesFromTwoAlignment =
                 processContigsWithTwoAlignments(twoAlignmentsUnion, broadcastSequenceDictionary);
@@ -65,8 +82,7 @@ public final class AssemblyContigAlignmentSignatureClassifier {
 
         // TODO: 11/21/17 later we may decide to salvage ambiguous contigs with some heuristic logic, but later
         // long reads with more than 1 best configurations, i.e. ambiguous raw types
-        final JavaRDD<AssemblyContigWithFineTunedAlignments> ambiguous =
-                contigs.filter(tig -> tig.hasEquallyGoodAlnConfigurations).map(AssemblyContigWithFineTunedAlignments::new);
+        final JavaRDD<AssemblyContigWithFineTunedAlignments> ambiguous = split._1;
         result.put(RawTypes.Ambiguous, ambiguous);
 
         return result;
@@ -108,22 +124,22 @@ public final class AssemblyContigAlignmentSignatureClassifier {
 
         // split between the case where both alignments has unique ref span or not
         final Tuple2<JavaRDD<AssemblyContigWithFineTunedAlignments>, JavaRDD<AssemblyContigWithFineTunedAlignments>> hasFullyContainedRefSpanOrNot =
-                RDDUtils.split(contigsWithOnlyOneBestConfigAnd2AI, AssemblyContigWithFineTunedAlignments::hasIncompletePictureFromTwoAlignments, false);
+                split(contigsWithOnlyOneBestConfigAnd2AI, AssemblyContigWithFineTunedAlignments::hasIncompletePictureFromTwoAlignments);
         contigsByRawTypes.put(RawTypes.Incomplete, hasFullyContainedRefSpanOrNot._1);
 
         // split between same chromosome mapping or not
         final Tuple2<JavaRDD<AssemblyContigWithFineTunedAlignments>, JavaRDD<AssemblyContigWithFineTunedAlignments>> sameChrOrNot =
-                RDDUtils.split(hasFullyContainedRefSpanOrNot._2, AssemblyContigWithFineTunedAlignments::firstAndLastAlignmentMappedToSameChr, false);
+                split(hasFullyContainedRefSpanOrNot._2, AssemblyContigWithFineTunedAlignments::firstAndLastAlignmentMappedToSameChr);
         final JavaRDD<AssemblyContigWithFineTunedAlignments> diffChrBreakpoints = sameChrOrNot._2;
 
         // split between strand switch or not (NOTE BOTH SAME CHROMOSOME MAPPING)
         final Tuple2<JavaRDD<AssemblyContigWithFineTunedAlignments>, JavaRDD<AssemblyContigWithFineTunedAlignments>> strandSwitchOrNot =
-                RDDUtils.split(sameChrOrNot._1, AssemblyContigAlignmentSignatureClassifier::indicatesIntraChrStrandSwitchBkpts, false);
+                split(sameChrOrNot._1, AssemblyContigAlignmentSignatureClassifier::indicatesIntraChrStrandSwitchBkpts);
         contigsByRawTypes.put(RawTypes.IntraChrStrandSwitch, strandSwitchOrNot._1);
 
         // split between ref block switch or not (NOTE BOTH SAME CHROMOSOME MAPPING AND NO STRAND SWITCH)
         final Tuple2<JavaRDD<AssemblyContigWithFineTunedAlignments>, JavaRDD<AssemblyContigWithFineTunedAlignments>> tandemDupBkptOrSimpleInsDel =
-                RDDUtils.split(strandSwitchOrNot._2, AssemblyContigAlignmentSignatureClassifier::indicatesIntraChrTandemDupBkpts, false);
+                split(strandSwitchOrNot._2, AssemblyContigAlignmentSignatureClassifier::indicatesIntraChrTandemDupBkpts);
         contigsByRawTypes.put(RawTypes.InsDel, tandemDupBkptOrSimpleInsDel._2);
 
         final JavaRDD<AssemblyContigWithFineTunedAlignments> mappedInsertionBreakpointSuspects = diffChrBreakpoints.union(tandemDupBkptOrSimpleInsDel._1);
@@ -304,40 +320,37 @@ public final class AssemblyContigAlignmentSignatureClassifier {
      * {@link #removeNonUniqueMappings(List, int, int)}.
      */
     static MultipleAlignmentReclassificationResults reClassifyContigsWithMultipleAlignments(
-            final JavaRDD<AlignedContig> localAssemblyContigs,
+            final JavaRDD<AssemblyContigWithFineTunedAlignments> localAssemblyContigs,
             final int mapQThresholdInclusive, final int uniqReadLenInclusive) {
 
         final JavaRDD<AssemblyContigWithFineTunedAlignments> contigsWithFineTunedAlignments =
                 localAssemblyContigs
                         .map(tig -> {
-                            final Tuple2<List<AlignmentInterval>, List<AlignmentInterval>> goodAndBadAlignments =
-                                    removeNonUniqueMappings(tig.alignmentIntervals, mapQThresholdInclusive, uniqReadLenInclusive);
-                            final List<AlignmentInterval> goodAlignments = goodAndBadAlignments._1;
-                            final List<String> insertionMappings =
-                                    goodAndBadAlignments._2.stream().map(AlignmentInterval::toPackedString).collect(Collectors.toList());
+                            final AssemblyContigAlignmentsConfigPicker.GoodAndBadMappings refinedMappings =
+                                    removeNonUniqueMappings(tig.getAlignments(), mapQThresholdInclusive, uniqReadLenInclusive);
 
-                            return
-                                    new AssemblyContigWithFineTunedAlignments(
-                                            new AlignedContig(tig.contigName, tig.contigSequence, goodAlignments,
-                                                    tig.hasEquallyGoodAlnConfigurations),
-                                            insertionMappings);
+                            final AlignedContig updatedTig = new AlignedContig(tig.getSourceContig().contigName, tig.getSourceContig().contigSequence,
+                                    refinedMappings.getGoodMappings(), tig.hasEquallyGoodAlnConfigurations());
+                            return new AssemblyContigWithFineTunedAlignments(updatedTig,
+                                            refinedMappings.getBadMappingsAsCompactStrings(),
+                                    tig.getSAtagForGoodMappingToNonCanonicalChromosome());
                         });
 
         // first take down non-informative assembly contigs
         final Tuple2<JavaRDD<AssemblyContigWithFineTunedAlignments>, JavaRDD<AssemblyContigWithFineTunedAlignments>> informativeAndNotSo =
-                RDDUtils.split(contigsWithFineTunedAlignments, AssemblyContigWithFineTunedAlignments::isInformative, false);
+                split(contigsWithFineTunedAlignments, AssemblyContigWithFineTunedAlignments::isInformative);
         final JavaRDD<AssemblyContigWithFineTunedAlignments> garbage = informativeAndNotSo._2;
 
         // assembly contigs with 2 good alignments and bad alignments encoded as strings
         final JavaRDD<AssemblyContigWithFineTunedAlignments> informativeContigs = informativeAndNotSo._1;
         final Tuple2<JavaRDD<AssemblyContigWithFineTunedAlignments>, JavaRDD<AssemblyContigWithFineTunedAlignments>> split =
-                RDDUtils.split(informativeContigs, AssemblyContigWithFineTunedAlignments::hasOnly2GoodAlignments, false);
+                split(informativeContigs, AssemblyContigWithFineTunedAlignments::hasOnly2GoodAlignments);
         final JavaRDD<AssemblyContigWithFineTunedAlignments> twoGoodAlignments = split._1;
 
         // assembly contigs with more than 2 good alignments: without and with a complete picture
         final JavaRDD<AssemblyContigWithFineTunedAlignments> multipleAlignments = split._2;
         final Tuple2<JavaRDD<AssemblyContigWithFineTunedAlignments>, JavaRDD<AssemblyContigWithFineTunedAlignments>> split1 =
-                RDDUtils.split(multipleAlignments, AssemblyContigWithFineTunedAlignments::hasIncompletePicture, false);
+                split(multipleAlignments, AssemblyContigWithFineTunedAlignments::hasIncompletePicture);
         final JavaRDD<AssemblyContigWithFineTunedAlignments> multipleAlignmentsIncompletePicture = split1._1;
         final JavaRDD<AssemblyContigWithFineTunedAlignments> multipleAlignmentsCompletePicture = split1._2;
 
@@ -371,9 +384,9 @@ public final class AssemblyContigAlignmentSignatureClassifier {
      * i.e. the configuration should be one of the best given by
      * {@link AssemblyContigAlignmentsConfigPicker#pickBestConfigurations(AlignedContig, Set, Double)}.
      */
-    static Tuple2<List<AlignmentInterval>, List<AlignmentInterval>> removeNonUniqueMappings(final List<AlignmentInterval> originalConfiguration,
-                                                                                            final int mapQThresholdInclusive,
-                                                                                            final int uniqReadLenInclusive) {
+    static AssemblyContigAlignmentsConfigPicker.GoodAndBadMappings removeNonUniqueMappings(final List<AlignmentInterval> originalConfiguration,
+                                                                                           final int mapQThresholdInclusive,
+                                                                                           final int uniqReadLenInclusive) {
         Utils.validateArg(originalConfiguration.size() > 2,
                 "assumption that input configuration to be fine tuned has more than 2 alignments is violated.\n" +
                         originalConfiguration.stream().map(AlignmentInterval::toPackedString).collect(Collectors.toList()));
@@ -421,7 +434,7 @@ public final class AssemblyContigAlignmentSignatureClassifier {
             }
         }
 
-        return new Tuple2<>(selectedAlignments, lowUniquenessMappings);
+        return new AssemblyContigAlignmentsConfigPicker.GoodAndBadMappings(selectedAlignments, lowUniquenessMappings);
     }
 
     /**
@@ -502,4 +515,8 @@ public final class AssemblyContigAlignmentSignatureClassifier {
 
     // TODO: 11/17/17 salvation on assembly contigs that 1) has ambiguous "best" configuration, and 2) has incomplete picture; and flag accordingly
 
+    // TODO: 3/4/18 a bug is present here that even though only one alignment has not-bad MQ, it could contain a large gap,
+    //      depending on the behavior of the other gap-less bad mappings,
+    //      we may end up classifying the whole contig as incomplete, or signal-less,
+    //      we should keep the single not-bad mapping and annotate accordingly
 }

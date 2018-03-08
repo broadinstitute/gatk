@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.Serializer;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -11,41 +10,63 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 @DefaultSerializer(AssemblyContigWithFineTunedAlignments.Serializer.class)
 public final class AssemblyContigWithFineTunedAlignments {
     private static final AlignedContig.Serializer contigSerializer = new AlignedContig.Serializer();
     public static final List<String> emptyInsertionMappings = Collections.emptyList();
 
-    final AlignedContig contig;
+    private final AlignedContig sourceTig;
     // alignments that were given by aligner but thought to be non-good,
     // and better treated as not-so-reliable mappings for inserted sequence;
     // useful for annotation but not essential for reliable event interpretation
-    final List<String> insertionMappings;
+    private final List<String> insertionMappings;
+
+    /**
+     * for signalling (i.e. not null) that the alignments went through the special treatment in
+     * {@link AssemblyContigAlignmentsConfigPicker#getBetterNonCanonicalMapping(Set, List, int)}
+     */
+    private final String saTAGForGoodMappingToNonCanonicalChromosome;
 
     public AssemblyContigWithFineTunedAlignments(final AlignedContig contig) {
-        this(contig, emptyInsertionMappings);
+        this(Utils.nonNull(contig), emptyInsertionMappings, NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME);
+    }
+
+    // {@code goodMappingToNonCanonicalChromosome} could be null
+    public AssemblyContigWithFineTunedAlignments(final AlignedContig contig,
+                                                 final List<String> insertionMappings,
+                                                 final AlignmentInterval goodMappingToNonCanonicalChromosome) {
+        this(Utils.nonNull(contig), Utils.nonNull(insertionMappings),
+                goodMappingToNonCanonicalChromosome == null ? NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME
+                                                            : goodMappingToNonCanonicalChromosome.toSATagString());
     }
 
     public AssemblyContigWithFineTunedAlignments(final AlignedContig contig,
-                                                 final List<String> insertionMappings) {
-        this.contig = contig;
-        this.insertionMappings = Utils.nonNull(insertionMappings);
+                                                 final List<String> insertionMappings,
+                                                 final String saTAGForGoodMappingToNonCanonicalChromosome) {
+        this.sourceTig = contig;
+        this.insertionMappings = insertionMappings;
+        this.saTAGForGoodMappingToNonCanonicalChromosome = saTAGForGoodMappingToNonCanonicalChromosome;
     }
 
     AssemblyContigWithFineTunedAlignments(final Kryo kryo, final Input input) {
-        contig = contigSerializer.read(kryo, input, AlignedContig.class);
+        sourceTig = contigSerializer.read(kryo, input, AlignedContig.class);
         final int insertionMappingsSize = input.readInt();
         insertionMappings = new ArrayList<>(insertionMappingsSize);
-        if (insertionMappingsSize != 0) {
-            for (int i = 0; i < insertionMappingsSize; ++i) {
-                insertionMappings.add(input.readString());
-            }
+        for (int i = 0; i < insertionMappingsSize; ++i) {
+            insertionMappings.add(input.readString());
         }
+
+        saTAGForGoodMappingToNonCanonicalChromosome = input.readString();
     }
 
     public AlignedContig getSourceContig() {
-        return contig;
+        return sourceTig;
+    }
+
+    public List<AlignmentInterval> getAlignments() {
+        return sourceTig.alignmentIntervals;
     }
 
     public List<String> getInsertionMappings() {
@@ -54,11 +75,19 @@ public final class AssemblyContigWithFineTunedAlignments {
 
     // after fine tuning, a contig may have no good alignment left, or only 1
     public final boolean isInformative() {
-        return contig.isInformative();
+        return sourceTig.isInformative();
     }
 
-    public final boolean hasOnly2GoodAlignments () {
-        return contig.hasOnly2Alignments();
+    /**
+     * See {@link AssemblyContigAlignmentsConfigPicker#getBetterNonCanonicalMapping(Set, List, int)}.
+     */
+    public static final String NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME = "NONE";
+    public final String getSAtagForGoodMappingToNonCanonicalChromosome() {
+        return saTAGForGoodMappingToNonCanonicalChromosome;
+    }
+
+    public final boolean hasOnly2GoodAlignments() {
+        return sourceTig.hasOnly2Alignments();
     }
 
     public final boolean hasIncompletePicture() {
@@ -66,6 +95,10 @@ public final class AssemblyContigWithFineTunedAlignments {
             return hasIncompletePictureFromTwoAlignments();
         else
             return hasIncompletePictureFromMultipleAlignments();
+    }
+
+    public final boolean hasEquallyGoodAlnConfigurations() {
+        return sourceTig.hasEquallyGoodAlnConfigurations;
     }
 
     //==================================================================================================================
@@ -92,8 +125,8 @@ public final class AssemblyContigWithFineTunedAlignments {
     }
 
     private boolean hasIncompletePictureDueToRefSpanContainment() {
-        return oneRefSpanContainsTheOther(contig.alignmentIntervals.get(0).referenceSpan,
-                                            contig.alignmentIntervals.get(1).referenceSpan);
+        return oneRefSpanContainsTheOther(sourceTig.alignmentIntervals.get(0).referenceSpan,
+                                          sourceTig.alignmentIntervals.get(1).referenceSpan);
     }
 
     /**
@@ -103,8 +136,8 @@ public final class AssemblyContigWithFineTunedAlignments {
      */
     private boolean hasIncompletePictureDueToOverlappingRefOrderSwitch() {
 
-        final AlignmentInterval one = contig.alignmentIntervals.get(0);
-        final AlignmentInterval two = contig.alignmentIntervals.get(1);
+        final AlignmentInterval one = sourceTig.alignmentIntervals.get(0);
+        final AlignmentInterval two = sourceTig.alignmentIntervals.get(1);
         final SimpleInterval referenceSpanOne = one.referenceSpan;
         final SimpleInterval referenceSpanTwo = two.referenceSpan;
 
@@ -163,10 +196,10 @@ public final class AssemblyContigWithFineTunedAlignments {
      * This is similar to the case where a particular mapping is unreliable without confident left and right flanking.
      */
     private boolean hasIncompletePictureFromMultipleAlignments() {
-        final int goodAlignmentsCount = contig.alignmentIntervals.size();
+        final int goodAlignmentsCount = sourceTig.alignmentIntervals.size();
 
-        final AlignmentInterval head = contig.alignmentIntervals.get(0),
-                                tail = contig.alignmentIntervals.get(goodAlignmentsCount-1);
+        final AlignmentInterval head = sourceTig.alignmentIntervals.get(0),
+                                tail = sourceTig.alignmentIntervals.get(goodAlignmentsCount-1);
 
         // mapped to different chr or strand
         if ( !head.referenceSpan.getContig().equals(tail.referenceSpan.getContig()) || head.forwardStrand != tail.forwardStrand)
@@ -184,7 +217,7 @@ public final class AssemblyContigWithFineTunedAlignments {
                                                               Math.min(referenceSpanHead.getStart(), referenceSpanTail.getStart()),
                                                               Math.max(referenceSpanHead.getEnd(), referenceSpanTail.getEnd()));
         final boolean notCompleteDupRegion =
-                contig.alignmentIntervals
+                sourceTig.alignmentIntervals
                         .subList(1, goodAlignmentsCount - 1) // take middle (no head no tail) alignments' ref span
                         .stream().map(ai -> ai.referenceSpan)
                         .anyMatch( middle -> middle.overlaps(validRegion) && !validRegion.contains(middle));
@@ -207,18 +240,19 @@ public final class AssemblyContigWithFineTunedAlignments {
 
     public boolean firstAndLastAlignmentMappedToSameChr() {
 
-        final String firstMappedChr = this.contig.alignmentIntervals.get(0).referenceSpan.getContig();
-        final String lastMappedChr  = this.contig.alignmentIntervals.get(this.contig.alignmentIntervals.size() - 1).referenceSpan.getContig();
+        final String firstMappedChr = this.sourceTig.alignmentIntervals.get(0).referenceSpan.getContig();
+        final String lastMappedChr  = this.sourceTig.alignmentIntervals.get(this.sourceTig.alignmentIntervals.size() - 1).referenceSpan.getContig();
 
         return firstMappedChr.equals(lastMappedChr);
     }
 
     void serialize(final Kryo kryo, final Output output) {
-        contigSerializer.write(kryo, output, contig);
+        contigSerializer.write(kryo, output, sourceTig);
         output.writeInt(insertionMappings.size());
         for (final String mapping : insertionMappings) {
             output.writeString(mapping);
         }
+       output.writeString(saTAGForGoodMappingToNonCanonicalChromosome);
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<AssemblyContigWithFineTunedAlignments> {
@@ -235,6 +269,31 @@ public final class AssemblyContigWithFineTunedAlignments {
 
     @Override
     public String toString() {
-        return contig.toString() + "\n" + insertionMappings.toString();
+        final StringBuilder sb = new StringBuilder("AssemblyContigWithFineTunedAlignments{");
+        sb.append("sourceTig=").append(sourceTig);
+        sb.append(", insertionMappings=").append(insertionMappings);
+        sb.append(", saTAGForGoodMappingToNonCanonicalChromosome='").append(saTAGForGoodMappingToNonCanonicalChromosome).append('\'');
+        sb.append('}');
+        return sb.toString();
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        final AssemblyContigWithFineTunedAlignments that = (AssemblyContigWithFineTunedAlignments) o;
+
+        if (!sourceTig.equals(that.sourceTig)) return false;
+        if (!insertionMappings.equals(that.insertionMappings)) return false;
+        return saTAGForGoodMappingToNonCanonicalChromosome.equals(that.saTAGForGoodMappingToNonCanonicalChromosome);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = sourceTig.hashCode();
+        result = 31 * result + insertionMappings.hashCode();
+        result = 31 * result + saTAGForGoodMappingToNonCanonicalChromosome.hashCode();
+        return result;
     }
 }

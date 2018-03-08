@@ -72,6 +72,8 @@ public final class GATKSVVCFHeaderLines {
 
         // todo: create an alternate assembly file and link to it with breakpoint IDs according to the VCF spec
         addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.CONTIG_NAMES, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Name of contigs that evidenced this variant, formatted as \"asm%06d:tig%05d\""));
+        addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.CTG_GOOD_NONCANONICAL_MAPPING, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Good mapping of evidence contigs as listed in "
+                + GATKSVVCFConstants.CONTIG_NAMES + " to non-canonical reference chromosomes that could potentially offer better explanation of the assembly contig without an SV as it currently stands. One for each evidence assembly contig, if available"));
         addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TOTAL_MAPPINGS, 1, VCFHeaderLineType.Integer, "Number of contig alignments that support the variant"));
         addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.MAPPING_QUALITIES, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Mapping qualities of the contig alignments that support the variant"));
         addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.HQ_MAPPINGS, 1, VCFHeaderLineType.Integer, "Number of high-quality contig alignments that support the variant"));

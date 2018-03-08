@@ -125,7 +125,8 @@ public final class CpxVariantDetector {
                     deOverlapAlignments(sourceTig.alignmentIntervals, refSequenceDictionary);
             final AlignedContig contig = new AlignedContig(sourceTig.contigName, sourceTig.contigSequence,
                     deOverlappedAlignmentConfiguration, sourceTig.hasEquallyGoodAlnConfigurations);
-            this.tigWithInsMappings = new AssemblyContigWithFineTunedAlignments(contig, tigWithInsMappings.getInsertionMappings());
+            this.tigWithInsMappings = new AssemblyContigWithFineTunedAlignments(contig, tigWithInsMappings.getInsertionMappings(),
+                    tigWithInsMappings.getSAtagForGoodMappingToNonCanonicalChromosome());
 
             this.basicInfo = new BasicInfo(contig);
 
@@ -213,6 +214,11 @@ public final class CpxVariantDetector {
                     .attribute(SEQ_ALT_HAPLOTYPE, new String(altSeq));
 
             cpxVariant.getTypeSpecificAttributes().forEach(vcBuilder::attribute);
+            final String maybeNullSaTAGForGoodMappingToNonCanonicalChromosome =
+                    tigWithInsMappings.getSAtagForGoodMappingToNonCanonicalChromosome();
+            if (maybeNullSaTAGForGoodMappingToNonCanonicalChromosome != null)
+                vcBuilder.attribute(GATKSVVCFConstants.CTG_GOOD_NONCANONICAL_MAPPING,
+                        maybeNullSaTAGForGoodMappingToNonCanonicalChromosome);
 
             // evidence used for producing the novel adjacency
 
