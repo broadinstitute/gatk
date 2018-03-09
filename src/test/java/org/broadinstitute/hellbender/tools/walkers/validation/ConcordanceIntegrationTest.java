@@ -9,7 +9,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -134,6 +134,50 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
         Assert.assertEquals(snpRecord.getPrecision(), 1.0, epsilon);
         Assert.assertEquals(indelRecord.getSensitivity(), 1.0, epsilon);
         Assert.assertEquals(indelRecord.getPrecision(), 1.0, epsilon);
+    }
+
+    @Test
+    public void testFilterAnalysis() throws Exception {
+        final String testDir = toolsTestDir + "concordance/";
+        final File truthVcf = new File(testDir, "filter-analysis-truth.vcf");
+        final File evalVcf = new File(testDir, "filter-analysis-eval.vcf");
+        final File summary = createTempFile("summary", ".txt");
+        final File filterAnalysis = createTempFile("filter-analysis", ".txt");
+
+        final String[] args = {
+                "--" + AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcf.getAbsolutePath(),
+                "--" + AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, truthVcf.getAbsolutePath(),
+                "--" + Concordance.SUMMARY_LONG_NAME, summary.getAbsolutePath(),
+                "--" + Concordance.FILTER_ANALYSIS_LONG_NAME, filterAnalysis.getAbsolutePath()
+        };
+
+        runCommandLine(args);
+        final List<FilterAnalysisRecord> filterAnalysisRecords = FilterAnalysisRecord.readFromFile(filterAnalysis);
+        Assert.assertEquals(filterAnalysisRecords.size(), 3);
+
+        // this ensures that the first record is average_filter, then bad_filter, then good_filter
+        Collections.sort(filterAnalysisRecords, Comparator.comparing(FilterAnalysisRecord::getFilter));
+        final FilterAnalysisRecord average = filterAnalysisRecords.get(0);
+        final FilterAnalysisRecord bad = filterAnalysisRecords.get(1);
+        final FilterAnalysisRecord good = filterAnalysisRecords.get(2);
+
+        Assert.assertEquals(average.getFalseNegativeCount(),1);
+        Assert.assertEquals(average.getUniqueFalseNegativeCount(),0);
+        Assert.assertEquals(average.getTrueNegativeCount(), 2);
+        Assert.assertEquals(average.getUniqueTrueNegativeCount(), 1);
+
+        Assert.assertEquals(bad.getFalseNegativeCount(),4);
+        Assert.assertEquals(bad.getUniqueFalseNegativeCount(),3);
+        Assert.assertEquals(bad.getTrueNegativeCount(), 0);
+        Assert.assertEquals(bad.getUniqueTrueNegativeCount(), 0);
+
+        Assert.assertEquals(good.getFalseNegativeCount(),0);
+        Assert.assertEquals(good.getUniqueFalseNegativeCount(),0);
+        Assert.assertEquals(good.getTrueNegativeCount(), 5);
+        Assert.assertEquals(good.getUniqueTrueNegativeCount(), 4);
+
+
+
     }
 
     @Test

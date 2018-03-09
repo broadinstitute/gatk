@@ -148,6 +148,7 @@ workflow HapmapSensitivityAllPlexes {
       Array[File] tpfn_idx_5_plex = FivePlex.tpfn_idx
       Array[File] ftnfn_5_plex = FivePlex.ftnfn
       Array[File] ftnfn_idx_5_plex = FivePlex.ftnfn_idx
+      Array[File] filter_analysis_5_plex = FivePlex.filter_analysis
       File snp_table_10_plex = TenPlex.snp_table
       File snp_plot_10_plex = TenPlex.snp_plot
       File indel_table_10_plex = TenPlex.indel_table
@@ -159,6 +160,7 @@ workflow HapmapSensitivityAllPlexes {
       Array[File] tpfn_idx_10_plex = TenPlex.tpfn_idx
       Array[File] ftnfn_10_plex = TenPlex.ftnfn
       Array[File] ftnfn_idx_10_plex = TenPlex.ftnfn_idx
+      Array[File] filter_analysis_10_plex = TenPlex.filter_analysis
       File snp_table_20_plex = TwentyPlex.snp_table
       File snp_plot_20_plex = TwentyPlex.snp_plot
       File indel_table_20_plex = TwentyPlex.indel_table
@@ -170,6 +172,7 @@ workflow HapmapSensitivityAllPlexes {
       Array[File] tpfn_idx_20_plex = TwentyPlex.tpfn_idx
       Array[File] ftnfn_20_plex = TwentyPlex.ftnfn
       Array[File] ftnfn_idx_20_plex = TwentyPlex.ftnfn_idx
+      Array[File] filter_analysis_20_plex = TwentyPlex.filter_analysis
 
       File snp_table_all_plex = AllPlex.snp_table
       File snp_plot_all_plex = AllPlex.snp_plot
