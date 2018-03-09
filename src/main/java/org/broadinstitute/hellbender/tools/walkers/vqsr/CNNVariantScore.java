@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.python.StreamingPythonScriptExecutor;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.runtime.AsynchronousStreamWriterService;
@@ -23,6 +24,8 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.StreamSupport;
+
+import static org.broadinstitute.hellbender.utils.io.IOUtils.writeTempResource;
 
 /**
  * Annotate a VCF with scores from a Convolutional Neural Network (CNN).
@@ -37,21 +40,44 @@ import java.util.stream.StreamSupport;
  * to a tensor type which requires reads, as in the example below.
  *
  * Pre-trained 1D and 2D models are included in the distribution.
- * It is possible to train your own models by using the tools:
+ * It is possible to train your own models with the tools:
  * {@link CNNVariantWriteTensors} and {@link CNNVariantTrain}.
  *
  *
- * <h3>1D Model Example</h3>
+ * <h3>1D Model with pre-trained architecture</h3>
+ *
+ * <pre>
+ * gatk CNNVariantScore\
+ *   -V vcf_to_annotate.vcf.gz \
+ *   -R reference.fasta \
+ *   -O annotated.vcf
+ * </pre>
+ *
+ * <h3>2D Model with pre-trained architecture</h3>
+ *
+ * <pre>
+ * gatk CNNVariantScore\
+ *   -I aligned_reads.bam \
+ *   -V vcf_to_annotate.vcf.gz \
+ *   -R reference.fasta \
+ *   -O annotated.vcf \
+ *   -inference-batch-size 2 \
+ *   -transfer-batch-size 2 \
+ *   -tensor-type read-tensor
+ * </pre>
+ *
+ * <h3>1D Model with user-supplied architecture and weights:</h3>
  *
  * <pre>
  * gatk CNNVariantScore\
  *   -V vcf_to_annotate.vcf.gz \
  *   -R reference.fasta \
  *   -O annotated.vcf \
- *   --architecture src/main/resources/org/broadinstitute/hellbender/tools/walkers/vqsr/cnn_1d_annotations.json
+ *   -architecture path/to/my_model.json \
+ *   -weights path/to/my_weights.hd5
  * </pre>
  *
- * <h3>2D Model Example</h3>
+ * <h3>2D Model with user-supplied architecture and weights:</h3>
  *
  * <pre>
  * gatk CNNVariantScore\
@@ -62,9 +88,9 @@ import java.util.stream.StreamSupport;
  *   -inference-batch-size 2 \
  *   -transfer-batch-size 2 \
  *   -tensor-type read-tensor \
- *   --architecture src/test/resources/large/VQSR/tiny_2d_wgs_tf_model.json
+ *   -architecture path/to/my_model.json \
+ *   -weights path/to/my_weights.hd5
  * </pre>
- *
  */
 @DocumentedFeature
 @ExperimentalFeature
@@ -96,8 +122,11 @@ public class CNNVariantScore extends VariantWalker {
             doc = "Output file")
     private String outputFile;
 
-    @Argument(fullName = "architecture", shortName = "architecture", doc = "Neural Net architecture configuration json file", optional = false)
+    @Argument(fullName = "architecture", shortName = "architecture", doc = "Neural Net architecture configuration json file", optional = true)
     private String architecture;
+
+    @Argument(fullName = "weights", shortName = "weights", doc = "HD5 file with neural net weights.", optional = true)
+    private String weights;
 
     @Argument(fullName = "tensor-type", shortName = "tensor-type", doc = "Name of the tensors to generate, reference for 1D reference tensors and read_tensor for 2D tensors.", optional = true)
     private TensorType tensorType = TensorType.reference;
@@ -137,10 +166,35 @@ public class CNNVariantScore extends VariantWalker {
 
     private String scoreKey;
 
+    private static String resourcePathReadTensor = "large" + File.separator + "tiny_2d_wgs_tf_model.json";
+    private static String resourcePathReferenceTensor = "large" + File.separator + "1d_cnn_mix_train_full_bn.json";
+
     @Override
     protected String[] customCommandLineValidation() {
         if (inferenceBatchSize > transferBatchSize) {
             return new String[]{"Inference batch size must be less than or equal to transfer batch size."};
+        }
+
+        if(architecture == null){
+            Resource architectureResource, weightsResourceHD5;
+            if (tensorType.equals(TensorType.read_tensor)){
+                architectureResource = new Resource(resourcePathReadTensor, null);
+                weightsResourceHD5 = new Resource(resourcePathReadTensor.replace(".json", ".hd5"), null);
+
+            } else if (tensorType.equals(TensorType.reference)) {
+                architectureResource = new Resource(resourcePathReferenceTensor, null);
+                weightsResourceHD5 = new Resource(resourcePathReferenceTensor.replace(".json", ".hd5"), null);
+
+            } else {
+                throw new GATKException("No default architecture for tensor type:" + tensorType.name());
+            }
+
+            File architectureFile = writeTempResource(architectureResource);
+            File weightsHD5 = writeTempResource(weightsResourceHD5);
+            architectureFile.deleteOnExit();
+            weightsHD5.deleteOnExit();
+            architecture = architectureFile.getAbsolutePath();
+            weights = weightsHD5.getAbsolutePath();
         }
 
         return null;
@@ -186,7 +240,15 @@ public class CNNVariantScore extends VariantWalker {
             }
             pythonExecutor.sendSynchronousCommand(String.format("tempFile = open('%s', 'w+')" + NL, scoreFile.getAbsolutePath()));
             pythonExecutor.sendSynchronousCommand("import vqsr_cnn" + NL);
-            pythonExecutor.sendSynchronousCommand(String.format("args, model = vqsr_cnn.args_and_model_from_semantics('%s')", architecture) + NL);
+
+            String getArgsAndModel;
+            if (weights == null){
+                getArgsAndModel = String.format("args, model = vqsr_cnn.args_and_model_from_semantics('%s')", architecture) + NL;
+            } else {
+                getArgsAndModel = String.format("args, model = vqsr_cnn.args_and_model_from_semantics('%s', weights_hd5='%s')", architecture, weights) + NL;
+            }
+            pythonExecutor.sendSynchronousCommand(getArgsAndModel);
+
             logger.info("Using key:" + scoreKey + " for CNN architecture:" + architecture);
         } catch (IOException e) {
             throw new GATKException("Error when creating temp file and initializing python executor.", e);

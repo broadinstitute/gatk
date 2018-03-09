@@ -17,13 +17,13 @@ from . import arguments
 from . import tensor_maps
 
 
-def args_and_model_from_semantics(semantics_json):
+def args_and_model_from_semantics(semantics_json, weights_hd5=None):
     args = arguments.parse_args()
-    model = set_args_and_get_model_from_semantics(args, semantics_json)
+    model = set_args_and_get_model_from_semantics(args, semantics_json, weights_hd5)
     return args, model
 
 
-def set_args_and_get_model_from_semantics(args, semantics_json):
+def set_args_and_get_model_from_semantics(args, semantics_json, weights_hd5=None):
     '''Recreate a model from a json file specifying model semantics.
 
     Update the args namespace from the semantics file values.
@@ -65,9 +65,11 @@ def set_args_and_get_model_from_semantics(args, semantics_json):
         else:
             K.set_image_data_format('channels_first')
 
-    weight_path_hd5 = os.path.join(os.path.dirname(semantics_json), semantics['architecture'])
-    print('Loading keras weight file from:', weight_path_hd5)
-    model = load_model(weight_path_hd5, custom_objects=get_metric_dict(args.labels))
+    if weights_hd5 is None:
+        weights_hd5 = os.path.join(os.path.dirname(semantics_json), semantics['architecture'])
+
+    print('Loading keras weight file from:', weights_hd5)
+    model = load_model(weights_hd5, custom_objects=get_metric_dict(args.labels))
     model.summary()
     return model
 

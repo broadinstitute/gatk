@@ -228,7 +228,8 @@ def read_tuples_to_read_tensor(args, read_tuples, ref_start, insert_dict):
     tensor = np.zeros(tensor_maps.tensor_shape_from_args(args))
 
     if len(read_tuples) > args.read_limit:
-        read_tuples = np.random.choice(read_tuples, size=args.read_limit, replace=False).tolist()
+        read_tuples_idx = np.random.choice(range(len(read_tuples)), size=args.read_limit, replace=False)
+        read_tuples = [read_tuples[i] for i in read_tuples_idx]
 
     for j,read in enumerate(read_tuples):
         rseq, rqual = sequence_and_qualities_from_read(args, read, ref_start, insert_dict)
