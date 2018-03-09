@@ -69,7 +69,7 @@ import java.util.stream.Collectors;
  *
  * <ul>
  *     <li>
- *         Counts files (TSV or HDF5 output of {@link CollectFragmentCounts}).
+ *         Counts files (TSV or HDF5 output of {@link CollectReadCounts}).
  *     </li>
  *     <li>
  *         (Optional) GC-content annotated-intervals file from {@link AnnotateIntervals}.
@@ -138,7 +138,7 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
     private static final int DEFAULT_NUMBER_OF_EIGENSAMPLES = 20;
 
     @Argument(
-            doc = "Input TSV or HDF5 files containing integer read counts in genomic intervals for all samples in the panel of normals (output of CollectFragmentCounts).  " +
+            doc = "Input TSV or HDF5 files containing integer read counts in genomic intervals for all samples in the panel of normals (output of CollectReadCounts).  " +
                     "Intervals must be identical and in the same order for all samples.",
             fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,

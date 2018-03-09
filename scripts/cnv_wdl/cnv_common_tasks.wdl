@@ -120,7 +120,7 @@ task CollectCounts {
         set -e
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
-        gatk --java-options "-Xmx${command_mem_mb}m" CollectFragmentCounts \
+        gatk --java-options "-Xmx${command_mem_mb}m" CollectReadCounts \
             -L ${intervals} \
             --input ${bam} \
             --reference ${ref_fasta} \
