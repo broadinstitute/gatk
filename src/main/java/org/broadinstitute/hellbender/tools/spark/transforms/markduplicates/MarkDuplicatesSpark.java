@@ -29,6 +29,7 @@ import scala.Tuple2;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -71,18 +72,21 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
 //        JavaRDD<GATKRead> nonPrimaryReads = reads.filter(v1 -> ReadUtils.isNonPrimary(v1));
         JavaPairRDD<MarkDuplicatesSparkUtils.IndexPair<String>, Integer> namesOfNonDuplicates = MarkDuplicatesSparkUtils.transformToDuplicateNames(header, scoringStrategy, opticalDuplicateFinder, reads, numReducers);
 
-        final JavaRDD<String> repartitionedReadNames = namesOfNonDuplicates.keys()
-                .mapToPair(pair -> new Tuple2<>(pair.getIndex(), pair.getValue()))
+        final JavaRDD<Tuple2<String,Integer>> repartitionedReadNames = namesOfNonDuplicates
+                .mapToPair(pair -> new Tuple2<>(pair._1.getIndex(), new Tuple2<>(pair._1.getValue(),pair._2)))
                 .partitionBy(new KnownIndexPartitioner(reads.getNumPartitions()))
                 .values();
         
         return reads.zipPartitions(repartitionedReadNames, (readsIter, readNamesIter)  -> {
-            final Set<String> namesOfNonDuplicateReads = Utils.stream(readNamesIter).collect(Collectors.toSet());
+            final Map<String,Integer> namesOfNonDuplicateReadsAndOpticlCounts = Utils.stream(readNamesIter).collect(Collectors.toMap(Tuple2::_1,Tuple2::_2));
             return Utils.stream(readsIter).peek(read -> {
-                if( namesOfNonDuplicateReads.contains(read.getName())
+                if( namesOfNonDuplicateReadsAndOpticlCounts.containsKey(read.getName())
                         || MarkDuplicatesSparkUtils.readAndMateAreUnmapped(read)) {
                     read.setIsDuplicate(false);
-                    (SAMRecordToGATKReadAdapter)read.
+                    int dupCount = namesOfNonDuplicateReadsAndOpticlCounts.get(read.getName());
+                    if (dupCount>-1) {
+                        ((SAMRecord)read).setTransientAttribute(MarkDuplicatesSparkUtils.OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME,dupCount);
+                    }
                 } else{
                     read.setIsDuplicate(true);
                 }
