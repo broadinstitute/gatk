@@ -3,9 +3,12 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import htsjdk.samtools.SamFiles;
 import htsjdk.tribble.Tribble;
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
@@ -13,22 +16,21 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
+import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -771,6 +773,123 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         for ( final VariantContext vc : vcfRecords ) {
             Assert.assertTrue(isGVCFReferenceBlock(vc), "Expected only GVCF reference blocks (no actual calls)");
         }
+    }
+
+    @DataProvider
+    public Object[][] getMaxAlternateAllelesData() {
+        return new Object[][] {
+                // bam, reference, interval string, max alternate alleles, GVCF mode toggle
+                { NA12878_20_21_WGS_bam, b37_reference_20_21, "20:10008000-10010000", 1, false },
+                { NA12878_20_21_WGS_bam, b37_reference_20_21, "20:10002000-10011000", 1, true },
+                { NA12878_20_21_WGS_bam, b37_reference_20_21, "20:10002000-10011000", 2, true }
+        };
+    }
+
+    /*
+     * Test for the --max-alternate-alleles argument
+     */
+    @Test(dataProvider = "getMaxAlternateAllelesData")
+    public void testMaxAlternateAlleles(final String bam, final String reference, final String intervalString,
+                                        final int maxAlternateAlleles, final boolean gvcfMode) {
+        final File outputNoMaxAlternateAlleles = createTempFile("testMaxAlternateAllelesNoMaxAlternateAlleles", (gvcfMode ? ".g.vcf" : ".vcf"));
+        final File outputWithMaxAlternateAlleles = createTempFile("testMaxAlternateAllelesWithMaxAlternateAlleles", (gvcfMode ? ".g.vcf" : ".vcf"));
+
+        // Run both with and without --max-alternate-alleles over our interval, so that we can
+        // prove that the argument is working as intended.
+        final String[] argsNoMaxAlternateAlleles = {
+                "-I", bam,
+                "-R", reference,
+                "-L", intervalString,
+                "-O", outputNoMaxAlternateAlleles.getAbsolutePath(),
+                "-ERC", (gvcfMode ? "GVCF" : "NONE")
+        };
+        runCommandLine(argsNoMaxAlternateAlleles);
+
+        final String[] argsWithMaxAlternateAlleles = {
+                "-I", bam,
+                "-R", reference,
+                "-L", intervalString,
+                "-O", outputWithMaxAlternateAlleles.getAbsolutePath(),
+                "--max-alternate-alleles", Integer.toString(maxAlternateAlleles),
+                "-ERC", (gvcfMode ? "GVCF" : "NONE")
+        };
+        runCommandLine(argsWithMaxAlternateAlleles);
+
+        final List<VariantContext> callsNoMaxAlternateAlleles = VariantContextTestUtils.readEntireVCFIntoMemory(outputNoMaxAlternateAlleles.getAbsolutePath()).getRight();
+        final List<VariantContext> callsWithMaxAlternateAlleles = VariantContextTestUtils.readEntireVCFIntoMemory(outputWithMaxAlternateAlleles.getAbsolutePath()).getRight();
+
+        // First, find all calls in the VCF produced WITHOUT --max-alternate-alleles that have
+        // more than maxAlternateAlleles alt alleles, excluding NON_REF. For each call, calculate
+        // and store the expected list of subsetted alleles:
+        final Map<SimpleInterval, List<Allele>> expectedSubsettedAllelesByLocus = new HashMap<>();
+        for ( final VariantContext vc : callsNoMaxAlternateAlleles ) {
+            if ( getNumAltAllelesExcludingNonRef(vc) > maxAlternateAlleles ) {
+                final List<Allele> mostLikelyAlleles = AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, HomoSapiensConstants.DEFAULT_PLOIDY, maxAlternateAlleles);
+                expectedSubsettedAllelesByLocus.put(new SimpleInterval(vc), mostLikelyAlleles);
+            }
+        }
+
+        // Then assert that we saw at least one call with more than maxAlternateAlleles alt alleles
+        // when running without --max-alternate-alleles (otherwise, the tests below won't be meaningful):
+        Assert.assertTrue(! expectedSubsettedAllelesByLocus.isEmpty(),
+                "Without --max-alternate-alleles, there should be at least one call in the output with more than " + maxAlternateAlleles +
+                        " alt alleles in order for this test to be meaningful");
+
+        // Now assert that in the VCF produced WITH --max-alternate-alleles, there are no calls with
+        // more than maxAlternateAlleles alt alleles, excluding NON_REF. Also check each call that would
+        // have had more than maxAlternateAlleles alleles against the expected list of subsetted alleles,
+        // to ensure that we selected the most likely alleles:
+        for ( final VariantContext vc : callsWithMaxAlternateAlleles ) {
+
+            // No call should have more than the configured number of alt alleles (excluding NON_REF)
+            Assert.assertTrue(getNumAltAllelesExcludingNonRef(vc) <= maxAlternateAlleles,
+                    "Number of alt alleles exceeds --max-alternate-alleles " + maxAlternateAlleles + " for VariantContext: " + vc);
+
+            // If there's an entry for this locus in our table of expected alleles post-subsetting, assert
+            // that we selected the right alleles during subsetting.
+            List<Allele> alleleSubsettingExpectedResult = expectedSubsettedAllelesByLocus.get(new SimpleInterval(vc));
+            if ( alleleSubsettingExpectedResult != null ) {
+
+                // CollectionUtils.isEqualCollection() will compare the lists of Alleles without
+                // regard to ordering
+                Assert.assertTrue(CollectionUtils.isEqualCollection(vc.getAlleles(), alleleSubsettingExpectedResult),
+                        "For call " + vc + " expected alleles after subsetting were: " + alleleSubsettingExpectedResult +
+                                 " but instead found alleles: " + vc.getAlleles());
+            }
+
+            // For completeness sake, also check the genotypes to ensure that no genotypes reference
+            // an allele not present in the VC:
+            for ( final Genotype genotype : vc.getGenotypes() ) {
+                if ( genotype.isAvailable() ) {
+                    for ( final Allele genotypeAllele : genotype.getAlleles() ) {
+                        if ( genotypeAllele.isCalled() ) {
+                            Assert.assertTrue(vc.hasAllele(genotypeAllele),
+                                    "Allele " + genotypeAllele + " was present in genotype " + genotype +
+                                            " but not in the VariantContext itself");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Helper method for testMaxAlternateAlleles
+     *
+     * @param vc VariantContext to check
+     * @return number of alt alleles in vc, excluding NON_REF (if present)
+     */
+    private int getNumAltAllelesExcludingNonRef( final VariantContext vc ) {
+        final List<Allele> altAlleles = vc.getAlternateAlleles();
+        int numAltAllelesExcludingNonRef = 0;
+
+        for ( final Allele altAllele : altAlleles ) {
+            if ( ! altAllele.equals(Allele.NON_REF_ALLELE) ) {
+                ++numAltAllelesExcludingNonRef;
+            }
+        }
+
+        return numAltAllelesExcludingNonRef;
     }
 
     /*
