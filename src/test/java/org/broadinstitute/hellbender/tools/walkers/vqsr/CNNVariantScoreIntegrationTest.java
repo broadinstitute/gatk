@@ -14,8 +14,8 @@ import java.util.Arrays;
  * Created by sam on 1/8/18.
  */
 public class CNNVariantScoreIntegrationTest extends CommandLineProgramTest {
-    private static final String architecture1D = publicMainResourcesDir + "large/1d_cnn_mix_train_full_bn.json";
-    private static final String architecture2D = publicMainResourcesDir + "large/tiny_2d_wgs_tf_model.json";
+    private static final String architecture1D = largeFileTestDir + "VQSR/1d_cnn_mix_train_full_bn.json";
+    private static final String architecture2D = largeFileTestDir + "VQSR/tiny_2d_wgs_tf_model.json";
     private static final String inputVCF = largeFileTestDir + "VQSR/recalibrated_chr20_start.vcf";
 
     /**
