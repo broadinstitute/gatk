@@ -16,21 +16,21 @@ class MafOutputRendererConstants {
     static {
         final Map<String, String> variantClassMap = new HashMap<>();
 
-        variantClassMap.put(GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString(), "In_Frame_Del");
-        variantClassMap.put(GencodeFuncotation.VariantClassification.IN_FRAME_INS.toString(), "In_Frame_Ins");
-        variantClassMap.put(GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS.toString(), "Frame_Shift_Ins");
-        variantClassMap.put(GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL.toString(), "Frame_Shift_Del");
-        variantClassMap.put(GencodeFuncotation.VariantClassification.MISSENSE.toString(), "Missense_Mutation");
-        variantClassMap.put(GencodeFuncotation.VariantClassification.NONSENSE.toString(), "Nonsense_Mutation");
-        variantClassMap.put(GencodeFuncotation.VariantClassification.SILENT.toString(), "Silent");
-        variantClassMap.put(GencodeFuncotation.VariantClassification.SPLICE_SITE.toString(), "Splice_Site");
-        variantClassMap.put(GencodeFuncotation.VariantClassification.START_CODON_DEL.toString(), "Translation_Start_Site");
-        variantClassMap.put(GencodeFuncotation.VariantClassification.NONSTOP.toString(), "Nonstop_Mutation");
-        variantClassMap.put(GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR.toString(), "5'UTR");
-        variantClassMap.put(GencodeFuncotation.VariantClassification.THREE_PRIME_UTR.toString(), "3'UTR");
+        variantClassMap.put(GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString(),     "In_Frame_Del");
+        variantClassMap.put(GencodeFuncotation.VariantClassification.IN_FRAME_INS.toString(),     "In_Frame_Ins");
+        variantClassMap.put(GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS.toString(),  "Frame_Shift_Ins");
+        variantClassMap.put(GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL.toString(),  "Frame_Shift_Del");
+        variantClassMap.put(GencodeFuncotation.VariantClassification.MISSENSE.toString(),         "Missense_Mutation");
+        variantClassMap.put(GencodeFuncotation.VariantClassification.NONSENSE.toString(),         "Nonsense_Mutation");
+        variantClassMap.put(GencodeFuncotation.VariantClassification.SILENT.toString(),           "Silent");
+        variantClassMap.put(GencodeFuncotation.VariantClassification.SPLICE_SITE.toString(),      "Splice_Site");
+        variantClassMap.put(GencodeFuncotation.VariantClassification.START_CODON_DEL.toString(),  "Translation_Start_Site");
+        variantClassMap.put(GencodeFuncotation.VariantClassification.NONSTOP.toString(),          "Nonstop_Mutation");
+        variantClassMap.put(GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR.toString(),   "5'UTR");
+        variantClassMap.put(GencodeFuncotation.VariantClassification.THREE_PRIME_UTR.toString(),  "3'UTR");
         variantClassMap.put(GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK.toString(), "5'Flank");
-        variantClassMap.put(GencodeFuncotation.VariantClassification.INTRON.toString(), "Intron");
-        variantClassMap.put(GencodeFuncotation.VariantClassification.LINCRNA.toString(), "RNA");
+        variantClassMap.put(GencodeFuncotation.VariantClassification.INTRON.toString(),           "Intron");
+        variantClassMap.put(GencodeFuncotation.VariantClassification.LINCRNA.toString(),          "RNA");
 
         VariantClassificationMap = variantClassMap;
     }
@@ -144,13 +144,13 @@ class MafOutputRendererConstants {
     static final String FieldName_tumor_f                                = "tumor_f";
 
     // Field Values:
-    static final String FieldValue_Strand                      = "+";
-    static final String FieldValue_Other_Transcripts_Delimiter = "|";
-    static final String FieldValue_Variant_Type_Insertion      = "INS";
-    static final String FieldValue_Variant_Type_Deletion       = "DEL";
-    static final String FieldValue_Gencode_Chromosome_Mito     = "chrM";
-    static final String FieldValue_Chromosome_Mito             = "MT";
-    static final String EmptyAllele                            = "-";
+    static final String FieldValue_Strand                  = "+";
+    static final String OTHER_TRANSCRIPT_DELIMITER         = "|";
+    static final String FieldValue_Variant_Type_Insertion  = "INS";
+    static final String FieldValue_Variant_Type_Deletion   = "DEL";
+    static final String FieldValue_Gencode_Chromosome_Mito = "chrM";
+    static final String FieldValue_Chromosome_Mito         = "MT";
+    static final String EmptyAllele                        = "-";
 
     // Variant Classification Map:
     static final Map<String, String> VariantClassificationMap;
