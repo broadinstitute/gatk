@@ -170,6 +170,9 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(IN_PON_VCF_ATTRIBUTE, 0, VCFHeaderLineType.Flag, "site found in panel of normals"));
         addInfoLine(new VCFInfoHeaderLine(POPULATION_AF_VCF_ATTRIBUTE, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "population allele frequencies of alt alleles"));
         addInfoLine(new VCFInfoHeaderLine(GERMLINE_POSTERIORS_VCF_ATTRIBUTE, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Posterior probability for alt allele to be germline variants"));
+        addInfoLine(new VCFInfoHeaderLine(POSTERIOR_PROB_OF_CONTAMINATION_ATTRIBUTE, 1, VCFHeaderLineType.Float, "Posterior probability for alt allele to be due to contamination"));
+
+
         addInfoLine(new VCFInfoHeaderLine(NORMAL_ARTIFACT_LOD_ATTRIBUTE, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "log odds of artifact in normal with same allele fraction as tumor"));
     }
 }

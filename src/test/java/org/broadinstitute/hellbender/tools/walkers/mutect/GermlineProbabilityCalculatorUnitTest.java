@@ -12,6 +12,7 @@ import org.testng.annotations.Test;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalDouble;
 
 /**
  * Created by David Benjamin on 5/5/17.
@@ -19,12 +20,12 @@ import java.util.Optional;
 public class GermlineProbabilityCalculatorUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "log10ProbabilityData")
-    public void testLog10PosteriorProbabilityOfGermlineVariant(final double normalLog10Odds, final double tumorLog10Odds,
+    public void testLog10PosteriorProbabilityOfGermlineVariant(final double normalLog10Odds, final double log10OddsOfGermlineHetVsSomatic,
+                                                               final double log10OddsOfGermlineHomAltVsSomatic,
                                                                final double populationAF, final double log10SomaticPrior,
-                                                               final double expectedLog10Posterior,
-                                                               final double tolerance) {
-        final double actual = GermlineProbabilityCalculator.log10PosteriorProbabilityOfGermlineVariant(normalLog10Odds, tumorLog10Odds,
-                populationAF, log10SomaticPrior);
+                                                               final double expectedLog10Posterior, final double tolerance) {
+        final double actual = GermlineProbabilityCalculator.log10PosteriorProbabilityOfGermlineVariant(normalLog10Odds, log10OddsOfGermlineHetVsSomatic,
+                log10OddsOfGermlineHomAltVsSomatic, populationAF, log10SomaticPrior);
         Assert.assertEquals(actual, expectedLog10Posterior, tolerance);
     }
 
@@ -88,19 +89,18 @@ public class GermlineProbabilityCalculatorUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "log10ProbabilityData")
     public Object[][] log10ProbabilityData() {
+        // normalLog10Odds, log10OddsOfGermlineHetVsSomatic, log10OddsOfGermlineHomAltVsSomatic, populationAF, log10SomaticPrior, expectedLog10Posterior, tolerance
         return new Object[][] {
-                // extreme data against normal
-                {-100, 10, 0.5, -3, -100, 5},
-                //equal, large lods --> very likely germline
-                {20, 20, 1e-8, -3, 0, 0.0001},
+                // extreme data against normal means not germline, even if the tumor looks like a germline ht i.e. AF = 0.5
+                {-100, 0, -10, 0.5, -6, -100, 10},
+                // strong evidence in normal, even if population AF is small
+                {20, 0, 0, 1e-8, -3, 0, 0.0001},
                 //no normal (lod = 0) rare variant
-                {0, 10, 1e-10, -6, -4, 2},
+                {0, 0, 0, 1e-10, -6, -4, 2},
                 //limit of AF = 1 --> always germline
-                {0, 10, 1, -3, 0, 0.001},
+                {0, -5, -5, 1.0, -3, 0, 0.001},
                 //a simple exact value done by hand
-                {0, 0, 0.5, -1, Math.log10(0.7297297297297297), 0.0001},
-                // a messy exact value
-                {2, 3, 0.6, -4, Math.log10(0.9999979047472454), 0.0001}
+                {0, 0, 0, 0.5, -1, -0.01579426, 0.0001},
         };
     }
 

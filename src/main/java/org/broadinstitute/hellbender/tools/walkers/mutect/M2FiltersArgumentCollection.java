@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.contamination.ContaminationRecord;
 
 import java.io.File;
 
@@ -25,11 +23,23 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
     public static final String MAX_CONTAMINATION_PROBABILITY_LONG_NAME = "max-contamination-probability";
     public static final String UNIQUE_ALT_READ_COUNT_LONG_NAME = "unique-alt-read-count";
 
+    public static final String TUMOR_SEGMENTATION_LONG_NAME = "tumor-segmentation";
+
+    /**
+     * A table containing tumor segments and the minor allele fraction of germline hets within each segment.
+     * This allows us to refine the germline event filter by, for example, not filtering an allele
+     * with an allele fraction significantly different from 0.5 in a segment where the minor allele fraction is 0.5.
+     */
+    @Argument(fullName = TUMOR_SEGMENTATION_LONG_NAME,
+            doc="Pileup summaries for the tumor sample as output by CalculateContamination", optional = true)
+    public File tumorSegmentationTable = null;
+
     /**
      * Prior log-10 probability that any given site has a somatic allele. Impacts germline probability calculation.
-     *
-     * //TODO Note that Mutect2 uses this for the germline annotation while FilterMutectCalls uses this for the contamination filter.
-     * //TODO This duplication is awkward and can probably be addressed by moving some of the germline code into filtering
+     * The workflow uses this parameter only towards the germline event filter. It does NOT relate to the LOD threshold.
+     * For example, -6 translates to one in a million or ~3000 somatic mutations per human genome.
+     * Depending on tumor type, mutation rate ranges vary (Lawrence et al. Nature 2013), and so adjust parameter accordingly.
+     * For higher expected rate of mutation, adjust number up, e.g. -5. For lower expected rate of mutation, adjust number down, e.g. -7.
      */
     @Argument(fullName= LOG_SOMATIC_PRIOR_LONG_NAME,
             doc="Prior probability that a given site has a somatic allele.", optional = true)

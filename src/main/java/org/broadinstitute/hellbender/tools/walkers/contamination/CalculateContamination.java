@@ -126,6 +126,13 @@ public class CalculateContamination extends CommandLineProgram {
             doc="The output table")
     private final File outputTable = null;
 
+    public static final String TUMOR_SEGMENTATION_LONG_NAME = "tumor-segmentation";
+    public static final String TUMOR_SEGMENTATION_SHORT_NAME = "segments";
+    @Argument(fullName= TUMOR_SEGMENTATION_LONG_NAME,
+            shortName= TUMOR_SEGMENTATION_SHORT_NAME,
+            doc="The output table containing segmentation of the tumor by minor allele fraction", optional = true)
+    private final File outputTumorSegmentation = null;
+
     public static final String LOW_COVERAGE_RATIO_THRESHOLD_NAME = "low-coverage-ratio-threshold";
     @Argument(fullName = LOW_COVERAGE_RATIO_THRESHOLD_NAME,
             doc="The minimum coverage relative to the median.", optional = true)
@@ -181,6 +188,15 @@ public class CalculateContamination extends CommandLineProgram {
             genotypingContamination.setValue(newGenotypingContamination);
         }
 
+        if (outputTumorSegmentation != null) {
+            final List<List<PileupSummary>> tumorSegments = matchedPileupSummariesTable == null ?
+                    genotypingSegments : findSegments(sites);
+            List<MinorAlleleFractionRecord> tumorMinorAlleleFractions = tumorSegments.stream()
+                    .map(this::makeMinorAlleleFractionRecord).collect(Collectors.toList());
+            MinorAlleleFractionRecord.writeToFile(tumorMinorAlleleFractions, outputTumorSegmentation);
+
+        }
+
         final List<PileupSummary> homAltSites = subsetSites(sites, homAltGenotypingSites);
         final Pair<Double, Double> contaminationAndError = calculateContamination(homAltSites, errorRate(sites));
         final double contamination = contaminationAndError.getLeft();
@@ -214,13 +230,23 @@ public class CalculateContamination extends CommandLineProgram {
     }
 
     private List<PileupSummary> segmentHomAlts(final List<PileupSummary> segment, final double contamination, double minimiumMinorAlleleFraction) {
-
-        final List<PileupSummary> hets = getLikelyHetsBasedOnAlleleFraction(segment);
-        final Function<Double, Double> objective = maf -> logLikelihoodOfHetsInSegment(hets, maf);
-        final double minorAlleleFraction = OptimizationUtils.argmax(objective, ALT_FRACTIONS_FOR_SEGMENTATION.getMinimum(), 0.5, 0.4, 0.01, 0.01, 20);
-
+        final double minorAlleleFraction = calculateMinorAlleleFraction(segment);
         return minorAlleleFraction < minimiumMinorAlleleFraction ? Collections.emptyList() :
                 segment.stream().filter(site -> homAltProbability(site, minorAlleleFraction, contamination) > 0.5).collect(Collectors.toList());
+    }
+
+    private double calculateMinorAlleleFraction(final List<PileupSummary> segment) {
+        final List<PileupSummary> hets = getLikelyHetsBasedOnAlleleFraction(segment);
+        final Function<Double, Double> objective = maf -> logLikelihoodOfHetsInSegment(hets, maf);
+        return OptimizationUtils.argmax(objective, ALT_FRACTIONS_FOR_SEGMENTATION.getMinimum(), 0.5, 0.4, 0.01, 0.01, 20);
+    }
+
+    private MinorAlleleFractionRecord makeMinorAlleleFractionRecord(final List<PileupSummary> segment) {
+        final String contig = segment.get(0).getContig();
+        final int start = segment.get(0).getStart();
+        final int end = segment.get(segment.size() - 1).getEnd();
+        final double minorAlleleFraction = calculateMinorAlleleFraction(segment);
+        return new MinorAlleleFractionRecord(new SimpleInterval(contig, start, end), minorAlleleFraction);
     }
 
 
