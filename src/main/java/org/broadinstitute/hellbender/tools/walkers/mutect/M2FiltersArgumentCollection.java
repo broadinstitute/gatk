@@ -58,12 +58,8 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
     @Argument(fullName = NORMAL_ARTIFACT_LOD_LONG_NAME, optional = true, doc = "LOD threshold for calling normal artifacts")
     public double NORMAL_ARTIFACT_LOD_THRESHOLD = 0.0;
 
-    /**
-     * The default value of this argument was chosen to achieve roughly one false positive per covered megabase according
-     * to a back-of-the-envelope calculation assuming the neutral model of allele selection, with parameters estimated from ExAC.
-     */
     @Argument(fullName = MAX_GERMLINE_POSTERIOR_LONG_NAME, optional = true, doc = "Maximum posterior probability that an allele is a germline variant")
-    public double maxGermlinePosterior = 0.025;
+    public double maxGermlinePosterior = 0.1;
 
     @Argument(fullName = MAX_ALT_ALLELE_COUNT_LONG_NAME, optional = true, doc = "filter variants with too many alt alleles")
     public int numAltAllelesThreshold = 1;

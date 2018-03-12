@@ -64,8 +64,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     public void testDreamTumorNormal(final File tumorBam, final String tumorSample, final File normalBam, final String normalSample,
                                      final File truthVcf, final File mask, final double requiredSensitivity, final boolean tumorOnly) throws Exception {
         Utils.resetRandomGenerator();
-        int N = 120000;
-        double x = 0.55;
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
         final File filteredVcf = createTempFile("filtered", ".vcf");
 
