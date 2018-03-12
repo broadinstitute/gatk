@@ -222,7 +222,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
     public static double[] getEffectiveCounts(final LikelihoodMatrix<Allele> log10LikelihoodMatrix) {
         if (log10LikelihoodMatrix.numberOfReads() == 0) {
-            return new double[log10LikelihoodMatrix.numberOfAlleles()]; // zero couns for each allele
+            return new double[log10LikelihoodMatrix.numberOfAlleles()]; // zero counts for each allele
         }
         final RealMatrix log10Likelihoods = getAsRealMatrix(log10LikelihoodMatrix);
         return MathUtils.sumArrayFunction(0, log10Likelihoods.getColumnDimension(),
