@@ -92,7 +92,7 @@ You can download and run pre-built versions of GATK4 from the following places:
 
 ## <a name="building">Building GATK4</a>
 
-* **To do a full build of GATK4, run:**
+* **To do a full build of GATK4, first clone the GATK repository using "git clone", then run:**
 
         ./gradlew bundle
         
@@ -102,6 +102,7 @@ You can download and run pre-built versions of GATK4 from the following places:
         
     * This creates a zip archive in the `build/` directory with a name like `gatk-VERSION.zip` containing a complete standalone GATK distribution, including our launcher `gatk`, both the local and spark jars, and this README.    
     * You can also run GATK commands directly from the root of your git clone after running this command.
+    * Note that you *must* have a full git clone in order to build GATK. The zipped source code alone is not buildable.
 
 * **Other ways to build:**
     * `./gradlew installDist`  
