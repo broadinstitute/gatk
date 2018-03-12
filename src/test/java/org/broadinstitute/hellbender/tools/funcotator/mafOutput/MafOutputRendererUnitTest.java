@@ -85,6 +85,19 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
     //==================================================================================================================
     // Helper Methods:
 
+    private List<String> createFieldValuesFromNameList(final String prefix, final List<String> baseFieldList, final int fieldSize) {
+        final List<String> outList = new ArrayList<>(baseFieldList.size());
+
+        for ( int i = 0; i < baseFieldList.size() ; ++i ) {
+            final String formatString = "%s%0" +
+                    ((fieldSize - prefix.length()) > 0 ? fieldSize - prefix.length() : "") +
+                    "d";
+            outList.add(String.format(formatString, prefix, i+1));
+        }
+
+        return outList;
+    }
+
     private MafOutputRenderer createMafOutputRenderer(final File outputFile) {
 
         final Map<Path, Properties> configData =
@@ -592,56 +605,60 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
 
         final List<VariantContext> variantList = Arrays.asList(variant1, variant2, variant3, variant4, variant5);
 
-        // TODO: Make these match existing data sources that are checked in
+        final List<String> baseFieldNameList = new ArrayList<>(createMafOutputRenderer( getSafeNonExistentFile("GARBAGE") ).getDefaultMap().keySet());
+
+        final int fieldSize = 10;
+        
+        // NOTE: The data field names must match data sources that are checked in for this to work in an expected way:
         final List<List<Funcotation>> funcotationList = Arrays.asList(
                 Collections.singletonList(
                         new TableFuncotation(
-                                Arrays.asList("name", "type"),
-                                Arrays.asList("Churchill", "British"),
+                                baseFieldNameList,
+                                createFieldValuesFromNameList("A", baseFieldNameList, fieldSize),
                                 Allele.create("T"),
                                 GencodeFuncotationFactory.DATA_SOURCE_NAME
                         )
                 ),
                 Collections.singletonList(
                         new TableFuncotation(
-                                Arrays.asList("Name", "Type"),
-                                Arrays.asList("Roosevelt", "American"),
+                                baseFieldNameList,
+                                createFieldValuesFromNameList("B", baseFieldNameList, fieldSize),
                                 Allele.create("C"),
                                 GencodeFuncotationFactory.DATA_SOURCE_NAME
                         )
                 ),
                 Collections.singletonList(
                         new TableFuncotation(
-                                Arrays.asList("NAME", "TYPE"),
-                                Arrays.asList("Gandhi", "Indian"),
+                                baseFieldNameList,
+                                createFieldValuesFromNameList("C", baseFieldNameList, fieldSize),
                                 Allele.create("GG"),
                                 GencodeFuncotationFactory.DATA_SOURCE_NAME
                         )
                 ),
                 Collections.singletonList(
                         new TableFuncotation(
-                                Arrays.asList("NamE", "TypE"),
-                                Arrays.asList("Tokugawa", "Japanese"),
+                                baseFieldNameList,
+                                createFieldValuesFromNameList("D", baseFieldNameList, fieldSize),
                                 Allele.create("T"),
                                 "TestDataSource4"
                         )
                 ),
                 Arrays.asList(
                         new TableFuncotation(
-                                Arrays.asList("namE", "typE"),
-                                Arrays.asList("Huang", "Chinese"),
+                                baseFieldNameList,
+                                createFieldValuesFromNameList("E", baseFieldNameList, fieldSize),
                                 Allele.create("A"),
                                 "TestDataSource5"
                         ),
                         new TableFuncotation(
-                                Arrays.asList("nAMe", "tYPe"),
-                                Arrays.asList("III of Macedon", "Greek"),
+                                baseFieldNameList,
+                                createFieldValuesFromNameList("F", baseFieldNameList, fieldSize),
                                 Allele.create("AG"),
                                 "TestDataSource5"
                         ),
                         new TableFuncotation(
-                                Arrays.asList("Name", "Type", "Which Caesar Was It"),
-                                Arrays.asList("Caesar", "Roman", "Julius, of course"),
+                                baseFieldNameList,
+                                createFieldValuesFromNameList("G", baseFieldNameList, fieldSize),
                                 Allele.create("AT"),
                                 "TestDataSource5"
                         )
@@ -678,8 +695,7 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
         Assert.assertEquals(outputMap, expected);
     }
 
-    @Test(dataProvider = "provideForWrite",
-            enabled = false)
+    @Test(dataProvider = "provideForWrite")
     public void testWrite(final List<VariantContext> variants, final List<List<Funcotation>> funcotations, final File expectedFile) {
 
         final File outFile = getSafeNonExistentFile("TestMafOutputFile");
@@ -691,12 +707,10 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
         }
 
         try {
-            IntegrationTestSpec.assertEqualTextFiles(outFile, expectedFile);
+            IntegrationTestSpec.assertEqualTextFiles(outFile, expectedFile, "#");
         }
         catch (final IOException ex) {
             throw new GATKException("ERROR comparing text files: " + outFile.toURI().toString() + " and " + expectedFile.toURI().toString(), ex);
         }
-
-
     }
 }

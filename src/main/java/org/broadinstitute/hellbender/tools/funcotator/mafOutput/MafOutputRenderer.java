@@ -268,6 +268,14 @@ public class MafOutputRenderer extends OutputRenderer {
     // Instance Methods:
 
     /**
+     * @return The {@link #defaultMap} with currently populated fields.
+     */
+    @VisibleForTesting
+    LinkedHashMap<String, String> getDefaultMap() {
+        return defaultMap;
+    }
+
+    /**
      * Ensures each value in the given {@code outputMap} is compliant with MAF-expected values.
      * @param outputMap The {@link Map} of output field -> values to be checked for MAF compliance.
      * @return A {@link LinkedHashMap} of output field strings -> values to be written to the MAF file.
