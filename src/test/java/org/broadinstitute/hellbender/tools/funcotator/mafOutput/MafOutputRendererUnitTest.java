@@ -700,7 +700,6 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
 
         final File outFile = getSafeNonExistentFile("TestMafOutputFile");
         try ( final MafOutputRenderer mafOutputRenderer = createMafOutputRenderer( outFile ) ) {
-            mafOutputRenderer.open();
             for ( int i = 0 ; i < variants.size(); ++i ) {
                 mafOutputRenderer.write(variants.get(i), funcotations.get(i));
             }

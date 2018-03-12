@@ -84,15 +84,13 @@ public class VcfOutputRenderer extends OutputRenderer {
 
         // Cache the manual annotation string so we can pass it easily into any Funcotations:
         manualAnnotationSerializedString = (manualAnnotations.size() != 0 ? String.join( FIELD_DELIMITER, manualAnnotations.values() ) + FIELD_DELIMITER : "");
-    }
 
-    //==================================================================================================================
-
-    @Override
-    public void open() {
+        // Open the output file and set up the header:
         final VCFHeader newHeader = createVCFHeader();
         vcfWriter.writeHeader(newHeader);
     }
+
+    //==================================================================================================================
 
     @Override
     public void close() {

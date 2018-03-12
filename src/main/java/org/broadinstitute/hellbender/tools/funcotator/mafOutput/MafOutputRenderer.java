@@ -47,7 +47,7 @@ public class MafOutputRenderer extends OutputRenderer {
      * Order of the columns is preserved by the {@link LinkedHashMap}, while still being able to access each field via
      * the associated key.
      */
-    private static final LinkedHashMap<String, String> defaultMap = new LinkedHashMap<>();
+    private final LinkedHashMap<String, String> defaultMap = new LinkedHashMap<>();
 
     /**
      * Map for: outputFieldName -> dataSourceFieldName1, dataSourceFieldName2 ...
@@ -58,7 +58,7 @@ public class MafOutputRenderer extends OutputRenderer {
      * That is, if both dataSourceFieldName1 and dataSourceFieldName2 are present as funcotation fields, then only
      * dataSourceFieldName1 will be used as the outputField.
      */
-    private static final Map<String, List<String>> outputFieldNameMap = new LinkedHashMap<>();
+    private final Map<String, List<String>> outputFieldNameMap = new LinkedHashMap<>();
 
     //==================================================================================================================
     // Private Members:
@@ -185,13 +185,8 @@ public class MafOutputRenderer extends OutputRenderer {
 
         // Cache the manual annotation string so we can pass it easily into any Funcotations:
         manualAnnotationSerializedString = (manualAnnotations.size() != 0 ? MafOutputRendererConstants.FIELD_DELIMITER + String.join( MafOutputRendererConstants.FIELD_DELIMITER, manualAnnotations.values() ) + MafOutputRendererConstants.FIELD_DELIMITER : "");
-    }
 
-    //==================================================================================================================
-    // Override Methods:
-
-    @Override
-    public void open() {
+        // Open the output object:
         try {
             printWriter = new PrintWriter(Files.newOutputStream(outputFilePath));
         }
@@ -200,10 +195,15 @@ public class MafOutputRenderer extends OutputRenderer {
         }
     }
 
+    //==================================================================================================================
+    // Override Methods:
+
     @Override
     public void close() {
-        printWriter.flush();
-        printWriter.close();
+        if ( printWriter != null ) {
+            printWriter.flush();
+            printWriter.close();
+        }
     }
 
     @Override
@@ -253,16 +253,13 @@ public class MafOutputRenderer extends OutputRenderer {
             }
 
             // Write the output (with manual annotations at the end):
-            writeLine(
-                    mafCompliantOutputMap.values().stream().collect(Collectors.joining(MafOutputRendererConstants.FIELD_DELIMITER))
-                    + manualAnnotationSerializedString
-            );
+            for ( final String value : mafCompliantOutputMap.values() ) {
+                writeString(value);
+                writeString(MafOutputRendererConstants.FIELD_DELIMITER);
+            }
+            writeLine(manualAnnotationSerializedString);
         }
     }
-
-
-    //==================================================================================================================
-    // Static Methods:
 
     //==================================================================================================================
     // Instance Methods:
@@ -300,7 +297,6 @@ public class MafOutputRenderer extends OutputRenderer {
 
         // Fix the alleles in the case of INDELS:
         adjustIndelAlleleInformationForMafOutput(finalOutMap);
-
 
         return finalOutMap;
     }
@@ -423,28 +419,6 @@ public class MafOutputRenderer extends OutputRenderer {
                                 MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.LINCRNA.toString())
                             }
                         );
-
-//                return value
-//                        .replaceAll( GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString(),            MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString()) )
-//                        .replaceAll( GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString(),            MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString()) )
-//                        .replaceAll( GencodeFuncotation.VariantClassification.IN_FRAME_INS.toString(),            MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.IN_FRAME_INS.toString()) )
-//                        .replaceAll( GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS.toString(),         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS.toString()) )
-//                        .replaceAll( GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL.toString(),         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL.toString()) )
-//                        .replaceAll( GencodeFuncotation.VariantClassification.MISSENSE.toString(),                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.MISSENSE.toString()) )
-//                        .replaceAll( GencodeFuncotation.VariantClassification.NONSENSE.toString(),                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.NONSENSE.toString()) )
-//                        .replaceAll( GencodeFuncotation.VariantClassification.SILENT.toString(),                  MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.SILENT.toString()) )
-//                        .replaceAll( GencodeFuncotation.VariantClassification.SPLICE_SITE.toString(),             MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.SPLICE_SITE.toString()) )
-//                        .replaceAll( GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME.toString(),  MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME.toString()) )
-//                        .replaceAll( GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME.toString(), MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME.toString()) )
-//                        .replaceAll( GencodeFuncotation.VariantClassification.START_CODON_SNP.toString(),         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.START_CODON_SNP.toString()) )
-//                        .replaceAll( GencodeFuncotation.VariantClassification.START_CODON_INS.toString(),         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.START_CODON_INS.toString()) )
-//                        .replaceAll( GencodeFuncotation.VariantClassification.START_CODON_DEL.toString(),         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.START_CODON_DEL.toString()) )
-//                        .replaceAll( GencodeFuncotation.VariantClassification.NONSTOP.toString(),                 MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.NONSTOP.toString()) )
-//                        .replaceAll( GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR.toString(),          MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR.toString()) )
-//                        .replaceAll( GencodeFuncotation.VariantClassification.THREE_PRIME_UTR.toString(),         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.THREE_PRIME_UTR.toString()) )
-//                        .replaceAll( GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK.toString(),        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK.toString()) )
-//                        .replaceAll( GencodeFuncotation.VariantClassification.INTRON.toString(),                  MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.INTRON.toString()) )
-//                        .replaceAll( GencodeFuncotation.VariantClassification.LINCRNA.toString(),                 MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.LINCRNA.toString()) );
         }
 
         return value;
@@ -471,11 +445,20 @@ public class MafOutputRenderer extends OutputRenderer {
     }
 
     /**
-     * Write the given line to the {@link #printWriter}.
+     * Write the given line to the {@link #printWriter} and append a newline.
      * @param line The {@link String} to write as a line to the {@link #printWriter}.
      */
     private void writeLine(final String line) {
-        printWriter.write(line + System.lineSeparator());
+        writeString(line);
+        writeString(System.lineSeparator());
+    }
+
+    /**
+     * Write the given {@link String} to the {@link #printWriter}.
+     * @param s The {@link String} to write to the {@link #printWriter}.
+     */
+    private void writeString(final String s) {
+        printWriter.write(s);
     }
 
     /**

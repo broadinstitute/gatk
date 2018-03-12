@@ -180,20 +180,7 @@ public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceF
      * @return A new instance of a CachingIndexedFastaSequenceFile.
      */
     public static CachingIndexedFastaSequenceFile checkAndCreate(final Path fastaPath) {
-
-        // Check the FASTA path:
-        checkFastaPath(fastaPath);
-
-        // Read reference data by creating an IndexedFastaSequenceFile.
-        try {
-            return new CachingIndexedFastaSequenceFile(fastaPath);
-        }
-        catch (final IllegalArgumentException e) {
-            throw new UserException.CouldNotReadInputFile(fastaPath, "Could not read reference sequence.  The FASTA must have either a .fasta or .fa extension", e);
-        }
-        catch (final Exception e) {
-            throw new UserException.CouldNotReadInputFile(fastaPath, e);
-        }
+        return checkAndCreate(fastaPath, false);
     }
 
     /**

@@ -46,11 +46,6 @@ public abstract class OutputRenderer implements AutoCloseable {
     }
 
     /**
-     * Open the {@link OutputRenderer} for writing.
-     */
-    public abstract void open();
-
-    /**
      * Close the {@link OutputRenderer}.
      */
     public abstract void close();

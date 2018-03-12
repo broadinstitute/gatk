@@ -732,7 +732,7 @@ public class GencodeFuncotation implements Funcotation {
      * The names of the fields in this GencodeFuncotation.
      * Used to access the field map.
      */
-    private enum FieldNames {
+    private enum FieldName {
         hugoSymbol,
         ncbiBuild,
         chromosome,

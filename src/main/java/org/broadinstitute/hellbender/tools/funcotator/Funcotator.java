@@ -358,7 +358,6 @@ public class Funcotator extends VariantWalker {
             default:
                 throw new GATKException("Unsupported output format type specified: " + outputFormatType.toString());
         }
-        outputRenderer.open();
 
         // Check for reference version (in)compatibility:
         if ( allowHg19GencodeContigNamesWithB37 &&
