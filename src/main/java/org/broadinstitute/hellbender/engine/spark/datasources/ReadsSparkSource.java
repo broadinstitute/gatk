@@ -221,31 +221,31 @@ public final class ReadsSparkSource implements Serializable {
         final String firstGroupInBam = reads.first().getName();
         // Find the first group in each partition
         List<List<GATKRead>> firstReadNamesInEachPartition = reads
-                .mapPartitions((FlatMapFunction<Iterator<GATKRead>, List<GATKRead>>) it ->
-                { PeekingIterator<GATKRead> current = Iterators.peekingIterator(it);
-                List<GATKRead> firstGroup = new ArrayList<>(2);
-                firstGroup.add(current.next());
-                while (current.hasNext() && current.peek().getName().equals(firstGroup.get(0).getName())) {
-                    firstGroup.add(current.next());
-                }
-                return Iterators.singletonIterator(firstGroup);
-                })
+                .mapPartitions(it -> { PeekingIterator<GATKRead> current = Iterators.peekingIterator(it);
+                                List<GATKRead> firstGroup = new ArrayList<>(2);
+                                firstGroup.add(current.next());
+                                String name = firstGroup.get(0).getName();
+                                while (current.hasNext() && current.peek().getName().equals(name)) {
+                                    firstGroup.add(current.next());
+                                }
+                                return Iterators.singletonIterator(firstGroup);
+                                })
                 .collect();
 
-        // Checking for pathological cases (read name groups that span multiple partitions)
+        // Checking for pathological cases (read name groups that span more than 2 partitions)
         String groupName = null;
         for (List<GATKRead> group : firstReadNamesInEachPartition) {
             if (group!=null && !group.isEmpty()) {
                 // If a read spans multiple partitions we expect its name to show up multiple times and we don't expect this to work properly
                 if (groupName != null && group.get(0).getName().equals(groupName)) {
                     throw new GATKException(String.format("The read name '%s' appeared across multiple partitions this could indicate there was a problem " +
-                            "with the sorting or that it has too many groups, check that the file is queryname sorted and consider decreasing the number of paritions", groupName));
+                            "with the sorting or that the rdd has too many partitions, check that the file is queryname sorted and consider decreasing the number of partitions", groupName));
                 }
                 groupName =  group.get(0).getName();
             }
         }
 
-        // Shift left, so that each partition will be joined with the first read from the _next_ partition
+        // Shift left, so that each partition will be joined with the first read group from the _next_ partition
         List<List<GATKRead>> firstReadInNextPartition = new ArrayList<>(firstReadNamesInEachPartition.subList(1, numPartitions));
         firstReadInNextPartition.add(null); // the last partition does not have any reads to add to it
 
@@ -256,7 +256,7 @@ public final class ReadsSparkSource implements Serializable {
             String firstName = current.peek().getName();
             // Make sure we don't remove reads from the first partition
             if (!firstGroupInBam.equals(firstName)) {
-                // skip the first readGroup in the _current_ partition if it is the second in a pair since it will be handled in the previous partition
+                // skip the first read name group in the _current_ partition if it is the second in a pair since it will be handled in the previous partition
                 while (current.hasNext() && current.peek() != null && current.peek().getName().equals(firstName)) {
                     current.next();
                 }
