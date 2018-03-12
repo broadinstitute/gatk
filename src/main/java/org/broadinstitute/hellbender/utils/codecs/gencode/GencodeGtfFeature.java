@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.codecs.gencode;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
+import htsjdk.tribble.annotation.Strand;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -95,7 +96,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
         baseData.annotationSource        = AnnotationSource.valueOf( gtfFields[ANNOTATION_SOURCE_INDEX] );
         baseData.featureType             = GencodeGtfFeature.FeatureType.getEnum( gtfFields[FEATURE_TYPE_INDEX].toLowerCase() );
-        baseData.genomicStrand           = GenomicStrand.getEnum( gtfFields[GENOMIC_STRAND_INDEX] );
+        baseData.genomicStrand           = convertStringToStrand( gtfFields[GENOMIC_STRAND_INDEX] );
         baseData.genomicPhase            = GenomicPhase.getEnum( gtfFields[GENOMIC_PHASE_INDEX] );
 
         // Get the extra fields from the last column:
@@ -221,6 +222,23 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         // Save our anonymous optional fields:
         if ( anonymousOptionalFieldBuilder.length() != 0 ) {
             baseData.anonymousOptionalFields = anonymousOptionalFieldBuilder.toString();
+        }
+    }
+
+    /**
+     * Converts the given {@link String} into a {@link Strand}.
+     * @param s {@link String} to convert into a {@link Strand}.
+     * @return The {@link Strand} corresponding to {@code s}.
+     */
+    private static Strand convertStringToStrand( final String s ) {
+        if ( s.equals("+") ) {
+            return Strand.POSITIVE;
+        }
+        else if ( s.equals("-") ) {
+            return Strand.NEGATIVE;
+        }
+        else {
+            throw new IllegalArgumentException("Unexpected value: " + s);
         }
     }
 
@@ -459,7 +477,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         return baseData.genomicPosition.getEnd();
     }
 
-    public GenomicStrand getGenomicStrand() {
+    public Strand getGenomicStrand() {
         return baseData.genomicStrand;
     }
 
@@ -674,6 +692,10 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
     // ================================================================================================
 
+
+
+    // ================================================================================================
+
     /**
      * Keyword identifying the source of the feature, like a program
      * (e.g. Augustus or RepeatMasker) or an organization (like TAIR).
@@ -792,41 +814,6 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
          * @return The {@link GencodeGtfFeature} represented by the given {@code gtfFields}
          */
         abstract public GencodeGtfFeature create(final String[] gtfFields);
-    }
-
-    /**
-     * The strand of DNA from which a given feature was read.
-     *
-     * For more information, see:
-     *     https://www.gencodegenes.org/data_format.html
-     *     https://en.wikipedia.org/wiki/General_feature_format
-     */
-    public enum GenomicStrand {
-        FORWARD("+"),
-        BACKWARD("-");
-
-        @SuppressWarnings("unchecked")
-        private static final Map<String, GenomicStrand> VALUE_MAP =
-                Arrays.stream(values()).collect(Collectors.toMap(v -> v.serialized.toLowerCase(), v -> v));
-
-        private final String serialized;
-
-        GenomicStrand(final String serializedValue) {
-            serialized = serializedValue;
-        }
-
-        @Override
-        public String toString() {
-            return serialized;
-        }
-
-        public static GenomicStrand getEnum(final String s) {
-            final String lowerS = s.toLowerCase();
-            if ( VALUE_MAP.containsKey(lowerS) ){
-                return VALUE_MAP.get(lowerS);
-            }
-            throw new IllegalArgumentException("Unexpected value: " + s);
-        }
     }
 
     /**

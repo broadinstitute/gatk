@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 
+import htsjdk.tribble.annotation.Strand;
 import org.broadinstitute.hellbender.utils.codecs.gencode.*;
 
 import java.util.Collections;
@@ -16,14 +17,14 @@ public class DataProviderForExampleGencodeGtfGene {
         GencodeGtfFeatureBaseData data;
 
         data = new GencodeGtfFeatureBaseData(1, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.GENE,
-                1, 3000, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", null, GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                1, 3000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", null, GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", null, null, null, -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED, null, null);
         final GencodeGtfGeneFeature gene = (GencodeGtfGeneFeature)GencodeGtfFeature.create(data);
 
         // ======================
 
         data = new GencodeGtfFeatureBaseData(2, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
-                1, 1000, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                1, 1000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT1", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -31,7 +32,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfTranscriptFeature transcript1 = (GencodeGtfTranscriptFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(3, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
-                1, 200, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                1, 200, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT1", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -39,7 +40,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfExonFeature exon1 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(4, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.START_CODON,
-                99, 101, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                99, 101, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT1", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -47,7 +48,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfStartCodonFeature startCodon1 = (GencodeGtfStartCodonFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(5, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
-                201, 400, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                201, 400, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT1", 2, "TEST_EXON2", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -55,7 +56,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfExonFeature exon2 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(6, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
-                201, 400, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                201, 400, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT1", 2, "TEST_EXON2", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -63,7 +64,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfCDSFeature cds1 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(7, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
-                401, 600, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                401, 600, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT1", 3, "TEST_EXON3", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -71,7 +72,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfExonFeature exon3 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(8, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
-                401, 600, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                401, 600, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT1", 3, "TEST_EXON3", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -79,7 +80,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfCDSFeature cds2 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(9, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
-                601, 800, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                601, 800, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT1", 4, "TEST_EXON4", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -87,7 +88,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfExonFeature exon4 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(10, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
-                601, 800, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                601, 800, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT1", 4, "TEST_EXON4", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -96,7 +97,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
 
         data = new GencodeGtfFeatureBaseData(11, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
-                801, 1000, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                801, 1000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT1", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -104,7 +105,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfExonFeature exon5 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(12, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.STOP_CODON,
-                900, 902, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                900, 902, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT1", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -112,7 +113,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfStopCodonFeature stopCodon1 = (GencodeGtfStopCodonFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(13, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
-                1, 98, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                1, 98, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT1", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -120,7 +121,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfUTRFeature utr1 = (GencodeGtfUTRFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(14, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
-                903, 1000, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                903, 1000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT1", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -130,7 +131,7 @@ public class DataProviderForExampleGencodeGtfGene {
         // ======================
 
         data = new GencodeGtfFeatureBaseData(15, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
-                1001, 2000, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                1001, 2000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT2", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -138,7 +139,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfTranscriptFeature transcript2 = (GencodeGtfTranscriptFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(16, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
-                1001, 1200, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                1001, 1200, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT2", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -146,7 +147,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfExonFeature exon6 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(17, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.START_CODON,
-                1099, 1101, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                1099, 1101, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT2", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -154,7 +155,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfStartCodonFeature startCodon2 = (GencodeGtfStartCodonFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(18, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
-                1099, 1200, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                1099, 1200, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT2", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -162,7 +163,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfCDSFeature cds4 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(19, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
-                1201, 1400, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                1201, 1400, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT2", 2, "TEST_EXON2", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -170,7 +171,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfExonFeature exon7 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(20, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
-                1201, 1400, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                1201, 1400, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT2", 2, "TEST_EXON2", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -178,7 +179,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfCDSFeature cds5 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(21, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
-                1401, 1600, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                1401, 1600, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT2", 3, "TEST_EXON3", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -186,7 +187,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfExonFeature exon8 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(22, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
-                1401, 1600, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                1401, 1600, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT2", 3, "TEST_EXON3", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -194,7 +195,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfCDSFeature cds6 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(23, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
-                1601, 1800, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                1601, 1800, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT2", 4, "TEST_EXON4", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -202,7 +203,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfExonFeature exon9 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(24, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
-                1601, 1800, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                1601, 1800, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT2", 4, "TEST_EXON4", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -211,7 +212,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
 
         data = new GencodeGtfFeatureBaseData(25, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
-                1801, 2000, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                1801, 2000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT2", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -219,7 +220,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfExonFeature exon10 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(26, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
-                1801, 1899, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                1801, 1899, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT2", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -227,7 +228,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfCDSFeature cds8 = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(27, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.STOP_CODON,
-                1900, 1902, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                1900, 1902, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT2", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -235,7 +236,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfStopCodonFeature stopCodon2 = (GencodeGtfStopCodonFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(28, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
-                1001, 1098, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                1001, 1098, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT2", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -243,7 +244,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfUTRFeature utr3 = (GencodeGtfUTRFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(29, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
-                1903, 2000, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                1903, 2000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT2", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -253,7 +254,7 @@ public class DataProviderForExampleGencodeGtfGene {
         // ======================
 
         data = new GencodeGtfFeatureBaseData(30, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
-                2001, 3000, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT3", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                2001, 3000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT3", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT3", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -261,7 +262,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfTranscriptFeature transcript3 = (GencodeGtfTranscriptFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(31, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
-                2001, 2200, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT3", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                2001, 2200, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT3", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT3", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -269,7 +270,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfExonFeature exon11 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(32, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
-                2201, 2400, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT3", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                2201, 2400, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT3", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT3", 2, "TEST_EXON2", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -277,7 +278,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfExonFeature exon12 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(33, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
-                2401, 2600, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT3", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                2401, 2600, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT3", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT3", 3, "TEST_EXON3", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -285,7 +286,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfExonFeature exon13 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(34, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
-                2601, 2800, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT3", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                2601, 2800, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT3", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT3", 4, "TEST_EXON4", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
@@ -293,7 +294,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final GencodeGtfExonFeature exon14 = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
 
         data = new GencodeGtfFeatureBaseData(35, "chr1", GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
-                2801, 3000, GencodeGtfFeature.GenomicStrand.FORWARD, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT3", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                2801, 3000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT3", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
                 null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT3", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
