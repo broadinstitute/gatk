@@ -120,16 +120,6 @@ public class GencodeFuncotationBuilder {
     }
 
     /**
-     * Set the bases of tumorSeqAllele1 in the {@link GencodeFuncotation}.
-     * @param altAllele A {@link String} containing the bases in the allele to set as tumorSeqAllele1 for the {@link GencodeFuncotation}.
-     * @return {@code this} {@link GencodeFuncotationBuilder}
-     */
-    public GencodeFuncotationBuilder setTumorSeqAllele1(final String altAllele) {
-        gencodeFuncotation.setTumorSeqAllele1(altAllele);
-        return this;
-    }
-
-    /**
      * Set the bases of tumorSeqAllele2 in the {@link GencodeFuncotation}.
      * @param altAllele A {@link String} containing the bases in the allele to set as tumorSeqAllele2 for the {@link GencodeFuncotation}.
      * @return {@code this} {@link GencodeFuncotationBuilder}

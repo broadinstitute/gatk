@@ -1543,7 +1543,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
          final GencodeFuncotationBuilder gencodeFuncotationBuilder = new GencodeFuncotationBuilder();
          final Strand strand = transcript.getGenomicStrand() == GencodeGtfFeature.GenomicStrand.FORWARD ? Strand.POSITIVE : Strand.NEGATIVE;
 
-         gencodeFuncotationBuilder.setRefAllele(variant.getReference())
+         gencodeFuncotationBuilder
+                 .setRefAllele(variant.getReference())
                  .setStrand(strand)
                  .setHugoSymbol(gtfFeature.getGeneName())
                  .setNcbiBuild(gtfFeature.getUcscGenomeVersion())
@@ -1552,9 +1553,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                  .setGeneTranscriptType(gtfFeature.getTranscriptType());
 
          // The end position is inclusive, so we need to make sure we don't double-count the start position (so we subtract 1):
-         gencodeFuncotationBuilder.setEnd(variant.getStart() + altAllele.length() - 1)
+         gencodeFuncotationBuilder
+                 .setEnd(variant.getStart() + altAllele.length() - 1)
                  .setVariantType(getVariantType(variant.getReference(), altAllele))
-                 .setTumorSeqAllele1(variant.getReference().getBaseString())
                  .setTumorSeqAllele2(altAllele.getBaseString())
                  .setGenomeChange(getGenomeChangeString(variant, altAllele, gtfFeature))
                  .setAnnotationTranscript(transcript.getTranscriptId())
@@ -1749,7 +1750,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         funcotationBuilder.setVariantClassification( GencodeFuncotation.VariantClassification.IGR )
                           .setRefAllele( variant.getReference() )
                           .setStrand(Strand.POSITIVE)
-                          .setTumorSeqAllele1( variant.getReference().getBaseString() )
                           .setTumorSeqAllele2( altAllele.getBaseString() )
                           .setStart(variant.getStart())
                           .setEnd(variant.getEnd())

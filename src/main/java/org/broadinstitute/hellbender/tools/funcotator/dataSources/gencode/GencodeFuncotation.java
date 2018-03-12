@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature;
 import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfGeneFeature;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -38,7 +37,6 @@ public class GencodeFuncotation implements Funcotation {
     private VariantClassification   secondaryVariantClassification;     //          CDS / INTRON
     private VariantType             variantType;                        // TRIVIAL
     private String                  refAllele;                          // TRIVIAL
-    private String                  tumorSeqAllele1;                    // TRIVIAL
     private String                  tumorSeqAllele2;                    // TRIVIAL
 
     private String                  genomeChange;                       // TRIVIAL
@@ -55,43 +53,41 @@ public class GencodeFuncotation implements Funcotation {
 
     private List<String>            otherTranscripts;                   // TRIVIAL
 
-    private HashMap<String, String> fieldOverrideMap;
-
     //------------------------------------------------------------
     // Non-serialized fields:
 
     // These are included because they help determine the transcript selection
-    private Integer                             locusLevel;
-    private GencodeGtfGeneFeature.FeatureTag    apprisRank;
-    private Integer                             transcriptLength;
-    private String                              version;
+    private Integer                              locusLevel;
+    private GencodeGtfGeneFeature.FeatureTag     apprisRank;
+    private Integer                              transcriptLength;
+    private String                               version;
     private GencodeGtfFeature.GeneTranscriptType geneTranscriptType;
 
     //------------------------------------------------------------
     // Fields for overriding serialized values:
-    private String hugoSymbolSerializedOverride = null;
-    private String ncbiBuildSerializedOverride = null;
-    private String chromosomeSerializedOverride = null;
-    private String startSerializedOverride = null;
-    private String endSerializedOverride = null;
-    private String variantClassificationSerializedOverride = null;
+    private String hugoSymbolSerializedOverride                     = null;
+    private String ncbiBuildSerializedOverride                      = null;
+    private String chromosomeSerializedOverride                     = null;
+    private String startSerializedOverride                          = null;
+    private String endSerializedOverride                            = null;
+    private String variantClassificationSerializedOverride          = null;
     private String secondaryVariantClassificationSerializedOverride = null;
-    private String variantTypeSerializedOverride = null;
-    private String refAlleleSerializedOverride = null;
-    private String tumorSeqAllele1SerializedOverride = null;
-    private String tumorSeqAllele2SerializedOverride = null;
+    private String variantTypeSerializedOverride                    = null;
+    private String refAlleleSerializedOverride                      = null;
+    private String tumorSeqAllele1SerializedOverride                = null;
+    private String tumorSeqAllele2SerializedOverride                = null;
 
-    private String genomeChangeSerializedOverride = null;
+    private String genomeChangeSerializedOverride         = null;
     private String annotationTranscriptSerializedOverride = null;
-    private String transcriptStrandSerializedOverride = null;
-    private String transcriptExonSerializedOverride = null;
-    private String transcriptPosSerializedOverride = null;
-    private String cDnaChangeSerializedOverride = null;
-    private String codonChangeSerializedOverride = null;
-    private String proteinChangeSerializedOverride = null;
-    private String gcContentSerializedOverride = null;
-    private String referenceContextSerializedOverride = null;
-    private String otherTranscriptsSerializedOverride = null;
+    private String transcriptStrandSerializedOverride     = null;
+    private String transcriptExonSerializedOverride       = null;
+    private String transcriptPosSerializedOverride        = null;
+    private String cDnaChangeSerializedOverride           = null;
+    private String codonChangeSerializedOverride          = null;
+    private String proteinChangeSerializedOverride        = null;
+    private String gcContentSerializedOverride            = null;
+    private String referenceContextSerializedOverride     = null;
+    private String otherTranscriptsSerializedOverride     = null;
 
     //==================================================================================================================
 
@@ -113,7 +109,6 @@ public class GencodeFuncotation implements Funcotation {
         this.secondaryVariantClassification = that.secondaryVariantClassification;
         this.variantType = that.variantType;
         this.refAllele = that.refAllele;
-        this.tumorSeqAllele1 = that.tumorSeqAllele1;
         this.tumorSeqAllele2 = that.tumorSeqAllele2;
         this.genomeChange = that.genomeChange;
         this.annotationTranscript = that.annotationTranscript;
@@ -186,7 +181,8 @@ public class GencodeFuncotation implements Funcotation {
                 (secondaryVariantClassificationSerializedOverride != null ? secondaryVariantClassificationSerializedOverride : (secondaryVariantClassification != null ? secondaryVariantClassification : "")) + DELIMITER +
                 (variantTypeSerializedOverride != null ? variantTypeSerializedOverride : (variantType != null ? variantType : "")) + DELIMITER +
                 (refAlleleSerializedOverride != null ? refAlleleSerializedOverride : (refAllele != null ? refAllele : "")) + DELIMITER +
-                (tumorSeqAllele1SerializedOverride != null ? tumorSeqAllele1SerializedOverride : (tumorSeqAllele1 != null ? tumorSeqAllele1 : "")) + DELIMITER +
+                // NOTE: Ref allele gets serialized as the tumorSeqAllele1 as well, but we have to account for the override:
+                (tumorSeqAllele1SerializedOverride != null ? tumorSeqAllele1SerializedOverride : (refAllele != null ? refAllele : "")) + DELIMITER +
                 (tumorSeqAllele2SerializedOverride != null ? tumorSeqAllele2SerializedOverride : (tumorSeqAllele2 != null ? tumorSeqAllele2 : "")) + DELIMITER +
                 (genomeChangeSerializedOverride != null ? genomeChangeSerializedOverride : (genomeChange != null ? genomeChange : "")) + DELIMITER +
                 (annotationTranscriptSerializedOverride != null ? annotationTranscriptSerializedOverride : (annotationTranscript != null ? annotationTranscript : "")) + DELIMITER +
@@ -298,7 +294,7 @@ public class GencodeFuncotation implements Funcotation {
                 case "refAllele":
                     return (refAlleleSerializedOverride != null ? refAlleleSerializedOverride : (refAllele != null ? refAllele : ""));
                 case "tumorSeqAllele1":
-                    return (tumorSeqAllele1SerializedOverride != null ? tumorSeqAllele1SerializedOverride : (tumorSeqAllele1 != null ? tumorSeqAllele1 : ""));
+                    return (tumorSeqAllele1SerializedOverride != null ? tumorSeqAllele1SerializedOverride : (refAllele != null ? refAllele : ""));
                 case "tumorSeqAllele2":
                     return (tumorSeqAllele2SerializedOverride != null ? tumorSeqAllele2SerializedOverride : (tumorSeqAllele2 != null ? tumorSeqAllele2 : ""));
                 case "genomeChange":
@@ -347,8 +343,6 @@ public class GencodeFuncotation implements Funcotation {
         if ( secondaryVariantClassification != that.secondaryVariantClassification ) return false;
         if ( variantType != that.variantType ) return false;
         if ( refAllele != null ? !refAllele.equals(that.refAllele) : that.refAllele != null ) return false;
-        if ( tumorSeqAllele1 != null ? !tumorSeqAllele1.equals(that.tumorSeqAllele1) : that.tumorSeqAllele1 != null )
-            return false;
         if ( tumorSeqAllele2 != null ? !tumorSeqAllele2.equals(that.tumorSeqAllele2) : that.tumorSeqAllele2 != null )
             return false;
         if ( genomeChange != null ? !genomeChange.equals(that.genomeChange) : that.genomeChange != null ) return false;
@@ -431,7 +425,6 @@ public class GencodeFuncotation implements Funcotation {
         result = 31 * result + (secondaryVariantClassification != null ? secondaryVariantClassification.hashCode() : 0);
         result = 31 * result + (variantType != null ? variantType.hashCode() : 0);
         result = 31 * result + (refAllele != null ? refAllele.hashCode() : 0);
-        result = 31 * result + (tumorSeqAllele1 != null ? tumorSeqAllele1.hashCode() : 0);
         result = 31 * result + (tumorSeqAllele2 != null ? tumorSeqAllele2.hashCode() : 0);
         result = 31 * result + (genomeChange != null ? genomeChange.hashCode() : 0);
         result = 31 * result + (annotationTranscript != null ? annotationTranscript.hashCode() : 0);
@@ -486,7 +479,6 @@ public class GencodeFuncotation implements Funcotation {
                 ", secondaryVariantClassification=" + secondaryVariantClassification +
                 ", variantType=" + variantType +
                 ", refAllele='" + refAllele + '\'' +
-                ", tumorSeqAllele1='" + tumorSeqAllele1 + '\'' +
                 ", tumorSeqAllele2='" + tumorSeqAllele2 + '\'' +
                 ", genomeChange='" + genomeChange + '\'' +
                 ", annotationTranscript='" + annotationTranscript + '\'' +
@@ -601,14 +593,6 @@ public class GencodeFuncotation implements Funcotation {
 
     public void setRefAllele(final String refAllele) {
         this.refAllele = refAllele;
-    }
-
-    public String getTumorSeqAllele1() {
-        return tumorSeqAllele1;
-    }
-
-    public void setTumorSeqAllele1(final String tumorSeqAllele1) {
-        this.tumorSeqAllele1 = tumorSeqAllele1;
     }
 
     public String getTumorSeqAllele2() {
