@@ -56,7 +56,7 @@ import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.
  *    gatk SplitNCigarReads \
  *      -R Homo_sapiens_assembly38.fasta \
  *      -I input.bam \
- *      -o output.bam
+ *      -O output.bam
  *  </pre>
  */
 @DocumentedFeature
