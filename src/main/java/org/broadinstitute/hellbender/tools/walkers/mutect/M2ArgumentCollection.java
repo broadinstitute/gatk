@@ -25,7 +25,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String GERMLINE_RESOURCE_LONG_NAME = "germline-resource";
     public static final String DEFAULT_AF_LONG_NAME = "af-of-alleles-not-in-resource";
     public static final String DEFAULT_AF_SHORT_NAME = "default-af";
-    public static final String LOG_SOMATIC_PRIOR_LONG_NAME = "log-somatic-prior";
     public static final String EMISSION_LOG_LONG_NAME = "tumor-lod-to-emit";
     public static final String EMISSION_LOG_SHORT_NAME = "emit-lod";
     public static final String INITIAL_TUMOR_LOD_LONG_NAME = "initial-tumor-lod";
@@ -77,21 +76,9 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * Population allele fraction assigned to alleles not found in germline resource.
      */
     @Argument(fullName= DEFAULT_AF_LONG_NAME, shortName = DEFAULT_AF_SHORT_NAME,
-            doc="Population allele fraction assigned to alleles not found in germline resource.  A reasonable value is" +
-                    "1/(2* number of samples in resource) if a germline resource is available; otherwise an average " +
-                    "heterozygosity rate such as 0.001 is reasonable.", optional = true)
-    public double afOfAllelesNotInGermlineResource = 0.001;
-
-    /**
-     * Prior log-10 probability that any given site has a somatic allele. Impacts germline probability calculation.
-     * The workflow uses this parameter only towards the germline event filter. It does NOT relate to the LOD threshold.
-     * For example, -6 translates to one in a million or ~3000 somatic mutations per human genome.
-     * Depending on tumor type, mutation rate ranges vary (Lawrence et al. Nature 2013), and so adjust parameter accordingly.
-     * For higher expected rate of mutation, adjust number up, e.g. -5. For lower expected rate of mutation, adjust number down, e.g. -7.
-     */
-    @Argument(fullName= LOG_SOMATIC_PRIOR_LONG_NAME,
-            doc="Prior probability that a given site has a somatic allele.", optional = true)
-    public double log10PriorProbOfSomaticEvent = -6.0;
+            doc="Population allele fraction assigned to alleles not found in germline resource.  Please see docs/mutect/mutect2.pdf for" +
+                    "a derivation of the default value.", optional = true)
+    public double afOfAllelesNotInGermlineResource = 5e-8;
 
     /**
      * Only variants with tumor LODs exceeding this threshold will be written to the VCF, regardless of filter status.

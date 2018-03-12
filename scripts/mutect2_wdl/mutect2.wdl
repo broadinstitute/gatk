@@ -270,6 +270,7 @@ workflow Mutect2 {
             compress = compress,
             preemptible_attempts = preemptible_attempts,
             contamination_table = CalculateContamination.contamination_table,
+            maf_segments = CalculateContamination.maf_segments,
             m2_extra_filtering_args = m2_extra_filtering_args,
             disk_space = ceil(size(MergeVCFs.merged_vcf, "GB") * small_input_to_output_multiplier) + disk_pad
     }
@@ -650,7 +651,7 @@ task CalculateContamination {
         fi
 
         gatk --java-options "-Xmx${command_mem}m" GetPileupSummaries -R ${ref_fasta} -I ${tumor_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O pileups.table
-        gatk --java-options "-Xmx${command_mem}m" CalculateContamination -I pileups.table -O contamination.table $NORMAL_CMD
+        gatk --java-options "-Xmx${command_mem}m" CalculateContamination -I pileups.table -O contamination.table --tumor-segmentation segments.table $NORMAL_CMD
     }
 
     runtime {
@@ -663,6 +664,7 @@ task CalculateContamination {
     output {
         File pileups = "pileups.table"
         File contamination_table = "contamination.table"
+        File maf_segments = "segments.table"
     }
 }
 
@@ -676,6 +678,7 @@ task Filter {
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
     String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
     File? contamination_table
+    File? maf_segments
     String? m2_extra_filtering_args
 
     File? gatk_override
@@ -700,6 +703,7 @@ task Filter {
         gatk --java-options "-Xmx${command_mem}m" FilterMutectCalls -V ${unfiltered_vcf} \
       	    -O ${output_vcf} \
       	    ${"--contamination-table " + contamination_table} \
+      	    ${"--tumor-segmentation " + maf_segments}
       	    ${m2_extra_filtering_args}
     }
 
