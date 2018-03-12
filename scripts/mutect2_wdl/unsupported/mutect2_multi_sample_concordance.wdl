@@ -77,6 +77,7 @@ c    }
         Array[File] tpfp_idx = Concordance.tpfp_idx
         Array[File] ftnfn = Concordance.ftnfn
         Array[File] ftnfn_idx = Concordance.ftnfn_idx
+        Array[File] filter_analysis = Concordance.filter_analysis
         Array[File] summary = Concordance.summary
     }
 }
@@ -104,6 +105,7 @@ task Concordance {
             -tpfn "tpfn.vcf" \
             -tpfp "tpfp.vcf" \
             -ftnfn "ftnfn.vcf" \
+            --filter-analysis "filter-analysis.txt" \
             -summary summary.tsv
     }
 
@@ -121,6 +123,7 @@ task Concordance {
         File tpfp_idx = "tpfp.vcf.idx"
         File ftnfn = "ftnfn.vcf"
         File ftnfn_idx = "ftnfn.vcf.idx"
+        File filter_analysis = "filter-analysis.txt"
         File summary = "summary.tsv"
     }
 }

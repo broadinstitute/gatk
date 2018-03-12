@@ -3,11 +3,9 @@ package org.broadinstitute.hellbender.tools.walkers.validation;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLine;
-import htsjdk.variant.vcf.VCFHeaderLineType;
-import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import htsjdk.variant.vcf.*;
 import org.apache.commons.collections4.Predicate;
+import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.commons.lang.mutable.MutableLong;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -23,8 +21,8 @@ import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.EnumMap;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Evaluate site-level concordance of an input VCF against a truth VCF.
@@ -78,6 +76,8 @@ public class Concordance extends AbstractConcordanceWalker {
     public static final String SUMMARY_LONG_NAME = "summary";
     public static final String SUMMARY_SHORT_NAME = "S";
 
+    public static final String FILTER_ANALYSIS_LONG_NAME = "filter-analysis";
+
     public static final String TRUE_POSITIVES_AND_FALSE_NEGATIVES_LONG_NAME = "true-positives-and-false-negatives";
     public static final String TRUE_POSITIVES_AND_FALSE_NEGATIVES_SHORT_NAME = "tpfn";
     public static final String TRUE_POSITIVES_AND_FALSE_POSITIVES_LONG_NAME = "true-positives-and-false-positives";
@@ -93,6 +93,11 @@ public class Concordance extends AbstractConcordanceWalker {
             fullName = SUMMARY_LONG_NAME,
             shortName = SUMMARY_SHORT_NAME)
     protected File summary;
+
+    @Argument(doc = "A table of the contribution of each filter to true and false negatives",
+            fullName = FILTER_ANALYSIS_LONG_NAME,
+            optional = true)
+    protected File filterAnalysis;
 
     @Argument(doc = "A vcf to write true positives and false negatives",
             fullName = TRUE_POSITIVES_AND_FALSE_NEGATIVES_LONG_NAME,
@@ -119,6 +124,8 @@ public class Concordance extends AbstractConcordanceWalker {
     private VariantContextWriter truePositivesAndFalsePositivesVcfWriter;
     private VariantContextWriter filteredTrueNegativesAndFalseNegativesVcfWriter;
 
+    private final Map<String, FilterAnalysisRecord> filterAnalysisRecords = new HashMap<>();
+
     @Override
     public void onTraversalStart() {
         Set<VCFHeaderLine> defaultToolHeaderLines = getDefaultToolVCFHeaderLines();
@@ -126,6 +133,8 @@ public class Concordance extends AbstractConcordanceWalker {
             snpCounts.put(state, new MutableLong(0));
             indelCounts.put(state, new MutableLong(0));
         }
+
+        final VCFHeader evalHeader = getEvalHeader();
 
         if (truePositivesAndFalseNegativesVcf != null) {
             truePositivesAndFalseNegativesVcfWriter = createVCFWriter(truePositivesAndFalseNegativesVcf);
@@ -137,18 +146,22 @@ public class Concordance extends AbstractConcordanceWalker {
 
         if (truePositivesAndFalsePositivesVcf != null) {
             truePositivesAndFalsePositivesVcfWriter = createVCFWriter(truePositivesAndFalsePositivesVcf);
-            final VCFHeader evalHeader = getEvalHeader();
+
             defaultToolHeaderLines.forEach(evalHeader::addMetaDataLine);
             evalHeader.addMetaDataLine(TRUTH_STATUS_HEADER_LINE);
             truePositivesAndFalsePositivesVcfWriter.writeHeader(evalHeader);
         }
+
         if (filteredTrueNegativesAndFalseNegativesVcf != null) {
             filteredTrueNegativesAndFalseNegativesVcfWriter = createVCFWriter(filteredTrueNegativesAndFalseNegativesVcf);
-            final VCFHeader evalHeader = getEvalHeader();
             evalHeader.addMetaDataLine(TRUTH_STATUS_HEADER_LINE);
             defaultToolHeaderLines.forEach(evalHeader::addMetaDataLine);
             filteredTrueNegativesAndFalseNegativesVcfWriter.writeHeader(evalHeader);
         }
+
+        final List<String> filtersInVcf = evalHeader.getFilterLines().stream().map(VCFFilterHeaderLine::getID).collect(Collectors.toList());
+        filtersInVcf.forEach(filter -> filterAnalysisRecords.put(filter, new FilterAnalysisRecord(filter, 0,0,0,0)));
+
     }
 
     @Override
@@ -178,6 +191,28 @@ public class Concordance extends AbstractConcordanceWalker {
                 break;
             default:
                 throw new IllegalStateException("Unexpected ConcordanceState: " + concordanceState.toString());
+        }
+
+        if (filterAnalysis != null && concordanceState == ConcordanceState.FILTERED_TRUE_NEGATIVE || concordanceState == ConcordanceState.FILTERED_FALSE_NEGATIVE) {
+            final Set<String> filters = truthVersusEval.getEval().getFilters();
+            final boolean unique = filters.size() == 1;
+            filters.stream().map(filterAnalysisRecords::get).forEach(record -> updateFilterAnalysisRecord(record, concordanceState, unique));
+        }
+    }
+
+    private void updateFilterAnalysisRecord(final FilterAnalysisRecord record, final ConcordanceState state, final boolean isOnlyFilter) {
+        if (state == ConcordanceState.FILTERED_TRUE_NEGATIVE) {
+            record.incrementTrueNegative();
+            if (isOnlyFilter) {
+                record.incrementUniqueTrueNegative();
+            }
+        } else if (state == ConcordanceState.FILTERED_FALSE_NEGATIVE) {
+            record.incrementFalseNegative();
+            if (isOnlyFilter) {
+                record.incrementUniqueFalseNegative();
+            }
+        } else {
+            throw new IllegalStateException("This method should only be called on a filtered ConcordanceState.");
         }
     }
 
@@ -232,6 +267,10 @@ public class Concordance extends AbstractConcordanceWalker {
                     indelCounts.get(ConcordanceState.FALSE_NEGATIVE).longValue() + indelCounts.get(ConcordanceState.FILTERED_FALSE_NEGATIVE).longValue()));
         } catch (IOException e){
             throw new UserException("Encountered an IO exception writing the concordance summary table", e);
+        }
+
+        if (filterAnalysis != null) {
+            FilterAnalysisRecord.writeToFile(filterAnalysisRecords.values(), filterAnalysis);
         }
 
         if (truePositivesAndFalsePositivesVcfWriter != null) {
