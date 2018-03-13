@@ -19,13 +19,14 @@ import java.io.File;
 public final class HDF5UtilsUnitTest extends GATKBaseTest {
     private static final double DOUBLE_MATRIX_TOLERANCE = 1E-4;
     private static final int CHUNK_DIVISOR = 256;
+    private static final int MAX_CHUNK_SIZE = HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX / CHUNK_DIVISOR;
 
     @DataProvider(name = "testCreateLargeMatrixData")
     public Object[][] dataProvider() {
         return new Object[][] {
                 new Object[] {100, 100000},
-                new Object[] {CHUNK_DIVISOR + 16, (Integer.MAX_VALUE / Byte.SIZE) / CHUNK_DIVISOR},
-                new Object[] {(Integer.MAX_VALUE / Byte.SIZE) / CHUNK_DIVISOR, CHUNK_DIVISOR + 16}
+                new Object[] {CHUNK_DIVISOR + 16, MAX_CHUNK_SIZE},
+                new Object[] {MAX_CHUNK_SIZE, CHUNK_DIVISOR + 16}
         };
     }
 
@@ -40,7 +41,7 @@ public final class HDF5UtilsUnitTest extends GATKBaseTest {
         final RealMatrix largeMatrix = createMatrixOfGaussianValues(numRows, numColumns, mean, sigma);
         final File tempOutputHD5 = IOUtils.createTempFile("large-matrix-", ".hd5");
         try (final HDF5File hdf5File = new HDF5File(tempOutputHD5, HDF5File.OpenMode.CREATE)) {
-            HDF5Utils.writeChunkedDoubleMatrix(hdf5File, matrixPath, largeMatrix.getData(), CHUNK_DIVISOR);
+            HDF5Utils.writeChunkedDoubleMatrix(hdf5File, matrixPath, largeMatrix.getData(), MAX_CHUNK_SIZE);
         }
 
         try (final HDF5File hdf5FileForReading = new HDF5File(tempOutputHD5, HDF5File.OpenMode.READ_ONLY)) {

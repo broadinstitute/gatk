@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -134,41 +135,38 @@ public final class HDF5Utils {
      * Given a large matrix, chunks the matrix into equally sized subsets of rows
      * (plus a subset containing the remainder, if necessary) and writes these submatrices to indexed sub-paths
      * to avoid a hard limit in Java HDF5 on the number of elements in a matrix given by
-     * {@code MAX_NUM_VALUES_PER_HDF5_MATRIX}. The number of chunks is determined by {@code chunkDivisor},
+     * {@code MAX_NUM_VALUES_PER_HDF5_MATRIX}. The number of chunks is determined by {@code maxChunkSize},
      * which should be set appropriately for the desired number of columns.
      *
-     * @param chunkDivisor  The maximum number of values in each chunk
-     *                      is given by {@code MAX_NUM_VALUES_PER_HDF5_MATRIX} / {@code chunkDivisor},
-     *                      so increasing this number will reduce heap usage when writing chunks,
-     *                      which requires subarrays to be copied.  However, since a single row is not allowed
-     *                      to be split across multiple chunks, the number of columns must be less
-     *                      than the maximum number of values in each chunk.  For example,
-     *                      {@code chunkDivisor} = 16 allows for 16777215 columns.
+     * @param maxChunkSize  The maximum number of values in each chunk. Decreasing this number will reduce
+     *                      heap usage when writing chunks, which requires subarrays to be copied.
+     *                      However, since a single row is not allowed to be split across multiple chunks,
+     *                      the number of columns must be less than the maximum number of values in each chunk.
      */
     public static void writeChunkedDoubleMatrix(final HDF5File file,
                                                 final String path,
                                                 final double[][] matrix,
-                                                final int chunkDivisor) {
+                                                final int maxChunkSize) {
         Utils.nonNull(file);
         IOUtils.canReadFile(file.getFile());
         Utils.nonNull(path);
         Utils.nonNull(matrix);
-        Utils.validateArg(chunkDivisor > 0, "Chunk divisor must be positive.");
-        final int maxNumValuesPerChunk = MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX / chunkDivisor;
+        ParamUtils.inRange(maxChunkSize, 1 , MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX,
+                String.format("Maximum chunk size must be in [1, %d].", MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX));
         final long numRows = matrix.length;
         Utils.validateArg(numRows > 0, "Matrix must contain at least one row.");
         final long numColumns = matrix[0].length;
         Utils.validateArg(numColumns > 0, "Matrix must contain at least one column.");
-        Utils.validateArg(numColumns <= maxNumValuesPerChunk,
+        Utils.validateArg(numColumns <= maxChunkSize,
                 String.format("Number of columns (%d) exceeds the maximum number of values allowed per chunk (%d).",
-                        numColumns, maxNumValuesPerChunk));
+                        numColumns, maxChunkSize));
 
-        final int numRowsPerFilledChunk = (int) (maxNumValuesPerChunk / numColumns);
+        final int numRowsPerFilledChunk = (int) (maxChunkSize / numColumns);
         final int numFilledChunks = numRowsPerFilledChunk == 0 ? 0 : (int) numRows / numRowsPerFilledChunk;
         final boolean needPartialChunk = numFilledChunks == 0 || numRows % numRowsPerFilledChunk != 0;
 
         logger.debug("Number of values in matrix / maximum number allowed for HDF5 matrix: " + (double) numRows * numColumns / MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX);
-        logger.debug("Maximum number of values per chunk: " + maxNumValuesPerChunk);
+        logger.debug("Maximum number of values per chunk: " + maxChunkSize);
         logger.debug("Number of filled chunks: " + numFilledChunks);
         logger.debug("Number of rows per filled chunk: " + numRowsPerFilledChunk);
         logger.debug("Partial chunk needed: " + needPartialChunk);

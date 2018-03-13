@@ -5,6 +5,7 @@ import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -20,6 +21,7 @@ import org.broadinstitute.hellbender.tools.copynumber.denoising.GCBiasCorrector;
 import org.broadinstitute.hellbender.tools.copynumber.denoising.HDF5SVDReadCountPanelOfNormals;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
+import org.broadinstitute.hellbender.tools.copynumber.utils.HDF5Utils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -126,6 +128,7 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
     public static final String EXTREME_SAMPLE_MEDIAN_PERCENTILE_LONG_NAME = "extreme-sample-median-percentile";
     public static final String IMPUTE_ZEROS_LONG_NAME = "do-impute-zeros";
     public static final String EXTREME_OUTLIER_TRUNCATION_PERCENTILE_LONG_NAME = "extreme-outlier-truncation-percentile";
+    public static final String MAXIMUM_CHUNK_SIZE = "maximum-chunk-size";
 
     //default values for filtering
     private static final double DEFAULT_MINIMUM_INTERVAL_MEDIAN_PERCENTILE = 10.0;
@@ -136,6 +139,8 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
     private static final double DEFAULT_EXTREME_OUTLIER_TRUNCATION_PERCENTILE = 0.1;
 
     private static final int DEFAULT_NUMBER_OF_EIGENSAMPLES = 20;
+    private static final int DEFAULT_CHUNK_DIVISOR = 16;
+    private static final int DEFAULT_MAXIMUM_CHUNK_SIZE = HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX / DEFAULT_CHUNK_DIVISOR;
 
     @Argument(
             doc = "Input TSV or HDF5 files containing integer read counts in genomic intervals for all samples in the panel of normals (output of CollectFragmentCounts).  " +
@@ -232,6 +237,20 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
     )
     private int numEigensamplesRequested = DEFAULT_NUMBER_OF_EIGENSAMPLES;
 
+    @Advanced
+    @Argument(
+            doc = "Maximum HDF5 matrix chunk size.  Large matrices written to HDF5 are chunked into equally sized " +
+                    "subsets of rows (plus a subset containing the remainder, if necessary) to avoid a hard limit in " +
+                    "Java HDF5 on the number of elements in a matrix.  However, since a single row is not allowed to " +
+                    "be split across multiple chunks, the number of columns must be less than the maximum number of " +
+                    "values in each chunk.  Decreasing this number will reduce heap usage when writing chunks.",
+            fullName = MAXIMUM_CHUNK_SIZE,
+            minValue = 1,
+            maxValue = HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX,
+            optional = true
+    )
+    private int maximumChunkSize = DEFAULT_MAXIMUM_CHUNK_SIZE;
+
     @Override
     protected void runPipeline(final JavaSparkContext ctx) {
         if (!new HDF5Library().load(null)) {  //Note: passing null means using the default temp dir.
@@ -252,6 +271,9 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
         final SimpleCountCollection firstReadCounts = SimpleCountCollection.read(firstReadCountFile);
         final SAMSequenceDictionary sequenceDictionary = firstReadCounts.getMetadata().getSequenceDictionary();
         final List<SimpleInterval> intervals = firstReadCounts.getIntervals();
+        Utils.validateArg(firstReadCounts.size() <= maximumChunkSize,
+                String.format("The number of intervals (%d) in each read-counts file cannot exceed the maximum chunk size (%d).",
+                        firstReadCounts.size(), maximumChunkSize));
 
         //get GC content (null if not provided)
         final AnnotatedIntervalCollection annotatedIntervals = CopyNumberArgumentValidationUtils.validateAnnotatedIntervals(
@@ -269,7 +291,8 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
         HDF5SVDReadCountPanelOfNormals.create(outputPanelOfNormalsFile, getCommandLine(),
                 sequenceDictionary, readCountMatrix, sampleFilenames, intervals, intervalGCContent,
                 minimumIntervalMedianPercentile, maximumZerosInSamplePercentage, maximumZerosInIntervalPercentage,
-                extremeSampleMedianPercentile, doImputeZeros, extremeOutlierTruncationPercentile, numEigensamplesRequested, ctx);
+                extremeSampleMedianPercentile, doImputeZeros, extremeOutlierTruncationPercentile, numEigensamplesRequested,
+                maximumChunkSize, ctx);
 
         logger.info("Panel of normals successfully created.");
     }
