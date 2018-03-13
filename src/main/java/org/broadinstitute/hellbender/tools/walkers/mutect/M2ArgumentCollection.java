@@ -22,6 +22,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String PANEL_OF_NORMALS_LONG_NAME = "panel-of-normals";
     public static final String PANEL_OF_NORMALS_SHORT_NAME = "pon";
     public static final String GENOTYPE_PON_SITES_LONG_NAME = "genotype-pon-sites";
+    public static final String GENOTYPE_GERMLINE_SITES_LONG_NAME = "genotype-germline-sites";
     public static final String GERMLINE_RESOURCE_LONG_NAME = "germline-resource";
     public static final String DEFAULT_AF_LONG_NAME = "af-of-alleles-not-in-resource";
     public static final String DEFAULT_AF_SHORT_NAME = "default-af";
@@ -63,8 +64,15 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * Usually we exclude sites in the panel of normals from active region determination, which saves time.  Setting this to true
      * causes Mutect to produce a variant call at these sites.  This call will still be filtered, but it shows up in the vcf.
      */
-    @Argument(fullName= GENOTYPE_PON_SITES_LONG_NAME, doc="Whether to call sites in the PoN even though they will ultimately be filtered.", optional = true)
+    @Argument(fullName= GENOTYPE_PON_SITES_LONG_NAME, doc="Call sites in the PoN even though they will ultimately be filtered.", optional = true)
     public boolean genotypePonSites = false;
+
+    /**
+     * Usually we exclude sites in the panel of normals from active region determination, which saves time.  Setting this to true
+     * causes Mutect to produce a variant call at these sites.  This call will still be filtered, but it shows up in the vcf.
+     */
+    @Argument(fullName= GENOTYPE_GERMLINE_SITES_LONG_NAME, doc="(EXPERIMENTAL) Call all apparent germline site even though they will ultimately be filtered.", optional = true)
+    public boolean genotypeGermlineSites = false;
 
     /**
      * A resource, such as gnomAD, containing population allele frequencies of common and rare variants.
