@@ -1,6 +1,12 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates;
 
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.SAMFileHeader;
+import javafx.util.Pair;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -8,8 +14,9 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 /**
  * Struct-like class to store information about the paired reads for mark duplicates.
  */
+@DefaultSerializer(PairedEnds.Serializer.class)
 public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
-  private final int firstStartPosition;
+
   private transient GATKRead first;
   private transient GATKRead second;
 
@@ -20,22 +27,20 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   private transient short y = -1;
   private transient short libraryId = -1;
 
-
+  private final int partitionIndex;
   private final boolean fragment;
   private final int score;
-
   private final String name;
 
+  private final int firstStartPosition;
   private final int firstUnclippedStartPosition;
   private final short firstRefIndex;
+  private final boolean R1R;
 
   private final int secondUnclippedStartPosition;
   private final short secondRefIndex;
-
-  private final boolean R1R;
   private final boolean R2R;
 
-  private final int partitionIndex;
 
 
   private PairedEnds(final GATKRead first, final boolean fragment, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
@@ -52,7 +57,6 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
     this.R1R = first.isReverseStrand();
     this.R2R = false;
   }
-
 
 
   /**
@@ -74,21 +78,6 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
     this.score = 0;
     this.firstStartPosition = firstUnclippedStartPosition;
   }
-
-  public static PairedEnds newFragment(final GATKRead first, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
-    return new PairedEnds(first, true, header, partitionIndex, scoringStrategy);
-  }
-
-  //todo: why???
-  public static PairedEnds newPairWithMissingSecond(final GATKRead first, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
-    return new PairedEnds(first, false, header, partitionIndex, scoringStrategy);
-  }
-
-  // An optimization for passing around empty read information
-  public static PairedEnds empty(GATKRead read, SAMFileHeader header, int partitionIndex) {
-    return new PairedEnds(read, header, partitionIndex);
-  }
-
 
   private PairedEnds(final GATKRead read1, final GATKRead read2, final boolean fragment, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
     final String name1 = read1.getName();
@@ -133,6 +122,20 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
 
     R1R = firstOfPair.isReverseStrand();
     R2R = secondOfPair.isReverseStrand();
+  }
+
+  public static PairedEnds newFragment(final GATKRead first, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
+    return new PairedEnds(first, true, header, partitionIndex, scoringStrategy);
+  }
+
+  //todo: why???
+  public static PairedEnds newPairWithMissingSecond(final GATKRead first, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
+    return new PairedEnds(first, false, header, partitionIndex, scoringStrategy);
+  }
+
+  // An optimization for passing around empty read information
+  public static PairedEnds empty(GATKRead read, SAMFileHeader header, int partitionIndex) {
+    return new PairedEnds(read, header, partitionIndex);
   }
 
   public static PairedEnds newPair(GATKRead first, GATKRead second, SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
@@ -271,4 +274,65 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
       FRAGMENT, PAIR, PAIRED_BUT_MISSING_SECOND_READ;
 
   }
+
+  public static final class Serializer<T> extends com.esotericsoftware.kryo.Serializer<PairedEnds> {
+    @Override
+    public void write(final Kryo kryo, final Output output, final PairedEnds pair ) {
+      pair.serialize(kryo, output);
+    }
+
+    @Override
+    public PairedEnds read(final Kryo kryo, final Input input, final Class<PairedEnds> klass ) {
+      return new PairedEnds(kryo, input);
+    }
+  }
+
+
+  private void serialize(Kryo kryo, Output output) {
+//    private final int partitionIndex;
+//    private final boolean fragment;
+//    private final int score;
+//    private final String name;
+//
+//    private final int firstStartPosition;
+//    private final int firstUnclippedStartPosition;
+//    private final short firstRefIndex;
+//    private final boolean R1R;
+//
+//    private final int secondUnclippedStartPosition;
+//    private final short secondRefIndex;
+//    private final boolean R2R;
+
+    output.writeInt(partitionIndex, true);
+    output.writeBoolean(fragment);
+    output.writeInt(score);
+    output.writeAscii(name);
+
+    output.writeInt(firstStartPosition);
+    output.writeInt(firstUnclippedStartPosition);
+    output.writeShort(firstRefIndex);
+    output.writeBoolean(R1R);
+
+    if(!isFragment()){
+      output.writeInt(secondUnclippedStartPosition);
+      output.writeShort(secondRefIndex);
+      output.writeBoolean(R2R);
+    }
+  }
+
+  private PairedEnds(Kryo kryo, Input input){
+    partitionIndex = input.readInt(true);
+    fragment = input.readBoolean();
+    score = input.readInt();
+    name = input.readString();
+
+    firstStartPosition = input.readInt();
+    firstUnclippedStartPosition = input.readInt();
+    firstRefIndex = input.readShort();
+
+    if(!isFragment()){
+
+    }
+  }
+
 }
