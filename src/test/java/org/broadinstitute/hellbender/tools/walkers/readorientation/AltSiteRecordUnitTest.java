@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
+import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.testng.Assert;
@@ -58,13 +59,13 @@ public class AltSiteRecordUnitTest {
     }
 
     @Test
-    public void testReverseComplement() throws IOException {
+    public void testGetReverseComplement() throws IOException {
         final String contig = "1";
         final int position = 100_000;
         final int depth = 200;
         final String referenceContext = "AGC";
         final Nucleotide altAllele = Nucleotide.A; // G -> A transition
-        final String revCompContext = "GCT";
+        final String revCompContext = SequenceUtil.reverseComplement(referenceContext); // GCT
         final int[] baseCounts = new int[]{ 10, 0, 60, 0 };
         final int[] f1r2Counts = new int[]{ 2, 0, 15, 0 };
 
@@ -73,7 +74,7 @@ public class AltSiteRecordUnitTest {
 
         Assert.assertEquals(revComp.getReferenceContext(), revCompContext);
         ArrayAsserts.assertArrayEquals(revComp.getBaseCounts(), new int[]{ 0, 60, 0, 10 } );
-        ArrayAsserts.assertArrayEquals(revComp.getF1R2Counts(), new int[]{ 0, 15, 0, 2 } );
+        ArrayAsserts.assertArrayEquals(revComp.getF1R2Counts(), new int[]{ 0, 45, 0, 8 } );
 
     }
 

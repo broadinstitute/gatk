@@ -129,12 +129,17 @@ public final class GATKVCFConstants {
     public static final String STRAND_BIAS_BY_SAMPLE_KEY =          "SB";
     public final static String TRANSMISSION_PROBABILITY_KEY =       "TP"; //PhaseByTransmission
     public static final String ZERO_COVERAGE_LOCI =                 "ZL"; //DiagnoseTargets
+    public static final String F1R2_KEY =                           "F1R2";
+    public static final String F2R1_KEY =                           "F2R1";
+
 
     // M2-specific FORMAT keys
     public static final String ALLELE_FRACTION_KEY =                "AF";
     public static final String POSTERIOR_PROBABILITIES_KEY =        "SA_POST_PROB"; // Strand Artifact Filter
     public static final String MAP_ALLELE_FRACTIONS_KEY =           "SA_MAP_AF"; // Strand Artifact Filter
-    public static final String READ_ORIENTATION_POSTERIOR_KEY =     "READ_ARTIFACT";
+    public static final String ROF_POSTERIOR_KEY =                  "READ_ARTIFACT"; // read orientation filter (ROF)
+    public static final String ROF_PRIOR_KEY =                      "ROF_PRIOR";
+    public static final String ROF_TYPE_KEY =                       "ROF_TYPE";
 
     //FILTERS
     /* Note that many filters used throughout GATK (most notably in VariantRecalibration) are dynamic,
@@ -155,7 +160,8 @@ public final class GATKVCFConstants {
     public final static String MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME = "fragment_length";
     public final static String READ_POSITION_FILTER_NAME =                      "read_position";
     public final static String CONTAMINATION_FILTER_NAME =                      "contamination";
-    public final static String READ_ORIENTATION_FILTER_NAME =                   "read_orientation";
+    public final static String F1R2_ARTIFACT_FILTER_NAME =                   "f1r2_artifact";
+    public final static String F2R1_ARTIFACT_FILTER_NAME =                   "f2r1_artifact";
 
     public static final List<String> MUTECT_FILTER_NAMES = Arrays.asList(STR_CONTRACTION_FILTER_NAME,
             PON_FILTER_NAME, CLUSTERED_EVENTS_FILTER_NAME, TUMOR_LOD_FILTER_NAME, GERMLINE_RISK_FILTER_NAME,
@@ -163,7 +169,7 @@ public final class GATKVCFConstants {
             MEDIAN_BASE_QUALITY_FILTER_NAME, MEDIAN_MAPPING_QUALITY_FILTER_NAME,
             MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME,
             READ_POSITION_FILTER_NAME, CONTAMINATION_FILTER_NAME, DUPLICATED_EVIDENCE_FILTER_NAME,
-            READ_ORIENTATION_FILTER_NAME);
+            F1R2_ARTIFACT_FILTER_NAME, F2R1_ARTIFACT_FILTER_NAME);
 
     // Symbolic alleles
     public final static String SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG = "ALT";

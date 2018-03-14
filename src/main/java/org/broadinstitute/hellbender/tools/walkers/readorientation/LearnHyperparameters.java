@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.Histogram;
@@ -10,13 +11,14 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
+import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.broadinstitute.hellbender.tools.walkers.readorientation.CollectDataForReadOrientationFilter.*;
+import static org.broadinstitute.hellbender.tools.walkers.readorientation.ReadOrientationFilterConstants.*;
 
 /**
  * Created by tsato on 10/16/17.
@@ -34,6 +36,12 @@ public class LearnHyperparameters extends CommandLineProgram {
             shortName = CollectDataForReadOrientationFilter.REF_SITE_METRICS_SHORT_NAME,
             doc = "a tab-separated depth histogram over ref sites from CollectDataForReadOrientationFilter")
     private File refHistogramTable;
+
+    @Argument(fullName = "alt-histogram",
+            shortName = "alt-histogram",
+            doc = "",
+            optional = true)
+    private File altHistogramTable = null;
 
     @Argument(fullName = CollectDataForReadOrientationFilter.ALT_DATA_TABLE_LONG_NAME,
             shortName = CollectDataForReadOrientationFilter.ALT_DATA_TABLE_SHORT_NAME,
@@ -56,62 +64,79 @@ public class LearnHyperparameters extends CommandLineProgram {
     private int maxEMIterations = DEFAULT_MAX_ITERATIONS;
 
 
-    List<Histogram<Integer>> histograms;
-    List<AltSiteRecord> altDesignMatrix;
+    List<Histogram<Integer>> refHistograms;
+    List<Histogram<Integer>> altHistograms;
 
     @Override
     protected void onStartup(){
-        altDesignMatrix = AltSiteRecord.readAltSiteRecords(altDataTable);
-
         final MetricsFile<?, Integer> referenceSiteMetrics = new MetricsFile<>();
-        final Reader in = IOUtil.openFileForBufferedReading(refHistogramTable);
-        referenceSiteMetrics.read(in);
-        CloserUtil.close(in);
+        final Reader refHistogramReader = IOUtil.openFileForBufferedReading(refHistogramTable);
+        referenceSiteMetrics.read(refHistogramReader);
+        CloserUtil.close(refHistogramReader);
 
-        histograms = referenceSiteMetrics.getAllHistograms();
+        final MetricsFile<?, Integer> altSiteMetrics = new MetricsFile<>();
+        if (altHistogramTable != null){
+            final Reader altHistogramReader = IOUtil.openFileForBufferedReading(altHistogramTable);
+            altSiteMetrics.read(altHistogramReader);
+            CloserUtil.close(altHistogramReader);
+        }
+
+        refHistograms = referenceSiteMetrics.getAllHistograms();
+        altHistograms = altSiteMetrics.getAllHistograms();
     }
 
     @Override
     public Object doWork(){
         final int defaultInitialListSize = 1_000_000;
 
-        final List<AltSiteRecord> altDesignMatrix = AltSiteRecord.readAltSiteRecords(altDataTable, defaultInitialListSize);
-        final Map<String, List<AltSiteRecord>> altDesignMatrixByContext = altDesignMatrix.stream()
-                .collect(Collectors.groupingBy(AltSiteRecord::getReferenceContext));
+        final Map<String, List<AltSiteRecord>> altDesignMatrixByContext =
+                AltSiteRecord.readAltSiteRecords(altDataTable, defaultInitialListSize)
+                        .stream()
+                        .collect(Collectors.groupingBy(AltSiteRecord::getReferenceContext));
 
         // Since AGT F1R2 is equivalent to ACT F1R2 (in the sense that the order of bases in the original molecule on which
         // the artifact befell and what the base changed to is the same)
-        final List<Hyperparameters> hyperparametersAcrossContexts = new ArrayList<>((int) Math.pow(REGULAR_BASES.size(), REFERENCE_CONTEXT_SIZE)/2);
+        final List<Hyperparameters> hyperparametersAcrossContexts = new ArrayList<>((int) Math.pow(ReadOrientationFilterConstants.REGULAR_BASES.size(), ReadOrientationFilterConstants.REFERENCE_CONTEXT_SIZE)/2);
 
-        for (final String refContext : ALL_KMERS_MODULO_REVERSE_COMPLEMENT){
+        // TODO: extract a method to account for reverse complement, and create a test
+        for (final String refContext : ReadOrientationFilterConstants.CANONICAL_KMERS){
             final String reverseComplement = SequenceUtil.reverseComplement(refContext);
 
-            // Contract: {@code CollectDataForReadOrientationFilter} outputs the ref histogram for all 4^K contexts,
-            // even when some contexts did not appear in the bam
-            final Histogram<Integer> histogram = histograms.stream()
+            final Histogram<Integer> refHistogram = refHistograms.stream()
                     .filter(h -> h.getValueLabel().equals(refContext))
-                    .findFirst().get();
-            final Histogram<Integer> histogramRevComp = histograms.stream()
+                    .findFirst().orElseGet(() -> initializeRefHistogram(refContext));
+            final Histogram<Integer> refHistogramRevComp = refHistograms.stream()
                     .filter(h -> h.getValueLabel().equals(reverseComplement))
-                    .findFirst().get();
-            histogram.addHistogram(histogramRevComp);
+                    .findFirst().orElseGet(() -> initializeRefHistogram(reverseComplement));
 
-            List<AltSiteRecord> altDesignMatrixForContext = altDesignMatrixByContext.getOrDefault(refContext, new ArrayList<>());
-            List<AltSiteRecord> altDesignMatrixForRevComp = altDesignMatrixByContext.getOrDefault(reverseComplement, Collections.emptyList())
-                    .stream()
-                    .map(AltSiteRecord::getReverseComplementOfRecord)
+            final List<Histogram<Integer>> altHistogramsForContext = altHistograms.stream()
+                    .filter(h -> h.getValueLabel().startsWith(refContext))
                     .collect(Collectors.toList());
-            altDesignMatrixForContext.addAll(altDesignMatrixForRevComp);
 
-            if (histogram.getCount() == 0 || altDesignMatrixForContext.isEmpty()) {
+            final List<Histogram<Integer>> altHistogramsRevComp = altHistograms.stream()
+                    .filter(h -> h.getValueLabel().startsWith(reverseComplement))
+                    .collect(Collectors.toList());
+
+            final List<AltSiteRecord> altDesignMatrix = altDesignMatrixByContext
+                    .getOrDefault(refContext, new ArrayList<>()); // Cannot use Collections.emptyList() here because we might add to it
+            final List<AltSiteRecord> altDesignMatrixRevComp = altDesignMatrixByContext
+                    .getOrDefault(reverseComplement, Collections.emptyList());
+            // Warning: the below method will mutate the content of {@code altDesignMatrixRevComp} and append to {@code altDesignMatrix}
+            mergeDesignMatrices(altDesignMatrix, altDesignMatrixRevComp);
+
+            final Histogram<Integer> combinedRefHistograms = combineRefHistogramWithRC(refContext, refHistogram, refHistogramRevComp);
+            final List<Histogram<Integer>> combinedAltHistograms = combineAltHistogramWithRC(altHistogramsForContext, altHistogramsRevComp);
+
+            if (combinedRefHistograms.getSumOfValues() == 0 || altDesignMatrix.isEmpty()) {
                 logger.info(String.format(
                         String.format("Skipping the reference context %s as we didn't find either the ref or alt table for the context", refContext)));
                 continue;
             }
 
             final LearnHyperparametersEngine engine = new LearnHyperparametersEngine(
-                    histogram,
-                    altDesignMatrixForContext,
+                    combinedRefHistograms,
+                    combinedAltHistograms,
+                    altDesignMatrix,
                     converagenceThreshold,
                     maxEMIterations,
                     logger);
@@ -123,6 +148,114 @@ public class LearnHyperparameters extends CommandLineProgram {
         return "SUCCESS";
     }
 
-    @Override
-    protected void onShutdown() {}
+    @VisibleForTesting
+    public static Histogram<Integer> combineRefHistogramWithRC(final String refContext,
+                                                               final Histogram<Integer> refHistogram,
+                                                               final Histogram<Integer> refHistogramRevComp){
+        Utils.validateArg(refHistogram.getValueLabel()
+                .equals(SequenceUtil.reverseComplement(refHistogramRevComp.getValueLabel())),
+                "ref context = " + refHistogram.getValueLabel() + ", rev comp = " + refHistogramRevComp.getValueLabel());
+        Utils.validateArg(refHistogram.getValueLabel().equals(refContext), "better match");
+
+        final Histogram<Integer> combinedRefHistogram = new Histogram<>(binName, refContext);
+        combinedRefHistogram.prefillBins(bins);
+
+        for (final Integer depth : refHistogram.keySet()){
+            final double newCount = refHistogram.get(depth).getValue() + refHistogramRevComp.get(depth).getValue();
+            combinedRefHistogram.increment(depth, newCount);
+        }
+
+        return combinedRefHistogram;
+    }
+
+    @VisibleForTesting
+    public static List<Histogram<Integer>> combineAltHistogramWithRC(final List<Histogram<Integer>> altHistograms,
+                                                                     final List<Histogram<Integer>> altHistogramsRevComp){
+        if (altHistograms.isEmpty() && altHistogramsRevComp.isEmpty()){
+            return Collections.emptyList();
+        }
+
+        final String refContext = ! altHistograms.isEmpty() ?
+                labelToContext(altHistograms.get(0).getValueLabel()).getLeft() :
+                SequenceUtil.reverseComplement(labelToContext(altHistogramsRevComp.get(0).getValueLabel()).getLeft());
+
+        // Contract: altHistogram must be of the canonical representaiton of the kmer
+        Utils.validateArg(CANONICAL_KMERS.contains(refContext), "refContext must be the canonical representation but got " + refContext);
+
+        final String reverseComplement = SequenceUtil.reverseComplement(refContext);
+        final List<Histogram<Integer>> combinedHistograms = new ArrayList<>(numSubHistograms);
+
+
+        for (Nucleotide altAllele : REGULAR_BASES){
+            if (altAllele == Nucleotide.valueOf(refContext.substring(MIDDLE_INDEX, MIDDLE_INDEX+1))){
+                continue;
+            }
+
+            final Nucleotide altAlleleRevComp = Nucleotide.valueOf(SequenceUtil.reverseComplement(altAllele.toString()));
+
+            for (ArtifactType type : ArtifactType.values()) {
+                final ArtifactType oppositeType = type == ArtifactType.F1R2 ? ArtifactType.F2R1 : ArtifactType.F1R2;
+                final Histogram<Integer> altHistogram =
+                        altHistograms.stream()
+                                .filter(h -> h.getValueLabel().equals(contextToLabel(refContext, altAllele, type)))
+                                .findFirst()
+                                .orElseGet(() -> {
+                                    final Histogram<Integer> h = new Histogram<>(binName, refContext);
+                                    h.prefillBins(bins);
+                                    return h;
+                                });
+
+                final Histogram<Integer> altHistogramRevComp =
+                        altHistogramsRevComp.stream()
+                                .filter(h -> h.getValueLabel().equals(contextToLabel(reverseComplement, altAlleleRevComp, oppositeType)))
+                                .findFirst().orElseGet(() -> {
+                                    final Histogram<Integer> h = new Histogram<>(binName, reverseComplement);
+                                    h.prefillBins(bins);
+                                    return h;
+                                });
+
+                final Histogram<Integer> combinedHistogram = new Histogram<>(binName, contextToLabel(refContext, altAllele, type));
+                combinedHistogram.prefillBins(bins);
+
+                // Add the histograms manually - I don't like the addHistogram() method because it does so with side-effect
+                for (final Integer depth : altHistogram.keySet()){
+                    final double newCount = altHistogram.get(depth).getValue() + altHistogramRevComp.get(depth).getValue();
+                    combinedHistogram.increment(depth, newCount);
+                }
+
+                combinedHistograms.add(combinedHistogram);
+            }
+        }
+
+        return combinedHistograms;
+    }
+
+    @VisibleForTesting
+    public static void mergeDesignMatrices(final List<AltSiteRecord> altDesignMatrix, List<AltSiteRecord> altDesignMatrixRevComp){
+        if (altDesignMatrix.isEmpty() && altDesignMatrixRevComp.isEmpty()){
+            return;
+        }
+
+        // Order matters here. Assumes that all elements in the list have the same reference context
+        Utils.validateArg(altDesignMatrix.isEmpty() ||
+                CANONICAL_KMERS.contains(altDesignMatrix.get(0).getReferenceContext()),
+                "altDesignMatrix must be in the parimary ref context...does that make sense?");
+
+        final Optional<String> refContext = altDesignMatrix.isEmpty() ? Optional.empty() :
+                Optional.of(altDesignMatrix.get(0).getReferenceContext());
+        final Optional<String> revCompContext = altDesignMatrixRevComp.isEmpty() ? Optional.empty() :
+                Optional.of(altDesignMatrixRevComp.get(0).getReferenceContext());
+        if (refContext.isPresent() && revCompContext.isPresent()){
+            // TOOD: write isReverseComplement(String context, String context2)
+            Utils.validateArg(refContext.get().equals(SequenceUtil.reverseComplement(revCompContext.get())),
+                    "context and rev comp don't match");
+        }
+
+        altDesignMatrix.addAll(
+                altDesignMatrixRevComp.stream()
+                        .map(AltSiteRecord::getReverseComplementOfRecord)
+                        .collect(Collectors.toList())
+        );
+    }
+
 }

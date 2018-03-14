@@ -3,16 +3,13 @@ package org.broadinstitute.hellbender.tools.walkers.readorientation;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.Histogram;
-import htsjdk.samtools.util.SequenceUtil;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.math3.util.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -25,8 +22,10 @@ import org.broadinstitute.hellbender.tools.walkers.readorientation.AltSiteRecord
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+
+import static org.broadinstitute.hellbender.tools.walkers.readorientation.ArtifactType.F1R2;
+import static org.broadinstitute.hellbender.tools.walkers.readorientation.ArtifactType.F2R1;
+import static org.broadinstitute.hellbender.tools.walkers.readorientation.ReadOrientationFilterConstants.*;
 
 /**
  * Created by Takuto Sato on 7/26/17.
@@ -70,33 +69,22 @@ public class CollectDataForReadOrientationFilter extends LocusWalker {
             doc = "a metrics file with overall summary metrics and reference context-specific depth histograms")
     private static File refMetricsOutput = null;
 
-    public static final int REF_CONTEXT_PADDING_ON_EACH_SIDE = 1;
+    @Argument(fullName = "alt-histograms",
+            shortName = "alt-hist",
+            doc = "")
+    private static File altMetricsOutput = null;
 
-    public static final int REFERENCE_CONTEXT_SIZE = 2 * REF_CONTEXT_PADDING_ON_EACH_SIDE + 1; // aka 3
-
-    public static final int MIDDLE_INDEX = REF_CONTEXT_PADDING_ON_EACH_SIDE;
-
-    // we put reference site depths above this value in the last bin of the histogram
-    public static final int MAX_REF_DEPTH = 200;
-
-    // the list of all possible kmers, where k = REFERENCE_CONTEXT_SIZE
-    static final List<String> ALL_KMERS = SequenceUtil.generateAllKmers(REFERENCE_CONTEXT_SIZE).stream()
-            .map(String::new).collect(Collectors.toList());
-    static final List<String> ALL_KMERS_MODULO_REVERSE_COMPLEMENT = ALL_KMERS.stream()
-            .map(context -> new TreeSet<>(Arrays.asList(context, SequenceUtil.reverseComplement(context))))
-            .distinct()
-            .map(s -> s.first().compareTo(s.last()) < 0 ? s.first() : s.last())
-            .collect(Collectors.toList());
-
-
-    // for computational efficiency, for each reference context, we build a depth histogram over ref sites
+    // For computational efficiency, for each reference context, we build a depth histogram over ref sites
     private static Map<String, Histogram<Integer>> refSiteHistograms = new HashMap<>(ALL_KMERS.size());
+
+    // Maps Context -> (Alt Allele, F1R2) Pair -> Histogram
+    private static Map<String, Map<Pair<Nucleotide, ArtifactType>, Histogram<Integer>>> singleAltTransitionHistograms = new HashMap<>(ALL_KMERS.size());
 
     private AltSiteRecordTableWriter altTableWriter;
 
     private final MetricsFile<?, Integer> refMetricsFile = getMetricsFile();
 
-    public static final List<Nucleotide> REGULAR_BASES = Arrays.asList(Nucleotide.A, Nucleotide.C, Nucleotide.G, Nucleotide.T);
+    private final MetricsFile<?, Integer> altMetricsFile = getMetricsFile();
 
     @Override
     public boolean requiresReference(){
@@ -110,14 +98,29 @@ public class CollectDataForReadOrientationFilter extends LocusWalker {
 
     @Override
     public void onTraversalStart() {
-        final Integer[] allBins = IntStream.rangeClosed(1, MAX_REF_DEPTH).boxed().toArray( Integer[]::new );
         ALL_KMERS.forEach(context -> {
-            Histogram<Integer> emptyHistogram = new Histogram<>("depth", context);
-            emptyHistogram.prefillBins(allBins);
-            refSiteHistograms.put(context, emptyHistogram);
+            Histogram<Integer> emptyRefHistogram = new Histogram<>("depth", context);
+            emptyRefHistogram.prefillBins(bins);
+            refSiteHistograms.put(context, emptyRefHistogram);
+
+
+            // Initialize for each context the (Alt Allele, Artifact Type) -> Histogram map
+            singleAltTransitionHistograms.put(context, new HashMap<>((REGULAR_BASES.size() - 1)*ArtifactType.values().length));
+
+            for (Nucleotide altAllele : REGULAR_BASES){
+                // Skip e.g. AGT -> AGT because G is not an alt allele
+                if (altAllele == Nucleotide.valueOf(context.substring(MIDDLE_INDEX, MIDDLE_INDEX+1))){
+                    continue;
+                }
+
+                for (ArtifactType artifactType : ArtifactType.values()){
+                    singleAltTransitionHistograms.get(context).put(new Pair<>(altAllele, artifactType),
+                            initializeAltHistogram(context, altAllele, artifactType));
+                }
+            }
         });
 
-        // intentionally not use try-with-resources so that the writer stays open outside of the try block
+        // Intentionally not use try-with-resources so that the writer stays open outside of the try block
         try {
             altTableWriter = new AltSiteRecordTableWriter(altDataTable);
         } catch (IOException e) {
@@ -132,9 +135,9 @@ public class CollectDataForReadOrientationFilter extends LocusWalker {
         // manually expand the window and get the 3-mer for now.
         // TODO: implement getBasesInInterval() in referenceContext. Maybe simplify to getKmer(int k)?
         // TODO: this is still relevant (10/2). I shouldn't mess with the internal state of the ref context object
-        referenceContext.setWindow(REF_CONTEXT_PADDING_ON_EACH_SIDE, REF_CONTEXT_PADDING_ON_EACH_SIDE);
+        referenceContext.setWindow(ReadOrientationFilterConstants.REF_CONTEXT_PADDING_ON_EACH_SIDE, ReadOrientationFilterConstants.REF_CONTEXT_PADDING_ON_EACH_SIDE);
         final String refContext = new String(referenceContext.getBases());
-        if (refContext.contains("N") || refContext.length() != REFERENCE_CONTEXT_SIZE) {
+        if (refContext.contains("N") || refContext.length() != ReadOrientationFilterConstants.REFERENCE_CONTEXT_SIZE) {
             return;
         }
 
@@ -154,7 +157,7 @@ public class CollectDataForReadOrientationFilter extends LocusWalker {
 
         // Make a copy of base counts and update the counts of ref to -1. Now the maxElementIndex of the array gives us
         // the alt base.
-        final Nucleotide refBase = Nucleotide.valueOf(refContext.getBytes()[MIDDLE_INDEX]);
+        final Nucleotide refBase = Nucleotide.valueOf(refContext.getBytes()[ReadOrientationFilterConstants.MIDDLE_INDEX]);
         final int[] baseCountsCopy = Arrays.copyOf(baseCounts, baseCounts.length);
         baseCountsCopy[refBase.ordinal()] = -1;
         final int altBaseIndex = MathUtils.maxElementIndex(baseCountsCopy);
@@ -162,19 +165,41 @@ public class CollectDataForReadOrientationFilter extends LocusWalker {
 
         // if the site is ref, we simply update the coverage histogram
         if (referenceSite){
-            refSiteHistograms.get(refContext).increment(depth <= MAX_REF_DEPTH ? depth : MAX_REF_DEPTH);
+            refSiteHistograms.get(refContext).increment(depth <= ReadOrientationFilterConstants.maxDepthForHistograms ? depth : ReadOrientationFilterConstants.maxDepthForHistograms);
             return;
         }
 
         // if we got here, we have an alt site
         final Nucleotide altBase = Nucleotide.valueOf(BaseUtils.baseIndexToSimpleBase(altBaseIndex));
 
-        final int[] altF1R2Counts = REGULAR_BASES.stream().mapToInt(base -> pileup.getNumberOfElements(
+        final int[] f1R2Counts = ReadOrientationFilterConstants.REGULAR_BASES.stream().mapToInt(base -> pileup.getNumberOfElements(
                 pe -> Nucleotide.valueOf(pe.getBase()) == base && ReadUtils.isF1R2(pe.getRead()))).toArray();
+
+        final int sumNonRefDepths = ReadOrientationFilterConstants.REGULAR_BASES.stream().filter(base -> base != refBase)
+                .mapToInt(base -> baseCounts[base.ordinal()])
+                .sum();
+
+
+        // If there's only one alt read at depth > minimumDepthForOptimization, we store the data differently to save space
+        if (sumNonRefDepths <= 1){
+            if (sumNonRefDepths == 0){
+                logger.warn(String.format("Encountered an alt site with 0 alt depth at %s", pileup.getLocation().toString()));
+            }
+
+            final int sumNonRefF1R2Depths = ReadOrientationFilterConstants.REGULAR_BASES.stream().filter(base -> base != refBase)
+                    .mapToInt(base -> f1R2Counts[base.ordinal()])
+                    .sum();
+            Utils.validate(Arrays.asList(0, 1).contains(sumNonRefF1R2Depths), "sum of non-ref F1R2 depths must be 0 or 1");
+            final ArtifactType type = sumNonRefF1R2Depths == 1 ? F1R2 : F2R1;
+
+            singleAltTransitionHistograms.get(refContext).get(new Pair<>(altBase, type))
+                    .increment(depth <= ReadOrientationFilterConstants.maxDepthForHistograms ? depth : ReadOrientationFilterConstants.maxDepthForHistograms);
+            return;
+        }
 
         try {
             altTableWriter.writeRecord(new AltSiteRecord(alignmentContext.getContig(), alignmentContext.getStart(),
-                    refContext, baseCounts, altF1R2Counts, depth, altBase));
+                    refContext, baseCounts, f1R2Counts, depth, altBase));
         } catch (IOException e) {
             throw new UserException("Encountered an IO Exception writing to the alt data table", e);
         }
@@ -186,6 +211,10 @@ public class CollectDataForReadOrientationFilter extends LocusWalker {
     public Object onTraversalSuccess() {
         refSiteHistograms.values().forEach(h -> refMetricsFile.addHistogram(h));
         refMetricsFile.write(refMetricsOutput);
+
+        singleAltTransitionHistograms.values().forEach(hs -> hs.values().forEach(h -> altMetricsFile.addHistogram(h)));
+        altMetricsFile.write(altMetricsOutput);
+
         return "SUCCESS";
     }
 

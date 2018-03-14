@@ -4,7 +4,6 @@ import avro.shaded.com.google.common.primitives.Ints;
 import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Nucleotide;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
@@ -15,9 +14,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
-import static org.broadinstitute.hellbender.tools.walkers.readorientation.CollectDataForReadOrientationFilter.REGULAR_BASES;
+import static org.broadinstitute.hellbender.tools.walkers.readorientation.ReadOrientationFilterConstants.REGULAR_BASES;
 
 /**
  * Created by tsato on 10/11/17.
@@ -68,7 +66,16 @@ public class AltSiteRecord {
         final int indexT = Nucleotide.T.ordinal();
 
         final int[] revCompBaseCounts = new int[]{ baseCounts[indexT], baseCounts[indexG], baseCounts[indexC], baseCounts[indexA] };
-        final int[] revCompF1R2Counts = new int[]{ f1r2Counts[indexT], f1r2Counts[indexG], f1r2Counts[indexC], f1r2Counts[indexA] };
+
+        /** Suppose the base count for rev comp was [0, 30, 150, 0], and the f1r2 count was [0, 20, 150, 0]. That means
+         *  we had 30 alt bases, 20 of which were F1R2. When we take its rev comp, we should get that 20 of them were F2R1,
+         *  so 10 of them F1R2
+         */
+        final int[] revCompF1R2Counts = new int[]{
+                baseCounts[indexT] - f1r2Counts[indexT],
+                baseCounts[indexG] - f1r2Counts[indexG],
+                baseCounts[indexC] - f1r2Counts[indexC],
+                baseCounts[indexA] - f1r2Counts[indexA]};
 
         final Nucleotide[] revCompMap = new Nucleotide[REGULAR_BASES.size()];
         revCompMap[indexA] = Nucleotide.T;

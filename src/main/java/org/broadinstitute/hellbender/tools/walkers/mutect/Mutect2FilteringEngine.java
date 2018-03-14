@@ -8,11 +8,11 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.contamination.ContaminationRecord;
 import org.broadinstitute.hellbender.tools.walkers.contamination.MinorAlleleFractionRecord;
-import org.broadinstitute.hellbender.tools.walkers.readorientation.Hyperparameters;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.tools.walkers.readorientation.ArtifactType;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -263,17 +263,20 @@ public class Mutect2FilteringEngine {
             return;
         }
 
-        if (! tumorGenotype.hasExtendedAttribute(GATKVCFConstants.READ_ORIENTATION_POSTERIOR_KEY)){
+        if (! tumorGenotype.hasExtendedAttribute(GATKVCFConstants.ROF_POSTERIOR_KEY) ||
+                ! tumorGenotype.hasExtendedAttribute(GATKVCFConstants.ROF_PRIOR_KEY)){
             return;
         }
 
-        final double[] posteriorProbabilities = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(
-                tumorGenotype, GATKVCFConstants.READ_ORIENTATION_POSTERIOR_KEY, () -> null, -1.0);
-        final double probOfF1R2Artifact = posteriorProbabilities[ReadOrientationArtifact.INDEX_OF_F1R2_ARTIFACT];
-        final double probOfF2R1Artifact = posteriorProbabilities[ReadOrientationArtifact.INDEX_OF_F2R1_ARTIFACT];
+        final double artifactProbability = GATKProtectedVariantContextUtils.getAttributeAsDouble(
+                tumorGenotype, GATKVCFConstants.ROF_POSTERIOR_KEY, -1.0);
+        final ArtifactType artifactType = ArtifactType.valueOf(
+                GATKProtectedVariantContextUtils.getAttributeAsString(
+                        tumorGenotype, GATKVCFConstants.ROF_TYPE_KEY, null));
 
-        if (probOfF1R2Artifact > MTFAC.readOrientationFilterThreshold || probOfF2R1Artifact > MTFAC.readOrientationFilterThreshold){
-            vcb.filter(GATKVCFConstants.READ_ORIENTATION_FILTER_NAME);
+        if (artifactProbability > MTFAC.readOrientationFilterThreshold){
+            vcb.filter(artifactType == ArtifactType.F1R2 ?
+                    GATKVCFConstants.F1R2_ARTIFACT_FILTER_NAME : GATKVCFConstants.F2R1_ARTIFACT_FILTER_NAME);
         }
     }
 

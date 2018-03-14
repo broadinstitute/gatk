@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
+import htsjdk.samtools.util.SequenceUtil;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
@@ -12,6 +14,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -24,7 +27,8 @@ public class Hyperparameters {
     private final int numAltExamples;
 
     public Hyperparameters(final String referenceContext, final double[] pi, final int numExamples, final int numAltExamples) {
-        this.referenceContext = referenceContext;
+        this.referenceContext = ReadOrientationFilterConstants.CANONICAL_KMERS.contains(referenceContext) ?
+                referenceContext : SequenceUtil.reverseComplement(referenceContext);
         this.pi = pi;
         this.numExamples = numExamples;
         this.numAltExamples = numAltExamples;
@@ -40,6 +44,10 @@ public class Hyperparameters {
 
     public String getReferenceContext() {
         return referenceContext;
+    }
+
+    public String getReverseComplement() {
+        return SequenceUtil.reverseComplement(referenceContext);
     }
 
     public int getNumExamples() { return numExamples; }
@@ -61,6 +69,7 @@ public class Hyperparameters {
             // Note that allele fraction f is not allele-specific, thus the same f array will be printed
             // four times for each context
             dataLine.set(HyperparameterTableColumn.CONTEXT.toString(), hps.getReferenceContext())
+                    .set(HyperparameterTableColumn.REV_COMP.toString(), hps.getReverseComplement())
                     .set(HyperparameterTableColumn.F1R2_A.toString(),
                             hps.getPi(ArtifactState.F1R2_A))
                     .set(HyperparameterTableColumn.F1R2_C.toString(),
@@ -104,6 +113,7 @@ public class Hyperparameters {
     }
 
     public static void writeHyperparameters(final List<Hyperparameters> hyperparameters, final File outputTable) {
+        // TODO: it should catch duplicates (e.g. context and rev comp have separate entries)
         try (HyperparameterTableWriter writer = new HyperparameterTableWriter(outputTable)) {
             writer.writeAllRecords(hyperparameters);
         } catch (IOException e) {
@@ -120,18 +130,21 @@ public class Hyperparameters {
         }
     }
 
-    /** Read a row for specific hyperparameters from the table **/
+    /** Read hyperparameters for a specific context from the table **/
     public static Hyperparameters readHyperparameters(final File table, final String referenceContext) {
         Utils.validateArg(referenceContext.length() == 3, "reference context must be 3 bases long");
+        final String queryContext = ReadOrientationFilterConstants.CANONICAL_KMERS.contains(referenceContext) ?
+                referenceContext : SequenceUtil.reverseComplement(referenceContext);
+
         try (HyperParameterTableReader reader = new HyperParameterTableReader(table)) {
             // TODO: might be worth revisiting if this is the right approach
             for (Hyperparameters hyp : reader){
-                if (hyp.getReferenceContext().equals(referenceContext)) {
+                if (hyp.getReferenceContext().equals(queryContext)) {
                     return hyp;
                 }
             }
 
-            throw new UserException(String.format("Reference context %s does not exist in the hyperparameter table"));
+            throw new UserException(String.format("Reference context %s does not exist in the hyperparameter table", referenceContext));
         } catch (IOException e) {
             throw new UserException(String.format("Encountered an IO exception while reading from %s.", table), e);
         }
@@ -159,6 +172,7 @@ public class Hyperparameters {
 
     private enum HyperparameterTableColumn {
         CONTEXT("context"),
+        REV_COMP("rev_comp"),
         F1R2_A("f1r2_a", ArtifactState.F1R2_A),
         F1R2_C("f1r2_c", ArtifactState.F1R2_C),
         F1R2_G("f1r2_g", ArtifactState.F1R2_G),
@@ -195,7 +209,7 @@ public class Hyperparameters {
         public ArtifactState getState() { return state; }
 
         public static List<HyperparameterTableColumn> getArtifactStateColumns(){
-            final List<HyperparameterTableColumn> nonArtifactColumns = Arrays.asList(CONTEXT, N, N_ALT);
+            final List<HyperparameterTableColumn> nonArtifactColumns = Arrays.asList(CONTEXT, REV_COMP, N, N_ALT);
             return Arrays.stream(HyperparameterTableColumn.values())
                     .filter(column -> ! nonArtifactColumns.contains(column))
                     .collect(Collectors.toList());
@@ -204,5 +218,35 @@ public class Hyperparameters {
         public static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
     }
 
+
+    // Search the input context (or its reverse complement) from a given list of Hyperparameters
+    // TODO: EXPLAIN THE FLIP
+    // TODO: add test
+    public static Optional<Hyperparameters> searchByContext(List<Hyperparameters> hyperparameters, String refContext){
+        final String queryString = ReadOrientationFilterConstants.CANONICAL_KMERS.contains(refContext) ?
+                refContext : SequenceUtil.reverseComplement(refContext);
+
+        Optional<Hyperparameters> hyps = hyperparameters.stream()
+                .filter(h -> h.getReferenceContext().equals(queryString))
+                .findFirst();
+
+        if (refContext.equals(queryString) || ! hyps.isPresent()){
+            return hyps;
+        } else {
+            // We must flip the F1R2 with F2R1 because e.g. AGG -> C F1R2 is equivalent to CCT -> G F2R1
+            // So the prior for F1R2_C under AGG should become F2R1_G under CCT, its reverse complement
+            return Optional.of(flipPi(hyps.get()));
+        }
+    }
+
+    private static Hyperparameters flipPi(Hyperparameters h){
+        final double[] newPi = new double[ArtifactState.values().length];
+        final double[] oldPi = h.getPi();
+        for (ArtifactState s : ArtifactState.values()){
+            newPi[s.ordinal()] = oldPi[ArtifactState.getRevCompState(s).ordinal()];
+        }
+
+        return new Hyperparameters(h.getReferenceContext(), newPi, h.getNumExamples(), h.getNumAltExamples());
+    }
 }
 

@@ -15,9 +15,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
-import static org.broadinstitute.hellbender.tools.walkers.readorientation.CollectDataForReadOrientationFilter.MAX_REF_DEPTH;
-import static org.broadinstitute.hellbender.tools.walkers.readorientation.CollectDataForReadOrientationFilter.MIDDLE_INDEX;
-import static org.broadinstitute.hellbender.tools.walkers.readorientation.CollectDataForReadOrientationFilter.REFERENCE_CONTEXT_SIZE;
+import static org.broadinstitute.hellbender.tools.walkers.readorientation.ArtifactType.F1R2;
+import static org.broadinstitute.hellbender.tools.walkers.readorientation.ReadOrientationFilterConstants.*;
 
 
 /**
@@ -40,7 +39,9 @@ public class LearnHyperparametersEngine {
 
     final Nucleotide refAllele;
 
-    final Histogram<Integer> refHistogram; // TODO: rename
+    final Histogram<Integer> refHistogram;
+
+    final List<Histogram<Integer>> altHistograms;
 
     final List<AltSiteRecord> altDesignMatrix;
 
@@ -48,11 +49,16 @@ public class LearnHyperparametersEngine {
     // evaluated at the current estimates of the mixture weights pi
     final double[][] altResponsibilities;
 
+
+    // {@code MAX_COVERAGE + 1} by 2 by K matrix of responsibilities of a alt site with alt count = 1
+    // [DEPTH][STATES][2], where 2 comes from {F1R2, F2R1}
+    final double[][][] responsibilitiesOfAltDepth1Sites;
+
     // {@code MAX_COVERAGE + 1} by K matrix of a cache of responsibilities of a ref site (i.e. m = 0, x = 0)
-    // for ref sites with coverage 1, 2,..., MAX_REF_DEPTH. To reiterate, the rows represent different coverages,
+    // for ref sites with coverage 1, 2,..., maxDepthForHistograms. To reiterate, the rows represent different coverages,
     // not samples (the count of samples in each coverage is stored in a separate histogram) and index 0 corresponds to
     // coverage 1; coverage = index + 1
-    final double[][] refResponsibilities = new double[MAX_REF_DEPTH][NUM_STATES];
+    final double[][] refResponsibilities;
 
     final int numAltExamples;
 
@@ -88,11 +94,16 @@ public class LearnHyperparametersEngine {
     final int sumAltDepth;
     final int sumF1R2AltDepth;
 
-    public LearnHyperparametersEngine(final Histogram<Integer> refHistogram, final List<AltSiteRecord> altDesignMatrixForContext,
+    public LearnHyperparametersEngine(final Histogram<Integer> refHistogram, final List<Histogram<Integer>> altHistograms,
+                                      final List<AltSiteRecord> altDesignMatrixForContext,
                                       final double convergenceThreshold, final int maxEMIterations, final Logger logger) {
         // TODO: count up the number of rows in altDataTable
         // TODO: restructure the code such that learn hyperparameters is a tool but LearnHyperparametersEngine is a separate class with a constructor,
         // and you initialize the object for each reference context
+        Utils.nonNull(refHistogram);
+        Utils.nonNull(altHistograms);
+        Utils.nonNull(altDesignMatrixForContext);
+
         referenceContext = refHistogram.getValueLabel();
         Utils.validateArg(referenceContext.length() == REFERENCE_CONTEXT_SIZE,
                 String.format("reference context must have length %d but got %s", REFERENCE_CONTEXT_SIZE, referenceContext));
@@ -100,18 +111,20 @@ public class LearnHyperparametersEngine {
                 String.format("reference context must consist of bases A,C,G,T but got %s", referenceContext));
 
         this.refHistogram = refHistogram;
+        this.altHistograms = altHistograms;
         this.altDesignMatrix = altDesignMatrixForContext;
-        numAltExamples = altDesignMatrix.size();
+        numAltExamples = altDesignMatrix.size() + altHistograms.stream().mapToInt(h -> (int) h.getSumOfValues()).sum();
         numRefExamples = (int) refHistogram.getSumOfValues();
         numExamples = numAltExamples + numRefExamples;
-        altResponsibilities = new double[numAltExamples][NUM_STATES];
+        refResponsibilities = new double[maxDepthForHistograms][NUM_STATES];
+        altResponsibilities = new double[altDesignMatrix.size()][NUM_STATES];
+        responsibilitiesOfAltDepth1Sites = new double[maxDepthForHistograms][ArtifactState.values().length][NUM_STATES];
         refAllele = Nucleotide.valueOf(referenceContext.substring(MIDDLE_INDEX, MIDDLE_INDEX + 1));
         this.convergenceThreshold = convergenceThreshold;
         this.maxEMIterations = maxEMIterations;
         this.logger = logger;
 
-        // null pointer here
-        sumRefDepth = LongStream.range(1, MAX_REF_DEPTH).map(c -> c * (long) refHistogram.get((int) c).getValue()).sum();
+        sumRefDepth = LongStream.range(1, maxDepthForHistograms).map(c -> c * (long) refHistogram.get((int) c).getValue()).sum();
         sumAltDepth = altDesignMatrixForContext.stream().mapToInt(alt -> alt.getBaseCounts()[alt.getAltAllele().ordinal()]).sum();
         sumF1R2AltDepth = altDesignMatrixForContext.stream().mapToInt(alt -> alt.getF1R2Counts()[alt.getAltAllele().ordinal()]).sum();
 
@@ -167,9 +180,8 @@ public class LearnHyperparametersEngine {
         // We save some computation here by recognizing that ref sites with the same depth have the same alt depth and
         // alt F1R2 depth (i.e. m = x = 0). Thus responsibilities for ref sites are a function only of the depth (ref and
         // alt combined) and therefore we need only compute the responsibility once for unique depth 0, 1, ..., MAX_COVERAGE
-        for (int depth = 1; depth <= MAX_REF_DEPTH; depth++) {
+        for (int depth = 1; depth <= maxDepthForHistograms; depth++) {
             final int r = depth; // another hack to use depth in a stream
-
 
             final double[] log10UnnormalizedResponsibilities = computeLog10Responsibilities(refAllele, refAllele, 0, 0, depth, pi);
 
@@ -181,7 +193,7 @@ public class LearnHyperparametersEngine {
         }
 
         // Compute the altResponsibilities of each of n alt sites \gamma_{nk}
-        for (int n = 0; n < numAltExamples; n++) {
+        for (int n = 0; n < altDesignMatrix.size(); n++) {
             final AltSiteRecord example = altDesignMatrix.get(n);
 
             final int depth = example.getDepth();
@@ -204,6 +216,33 @@ public class LearnHyperparametersEngine {
             Utils.validate(Math.abs(MathUtils.sum(altResponsibilities[n]) - 1.0) < EPSILON,
                     String.format("responsibility for %dth example added up to %f", n, MathUtils.sumLog10(altResponsibilities[n])));
         }
+
+        // Compute the responsibilities of sites of ref sites (alt depth = 0)
+        // and alt sites with dept=1
+        for (int d = 1; d <= maxDepthForHistograms; d++){
+            // Streamify this?
+            for (Nucleotide altAllele : REGULAR_BASES){
+                for (ArtifactType artifactType : ArtifactType.values()){
+                    if (altAllele.toString().equals(referenceContext.substring(MIDDLE_INDEX, MIDDLE_INDEX+1))){
+                        continue;
+                    }
+
+                    final int[] baseCounts = new int[REGULAR_BASES.size()];
+                    baseCounts[altAllele.ordinal()] = 1;
+
+                    final int[] f1r2Counts = new int[REGULAR_BASES.size()];
+                    f1r2Counts[altAllele.ordinal()] = artifactType == F1R2 ? 1 : 0;
+
+                    final int f1r2Depth = artifactType == F1R2 ? 1 : 0;
+
+                    double[] log10UnnormalizedResponsibilities = computeLog10Responsibilities(
+                            refAllele, altAllele, 1, f1r2Depth, d, pi);
+
+                    responsibilitiesOfAltDepth1Sites[d-1][artifactType.ordinal()] =
+                            MathUtils.normalizeFromLog10ToLinearSpace(log10UnnormalizedResponsibilities);
+                }
+            }
+        }
     }
 
     // Given the current posterior distributions over z (aka repsonsibilities), compute the estimate of mixture weights
@@ -212,14 +251,24 @@ public class LearnHyperparametersEngine {
     // with respect to the posterior over z from the E-step
     private void takeMstep() {
         // First we compute the effective counts of each state, N_k in the docs. We do this separately over alt and ref sites
-        final double[] effectiveAltCounts = GATKProtectedMathUtils.sumArrayFunction(0, numAltExamples, n -> altResponsibilities[n]);
+        final double[] effectiveAltCountsFromDesignMatrix = GATKProtectedMathUtils.sumArrayFunction(0, altDesignMatrix.size(), n -> altResponsibilities[n]);
+        double[] effectiveAltCountsFromHistograms = new double[NUM_STATES];
+
+        for (Histogram<Integer> h : altHistograms){
+            final int artifactIndex = h.getValueLabel().endsWith(ArtifactType.F1R2.toString()) ? 0 : 1;
+            effectiveAltCountsFromHistograms = MathArrays.ebeAdd(effectiveAltCountsFromHistograms,
+                    GATKProtectedMathUtils.sumArrayFunction(0, maxDepthForHistograms, d ->
+                            MathArrays.scale(h.get(d + 1).getValue(), responsibilitiesOfAltDepth1Sites[d][artifactIndex])));
+        }
+        final double[] effectiveAltCounts = MathArrays.ebeAdd(effectiveAltCountsFromDesignMatrix, effectiveAltCountsFromHistograms);
+
         Utils.validate(Math.abs(MathUtils.sum(effectiveAltCounts) - numAltExamples) < EPSILON,
                 String.format("effective alt counts must add up to %d but got %f", numAltExamples, MathUtils.sum(effectiveAltCounts)));
 
         // TODO: at some depth, the responsibilities must be 1 for z = hom ref and 0 for everything else, we could probably save some time there
         // Over ref sites, we have a histogram of sites over different depths. At each depth we simply multiply the responsibilities by the number of sites,
         // and sum them over all of depths. Because we cut off the depth histogram at {@code MAX_COVERAGE}, we underestimate the ref effective counts by design
-        final double[] effectiveRefCounts = GATKProtectedMathUtils.sumArrayFunction(0, MAX_REF_DEPTH,
+        final double[] effectiveRefCounts = GATKProtectedMathUtils.sumArrayFunction(0, maxDepthForHistograms,
                 c -> MathArrays.scale(refHistogram.get(c + 1).getValue(), refResponsibilities[c]));
         Utils.validate(Math.abs(MathUtils.sum(effectiveRefCounts) - numRefExamples) < EPSILON,
                 String.format("effective ref counts must add up to %d but got %f", numRefExamples, MathUtils.sum(effectiveRefCounts)));
@@ -452,6 +501,29 @@ public class LearnHyperparametersEngine {
                     return ArtifactState.F2R1_T;
                 default:
                     throw new UserException(String.format("Alt allele must be in {A, C, G, T} but got %s", altAllele));
+            }
+        }
+
+        public static ArtifactState getRevCompState(final ArtifactState state){
+            switch (state) {
+                case F1R2_A:
+                    return F2R1_T;
+                case F1R2_C:
+                    return F2R1_G;
+                case F1R2_G:
+                    return F2R1_C;
+                case F1R2_T:
+                    return F2R1_A;
+                case F2R1_A:
+                    return F1R2_T;
+                case F2R1_C:
+                    return F1R2_G;
+                case F2R1_G:
+                    return F1R2_C;
+                case F2R1_T:
+                    return F1R2_A;
+                default:
+                    return state;
             }
         }
     }

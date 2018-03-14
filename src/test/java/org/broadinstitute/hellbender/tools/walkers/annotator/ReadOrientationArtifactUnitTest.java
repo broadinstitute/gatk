@@ -8,6 +8,7 @@ import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceFileSource;
+import org.broadinstitute.hellbender.tools.walkers.readorientation.ArtifactType;
 import org.broadinstitute.hellbender.tools.walkers.readorientation.Hyperparameters;
 import org.broadinstitute.hellbender.tools.walkers.readorientation.LearnHyperparametersEngine;
 import org.broadinstitute.hellbender.utils.*;
@@ -38,37 +39,38 @@ public class ReadOrientationArtifactUnitTest extends GATKBaseTest {
     @DataProvider(name = "readOrientationArtifact")
     public Object[][] readOrientationArtifactData() {
         return new Object[][]{
-                {150, 0.5, 0.5, 0.0, 0.0, 1e-3}, // a likely germline het with no bias
-                {150, 0.3, 0.5, 0.0, 0.0, 1e-3}, // allele fraction 0.3 variant with no bias
-                {150, 0.3, 0.99, 1.0, 0.0, 1e-2}, // allele fraction 0.3 variant with a heavy F1R2 bias
-                {150, 0.3, 0.06, 0.0, 1.0, 1e-1}, // allele fraction 0.2 variant with a moderate F2R1 bias
-                {150, 0.2, 0.01, 0.0, 1.0, 1e-2}, // allele fraction 0.2 variant with a heavy F2R1 bias
-                {150, 0.03, 0.0, 0.0, 1.0, 1e-1}, // low allele fraction with a heavy F2R1 bias
-                {300, 0.02, 1.0, 1.0, 0.0, 1e-1}, // low allele fraction, high depth
-                {200, 0.02, 1.0, 1.0, 0.0, 1e-1}, // low allele fraction, high depth - NOTE: to get this case right, *maybe* we should learn f.
-                {700, 0.025, 1.0, 1.0, 0.0, 1e-1}, // high depth hom ref site with some error
-                {50, 0.01, 0.8, 1.0, 0.0, 1e-1}, // medium depth hom ref site with some error
-                {160, 0.025, 1.0, 1.0, 0.0, 1e-1},
-                {150, 0.025, 1.0, 1.0, 0.0, 1e-1},
-                {700, 0.01, 1.0, 1.0, 0.0, 1e-1}};
+                {150, 0.5, 0.5, 0.0, 1e-3, Optional.empty()}, // a likely germline het with no bias
+                {150, 0.3, 0.5, 0.0, 1e-3, Optional.empty()}, // allele fraction 0.3 variant with no bias
+                {150, 0.3, 0.99, 1.0, 1e-2, Optional.of(ArtifactType.F1R2)}, // allele fraction 0.3 variant with a heavy F1R2 bias
+                {150, 0.3, 0.06, 1.0, 1e-1, Optional.of(ArtifactType.F2R1)}, // allele fraction 0.2 variant with a moderate F2R1 bias
+                {150, 0.2, 0.01, 1.0, 1e-2, Optional.of(ArtifactType.F2R1)}, // allele fraction 0.2 variant with a heavy F2R1 bias
+                {150, 0.03, 0.0, 1.0, 1e-1, Optional.of(ArtifactType.F2R1)}, // low allele fraction with a heavy F2R1 bias
+                {300, 0.02, 1.0, 1.0, 1e-1, Optional.of(ArtifactType.F1R2)}, // low allele fraction, high depth
+                {200, 0.02, 1.0, 1.0, 1e-1, Optional.of(ArtifactType.F1R2)}, // low allele fraction, high depth - NOTE: to get this case right, *maybe* we should learn f.
+                {700, 0.025, 1.0, 1.0, 1e-1, Optional.of(ArtifactType.F1R2)}, // high depth hom ref site with some error
+                {50, 0.01, 0.8, 1.0, 1e-1, Optional.of(ArtifactType.F1R2)}, // medium depth hom ref site with some error
+                {160, 0.025, 1.0, 1.0, 1e-1, Optional.of(ArtifactType.F1R2)},
+                {150, 0.025, 1.0, 1.0, 1e-1, Optional.of(ArtifactType.F1R2)},
+                {700, 0.01, 1.0, 1.0, 1e-1, Optional.of(ArtifactType.F1R2)}};
     }
 
     @DataProvider(name = "failingCases")
     public Object[][] failingCasesData() {
         return new Object[][]{
-                {150, 0.025, 1.0, 1.0, 0.0, 1e-1}};
+                {150, 0.025, 1.0, 1.0, 1e-1}};
 
     }
 
     @Test(dataProvider="readOrientationArtifact")
     public void test(final int depth, final double alleleFraction, final double altF1R2Fraction,
-                     final double expectedF1R2Prob, final double expectedF2R1Prob, final double epsilon) throws IOException {
+                     final double expectedArtifactProb, final double epsilon,
+                     final Optional<ArtifactType> expectedArtifactType) throws IOException {
         // Why is it that the annotations get larger window than the walker (CollectData?)
-        final ReferenceContext ref = new ReferenceContext(new ReferenceFileSource(IOUtils.getPath(hg19_chr1_1M_Reference)),
+        final ReferenceContext reference = new ReferenceContext(new ReferenceFileSource(IOUtils.getPath(hg19_chr1_1M_Reference)),
                 new SimpleInterval("1", variantSite-5, variantSite+5));
         final int numBasesOnEachSide = 1;
-        String reference3mer = ReferenceContext.extractKmer(variantSite, ref, numBasesOnEachSide);
-        final Allele refAllele = Allele.create(reference3mer.substring(numBasesOnEachSide, numBasesOnEachSide+1), true);
+        final String refContext = ReferenceContext.extractKmer(variantSite, reference, numBasesOnEachSide);
+        final Allele refAllele = Allele.create(refContext.substring(numBasesOnEachSide, numBasesOnEachSide+1), true);
         final Allele altAllele = Allele.create((byte) 'A', false); // C -> A transition
         final List<Allele> alleles = Arrays.asList(refAllele, altAllele);
         final VariantContext vc = new VariantContextBuilder("source", Integer.toString(chromosomeIndex), variantSite, variantSite, alleles)
@@ -96,7 +98,7 @@ public class ReadOrientationArtifactUnitTest extends GATKBaseTest {
         int numRefExamples = 1_000_000;
         int numAltExamples = 1000;
 
-        final List<Hyperparameters> hyps = Collections.singletonList(new Hyperparameters(reference3mer, pi, numRefExamples, numAltExamples));
+        final List<Hyperparameters> hyps = Collections.singletonList(new Hyperparameters(refContext, pi, numRefExamples, numAltExamples));
         final File table = File.createTempFile("hyperparameters", "table");
         Hyperparameters.writeHyperparameters(hyps, table);
 
@@ -107,16 +109,22 @@ public class ReadOrientationArtifactUnitTest extends GATKBaseTest {
         final ReadLikelihoods<Allele> readLikelihoods = createReadLikelihoods(depth, alleleFraction, altF1R2Fraction,
                 alleles, genotypeBuilder);
         genotypeBuilder.alleles(alleles);
-        annotation.annotate(ref, vc, genotypeBuilder.make(), genotypeBuilder, readLikelihoods);
+        annotation.annotate(reference, vc, genotypeBuilder.make(), genotypeBuilder, readLikelihoods);
 
         final Genotype genotype = genotypeBuilder.make();
-        final double[] posteriorProbabilities =
-                GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(genotype, GATKVCFConstants.READ_ORIENTATION_POSTERIOR_KEY, () -> null, -1);
-        final double posteriorProbOfF1R2Artifact = posteriorProbabilities[ReadOrientationArtifact.INDEX_OF_F1R2_ARTIFACT];
-        final double posteriorProbOfF2R1Artifact = posteriorProbabilities[ReadOrientationArtifact.INDEX_OF_F2R1_ARTIFACT];
+        final double posterior = GATKProtectedVariantContextUtils.getAttributeAsDouble(genotype, GATKVCFConstants.ROF_POSTERIOR_KEY, -1.0);
 
-        Assert.assertEquals(posteriorProbOfF1R2Artifact, expectedF1R2Prob, epsilon);
-        Assert.assertEquals(posteriorProbOfF2R1Artifact, expectedF2R1Prob, epsilon);
+        if (expectedArtifactType.isPresent()){
+            final ArtifactType artifactType = ArtifactType.valueOf(
+                    GATKProtectedVariantContextUtils.getAttributeAsString(genotype, GATKVCFConstants.ROF_TYPE_KEY, null));
+
+            Assert.assertEquals(posterior, expectedArtifactProb, epsilon);
+            Assert.assertEquals(artifactType, expectedArtifactType.get());
+        } else {
+            Assert.assertTrue(posterior < 0.01);
+        }
+
+
     }
 
     /** Update the genotype builder by side effect, too **/
