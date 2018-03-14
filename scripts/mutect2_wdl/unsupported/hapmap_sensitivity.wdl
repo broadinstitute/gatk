@@ -133,6 +133,7 @@ workflow HapmapSensitivity {
         Array[File] tpfn_idx = Concordance.tpfn_idx
         Array[File] ftnfn = Concordance.ftnfn
         Array[File] ftnfn_idx = Concordance.ftnfn_idx
+        Array[File] filter_analysis = Concordance.filter_analysis
     }
 } #end of workflow
 
@@ -381,6 +382,7 @@ task Concordance {
             -truth ${truth} -eval ${eval} \
             -tpfn "tpfn.vcf" \
             -ftnfn "ftnfn.vcf" \
+            --filter-analysis "filter-analysis.txt" \
             -summary summary.tsv
       }
 
@@ -394,6 +396,7 @@ task Concordance {
             File tpfn_idx = "tpfn.vcf.idx"
             File ftnfn = "ftnfn.vcf"
             File ftnfn_idx = "ftnfn.vcf.idx"
+            File filter_analysis = "filter-analysis.txt"
             File summary = "summary.tsv"
       }
 }

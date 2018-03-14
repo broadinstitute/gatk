@@ -303,7 +303,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         if (tumorLog10Odds < MTAC.initialTumorLodThreshold) {
             return new ActivityProfileState(refInterval, 0.0);
-        } else if (hasNormal()) {
+        } else if (hasNormal() && !MTAC.genotypeGermlineSites) {
             final ReadPileup normalPileup = pileup.getPileupForSample(normalSampleName, header);
             final Pair<Integer, Double> normalAltCountAndQualSum = altCountAndQualSum(normalPileup, refBase);
             final int normalAltCount = normalAltCountAndQualSum.getFirst();
@@ -311,7 +311,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
             if (normalAltCount > normalPileup.size() * MAX_ALT_FRACTION_IN_NORMAL && normalQualSum > MAX_NORMAL_QUAL_SUM) {
                 return new ActivityProfileState(refInterval, 0.0);
             }
-        } else {
+        } else if (!MTAC.genotypeGermlineSites) {
             final List<VariantContext> germline = featureContext.getValues(MTAC.germlineResource, refInterval);
             if (!germline.isEmpty() && germline.get(0).getAttributeAsDoubleList(VCFConstants.ALLELE_FREQUENCY_KEY, 0.0).get(0) > MTAC.maxPopulationAlleleFrequency) {
                 return new ActivityProfileState(refInterval, 0.0);
