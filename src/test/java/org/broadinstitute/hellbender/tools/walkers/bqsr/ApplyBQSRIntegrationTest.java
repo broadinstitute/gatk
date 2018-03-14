@@ -4,6 +4,7 @@ import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import htsjdk.samtools.SamReaderFactory;
 import java.nio.file.FileSystem;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -11,6 +12,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.Assert;
@@ -85,10 +87,35 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test(dataProvider = "ApplyBQSRTest")
-    public void testApplyBQSR(ABQSRTest params) throws IOException {
+    public void testApplyBQSRFile(ABQSRTest params) throws IOException {
+        File outFile = GATKBaseTest.createTempFile("applyBQSRTest", params.outputExtension);
+        final ArrayList<String> args = new ArrayList<>();
+        File refFile = null;
+
+        args.add("-I");
+        args.add(new File(params.bam).getAbsolutePath());
+        args.add("--" + StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME);
+        args.add(new File(resourceDir + "HiSeq.20mb.1RG.table.gz").getAbsolutePath());
+        args.add("-O");
+        args.add(outFile.getAbsolutePath());
+        if (params.reference != null) {
+            refFile = new File(params.reference);
+            args.add("-R");
+            args.add(refFile.getAbsolutePath());
+            if (params.args != null) {
+                Stream.of(params.args).forEach(arg -> args.add(arg));
+            }
+
+            runCommandLine(args);
+
+            SamAssertionUtils.assertSamsEqual(outFile, new File(params.expectedFile), refFile);
+        }
+    }
+
+    @Test(dataProvider = "ApplyBQSRTest")
+    public void testApplyBQSRPath(ABQSRTest params) throws IOException {
         try (FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
             final Path outPath = jimfs.getPath("applyBQSRTest"+params.outputExtension);
-            System.out.println("apply path: " + outPath.toUri().toString());
 
             final ArrayList<String> args = new ArrayList<>();
             Path refPath = null;
@@ -110,6 +137,39 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
             runCommandLine(args);
 
             SamAssertionUtils.assertSamsEqual(outPath, new File(params.expectedFile).toPath(), refPath);
+        }
+    }
+
+    @Test(dataProvider = "ApplyBQSRTest", groups={"cloud", "bucket"})
+    public void testApplyBQSRCloud(ABQSRTest params) throws IOException {
+        final Path outPath = BucketUtils.getPathOnGcs(getGCPTestStaging() + "applyBQSRTest" + params.outputExtension);
+        try {
+            final ArrayList<String> args = new ArrayList<>();
+            Path refPath = null;
+
+            args.add("-I");
+            args.add(new File(params.bam).getAbsolutePath());
+            args.add("--" + StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME);
+            args.add(new File(resourceDir + "HiSeq.20mb.1RG.table.gz").getAbsolutePath());
+            args.add("-O");
+            args.add(outPath.toUri().toString());
+            if (params.reference != null) {
+                File refFile = new File(params.reference);
+                args.add("-R");
+                args.add(refFile.getAbsolutePath());
+                refPath = refFile.toPath();
+            }
+            if (params.args != null) {
+                Stream.of(params.args).forEach(arg -> args.add(arg));
+            }
+
+            runCommandLine(args);
+
+            SamAssertionUtils.assertSamsEqual(outPath, new File(params.expectedFile).toPath(), refPath);
+        } finally {
+            if (Files.exists(outPath)) {
+                Files.delete(outPath);
+            }
         }
     }
 

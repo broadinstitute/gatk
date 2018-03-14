@@ -532,8 +532,16 @@ public final class Utils {
      * @throws IOException if the file could not be read
      */
     public static String calculateFileMD5( final File file ) throws IOException{
-        return Utils.calcMD5(FileUtils.readFileToByteArray(file));
+        return calculatePathMD5(file.toPath());
     }
+
+    /**
+     * Calculates the MD5 for the specified file and returns it as a String
+     *
+     * @param path file whose MD5 to calculate
+     * @return file's MD5 in String form
+     * @throws IOException if the file could not be read
+     */
     public static String calculatePathMD5(final Path path) throws IOException{
         // This doesn't have as nice error messages as FileUtils, but it's close.
         String fname = path.toUri().toString();
@@ -542,6 +550,9 @@ public final class Utils {
         }
         if (Files.isDirectory(path)) {
             throw new IOException("File '" + fname + "' exists but is a directory");
+        }
+        if (!Files.isRegularFile(path)) {
+            throw new IOException("File '" + fname + "' exists but is not a regular file");
         }
         return Utils.calcMD5(Files.readAllBytes(path));
     }

@@ -155,22 +155,18 @@ public final class SamAssertionUtils {
      * @return null if equal or message string if not equal.
      */
     public static String samsEqualStringent(final File actualSam, final File expectedSam, final ValidationStringency validation, final File reference) throws IOException {
-        if (sameMD5s(actualSam, expectedSam)) {
-            return null;
-        }
-
-        //  verify that CRAM files have CRAM contents
-        assertCRAMContentsIfCRAM(actualSam);
-        assertCRAMContentsIfCRAM(expectedSam);
-
-        String msg = equalHeadersIgnoreCOandPG(actualSam, expectedSam, validation, reference);
-        if (msg != null) { return msg; }
-
-        //At this point we know that the files are not byte-wise identical, but are equal according to SamComparison and their headers are equal
-        //So we iterate over reads and compare them one by one.
-        return compareReads(actualSam, expectedSam, validation, reference);
+        return samsEqualStringent(actualSam.toPath(), expectedSam.toPath(), validation, (null==reference?null:reference.toPath()));
     }
 
+    /**
+     * Compares SAM/BAM files in a stringent way but not by byte identity (allow reorder of attributes)
+     * Comparing by MD5s is too strict and comparing by SamComparison is too lenient. So we need this method.
+     *
+     * This differs from a byte-to-byte comparison:
+     * - @PG and @CO lines in headers are ignored in the comparison.
+     * - each read in the actual file are allowed to have a superset of the attributes of the corresponding read in the expected set
+     * @return null if equal or message string if not equal.
+     */
     public static String samsEqualStringent(final Path actualSam, final Path expectedSam, final ValidationStringency validation, final Path reference) throws IOException {
         if (sameMD5s(actualSam, expectedSam)) {
             return null;
@@ -231,32 +227,6 @@ public final class SamAssertionUtils {
         }
     }
 
-    private static String equalHeadersIgnoreCOandPG(final File actualSam, final File expectedSam, final ValidationStringency validation, final File reference) throws IOException {
-        try(final SamReader reader1 = getReader(actualSam, validation, reference);
-            final SamReader reader2 = getReader(expectedSam, validation, reference)){
-
-            final SAMFileHeader h1 = reader1.getFileHeader();
-            final SAMFileHeader h2 = reader2.getFileHeader();
-            String msg;
-
-            //Note: we allow the versions to differ
-
-            msg = compareValues(h1.getCreator(), h2.getCreator(), "File creator");
-            if (msg != null) { return msg; }
-
-            msg = compareValues(h1.getAttribute("SO"), h2.getAttribute("SO"), "Sort order");
-            if (msg != null) { return msg; }
-
-            if (! Objects.equals(h1.getSequenceDictionary(), h2.getSequenceDictionary())){
-                return "Different Sequence dictionaries";
-            }
-
-            msg = compareReadGroups(h1, h2);
-            if (msg != null) { return msg; }
-
-            return msg;
-        }
-    }
     private static String equalHeadersIgnoreCOandPG(final Path actualSam, final Path expectedSam, final ValidationStringency validation, final Path reference) throws IOException {
         try(final SamReader reader1 = getReader(actualSam, validation, reference);
                 final SamReader reader2 = getReader(expectedSam, validation, reference)){
@@ -444,11 +414,13 @@ public final class SamAssertionUtils {
      * Validate/assert that the contents are CRAM if the extension is .cram
      */
     public static void assertCRAMContentsIfCRAM(final File putativeCRAMFile) {
-        if (IOUtils.isCramFile(putativeCRAMFile)) {
-            assertCRAMContents(putativeCRAMFile.toPath());
-        }
+        Path path = (null==putativeCRAMFile?null:putativeCRAMFile.toPath());
+        assertCRAMContentsIfCRAM(path);
     }
-    public static void assertCRAMContentsIfCRAM(final Path putativeCRAMPath) {
+
+    /**
+     * Validate/assert that the contents are CRAM if the extension is .cram
+     */    public static void assertCRAMContentsIfCRAM(final Path putativeCRAMPath) {
         if (IOUtils.isCramFile(putativeCRAMPath)) {
             assertCRAMContents(putativeCRAMPath);
         }
