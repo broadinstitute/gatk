@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 

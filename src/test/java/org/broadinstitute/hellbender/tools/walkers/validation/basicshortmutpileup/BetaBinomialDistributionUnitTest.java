@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpileup;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
