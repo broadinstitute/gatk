@@ -77,8 +77,6 @@ public class GATKRegistrator implements KryoRegistrator {
         kryo.register(SAMFileHeader.SortOrder.class);
         kryo.register(SAMProgramRecord.class);
         kryo.register(SAMReadGroupRecord.class);
-
-        //register to avoid writing the full name of this class over and over
-        kryo.register(PairedEnds.class, new FieldSerializer<>(kryo, PairedEnds.class));
+        kryo.register(PairedEnds.class, new PairedEnds.Serializer());
     }
 }
