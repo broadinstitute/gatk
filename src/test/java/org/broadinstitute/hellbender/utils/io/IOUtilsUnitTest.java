@@ -11,10 +11,7 @@ import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -270,5 +267,44 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(string, IOUtils.urlDecode(encoded));
     }
 
+    @DataProvider(name="resourcePaths")
+    public Object[][] getResourcePaths() {
+        final String testResourceContents = "this is a test resource file";
+        return new Object[][] {
+                { Resource.LARGE_RUNTIME_RESOURCES_PATH + "/testResourceFile.txt", null , testResourceContents},
+                { "testResourceFile.txt", IOUtils.class , testResourceContents},
+        };
+    }
+
+    @Test(dataProvider = "resourcePaths")
+    public void testWriteTempResource(
+            final String resourcePath, final Class<?> relativeClass, final String expectedFirstLine) throws IOException
+    {
+        final Resource largeResource = new Resource(resourcePath, relativeClass);
+        final File resourceFile = IOUtils.writeTempResource(largeResource);
+        final String resourceContentsFirstLine = getFirstLineAndDeleteTempFile(resourceFile);
+        Assert.assertEquals(resourceContentsFirstLine, expectedFirstLine);
+    }
+
+    @Test(dataProvider = "resourcePaths")
+    public void testWriteTempResourceFromPath(
+            final String resourcePath, final Class<?> relativeClass, final String expectedFirstLine) throws IOException
+    {
+        final File resourceFile = IOUtils.writeTempResourceFromPath(resourcePath, relativeClass);
+        final String resourceContentsFirstLine = getFirstLineAndDeleteTempFile(resourceFile);
+        Assert.assertEquals(resourceContentsFirstLine, expectedFirstLine);
+    }
+
+    private String getFirstLineAndDeleteTempFile(final File tempResourceFile) throws IOException {
+        String resourceContentsFirstLine = "";
+        try (final FileReader fr = new FileReader(tempResourceFile);
+             final BufferedReader br = new BufferedReader(fr)) {
+            resourceContentsFirstLine = br.readLine();
+        }
+        finally {
+            tempResourceFile.delete();
+        }
+        return resourceContentsFirstLine;
+    }
 
 }

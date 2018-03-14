@@ -98,6 +98,13 @@ if [ -n "$STAGING_DIR" ]; then
     GIT_CHECKOUT_COMMAND="git checkout ${GITHUB_DIR}${GITHUB_TAG}"
     echo "${GIT_CHECKOUT_COMMAND}"
     ${GIT_CHECKOUT_COMMAND}
+    # Since the large runtime resources are compiled into the jar, they have to be available to
+    # the build when it's done as part of the Docker build. Although the build itself will pull
+    # them from the lfs server if they're not present, the Docker doesn't have git-lfs installed
+    # so that would fail. So pull them into the staging areas so they'll be copied directly.
+    GIT_PULL_LARGE_COMMAND="git lfs pull --include src/main/resources/large/"
+    echo ${GIT_PULL_LARGE_COMMAND}
+    ${GIT_PULL_LARGE_COMMAND}
 fi
 
 # Build

@@ -50,28 +50,38 @@ releases of the toolkit.
 * [License](#license)
 
 ## <a name="requirements">Requirements</a>
-* Java 8
-* Git 2.5 or greater
-* Optional, but recommended:
-    * Gradle 3.1 or greater, needed for building the GATK. We recommend using the `./gradlew` script which will
-      download and use an appropriate gradle version automatically (see examples below).
-    * Python 2.6 or greater (needed for running the `gatk` frontend script)
-    * Python 3.6.2, along with a set of additional Python packages, are required to run some tools and workflows.
-      GATK uses the [Conda](https://conda.io/docs/index.html) package manager to
-      establish and manage the environment and dependencies required by these tools. The GATK Docker image comes
-      with this environment pre-configured. In order to establish an environment suitable to run these tools
-      outside of the Docker image, the conda [gatkcondaenv.yml](https://github.com/broadinstitute/gatk/blob/master/scripts/gatkcondaenv.yml)
-      file is provided. To establish the conda environment locally, [Conda](https://conda.io/docs/index.html) must first
+* To run GATK:
+    * Java 8
+    * Python 2.6 or greater (required to run the `gatk` frontend script)
+    * Python 3.6.2, along with a set of additional Python packages, is required to run some tools and workflows.
+      GATK uses the [Conda](https://conda.io/docs/index.html) package manager to establish and manage the
+      environment and dependencies required by these tools. The GATK Docker image comes with this environment
+      pre-configured. In order to establish an environment suitable to run these tools outside of the Docker image, the
+      conda [gatkcondaenv.yml](https://github.com/broadinstitute/gatk/blob/master/scripts/gatkcondaenv.yml) file is
+      provided. To establish the conda environment locally, [Conda](https://conda.io/docs/index.html) must first
       be installed. Then, create the gatk environment by running the command ```conda env create -n gatk -f gatkcondaenv.yml```
       (developers should run ```./gradlew createPythonPackageArchive```, followed by
       ```conda env create -n gatk -f scripts/gatkcondaenv.yml``` from within the root of the repository clone).
       To activate the environment once it has been created, run the command ```source activate gatk```. See the
       [Conda](https://conda.io/docs/user-guide/tasks/manage-environments.html) documentation for
       additional information about using and managing Conda environments.
-    * R 3.2.5 (needed for producing plots in certain tools, and for running the test suite)
-    * [git-lfs](https://git-lfs.github.com/) 1.1.0 or greater (needed to download large files for the complete test suite).
-      Run `git lfs install` after downloading, followed by `git lfs pull` from the root of your git clone to download the large files. The download is several hundred megabytes.
-* Alternatively, pre-packaged images with all needed dependencies installed can be found on [our dockerhub repository](https://hub.docker.com/r/broadinstitute/gatk/). This requires a recent version of the docker client, which can be found on the [docker website](https://www.docker.com/get-docker).
+    * R 3.2.5 (needed for producing plots in certain tools)
+* To build GATK:
+    * A Java 8 JDK
+    * Git 2.5 or greater
+    * [git-lfs](https://git-lfs.github.com/) 1.1.0 or greater. Required to download the large files used to build GATK, and
+      test files required to run the test suite. Run `git lfs install` after downloading, followed by `git lfs pull` from
+      the root of your git clone to download all of the large files, including those required to run the test suite. The
+      full download is approximately 2 gigabytes. Alternatively, if you are just building GATK and not running the test
+      suite, you can skip this step since the build itself will use git-lfs to download the minimal set of large `lfs`
+      resource files required to complete the build. The test resources will not be downloaded, but this greatly reduces
+      the size of the download.
+    * Gradle 3.1 or greater. We recommend using the `./gradlew` script which will
+      download and use an appropriate gradle version automatically (see examples below).
+    * R 3.2.5 (needed for running the test suite)
+* Pre-packaged Docker images with all needed dependencies installed can be found on
+  [our dockerhub repository](https://hub.docker.com/r/broadinstitute/gatk/). This requires a recent version of the
+   docker client, which can be found on the [docker website](https://www.docker.com/get-docker).
 
 ## <a name="quickstart">Quick Start Guide</a>
 
@@ -102,7 +112,7 @@ You can download and run pre-built versions of GATK4 from the following places:
         
     * This creates a zip archive in the `build/` directory with a name like `gatk-VERSION.zip` containing a complete standalone GATK distribution, including our launcher `gatk`, both the local and spark jars, and this README.    
     * You can also run GATK commands directly from the root of your git clone after running this command.
-    * Note that you *must* have a full git clone in order to build GATK. The zipped source code alone is not buildable.
+    * Note that you *must* have a full git clone in order to build GATK, including the git-lfs files in src/main/resources. The zipped source code alone is not buildable.
 
 * **Other ways to build:**
     * `./gradlew installDist`  
