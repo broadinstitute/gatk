@@ -275,7 +275,7 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
 
   }
 
-  public static final class Serializer<T> extends com.esotericsoftware.kryo.Serializer<PairedEnds> {
+  public static final class Serializer extends com.esotericsoftware.kryo.Serializer<PairedEnds> {
     @Override
     public void write(final Kryo kryo, final Output output, final PairedEnds pair ) {
       pair.serialize(kryo, output);
@@ -303,6 +303,9 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
 //    private final short secondRefIndex;
 //    private final boolean R2R;
 
+    final boolean oldReferences = kryo.getReferences();
+    kryo.setReferences(false);
+
     output.writeInt(partitionIndex, true);
     output.writeBoolean(fragment);
     output.writeInt(score);
@@ -318,9 +321,24 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
       output.writeShort(secondRefIndex);
       output.writeBoolean(R2R);
     }
+
+    kryo.setReferences(oldReferences);
   }
 
   private PairedEnds(Kryo kryo, Input input){
+    final boolean oldReferences = kryo.getReferences();
+    kryo.setReferences(false);
+
+    first = null;
+    second = null;
+
+    // Information used to detect optical dupes
+    readGroup = -1;
+    tile = -1;
+    x = -1;
+    y = -1;
+    libraryId = -1;
+
     partitionIndex = input.readInt(true);
     fragment = input.readBoolean();
     score = input.readInt();
@@ -329,10 +347,19 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
     firstStartPosition = input.readInt();
     firstUnclippedStartPosition = input.readInt();
     firstRefIndex = input.readShort();
+    R1R = input.readBoolean();
 
     if(!isFragment()){
-
+           secondUnclippedStartPosition = input.readInt();
+           secondRefIndex = input.readShort();
+           R2R = input.readBoolean();
+    } else {
+        secondUnclippedStartPosition = -1;
+        secondRefIndex = -1;
+        R2R = false;
     }
+
+    kryo.setReferences(oldReferences);
   }
 
 }
