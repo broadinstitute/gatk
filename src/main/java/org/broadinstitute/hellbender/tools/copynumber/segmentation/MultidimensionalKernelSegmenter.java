@@ -143,7 +143,7 @@ public final class MultidimensionalKernelSegmenter {
                 kernelVarianceCopyRatio, kernelVarianceAlleleFraction, kernelScalingAlleleFraction);
 
         logger.info(String.format("Finding changepoints in (%d, %d) data points and %d chromosomes...",
-                denoisedCopyRatios.getRecords().size(), allelicCounts.size(), multidimensionalPointsPerChromosome.size()));
+                denoisedCopyRatios.size(), allelicCounts.size(), multidimensionalPointsPerChromosome.size()));
 
         //loop over chromosomes, find changepoints, and create allele-fraction segments
         final List<MultidimensionalSegment> segments = new ArrayList<>();

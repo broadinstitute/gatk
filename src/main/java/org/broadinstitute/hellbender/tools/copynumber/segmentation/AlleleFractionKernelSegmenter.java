@@ -67,7 +67,7 @@ public final class AlleleFractionKernelSegmenter {
                 "Log-linear factor for the penalty on the number of changepoints per chromosome must be non-negative.");
 
         logger.info(String.format("Finding changepoints in %d data points and %d chromosomes...",
-                allelicCounts.getRecords().size(), allelicCountsPerChromosome.size()));
+                allelicCounts.size(), allelicCountsPerChromosome.size()));
 
         //loop over chromosomes, find changepoints, and create allele-fraction segments
         final List<AlleleFractionSegment> segments = new ArrayList<>();

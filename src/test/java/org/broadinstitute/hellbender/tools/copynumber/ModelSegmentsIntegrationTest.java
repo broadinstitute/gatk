@@ -109,6 +109,7 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
                                           final String outputPrefix,
                                           final boolean isAllelicCountsPresent,
                                           final boolean isNormalAllelicCountsPresent) {
+        Assert.assertTrue(!(!isAllelicCountsPresent && isNormalAllelicCountsPresent));
         for (final String fileTag : Arrays.asList(ModelSegments.BEGIN_FIT_FILE_TAG, ModelSegments.FINAL_FIT_FILE_TAG)) {
             final ModeledSegmentCollection modeledSegments =
                     new ModeledSegmentCollection(new File(outputDir, outputPrefix + fileTag + ModelSegments.SEGMENTS_FILE_SUFFIX));
@@ -134,13 +135,12 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
                     outputPrefix + ModelSegments.HET_ALLELIC_COUNTS_FILE_SUFFIX));
             Assert.assertEquals(EXPECTED_METADATA, hetAllelicCounts.getMetadata());
         }
-        if (isNormalAllelicCountsPresent) {
+        if (isNormalAllelicCountsPresent) { //if this is true, case sample allelic counts will be present
             hetNormalAllelicCounts = new AllelicCountCollection(new File(outputDir,
                     outputPrefix + ModelSegments.NORMAL_HET_ALLELIC_COUNTS_FILE_SUFFIX));
-            Assert.assertTrue(CopyNumberArgumentValidationUtils.isSameDictionary(
+            Assert.assertNotEquals(EXPECTED_METADATA, hetNormalAllelicCounts.getMetadata());    //sample names should differ
+            Assert.assertTrue(CopyNumberArgumentValidationUtils.isSameDictionary(               //sequence dictionary should be the same
                     EXPECTED_METADATA.getSequenceDictionary(), hetNormalAllelicCounts.getMetadata().getSequenceDictionary()));
-        }
-        if (isAllelicCountsPresent && isNormalAllelicCountsPresent) {
             Assert.assertEquals(hetAllelicCounts.getIntervals(), hetNormalAllelicCounts.getIntervals());
         }
     }

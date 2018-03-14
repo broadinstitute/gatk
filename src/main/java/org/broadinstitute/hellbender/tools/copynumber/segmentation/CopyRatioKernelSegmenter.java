@@ -70,7 +70,7 @@ public final class CopyRatioKernelSegmenter {
                 "Log-linear factor for the penalty on the number of changepoints per chromosome must be non-negative.");
 
         logger.info(String.format("Finding changepoints in %d data points and %d chromosomes...",
-                denoisedCopyRatios.getRecords().size(), denoisedCopyRatiosPerChromosome.size()));
+                denoisedCopyRatios.size(), denoisedCopyRatiosPerChromosome.size()));
 
         //loop over chromosomes, find changepoints, and create copy-ratio segments
         final List<CopyRatioSegment> segments = new ArrayList<>();
