@@ -142,7 +142,8 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
 
     @Test(dataProvider = "ApplyBQSRTest", groups={"cloud", "bucket"})
     public void testApplyBQSRCloud(ABQSRTest params) throws IOException {
-        final Path outPath = BucketUtils.getPathOnGcs(getGCPTestStaging() + "applyBQSRTest" + params.outputExtension);
+        final String outString = BucketUtils.getTempFilePath(getGCPTestStaging() + "tmp/testApplyBQSRCloud",  params.outputExtension);
+        final Path outPath = BucketUtils.getPathOnGcs(outString);
         try {
             final ArrayList<String> args = new ArrayList<>();
             Path refPath = null;
@@ -152,7 +153,7 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
             args.add("--" + StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME);
             args.add(new File(resourceDir + "HiSeq.20mb.1RG.table.gz").getAbsolutePath());
             args.add("-O");
-            args.add(outPath.toUri().toString());
+            args.add(outString);
             if (params.reference != null) {
                 File refFile = new File(params.reference);
                 args.add("-R");
