@@ -11,6 +11,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
+import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.python.StreamingPythonScriptExecutor;
@@ -125,7 +126,7 @@ public class CNNVariantScore extends VariantWalker {
     @Argument(fullName = "architecture", shortName = "architecture", doc = "Neural Net architecture configuration json file", optional = true)
     private String architecture;
 
-    @Argument(fullName = "weights", shortName = "weights", doc = "HD5 file with neural net weights.", optional = true)
+    @Argument(fullName = "weights", shortName = "weights", doc = "Keras model HD5 file with neural net weights.", optional = true)
     private String weights;
 
     @Argument(fullName = "tensor-type", shortName = "tensor-type", doc = "Name of the tensors to generate, reference for 1D reference tensors and read_tensor for 2D tensors.", optional = true)
@@ -133,6 +134,9 @@ public class CNNVariantScore extends VariantWalker {
 
     @Argument(fullName = "window-size", shortName = "window-size", doc = "Neural Net input window size", minValue = 0, optional = true)
     private int windowSize = 128;
+
+    @Argument(fullName = "filter-symbolic-and-sv", shortName = "filter-symbolic-and-sv", doc = "If set will filter symbolic and and structural variants from the input VCF", optional = true)
+    private boolean filterSymbolicAndSV = false;
 
     @Advanced
     @Argument(fullName = "inference-batch-size", shortName = "inference-batch-size", doc = "Size of batches for python to do inference on.", minValue = 1, maxValue = 4096, optional = true)
@@ -166,7 +170,7 @@ public class CNNVariantScore extends VariantWalker {
 
     private String scoreKey;
 
-    private static String resourcePathReadTensor = "large" + File.separator + "tiny_2d_wgs_tf_model.json";
+    private static String resourcePathReadTensor = "large" + File.separator + "small_2d.json";
     private static String resourcePathReferenceTensor = "large" + File.separator + "1d_cnn_mix_train_full_bn.json";
 
     @Override
@@ -175,26 +179,10 @@ public class CNNVariantScore extends VariantWalker {
             return new String[]{"Inference batch size must be less than or equal to transfer batch size."};
         }
 
-        if(architecture == null){
-            Resource architectureResource, weightsResourceHD5;
-            if (tensorType.equals(TensorType.read_tensor)){
-                architectureResource = new Resource(resourcePathReadTensor, null);
-                weightsResourceHD5 = new Resource(resourcePathReadTensor.replace(".json", ".hd5"), null);
-
-            } else if (tensorType.equals(TensorType.reference)) {
-                architectureResource = new Resource(resourcePathReferenceTensor, null);
-                weightsResourceHD5 = new Resource(resourcePathReferenceTensor.replace(".json", ".hd5"), null);
-
-            } else {
-                throw new GATKException("No default architecture for tensor type:" + tensorType.name());
+        if (weights == null && architecture == null){
+            if (!tensorType.equals(TensorType.read_tensor) && !tensorType.equals(TensorType.reference)){
+                return new String[]{"No default architecture for tensor type:" + tensorType.name()};
             }
-
-            File architectureFile = writeTempResource(architectureResource);
-            File weightsHD5 = writeTempResource(weightsResourceHD5);
-            architectureFile.deleteOnExit();
-            weightsHD5.deleteOnExit();
-            architecture = architectureFile.getAbsolutePath();
-            weights = weightsHD5.getAbsolutePath();
         }
 
         return null;
@@ -206,9 +194,20 @@ public class CNNVariantScore extends VariantWalker {
     }
 
     @Override
+    protected VariantFilter makeVariantFilter(){
+        if (filterSymbolicAndSV) {
+            return VariantFilterLibrary.REMOVE_SV_AND_SYMBOLIC;
+        } else {
+            return VariantFilterLibrary.ALLOW_ALL_VARIANTS;
+        }
+    }
+
+    @Override
     public void onTraversalStart() {
         scoreKey = getScoreKeyAndCheckModelAndReadsHarmony();
-
+        if (architecture == null && weights == null) {
+            setArchitectureAndWeightsFromResources();
+        }
         // Start the Python process, and get a FIFO from the executor to use to send data to Python. The lifetime
         // of the FIFO is managed by the executor; the FIFO will be destroyed when the executor is destroyed.
         pythonExecutor.start(Collections.emptyList(), enableJournal);
@@ -242,14 +241,18 @@ public class CNNVariantScore extends VariantWalker {
             pythonExecutor.sendSynchronousCommand("import vqsr_cnn" + NL);
 
             String getArgsAndModel;
-            if (weights == null){
-                getArgsAndModel = String.format("args, model = vqsr_cnn.args_and_model_from_semantics('%s')", architecture) + NL;
-            } else {
+            if (weights != null && architecture != null) {
                 getArgsAndModel = String.format("args, model = vqsr_cnn.args_and_model_from_semantics('%s', weights_hd5='%s')", architecture, weights) + NL;
+                logger.info("Using key:" + scoreKey + " for CNN architecture:" + architecture + " and weights:" + weights);
+            } else if (architecture == null) {
+                getArgsAndModel = String.format("args, model = vqsr_cnn.args_and_model_from_semantics(None, weights_hd5='%s', tensor_type='%s')", weights, tensorType.name()) + NL;
+                logger.info("Using key:" + scoreKey + " for CNN weights:" + weights);
+            } else {
+                getArgsAndModel = String.format("args, model = vqsr_cnn.args_and_model_from_semantics('%s')", architecture) + NL;
+                logger.info("Using key:" + scoreKey + " for CNN architecture:" + architecture);
             }
             pythonExecutor.sendSynchronousCommand(getArgsAndModel);
 
-            logger.info("Using key:" + scoreKey + " for CNN architecture:" + architecture);
         } catch (IOException e) {
             throw new GATKException("Error when creating temp file and initializing python executor.", e);
         }
@@ -331,7 +334,6 @@ public class CNNVariantScore extends VariantWalker {
         sb.append(read.getMappingQuality() + "\t");
         sb.append(Integer.toString(read.getUnclippedStart()) + "\t");
         return sb.toString();
-
     }
 
     private String baseQualityBytesToString(byte[] qualities) {
@@ -349,7 +351,6 @@ public class CNNVariantScore extends VariantWalker {
                 variant.getReference().getBaseString(),
                 variant.getAlternateAlleles().toString()
         );
-
     }
 
     private String getVariantInfoString(final VariantContext variant) {
@@ -408,7 +409,9 @@ public class CNNVariantScore extends VariantWalker {
                                 && variant.getReference().getBaseString().equals(scoredVariant[REF_INDEX])
                                 && variant.getAlternateAlleles().toString().equals(scoredVariant[ALT_INDEX])) {
                             final VariantContextBuilder builder = new VariantContextBuilder(variant);
-                            builder.attribute(scoreKey, scoredVariant[KEY_INDEX]);
+                            if (scoredVariant.length > KEY_INDEX) {
+                                builder.attribute(scoreKey, scoredVariant[KEY_INDEX]);
+                            }
                             vcfWriter.add(builder.make());
                         } else {
                             String errorMsg = "Score file out of sync with original VCF. Score file has:" + sv;
@@ -446,5 +449,26 @@ public class CNNVariantScore extends VariantWalker {
             throw new GATKException("2D Models require a SAM/BAM file specified via -I (-input) argument.");
         }
     }
+
+    private void setArchitectureAndWeightsFromResources() {
+        Resource architectureResource, weightsResourceHD5;
+        if (tensorType.equals(TensorType.read_tensor)) {
+            architectureResource = new Resource(resourcePathReadTensor, null);
+            weightsResourceHD5 = new Resource(resourcePathReadTensor.replace(".json", ".hd5"), null);
+        } else if (tensorType.equals(TensorType.reference)) {
+            architectureResource = new Resource(resourcePathReferenceTensor, null);
+            weightsResourceHD5 = new Resource(resourcePathReferenceTensor.replace(".json", ".hd5"), null);
+        } else {
+            throw new GATKException("No default architecture for tensor type:" + tensorType.name());
+        }
+
+        File architectureFile = writeTempResource(architectureResource);
+        File weightsHD5 = writeTempResource(weightsResourceHD5);
+        architectureFile.deleteOnExit();
+        weightsHD5.deleteOnExit();
+        architecture = architectureFile.getAbsolutePath();
+        weights = weightsHD5.getAbsolutePath();
+    }
+
 }
 

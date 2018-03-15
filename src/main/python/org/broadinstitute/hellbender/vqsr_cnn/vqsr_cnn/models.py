@@ -17,9 +17,15 @@ from . import arguments
 from . import tensor_maps
 
 
-def args_and_model_from_semantics(semantics_json, weights_hd5=None):
+def args_and_model_from_semantics(semantics_json, weights_hd5=None, tensor_type=None):
     args = arguments.parse_args()
-    model = set_args_and_get_model_from_semantics(args, semantics_json, weights_hd5)
+
+    if semantics_json is not None:
+        model = set_args_and_get_model_from_semantics(args, semantics_json, weights_hd5)
+    else:
+        model = load_model(weights_hd5, custom_objects=get_metric_dict(args.labels))
+        args.tensor_name = tensor_type
+
     return args, model
 
 
@@ -68,7 +74,7 @@ def set_args_and_get_model_from_semantics(args, semantics_json, weights_hd5=None
     if weights_hd5 is None:
         weights_hd5 = os.path.join(os.path.dirname(semantics_json), semantics['architecture'])
 
-    print('Loading keras weight file from:', weights_hd5)
+    print('Updated arguments:', args, '\nWeight file from:', weights_hd5)
     model = load_model(weights_hd5, custom_objects=get_metric_dict(args.labels))
     model.summary()
     return model
@@ -216,24 +222,45 @@ def build_tiny_2d_annotation_model(args):
                                                      annotation_units = 10,
                                                      annotation_shortcut = False,
                                                      fc_layers = [16],
+                                                     fc_dropout = 0.0)
+
+
+def build_small_2d_annotation_model(args):
+    return read_tensor_2d_annotation_model_from_args(args,
+                                                     conv_width = 25,
+                                                     conv_height = 25,
+                                                     conv_layers = [64, 48, 32, 24],
+                                                     conv_dropout = 0.0,
+                                                     conv_batch_normalize = False,
+                                                     spatial_dropout = False,
+                                                     max_pools = [(3,1),(3,1)],
+                                                     padding='valid',
+                                                     annotation_units = 64,
+                                                     annotation_shortcut = False,
+                                                     fc_layers = [24],
                                                      fc_dropout = 0.0,
-                                                     batch_normalization = False)
+                                                     fc_batch_normalize = False)
+
 
 def read_tensor_2d_annotation_model_from_args(args,
                                               conv_width = 6,
                                               conv_height = 6,
                                               conv_layers = [128, 128, 128, 128],
                                               conv_dropout = 0.0,
+                                              conv_batch_normalize = False,
                                               spatial_dropout = True,
+                                              residual_layers = [],
                                               max_pools = [(3,1), (3,3)],
                                               padding='valid',
                                               annotation_units = 16,
                                               annotation_shortcut = False,
+                                              annotation_batch_normalize = True,
                                               fc_layers = [64],
                                               fc_dropout = 0.0,
-                                              kernel_initializer='he_normal',
-                                              fc_initializer='glorot_normal',
-                                              batch_normalization = False):
+                                              fc_batch_normalize = False,
+                                              kernel_initializer='glorot_normal',
+                                              kernel_single_channel=True,
+                                              fc_initializer='glorot_normal'):
     '''Builds Read Tensor 2d CNN model with variant annotations mixed in for classifying variants.
 
     Arguments specify widths and depths of each layer.
@@ -242,19 +269,19 @@ def read_tensor_2d_annotation_model_from_args(args,
     Uses the functional API. Supports theano or tensorflow channel ordering.
     Prints out model summary.
 
-    Arguments:
+    Arguments
         args.window_size: Length in base-pairs of sequence centered at the variant to use as input.
         args.labels: The output labels (e.g. SNP, NOT_SNP, INDEL, NOT_INDEL)
         args.weights_hd5: An existing model file to load weights from
         args.channels_last: Theano->False or Tensorflow->True channel ordering flag
         conv_layers: list of number of convolutional filters in each layer
         batch_normalization: Boolean whether to apply batch normalization or not
-
-    Returns:
+    Returns
         The keras model
     '''
     in_channels = tensor_maps.total_input_channels_from_args(args)
-    if args.channels_last:
+
+    if K.image_data_format() == 'channels_last':
         in_shape = (args.read_limit, args.window_size, in_channels)
         concat_axis = -1
     else:
@@ -263,15 +290,18 @@ def read_tensor_2d_annotation_model_from_args(args,
 
     x = read_tensor_in = Input(shape=in_shape, name=args.tensor_name)
 
-    # Add convolutional layers
-    max_pool_diff = len(conv_layers)-len(max_pools)
-    for i,f in enumerate(conv_layers):
-        if i%2 == 0:
-            cur_kernel = (conv_width, 1)
-        else:
-            cur_kernel = (1, conv_height)
+    max_pool_diff = max(0, len(conv_layers)-len(max_pools))
 
-        if batch_normalization:
+    # Add convolutional layers
+    for i,f in enumerate(conv_layers):
+        if kernel_single_channel and i%2 == 0:
+            cur_kernel = (conv_width, 1)
+        elif kernel_single_channel:
+            cur_kernel = (1, conv_height)
+        else:
+            cur_kernel = (conv_width, conv_height)
+
+        if conv_batch_normalize:
             x = Conv2D(f, cur_kernel, activation='linear', padding=padding, kernel_initializer=kernel_initializer)(x)
             x = BatchNormalization(axis=concat_axis)(x)
             x = Activation('relu')(x)
@@ -286,22 +316,59 @@ def read_tensor_2d_annotation_model_from_args(args,
         if i >= max_pool_diff:
             x = MaxPooling2D(max_pools[i-max_pool_diff])(x)
 
+    for i,r in enumerate(residual_layers):
+        if kernel_single_channel and i%2 == 0:
+            cur_kernel = (conv_width, 1)
+        elif kernel_single_channel:
+            cur_kernel = (1, conv_height)
+        else:
+            cur_kernel = (conv_width, conv_height)
+
+        y = Conv2D(r.filters[0], (1, 1), strides=r.strides)(x)
+        y = BatchNormalization(axis=concat_axis)(y)
+        y = Activation('relu')(y)
+
+        y = Conv2D(r.filters[1], cur_kernel, padding='same')(y)
+        y = BatchNormalization(axis=concat_axis)(y)
+        y = Activation('relu')(y)
+
+        y = Conv2D(r.filters[2], (1, 1))(y)
+        y = BatchNormalization(axis=concat_axis)(y)
+
+        if r.identity:
+            x = layers.add([y, x])
+        else:
+            shortcut = Conv2D(r.filters[2], (1, 1), strides=r.strides)(x)
+            shortcut = BatchNormalization(axis=concat_axis)(shortcut)
+            x = layers.add([y, shortcut])
+
+        x = Activation('relu')(x)
+
     x = Flatten()(x)
 
     # Mix the variant annotations in
-    annotations = Input(shape=(len(args.annotations),), name=args.annotation_set)
-    annotations_bn = BatchNormalization(axis=-1)(annotations)
-    alt_input_mlp = Dense(units=annotation_units, kernel_initializer=fc_initializer, activation='relu')(annotations_bn)
-    x = layers.concatenate([x, alt_input_mlp], axis=concat_axis)
+    annotations = annotations_in = Input(shape=(len(args.annotations),), name=args.annotation_set)
+    if annotation_batch_normalize:
+        annotations_in = BatchNormalization(axis=-1)(annotations)
+
+    annotations_mlp = Dense(units=annotation_units, kernel_initializer=fc_initializer, activation='relu')(annotations_in)
+    x = layers.concatenate([x, annotations_mlp], axis=concat_axis)
 
     # Fully connected layers
     for fc_units in fc_layers:
-        x = Dense(units=fc_units, kernel_initializer=fc_initializer, activation='relu')(x)
+
+        if fc_batch_normalize:
+            x = Dense(units=fc_units, kernel_initializer=fc_initializer, activation='linear')(x)
+            x = BatchNormalization(axis=1)(x)
+            x = Activation('relu')(x)
+        else:
+            x = Dense(units=fc_units, kernel_initializer=fc_initializer, activation='relu')(x)
+
         if fc_dropout > 0:
             x = Dropout(fc_dropout)(x)
 
     if annotation_shortcut:
-        x = layers.concatenate([x, annotations_bn], axis=concat_axis)
+        x = layers.concatenate([x, annotations_in], axis=concat_axis)
 
     # Softmax output
     prob_output = Dense(units=len(args.labels), kernel_initializer=fc_initializer, activation='softmax')(x)
@@ -318,7 +385,6 @@ def read_tensor_2d_annotation_model_from_args(args,
         print('Loaded model weights from:', args.weights_hd5)
 
     return model
-
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~ Optimizing ~~~~~~~~~~~~~~

@@ -72,10 +72,9 @@ def score_and_write_batch(args, model, file_out, fifo, batch_size, python_batch_
         predictions = model.predict([np.array(reference_batch), np.array(annotation_batch)],
                                     batch_size=python_batch_size)
     elif args.tensor_name in defines.TENSOR_MAPS_2D:
-        if len(read_batch) > 0:
-            predictions = model.predict(
-                {args.tensor_name:np.array(read_batch), args.annotation_set:np.array(annotation_batch)},
-                batch_size=python_batch_size)
+        predictions = model.predict(
+            {args.tensor_name:np.array(read_batch), args.annotation_set:np.array(annotation_batch)},
+            batch_size=python_batch_size)
     else:
         raise ValueError('Unknown tensor mapping.  Check architecture file.', args.tensor_name)
 
@@ -88,7 +87,7 @@ def score_and_write_batch(args, model, file_out, fifo, batch_size, python_batch_
         elif 'INDEL' == variant_types[i]:
             file_out.write(variant_data[i]+'\t{0:.3f}'.format(indel_scores[i])+'\n')
         else:
-            file_out.write(variant_data[i]+'\t{0:.3f}'.format(snp_scores[i])+'\n')
+            file_out.write(variant_data[i]+'\t{0:.3f}'.format(max(snp_scores[i], indel_scores[i]))+'\n')
 
 
 def reference_string_to_tensor(reference):

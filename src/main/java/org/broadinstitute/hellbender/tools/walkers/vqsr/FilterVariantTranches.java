@@ -50,7 +50,7 @@ import java.util.stream.Collectors;
  *
  * <h4>Apply tranche filters based on CNN_1D scores</h4>
  * <pre>
- * gatk VariantTranchesFromInfoKey \
+ * gatk FilterVariantTranches \
  *   -V input.vcf.gz \
  *   --snp-truth-vcf hapmap.vcf \
  *   --indel-truth-vcf mills.vcf \
@@ -68,7 +68,7 @@ import java.util.stream.Collectors;
 )
 @DocumentedFeature
 @ExperimentalFeature
-public class VariantTranchesFromInfoKey extends CommandLineProgram {
+public class FilterVariantTranches extends CommandLineProgram {
     @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME,
             shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME,
             doc = "Input VCF file")
@@ -120,7 +120,7 @@ public class VariantTranchesFromInfoKey extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
-        final Resource pythonScriptResource = new Resource("tranches.py", VariantTranchesFromInfoKey.class);
+        final Resource pythonScriptResource = new Resource("tranches.py", FilterVariantTranches.class);
         final List<String> snpArguments = new ArrayList<>(Arrays.asList(
                 "--mode", "write_snp_tranches",
                 "--input_vcf", inputVcf,
@@ -138,7 +138,6 @@ public class VariantTranchesFromInfoKey extends CommandLineProgram {
         );
 
         final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(tempFile);
-        createAppropriateIndexInMemory(codec, tempFile, tempFileIdx);
         final Index index = createAppropriateIndexInMemory(codec, tempFile, tempFileIdx);
 
         try {

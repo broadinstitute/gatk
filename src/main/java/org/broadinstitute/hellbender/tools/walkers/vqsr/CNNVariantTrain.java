@@ -103,7 +103,7 @@ public class CNNVariantTrain extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
-        final Resource pythonScriptResource = new Resource("training.py", VariantTranchesFromInfoKey.class);
+        final Resource pythonScriptResource = new Resource("training.py", FilterVariantTranches.class);
         List<String> arguments = new ArrayList<>(Arrays.asList(
                 "--data_dir", inputTensorDir,
                 "--output_dir", outputDir,
@@ -127,7 +127,7 @@ public class CNNVariantTrain extends CommandLineProgram {
         if (tensorType == TensorType.reference) {
             arguments.addAll(Arrays.asList("--mode", "train_on_reference_tensors_and_annotations"));
         } else if (tensorType == TensorType.read_tensor) {
-            arguments.addAll(Arrays.asList("--mode", "train_tiny_model_on_read_tensors_and_annotations"));
+            arguments.addAll(Arrays.asList("--mode", "train_small_model_on_read_tensors_and_annotations"));
         } else {
             throw new GATKException("Unknown tensor mapping mode:"+ tensorType.name());
         }
