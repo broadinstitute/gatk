@@ -10,10 +10,10 @@ import java.io.IOException;
 import java.util.Arrays;
 
 /**
- * Integration tests for {@link CNNVariantScore}.
+ * Integration tests for {@link CNNScoreVariants}.
  * Created by sam on 1/8/18.
  */
-public class CNNVariantScoreIntegrationTest extends CommandLineProgramTest {
+public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
     private static final String architecture1D = largeFileTestDir + "VQSR/1d_cnn_mix_train_full_bn.json";
     private static final String architecture2D = largeFileTestDir + "VQSR/small_2d.json";
     private static final String inputVCF = largeFileTestDir + "VQSR/recalibrated_chr20_start.vcf";
@@ -64,7 +64,7 @@ public class CNNVariantScoreIntegrationTest extends CommandLineProgramTest {
         spec.executeTest("testInference", this);
     }
 
-    @Test(groups = {"python"})
+    @Test(groups = {"python"}, enabled = false)
     public void testInferenceResourceModel() throws IOException{
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
@@ -136,7 +136,7 @@ public class CNNVariantScoreIntegrationTest extends CommandLineProgramTest {
     /**
      * Run the 2D Model on a small test VCF with the resource loaded architecture.
      */
-    @Test(groups = {"python"})
+    @Test(groups = {"python"}, enabled = false)
     public void testInference2dResourceModel() throws IOException{
         TensorType tt = TensorType.read_tensor;
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();

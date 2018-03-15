@@ -23,7 +23,7 @@ CIGAR_CODES_TO_COUNT = [
 def score_and_write_batch(args, model, file_out, fifo, batch_size, python_batch_size):
     '''Score a batch of variants with a CNN model. Write tab delimited temp file with scores.
 
-    This function is tightly coupled with the CNNVariantScore.java
+    This function is tightly coupled with the CNNScoreVariants.java
     It requires data written to the fifo in the order given by transferToPythonViaFifo
 
     Arguments

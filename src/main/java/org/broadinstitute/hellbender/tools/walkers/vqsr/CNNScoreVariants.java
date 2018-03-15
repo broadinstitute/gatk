@@ -48,7 +48,7 @@ import static org.broadinstitute.hellbender.utils.io.IOUtils.writeTempResource;
  * <h3>1D Model with pre-trained architecture</h3>
  *
  * <pre>
- * gatk CNNVariantScore\
+ * gatk CNNScoreVariants\
  *   -V vcf_to_annotate.vcf.gz \
  *   -R reference.fasta \
  *   -O annotated.vcf
@@ -57,7 +57,7 @@ import static org.broadinstitute.hellbender.utils.io.IOUtils.writeTempResource;
  * <h3>2D Model with pre-trained architecture</h3>
  *
  * <pre>
- * gatk CNNVariantScore\
+ * gatk CNNScoreVariants\
  *   -I aligned_reads.bam \
  *   -V vcf_to_annotate.vcf.gz \
  *   -R reference.fasta \
@@ -70,7 +70,7 @@ import static org.broadinstitute.hellbender.utils.io.IOUtils.writeTempResource;
  * <h3>1D Model with user-supplied architecture and weights:</h3>
  *
  * <pre>
- * gatk CNNVariantScore\
+ * gatk CNNScoreVariants\
  *   -V vcf_to_annotate.vcf.gz \
  *   -R reference.fasta \
  *   -O annotated.vcf \
@@ -81,7 +81,7 @@ import static org.broadinstitute.hellbender.utils.io.IOUtils.writeTempResource;
  * <h3>2D Model with user-supplied architecture and weights:</h3>
  *
  * <pre>
- * gatk CNNVariantScore\
+ * gatk CNNScoreVariants\
  *   -I aligned_reads.bam \
  *   -V vcf_to_annotate.vcf.gz \
  *   -R reference.fasta \
@@ -96,12 +96,12 @@ import static org.broadinstitute.hellbender.utils.io.IOUtils.writeTempResource;
 @DocumentedFeature
 @ExperimentalFeature
 @CommandLineProgramProperties(
-        summary = CNNVariantScore.USAGE_SUMMARY,
-        oneLineSummary = CNNVariantScore.USAGE_ONE_LINE_SUMMARY,
+        summary = CNNScoreVariants.USAGE_SUMMARY,
+        oneLineSummary = CNNScoreVariants.USAGE_ONE_LINE_SUMMARY,
         programGroup = VariantEvaluationProgramGroup.class
 )
 
-public class CNNVariantScore extends VariantWalker {
+public class CNNScoreVariants extends VariantWalker {
     private final static String NL = String.format("%n");
     static final String USAGE_ONE_LINE_SUMMARY = "Apply a Convolutional Neural Net to filter annotated variants";
     static final String USAGE_SUMMARY = "Annotate a VCF with scores from a Convolutional Neural Network (CNN)." +
