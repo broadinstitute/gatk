@@ -320,11 +320,17 @@ public class Funcotator extends VariantWalker {
         final LinkedHashMap<String, String> annotationOverridesMap = splitAnnotationArgsIntoMap(annotationOverrides);
 
         // Initialize all of our data sources:
+        // Sort data sources to make them process in the same order each time:
+        dataSourceDirectories.sort(Comparator.naturalOrder());
         final Map<Path, Properties> configData = DataSourceUtils.getAndValidateDataSourcesFromPaths(referenceVersion, dataSourceDirectories);
         initializeManualFeaturesForLocatableDataSources(configData);
         dataSourceFactories.addAll(
                 DataSourceUtils.createDataSourceFuncotationFactoriesForDataSources(configData, annotationOverridesMap, transcriptSelectionMode, userTranscriptIdSet)
         );
+
+        // Sort our data source factories to ensure they're always in the same order:
+        dataSourceFactories.sort( Comparator.comparing(DataSourceFuncotationFactory::getName) );
+
         // Identify and store any Gencode data sources:
         for ( final DataSourceFuncotationFactory factory : dataSourceFactories ) {
             if ( factory.getType().equals(FuncotatorArgumentDefinitions.DataSourceType.GENCODE) ) {
