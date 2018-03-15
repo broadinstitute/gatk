@@ -146,10 +146,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         // Provide one temp directory if the caller didn't
         if (this.TMP_DIR == null) this.TMP_DIR = new ArrayList<>();
         // TODO - this should use the HTSJDK IOUtil.getDefaultTmpDirPath, which is somehow broken in the current HTSJDK version
-        // TODO - this should be p.toAbsolutePath().toUri().toString() to allow other FileSystems to be used
-        // TODO - but it did not work with the default FileSystem because it appends the file:// scheme
-        // TODO - maybe a method in IOUtils for converting a Path to String is required for handling this (and can be re-used in other places when it is required)
-        if (this.TMP_DIR.isEmpty()) TMP_DIR.add(IOUtils.getPath(System.getProperty("java.io.tmpdir")).toAbsolutePath().toString());
+        if (this.TMP_DIR.isEmpty()) TMP_DIR.add(IOUtils.getAbsolutePathName(IOUtils.getPath(System.getProperty("java.io.tmpdir"))));
 
         // Build the default headers
         final ZonedDateTime startDateTime = ZonedDateTime.now();
@@ -183,8 +180,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
                 // TODO - logging can be removed, but I think that it might be informative (maybe it should be debug)
                 logger.warn("Temp directory {}: unable to set permissions due to {}", p, e.getMessage());
             }
-            // TODO - this should be p.toAbsolutePath().toUri().toString() to allow other FileSystems to be used (see above)
-            System.setProperty("java.io.tmpdir", p.toAbsolutePath().toString()); // in loop so that last one takes effect
+            System.setProperty("java.io.tmpdir", IOUtils.getAbsolutePathName(p)); // in loop so that last one takes effect
         }
 
         //Set defaults (note: setting them here means they are not controllable by the user)

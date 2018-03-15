@@ -84,7 +84,7 @@ public final class StandardArgumentDefinitions {
      */
     public static final String GATK_CONFIG_FILE_OPTION = "gatk-config-file";
 
-    public static final String TMP_DIR_NAME = "TMP_DIR";
+    public static final String TMP_DIR_NAME = "tmp-dir";
     public static final String QUIET_NAME = "QUIET";
     public static final String USE_JDK_DEFLATER_LONG_NAME = "use-jdk-deflater";
     public static final String USE_JDK_DEFLATER_SHORT_NAME = "jdk-deflater";

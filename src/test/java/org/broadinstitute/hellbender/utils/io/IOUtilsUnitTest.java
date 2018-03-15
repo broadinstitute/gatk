@@ -167,6 +167,20 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         Assert.assertTrue(size>0);
     }
 
+    @DataProvider
+    public Object[][] absoluteNames() {
+        return new Object[][] {
+                {"/local/example.txt", "/local/example.txt"},
+                {"/local/file://example.txt", "/local/file:/example.txt"},
+                {"file:///local/example.txt", "/local/example.txt"}
+        };
+    }
+
+    @Test(dataProvider = "absoluteNames")
+    public void testGetAbsolutePathName(final String uriString, final String expected) {
+        Assert.assertEquals(IOUtils.getAbsolutePathName(IOUtils.getPath(uriString)), expected);
+    }
+
     @Test
     public void testSuccessfulCanReadFileCheck() {
         final File expectedFile = createTempFile("Utils-can-read-test",".txt");

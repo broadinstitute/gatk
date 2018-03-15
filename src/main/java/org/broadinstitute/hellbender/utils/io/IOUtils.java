@@ -535,6 +535,17 @@ public final class IOUtils {
     }
 
     /**
+     * Gets the absolute Path name with the URI marker, handling the special case of the default file system by removing
+     * the file:// prefix.
+     *
+     * @param path path to get the absolute name.
+     * @return a String with the absolute name.
+     */
+    public static String getAbsolutePathName(final Path path) {
+        return path.toAbsolutePath().toUri().toString().replaceFirst("^file://", "");
+    }
+
+    /**
      * @param path Path to test
      * @throws org.broadinstitute.hellbender.exceptions.UserException.CouldNotReadInputFile if the file isn't readable
      *         and a regular file
