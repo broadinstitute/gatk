@@ -302,10 +302,7 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
 //    private final int secondUnclippedStartPosition;
 //    private final short secondRefIndex;
 //    private final boolean R2R;
-
-    final boolean oldReferences = kryo.getReferences();
-    kryo.setReferences(false);
-
+    
     output.writeInt(partitionIndex, true);
     output.writeBoolean(fragment);
     output.writeInt(score);
@@ -322,12 +319,9 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
       output.writeBoolean(R2R);
     }
 
-    kryo.setReferences(oldReferences);
   }
 
   private PairedEnds(Kryo kryo, Input input){
-    final boolean oldReferences = kryo.getReferences();
-    kryo.setReferences(false);
 
     first = null;
     second = null;
@@ -358,8 +352,6 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
         secondRefIndex = -1;
         R2R = false;
     }
-
-    kryo.setReferences(oldReferences);
   }
 
 }
