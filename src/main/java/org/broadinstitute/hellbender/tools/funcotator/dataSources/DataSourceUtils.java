@@ -65,7 +65,6 @@ public class DataSourceUtils {
      */
     public static Map<Path, Properties> getAndValidateDataSourcesFromPaths(final String refVersion,
                                                                             final List<String> dataSourceDirectories) {
-
         Utils.nonNull(refVersion);
         Utils.nonNull(dataSourceDirectories);
 

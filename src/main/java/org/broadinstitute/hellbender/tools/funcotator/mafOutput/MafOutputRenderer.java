@@ -253,8 +253,8 @@ public class MafOutputRenderer extends OutputRenderer {
             }
 
             // Write the output (with manual annotations at the end):
-            for ( final String value : mafCompliantOutputMap.values() ) {
-                writeString(value);
+            for ( final Map.Entry<String, String> entry : mafCompliantOutputMap.entrySet() ) {
+                writeString(entry.getValue());
                 writeString(MafOutputRendererConstants.FIELD_DELIMITER);
             }
             writeLine(manualAnnotationSerializedString);
