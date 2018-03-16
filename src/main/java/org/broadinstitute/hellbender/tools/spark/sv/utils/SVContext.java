@@ -316,7 +316,7 @@ public final class SVContext extends VariantContext {
      */
     private List<SimpleInterval> calculateReferenceIntervals(final int padding, final SAMSequenceDictionary dictionary,
                                                              final List<AlignedContig> contigs) {
-        final List<SimpleInterval> breakPoints = getBreakPointIntervals(0, dictionary, true);
+        final List<SimpleInterval> breakPoints = getBreakPointIntervals(padding, dictionary, true);
         SVIntervalLocator locator = SVIntervalLocator.of(dictionary);
         final SVIntervalTree<SVInterval> tree = new SVIntervalTree<>();
         Stream.concat(breakPoints.stream().map(locator::toSVInterval),
@@ -421,8 +421,8 @@ public final class SVContext extends VariantContext {
      * @return {@code null} if there is no inserted sequence.
      */
     public byte[] getInsertedSequence() {
-        if (hasAttribute("INSERTED_SEQUENCE")) {
-            final String asString = getAttributeAsString("INSERTED_SEQUENCE", null);
+        if (hasAttribute(GATKSVVCFConstants.INSERTED_SEQUENCE)) {
+            final String asString = getAttributeAsString(GATKSVVCFConstants.INSERTED_SEQUENCE, null);
             return asString == null ? null : asString.getBytes();
         } else  {
             return null;
@@ -430,8 +430,8 @@ public final class SVContext extends VariantContext {
     }
 
     public byte[] getHomologySequence() {
-        if (hasAttribute("HOMOLOGY")) {
-            final String asString = getAttributeAsString("HOMOLOGY", null);
+        if (hasAttribute(GATKSVVCFConstants.HOMOLOGY)) {
+            final String asString = getAttributeAsString(GATKSVVCFConstants.HOMOLOGY, null);
             return asString == null ? null : asString.getBytes();
         } else {
             return null;
@@ -615,16 +615,22 @@ public final class SVContext extends VariantContext {
     }
 
     private ReferenceBases getReferenceBases(final ReferenceMultiSource reference, final SimpleInterval interval, final List<ReferenceBases> referenceBases) {
-        for (final ReferenceBases bases : referenceBases) {
-            if (bases.getInterval().contains(interval)) {
-                return bases;
+        final List<ReferenceBases> candidates = referenceBases.stream()
+                .filter(b -> b.getInterval().contains(interval)).collect(Collectors.toList());
+        if (candidates.size() == 1) {
+            return candidates.get(0);
+        } else if (candidates.isEmpty()) {
+            try {
+                return reference.getReferenceBases(interval);
+            } catch (final IOException e) {
+                throw new GATKException(
+                        String.format("Exception trying to access the reference at %s: %s", interval, e.getMessage()), e);
             }
-        }
-        try {
-            return reference.getReferenceBases(interval);
-        } catch (final IOException e) {
-            throw new GATKException(
-                    String.format("Exception trying to access the reference at %s: %s", interval, e.getMessage()), e);
+        } else {
+            final int min = candidates.stream().mapToInt(b -> b.getInterval().getStart()).min().getAsInt();
+            final int max = candidates.stream().mapToInt(b -> b.getInterval().getEnd()).max().getAsInt();
+            return candidates.stream().filter(b -> b.getInterval().getStart() == min && b.getInterval().getEnd() == max)
+                    .findFirst().orElseGet(() -> getReferenceBases(reference, new SimpleInterval(contig, min, max), Collections.emptyList()));
         }
     }
 

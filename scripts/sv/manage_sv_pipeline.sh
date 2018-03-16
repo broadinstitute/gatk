@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -x
 # terminate script on error or if a command fails before piping to another command
 set -eu
 set -o pipefail
