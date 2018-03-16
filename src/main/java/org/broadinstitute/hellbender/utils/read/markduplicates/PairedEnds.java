@@ -5,8 +5,6 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.SAMFileHeader;
-import javafx.util.Pair;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -70,7 +68,7 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
     this.first = read;
     this.partitionIndex = partitionIndex;
     this.fragment = true;
-    this.firstRefIndex = (short)ReadUtils.getReferenceIndex(first, header);
+    this.firstRefIndex = (short)ReadUtils.getReferenceIndex(read, header);
     this.secondRefIndex = -1;
     this.name = null;
     this.R1R = read.isReverseStrand();
@@ -134,7 +132,7 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   }
 
   // An optimization for passing around empty read information
-  public static PairedEnds empty(GATKRead read, SAMFileHeader header, int partitionIndex) {
+  public static PairedEnds placeHolder(GATKRead read, SAMFileHeader header, int partitionIndex) {
     return new PairedEnds(read, header, partitionIndex);
   }
 
