@@ -74,7 +74,7 @@ public class DataSourceUtils {
         boolean hasGencodeDataSource = false;
 
         // Go through our directories:
-        final Set<String> names = new HashSet<>();
+        final Set<String> names = new LinkedHashSet<>();
         for ( final String pathString : dataSourceDirectories ) {
             final Path p = IOUtils.getPath(pathString);
             if ( !isValidDirectory(p) ) {
