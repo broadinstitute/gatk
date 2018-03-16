@@ -4,7 +4,6 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.serializers.FieldSerializer;
 import com.google.common.collect.*;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -87,15 +86,10 @@ public class MarkDuplicatesSparkUtils {
                     .peek(readWithIndex -> {
                         final GATKRead read = readWithIndex.getValue();
                         PairedEnds fragment = (ReadUtils.readHasMappedMate(read)) ?
-                                PairedEnds.empty(read, header, readWithIndex.getIndex()) :
+                                PairedEnds.placeHolder(read, header, readWithIndex.getIndex()) :
                                 PairedEnds.newFragment(read, header, readWithIndex.getIndex(), scoringStrategy);
 
-                        out.add(new Tuple2<>(fragment.isEmpty() ?
-                                                     ReadsKey.hashKeyForFragment(fragment.getUnclippedStartPosition(),
-                                                             fragment.isR1R(),
-                                                             fragment.getFirstRefIndex(),
-                                                             ReadUtils.getLibrary(read, header)) :
-                                                     fragment.keyForFragment(header), fragment));
+                        out.add(new Tuple2<>(fragment.keyForFragment(header), fragment));
                     })
                     .filter(readWithIndex -> ReadUtils.readHasMappedMate(readWithIndex.getValue()))
                     .sorted(new GATKOrder(header))
@@ -120,7 +114,7 @@ public class MarkDuplicatesSparkUtils {
 
         final JavaPairRDD<Integer, Iterable<PairedEnds>> keyedPairs = pairedEnds.groupByKey(); //TODO make this a proper aggregate by key
 
-        return markPairedEnds(keyedPairs, finder, header);
+        return markPairedEnds(keyedPairs, finder);
     }
 
     //todo use this instead of keeping all unmapped reads as non-duplicate
@@ -212,7 +206,7 @@ public class MarkDuplicatesSparkUtils {
     }
 
     private static JavaPairRDD<IndexPair<String>, Integer> markPairedEnds(final JavaPairRDD<Integer, Iterable<PairedEnds>> keyedPairs,
-                                                                          final OpticalDuplicateFinder finder, final SAMFileHeader header) {
+                                                                          final OpticalDuplicateFinder finder) {
         return keyedPairs.flatMapToPair(keyedPair -> {
             Iterable<PairedEnds> pairedEnds = keyedPair._2();
 
