@@ -228,9 +228,12 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         // TODO: 1/10/18 bring back read annotation, see ticket 4228
         forNonComplexVariants(contigsByPossibleRawTypes, svDiscoveryInputData);
 
+        final List<VariantContext> complexVariants =
+                CpxVariantInterpreter.inferCpxVariant(contigsByPossibleRawTypes.get(RawTypes.Cpx), svDiscoveryInputData);
+
         svDiscoveryInputData.updateOutputPath(outputDir+"/"+RawTypes.Cpx.name()+".vcf");
-        new CpxVariantDetector()
-                .inferSvAndWriteVCF(contigsByPossibleRawTypes.get(RawTypes.Cpx), svDiscoveryInputData);
+        SVVCFWriter.writeVCF(complexVariants, svDiscoveryInputData.outputPath,
+                svDiscoveryInputData.referenceSequenceDictionaryBroadcast.getValue(), svDiscoveryInputData.toolLogger);
     }
 
     private static void forNonComplexVariants(final EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> contigsByPossibleRawTypes,
@@ -312,7 +315,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
                                  final JavaRDD<GATKRead> originalAlignments, final Broadcast<SAMFileHeader> headerBroadcast,
                                  final String outputDir, final Logger toolLogger) {
 
-        final Set<String> filteredReadNames = new HashSet<>( filteredContigs.map(decoratedTig -> decoratedTig.getSourceContig().contigName).distinct().collect() );
+        final Set<String> filteredReadNames = new HashSet<>( filteredContigs.map(AssemblyContigWithFineTunedAlignments::getContigName).distinct().collect() );
         toolLogger.info(filteredReadNames.size() + " contigs indicating " + rawTypeString);
         final JavaRDD<SAMRecord> splitLongReads = originalAlignments.filter(read -> filteredReadNames.contains(read.getName()))
                 .map(read -> read.convertToSAMRecord(headerBroadcast.getValue()));

@@ -7,6 +7,7 @@ import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVTestUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -312,7 +313,7 @@ public class ContigAlignmentsModifierUnitTest extends GATKBaseTest {
         alignment = new AlignmentInterval(originalRefSpan,
                 1, 1334, TextCigarCodec.decode("1190M4D53M2I26M2I31M2I28M1422S"),
                 true, 60, 13, 1239, ContigAlignmentsModifier.AlnModType.NONE);
-        refSpan = new SimpleInterval("chr2", 128791173, 128792476);
+        refSpan = new SimpleInterval("chr2", 128791173, 128792478);
         data.add(new Object[]{alignment, 28, true, refSpan, TextCigarCodec.decode("1190M4D53M2I26M2I31M1452S")});
 
         alignment = new AlignmentInterval(originalRefSpan,
@@ -324,8 +325,13 @@ public class ContigAlignmentsModifierUnitTest extends GATKBaseTest {
         alignment = new AlignmentInterval(originalRefSpan,
                 1, 1334, TextCigarCodec.decode("1190M4I53M2I26M2I31M2I28M1422S"),
                 true, 60, 13, 1239, ContigAlignmentsModifier.AlnModType.NONE);
-        refSpan = new SimpleInterval("chr2", 128792367, 128792506);
+        refSpan = new SimpleInterval("chr2", 128792363, 128792506);
         data.add(new Object[]{alignment, 1190, false, refSpan, TextCigarCodec.decode("1194S53M2I26M2I31M2I28M1422S")});
+
+        alignment = new AlignmentInterval(new SimpleInterval("chr20", 38653045, 38653268),
+                1783, 2053, TextCigarCodec.decode("1782S89M44I106M3I29M1431S"),
+                false, 60, 59, 85, ContigAlignmentsModifier.AlnModType.NONE);
+        data.add(new Object[]{alignment, 89, false, new SimpleInterval("chr20", 38653045, 38653179), TextCigarCodec.decode("1915S106M3I29M1431S")});
 
         return data.toArray(new Object[data.size()][]);
     }
@@ -383,5 +389,45 @@ public class ContigAlignmentsModifierUnitTest extends GATKBaseTest {
         Assert.assertEquals(x._1(), expectedLeft);
         Assert.assertEquals(x._2(), expectedMiddle);
         Assert.assertEquals(x._3(), expectedRight);
+    }
+
+    //==================================================================================================================
+
+    @DataProvider(name = "forClipAlignmentInterval")
+    private Object[][] createTestDataForClipAlignmentInterval() {
+        final List<Object[]> data = new ArrayList<>(20);
+
+        data.add(new Object[]{null, 10, true, null, IllegalArgumentException.class});
+
+        final AlignmentInterval alignmentInterval = SVTestUtils.fromSAMRecordString("asm004677:tig00000\t2064\tchr1\t202317371\t60\t1393H50M1085H\t*\t0\t0\tGTCTTGCTCTGTTGCCCAGGCTGGAGTGCAGTAGAGCAATCATAGCTCAC\t*\tSA:Z:chr3,15736242,-,1282M1246S,60,0;chr3,15737523,-,1425S377M1D726M,60,4;\tMD:Z:41T8\tRG:Z:GATKSVContigAlignments\tNM:i:1\tAS:i:45\tXS:i:0", true);
+
+        data.add(new Object[]{alignmentInterval, -1, true, null, IllegalArgumentException.class});
+
+        data.add(new Object[]{alignmentInterval, 51, true, null, IllegalArgumentException.class});
+
+        final AlignmentInterval expected = new AlignmentInterval(
+                new SimpleInterval("chr1", 202317371, 202317402),
+                1104, 1135,
+                TextCigarCodec.decode("1085H18S32M1393H"), false,
+                60, AlignmentInterval.NO_NM, AlignmentInterval.NO_AS,
+                ContigAlignmentsModifier.AlnModType.UNDERGONE_OVERLAP_REMOVAL);
+        data.add(new Object[]{alignmentInterval, 18, false, expected, null});
+
+        return data.toArray(new Object[data.size()][]);
+    }
+
+    @Test(groups = "sv", dataProvider = "forClipAlignmentInterval")
+    @SuppressWarnings("rawtypes")
+    public void testClipAlignmentInterval(final AlignmentInterval toBeClipped,
+                                          final int clipLength,
+                                          final boolean clipFrom3PrimeEnd,
+                                          final AlignmentInterval expectedResult,
+                                          final Class expectedExceptionClass) {
+        try {
+            Assert.assertEquals(ContigAlignmentsModifier.clipAlignmentInterval(toBeClipped, clipLength, clipFrom3PrimeEnd),
+                    expectedResult);
+        } catch (final Exception ex) {
+            Assert.assertEquals(ex.getClass(), expectedExceptionClass);
+        }
     }
 }

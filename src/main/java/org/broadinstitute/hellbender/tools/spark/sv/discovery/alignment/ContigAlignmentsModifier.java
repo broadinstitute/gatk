@@ -1,123 +1,22 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.samtools.*;
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.AssemblyContigAlignmentSignatureClassifier;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
 import scala.Tuple3;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 public final class ContigAlignmentsModifier {
-
-    /**
-     * Removes overlap between input {@code contig}'s two alignments.
-     * If the two alignment intervals are NOT overlapping, return the original aligned contig.
-     * @param dictionary if null, then {@code one} and {@code two} must be mapped to the same chromosome
-     */
-    public static List<AlignmentInterval> removeOverlap(final AlignmentInterval one, final AlignmentInterval two,
-                                                        final SAMSequenceDictionary dictionary) {
-        if (dictionary == null)
-            Utils.validateArg(one.referenceSpan.getContig().equals(two.referenceSpan.getContig()),
-                    "despite input alignments mapped to different chromosomes, input reference sequence dictionary is null. \n" +
-                            one.toPackedString() + "\t" + two.toPackedString());
-
-        final AlignmentInterval reconstructedOne, reconstructedTwo;
-        final int overlapOnRead = AlignmentInterval.overlapOnContig(one, two);
-        Utils.validateArg(overlapOnRead < Math.min(one.getSizeOnRead(), two.getSizeOnRead()),
-                "two input alignments' overlap on read consumes completely one of them.\t"
-                        + one.toPackedString() + "\t" + two.toPackedString());
-        if (overlapOnRead == 0) {
-            reconstructedOne = one;
-            reconstructedTwo = two;
-        } else {
-            final boolean oneYieldToTwo = yieldHomologousSequenceToAlignmentTwo(one, two, dictionary);
-
-            if (oneYieldToTwo) {
-                reconstructedOne = clipAlignmentInterval(one, overlapOnRead, true);
-                reconstructedTwo = two;
-            } else {
-                reconstructedOne = one;
-                reconstructedTwo = clipAlignmentInterval(two, overlapOnRead, false);
-            }
-
-        }
-        return Arrays.asList(reconstructedOne, reconstructedTwo);
-    }
-
-    /**
-     * Implementing homology-yielding strategy between two alignments {@code one} and {@code two}.
-     *
-     * <p>
-     *     The strategy aims to follow the left-align convention:
-     *     <ul>
-     *         <li>
-     *             when two alignments are mapped to different chromosomes,
-     *             the homologous sequence is yielded to the alignment block
-     *             whose reference contig comes later as defined by {@code refSequenceDictionary}
-     *         </li>
-     *         <li>
-     *             when two alignments are mapped to the same chromosome,
-     *             <ul>
-     *                 <li>
-     *                     if the two alignments are of the same orientation,
-     *                     the homologous sequence is yielded to {@code two}
-     *                     when both are of the '+' strand
-     *                 </li>
-     *                 <li>
-     *                     if the two alignments are of opposite orientations,
-     *                     the homologous sequence is yielded so that
-     *                     a) when the two alignments' ref span doesn't overlap,
-     *                        we follow the left align convention for the resulting strand-switch breakpoints;
-     *                     b) when the two alignments' ref span do overlap,
-     *                        we makes it so that the inverted duplicated reference span is minimized
-     *                        (this avoids over detection of inverted duplications by
-     *                        {@link AssemblyContigAlignmentSignatureClassifier#isLikelyInvertedDuplication(AlignmentInterval, AlignmentInterval)}
-     *                 </li>
-     *             </ul>
-     *         </li>
-     *     </ul>
-     * </p>
-     *
-     *
-     * @return true if {@code one} should yield the homologous sequence to {@code two}.
-     * @throws IllegalArgumentException when the two alignments contains one another in terms of their read span
-     */
-    static boolean yieldHomologousSequenceToAlignmentTwo(final AlignmentInterval one, final AlignmentInterval two,
-                                                         final SAMSequenceDictionary refSequenceDictionary) {
-
-        Utils.validateArg( !(one.containsOnRead(two) || two.containsOnRead(one)),
-                "assumption that two alignments don't contain one another on their read span is violated.\n" +
-                        one.toPackedString() + "\n" + two.toPackedString());
-
-        final boolean oneYieldToTwo;
-        if ( one.referenceSpan.getContig().equals(two.referenceSpan.getContig()) ) {
-            // motivation: when the two alignments' ref span doesn't overlap,
-            //             this strategy follows the left align convention for the strand-switch breakpoints;
-            //             when the two alignments' ref span do overlap,
-            //             this strategy makes it so that the inverted duplicated reference span is minimal.
-            if (one.forwardStrand != two.forwardStrand) {
-                // jumpStart is for "the starting reference location of a jump that linked two alignment intervals", and
-                // jumpLandingRefLoc is for "that jump's landing reference location"
-                final int jumpStartRefLoc = one.referenceSpan.getEnd(),
-                          jumpLandingRefLoc = two.referenceSpan.getStart();
-                oneYieldToTwo = ( (jumpStartRefLoc <= jumpLandingRefLoc) == one.forwardStrand );
-            } else {
-                oneYieldToTwo = one.forwardStrand;
-            }
-        } else {
-            oneYieldToTwo = IntervalUtils.compareContigs(one.referenceSpan, two.referenceSpan, refSequenceDictionary) > 0;
-        }
-        return oneYieldToTwo;
-    }
 
     /**
      * Given {@code clipLengthOnRead} to be clipped from an aligned contig's {@link AlignmentInterval} {@code input},
@@ -131,8 +30,12 @@ public final class ContigAlignmentsModifier {
      * @param clipLengthOnRead      number of read bases to be clipped away
      * @param clipFrom3PrimeEnd     to clip from the 3' end of the read or not
      */
-    private static AlignmentInterval clipAlignmentInterval(final AlignmentInterval input, final int clipLengthOnRead,
-                                                           final boolean clipFrom3PrimeEnd) {
+    public static AlignmentInterval clipAlignmentInterval(final AlignmentInterval input, final int clipLengthOnRead,
+                                                          final boolean clipFrom3PrimeEnd) {
+        Utils.nonNull(input);
+        if (clipLengthOnRead < 0) {
+            throw new IllegalArgumentException("requesting negative clip length: " + clipLengthOnRead + " on " + input.toPackedString());
+        }
         Utils.validateArg(clipLengthOnRead < input.endInAssembledContig - input.startInAssembledContig + 1,
                             "input alignment to be clipped away: " + input.toPackedString() + "\twith clip length: " + clipLengthOnRead);
 
@@ -146,7 +49,7 @@ public final class ContigAlignmentsModifier {
             newTigEnd   = input.endInAssembledContig;
         }
         return new AlignmentInterval(result._1, newTigStart, newTigEnd, result._2, input.forwardStrand, input.mapQual,
-                AlignmentInterval.NO_NM, input.alnScore, input.alnModType);
+                AlignmentInterval.NO_NM, AlignmentInterval.NO_AS, AlnModType.UNDERGONE_OVERLAP_REMOVAL);
     }
 
     /**
@@ -231,7 +134,7 @@ public final class ContigAlignmentsModifier {
                         messageWhenErred);
             }
 
-            refBasesConsumed += secondOp.getLength();
+            refBasesConsumed += secondOp.getOperator().consumesReferenceBases() ? secondOp.getLength() : 0;
             if (secondOp.getOperator().equals(CigarOperator.D)) {
                 newMiddleSection.remove( 1 );
             } else {

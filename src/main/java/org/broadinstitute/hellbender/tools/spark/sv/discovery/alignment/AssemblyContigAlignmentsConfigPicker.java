@@ -244,9 +244,9 @@ public class AssemblyContigAlignmentsConfigPicker {
      * @return a 2-D list, where in the case when multiple configurations are equally top-scored, all such configurations are picked up
      */
     @VisibleForTesting
-    static List<GoodAndBadMappings> pickBestConfigurations(final AlignedContig alignedContig,
-                                                           final Set<String> canonicalChromosomes,
-                                                           final Double scoreDiffTolerance) {
+    public static List<GoodAndBadMappings> pickBestConfigurations(final AlignedContig alignedContig,
+                                                                  final Set<String> canonicalChromosomes,
+                                                                  final Double scoreDiffTolerance) {
         // nothing to score if only one alignment
         if (alignedContig.alignmentIntervals.size() == 1) {
             return Collections.singletonList(
@@ -399,7 +399,7 @@ public class AssemblyContigAlignmentsConfigPicker {
      * @return The number of returned contigs will be the same as the given best-scored configurations.
      */
     @VisibleForTesting
-    static Iterator<AssemblyContigWithFineTunedAlignments> reConstructContigFromPickedConfiguration(
+    public static Iterator<AssemblyContigWithFineTunedAlignments> reConstructContigFromPickedConfiguration(
             final Tuple2<Tuple2<String, byte[]>, List<GoodAndBadMappings>> nameSeqAndBestConfigurationsOfOneAssemblyContig) {
 
         final String contigName = nameSeqAndBestConfigurationsOfOneAssemblyContig._1._1;
@@ -439,12 +439,11 @@ public class AssemblyContigAlignmentsConfigPicker {
      */
     private static Comparator<AssemblyContigWithFineTunedAlignments> sortConfigurations() {
         final Comparator<AssemblyContigWithFineTunedAlignments> numFirst
-                = (AssemblyContigWithFineTunedAlignments x, AssemblyContigWithFineTunedAlignments y)
-                -> Integer.compare(x.getSourceContig().alignmentIntervals.size(), y.getSourceContig().alignmentIntervals.size());
+                = Comparator.comparingInt(tig -> tig.getAlignments().size());
         final Comparator<AssemblyContigWithFineTunedAlignments> mismatchSecond
                 = (AssemblyContigWithFineTunedAlignments x, AssemblyContigWithFineTunedAlignments y)
-                -> Integer.compare(x.getSourceContig().alignmentIntervals.stream().mapToInt(ai -> ai.mismatches).sum(),
-                                   y.getSourceContig().alignmentIntervals.stream().mapToInt(ai -> ai.mismatches).sum());
+                -> Integer.compare(x.getAlignments().stream().mapToInt(ai -> ai.mismatches).sum(),
+                                   y.getAlignments().stream().mapToInt(ai -> ai.mismatches).sum());
         return numFirst.thenComparing(mismatchSecond);
     }
 

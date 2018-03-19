@@ -196,12 +196,17 @@ public class AnnotatedVariantProducer implements Serializable {
 
     // TODO: 12/13/16 again ignoring translocation
     @VisibleForTesting
-    public static List<Allele> produceAlleles(final SimpleInterval refLoc, final ReferenceMultiSource reference, final SvType SvType)
+    public static List<Allele> produceAlleles(final SimpleInterval refLoc, final ReferenceMultiSource reference, final SvType svType)
             throws IOException {
 
         final byte[] refBases = reference.getReferenceBases(refLoc).getBases();
 
-        return new ArrayList<>(Arrays.asList(Allele.create(new String(refBases), true), SvType.getAltAllele()));
+        return produceAlleles(refBases, svType);
+    }
+
+    @VisibleForTesting
+    public static List<Allele> produceAlleles(final byte[] refBases, final SvType svType) {
+        return new ArrayList<>(Arrays.asList(Allele.create(new String(refBases), true), svType.getAltAllele()));
     }
 
     public static List<VariantContext> annotateBreakpointBasedCallsWithImpreciseEvidenceLinks(final List<VariantContext> assemblyDiscoveredVariants,

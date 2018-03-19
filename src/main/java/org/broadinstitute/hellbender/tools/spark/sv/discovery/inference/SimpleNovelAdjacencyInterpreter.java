@@ -63,13 +63,13 @@ public final class SimpleNovelAdjacencyInterpreter {
                 assemblyContigs
                         .filter(tig -> ChimericAlignment
                                 .splitPairStrongEnoughEvidenceForCA(
-                                        tig.getSourceContig().alignmentIntervals.get(0),
-                                        tig.getSourceContig().alignmentIntervals.get(1),
+                                        tig.getHeadAlignment(),
+                                        tig.getTailAlignment(),
                                         MORE_RELAXED_ALIGNMENT_MIN_MQ, MORE_RELAXED_ALIGNMENT_MIN_LENGTH))
                         .mapToPair(tig -> {
                             final SAMSequenceDictionary refSeqDict = referenceSequenceDictionaryBroadcast.getValue();
                             final ChimericAlignment simpleChimera = ChimericAlignment.extractSimpleChimera(tig, refSeqDict);
-                            final byte[] contigSequence = tig.getSourceContig().contigSequence;
+                            final byte[] contigSequence = tig.getContigSequence();
 
                             final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype =
                                     new NovelAdjacencyAndAltHaplotype(simpleChimera, contigSequence, refSeqDict);
