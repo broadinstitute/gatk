@@ -7,6 +7,7 @@ import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.collections.MapUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
 import org.broadinstitute.hellbender.tools.funcotator.TranscriptSelectionMode;
@@ -106,14 +107,19 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                         Collections.singletonList(FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER)
                 );
 
+        final List<DataSourceFuncotationFactory> dataSourceFuncotationFactories = DataSourceUtils.createDataSourceFuncotationFactoriesForDataSources(
+                configData,
+                new LinkedHashMap<>(),
+                TranscriptSelectionMode.BEST_EFFECT,
+                new HashSet<>()
+        );
+
+        // Sort the datasources to ensure the same order every time:
+        dataSourceFuncotationFactories.sort( Comparator.comparing(DataSourceFuncotationFactory::getName) );
+
         return new MafOutputRenderer(
                 IOUtils.getPath(outputFile.toURI().toString()),
-                DataSourceUtils.createDataSourceFuncotationFactoriesForDataSources(
-                        configData,
-                        new LinkedHashMap<>(),
-                        TranscriptSelectionMode.BEST_EFFECT,
-                        new HashSet<>()
-                ),
+                dataSourceFuncotationFactories,
                 new VCFHeader(),
                 new LinkedHashMap<>(),
                 new LinkedHashMap<>(),
