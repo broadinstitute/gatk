@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine.spark;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.serializers.FieldSerializer;
+import com.netflix.servo.util.UnmodifiableList;
 import de.javakaffee.kryoserializers.UnmodifiableCollectionsSerializer;
 import htsjdk.samtools.*;
 import org.apache.spark.serializer.KryoRegistrator;
@@ -32,18 +33,18 @@ public class GATKRegistrator implements KryoRegistrator {
         // in newer versions (3.0.x), but we can't use those because of incompatibility with Spark. We just include the
         // fix here.
         // We are tracking this issue with (#874)
-        kryo.register(Collections.unmodifiableMap(Collections.EMPTY_MAP).getClass(), new UnmodifiableCollectionsSerializer());
+//        kryo.register(java.util.UnmodifiableMapUnmodifiableMap.class, new UnmodifiableCollectionsSerializer());/
+//
+//        kryo.register(UnmodifiableList.class, new UnmodifiableCollectionsSerializer());
 
-        kryo.register(Collections.unmodifiableList(Collections.EMPTY_LIST).getClass(), new UnmodifiableCollectionsSerializer());
+//        kryo.register(SAMRecordToGATKReadAdapter.class, new SAMRecordToGATKReadAdapterSerializer());
 
-        kryo.register(SAMRecordToGATKReadAdapter.class, new SAMRecordToGATKReadAdapterSerializer());
-
-        kryo.register(SAMRecord.class, new SAMRecordSerializer());
+ //       kryo.register(SAMRecord.class, new SAMRecordSerializer());
 
 //        kryo.register(ShardPartitioner.class, new ShardPartitioner.Serializer());
 
         //register to avoid writing the full name of this class over and over
-        kryo.register(PairedEnds.class, new FieldSerializer<>(kryo, PairedEnds.class));
+ //       kryo.register(PairedEnds.class, new FieldSerializer<>(kryo, PairedEnds.class));
 
         // register the ADAM data types using Avro serialization, including:
         //     AlignmentRecord

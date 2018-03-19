@@ -7,13 +7,10 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.engine.Shard;
 import org.broadinstitute.hellbender.engine.ShardBoundary;
-import org.broadinstitute.hellbender.engine.spark.SparkSharder;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.ShardPartitioner;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.collections.IntervalsSkipList;
-import org.broadinstitute.hellbender.utils.iterators.ShardedIntervalIterator;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -31,7 +28,7 @@ public final class ShardPartitionerUnitTest {
 
         final Map<String, List<SimpleInterval>> mergedIntervals = IntervalUtils.sortAndMergeIntervals(intervals, true);
         final List<SimpleInterval> sortedIntervals = mergedIntervals
-                .values().stream().flatMap(v -> v.stream()).collect(Collectors.toList());
+                .values().stream().flatMap(Collection::stream).collect(Collectors.toList());
         final SAMSequenceDictionary dictionary = new SAMSequenceDictionary(
                 mergedIntervals.entrySet().stream()
                         .map(e -> new SAMSequenceRecord(e.getKey(), e.getValue().stream()

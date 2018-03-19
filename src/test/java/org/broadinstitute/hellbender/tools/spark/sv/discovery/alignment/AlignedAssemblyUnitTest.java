@@ -108,7 +108,7 @@ public class AlignedAssemblyUnitTest extends GATKBaseTest {
                                               final boolean expectedIsPositiveStrand, final int expectedStartOnContig_1BasedInclusive, final int expectedEndOnContig_1BasedInclusive,
                                               final int expectedContigLength, final int expectedMapQualInBwaMemAlignment, final AlignmentInterval expectedAlignmentInterval) {
 
-        final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", SVDiscoveryTestDataProvider.makeDummySequence(expectedContigLength, (byte)'A'), null, null, bwaMemAlignment, refNames, hg19Header, false, false);
+        final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", SVTestUtils.makeDummySequence(expectedContigLength, (byte)'A'), null, null, bwaMemAlignment, refNames, hg19Header, false, false);
         final AlignmentInterval alignmentInterval = new AlignmentInterval(samRecord);
         Assert.assertEquals(alignmentInterval.referenceSpan, expectedReferenceInterval);
         Assert.assertEquals(alignmentInterval.cigarAlong5to3DirectionOfContig, expectedCigar);
@@ -182,7 +182,8 @@ public class AlignedAssemblyUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider="AlignedAssemblySerializationTest", groups = "sv")
-    public void testAlignedAssemblySerialization(final Integer assemblyID, final AlignedAssembly expectedAssembly) {
+    public void testAlignedAssemblySerialization(@SuppressWarnings("unused") final Integer assemblyID,
+                                                 final AlignedAssembly expectedAssembly) {
 
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
         final Output out = new Output(bos);

@@ -34,9 +34,7 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.SparkSharder;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.FilterLongReadAlignmentsSAMSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.ArraySVHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVHaplotype;
@@ -754,19 +752,6 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         }
         Collections.sort(result);
         return result.stream().mapToInt(i -> i).toArray();
-    }
-
-    private static List<AlignmentInterval> composeAlignmentIntervals(final SVAssembledContig haplotype, final Template template, final int fragmentIndex, final List<BwaMemAlignment> alignerOutput) {
-        if (alignerOutput.isEmpty() || alignerOutput.size() == 1 && SAMFlag.READ_UNMAPPED.isSet(alignerOutput.get(0).getSamFlag())) {
-            return Collections.emptyList();
-        } else {
-            final List<String> haplotypeNameList = Collections.singletonList(haplotype.getName());
-            final Set<String> haplotypeNameSet = Collections.singleton(haplotype.getName());
-            final int readLength = template.fragments().get(fragmentIndex).length();
-            final List<AlignmentInterval> allIntervals = alignerOutput.stream().map(bwa -> new AlignmentInterval(bwa, haplotypeNameList, readLength)).collect(Collectors.toList());
-            final List<AlignmentInterval> bestIntervals = FilterLongReadAlignmentsSAMSpark.pickBestConfigurations(new AlignedContig(template.name(), template.fragments().get(fragmentIndex).bases(), allIntervals, false), haplotypeNameSet, 0.0).get(0);
-            return bestIntervals;
-        }
     }
 
     private static List<SVFastqUtils.FastqRead> removeRepeatedReads(final List<SVFastqUtils.FastqRead> in) {

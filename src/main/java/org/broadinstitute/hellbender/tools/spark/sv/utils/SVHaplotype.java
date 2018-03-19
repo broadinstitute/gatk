@@ -3,9 +3,10 @@ package org.broadinstitute.hellbender.tools.spark.sv.utils;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import org.apache.commons.collections4.IterableUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.FilterLongReadAlignmentsSAMSpark;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigAlignmentsConfigPicker;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -123,15 +124,28 @@ public interface SVHaplotype {
     <T> List<List<AlignmentInterval>> align(final Iterable<T> input, Function<T, byte[]> basesOf);
 
     default <T> List<AlignedContig> alignContigs(final Iterable<AlignedContig> contigs) {
+        final List<AlignedContig> contigsList = IterableUtils.toList(contigs);
         final List<String> names = Utils.stream(contigs).map(c -> c.contigName).collect(Collectors.toList());
         final List<byte[]> bases = Utils.stream(contigs).map(c -> c.contigSequence).collect(Collectors.toList());
         final List<List<AlignmentInterval>> intervals = align(bases, Function.identity());
         final List<AlignedContig> result = new ArrayList<>(intervals.size());
         final Set<String> haplotypeName = Collections.singleton(getName());
-        for (int i = 0; i < intervals.size(); i++) {
-            final List<List<AlignmentInterval>> bestCombos = FilterLongReadAlignmentsSAMSpark.pickBestConfigurations(names.get(i), intervals.get(i), haplotypeName, 0.0);
-            final AlignedContig alignedContig = new AlignedContig(names.get(i), bases.get(i), bestCombos.get(0), bestCombos.size() > 1);
-            result.add(alignedContig);
+        for (int i = 0; i < contigsList.size(); i++) {
+            final List<AssemblyContigAlignmentsConfigPicker.GoodAndBadMappings> mappings =
+                     AssemblyContigAlignmentsConfigPicker.pickBestConfigurations(contigsList.get(i), haplotypeName, 0.0);
+            if (mappings.isEmpty()) {
+                result.add(contigsList.get(i));
+            } else {
+                final AssemblyContigAlignmentsConfigPicker.GoodAndBadMappings topMapping = mappings.get(0);
+                if (topMapping.getGoodMappings().isEmpty()) {
+                    result.add(contigsList.get(i));
+                } else if (topMapping.getGoodMappings().size() == contigsList.get(i).alignmentIntervals.size()) {
+                    result.add(contigsList.get(i));
+                } else {
+                    result.add(new AlignedContig(contigsList.get(i).contigName, contigsList.get(i).contigSequence, topMapping.getGoodMappings(),
+                            mappings.size() > 1));
+                }
+            }
         }
         return result;
     }

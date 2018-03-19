@@ -27,10 +27,8 @@ import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype.FilterLongReadAlignmentsSAMSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVContext;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVHaplotype;
@@ -41,14 +39,10 @@ import org.broadinstitute.hellbender.utils.SerializableComparator;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
-import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
-import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
 import org.broadinstitute.hellbender.utils.collections.IntervalsSkipList;
 import org.broadinstitute.hellbender.utils.gcs.BamBucketIoUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.reference.FastaReferenceWriter;
 import scala.Tuple2;
 
 import java.io.*;
@@ -707,79 +701,6 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                     totalIndels, totalIndelLength, totalReversals);
         }
     }
-
-    private final List<AlignedContig> alignContigsAgainstHaplotype(final AlignedContig haplotype,
-                                                                         final List<AlignedContig> contigs) {
-        final File imageFile = createTemporalHaplotypeIndexFile(haplotype);
-        try (final BwaMemIndex index = new BwaMemIndex(imageFile.getAbsolutePath());
-             final BwaMemAligner aligner = new BwaMemAligner(index)) {
-            final List<String> haplotypeNameList = Collections.singletonList(haplotype.contigName);
-            final Set<String> haplotypeNameSet = Collections.singleton(haplotype.contigName);
-            final List<List<BwaMemAlignment>> alignedContigSegments = aligner.alignSeqs(contigs, ac -> ac.contigSequence);
-            final List<AlignedContig> result = new ArrayList<>(contigs.size());
-
-            for (int i = 0; i < contigs.size(); i++) {
-                final List<BwaMemAlignment> bmas = alignedContigSegments.get(i);
-                final AlignedContig input = contigs.get(i);
-                final List<AlignmentInterval> intervals = bmas.stream()
-                        .filter(bma -> bma.getRefId() >= 0)
-                        .filter(bwa -> SAMFlag.SECONDARY_ALIGNMENT.isUnset(bwa.getSamFlag())) // ignore secondary alignments.
-                        .map(bma -> new AlignmentInterval(bma, haplotypeNameList, input.contigSequence.length))
-                        .collect(Collectors.toList());
-                final AlignedContig allCombos = new AlignedContig(input.contigName, input.contigSequence, intervals, false);
-                final List<AlignmentInterval> bestComboIntervals =
-                        FilterLongReadAlignmentsSAMSpark.pickBestConfigurations(allCombos, haplotypeNameSet, 0.0).get(0);
-                final AlignedContig bestCombo = new AlignedContig(input.contigName, input.contigSequence,
-                        bestComboIntervals, false);
-                result.add(bestCombo);
-            }
-            return result;
-        } finally {
-            imageFile.delete();
-        }
-    }
-
-    private File createTemporalHaplotypeIndexFile(final AlignedContig haplotype) {
-
-        File fastaFile = null;
-        try {
-            fastaFile = File.createTempFile("csvh-tmp", ".fasta");
-            final File indexFile = File.createTempFile("csvh-tmp", ".img");
-            fastaFile.deleteOnExit();
-            indexFile.deleteOnExit();
-            FastaReferenceWriter.writeSingleSequenceReference(fastaFile.toPath(), false, false, haplotype.contigName, null, haplotype.contigSequence);
-            BwaMemIndex.createIndexImageFromFastaFile(fastaFile.getAbsolutePath(), indexFile.getAbsolutePath());
-            return indexFile;
-        } catch (final IOException ex) {
-            throw new GATKException("could not create index for haplotype " + haplotype.contigName);
-        } finally {
-            if (fastaFile != null) { fastaFile.delete(); }
-        }
-
-    }
-
-//    private File createFastaFromHaplotype(final Haplotype haplotype, final String seqName) {
-//        final File result;
-//        try {
-//            result = File.createTempFile("gatk-sv-bwa-tmp-ref-", ".fasta");
-//        } catch (final IOException ex) {
-//            throw new GATKException("could not obtain a file location for a temporary haplotype reference fasta file", ex);
-//        }
-//        result.deleteOnExit();
-//        try (final PrintWriter fastaWriter = new PrintWriter(new FileWriter(result))) {
-//
-//            fastaWriter.println(">" + seqName);
-//            final byte[] bases = haplotype.getBases();
-//            int nextIdx = 0;
-//            while (nextIdx < bases.length) {
-//                fastaWriter.println(new String(bases, nextIdx, Math.min(bases.length - nextIdx, FASTA_BASES_PER_LINE)));
-//                nextIdx += FASTA_BASES_PER_LINE;
-//            }
-//        } catch (final IOException ex) {
-//            throw new GATKException("could not write haplotype reference fasta file '" + result + "'", ex);
-//        }
-//        return result;
-//    }
 
     /**
      * Represent the information derived of collecting contigs and haplotypes that are relevant to a variant context

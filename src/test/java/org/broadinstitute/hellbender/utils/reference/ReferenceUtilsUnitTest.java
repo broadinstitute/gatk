@@ -100,37 +100,4 @@ public class ReferenceUtilsUnitTest extends GATKBaseTest {
             Assert.assertEquals(dictionary.size(), 4, "Wrong sequence dictionary size after loading");
         }
     }
-
-    @Test(dataProvider =  "dumpReferenceSourceData")
-    public void testDumpReferenceSourceInFiles(final ReferenceSource source, final int basesPerLine)
-        throws IOException
-    {
-        final File whereTo = createTempFile("test-dump-ref-source-", ".fasta");
-        final File whereToIndex = new File(whereTo.getParent(), whereTo.getName() + ".fai");
-        whereToIndex.deleteOnExit();
-        final ReferenceSource resultSource = ReferenceUtils.dumpReferenceSource(source, Paths.get(whereTo.toURI()), basesPerLine);
-        Assert.assertNotNull(resultSource);
-        Assert.assertTrue(whereTo.isFile());
-        // Check on the index:
-        Assert.assertEquals(resultSource.getReferenceSequenceDictionary(), source.getReferenceSequenceDictionary());
-    }
-
-
-    @DataProvider(name = "dumpReferenceSourceData")
-    public Object[][] dumpReferenceSourceData()
-        throws IOException
-    {
-        final RandomDNA randomDNA = new RandomDNA();
-        final File TWO_CHR_10k_4k5;
-        randomDNA.nextFasta(TWO_CHR_10k_4k5 = createTempFile("test-ref", ".fasta"),
-                new SAMSequenceDictionary(Arrays.asList(new SAMSequenceRecord("seq1", 10_000),
-                        new SAMSequenceRecord("seq2", 4_500))), 76);
-        final FastaSequenceIndex index = FastaSequenceIndexCreator.buildFromFasta(Paths.get(TWO_CHR_10k_4k5.toURI()));
-        final File TWO_CHR_10k_4k5_index = new File(TWO_CHR_10k_4k5.getParent(), TWO_CHR_10k_4k5.getName() + ".fai");
-        index.write(TWO_CHR_10k_4k5_index.toPath());
-        TWO_CHR_10k_4k5_index.deleteOnExit();
-        return new Object[][] {
-                new Object[] { new ReferenceFileSource(TWO_CHR_10k_4k5.toPath()) , 56 }
-        };
-    }
 }
