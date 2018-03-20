@@ -21,7 +21,6 @@ import java.io.*;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.HashMap;
@@ -166,7 +165,7 @@ public final class IOUtils {
      * @return the absolute path to the file.
      */
     public static File absolute(File file) {
-        return replacePath(file, absolutePath(file));
+        return new File(absolutePath(file));
     }
 
     private static String absolutePath(File file) {
@@ -202,14 +201,6 @@ public final class IOUtils {
         }
 
         return ("/" + StringUtils.join(names, "/"));
-    }
-
-    private static File replacePath(File file, String path) {
-        if (file instanceof FileExtension)
-            return ((FileExtension)file).withPath(path);
-        if (!File.class.equals(file.getClass()))
-            throw new GATKException("Sub classes of java.io.File must also implement FileExtension");
-        return new File(path);
     }
 
     /**
