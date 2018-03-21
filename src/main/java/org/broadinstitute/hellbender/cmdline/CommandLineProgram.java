@@ -10,11 +10,11 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.metrics.StringHeader;
 import htsjdk.samtools.util.BlockCompressedOutputStream;
 import htsjdk.samtools.util.BlockGunzipper;
-import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
@@ -22,14 +22,11 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.*;
 import java.text.DecimalFormat;
 import java.time.Duration;
 import java.time.ZonedDateTime;
@@ -63,8 +60,8 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
 
     private static final String DEFAULT_TOOLKIT_SHORT_NAME = "GATK";
 
-    @Argument(fullName = StandardArgumentDefinitions.TMP_DIR_NAME, common=true, optional=true, doc = "List of temp directories to use.")
-    public List<String> TMP_DIR = new ArrayList<>();
+    @Argument(fullName = StandardArgumentDefinitions.TMP_DIR_NAME, common=true, optional=true, doc = "Temp directory to use.")
+    public String TMP_DIR;
 
     @ArgumentCollection(doc="Special Arguments that have meaning to the argument parsing system.  " +
             "It is unlikely these will ever need to be accessed by the command line program")
@@ -144,9 +141,8 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
 
     public Object instanceMainPostParseArgs() {
         // Provide one temp directory if the caller didn't
-        if (this.TMP_DIR == null) this.TMP_DIR = new ArrayList<>();
         // TODO - this should use the HTSJDK IOUtil.getDefaultTmpDirPath, which is somehow broken in the current HTSJDK version
-        if (this.TMP_DIR.isEmpty()) TMP_DIR.add(IOUtils.getAbsolutePathName(IOUtils.getPath(System.getProperty("java.io.tmpdir"))));
+        if (TMP_DIR == null || TMP_DIR.isEmpty()) TMP_DIR = IOUtils.getAbsolutePathWithoutFileProtocol(IOUtils.getPath(System.getProperty("java.io.tmpdir")));
 
         // Build the default headers
         final ZonedDateTime startDateTime = ZonedDateTime.now();
@@ -155,32 +151,20 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
 
         LoggingUtils.setLoggingLevel(VERBOSITY);  // propagate the VERBOSITY level to logging frameworks
 
-        for (final String s : TMP_DIR) {
-            final Path p = IOUtils.getPath(s);
-            // Intentionally not checking the return values, because it may be that the program does not
-            // need a tmp_dir. If this fails, the problem will be discovered downstream.
-            if (!Files.exists(p)) {
-                try {
-                    Files.createDirectories(p);
-                } catch (IOException e) {
-                    // intentionally ignoring
-                }
-            }
-            try {
-                // add the READ/WRITE permissions to the actual permissions of the file
-                final Set<PosixFilePermission> permissions = Files.getPosixFilePermissions(p);
-                // only set the permissions if they change
-                if (permissions.addAll(Arrays.asList(
-                        PosixFilePermission.OWNER_READ, PosixFilePermission.GROUP_READ, PosixFilePermission.OTHERS_READ,
-                        PosixFilePermission.OWNER_WRITE, PosixFilePermission.GROUP_WRITE, PosixFilePermission.OTHERS_WRITE))) {
-                    Files.setPosixFilePermissions(p, permissions);
-                }
-            } catch (final UnsupportedOperationException | IOException e) {
-                // intentionally ignoring
-                // TODO - logging can be removed, but I think that it might be informative (maybe it should be debug)
-                logger.warn("Temp directory {}: unable to set permissions due to {}", p, e.getMessage());
-            }
-            System.setProperty("java.io.tmpdir", IOUtils.getAbsolutePathName(p)); // in loop so that last one takes effect
+        // set the temp directory as a java property, checking for existence and read/write access
+        final Path p = IOUtils.getPath(TMP_DIR);
+        try {
+            p.getFileSystem().provider().checkAccess(p, AccessMode.READ, AccessMode.WRITE);
+            System.setProperty("java.io.tmpdir", IOUtils.getAbsolutePathWithoutFileProtocol(p));
+        } catch (final AccessDeniedException | NoSuchFileException e) {
+            // TODO: it may be that the program does not need a tmp dir
+            // TODO: if it fails, the problem can be discovered downstream
+            // TODO: should log a warning instead?
+            throw new UserException.BadInput(String.format("--%s (%s) should exists and have read/write access",
+                    StandardArgumentDefinitions.TMP_DIR_NAME, IOUtils.getAbsolutePathWithoutFileProtocol(p)), e);
+        } catch (final IOException e) {
+            // other exceptions with the tmp directory
+            throw new UserException.BadInput(e.getMessage(), e);
         }
 
         //Set defaults (note: setting them here means they are not controllable by the user)

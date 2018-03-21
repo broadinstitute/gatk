@@ -34,11 +34,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.lang.Math.pow;
@@ -305,7 +301,7 @@ public final class EstimateLibraryComplexityGATK extends AbstractOpticalDuplicat
                 new PairedReadCodec(),
                 new PairedReadComparator(),
                 MAX_RECORDS_IN_RAM,
-                TMP_DIR.stream().map(IOUtils::getPath).collect(Collectors.toList()));
+                Collections.singletonList(IOUtils.getPath(TMP_DIR)));
 
         // Loop through the input files and pick out the read sequences etc.
         final ProgressLogger progress = new ProgressLogger(logger, (int) 1e6, "Read");

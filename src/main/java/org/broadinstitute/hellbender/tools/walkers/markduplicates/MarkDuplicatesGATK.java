@@ -19,10 +19,7 @@ import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 import java.io.File;
 import java.io.Serializable;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -193,13 +190,13 @@ public final class MarkDuplicatesGATK extends AbstractMarkDuplicatesCommandLineP
                 new ReadEndsForMarkDuplicatesCodec(),
                 new ReadEndsMDComparator(),
                 maxInMemory,
-                TMP_DIR.stream().map(IOUtils::getPath).collect(Collectors.toList()));
+                Collections.singletonList(IOUtils.getPath(TMP_DIR)));
 
         this.fragSort = SortingCollection.newInstanceFromPaths(ReadEndsForMarkDuplicates.class,
                 new ReadEndsForMarkDuplicatesCodec(),
                 new ReadEndsMDComparator(),
                 maxInMemory,
-                TMP_DIR.stream().map(IOUtils::getPath).collect(Collectors.toList()));
+                Collections.singletonList(IOUtils.getPath(TMP_DIR)));
 
         try(final SamHeaderAndIterator headerAndIterator = openInputs()) {
             final SAMFileHeader header = headerAndIterator.header;
@@ -343,7 +340,7 @@ public final class MarkDuplicatesGATK extends AbstractMarkDuplicatesCommandLineP
         final int maxInMemory = (int) Math.min((Runtime.getRuntime().maxMemory() * 0.25) / SortingLongCollection.SIZEOF,
                 (double) (Integer.MAX_VALUE - 5));
         logger.info("Will retain up to " + maxInMemory + " duplicate indices before spilling to disk.");
-        this.duplicateIndexes = new SortingLongCollection(maxInMemory, TMP_DIR.stream().map(IOUtils::getPath).toArray(Path[]::new));
+        this.duplicateIndexes = new SortingLongCollection(maxInMemory, IOUtils.getPath(TMP_DIR));
 
         ReadEndsForMarkDuplicates firstOfNextChunk = null;
         final List<ReadEndsForMarkDuplicates> nextChunk = new ArrayList<>(200);

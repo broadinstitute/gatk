@@ -177,8 +177,8 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider = "absoluteNames")
-    public void testGetAbsolutePathName(final String uriString, final String expected) {
-        Assert.assertEquals(IOUtils.getAbsolutePathName(IOUtils.getPath(uriString)), expected);
+    public void testGetAbsolutePathWithoutFileProtocol(final String uriString, final String expected) {
+        Assert.assertEquals(IOUtils.getAbsolutePathWithoutFileProtocol(IOUtils.getPath(uriString)), expected);
     }
 
     @Test

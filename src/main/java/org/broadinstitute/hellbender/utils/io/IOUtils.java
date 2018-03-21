@@ -539,9 +539,9 @@ public final class IOUtils {
      * the file:// prefix.
      *
      * @param path path to get the absolute name.
-     * @return a String with the absolute name.
+     * @return a String with the absolute name, and the file:// protocol removed, if it was present.
      */
-    public static String getAbsolutePathName(final Path path) {
+    public static String getAbsolutePathWithoutFileProtocol(final Path path) {
         return path.toAbsolutePath().toUri().toString().replaceFirst("^file://", "");
     }
 
