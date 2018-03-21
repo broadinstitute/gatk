@@ -137,7 +137,9 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                                 Collections.singletonList(
                                         new TableFuncotation(
                                                 removeHelper(headerRowTable.get(startingHeaderRow), keyColumn),
-                                                removeHelper(dataTable.get(startingHeaderRow+1), keyColumn)
+                                                removeHelper(dataTable.get(startingHeaderRow+1), keyColumn),
+                                                defaultAltAllele,
+                                                defaultName
                                         )
                                 )
                         }
@@ -162,7 +164,9 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                                 Collections.singletonList(
                                         new TableFuncotation(
                                                 removeHelper(headerRowTable.get(startingHeaderRow), keyColumn),
-                                                removeHelper(dataTable.get(startingHeaderRow+1), keyColumn)
+                                                removeHelper(dataTable.get(startingHeaderRow+1), keyColumn),
+                                                defaultAltAllele,
+                                                defaultName
                                         )
                                 )
                         }
@@ -269,37 +273,49 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                         Collections.emptyList()
                 }
         );
+
+        final SimpleKeyXsvFuncotationFactory geneNameXsvFuncotationFactory = new SimpleKeyXsvFuncotationFactory(
+                defaultName,
+                IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
+                "VERSION",
+                ",",
+                0,
+                SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
+        );
+        final List<String> emptyFields1 = new ArrayList<>();
+        for ( int i = 0 ; i < geneNameXsvFuncotationFactory.getSupportedFuncotationFields().size() ; ++i ) { emptyFields1.add(""); }
         outList.add(
                 new Object[] {
-                        new SimpleKeyXsvFuncotationFactory(
-                                defaultName,
-                                IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
-                                "VERSION",
-                                ",",
-                                0,
-                                SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
-                        ),
+                        geneNameXsvFuncotationFactory,
                         Collections.singletonList(
                                 new GencodeFuncotationBuilder().setHugoSymbol("NOT THE RIGHT GENE NAME").build()
                         ),
-                        Collections.emptyList()
+                        Collections.singletonList(
+                                new TableFuncotation(new ArrayList<>(geneNameXsvFuncotationFactory.getSupportedFuncotationFields()), emptyFields1, defaultAltAllele, defaultName)
+                        )
                 }
         );
+
+        final SimpleKeyXsvFuncotationFactory transcriptIdXsvFuncotationFactory = new SimpleKeyXsvFuncotationFactory(
+                defaultName,
+                IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
+                "VERSION",
+                ",",
+                0,
+                SimpleKeyXsvFuncotationFactory.XsvDataKeyType.TRANSCRIPT_ID
+        );
+        final List<String> emptyFields2 = new ArrayList<>();
+        for ( int i = 0 ; i < transcriptIdXsvFuncotationFactory.getSupportedFuncotationFields().size() ; ++i ) { emptyFields2.add(""); }
         outList.add(
-                new Object[] {
-                        new SimpleKeyXsvFuncotationFactory(
-                                defaultName,
-                                IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_FILE_PATH),
-                                "VERSION",
-                                ",",
-                                0,
-                                SimpleKeyXsvFuncotationFactory.XsvDataKeyType.TRANSCRIPT_ID
-                        ),
-                        Collections.singletonList(
-                                new GencodeFuncotationBuilder().setAnnotationTranscript("NOT THE RIGHT TRANSCRIPT ID").build()
-                        ),
-                        Collections.emptyList()
-                }
+            new Object[] {
+                    transcriptIdXsvFuncotationFactory,
+                    Collections.singletonList(
+                            new GencodeFuncotationBuilder().setAnnotationTranscript("NOT THE RIGHT TRANSCRIPT ID").build()
+                    ),
+                    Collections.singletonList(
+                            new TableFuncotation(new ArrayList<>(transcriptIdXsvFuncotationFactory.getSupportedFuncotationFields()), emptyFields2, defaultAltAllele, defaultName)
+                    )
+            }
         );
         
         // Add in cases from helper function:

@@ -3,16 +3,14 @@ package org.broadinstitute.hellbender.utils.codecs.gencode;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
+import htsjdk.tribble.annotation.Strand;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -98,7 +96,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
         baseData.annotationSource        = AnnotationSource.valueOf( gtfFields[ANNOTATION_SOURCE_INDEX] );
         baseData.featureType             = GencodeGtfFeature.FeatureType.getEnum( gtfFields[FEATURE_TYPE_INDEX].toLowerCase() );
-        baseData.genomicStrand           = GenomicStrand.getEnum( gtfFields[GENOMIC_STRAND_INDEX] );
+        baseData.genomicStrand           = convertStringToStrand( gtfFields[GENOMIC_STRAND_INDEX] );
         baseData.genomicPhase            = GenomicPhase.getEnum( gtfFields[GENOMIC_PHASE_INDEX] );
 
         // Get the extra fields from the last column:
@@ -224,6 +222,23 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         // Save our anonymous optional fields:
         if ( anonymousOptionalFieldBuilder.length() != 0 ) {
             baseData.anonymousOptionalFields = anonymousOptionalFieldBuilder.toString();
+        }
+    }
+
+    /**
+     * Converts the given {@link String} into a {@link Strand}.
+     * @param s {@link String} to convert into a {@link Strand}.
+     * @return The {@link Strand} corresponding to {@code s}.
+     */
+    private static Strand convertStringToStrand( final String s ) {
+        if ( s.equals("+") ) {
+            return Strand.POSITIVE;
+        }
+        else if ( s.equals("-") ) {
+            return Strand.NEGATIVE;
+        }
+        else {
+            throw new IllegalArgumentException("Unexpected value: " + s);
         }
     }
 
@@ -462,7 +477,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         return baseData.genomicPosition.getEnd();
     }
 
-    public GenomicStrand getGenomicStrand() {
+    public Strand getGenomicStrand() {
         return baseData.genomicStrand;
     }
 
@@ -677,6 +692,10 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
     // ================================================================================================
 
+
+
+    // ================================================================================================
+
     /**
      * Keyword identifying the source of the feature, like a program
      * (e.g. Augustus or RepeatMasker) or an organization (like TAIR).
@@ -763,7 +782,11 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
             }
         };
 
-        private String serialized;
+        @SuppressWarnings("unchecked")
+        private static final Map<String, FeatureType> VALUE_MAP =
+                Arrays.stream(values()).collect(Collectors.toMap(v -> v.serialized.toLowerCase(), v -> v));
+
+        private final String serialized;
 
         FeatureType(final String serializedValue) { serialized = serializedValue; }
 
@@ -771,10 +794,9 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         public String toString() { return serialized; }
 
         public static FeatureType getEnum(final String s) {
-            for( final FeatureType val : values() ) {
-                if(val.serialized.equalsIgnoreCase(s)) {
-                    return val;
-                }
+            final String lowerS = s.toLowerCase();
+            if ( VALUE_MAP.containsKey(lowerS) ){
+                return VALUE_MAP.get(lowerS);
             }
             throw new IllegalArgumentException("Unexpected value: " + s);
         }
@@ -795,38 +817,6 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
     }
 
     /**
-     * The strand of DNA from which a given feature was read.
-     *
-     * For more information, see:
-     *     https://www.gencodegenes.org/data_format.html
-     *     https://en.wikipedia.org/wiki/General_feature_format
-     */
-    public enum GenomicStrand {
-        FORWARD("+"),
-        BACKWARD("-");
-
-        private final String serialized;
-
-        GenomicStrand(final String serializedValue) {
-            serialized = serializedValue;
-        }
-
-        @Override
-        public String toString() {
-            return serialized;
-        }
-
-        public static GenomicStrand getEnum(final String s) {
-            for( final GenomicStrand val : values() ) {
-                if(val.serialized.equalsIgnoreCase(s)) {
-                    return val;
-                }
-            }
-            throw new IllegalArgumentException("Unexpected value: " + s);
-        }
-    }
-
-    /**
      * Whether the first base of the CDS segment is the first (frame 0), second (frame 1) or third (frame 2) \
      * in the codon of the ORF.
      *
@@ -840,6 +830,10 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         TWO ("2"),
         DOT (".");
 
+        @SuppressWarnings("unchecked")
+        private static final Map<String, GenomicPhase> VALUE_MAP =
+                Arrays.stream(values()).collect(Collectors.toMap(v -> v.serialized.toLowerCase(), v -> v));
+
         private final String serialized;
 
         GenomicPhase(final String serializedValue) {
@@ -852,10 +846,9 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         }
 
         public static GenomicPhase getEnum(final String s) {
-            for( final GenomicPhase val : values() ) {
-                if(val.serialized.equalsIgnoreCase(s)) {
-                    return val;
-                }
+            final String lowerS = s.toLowerCase();
+            if ( VALUE_MAP.containsKey(lowerS) ){
+                return VALUE_MAP.get(lowerS);
             }
             throw new IllegalArgumentException("Unexpected value: " + s);
         }
@@ -996,6 +989,10 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         // A non-coding locus that originates from within the promoter region of a protein-coding gene, with transcription proceeding in the opposite direction on the other strand.
         BIDIRECTIONAL_PROMOTER_LNCRNA("bidirectional_promoter_lncRNA");
 
+        @SuppressWarnings("unchecked")
+        private static final Map<String, GeneTranscriptType> VALUE_MAP =
+                Arrays.stream(values()).collect(Collectors.toMap(v -> v.serialized.toLowerCase(), v -> v));
+
         private final String serialized;
 
         GeneTranscriptType(final String serializedValue) {
@@ -1008,10 +1005,9 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         }
 
         public static GeneTranscriptType getEnum(final String s) {
-            for( final GeneTranscriptType val : values() ) {
-                if(val.serialized.equalsIgnoreCase(s)) {
-                    return val;
-                }
+            final String lowerS = s.toLowerCase();
+            if ( VALUE_MAP.containsKey(lowerS) ){
+                return VALUE_MAP.get(lowerS);
             }
             throw new IllegalArgumentException("Unexpected value: " + s);
         }
@@ -1054,6 +1050,10 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         /** Automatically annotated locus */
         AUTOMATICALLY_ANNOTATED("3");
 
+        @SuppressWarnings("unchecked")
+        private static final Map<String, LocusLevel> VALUE_MAP =
+                Arrays.stream(values()).collect(Collectors.toMap(v -> v.serialized.toLowerCase(), v -> v));
+
         private final String serialized;
 
         LocusLevel(final String serializedValue) {
@@ -1066,10 +1066,9 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         }
 
         public static LocusLevel getEnum(final String s) {
-            for( final LocusLevel val : values() ) {
-                if(val.serialized.equalsIgnoreCase(s)) {
-                    return val;
-                }
+            final String lowerS = s.toLowerCase();
+            if ( VALUE_MAP.containsKey(lowerS) ){
+                return VALUE_MAP.get(lowerS);
             }
             throw new IllegalArgumentException("Unexpected value: " + s);
         }
@@ -1293,6 +1292,10 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         /** a low confidence upstream ATG existing in other coding variant would lead to NMD in this trancript, that uses the high */
         UPSTREAM_UORF("upstream_uORF");
 
+        @SuppressWarnings("unchecked")
+        private static final Map<String, FeatureTag> VALUE_MAP =
+                Arrays.stream(values()).collect(Collectors.toMap(v -> v.serialized.toLowerCase(), v -> v));
+
         private final String serialized;
 
         FeatureTag(final String serializedValue) {
@@ -1305,10 +1308,9 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         }
 
         public static FeatureTag getEnum(final String s) {
-            for( final FeatureTag val : values() ) {
-                if(val.serialized.equalsIgnoreCase(s)) {
-                    return val;
-                }
+            final String lowerS = s.toLowerCase();
+            if ( VALUE_MAP.containsKey(lowerS) ){
+                return VALUE_MAP.get(lowerS);
             }
             throw new IllegalArgumentException("Unexpected value: " + s);
         }
@@ -1340,6 +1342,10 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         /** the transcript was not analyzed */
         NA("NA");
 
+        @SuppressWarnings("unchecked")
+        private static final Map<String, TranscriptSupportLevel> VALUE_MAP =
+                Arrays.stream(values()).collect(Collectors.toMap(v -> v.serialized.toLowerCase(), v -> v));
+
         private final String serialized;
 
         TranscriptSupportLevel(final String serializedValue) {
@@ -1352,10 +1358,9 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         }
 
         public static TranscriptSupportLevel getEnum(final String s) {
-            for( final TranscriptSupportLevel val : values() ) {
-                if(val.serialized.equalsIgnoreCase(s)) {
-                    return val;
-                }
+            final String lowerS = s.toLowerCase();
+            if ( VALUE_MAP.containsKey(lowerS) ){
+                return VALUE_MAP.get(lowerS);
             }
             throw new IllegalArgumentException("Unexpected value: " + s);
         }
@@ -1420,6 +1425,10 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
          */
         PSEUDOGENE("pseudogene");
 
+        @SuppressWarnings("unchecked")
+        private static final Map<String, RemapStatus> VALUE_MAP =
+                Arrays.stream(values()).collect(Collectors.toMap(v -> v.serialized.toLowerCase(), v -> v));
+
         private final String serialized;
 
         RemapStatus(final String serializedValue) { serialized = serializedValue; }
@@ -1430,10 +1439,9 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         }
 
         public static RemapStatus getEnum(final String s) {
-            for( final RemapStatus val : values() ) {
-                if(val.serialized.equalsIgnoreCase(s)) {
-                    return val;
-                }
+            final String lowerS = s.toLowerCase();
+            if ( VALUE_MAP.containsKey(lowerS) ){
+                return VALUE_MAP.get(lowerS);
             }
             throw new IllegalArgumentException("Unexpected value: " + s);
         }
@@ -1469,6 +1477,10 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
          */
         NONOVERLAP("nonOverlap");
 
+        @SuppressWarnings("unchecked")
+        private static final Map<String, RemapTargetStatus> VALUE_MAP =
+                Arrays.stream(values()).collect(Collectors.toMap(v -> v.serialized.toLowerCase(), v -> v));
+
         private final String serialized;
 
         RemapTargetStatus(final String serializedValue) {
@@ -1481,10 +1493,9 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         }
 
         public static RemapTargetStatus getEnum(final String s) {
-            for( final RemapTargetStatus val : values() ) {
-                if(val.serialized.equalsIgnoreCase(s)) {
-                    return val;
-                }
+            final String lowerS = s.toLowerCase();
+            if ( VALUE_MAP.containsKey(lowerS) ){
+                return VALUE_MAP.get(lowerS);
             }
             throw new IllegalArgumentException("Unexpected value: " + s);
         }

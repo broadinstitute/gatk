@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv;
 
 import htsjdk.tribble.Feature;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -10,6 +11,7 @@ import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.nio.PathLineIterator;
 
 import java.nio.file.Path;
@@ -71,6 +73,12 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
     private final List<String> annotationColumnNames;
 
     /**
+     * A {@link List} of empty {@link String}s to use when we must create an annotation but the features do not match
+     * the query.
+     */
+    private final List<String> emptyAnnotationList;
+
+    /**
      * Map containing the annotations that we have to
      */
     private final Map<String, List<String>> annotationMap;
@@ -124,6 +132,12 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
             // Get our column names:
             annotationColumnNames = createColumnNames( it, numHeaderLinesToIgnore );
 
+            // Populate our empty annotation list:
+            emptyAnnotationList = new ArrayList<>(annotationColumnNames.size());
+            for ( final String s : annotationColumnNames ) {
+                emptyAnnotationList.add("");
+            }
+
             // Populate our annotation map:
             populateAnnotationMap( it, permissiveColumns );
         }
@@ -170,7 +184,11 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
 
         // If we have gencodeFuncotations we go through them and check for the correct Gene Name / TranscriptID.
         // If any match, we create our xsvFuncotation for this variant:
-        for (  final GencodeFuncotation gencodeFuncotation : gencodeFuncotations ) {
+        for ( final GencodeFuncotation gencodeFuncotation : gencodeFuncotations ) {
+
+            // Create a set to put our annotated Alternate alleles in.
+            // We'll use this to determine if the alt allele has been annotated.
+            final Set<Allele> annotatedAltAlleles = new HashSet<>(variant.getAlternateAlleles().size());
 
             // Get our key from the gencode funcotation:
             final String key;
@@ -184,11 +202,25 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
             // Get our annotations:
             final List<String> annotations = annotationMap.get( key );
             if ( annotations != null ) {
-                // Add our annotations to the list:
-                outputFuncotations.add( new TableFuncotation(annotationColumnNames, annotations) );
+                // Create 1 annotation for each alt allele and add our annotations to the list:
+                for ( final Allele altAllele : variant.getAlternateAlleles() ) {
+                    outputFuncotations.add(new TableFuncotation(annotationColumnNames, annotations, altAllele, name));
+                    annotatedAltAlleles.add(altAllele);
+                }
+            }
+
+            // If we didn't add funcotations for an allele, we should add in blank funcotations to that allele for
+            // each field that can be produced by this SimpleKeyXsvFuncotationFactory:
+            if ( annotatedAltAlleles.size() != variant.getAlternateAlleles().size() ) {
+                for ( final Allele altAllele : variant.getAlternateAlleles() ) {
+                    if ( !annotatedAltAlleles.contains(altAllele) ) {
+                        outputFuncotations.add(new TableFuncotation(annotationColumnNames, emptyAnnotationList, altAllele, name));
+                    }
+                }
             }
         }
 
+        // Set our overrides:
         setOverrideValuesInFuncotations(outputFuncotations);
 
         return outputFuncotations;
@@ -220,7 +252,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
         // We're at the header, so we need to initialize the header columns,
         // And fix the column headers to not contain any spaces:
         final List<String> annotationColumnNames =
-                Arrays.stream(lineIterator.next().split(delimiter))
+                Utils.split(lineIterator.next(), delimiter).stream()
                         .map(n -> n.replaceAll("^\\s+", "").replaceAll("\\s+$", ""))
                         .map(n -> getName() + "_" + n.replaceAll(" ", "_"))
                         .collect(Collectors.toCollection(ArrayList::new));

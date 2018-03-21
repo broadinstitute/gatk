@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
+import htsjdk.variant.variantcontext.Allele;
+
 import java.util.LinkedHashSet;
 import java.util.Map;
 
@@ -8,6 +10,11 @@ import java.util.Map;
  * Created by jonn on 8/30/17.
  */
 public interface Funcotation {
+
+    /**
+     * @return The alternate {@link Allele} that is associated with this {@link Funcotation}.
+     */
+    Allele getAltAllele();
 
     /**
      * Override the given field with a given value for when it comes time to serialize and write this {@link Funcotation}.
@@ -22,6 +29,11 @@ public interface Funcotation {
      * @return a {@link String} representing this {@link Funcotation} suitable for insertion into a VCF file.
      */
     String serializeToVcfString();
+
+    /**
+     * @return The name of the data source behind the {@link DataSourceFuncotationFactory} used to create this {@link Funcotation}.
+     */
+    String getDataSourceName();
 
     /**
      * Get the names of the fields in this {@link Funcotation}.

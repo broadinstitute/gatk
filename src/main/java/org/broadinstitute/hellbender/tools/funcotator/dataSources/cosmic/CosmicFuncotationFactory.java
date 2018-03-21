@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.funcotator.dataSources.cosmic;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.Feature;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -15,6 +16,7 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotati
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.sqlite.SQLiteConfig;
 
 import java.nio.file.Path;
 import java.sql.*;
@@ -120,18 +122,27 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
     // Constructors:
 
     public CosmicFuncotationFactory(final Path pathToCosmicDb) {
-        this(pathToCosmicDb, new LinkedHashMap<>());
+        this(pathToCosmicDb, new LinkedHashMap<>(), DEFAULT_VERSION_STRING);
     }
 
     public CosmicFuncotationFactory(final Path pathToCosmicDb,
-                                    final LinkedHashMap<String, String> annotationOverridesMap) {
+                                    final LinkedHashMap<String, String> annotationOverridesMap,
+                                    final String version) {
         this.pathToCosmicDb = pathToCosmicDb;
+
+        this.version = version;
 
         // Connect to the DB:
         try {
             Class.forName("org.sqlite.JDBC");
+
+            // Set our configuration options for the connection here:
+            final SQLiteConfig config = new SQLiteConfig();
+            // We only want to read from the DB:
+            config.setReadOnly(true);
+
             logger.debug("Connecting to SQLite database at: " + pathToCosmicDb.toUri().toString());
-            dbConnection = DriverManager.getConnection("jdbc:sqlite:" + pathToCosmicDb.toUri().toString());
+            dbConnection = DriverManager.getConnection("jdbc:sqlite:" + pathToCosmicDb.toUri().toString(), config.toProperties());
             logger.debug("Connected to SQLite database!");
         }
         catch (final SQLException ex) {
@@ -245,13 +256,17 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
             }
         }
 
-        // Add our tally for this variant:
-        outputFuncotations.add(
-                new TableFuncotation(
-                        new ArrayList<>(supportedFields),
-                        new ArrayList<>(Collections.singletonList(String.valueOf(numOverlappingMutations)))
-                )
-        );
+        // Add our tally for all alternate alleles in this variant:
+        for ( final Allele altAllele : variant.getAlternateAlleles() ) {
+            outputFuncotations.add(
+                    new TableFuncotation(
+                            new ArrayList<>(supportedFields),
+                            new ArrayList<>(Collections.singletonList(String.valueOf(numOverlappingMutations))),
+                            altAllele,
+                            name
+                    )
+            );
+        }
 
         setOverrideValuesInFuncotations(outputFuncotations);
 

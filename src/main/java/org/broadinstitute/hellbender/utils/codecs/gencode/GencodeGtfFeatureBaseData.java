@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.codecs.gencode;
 
+import htsjdk.tribble.annotation.Strand;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.ArrayList;
@@ -40,7 +41,7 @@ final public class GencodeGtfFeatureBaseData {
     /**
      * Which strand this feature is on.
      */
-    public GencodeGtfFeature.GenomicStrand         genomicStrand;
+    public Strand                                  genomicStrand;
 
     /**
      * Frame/phase of this feature.
@@ -82,7 +83,7 @@ final public class GencodeGtfFeatureBaseData {
             final GencodeGtfFeature.FeatureType featureType,
             final int genomicStartLocation,
             final int genomicEndLocation,
-            final GencodeGtfFeature.GenomicStrand genomicStrand,
+            final Strand genomicStrand,
             final GencodeGtfFeature.GenomicPhase genomicPhase,
             final String geneId,
             final String transcriptId,

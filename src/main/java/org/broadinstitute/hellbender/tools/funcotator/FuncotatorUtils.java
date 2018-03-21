@@ -1,21 +1,29 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
+import java.io.File;
+import java.net.URISyntaxException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public final class FuncotatorUtils {
 
@@ -30,6 +38,10 @@ public final class FuncotatorUtils {
     private static final Map<String, AminoAcid> tableByCodon;
     private static final Map<String, AminoAcid> tableByCode;
     private static final Map<String, AminoAcid> tableByLetter;
+
+    private static SAMSequenceDictionary B37_SEQUENCE_DICTIONARY = null;
+
+    private static final Map<String, String> B37_To_HG19_CONTIG_NAME_MAP;
 
     /**
      * Initialize our hashmaps of lookup tables:
@@ -51,6 +63,8 @@ public final class FuncotatorUtils {
         tableByCodon = Collections.unmodifiableMap(mapByCodon);
         tableByCode = Collections.unmodifiableMap(mapByCode);
         tableByLetter = Collections.unmodifiableMap(mapByLetter);
+
+        B37_To_HG19_CONTIG_NAME_MAP = initializeB37ToHg19ContigNameMap();
     }
 
     /**
@@ -755,12 +769,6 @@ public final class FuncotatorUtils {
                 }
                 else {
                     if ( isIndelBetweenCodons(seqComp.getCodingSequenceAlleleStart(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getReferenceAllele()) ) {
-//                        final String nextRefCodon = getNextReferenceCodon(seqComp.getTranscriptCodingSequence(), seqComp.getAlignedCodingSequenceAlleleStart(), seqComp.getAlignedReferenceAlleleStop(), seqComp.getStrand());
-//
-//                         Here we adjust everything "right" by 3 bases (1 codon) because of the leading base that is
-//                         required for indels:
-//                        return "p." + protChangeStartPos + "_" + protChangeEndPos +
-//                                createAminoAcidSequence(nextRefCodon) + ">" + createAminoAcidSequence(seqComp.getAlignedAlternateAllele().substring(3) + nextRefCodon);
                         return "p." + protChangeStartPos + "_" + (protChangeStartPos + 1) + "ins"+
                                 createAminoAcidSequence(seqComp.getAlignedAlternateAllele().substring(3));
                     }
@@ -939,23 +947,6 @@ public final class FuncotatorUtils {
         }
 
         return offset;
-    }
-
-    private static String collapseNonFrameshiftProteinChangeString(final int proteinChangeStartPosition, final int proteinChangeEndPosition,
-                                                                   final String refAaSeq, final String altAaSeq ) {
-        if ( proteinChangeStartPosition == proteinChangeEndPosition ) {
-            if ( altAaSeq.isEmpty() ) {
-                return "p." + refAaSeq + proteinChangeStartPosition + "del";
-            }
-            else {
-                return "p." + proteinChangeStartPosition + "_" + proteinChangeEndPosition + "ins"
-                        + altAaSeq;
-            }
-        }
-        else {
-            return "p." + proteinChangeStartPosition + "_" + proteinChangeEndPosition
-                    + refAaSeq + ">" + altAaSeq;
-        }
     }
 
     /**
@@ -1240,7 +1231,18 @@ public final class FuncotatorUtils {
      * @param codingSequence The coding sequence from which to create an amino acid sequence.  Must not be {@code null}.
      * @return A {@link String} containing a sequence of single-letter amino acids.
      */
-    public static String createAminoAcidSequence(final String codingSequence) {
+    public static String createAminoAcidSequence( final String codingSequence ) {
+        return createAminoAcidSequence(codingSequence, false);
+    }
+
+    /**
+     * Creates an amino acid sequence from a given coding sequence.
+     * If the coding sequence is not evenly divisible by 3, the remainder bases will not be included in the coding sequence.
+     * @param codingSequence The coding sequence from which to create an amino acid sequence.  Must not be {@code null}.
+     * @param isFrameshift Whether the given {@code codingSequence} was derived from a frameshift mutation.  In this case, no warning will be issued for incorrect sequence length.
+     * @return A {@link String} containing a sequence of single-letter amino acids.
+     */
+    public static String createAminoAcidSequence(final String codingSequence, final boolean isFrameshift) {
 
         Utils.nonNull(codingSequence);
 
@@ -1250,7 +1252,9 @@ public final class FuncotatorUtils {
         int maxIndex = codingSequence.length();
         if ( maxIndex % 3 != 0 ) {
             maxIndex = (int)Math.floor(maxIndex / 3) * 3;
-            logger.warn("createAminoAcidSequence given a coding sequence of length not divisible by 3.  Dropping bases from the end: " + (codingSequence.length() % 3));
+            if ( !isFrameshift ) {
+                logger.warn("createAminoAcidSequence given a coding sequence of length not divisible by 3.  Dropping bases from the end: " + (codingSequence.length() % 3));
+            }
         }
 
         for ( int i = 0; i < maxIndex; i += 3 ) {
@@ -1434,7 +1438,6 @@ public final class FuncotatorUtils {
         }
 
         return alignedReferenceAllele;
-
     }
 
     /**
@@ -1452,6 +1455,8 @@ public final class FuncotatorUtils {
                                                                 final Strand strand,
                                                                 final int referenceWindowInBases,
                                                                 final ReferenceContext referenceContext) {
+        // TODO: This is generating too long a string for INDELs because of VCF format alleles - see Issue #4407
+
         Utils.nonNull( refAllele );
         Utils.nonNull( altAllele );
         assertValidStrand( strand );
@@ -1533,33 +1538,59 @@ public final class FuncotatorUtils {
     }
 
     /**
-     * Gets the start position relative to the start of the coding sequence for a variant based on the given {@code variantGenomicStartPosition}.
-     * It is assumed:
-     *      {@code codingRegionGenomicStartPosition} <= {@code variantGenomicStartPosition} <= {@code codingRegionGenomicEndPosition}
-     * The transcript start position is the genomic position the transcript starts assuming `+` traversal.  That is, it is the lesser of start position and end position.
-     * This is important because we determine the relative positions based on which direction the transcript is read.
-     * @param variantGenomicStartPosition Start position (1-based, inclusive) of a variant in the genome.  Must be > 0.
-     * @param codingRegionGenomicStartPosition Start position (1-based, inclusive) of a transcript in the genome.  Must be > 0.
-     * @param codingRegionGenomicEndPosition End position (1-based, inclusive) of a transcript in the genome.  Must be > 0.
-     * @param strand {@link Strand} from which strand the associated transcript is read.  Must not be {@code null}.  Must not be {@link Strand#NONE}.
-     * @return The start position (1-based, inclusive) relative to the start of the coding sequence of a variant.
+     * Get the position (1-based, inclusive) of the given {@link VariantContext} start relative to the transcript it appears in.
+     * The transcript is specified by {@code sortedTranscriptExonList}.
+     * @param variant The {@link VariantContext} of which to find the start position in the given transcript (must not be {@code null}).
+     * @param exons {@link List} of {@Link Locatable}s representing the exons in the transcript in which the given {@code variant} occurs.
+     * @param strand The {@link Strand} on which the {@code variant} occurs.
+     * @return The start position (1-based, inclusive) of the given {@code variant} in the transcript in which it appears.
      */
-    public static int getTranscriptAlleleStartPosition(final int variantGenomicStartPosition,
-                                                       final int codingRegionGenomicStartPosition,
-                                                       final int codingRegionGenomicEndPosition,
+    public static int getTranscriptAlleleStartPosition(final VariantContext variant,
+                                                       final List<? extends Locatable> exons,
                                                        final Strand strand) {
+        Utils.nonNull(variant);
+        Utils.nonNull(exons);
+        assertValidStrand(strand);
 
-        ParamUtils.isPositive( variantGenomicStartPosition, "Genome positions must be > 0." );
-        ParamUtils.isPositive( codingRegionGenomicStartPosition, "Genome positions must be > 0." );
-        ParamUtils.isPositive( codingRegionGenomicEndPosition, "Genome positions must be > 0." );
-        assertValidStrand( strand );
+        // Set up our position variable:
+        int position;
 
-        if ( strand == Strand.POSITIVE ) {
-            return variantGenomicStartPosition - codingRegionGenomicStartPosition + 1;
+        // NOTE: We don't need to worry about UTRs in here - all UTRs occur somewhere in an exon in GENCODE.
+
+        // Filter the elements by whether they come before the variant in the transcript and
+        // then sort them by their order in the transcript:
+        final List<Locatable> sortedFilteredExons;
+        if ( strand == Strand.POSITIVE) {
+            sortedFilteredExons = exons.stream()
+                    .filter(e -> e.getStart() <= variant.getStart())
+                    .sorted(Comparator.comparingInt(Locatable::getStart))
+                    .collect(Collectors.toList());
+
+            // We are guaranteed that the variant occurs in the last element of sortedTranscriptElements because of the sorting.
+            // Add 1 to position to account for inclusive values:
+            position = variant.getStart() - sortedFilteredExons.get(sortedFilteredExons.size()-1).getStart() + 1;
         }
         else {
-            return codingRegionGenomicEndPosition - variantGenomicStartPosition + 1;
+            sortedFilteredExons = exons.stream()
+                    .filter(e -> e.getEnd() >= variant.getStart())
+                    .sorted(Comparator.comparingInt(Locatable::getStart).reversed())
+                    .collect(Collectors.toList());
+
+            // We are guaranteed that the variant occurs in the last element of sortedTranscriptElements because of the sorting.
+            // Add 1 to position to account for inclusive values:
+            position = sortedFilteredExons.get(sortedFilteredExons.size()-1).getEnd() - variant.getStart() + 1;
         }
+
+        // Add up the lengths of all exons before the last one:
+        final int numExonsBeforeLast = sortedFilteredExons.size() - 1;
+        for ( int i = 0; i < numExonsBeforeLast; ++i ) {
+            final Locatable exon = sortedFilteredExons.get(i);
+
+            // Add 1 to position to account for inclusive values:
+            position += exon.getEnd() - exon.getStart() + 1;
+        }
+
+        return position;
     }
 
     /**
@@ -1647,6 +1678,51 @@ public final class FuncotatorUtils {
     }
 
     /**
+     * Returns if the given {@link SAMSequenceDictionary} is for the B37 Human Genome Reference.
+     * @param sequenceDictionary The {@link SAMSequenceDictionary} to check for B37 Reference.
+     * @return {@code true} if {@code sequenceDictionary} is for the B37 Human Genome Reference; {@code false} otherwise.
+     */
+    public static boolean isSequenceDictionaryUsingB37Reference(final SAMSequenceDictionary sequenceDictionary) {
+        // Check to make sure all our sequences are accounted for in the given dictionary.
+
+        if ( sequenceDictionary == null ) {
+            return false;
+        }
+
+        if ( B37_SEQUENCE_DICTIONARY == null ) {
+            B37_SEQUENCE_DICTIONARY = initializeB37SequenceDict();
+        }
+
+        for ( final SAMSequenceRecord b37SequenceRecord : B37_SEQUENCE_DICTIONARY.getSequences() ) {
+            // Now we check the Name, Length, and MD5Sum (if present) of all records:
+
+            final SAMSequenceRecord inputSequenceRecord = sequenceDictionary.getSequence(b37SequenceRecord.getSequenceName());
+            if ( inputSequenceRecord == null ) {
+                return false;
+            }
+
+            if ( inputSequenceRecord.getSequenceLength() != b37SequenceRecord.getSequenceLength() ) {
+                return false;
+            }
+
+            if ( (inputSequenceRecord.getMd5() != null) && (!inputSequenceRecord.getMd5().equals(b37SequenceRecord.getMd5())) ) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Converts a given B37 style contig name to the equivalent in hg19.
+     * @param b37Contig The contig name from the B37 Human Genome reference to convert to the equivalent contig from the HG19 Human Genome reference.
+     * @return The HG19 equivalent of the given B37 contig name, if such an equivalent name exists.  If no equivalent name exists, returns the given {@code b37Contig}.
+     */
+    public static String convertB37ContigToHg19Contig( final String b37Contig ) {
+        return B37_To_HG19_CONTIG_NAME_MAP.getOrDefault(b37Contig, b37Contig);
+    }
+
+    /**
      * Get the overlapping exon start/stop as a {@link SimpleInterval} for the given altAllele / reference.
      * @param refAllele {@link Allele} for the given {@code altAllele}.  Must not be {@code null}.
      * @param altAllele {@link Allele} to locate on an exon.  Must not be {@code null}.
@@ -1725,6 +1801,167 @@ public final class FuncotatorUtils {
 
     }
 
+    /**
+     * Get the strand-corrected (reverse complemented) {@link Allele} for the given {@link Allele} and {@link Strand}.
+     * @param allele The {@link Allele} to correct for strandedness.
+     * @param strand The {@link Strand} on which the given {@code allele} lies.  Must be valid as per {@link #assertValidStrand(Strand)}
+     * @return The {@link Allele} with sequence corrected for strand.
+     */
+    public static Allele getStrandCorrectedAllele(final Allele allele, final Strand strand) {
+        assertValidStrand(strand);
+
+        if ( strand == Strand.POSITIVE ) {
+            return Allele.create(allele, false);
+        }
+        else {
+            return Allele.create(ReadUtils.getBasesReverseComplement(allele.getBases()), false);
+        }
+    }
+
+    /**
+     * @return An initialized {@link Map} of {@link String} to {@link String} with keys of contig names from the B37 Human Genome Reference and values of the corresponding contig name in the HG19 Human Genome reference.
+     */
+    private static final Map<String, String> initializeB37ToHg19ContigNameMap() {
+        final Map<String, String> b37ToHg19ContigNameMap = new HashMap<>();
+
+        b37ToHg19ContigNameMap.put( "1", "chr1" );
+        b37ToHg19ContigNameMap.put( "2", "chr2" );
+        b37ToHg19ContigNameMap.put( "3", "chr3" );
+        b37ToHg19ContigNameMap.put( "4", "chr4" );
+        b37ToHg19ContigNameMap.put( "5", "chr5" );
+        b37ToHg19ContigNameMap.put( "6", "chr6" );
+        b37ToHg19ContigNameMap.put( "7", "chr7" );
+        b37ToHg19ContigNameMap.put( "8", "chr8" );
+        b37ToHg19ContigNameMap.put( "9", "chr9" );
+        b37ToHg19ContigNameMap.put( "10", "chr10" );
+        b37ToHg19ContigNameMap.put( "11", "chr11" );
+        b37ToHg19ContigNameMap.put( "12", "chr12" );
+        b37ToHg19ContigNameMap.put( "13", "chr13" );
+        b37ToHg19ContigNameMap.put( "14", "chr14" );
+        b37ToHg19ContigNameMap.put( "15", "chr15" );
+        b37ToHg19ContigNameMap.put( "16", "chr16" );
+        b37ToHg19ContigNameMap.put( "17", "chr17" );
+        b37ToHg19ContigNameMap.put( "18", "chr18" );
+        b37ToHg19ContigNameMap.put( "19", "chr19" );
+        b37ToHg19ContigNameMap.put( "20", "chr20" );
+        b37ToHg19ContigNameMap.put( "21", "chr21" );
+        b37ToHg19ContigNameMap.put( "22", "chr22" );
+        b37ToHg19ContigNameMap.put( "X", "chrX" );
+        b37ToHg19ContigNameMap.put( "Y", "chrY" );
+        b37ToHg19ContigNameMap.put( "MT", "chrM" );
+
+        // These are included for completeness, but are not necessary as we default to the input contig name if the
+        // contig is not present in this map.  (Because they are the same between both.)
+        b37ToHg19ContigNameMap.put( "GL000202.1", "GL000202.1" );
+        b37ToHg19ContigNameMap.put( "GL000244.1", "GL000244.1" );
+        b37ToHg19ContigNameMap.put( "GL000235.1", "GL000235.1" );
+        b37ToHg19ContigNameMap.put( "GL000238.1", "GL000238.1" );
+        b37ToHg19ContigNameMap.put( "GL000226.1", "GL000226.1" );
+        b37ToHg19ContigNameMap.put( "GL000218.1", "GL000218.1" );
+        b37ToHg19ContigNameMap.put( "GL000249.1", "GL000249.1" );
+        b37ToHg19ContigNameMap.put( "GL000242.1", "GL000242.1" );
+        b37ToHg19ContigNameMap.put( "GL000221.1", "GL000221.1" );
+        b37ToHg19ContigNameMap.put( "GL000192.1", "GL000192.1" );
+        b37ToHg19ContigNameMap.put( "GL000223.1", "GL000223.1" );
+        b37ToHg19ContigNameMap.put( "GL000232.1", "GL000232.1" );
+        b37ToHg19ContigNameMap.put( "GL000206.1", "GL000206.1" );
+        b37ToHg19ContigNameMap.put( "GL000240.1", "GL000240.1" );
+        b37ToHg19ContigNameMap.put( "GL000214.1", "GL000214.1" );
+        b37ToHg19ContigNameMap.put( "GL000212.1", "GL000212.1" );
+        b37ToHg19ContigNameMap.put( "GL000199.1", "GL000199.1" );
+        b37ToHg19ContigNameMap.put( "GL000248.1", "GL000248.1" );
+        b37ToHg19ContigNameMap.put( "GL000195.1", "GL000195.1" );
+        b37ToHg19ContigNameMap.put( "GL000215.1", "GL000215.1" );
+        b37ToHg19ContigNameMap.put( "GL000225.1", "GL000225.1" );
+        b37ToHg19ContigNameMap.put( "GL000216.1", "GL000216.1" );
+        b37ToHg19ContigNameMap.put( "GL000194.1", "GL000194.1" );
+        b37ToHg19ContigNameMap.put( "GL000217.1", "GL000217.1" );
+        b37ToHg19ContigNameMap.put( "GL000197.1", "GL000197.1" );
+        b37ToHg19ContigNameMap.put( "GL000222.1", "GL000222.1" );
+        b37ToHg19ContigNameMap.put( "GL000200.1", "GL000200.1" );
+        b37ToHg19ContigNameMap.put( "GL000211.1", "GL000211.1" );
+        b37ToHg19ContigNameMap.put( "GL000247.1", "GL000247.1" );
+        b37ToHg19ContigNameMap.put( "GL000233.1", "GL000233.1" );
+        b37ToHg19ContigNameMap.put( "GL000210.1", "GL000210.1" );
+        b37ToHg19ContigNameMap.put( "GL000198.1", "GL000198.1" );
+        b37ToHg19ContigNameMap.put( "GL000245.1", "GL000245.1" );
+        b37ToHg19ContigNameMap.put( "GL000234.1", "GL000234.1" );
+        b37ToHg19ContigNameMap.put( "GL000203.1", "GL000203.1" );
+        b37ToHg19ContigNameMap.put( "GL000239.1", "GL000239.1" );
+        b37ToHg19ContigNameMap.put( "GL000213.1", "GL000213.1" );
+        b37ToHg19ContigNameMap.put( "GL000227.1", "GL000227.1" );
+        b37ToHg19ContigNameMap.put( "GL000208.1", "GL000208.1" );
+        b37ToHg19ContigNameMap.put( "GL000230.1", "GL000230.1" );
+        b37ToHg19ContigNameMap.put( "GL000231.1", "GL000231.1" );
+        b37ToHg19ContigNameMap.put( "GL000228.1", "GL000228.1" );
+        b37ToHg19ContigNameMap.put( "GL000243.1", "GL000243.1" );
+        b37ToHg19ContigNameMap.put( "GL000229.1", "GL000229.1" );
+        b37ToHg19ContigNameMap.put( "GL000205.1", "GL000205.1" );
+        b37ToHg19ContigNameMap.put( "GL000224.1", "GL000224.1" );
+        b37ToHg19ContigNameMap.put( "GL000191.1", "GL000191.1" );
+        b37ToHg19ContigNameMap.put( "GL000196.1", "GL000196.1" );
+        b37ToHg19ContigNameMap.put( "GL000193.1", "GL000193.1" );
+        b37ToHg19ContigNameMap.put( "GL000201.1", "GL000201.1" );
+        b37ToHg19ContigNameMap.put( "GL000237.1", "GL000237.1" );
+        b37ToHg19ContigNameMap.put( "GL000246.1", "GL000246.1" );
+        b37ToHg19ContigNameMap.put( "GL000241.1", "GL000241.1" );
+        b37ToHg19ContigNameMap.put( "GL000204.1", "GL000204.1" );
+        b37ToHg19ContigNameMap.put( "GL000207.1", "GL000207.1" );
+        b37ToHg19ContigNameMap.put( "GL000209.1", "GL000209.1" );
+        b37ToHg19ContigNameMap.put( "GL000219.1", "GL000219.1" );
+        b37ToHg19ContigNameMap.put( "GL000220.1", "GL000220.1" );
+        b37ToHg19ContigNameMap.put( "GL000236.1", "GL000236.1" );
+
+        return b37ToHg19ContigNameMap;
+    }
+
+    /**
+     * @return An initialized {@link SAMSequenceDictionary} containing the {@link SAMSequenceRecord}s from the B37 Human Genome Reference.
+     */
+    private static synchronized final SAMSequenceDictionary initializeB37SequenceDict() {
+
+        if ( B37_SEQUENCE_DICTIONARY == null ) {
+            try {
+                final File b37SeqDictFile = new File(
+                        ClassLoader.class.getResource("/org/broadinstitute/hellbender/tools/funcotator/Homo_sapiens_assembly19.dict").toURI()
+                );
+
+                return ReferenceUtils.loadFastaDictionary(b37SeqDictFile);
+            }
+            catch ( final URISyntaxException ex ) {
+                throw new GATKException("Unable to load b37 dict from jar resources!", ex);
+            }
+        }
+        else {
+            return B37_SEQUENCE_DICTIONARY;
+        }
+    }
+
+    /**
+     * Determines whether the given {@code funcotation} has a transcript ID that is in the given {@code acceptableTranscripts}.
+     * Ignores transcript version numbers.
+     * @param funcotation The {@link GencodeFuncotation} to check against the set of {@code acceptableTranscripts}.
+     * @param acceptableTranscripts The {@link Set} of transcript IDs that are OK to keep.
+     * @return {@code true} if funcotation.annotationTranscript is in {@code acceptableTranscripts} (ignoring transcript version); {@code false} otherwise.
+     */
+    public static boolean isFuncotationInTranscriptList( final GencodeFuncotation funcotation,
+                                                  final Set<String> acceptableTranscripts ) {
+        if ( funcotation.getAnnotationTranscript() != null ) {
+            return acceptableTranscripts.contains( getTranscriptIdWithoutVersionNumber(funcotation.getAnnotationTranscript()) );
+        }
+        else {
+            return false;
+        }
+    }
+
+    /**
+     * Removes the transcript ID version number from the given transcript ID (if it exists).
+     * @param transcriptId The transcript from which to remove the version number.
+     * @return The {@link String} corresponding to the given {@code transcriptId} without a version number.
+     */
+    public static String getTranscriptIdWithoutVersionNumber( final String transcriptId ) {
+        return transcriptId.replaceAll("\\.\\d+$", "");
+    }
     // ========================================================================================
 
     /**

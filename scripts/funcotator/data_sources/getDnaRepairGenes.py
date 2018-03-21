@@ -50,7 +50,7 @@ if __name__ == '__main__':
     print 'Writing outfile: ' + DNA_REPAIR_FILE + '...',
 
     with open(DNA_REPAIR_FILE, 'wb') as f:
-        writer = csv.writer(f, delimiter=',', lineterminator="\n")
+        writer = csv.writer(f, delimiter='|', lineterminator="\n")
 
         isFirstRow = True
 
@@ -69,6 +69,7 @@ if __name__ == '__main__':
             # Skip section header rows:
             if len(filter(lambda x: x.lower() == 'top of page', strippedRow)) >= 1:
                 continue
+            
             writer.writerow(strippedRow)
 
     print 'DONE!'

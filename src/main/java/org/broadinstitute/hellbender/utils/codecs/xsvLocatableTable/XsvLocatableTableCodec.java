@@ -125,13 +125,12 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
             throw new UserException.BadInput("XSV file has a line with no delimiter at line number: " + currentLine);
         }
         else if ( split.size() < header.size() ) {
-            logger.warn("WARNING: Line " + currentLine + " does not have the same number of fields as header!  Padding with empty fields to end...");
             while (split.size() < header.size() ) {
                 split.add("");
             }
         }
         else if ( split.size() > header.size() ) {
-            logger.warn("WARNING: Line " + currentLine + " does not have the same number of fields as header!  Truncating fields from end...");
+            logger.warn("WARNING: Line " + currentLine + " does not have the same number of fields as header (" + split.size() + " > " + header.size() + ")!  Truncating fields from end...");
             while (split.size() > header.size() ) {
                 split.remove( split.size() - 1 );
             }
