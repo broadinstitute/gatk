@@ -1,5 +1,10 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyXsvFuncotationFactory;
+
+import java.nio.file.Path;
 import java.util.*;
 
 /**
@@ -52,25 +57,80 @@ public class FuncotatorArgumentDefinitions {
          * This values indicates a simple arbitrary separated value (XSV) file that can be
          * annotated on records via matching by gene name or transcript ID.
          */
-        SIMPLE_XSV("simpleXSV"),
+        SIMPLE_XSV("simpleXSV") {
+            @Override
+            public void assertConfigFilePropertiesAreValid(final Properties configFileProperties, final Path configFilePath) {
+                DataSourceUtils.assertConfigPropertiesContainsKey(DataSourceUtils.CONFIG_FILE_FIELD_NAME_XSV_DELIMITER, configFileProperties, configFilePath);
+                DataSourceUtils.assertConfigPropertiesContainsKey(DataSourceUtils.CONFIG_FILE_FIELD_NAME_XSV_KEY, configFileProperties, configFilePath);
+                DataSourceUtils.assertConfigPropertiesContainsKey(DataSourceUtils.CONFIG_FILE_FIELD_NAME_XSV_KEY_COLUMN, configFileProperties, configFilePath);
+                DataSourceUtils.assertConfigPropertiesContainsKey(DataSourceUtils.CONFIG_FILE_FIELD_NAME_XSV_PERMISSIVE_COLS, configFileProperties, configFilePath);
+
+                // Ensure typed values:
+                DataSourceUtils.assertIntegerPropertiesField(configFileProperties, DataSourceUtils.CONFIG_FILE_FIELD_NAME_XSV_KEY_COLUMN, configFilePath);
+                DataSourceUtils.assertBooleanPropertiesField(configFileProperties, DataSourceUtils.CONFIG_FILE_FIELD_NAME_XSV_PERMISSIVE_COLS, configFilePath);
+
+                // Validate our xsv_key:
+                final String stringXsvKey = configFileProperties.getProperty(DataSourceUtils.CONFIG_FILE_FIELD_NAME_XSV_KEY);
+                try {
+                    SimpleKeyXsvFuncotationFactory.XsvDataKeyType.valueOf(stringXsvKey);
+                }
+                catch (final IllegalArgumentException ex) {
+                    throw new UserException.BadInput("ERROR in config file: " + configFilePath.toUri().toString() +
+                            " - Invalid value in \"" + DataSourceUtils.CONFIG_FILE_FIELD_NAME_XSV_KEY + "\" field: " + stringXsvKey, ex);
+                }
+            }
+        },
 
         /**
          * This values indicates a simple arbitrary separated value (XSV) file that can be
          * annotated on records via matching by gene location.
          */
-        LOCATABLE_XSV("locatableXSV"),
+        LOCATABLE_XSV("locatableXSV") {
+            @Override
+            public void assertConfigFilePropertiesAreValid(final Properties configFileProperties, final Path configFilePath) {
+                DataSourceUtils.assertConfigPropertiesContainsKey(DataSourceUtils.CONFIG_FILE_FIELD_NAME_XSV_DELIMITER, configFileProperties, configFilePath);
+                DataSourceUtils.assertConfigPropertiesContainsKey(DataSourceUtils.CONFIG_FILE_FIELD_NAME_CONTIG_COLUMN, configFileProperties, configFilePath);
+                DataSourceUtils.assertConfigPropertiesContainsKey(DataSourceUtils.CONFIG_FILE_FIELD_NAME_START_COLUMN, configFileProperties, configFilePath);
+                DataSourceUtils.assertConfigPropertiesContainsKey(DataSourceUtils.CONFIG_FILE_FIELD_NAME_END_COLUMN, configFileProperties, configFilePath);
+
+                // Ensure typed values:
+                DataSourceUtils.assertIntegerPropertiesField(configFileProperties, DataSourceUtils.CONFIG_FILE_FIELD_NAME_CONTIG_COLUMN, configFilePath);
+                DataSourceUtils.assertIntegerPropertiesField(configFileProperties, DataSourceUtils.CONFIG_FILE_FIELD_NAME_START_COLUMN, configFilePath);
+                DataSourceUtils.assertIntegerPropertiesField(configFileProperties, DataSourceUtils.CONFIG_FILE_FIELD_NAME_END_COLUMN, configFilePath);
+            }
+        },
 
         /**
          * This values indicates a GENCODE GTF data file.
          */
-        GENCODE("gencode"),
+        GENCODE("gencode") {
+            @Override
+            public void assertConfigFilePropertiesAreValid(final Properties configFileProperties, final Path configFilePath) {
+                DataSourceUtils.assertConfigPropertiesContainsKey(DataSourceUtils.CONFIG_FILE_FIELD_NAME_GENCODE_FASTA_PATH, configFileProperties, configFilePath);
+
+                // Assert that the path is good:
+                DataSourceUtils.assertPathFilePropertiesField(configFileProperties, DataSourceUtils.CONFIG_FILE_FIELD_NAME_GENCODE_FASTA_PATH, configFilePath);
+            }
+        },
 
         /**
          * This values indicates a pre-processed COSMIC database file.
          * For more information on the pre-processing steps see {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.cosmic.CosmicFuncotationFactory}
          * and the Funcotator Scripts directory.
          */
-        COSMIC("cosmic");
+        COSMIC("cosmic") {
+            @Override
+            public void assertConfigFilePropertiesAreValid(final Properties configFileProperties, final Path configFilePath) {
+                // There is no special check required for cosmic.
+            }
+        };
+
+        /**
+         * Asserts that the given properties and corresponding config file path are valid for this {@link DataSourceType}.
+         * @param configFileProperties {@link Properties} pulled from the given {@code configFilePath}.
+         * @param configFilePath {@link Path} to the config file containing the {@code configFileProperties}.
+         */
+        abstract public void assertConfigFilePropertiesAreValid(final Properties configFileProperties, final Path configFilePath);
 
         private final String serialized;
 

@@ -1039,16 +1039,19 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Set GC Content:
         gencodeFuncotationBuilder.setGcContent( calculateGcContent( reference, gcContentWindowSizeBases ) );
 
+        // Get the strand:
+        final Strand strand = transcript.getGenomicStrand();
+
         // Get the strand-corrected alleles from the inputs.
         // Also get the reference sequence for the variant region.
         // (spanning the entire length of both the reference and the variant, regardless of which is longer).
-        final Allele strandCorrectedRefAllele = FuncotatorUtils.getStrandCorrectedAllele(variant.getReference(), transcript.getGenomicStrand());
-        final Allele strandCorrectedAltAllele = FuncotatorUtils.getStrandCorrectedAllele(altAllele, transcript.getGenomicStrand());
-        final String referenceBases = getReferenceBases(variant.getReference(), altAllele, reference, transcript.getGenomicStrand());
+        final Allele strandCorrectedRefAllele = FuncotatorUtils.getStrandCorrectedAllele(variant.getReference(), strand);
+        final Allele strandCorrectedAltAllele = FuncotatorUtils.getStrandCorrectedAllele(altAllele, strand);
+        final String referenceBases = getReferenceBases(variant.getReference(), altAllele, reference, strand);
 
         // Set our reference sequence in the Gencode Funcotation Builder:
         // NOTE: The reference context is ALWAYS from the + strand, so we need to reverse our bases back in the - case:
-        if ( transcript.getGenomicStrand() == Strand.POSITIVE ) {
+        if ( strand == Strand.POSITIVE ) {
             gencodeFuncotationBuilder.setReferenceContext(referenceBases);
         }
         else {
@@ -1070,7 +1073,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             final String fivePrimeUtrCodingSequence =
                     getFivePrimeUtrSequenceFromTranscriptFasta( transcript.getTranscriptId(), transcriptIdMap, transcriptFastaReferenceDataSource, 3);
 
-            final int codingStartPos = FuncotatorUtils.getStartPositionInTranscript(variant, activeRegions, transcript.getGenomicStrand());
+            final int codingStartPos = FuncotatorUtils.getStartPositionInTranscript(variant, activeRegions, strand);
 
             // Get the number of bases we need to add to the start position of the variant to get it in frame:
             final int alignedAlleleOffset = FuncotatorUtils.getAlignedPosition(variant.getStart()) - variant.getStart();

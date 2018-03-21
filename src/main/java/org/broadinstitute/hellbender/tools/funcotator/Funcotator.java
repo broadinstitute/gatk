@@ -251,7 +251,7 @@ public class Funcotator extends VariantWalker {
             optional = true,
             doc = "Whether to ignore variants that have been filtered or to annotate them."
     )
-    protected boolean ignoreFilteredVariants = true;
+    protected boolean includeFilteredVariants = false;
 
     @Argument(
             fullName  = FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME,
@@ -384,10 +384,6 @@ public class Funcotator extends VariantWalker {
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
 
-        if ( !referenceContext.hasBackingDataSource() ) {
-            throw new GATKException("No reference context for variant.  Cannot annotate!");
-        }
-
         // Place the variant on our queue to be funcotated:
         enqueueAndHandleVariant(variant, referenceContext, featureContext);
     }
@@ -447,7 +443,7 @@ public class Funcotator extends VariantWalker {
 
         //TODO: Check against Issue #4358 - https://github.com/broadinstitute/gatk/issues/4358
         // Check to see if we're annotating filtered variants and ignore this if we're told to:
-        if ( ignoreFilteredVariants && variant.isFiltered() ) {
+        if ( (!includeFilteredVariants) && variant.isFiltered() ) {
             // We can ignore this variant since it was filtered out.
             return;
         }

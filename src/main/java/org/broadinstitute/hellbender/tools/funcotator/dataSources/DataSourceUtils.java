@@ -26,7 +26,10 @@ import java.util.stream.Collectors;
  * Designed to be a static utility class with no state.
  * Created by jonn on 3/8/18.
  */
-public class DataSourceUtils {
+final public class DataSourceUtils {
+
+    // Private constructor.  No makey, no brakey.
+    private DataSourceUtils() {}
 
     //==================================================================================================================
     // Private Static Members:
@@ -120,7 +123,7 @@ public class DataSourceUtils {
                 }
             }
             catch (final IOException ex) {
-                throw new GATKException("Unable to read contents of: " + p.toUri().toString());
+                throw new GATKException("Unable to read contents of: " + p.toUri().toString(), ex);
             }
         }
 
@@ -165,7 +168,7 @@ public class DataSourceUtils {
             return configFileSet.get(0);
         }
         catch (final IOException ex) {
-            throw new GATKException("Unable to read contents of: " + directory.toUri().toString());
+            throw new UserException("Unable to read contents of: " + directory.toUri().toString(), ex);
         }
     }
 
@@ -201,22 +204,25 @@ public class DataSourceUtils {
 
             logger.debug("Creating Funcotation Factory for " + entry.getValue().getProperty("name") + " ...");
 
+            final Path path = entry.getKey();
+            final Properties properties = entry.getValue();
+
             final DataSourceFuncotationFactory funcotationFactory;
 
             // Note: we need no default case since we know these are valid:
-            final String stringType = entry.getValue().getProperty("type");
+            final String stringType = properties.getProperty("type");
             switch ( FuncotatorArgumentDefinitions.DataSourceType.getEnum(stringType) ) {
                 case LOCATABLE_XSV:
-                    funcotationFactory = DataSourceUtils.createLocatableXsvDataSource(entry.getKey(), entry.getValue(), annotationOverridesMap);
+                    funcotationFactory = DataSourceUtils.createLocatableXsvDataSource(path, properties, annotationOverridesMap);
                     break;
                 case SIMPLE_XSV:
-                    funcotationFactory = DataSourceUtils.createSimpleXsvDataSource(entry.getKey(), entry.getValue(), annotationOverridesMap);
+                    funcotationFactory = DataSourceUtils.createSimpleXsvDataSource(path, properties, annotationOverridesMap);
                     break;
                 case COSMIC:
-                    funcotationFactory = DataSourceUtils.createCosmicDataSource(entry.getKey(), entry.getValue(), annotationOverridesMap);
+                    funcotationFactory = DataSourceUtils.createCosmicDataSource(path, properties, annotationOverridesMap);
                     break;
                 case GENCODE:
-                    funcotationFactory = DataSourceUtils.createGencodeDataSource(entry.getKey(), entry.getValue(), annotationOverridesMap, transcriptSelectionMode, userTranscriptIdSet);
+                    funcotationFactory = DataSourceUtils.createGencodeDataSource(path, properties, annotationOverridesMap, transcriptSelectionMode, userTranscriptIdSet);
                     break;
                 default:
                     throw new GATKException("Unknown type of DataSourceFuncotationFactory encountered: " + stringType );
@@ -394,65 +400,28 @@ public class DataSourceUtils {
         }
 
         // Validate remaining values based on type:
-        switch (type) {
-            case LOCATABLE_XSV: assertLocatableXsvConfigFilePropertiesAreValid(configFileProperties, configFilePath); break;
-            case SIMPLE_XSV:    assertSimpleXsvConfigFilePropertiesAreValid(configFileProperties, configFilePath); break;
-            case GENCODE:       assertGencodeConfigFilePropertiesAreValid(configFileProperties, configFilePath); break;
-            case COSMIC:        /* No special case for COSMIC needed here. */ break;
-            default:
-                //Note: this should never happen:
-                throw new UserException.BadInput("ERROR in config file: " + configFilePath.toUri().toString() +
-                        " - Invalid value in \"" + CONFIG_FILE_FIELD_NAME_TYPE + "\" field: " + stringType);
-        }
+        type.assertConfigFilePropertiesAreValid(configFileProperties, configFilePath);
     }
 
-    private static void assertConfigPropertiesContainsKey(final String key, final Properties configProperties, final Path configFilePath) {
+    /**
+     * Asserts that the given {@code key} is contained in the given {@code configProperties}.
+     * @param key {@link String} name of the key, the existence of which will be confirmed in {@code configProperties}.
+     * @param configProperties {@link Properties} corresponding to the given {@code configFilePath} in which to check for the existence of {@code key}.
+     * @param configFilePath {@link Path} to config file.  For output purposes only.
+     */
+    public static void assertConfigPropertiesContainsKey(final String key, final Properties configProperties, final Path configFilePath) {
         if ( !configProperties.stringPropertyNames().contains(key) ) {
             throw new UserException.BadInput("Config file for datasource (" + configFilePath.toUri().toString() + ") does not contain required key: \"" + key + "\"");
         }
     }
 
-    private static void assertLocatableXsvConfigFilePropertiesAreValid(final Properties configFileProperties, final Path configFilePath) {
-        assertConfigPropertiesContainsKey(CONFIG_FILE_FIELD_NAME_XSV_DELIMITER, configFileProperties, configFilePath);
-        assertConfigPropertiesContainsKey(CONFIG_FILE_FIELD_NAME_CONTIG_COLUMN, configFileProperties, configFilePath);
-        assertConfigPropertiesContainsKey(CONFIG_FILE_FIELD_NAME_START_COLUMN, configFileProperties, configFilePath);
-        assertConfigPropertiesContainsKey(CONFIG_FILE_FIELD_NAME_END_COLUMN, configFileProperties, configFilePath);
-
-        // Ensure typed values:
-        assertNumericalPropertiesField(configFileProperties, CONFIG_FILE_FIELD_NAME_CONTIG_COLUMN, configFilePath);
-        assertNumericalPropertiesField(configFileProperties, CONFIG_FILE_FIELD_NAME_START_COLUMN, configFilePath);
-        assertNumericalPropertiesField(configFileProperties, CONFIG_FILE_FIELD_NAME_END_COLUMN, configFilePath);
-    }
-
-    private static void assertSimpleXsvConfigFilePropertiesAreValid(final Properties configFileProperties, final Path configFilePath) {
-        assertConfigPropertiesContainsKey(CONFIG_FILE_FIELD_NAME_XSV_DELIMITER, configFileProperties, configFilePath);
-        assertConfigPropertiesContainsKey(CONFIG_FILE_FIELD_NAME_XSV_KEY, configFileProperties, configFilePath);
-        assertConfigPropertiesContainsKey(CONFIG_FILE_FIELD_NAME_XSV_KEY_COLUMN, configFileProperties, configFilePath);
-        assertConfigPropertiesContainsKey(CONFIG_FILE_FIELD_NAME_XSV_PERMISSIVE_COLS, configFileProperties, configFilePath);
-
-        // Ensure typed values:
-        assertNumericalPropertiesField(configFileProperties, CONFIG_FILE_FIELD_NAME_XSV_KEY_COLUMN, configFilePath);
-        assertBooleanPropertiesField(configFileProperties, CONFIG_FILE_FIELD_NAME_XSV_PERMISSIVE_COLS, configFilePath);
-
-        // Validate our xsv_key:
-        final String stringXsvKey = configFileProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_KEY);
-        try {
-            SimpleKeyXsvFuncotationFactory.XsvDataKeyType.valueOf(stringXsvKey);
-        }
-        catch (final IllegalArgumentException ex) {
-            throw new UserException.BadInput("ERROR in config file: " + configFilePath.toUri().toString() +
-                    " - Invalid value in \"" + CONFIG_FILE_FIELD_NAME_XSV_KEY + "\" field: " + stringXsvKey, ex);
-        }
-    }
-
-    private static void assertGencodeConfigFilePropertiesAreValid(final Properties configFileProperties, final Path configFilePath){
-        assertConfigPropertiesContainsKey(CONFIG_FILE_FIELD_NAME_GENCODE_FASTA_PATH, configFileProperties, configFilePath);
-
-        // Assert that the path is good:
-        assertPathFilePropertiesField(configFileProperties, CONFIG_FILE_FIELD_NAME_GENCODE_FASTA_PATH, configFilePath);
-    }
-
-    private static void assertNumericalPropertiesField(final Properties props, final String field, final Path filePath) {
+    /**
+     * Asserts that the given {@code field} is contained in the given {@code props} and is an integer value.
+     * @param props {@link Properties} corresponding to the given {@code filePath} in which to check for the validity of {@code field}.
+     * @param field {@link String} name of the field, the existence and correct type of which will be confirmed in {@code props}.
+     * @param filePath {@link Path} to config file.  For output purposes only.
+     */
+    public static void assertIntegerPropertiesField(final Properties props, final String field, final Path filePath) {
         try {
             Integer.valueOf(props.getProperty(field));
         }
@@ -462,17 +431,29 @@ public class DataSourceUtils {
         }
     }
 
-    private static void assertBooleanPropertiesField(final Properties props, final String field, final Path filePath) {
-        try {
-            Boolean.valueOf(props.getProperty(field));
-        }
-        catch (final NumberFormatException ex) {
-            throw new UserException.BadInput("ERROR in config file: " + filePath.toUri().toString() +
-                    " - Invalid value in \"" + field + "\" field: " + props.getProperty(field));
-        }
+    /**
+     * Asserts that the given {@code field} is contained in the given {@code props} and is a boolean value.
+     * @param props {@link Properties} corresponding to the given {@code filePath} in which to check for the validity of {@code field}.
+     * @param field {@link String} name of the field, the existence and correct type of which will be confirmed in {@code props}.
+     * @param filePath {@link Path} to config file.  For output purposes only.
+     */
+    public static void assertBooleanPropertiesField(final Properties props, final String field, final Path filePath) {
+
+            final String comparableValue = props.getProperty(field).trim().toLowerCase();
+
+            if ( !comparableValue.equals("true") && !comparableValue.equals("false") ) {
+                throw new UserException.BadInput("ERROR in config file: " + filePath.toUri().toString() +
+                        " - Invalid value in \"" + field + "\" field: " + props.getProperty(field));
+            }
     }
 
-    private static void assertPathFilePropertiesField(final Properties props, final String field, final Path filePath) {
+    /**
+     * Asserts that the given {@code field} is contained in the given {@code props} and is a file path.
+     * @param props {@link Properties} corresponding to the given {@code filePath} in which to check for the validity of {@code field}.
+     * @param field {@link String} name of the field, the existence and correct type of which will be confirmed in {@code props}.
+     * @param filePath {@link Path} to config file.  For output purposes only.
+     */
+    public static void assertPathFilePropertiesField(final Properties props, final String field, final Path filePath) {
         final Path sourceFilePath = filePath.resolveSibling(props.getProperty(field));
         if ( !Files.exists(sourceFilePath) ) {
             throw new UserException.BadInput("ERROR in config file: " + filePath.toUri().toString() +

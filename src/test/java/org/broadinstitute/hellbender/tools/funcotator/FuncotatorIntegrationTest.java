@@ -68,7 +68,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         // ================================================================================
         // Annotation Defaults:
         arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "dbSNP_RS:0");
-        arguments.addArgumentWithRawValue(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME ,"dbSNP_Val_Status:No Value");
+        arguments.addArgumentWithValueThatIncludesWhitespace(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME ,"dbSNP_Val_Status:No Value");
         arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Center:broad.mit.edu");
         arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "source:WES");
         arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "normal_barcode:normal_sample");
