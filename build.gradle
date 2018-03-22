@@ -63,6 +63,10 @@ final sparkVersion = System.getProperty('spark.version', '2.0.2')
 final hadoopBamVersion = System.getProperty('hadoopBam.version','7.9.1')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','0.9.2-proto-3.0.0-beta-1+uuid-static')
 final testNGVersion = '6.11'
+// Using the shaded version to avoid conflicts between its protobuf dependency
+// and that of Hadoop/Spark (either the one we reference explicitly, or the one
+// provided by dataproc).
+final googleCloudNioDependency = 'org.broadinstitute:google-cloud-nio-GATK4-custom-patch:0.20.4-alpha-GCS-RETRY-FIX:shaded'
 
 final baseJarName = 'gatk'
 final secondaryBaseJarName = 'hellbender'
@@ -80,6 +84,8 @@ configurations.all {
         // force testng dependency so we don't pick up a different version via GenomicsDB
         force 'org.testng:testng:' + testNGVersion
         force 'org.broadinstitute:barclay:' + barclayVersion
+        // make sure we don't pick up a different version via Picard
+        force googleCloudNioDependency
     }
     all*.exclude group: 'org.slf4j', module: 'slf4j-jdk14' //exclude this to prevent slf4j complaining about to many slf4j bindings
     all*.exclude group: 'com.google.guava', module: 'guava-jdk5'
@@ -161,10 +167,7 @@ dependencies {
     compile 'com.opencsv:opencsv:3.4'
     compile 'com.google.guava:guava:18.0'
     compile 'com.github.samtools:htsjdk:'+ htsjdkVersion
-    // Using the shaded version to avoid conflicts between its protobuf dependency
-    // and that of Hadoop/Spark (either the one we reference explicitly, or the one
-    // provided by dataproc).
-    compile 'org.broadinstitute:google-cloud-nio-GATK4-custom-patch:0.20.4-alpha-GCS-RETRY-FIX:shaded'
+    compile googleCloudNioDependency
 
     compile "gov.nist.math.jama:gov.nist.math.jama:1.1.1"
 
