@@ -43,7 +43,7 @@ dependencies:
   - scikit-learn==0.19.1
   - scipy==1.0.0
   - six==1.11.0
-  - tensorflow==1.4.0
+  - https://anaconda.org/intel/tensorflow/1.4.0/download/tensorflow-1.4.0-cp36-cp36m-linux_x86_64.whl
   - tensorflow-tensorboard==0.4.0rc3
   - theano==0.9.0
   - tqdm==4.19.4

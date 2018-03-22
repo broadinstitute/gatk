@@ -146,6 +146,14 @@ public class CNNScoreVariants extends VariantWalker {
     @Argument(fullName = "transfer-batch-size", shortName = "transfer-batch-size", doc = "Size of data to queue for python streaming.", minValue = 1, maxValue = 8192, optional = true)
     private int transferBatchSize = 512;
 
+    @Advanced
+    @Argument(fullName = "tf-intra-threads", shortName = "intra", doc = "Number of threads used for intra op parallelism in TensorFlow.", minValue = 0, optional = true)
+    private int tfIntraThreads = 0;
+
+    @Advanced
+    @Argument(fullName = "tf-inter-threads", shortName = "inter", doc = "Number of threads used for inter op parallelism in TensorFlow.", minValue = 0, optional = true)
+    private int tfInterThreads = 0;
+
     @Hidden
     @Argument(fullName = "enable-journal", shortName = "enable-journal", doc = "Enable streaming process journal.", optional = true)
     private boolean enableJournal = false;
@@ -238,6 +246,10 @@ public class CNNScoreVariants extends VariantWalker {
                 logger.info("Saving temp file from python:" + scoreFile.getAbsolutePath());
             }
             pythonExecutor.sendSynchronousCommand(String.format("tempFile = open('%s', 'w+')" + NL, scoreFile.getAbsolutePath()));
+
+            pythonExecutor.sendSynchronousCommand("from keras import backend" + NL);
+            pythonExecutor.sendSynchronousCommand(String.format("backend.set_session(backend.tf.Session(config=backend.tf.ConfigProto(intra_op_parallelism_threads=%d, inter_op_parallelism_threads=%d)))" + NL, tfIntraThreads, tfInterThreads));
+
             pythonExecutor.sendSynchronousCommand("import vqsr_cnn" + NL);
 
             String getArgsAndModel;
