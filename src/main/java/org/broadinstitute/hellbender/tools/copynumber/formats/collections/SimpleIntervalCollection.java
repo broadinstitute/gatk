@@ -11,7 +11,10 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 /**
+ * Represents a collection of {@link SimpleInterval} associated to a sample.
+ *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
+ * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
 public final class SimpleIntervalCollection extends AbstractLocatableCollection<LocatableMetadata, SimpleInterval> {
     //note to developers: repeat the column headers in Javadoc so that they are viewable when linked

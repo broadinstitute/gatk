@@ -72,7 +72,7 @@ group.add_argument("--input_opt_path",
                    type=str,
                    required=False,
                    default=argparse.SUPPRESS,
-                   help="(advanced) Path to exported optimizer state to take as the starting point")
+                   help="(advanced) Path to saved optimizer state to take as the starting point")
 
 # add denoising config args
 gcnvkernel.DenoisingModelConfig.expose_args(parser)
@@ -126,18 +126,18 @@ if __name__ == "__main__":
 
     if hasattr(args, 'input_model_path'):
         logger.info("A model path was provided to use as starting point...")
-        gcnvkernel.io_denoising_calling.DenoisingModelImporter(
+        gcnvkernel.io_denoising_calling.DenoisingModelReader(
             denoising_config, calling_config, shared_workspace, task.continuous_model,
             task.continuous_model_approx, args.input_model_path)()
 
     if hasattr(args, 'input_calls_path'):
         logger.info("A call path was provided to use as starting point...")
-        gcnvkernel.io_denoising_calling.SampleDenoisingAndCallingPosteriorsImporter(
+        gcnvkernel.io_denoising_calling.SampleDenoisingAndCallingPosteriorsReader(
             shared_workspace, task.continuous_model, task.continuous_model_approx,
             args.input_calls_path)()
 
     if hasattr(args, 'input_opt_path'):
-        logger.info("An exported optimizer state was provided to use as starting point...")
+        logger.info("A saved optimizer state was provided to use as starting point...")
         task.fancy_opt.load(args.input_opt_path)
 
     # go!
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     task.disengage()
 
     # save model
-    gcnvkernel.io_denoising_calling.DenoisingModelExporter(
+    gcnvkernel.io_denoising_calling.DenoisingModelWriter(
         denoising_config, calling_config,
         shared_workspace, task.continuous_model, task.continuous_model_approx,
         args.output_model_path)()
@@ -155,7 +155,7 @@ if __name__ == "__main__":
                 os.path.join(args.output_model_path, gcnvkernel.io_consts.default_interval_list_filename))
 
     # save calls
-    gcnvkernel.io_denoising_calling.SampleDenoisingAndCallingPosteriorsExporter(
+    gcnvkernel.io_denoising_calling.SampleDenoisingAndCallingPosteriorsWriter(
         denoising_config, calling_config, shared_workspace, task.continuous_model, task.continuous_model_approx,
         args.output_calls_path)()
 

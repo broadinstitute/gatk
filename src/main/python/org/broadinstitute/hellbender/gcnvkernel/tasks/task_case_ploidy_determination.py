@@ -1,9 +1,9 @@
 import logging
 
 from .inference_task_base import HybridInferenceTask, HybridInferenceParameters
-from ..models.model_ploidy import PloidyModelConfig, PloidyModel, PloidyWorkspace
 from ..inference.fancy_optimizers import FancyAdamax
-from ..io.io_ploidy import PloidyModelImporter
+from ..io.io_ploidy import PloidyModelReader
+from ..models.model_ploidy import PloidyModelConfig, PloidyModel, PloidyWorkspace
 
 _logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class CasePloidyInferenceTask(HybridInferenceTask):
         self.ploidy_workspace = ploidy_workspace
 
         _logger.info("Loading the model and updating the instantiated model and workspace...")
-        PloidyModelImporter(self.continuous_model, self.continuous_model_approx, input_model_path)()
+        PloidyModelReader(self.continuous_model, self.continuous_model_approx, input_model_path)()
 
     def disengage(self):
         pass

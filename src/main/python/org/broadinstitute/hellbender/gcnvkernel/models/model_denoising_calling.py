@@ -1,8 +1,8 @@
-import collections
-import logging
 import argparse
+import collections
 import inspect
 import json
+import logging
 from abc import abstractmethod
 from typing import List, Tuple, Set, Dict, Optional
 
@@ -14,14 +14,14 @@ import theano.sparse as tst
 import theano.tensor as tt
 from pymc3 import Normal, Deterministic, DensityDist, Lognormal, Exponential
 
-from ..tasks.inference_task_base import HybridInferenceParameters
-from .fancy_model import GeneralizedContinuousModel
 from . import commons
 from .dists import HalfFlat
+from .fancy_model import GeneralizedContinuousModel
 from .theano_hmm import TheanoForwardBackward
 from .. import config, types
 from ..structs.interval import Interval, GCContentAnnotation
 from ..structs.metadata import SampleMetadataCollection
+from ..tasks.inference_task_base import HybridInferenceParameters
 
 _logger = logging.getLogger(__name__)
 
@@ -579,11 +579,11 @@ class DenoisingCallingWorkspace:
                            num_copy_number_classes: int,
                            class_probs_k: np.ndarray) -> np.ndarray:
         """Calculates the log transition probability between copy number classes."""
-        class_stay_t = np.exp(-dist_t / class_coherence_length)
-        class_not_stay_t = np.ones_like(class_stay_t) - class_stay_t
+        class_stay_prob_t = np.exp(-dist_t / class_coherence_length)
+        class_not_stay_prob_t = np.ones_like(class_stay_prob_t) - class_stay_prob_t
         delta_kl = np.eye(num_copy_number_classes, dtype=types.floatX)
-        trans_tkl = (class_not_stay_t[:, None, None] * class_probs_k[None, None, :]
-                     + class_stay_t[:, None, None] * delta_kl[None, :, :])
+        trans_tkl = (class_not_stay_prob_t[:, None, None] * class_probs_k[None, None, :]
+                     + class_stay_prob_t[:, None, None] * delta_kl[None, :, :])
         return np.log(trans_tkl)
 
     @staticmethod
@@ -1137,7 +1137,7 @@ class HHMMClassAndCopyNumberBasicCaller:
 
     @staticmethod
     @th.configparser.change_flags(compute_test_value="off")
-    def get_compiled_copy_number_hmm_specs_theano_func():
+    def get_compiled_copy_number_hmm_specs_theano_func() -> th.compile.function_module.Function:
         """Returns a compiled function that calculates the interval-class-averaged and probability-sum-normalized
         log copy number transition matrix and log copy number prior for the first interval
 
@@ -1168,7 +1168,7 @@ class HHMMClassAndCopyNumberBasicCaller:
         log_prior_c_first_interval -= pm.logsumexp(log_prior_c_first_interval)
 
         # log transition matrix
-        cnv_not_stay_t = tt.ones_like(cnv_stay_prob_t) - cnv_stay_prob_t
+        cnv_not_stay_prob_t = tt.ones_like(cnv_stay_prob_t) - cnv_stay_prob_t
         num_copy_number_states = pi_jkc.shape[2]
         delta_ab = tt.eye(num_copy_number_states)
 
@@ -1177,7 +1177,7 @@ class HHMMClassAndCopyNumberBasicCaller:
 
         # calculate normalized log transition matrix
         # todo use logaddexp
-        log_trans_tkab = tt.log(cnv_not_stay_t.dimshuffle(0, 'x', 'x', 'x') * pi_tkc.dimshuffle(0, 1, 'x', 2)
+        log_trans_tkab = tt.log(cnv_not_stay_prob_t.dimshuffle(0, 'x', 'x', 'x') * pi_tkc.dimshuffle(0, 1, 'x', 2)
                                 + cnv_stay_prob_t.dimshuffle(0, 'x', 'x', 'x') * delta_ab.dimshuffle('x', 'x', 0, 1))
         q_tau_tkab = tt.exp(log_q_tau_tk[1:, :]).dimshuffle(0, 1, 'x', 'x')
         log_trans_tab = tt.sum(q_tau_tkab * log_trans_tkab, axis=1)
@@ -1189,7 +1189,7 @@ class HHMMClassAndCopyNumberBasicCaller:
         return th.function(inputs=inputs, outputs=outputs)
 
     @th.configparser.change_flags(compute_test_value="off")
-    def _get_update_log_class_emission_tk_theano_func(self):
+    def _get_update_log_class_emission_tk_theano_func(self) -> th.compile.function_module.Function:
         """Returns a compiled function that calculates the log interval class emission probability and
         directly updates `log_class_emission_tk` in the workspace.
 
@@ -1213,7 +1213,7 @@ class HHMMClassAndCopyNumberBasicCaller:
         num_copy_number_states = self.calling_config.num_copy_number_states
 
         # log copy number transition matrix for each class
-        cnv_not_stay_t = tt.ones_like(cnv_stay_prob_t) - cnv_stay_prob_t
+        cnv_not_stay_prob_t = tt.ones_like(cnv_stay_prob_t) - cnv_stay_prob_t
         delta_ab = tt.eye(num_copy_number_states)
 
         # calculate log class emission by reducing over samples; see below
@@ -1237,7 +1237,7 @@ class HHMMClassAndCopyNumberBasicCaller:
 
             # todo use logaddexp
             log_trans_tkab = tt.log(
-                cnv_not_stay_t.dimshuffle(0, 'x', 'x', 'x') * pi_tkc.dimshuffle(0, 1, 'x', 2)
+                cnv_not_stay_prob_t.dimshuffle(0, 'x', 'x', 'x') * pi_tkc.dimshuffle(0, 1, 'x', 2)
                 + cnv_stay_prob_t.dimshuffle(0, 'x', 'x', 'x') * delta_ab.dimshuffle('x', 'x', 0, 1))
             xi_tab = q_c_tc[:-1, :].dimshuffle(0, 1, 'x') * q_c_tc[1:, :].dimshuffle(0, 'x', 1)
             current_log_class_emission_tk = tt.sum(tt.sum(

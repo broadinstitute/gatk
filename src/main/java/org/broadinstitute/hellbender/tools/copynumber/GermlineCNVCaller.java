@@ -199,6 +199,7 @@ public final class GermlineCNVCaller extends CommandLineProgram {
                     "All intervals specified via -L must be contained; " +
                     "if none are specified, then intervals must be identical and in the same order for all samples.",
             fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
             minElements = 1
     )
     private List<File> inputReadCountFiles = new ArrayList<>();
@@ -210,7 +211,7 @@ public final class GermlineCNVCaller extends CommandLineProgram {
     private RunMode runMode;
 
     @Argument(
-            doc = "Input contig-ploidy calls directory (output of DetermlineGermlineContigPloidy).",
+            doc = "Input contig-ploidy calls directory (output of DetermineGermlineContigPloidy).",
             fullName = CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME
     )
     private String inputContigPloidyCallsDir;
@@ -242,7 +243,8 @@ public final class GermlineCNVCaller extends CommandLineProgram {
 
     @Argument(
             doc = "Output directory.",
-            fullName =  StandardArgumentDefinitions.OUTPUT_LONG_NAME
+            fullName =  StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
     private String outputDir;
 

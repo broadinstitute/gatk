@@ -1,12 +1,12 @@
+import logging
 import numpy as np
 import pandas as pd
-import logging
 from typing import Optional, List, Tuple, Set
 
-from ..structs.interval import Interval, IntervalAnnotation, interval_annotations_dtypes, interval_annotations_dict
-from .. import types
 from . import io_commons
 from . import io_consts
+from .. import types
+from ..structs.interval import Interval, interval_annotations_dtypes, interval_annotations_dict
 
 _logger = logging.getLogger(__name__)
 
@@ -25,8 +25,8 @@ read_count_dtypes_dict = {
 def load_read_counts_tsv_file(read_counts_tsv_file: str,
                               max_rows: Optional[int] = None,
                               return_interval_list: bool = False,
-                              delimiter='\t',
-                              comment='@') \
+                              comment=io_consts.default_comment_char,
+                              delimiter=io_consts.default_delimiter_char) \
         -> Tuple[str, np.ndarray, Optional[List[Interval]]]:
     """Loads a read counts .tsv file.
 
@@ -52,8 +52,8 @@ def load_read_counts_tsv_file(read_counts_tsv_file: str,
 
 
 def load_interval_list_tsv_file(interval_list_tsv_file: str,
-                                delimiter='\t',
-                                comment='@') -> List[Interval]:
+                                comment=io_consts.default_comment_char,
+                                delimiter=io_consts.default_delimiter_char) -> List[Interval]:
     """Loads an interval list .tsv file.
     Args:
         interval_list_tsv_file: input interval list .tsv file

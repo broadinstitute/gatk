@@ -22,7 +22,7 @@ ploidy_column_name = "PLOIDY"
 ploidy_gq_column_name = "PLOIDY_GQ"
 
 # column names for copy-number segments file
-copy_number_call_column_name = "COPY_NUMBER_CALL"
+call_copy_number_column_name = "CALL_COPY_NUMBER"
 num_points_column_name = "NUM_POINTS"
 quality_some_called_column_name = "QUALITY_SOME_CALLED"
 quality_all_called_column_name = "QUALITY_ALL_CALLED"
@@ -37,6 +37,9 @@ sample_name_header_regexp = "^@RG.*SM:(.*)[\t]*.*$"
 
 # prefix for adding sample name as a header comment line
 sample_name_sam_header_prefix = "RG\tID:GATKCopyNumber\tSM:"
+
+default_comment_char = "@"
+default_delimiter_char = "\t"
 
 # default file names for loading and saving models, posteriors, and configurations
 default_sample_read_depth_tsv_filename = "global_read_depth.tsv"

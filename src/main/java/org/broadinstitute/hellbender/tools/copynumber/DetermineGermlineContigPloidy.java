@@ -187,6 +187,7 @@ public final class DetermineGermlineContigPloidy extends CommandLineProgram {
                     "Intervals must be identical and in the same order for all samples.  " +
                     "If only a single sample is specified, an input ploidy-model directory must also be specified.  ",
             fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
             minElements = 1
     )
     private List<File> inputReadCountFiles = new ArrayList<>();
@@ -216,7 +217,8 @@ public final class DetermineGermlineContigPloidy extends CommandLineProgram {
     @Argument(
             doc = "Output directory for sample contig-ploidy calls and the contig-ploidy model parameters for " +
                     "future use.",
-            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
     private String outputDir;
 

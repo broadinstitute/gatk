@@ -235,8 +235,12 @@ task ScatterIntervals {
 
 task PostprocessGermlineCNVCalls {
     String entity_id
-    Array[File] chunk_path_tars
-    String sample_index
+    Array[File] gcnv_calls_tars
+    Array[File] gcnv_model_tars
+    File contig_ploidy_calls_tar
+    Array[String]? allosomal_contigs
+    Int ref_copy_number_autosomal_contigs
+    Int sample_index
     File? gatk4_jar_override
 
     # Runtime parameters
@@ -250,8 +254,9 @@ task PostprocessGermlineCNVCalls {
     Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
     Int command_mem_mb = machine_mem_mb - 1000
 
-    String sample_directory = "SAMPLE_${sample_index}"  #this is a hardcoded convention in gcnvkernel
-    String vcf_filename = "${entity_id}.vcf.gz"
+    String genotyped_intervals_vcf_filename = "genotyped-intervals-${entity_id}.vcf.gz"
+    String genotyped_segments_vcf_filename = "genotyped-segments-${entity_id}.vcf.gz"
+    Boolean allosomal_contigs_specified = defined(allosomal_contigs) && length(select_first([allosomal_contigs, []])) > 0
 
     String dollar = "$" #WDL workaround for using array[@], see https://github.com/broadinstitute/cromwell/issues/1819
 
@@ -259,20 +264,40 @@ task PostprocessGermlineCNVCalls {
         set -e
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
-        #untar chunk_path_tars to CHUNK_0, CHUNK_1, etc. directories and build chunk_paths_command_line="--chunk_path CHUNK_0 ..."
-        chunk_path_array=(${sep=" " chunk_path_tars})
-        chunk_paths_command_line=""
-        for index in ${dollar}{!chunk_path_array[@]}; do
-            chunk_path_tar=${dollar}{chunk_path_array[$index]}
-            mkdir CHUNK_$index
-            tar xzf $chunk_path_tar -C CHUNK_$index
-            chunk_paths_command_line="$chunk_paths_command_line --chunk-path CHUNK_$index"
+        # untar calls to CALLS_0, CALLS_1, etc directories and build the command line
+        gcnv_calls_tar_array=(${sep=" " gcnv_calls_tars})
+        calls_args=""
+        for index in ${dollar}{!gcnv_calls_tar_array[@]}; do
+            gcnv_calls_tar=${dollar}{gcnv_calls_tar_array[$index]}
+            mkdir CALLS_$index
+            tar xzf $gcnv_calls_tar -C CALLS_$index
+            calls_args="$calls_args --calls-shard-path CALLS_$index"
         done
 
+        # untar models to MODEL_0, MODEL_1, etc directories and build the command line
+        gcnv_model_tar_array=(${sep=" " gcnv_model_tars})
+        model_args=""
+        for index in ${dollar}{!gcnv_model_tar_array[@]}; do
+            gcnv_model_tar=${dollar}{gcnv_model_tar_array[$index]}
+            mkdir MODEL_$index
+            tar xzf $gcnv_model_tar -C MODEL_$index
+            model_args="$model_args --model-shard-path MODEL_$index"
+        done
+
+        mkdir extracted-contig-ploidy-calls
+        tar xzf ${contig_ploidy_calls_tar} -C extracted-contig-ploidy-calls
+
+        allosomal_contigs_args="--allosomal-contig ${sep=" --allosomal-contig " allosomal_contigs}"
+
         gatk --java-options "-Xmx${command_mem_mb}m" PostprocessGermlineCNVCalls \
-            $chunk_paths_command_line \
-            --sample-directory ${sample_directory} \
-            --output ${vcf_filename}
+            $calls_args \
+            $model_args \
+            ${true="$allosomal_contigs_args" false="" allosomal_contigs_specified} \
+            --autosomal-ref-copy-number ${ref_copy_number_autosomal_contigs} \
+            --contig-ploidy-calls extracted-contig-ploidy-calls \
+            --sample-index ${sample_index} \
+            --output-genotyped-intervals ${genotyped_intervals_vcf_filename} \
+            --output-genotyped-segments ${genotyped_segments_vcf_filename}
     >>>
 
     runtime {
@@ -284,6 +309,7 @@ task PostprocessGermlineCNVCalls {
     }
 
     output {
-        File vcf = vcf_filename
+        File genotyped_intervals_vcf = genotyped_intervals_vcf_filename
+        File genotyped_segments_vcf = genotyped_segments_vcf_filename
     }
 }

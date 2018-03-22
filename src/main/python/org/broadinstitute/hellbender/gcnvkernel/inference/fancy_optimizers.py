@@ -1,13 +1,12 @@
-from abc import abstractmethod
-from collections import OrderedDict
-from functools import partial
-from typing import List
-
 import numpy as np
 import pymc3 as pm
 import theano as th
 import theano.tensor as tt
+from abc import abstractmethod
+from collections import OrderedDict
+from functools import partial
 from pymc3.variational.updates import get_or_compute_grads
+from typing import List
 
 from .. import types
 from ..io import io_commons
@@ -232,7 +231,7 @@ class FancyAdamax(FancyStochasticOptimizer):
             output_path: output path (must be writable directory)
         """
         from ..io import io_adamax  # lazy import to break import cycle
-        io_adamax.AdamaxStateExporter(self, output_path)()
+        io_adamax.AdamaxStateWriter(self, output_path)()
 
     def load(self, input_path: str):
         """Loads the state of the optimizer from disk.
@@ -241,4 +240,4 @@ class FancyAdamax(FancyStochasticOptimizer):
             input_path: input path (must be a readable directory)
         """
         from ..io import io_adamax  # lazy import to break import cycle
-        io_adamax.AdamaxStateImporter(self, input_path)()
+        io_adamax.AdamaxStateReader(self, input_path)()
