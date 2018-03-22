@@ -84,8 +84,17 @@ configurations.all {
         // force testng dependency so we don't pick up a different version via GenomicsDB
         force 'org.testng:testng:' + testNGVersion
         force 'org.broadinstitute:barclay:' + barclayVersion
-        // make sure we don't pick up a different version via Picard
+
+        // make sure we don't pick up an incorrect version of the GATK variant of the google-nio library
+        // via Picard, etc., or pick up the google variant of it
         force googleCloudNioDependency
+        componentSelection {
+            // This feature is incubating, and although it works, when its triggered it doesnt propagate
+            // the rejection message so the build fails saying it can't find google-cloud-nio.
+            withModule('com.google.cloud:google-cloud-nio') {
+                ComponentSelection selection -> selection.reject("The GATK version of this component is required")
+            }
+        }
     }
     all*.exclude group: 'org.slf4j', module: 'slf4j-jdk14' //exclude this to prevent slf4j complaining about to many slf4j bindings
     all*.exclude group: 'com.google.guava', module: 'guava-jdk5'
