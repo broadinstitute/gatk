@@ -403,7 +403,6 @@ public class Funcotator extends VariantWalker {
         if ( outputRenderer != null ) {
             outputRenderer.close();
         }
-
     }
 
     //==================================================================================================================
