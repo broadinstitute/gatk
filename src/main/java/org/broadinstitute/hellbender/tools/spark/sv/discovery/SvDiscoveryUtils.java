@@ -1,32 +1,32 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.*;
 import org.apache.logging.log4j.Logger;
+import org.apache.spark.api.java.JavaRDD;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.BreakpointComplications;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFileUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFReader;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class SvDiscoveryUtils {
 
-    //==================================================================================================================
+
 
     public static void evaluateIntervalsAndNarls(final List<SVInterval> assembledIntervals,
                                                  final List<NovelAdjacencyAndAltHaplotype> narls,
@@ -98,6 +98,8 @@ public class SvDiscoveryUtils {
         return complications.getHomologyForwardStrandRep().length();
     }
 
+    //==================================================================================================================
+
     public static Set<String> getCanonicalChromosomes(final String nonCanonicalContigNamesFile,
                                                       @Nonnull final SAMSequenceDictionary dictionary) {
         final LinkedHashSet<String> allContigs = Utils.nonNull(dictionary).getSequences().stream().map(SAMSequenceRecord::getSequenceName)
@@ -111,5 +113,38 @@ public class SvDiscoveryUtils {
         } catch ( final IOException ioe ) {
             throw new UserException("Can't read nonCanonicalContigNamesFile file "+nonCanonicalContigNamesFile, ioe);
         }
+    }
+
+    //==================================================================================================================
+
+    /**
+     * write SAM file for provided {@code filteredContigs}
+     * by extracting original alignments from {@code originalAlignments},
+     * to directory specified by {@code outputDir}.
+     */
+    public static void writeSAMRecords(final JavaRDD<GATKRead> originalAlignments, final Set<String> readNameToInclude,
+                                       final String outputPath, final SAMFileHeader header) {
+        final SAMFileHeader cloneHeader = header.clone();
+        final SAMRecordComparator localComparator;
+        if (outputPath.toLowerCase().endsWith("bam")) {
+            cloneHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
+            localComparator = new SAMRecordCoordinateComparator();
+        } else if (outputPath.toLowerCase().endsWith("sam")) {
+            cloneHeader.setSortOrder(SAMFileHeader.SortOrder.queryname);
+            localComparator = new SAMRecordQueryNameComparator();
+        } else {
+            throw new IllegalArgumentException("Unsupported output format " + outputPath);
+        }
+
+        final List<GATKRead> reads = originalAlignments.collect();
+        final List<SAMRecord> samRecords = new ArrayList<>();
+        reads.forEach(gatkRead -> {
+            if ( readNameToInclude.contains(gatkRead.getName()) ) {
+                samRecords.add(gatkRead.convertToSAMRecord(cloneHeader));
+            }
+        });
+
+        samRecords.sort(localComparator);
+        SVFileUtils.writeSAMFile( outputPath, samRecords.iterator(), cloneHeader, true);
     }
 }

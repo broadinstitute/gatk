@@ -78,9 +78,9 @@ public final class SVTestUtils {
             for (final String sup : supplements) {
                 alignments.add( new AlignmentInterval(sup) );
             }
-            return new AlignedContig(readName, sequence, alignments, false);
+            return new AlignedContig(readName, sequence, alignments);
         } else {
-            return new AlignedContig(readName, sequence, Collections.singletonList(primaryAlignment), false);
+            return new AlignedContig(readName, sequence, Collections.singletonList(primaryAlignment));
         }
     }
 

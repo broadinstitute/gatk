@@ -23,6 +23,7 @@
 ##INFO=<ID=HOMSEQ,Number=.,Type=String,Description="Sequence of base pair identical micro-homology at event breakpoints">
 ##INFO=<ID=HQ_MAPPINGS,Number=1,Type=Integer,Description="Number of high-quality contig alignments that support the variant">
 ##INFO=<ID=IMPRECISE,Number=0,Type=Flag,Description="Imprecise structural variation">
+##INFO=<ID=INSLEN,Number=A,Type=Integer,Description="Length of inserted sequence (note for duplication records, this does not count the extra copies of the duplicated sequence)">
 ##INFO=<ID=INSSEQ,Number=.,Type=String,Description="Inserted sequence at the breakpoint">
 ##INFO=<ID=INSSEQ_MAP,Number=.,Type=String,Description="Alignments of inserted sequence">
 ##INFO=<ID=INV33,Number=0,Type=Flag,Description="Whether the event represents a 3' to 5' breakpoint">

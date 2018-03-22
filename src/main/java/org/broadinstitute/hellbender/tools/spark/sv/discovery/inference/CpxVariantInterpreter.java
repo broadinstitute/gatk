@@ -80,8 +80,9 @@ public final class CpxVariantInterpreter {
 
         return new AssemblyContigWithFineTunedAlignments(
                 new AlignedContig(contigWithFineTunedAlignments.getContigName(), contigWithFineTunedAlignments.getContigSequence(),
-                        deOverlappedAlignmentConfiguration, contigWithFineTunedAlignments.hasEquallyGoodAlnConfigurations()),
+                        deOverlappedAlignmentConfiguration),
                 contigWithFineTunedAlignments.getInsertionMappings(),
+                contigWithFineTunedAlignments.hasEquallyGoodAlnConfigurations(),
                 contigWithFineTunedAlignments.getSAtagForGoodMappingToNonCanonicalChromosome());
     }
 

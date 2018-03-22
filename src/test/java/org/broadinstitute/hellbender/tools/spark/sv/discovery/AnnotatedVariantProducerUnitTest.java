@@ -181,12 +181,12 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
 
         // simple insertion
         data.add(new Object[]{forSimpleInsertion_plus, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(INSERTED_SEQUENCE).stream()).sorted().collect(Collectors.toList()),
+                Sets.newHashSet(INSERTED_SEQUENCE, INSERTED_SEQUENCE_LENGTH).stream()).sorted().collect(Collectors.toList()),
                 altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // long range substitution
         data.add(new Object[]{forLongRangeSubstitution_minus, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(INSERTED_SEQUENCE).stream()).sorted().collect(Collectors.toList()),
+                Sets.newHashSet(INSERTED_SEQUENCE, INSERTED_SEQUENCE_LENGTH).stream()).sorted().collect(Collectors.toList()),
                 altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // simple deletion with homology
@@ -206,7 +206,7 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
 
         // simple tandem dup expansion from 1 unit to 2 units and novel insertion
         data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_minus, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUP_SEQ_CIGARS, DUPLICATION_NUMBERS, DUP_ORIENTATIONS, INSERTED_SEQUENCE).stream()).sorted().collect(Collectors.toList()),
+                Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUP_SEQ_CIGARS, DUPLICATION_NUMBERS, DUP_ORIENTATIONS, INSERTED_SEQUENCE, INSERTED_SEQUENCE_LENGTH).stream()).sorted().collect(Collectors.toList()),
                 altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // tandem dup expansion from 1 unit to 2 units with pseudo-homology

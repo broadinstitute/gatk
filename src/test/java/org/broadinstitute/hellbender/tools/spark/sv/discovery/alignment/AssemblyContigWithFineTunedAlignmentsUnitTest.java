@@ -118,9 +118,9 @@ public class AssemblyContigWithFineTunedAlignmentsUnitTest extends GATKBaseTest 
         final AlignmentInterval two = SVTestUtils.fromSAMRecordString("asm002362:tig00002\t2064\tchr2_KI270774v1_alt\t105288\t56\t114M1I27M1I127M\t*\t0\t0\tATGCTGGGGAATTTGTGTGCTCCTTGGGTGGGGACGAGCATGGAAGGCGCGTGGGACTGAAGCCTTGAAGACCCCGCAGGCGCCTCTCCTGGACAGACCTCGTGCAGGCGCCTCTCCTGGACCGACCTCGTGCAGGCGCCTCTCCTGGACAGACCTCGTGCAGGCGCCTCTCCTGGACCGACCTCGTGCAGGCGCCGCGCTGGACCGACCTCGTGCAGGCGCCGCGCTGGGCCATGGGGAGAGCGAGAGCCTGGTGTGCCCCTCAGGGAC\t*\tSA:Z:chr2,1422222,-,75M56I139M,60,56;\tMD:Z:94C17G1G6T13T3G1G34A3T9T68T8\tRG:Z:GATKSVContigAlignments\tNM:i:13\tAS:i:179\tXS:i:142",
                 true);
         final AlignedContig sourceTig = new AlignedContig("asm002362:tig00002", "GTCCCTGAGGGGCACACCAGGCTCTCGCTCTCCCCATGGCCCAGCGCGGCGCCTGCACGAGGTCGGTCCAGCGCGGCGCCTGCACGAGGTCGGTCCAGGAGAGGCGCCTGCACGAGGTCTGTCCAGGAGAGGCGCCTGCACGAGGTCGGTCCAGGAGAGGCGCCTGCACGAGGTCTGTCCAGGAGAGGCGCCTGCGGGGTCTTCAAGGCTTCAGTCCCACGCGCCTTCCATGCTCGTCCCCACCCAAGGAGCACACAAATTCCCCAGCAT".getBytes(),
-                Arrays.asList(one, two), false);
+                Arrays.asList(one, two));
         final List<AssemblyContigAlignmentsConfigPicker.GoodAndBadMappings> config = AssemblyContigAlignmentsConfigPicker.pickBestConfigurations(sourceTig, new HashSet<>(Collections.singletonList("chr2")), 0.);
-        final AssemblyContigWithFineTunedAlignments tig = AssemblyContigAlignmentsConfigPicker.reConstructContigFromPickedConfiguration(new Tuple2<>(new Tuple2<>(sourceTig.contigName, sourceTig.contigSequence),
+        final AssemblyContigWithFineTunedAlignments tig = AssemblyContigAlignmentsConfigPicker.reConstructContigFromPickedConfiguration(new Tuple2<>(new Tuple2<>(sourceTig.getContigName(), sourceTig.getContigSequence()),
                 config)).next();
 
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();

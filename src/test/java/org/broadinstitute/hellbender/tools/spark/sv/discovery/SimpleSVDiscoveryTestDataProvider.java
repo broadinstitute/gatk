@@ -196,8 +196,8 @@ public final class SimpleSVDiscoveryTestDataProvider {
         // reference intervals are changed from real values, which were generated on a different chromosome, to a fake but valid value.
         final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 69149, 69294), 1, 146, TextCigarCodec.decode("146M51S"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 69315, 69364), 148, 197, TextCigarCodec.decode("147S50M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        final AlignedContig alignedContig = new AlignedContig("asm000001:tig00001", contigSeq, Arrays.asList(region1, region2), false);
-        final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new ChimericAlignment(region1, region2, Collections.emptyList(), alignedContig.contigName, b37_seqDict), alignedContig.contigSequence, b37_seqDict);
+        final AlignedContig alignedContig = new AlignedContig("asm000001:tig00001", contigSeq, Arrays.asList(region1, region2));
+        final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new ChimericAlignment(region1, region2, Collections.emptyList(), alignedContig.getContigName(), b37_seqDict), alignedContig.getContigSequence(), b37_seqDict);
         return new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001");
     }
 
@@ -208,7 +208,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval(chrForLongContig1, 20138007, 20142231), 1, contigSequence.length - 1986, TextCigarCodec.decode("1986S236M2D1572M1I798M5D730M1I347M4I535M"), false, 60, 36, 100, ContigAlignmentsModifier.AlnModType.NONE);
         final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval(chrForLongContig1, 20152030, 20154634), 3604, contigSequence.length, TextCigarCodec.decode("3603H24M1I611M1I1970M"), true, 60, 36, 100, ContigAlignmentsModifier.AlnModType.NONE);
 
-        final AlignedContig alignedContig = new AlignedContig("asm702700:tig00001", contigSequence, Arrays.asList(region1, region2), false);
+        final AlignedContig alignedContig = new AlignedContig("asm702700:tig00001", contigSequence, Arrays.asList(region1, region2));
         final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(ChimericAlignment.parseOneContig(alignedContig, b37_seqDict, true, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, true).get(0), contigSequence, b37_seqDict);
         return new TestDataForSimpleSVs(region1, region2, breakpoints, "asm702700:tig00001");
     }

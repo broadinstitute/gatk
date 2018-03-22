@@ -61,7 +61,7 @@ public final class CpxSVInferenceTestUtils extends GATKBaseTest {
     static final List<PreprocessedAndAnalysisReadyContigWithExpectedResults> PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS;
 
 
-    final static Set<String> hg38CanonicalChromosomes;
+    public final static Set<String> hg38CanonicalChromosomes;
     /**
      * We are having this because it is SV, especially complex ones, are rare and events on chr20 and 21 are not enough.
      */
@@ -335,7 +335,7 @@ public final class CpxSVInferenceTestUtils extends GATKBaseTest {
                 SVTestUtils.fromPrimarySAMRecordString(primarySAMRecord, true);
         final AssemblyContigWithFineTunedAlignments toBeDeOverlapped =
                 AssemblyContigAlignmentsConfigPicker.reConstructContigFromPickedConfiguration(
-                        new Tuple2<>(new Tuple2<>(alignedContig.contigName, alignedContig.contigSequence),
+                        new Tuple2<>(new Tuple2<>(alignedContig.getContigName(), alignedContig.getContigSequence()),
                                 AssemblyContigAlignmentsConfigPicker.pickBestConfigurations(alignedContig, canonicalChromosomes,
                                                                             0.0)))
                         .next();

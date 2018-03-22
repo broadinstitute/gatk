@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AnnotatedVariantProducer;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoverFromLocalAssemblyContigAlignmentsSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryInputData;
@@ -33,10 +34,13 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import scala.Serializable;
 
+import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -49,7 +53,8 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
  * Runs the structural variation discovery workflow on a single sample
  *
  * <p>This tool packages the algorithms described in {@link FindBreakpointEvidenceSpark} and
- * {@link DiscoverVariantsFromContigAlignmentsSAMSpark} as an integrated workflow.  Please consult the
+ * {@link org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVariantsFromContigAlignmentsSAMSpark}
+ * as an integrated workflow.  Please consult the
  * descriptions of those tools for more details about the algorithms employed.  In brief, input reads are examined
  * for evidence of structural variation in a genomic region, regions so identified are locally assembled, and
  * the local assemblies are called for structural variation.</p>
@@ -108,16 +113,20 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
     @ArgumentCollection
     private final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs
             = new DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection();
+
     @Argument(doc = "sam file for aligned contigs", fullName = "contig-sam-file")
     private String outputAssemblyAlignments;
-    @Argument(doc = "filename for output vcf", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+
+    @Argument(doc = "directory for VCF output, including those from experimental interpretation tool if so requested, " +
+            "will be created if not present; sample name will be appended after the provided argument",
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
-    private String vcfOutputFileName;
+    private String variantsOutDir;
+
     @Advanced
-    @Argument(doc = "directory to output results of our prototyping breakpoint and type inference tool in addition to the master VCF;" +
-            " the directory contains multiple VCF's for different types and record-generating SAM files of assembly contigs,",
-            fullName = "exp-variants-out-dir", optional = true)
-    private String expVariantsOutDir;
+    @Argument(doc = "flag to signal that user wants to run experimental interpretation tool as well",
+            fullName = "exp-interpret", optional = true)
+    private Boolean expInterpret = false;
 
     @Override
     public boolean requiresReads()
@@ -162,13 +171,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         // todo: when we call imprecise variants don't return here
         if(parsedAlignments.isEmpty()) return;
 
-        final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast = broadcastCNVCalls(ctx, headerForReads, discoverStageArgs.cnvCallsFile);
-        final SvDiscoveryInputData svDiscoveryInputData =
-                new SvDiscoveryInputData(ctx, discoverStageArgs, vcfOutputFileName,
-                        assembledEvidenceResults.getReadMetadata(), assembledEvidenceResults.getAssembledIntervals(),
-                        makeEvidenceLinkTree(assembledEvidenceResults.getEvidenceTargetLinks()),
-                        cnvCallsBroadcast,
-                        getReads(), getHeaderForReads(), getReference(), localLogger);
+        final SvDiscoveryInputData svDiscoveryInputData = getSvDiscoveryInputData(ctx, headerForReads, assembledEvidenceResults);
 
         // TODO: 1/14/18 this is to be phased-out: old way of calling precise variants
         // assembled breakpoints
@@ -182,13 +185,34 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         final String outputPath = svDiscoveryInputData.outputPath;
         final SAMSequenceDictionary refSeqDictionary = svDiscoveryInputData.referenceSequenceDictionaryBroadcast.getValue();
         final Logger toolLogger = svDiscoveryInputData.toolLogger;
-        SVVCFWriter.writeVCF(annotatedVariants, outputPath, refSeqDictionary, toolLogger);
+        SVVCFWriter.writeVCF(annotatedVariants, outputPath + "inv_del_ins.vcf", refSeqDictionary, toolLogger);
 
-        // TODO: 1/14/18 this is the next version of precise variant calling
-        if ( expVariantsOutDir != null ) {
-            svDiscoveryInputData.updateOutputPath(expVariantsOutDir);
+        if ( expInterpret != null ) {
             experimentalInterpretation(ctx, assembledEvidenceResults, svDiscoveryInputData, evidenceAndAssemblyArgs.crossContigsToIgnoreFile);
         }
+    }
+
+    private SvDiscoveryInputData getSvDiscoveryInputData(final JavaSparkContext ctx,
+                                                         final SAMFileHeader headerForReads,
+                                                         final FindBreakpointEvidenceSpark.AssembledEvidenceResults assembledEvidenceResults) {
+        final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast =
+                broadcastCNVCalls(ctx, headerForReads, discoverStageArgs.cnvCallsFile);
+        try {
+            if ( !java.nio.file.Files.exists(Paths.get(variantsOutDir)) ) {
+                IOUtils.createDirectory(variantsOutDir);
+            }
+        } catch (final IOException ioex) {
+            throw new GATKException("Failed to create output directory " + variantsOutDir + " though it does not yet exist", ioex);
+        }
+
+        final String outputPrefixWithSampleName = variantsOutDir + (variantsOutDir.endsWith("/") ? "" : "/")
+                                                    + SVUtils.getSampleId(headerForReads) + "_";
+
+        return new SvDiscoveryInputData(ctx, discoverStageArgs, outputPrefixWithSampleName,
+                assembledEvidenceResults.getReadMetadata(), assembledEvidenceResults.getAssembledIntervals(),
+                makeEvidenceLinkTree(assembledEvidenceResults.getEvidenceTargetLinks()),
+                cnvCallsBroadcast,
+                getReads(), getHeaderForReads(), getReference(), localLogger);
     }
 
     /**
@@ -240,7 +264,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                                             final SvDiscoveryInputData svDiscoveryInputData,
                                             final String nonCanonicalChromosomeNamesFile) {
 
-        if ( expVariantsOutDir == null )
+        if ( ! expInterpret )
             return;
 
         final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceSequenceDictionaryBroadcast;
@@ -263,7 +287,8 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast = svDiscoveryInputData.cnvCallsBroadcast;
 
         final SvDiscoveryInputData updatedSvDiscoveryInputData =
-                new SvDiscoveryInputData(sampleId, svDiscoveryInputData.discoverStageArgs, expVariantsOutDir,
+                new SvDiscoveryInputData(sampleId, svDiscoveryInputData.discoverStageArgs,
+                        svDiscoveryInputData.outputPath + "experimentalInterpretation_",
                         svDiscoveryInputData.metadata, svDiscoveryInputData.assembledIntervals,
                         svDiscoveryInputData.evidenceTargetLinks, reads, svDiscoveryInputData.toolLogger,
                         referenceBroadcast, referenceSequenceDictionaryBroadcast, headerBroadcast, cnvCallsBroadcast);
@@ -368,7 +393,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                     .filter(AlignedAssemblyOrExcuse::isNotFailure)
                     .map(alignedAssembly -> getAlignedContigsInOneAssembly(alignedAssembly, refNames, header))
                     .flatMap(Utils::stream)                                     // size == total # of contigs' from all successful assemblies
-                    .filter(contig -> !contig.alignmentIntervals.isEmpty())     // filter out unmapped and contigs without primary alignments
+                    .filter(contig -> !contig.getAlignments().isEmpty())     // filter out unmapped and contigs without primary alignments
                     .collect(Collectors.toList());
         }
 
@@ -388,9 +413,9 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                     .mapToObj( contigIdx -> {
                         final byte[] contigSequence = assembly.getContig(contigIdx).getSequence();
                         final String contigName = AlignedAssemblyOrExcuse.formatContigName(alignedAssembly.getAssemblyId(), contigIdx);
-                        final List<AlignmentInterval> arOfAContig
+                        final List<AlignmentInterval> alignmentsForOneContig
                                 = getAlignmentsForOneContig(contigName, contigSequence, allAlignments.get(contigIdx), refNames, header);
-                        return new AlignedContig(contigName, contigSequence, arOfAContig, false);
+                        return new AlignedContig(contigName, contigSequence, alignmentsForOneContig);
                     } ).collect(Collectors.toList());
         }
 

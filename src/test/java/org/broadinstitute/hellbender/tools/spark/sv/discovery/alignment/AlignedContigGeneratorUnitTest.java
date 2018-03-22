@@ -21,10 +21,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -71,9 +68,9 @@ public class AlignedContigGeneratorUnitTest extends GATKBaseTest {
         final List<SAMRecord> reads = Stream.of(read1, read2, read3).map(read -> read.convertToSAMRecord(null)).collect(Collectors.toList());
 
         final AlignedContig alignedContig = SvDiscoverFromLocalAssemblyContigAlignmentsSpark.SAMFormattedContigAlignmentParser.parseReadsAndOptionallySplitGappedAlignments(reads, GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, true);
-        assertEquals(alignedContig.contigSequence, read2.getBases());
+        assertEquals(alignedContig.getContigSequence(), read2.getBases());
 
-        assertEquals(alignedContig.alignmentIntervals.size(), 3);
+        assertEquals(alignedContig.getAlignments().size(), 3);
 
         final byte[] read4Bytes = SimpleSVDiscoveryTestDataProvider.LONG_CONTIG1.getBytes();
         final String read4Seq = new String(read4Bytes);
@@ -100,9 +97,9 @@ public class AlignedContigGeneratorUnitTest extends GATKBaseTest {
 
         final AlignedContig alignedContig2 = SvDiscoverFromLocalAssemblyContigAlignmentsSpark.SAMFormattedContigAlignmentParser.parseReadsAndOptionallySplitGappedAlignments(reads2, GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, true);
         // these should be the reverse complements of each other
-        assertEquals(alignedContig2.contigSequence.length, read4.getBases().length);
+        assertEquals(alignedContig2.getContigSequence().length, read4.getBases().length);
 
-        final List<AlignmentInterval> alignmentIntervals2 = alignedContig2.alignmentIntervals;
+        final List<AlignmentInterval> alignmentIntervals2 = alignedContig2.getAlignments();
         assertEquals(alignmentIntervals2.size(), 2);
 
         final AlignmentInterval alignmentInterval4 = alignmentIntervals2.get(0);
@@ -153,21 +150,21 @@ public class AlignedContigGeneratorUnitTest extends GATKBaseTest {
 
         final Iterator<AlignedContig> it = alignedContigsIncludingUnmapped.iterator();
 
-        Assert.assertTrue(it.next().alignmentIntervals.isEmpty());
-        Assert.assertTrue(it.next().alignmentIntervals.isEmpty());
+        Assert.assertTrue(it.next().getAlignments().isEmpty());
+        Assert.assertTrue(it.next().getAlignments().isEmpty());
 
-        final List<AlignmentInterval> alignmentIntervalsForCleanContig = it.next().alignmentIntervals;
+        final List<AlignmentInterval> alignmentIntervalsForCleanContig = it.next().getAlignments();
         Assert.assertEquals(alignmentIntervalsForCleanContig.size(), 1);
         Assert.assertEquals(alignmentIntervalsForCleanContig.get(0), new AlignmentInterval(new SimpleInterval(dummyRefName, 1000001, 1001000), 1, 1000, TextCigarCodec.decode("1000M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE));
 
-        final List<AlignmentInterval> alignmentIntervalsForContigWithGappedAlignment = it.next().alignmentIntervals;
+        final List<AlignmentInterval> alignmentIntervalsForContigWithGappedAlignment = it.next().getAlignments();
         Assert.assertEquals(alignmentIntervalsForContigWithGappedAlignment.size(), 3);
 
         // test direct conversion (essentially the filtering step)
         final List<AlignedContig> parsedContigsViaDirectRoute
                 = StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.filterAndConvertToAlignedContigDirect(Collections.singleton(alignedAssembly), refNames, null);
         Assert.assertEquals(parsedContigsViaDirectRoute.size(), 2);
-        Assert.assertTrue( parsedContigsViaDirectRoute.containsAll(Utils.stream(alignedContigsIncludingUnmapped).filter(ctg -> !ctg.alignmentIntervals.isEmpty()).collect(Collectors.toList())) );
+        Assert.assertTrue( parsedContigsViaDirectRoute.containsAll(Utils.stream(alignedContigsIncludingUnmapped).filter(ctg -> !ctg.getAlignments().isEmpty()).collect(Collectors.toList())) );
 
         // concordance test with results obtained via SAM route
         final List<AlignedContig> parsedContigsViaSAMRoute
@@ -195,6 +192,20 @@ public class AlignedContigGeneratorUnitTest extends GATKBaseTest {
                 SvDiscoverFromLocalAssemblyContigAlignmentsSpark.SAMFormattedContigAlignmentParser.
                         parseReadsAndOptionallySplitGappedAlignments(Collections.singletonList(unmappedSam),
                                 GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, true);
-        Assert.assertTrue(unmappedContig.alignmentIntervals.isEmpty());
+        Assert.assertTrue(unmappedContig.isUnmapped());
+    }
+
+    @DataProvider(name = "forNullOrEmptyAlignments")
+    private Object[][] forNullOrEmptyAlignments() {
+        final List<Object[]> data = new ArrayList<>(20);
+
+        data.add(new Object[]{"dummy", SVTestUtils.makeDummySequence(100, (byte) 'A'), null});
+
+        return data.toArray(new Object[data.size()][]);
+    }
+
+    @Test(groups = "sv", dataProvider = "forNullOrEmptyAlignments", expectedExceptions = IllegalArgumentException.class)
+    public void testConvertUnmappedRecords(final String contigName, final byte[] contigSequence, final List<AlignmentInterval> alignmentIntervals) {
+        final AlignedContig alignedContig = new AlignedContig(contigName, contigSequence, alignmentIntervals);
     }
 }

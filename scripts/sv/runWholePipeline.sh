@@ -58,7 +58,7 @@ case ${GATK_SV_TOOL} in
     "StructuralVariationDiscoveryPipelineSpark")
         TOOL_OPTIONS="\
             -I ${INPUT_BAM} \
-            -O ${PROJECT_OUTPUT_DIR}/variants/inv_del_ins.vcf \
+            -O ${PROJECT_OUTPUT_DIR}/variants/ \
             -R ${REF_TWOBIT} \
             --aligner-index-image ${REF_INDEX_IMAGE} \
             --exclusion-intervals ${INTERVAL_KILL_LIST} \
@@ -67,9 +67,9 @@ case ${GATK_SV_TOOL} in
             --breakpoint-intervals ${PROJECT_OUTPUT_DIR}/intervals \
             --high-coverage-intervals "${PROJECT_OUTPUT_DIR}/highCoverageIntervals.bed" \
             --fastq-dir ${PROJECT_OUTPUT_DIR}/fastq \
-            --contig-sam-file ${PROJECT_OUTPUT_DIR}/assemblies.sam \
+            --contig-sam-file ${PROJECT_OUTPUT_DIR}/assemblies.bam \
             --target-link-file ${PROJECT_OUTPUT_DIR}/target_links.bedpe \
-            --exp-variants-out-dir ${PROJECT_OUTPUT_DIR}/experimentalVariantInterpretations"
+            --exp-interpret"
         ;;
     "ExtractSVEvidenceSpark")
         TOOL_OPTIONS="\
