@@ -5,6 +5,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.collect.Sets;
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervals;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.StrandedInterval;
@@ -12,6 +13,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Collections;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * This class holds information about pairs of intervals on the reference that are connected by one or more
@@ -90,15 +92,22 @@ public final class EvidenceTargetLink {
                 + "\t" + "SR:" + Utils.join(",", splitReadTemplateNames) + "\t" + "RP:" + Utils.join(",", readPairTemplateNames);
     }
 
+    public static EvidenceTargetLink fromBedpeString(final String str, final SAMSequenceDictionary dictionary) {
+        return fromBedpeString(str, dictionary::getSequenceIndex);
+    }
     public static EvidenceTargetLink fromBedpeString(final String str, final ReadMetadata readMetadata) {
+        return fromBedpeString(str, readMetadata::getContigID);
+    }
+
+    public static EvidenceTargetLink fromBedpeString(final String str, Function<String,Integer> sequenceNameToIndexFunction) {
         final String[] tokens = str.split("\t");
         if (tokens.length != NUM_BEDPE_TOKENS) {
             throw new IllegalArgumentException("Could not create " + EvidenceTargetLink.class.getSimpleName() + " because " + NUM_BEDPE_TOKENS + " tab-delimited tokens were expected but found " + tokens.length + " in the bedpe string: " + str);
         }
-        final int sourceContig = readMetadata.getContigID(tokens[0]);
+        final int sourceContig = sequenceNameToIndexFunction.apply(tokens[0]);
         final int sourceStart = parseInteger(tokens[1]);
         final int sourceEnd = parseInteger(tokens[2]);
-        final int targetContig = readMetadata.getContigID(tokens[3]);
+        final int targetContig = sequenceNameToIndexFunction.apply(tokens[3]);
         final int targetStart = parseInteger(tokens[4]);
         final int targetEnd = parseInteger(tokens[5]);
         final int numReadPairsAndSplitReads = parseInteger(tokens[7]);
@@ -114,6 +123,7 @@ public final class EvidenceTargetLink {
         final StrandedInterval source = new StrandedInterval(new SVInterval(sourceContig, sourceStart, sourceEnd), sourceStrand);
         final StrandedInterval target = new StrandedInterval(new SVInterval(targetContig, targetStart, targetEnd), targetStrand);
         return new EvidenceTargetLink(source, target, splitReadNames.size(), readPairNames.size(), readPairNames, splitReadNames);
+
     }
 
     private static int parseInteger(final String str) {

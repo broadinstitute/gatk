@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 
 import java.util.List;
@@ -35,8 +36,10 @@ public final class IntrachromosomalBreakpointPair {
         return first;
     }
 
-    public int getSecond() {
-        return second;
+    public int getSecond() { return second; }
+
+    public String getString(final SAMSequenceDictionary dictionary) {
+        return dictionary.getSequence(contig).getSequenceName() + "_" + first + "_" + second;
     }
 
     public SVInterval getInterval() {
