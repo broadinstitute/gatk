@@ -119,8 +119,7 @@ public class CreateSomaticPanelOfNormals extends CommandLineProgram {
     private Set<File> vcfs = new LinkedHashSet<>(0);
 
     /**
-     * The VCFs can be input as either one or more .args file(s) containing one VCF per line, or VCFs can be
-     * specified explicitly on the command line.
+     * Number of samples containing a variant site required to include it in the panel of normals.
      */
     @Argument(fullName = MIN_SAMPLE_COUNT_LONG_NAME,
             doc="Number of samples containing a variant site required to include it in the panel of normals.", optional = true)
