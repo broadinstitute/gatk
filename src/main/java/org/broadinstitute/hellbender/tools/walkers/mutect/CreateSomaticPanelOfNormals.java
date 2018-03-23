@@ -99,6 +99,10 @@ public class CreateSomaticPanelOfNormals extends CommandLineProgram {
     public static final String INPUT_VCFS_LIST_LONG_NAME = "vcfs";
     public static final String INPUT_VCFS_LIST_SHORT_NAME = "vcfs";
 
+    public static final String MIN_SAMPLE_COUNT_LONG_NAME = "min-sample-count";
+
+    public static final int DEFAULT_MIN_SAMPLE_COUNT = 2;
+
     public static final String DUPLICATE_SAMPLE_STRATEGY_LONG_NAME = "duplicate-sample-strategy";
 
     public enum DuplicateSampleStrategy {
@@ -113,6 +117,14 @@ public class CreateSomaticPanelOfNormals extends CommandLineProgram {
             shortName = INPUT_VCFS_LIST_SHORT_NAME,
             doc="VCFs for samples to include. May be specified either one at a time, or as one or more .args file containing multiple VCFs, one per line.", optional = false)
     private Set<File> vcfs = new LinkedHashSet<>(0);
+
+    /**
+     * The VCFs can be input as either one or more .args file(s) containing one VCF per line, or VCFs can be
+     * specified explicitly on the command line.
+     */
+    @Argument(fullName = MIN_SAMPLE_COUNT_LONG_NAME,
+            doc="Number of samples containing a variant site required to include it in the panel of normals.", optional = true)
+    private int minSampleCount = DEFAULT_MIN_SAMPLE_COUNT;
 
     /**
      * How to handle duplicate samples: THROW_ERROR to fail, CHOOSE_FIRST to use the first vcf with each sample name, ALLOW_ALL to use all samples regardless of duplicate sample names."
@@ -178,10 +190,8 @@ public class CreateSomaticPanelOfNormals extends CommandLineProgram {
         return "SUCCESS";
     }
 
-    //TODO: this is the old Mutect behavior that just looks for multiple hits
-    //TODO: we should refine this
-    private static void processVariantsAtSamePosition(final List<VariantContext> variants, final VariantContextWriter writer) {
-        if (variants.size() > 1){
+    private void processVariantsAtSamePosition(final List<VariantContext> variants, final VariantContextWriter writer) {
+        if (variants.size() >= minSampleCount){
             final VariantContext mergedVc = AssemblyBasedCallerUtils.makeMergedVariantContext(variants);
             final VariantContext outputVc = new VariantContextBuilder()
                     .source(mergedVc.getSource())
