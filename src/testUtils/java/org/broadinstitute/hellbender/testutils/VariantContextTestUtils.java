@@ -21,7 +21,6 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
-import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -134,7 +133,7 @@ public final class VariantContextTestUtils {
                     return Arrays.stream(split).map(
                             s -> {return Arrays.stream(s.split(",",-1))
                                     .map(d -> {if (d.equals("")) return d;
-                                    else return Double.toString(Double.parseDouble(d));})
+                                               else return Double.toString(Double.parseDouble(d));})
                                     .collect(Collectors.joining(","));})
                             .collect(Collectors.joining("|"));
                 } else {
@@ -435,6 +434,7 @@ public final class VariantContextTestUtils {
 
         //right now no FORMAT attributes have jitter
         assertVariantContextsHaveSameGenotypes(actual, expected, attributesToIgnore);
+        Assert.assertEquals(actual.getType(), expected.getType(), "type");
     }
 
     @VisibleForTesting
