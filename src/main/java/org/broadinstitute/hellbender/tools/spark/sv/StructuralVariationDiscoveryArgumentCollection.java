@@ -109,12 +109,15 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         @Argument(doc = "Write GFA representation of assemblies in fastq-dir.", fullName = "write-gfas")
         public boolean writeGFAs = false;
 
+        @Advanced
         @Argument(doc = "Aggressively simplify local assemblies, ignoring small variants.", fullName = "pop-variant-bubbles")
-        public boolean popVariantBubbles = true;
+        public boolean popVariantBubbles = false;
 
+        @Advanced
         @Argument(doc = "Simplify local assemblies by removing contigs shadowed by similar contigs.", fullName = "remove-shadowed-contigs")
         public boolean removeShadowedContigs = true;
 
+        @Advanced
         @Argument(doc = "Traverse assembly graph and produce contigs for all paths.", fullName = "expand-assembly-graph")
         public boolean expandAssemblyGraph = true;
 

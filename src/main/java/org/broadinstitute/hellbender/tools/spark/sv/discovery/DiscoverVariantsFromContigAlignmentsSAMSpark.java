@@ -148,7 +148,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                         .getAlignedContigs();
 
         // assembly-based breakpoints
-        final List<VariantContext> annotatedVariants = discoverVariantsFromChimeras(svDiscoveryInputData, parsedContigAlignments);
+        List<VariantContext> annotatedVariants = discoverVariantsFromChimeras(svDiscoveryInputData, parsedContigAlignments);
 
         final SAMSequenceDictionary refSeqDictionary = svDiscoveryInputData.referenceSequenceDictionaryBroadcast.getValue();
         SVVCFWriter.writeVCF(annotatedVariants, svDiscoveryInputData.outputPath, refSeqDictionary, localLogger);

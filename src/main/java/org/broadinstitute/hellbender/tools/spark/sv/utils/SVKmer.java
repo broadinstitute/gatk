@@ -13,7 +13,6 @@ public abstract class SVKmer {
         public final long value;
 
         Base(final long value) { this.value = value; }
-        public Base complement() { return values()[3 - ordinal()]; }
     }
 
     // Lookup table for reverse-complementing each possible byte value.
