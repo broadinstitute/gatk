@@ -89,7 +89,7 @@ public interface GATKConfig extends Mutable, Accessible {
 
     @SystemProperty
     @Key("samjdk.compression_level")
-    @DefaultValue("1")
+    @DefaultValue("2")
     int samjdk_compression_level();
 
     // ----------------------------------------------------------
