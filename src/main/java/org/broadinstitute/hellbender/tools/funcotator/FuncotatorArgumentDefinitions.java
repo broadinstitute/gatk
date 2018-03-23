@@ -54,7 +54,7 @@ public class FuncotatorArgumentDefinitions {
      */
     public enum DataSourceType {
         /**
-         * This values indicates a simple arbitrary separated value (XSV) file that can be
+         * This value indicates a simple arbitrary separated value (XSV) file that can be
          * annotated on records via matching by gene name or transcript ID.
          */
         SIMPLE_XSV("simpleXSV") {
@@ -82,7 +82,7 @@ public class FuncotatorArgumentDefinitions {
         },
 
         /**
-         * This values indicates a simple arbitrary separated value (XSV) file that can be
+         * This value indicates a simple arbitrary separated value (XSV) file that can be
          * annotated on records via matching by gene location.
          */
         LOCATABLE_XSV("locatableXSV") {
@@ -101,7 +101,17 @@ public class FuncotatorArgumentDefinitions {
         },
 
         /**
-         * This values indicates a GENCODE GTF data file.
+         * This value indicates a Variant Context File (VCF)
+         */
+        VCF("vcf") {
+            @Override
+            public void assertConfigFilePropertiesAreValid(final Properties configFileProperties, final Path configFilePath) {
+                // There is no special check required for vcf files.
+            }
+        },
+
+        /**
+         * This value indicates a GENCODE GTF data file.
          */
         GENCODE("gencode") {
             @Override
@@ -114,7 +124,7 @@ public class FuncotatorArgumentDefinitions {
         },
 
         /**
-         * This values indicates a pre-processed COSMIC database file.
+         * This value indicates a pre-processed COSMIC database file.
          * For more information on the pre-processing steps see {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.cosmic.CosmicFuncotationFactory}
          * and the Funcotator Scripts directory.
          */

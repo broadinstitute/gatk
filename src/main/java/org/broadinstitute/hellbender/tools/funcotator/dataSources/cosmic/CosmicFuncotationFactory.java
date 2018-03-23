@@ -164,6 +164,12 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
     // Override Methods:
 
     @Override
+    protected Class<? extends Feature> getAnnotationFeatureClass() {
+        // Returning Feature.class here implies that this class doesn't care about what features it gets.
+        return Feature.class;
+    }
+
+    @Override
     public void close() {
         if (dbConnection != null) {
             try {
@@ -191,13 +197,13 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
      * This method should never be called on a {@link CosmicFuncotationFactory} - knowledge of the applied
      * {@link GencodeFuncotation}s is required to create a {@link Funcotation} from here.
      */
-    public List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList) {
+    protected List<Funcotation> createFuncotationsOnVariant(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList) {
         // TODO: this should be allowed, but with a warning to the user that only annotations with good Genome Positions can be used.
-        throw new GATKException(this.getClass().getName() + " requires a set of GencodeFuncotations in order to createFuncotations!  This method should never be called on a " + this.getClass().getName());
+        throw new GATKException(this.getClass().getName() + " requires a set of GencodeFuncotations in order to createFuncotationsOnVariant!  This method should never be called on a " + this.getClass().getName());
     }
 
     @Override
-    public List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList, final List<GencodeFuncotation> gencodeFuncotations) {
+    protected List<Funcotation> createFuncotationsOnVariant(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList, final List<GencodeFuncotation> gencodeFuncotations) {
 
         final List<Funcotation> outputFuncotations = new ArrayList<>();
 
@@ -267,8 +273,6 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
                     )
             );
         }
-
-        setOverrideValuesInFuncotations(outputFuncotations);
 
         return outputFuncotations;
     }

@@ -21,7 +21,6 @@ import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
@@ -41,6 +40,8 @@ import java.nio.file.Path;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Stream;
+
+import static org.broadinstitute.hellbender.engine.FeatureInput.FEATURE_ARGUMENT_TAG_DELIMITER;
 
 /**
  * Base class for all GATK tools. Tool authors that wish to write a "GATK" tool but not use one of
@@ -812,7 +813,7 @@ public abstract class GATKTool extends CommandLineProgram {
                                                                                   final String name,
                                                                                   final Class<? extends Feature> featureType) {
 
-        final FeatureInput<? extends Feature> featureInput = new FeatureInput<>(name + ":" + filePath);
+        final FeatureInput<? extends Feature> featureInput = new FeatureInput<>(name + FEATURE_ARGUMENT_TAG_DELIMITER + filePath);
 
         //Add datasource to the feature manager too so that it can be queried. Setting lookahead to 0 to avoid caching.
         //Note: we are disabling lookahead here because of windowed queries that need to "look behind" as well.

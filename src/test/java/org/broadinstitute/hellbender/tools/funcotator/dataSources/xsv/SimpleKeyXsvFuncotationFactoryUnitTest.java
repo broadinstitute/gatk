@@ -368,7 +368,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                     SimpleKeyXsvFuncotationFactory.XsvDataKeyType.GENE_NAME
                 );
 
-        simpleKeyXsvFuncotationFactory.createFuncotations(defaultVariantContext, defaultReferenceContext, Collections.emptyList());
+        simpleKeyXsvFuncotationFactory.createFuncotationsOnVariant(defaultVariantContext, defaultReferenceContext, Collections.emptyList());
     }
 
     @Test(dataProvider = "provideDataForCreateFuncotations")
@@ -376,7 +376,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                                        final List<GencodeFuncotation> gencodeFuncotations,
                                        final List<Funcotation> expectedFuncotationsList) {
 
-        final List<Funcotation> funcotations = xsvFuncotationFactory.createFuncotations(defaultVariantContext, defaultReferenceContext, Collections.emptyList(), gencodeFuncotations);
+        final List<Funcotation> funcotations = xsvFuncotationFactory.createFuncotationsOnVariant(defaultVariantContext, defaultReferenceContext, Collections.emptyList(), gencodeFuncotations);
 
         Assert.assertEquals( funcotations.size(), expectedFuncotationsList.size(),
                 "Wrong number of funcotations created (" + funcotations.size() + ")  Expected: " + expectedFuncotationsList.size() );
