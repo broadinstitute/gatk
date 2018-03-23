@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -38,14 +37,11 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Collects fragment counts at specified intervals.  The count for each interval is calculated by counting
- * the number of fragment centers that lie in the interval.  The start and end positions of fragments are
- * inferred from read information; only properly paired, first-of-pair reads that pass the specified read filters are
- * used.
+ * Collects read counts at specified intervals.  The count for each interval is calculated by counting
+ * the number of read starts that lie in the interval.
  *
  * <h3>Inputs</h3>
  *
@@ -82,7 +78,7 @@ import java.util.stream.Collectors;
  * <h3>Usage example</h3>
  *
  * <pre>
- *     gatk CollectFragmentCounts \
+ *     gatk CollectReadCounts \
  *          -I sample.bam \
  *          -L intervals.interval_list \
  *          --interval-merging-rule OVERLAPPING_ONLY \
@@ -93,14 +89,14 @@ import java.util.stream.Collectors;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Collects fragment counts at specified intervals",
-        oneLineSummary = "Collects fragment counts at specified intervals",
+        summary = "Collects read counts at specified intervals",
+        oneLineSummary = "Collects read counts at specified intervals",
         programGroup = CoverageAnalysisProgramGroup.class
 )
 @DocumentedFeature
 @BetaFeature
-public final class CollectFragmentCounts extends ReadWalker {
-    private static final Logger logger = LogManager.getLogger(CollectFragmentCounts.class);
+public final class CollectReadCounts extends ReadWalker {
+    private static final Logger logger = LogManager.getLogger(CollectReadCounts.class);
 
     private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 30;
 
@@ -111,7 +107,7 @@ public final class CollectFragmentCounts extends ReadWalker {
     public static final String FORMAT_LONG_NAME = "format";
 
     @Argument(
-            doc = "Output file for fragment counts.",
+            doc = "Output file for read counts.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
@@ -130,7 +126,7 @@ public final class CollectFragmentCounts extends ReadWalker {
     private SampleLocatableMetadata metadata;
 
     /**
-     * Overlap detector used to determine when fragment centers overlap with input intervals.
+     * Overlap detector used to determine when read starts overlap with input intervals.
      */
     private CachedOverlapDetector<SimpleInterval> intervalCachedOverlapDetector;
 
@@ -142,11 +138,7 @@ public final class CollectFragmentCounts extends ReadWalker {
         filters.add(ReadFilterLibrary.MAPPED);
         filters.add(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
         filters.add(ReadFilterLibrary.NOT_DUPLICATE);
-        filters.add(ReadFilterLibrary.FIRST_OF_PAIR); // this will make sure we don't double count
-        filters.add(ReadFilterLibrary.PROPERLY_PAIRED);
         filters.add(new MappingQualityReadFilter(DEFAULT_MINIMUM_MAPPING_QUALITY));
-        // this will only keep reads in pairs that are properly oriented and mapped on same chromosome
-        // and lie within a few standard deviations from the mean of fragment size distributions
         return filters;
     }
 
@@ -175,91 +167,37 @@ public final class CollectFragmentCounts extends ReadWalker {
         Utils.validateArg(intervals.stream().noneMatch(i -> intervalCachedOverlapDetector.overlapDetector.getOverlaps(i).size() > 1),
                 "Input intervals may not be overlapping.");
 
-        logger.info("Collecting fragment counts...");
+        logger.info("Collecting read counts...");
     }
 
     @Override
     public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
-        //TODO collect information on reads that do not have a properly paired mate
+        final SimpleInterval overlappingInterval = intervalCachedOverlapDetector.getOverlap(
+                new SimpleInterval(read.getContig(), read.getStart(), read.getStart()));
 
-        try {
-            //getting the center of the fragment
-            //TODO make sure that center calculation always returns valid values within contig
-            //TODO (some edge cases were encountered that returned negative fragment centers)
-            final Locatable fragmentCenter = ReadOrientation.getFragmentCenter(read);
-            final SimpleInterval overlappingInterval = intervalCachedOverlapDetector.getOverlap(fragmentCenter);
-
-            //if fragment doesn't overlap any of the provided intervals, do nothing
-            if (overlappingInterval == null) {
-                return;
-            }
-            intervalMultiset.add(overlappingInterval);
-        } catch (final IllegalArgumentException e) {
-            logger.warn(String.format("Exception encountered when calculating fragment count, skipping read: %s", read));
+        //if read doesn't overlap any of the provided intervals, do nothing
+        if (overlappingInterval == null) {
+            return;
         }
+        intervalMultiset.add(overlappingInterval);
     }
 
     @Override
     public Object onTraversalSuccess() {
-        logger.info("Writing fragment counts to " + outputCountsFile);
-        final SimpleCountCollection fragmentCounts = new SimpleCountCollection(
+        logger.info("Writing read counts to " + outputCountsFile);
+        final SimpleCountCollection readCounts = new SimpleCountCollection(
                 metadata,
                 intervalCachedOverlapDetector.overlapDetector.getAll().stream()
                         .map(i -> new SimpleCount(i, intervalMultiset.count(i)))
                         .collect(Collectors.toList()));
 
         if (format == Format.HDF5) {
-            fragmentCounts.writeHDF5(outputCountsFile);
+            readCounts.writeHDF5(outputCountsFile);
         } else {
-            fragmentCounts.write(outputCountsFile);
+            readCounts.write(outputCountsFile);
         }
 
         return "SUCCESS";
-    }
-
-    /**
-     * Helper class to calculate fragment center of a properly paired read
-     */
-    @VisibleForTesting
-    protected enum ReadOrientation {
-
-        /**
-         * Read was located on forward strand
-         */
-        FORWARD(read -> read.getUnclippedStart() + read.getFragmentLength() / 2),
-
-        /**
-         * Read was located on reverse strand
-         */
-        REVERSE(read -> read.getUnclippedStart() + (read.getLength() - 1)  + read.getFragmentLength() / 2);
-
-        private final Function<GATKRead, Integer> readToFragmentCenterMapper;
-
-        ReadOrientation(final Function<GATKRead, Integer> readToCenterMapper) {
-            this.readToFragmentCenterMapper = readToCenterMapper;
-        }
-
-        /**
-         * Get a function that maps the read to the center of the fragment.
-         */
-        protected Function<GATKRead, Integer> getReadToFragmentCenterMapper() {
-            return readToFragmentCenterMapper;
-        }
-
-        /**
-         * Get {@link ReadOrientation} instance corresponding to the orientation of the read.
-         */
-        protected static ReadOrientation getReadOrientation(final GATKRead read) {
-            return read.getFragmentLength() > 0 ? FORWARD : REVERSE;
-        }
-
-        /**
-         * Compute center of the fragment corresponding to the read.
-         */
-        protected static SimpleInterval getFragmentCenter(final GATKRead read) {
-            final int fragmentCenter = getReadOrientation(read).getReadToFragmentCenterMapper().apply(read);
-            return new SimpleInterval(read.getContig(), fragmentCenter, fragmentCenter);
-        }
     }
 
     /**
@@ -290,7 +228,7 @@ public final class CollectFragmentCounts extends ReadWalker {
                 //should not reach here since intervals are checked for overlaps;
                 //performing a redundant check to protect against future code changes
                 throw new GATKException.ShouldNeverReachHereException("Intervals should be non-overlapping, " +
-                        "so at most one interval should intersect with the center of a fragment.");
+                        "so at most one interval should intersect with the start of a read.");
             }
             final T firstOverlap = overlaps.stream().findFirst().orElse(null);
             if (firstOverlap != null) {

@@ -17,7 +17,6 @@ import org.broadinstitute.hellbender.tools.copynumber.denoising.*;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
@@ -61,7 +60,7 @@ import java.io.File;
  *
  * <ul>
  *     <li>
- *         Counts TSV or HDF5 file from {@link CollectFragmentCounts}.
+ *         Counts TSV or HDF5 file from {@link CollectReadCounts}.
  *     </li>
  *     <li>
  *         (Optional) Panel-of-normals from {@link CreateReadCountPanelOfNormals}.
@@ -127,7 +126,7 @@ import java.io.File;
 @BetaFeature
 public final class DenoiseReadCounts extends CommandLineProgram {
     @Argument(
-            doc = "Input TSV or HDF5 file containing integer read counts in genomic intervals for a single case sample (output of CollectFragmentCounts).",
+            doc = "Input TSV or HDF5 file containing integer read counts in genomic intervals for a single case sample (output of CollectReadCounts).",
             fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME
     )
