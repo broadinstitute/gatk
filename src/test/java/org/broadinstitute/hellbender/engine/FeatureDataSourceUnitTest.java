@@ -413,6 +413,16 @@ public final class FeatureDataSourceUnitTest extends GATKBaseTest {
         }
     }
 
+    @Test(dataProvider = "IndependentFeatureQueryTestData")
+    public void testForNamedCodec (final SimpleInterval queryInterval, final List<String> UNUSED) {
+        try (final FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF)) {
+            final Iterator<VariantContext> featureIterator = featureSource.query(queryInterval);
+            while (featureIterator.hasNext()) {
+                Assert.assertEquals( featureIterator.next().getSource(), QUERY_TEST_VCF.getAbsolutePath() );
+            }
+        }
+    }
+
     /**************************************************
      * Direct testing on the FeatureCache inner class
      **************************************************/
