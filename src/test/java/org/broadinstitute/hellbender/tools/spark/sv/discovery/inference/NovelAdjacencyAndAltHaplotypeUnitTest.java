@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSw
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import scala.Tuple2;
 
@@ -58,13 +59,12 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
         Assert.assertEquals(novelAdjacencyAndAltHaplotype1.hashCode(), novelAdjacencyAndAltHaplotype2.hashCode());
     }
 
-    @Test(groups = "sv")
-    void testKryoSerializer() throws IOException {
+    @Test(groups = "sv", dataProvider = "forKryoSerializationAndHashCode")
+    public void testKryoSerializerAndHashCode(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype) throws IOException {
         try (final ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+
             final Output out = new Output(bos);
             final Kryo kryo = new Kryo();
-            final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype =
-                    getBreakpoints("asm00001:tig0001", "foo");
             kryo.writeClassAndObject(out, novelAdjacencyAndAltHaplotype);
             out.flush();
 
@@ -73,10 +73,19 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
                 @SuppressWarnings("unchecked")
                 final NovelAdjacencyAndAltHaplotype roundTrip = (NovelAdjacencyAndAltHaplotype) kryo.readClassAndObject(in);
                 Assert.assertEquals(roundTrip, novelAdjacencyAndAltHaplotype);
+                Assert.assertEquals(roundTrip.hashCode(), novelAdjacencyAndAltHaplotype.hashCode());
             }
         }
     }
-
+    @DataProvider(name = "forKryoSerializationAndHashCode")
+    private Object[][] forKryoSerializationAndHashCode() {
+        final List<Object[]> data = new ArrayList<>();
+        for (final TestDataForSimpleSVs testData : SimpleSVDiscoveryTestDataProvider.getAllTestData()) {
+            data.add(new Object[]{testData.biPathBubble});
+        }
+        data.add(new Object[]{getBreakpoints("asm00001:tig0001", "foo")});
+        return data.toArray(new Object[data.size()][]);
+    }
     private static NovelAdjacencyAndAltHaplotype getBreakpoints(final String contigName, final String insertionMapping) {
         final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("20", 10001, 10100), 1, 100, TextCigarCodec.decode("100M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("20", 20101, 20200), 101, 200, TextCigarCodec.decode("100M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);

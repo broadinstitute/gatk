@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscovery
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleNovelAdjacencyAndChimericAlignmentEvidence;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervalTree;
@@ -28,7 +29,6 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import scala.Tuple2;
 
 import java.io.IOException;
 import java.util.*;
@@ -65,8 +65,8 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
                                        final String[] expectedMappingQualitiesAsStrings,
                                        final String[] expectedAlignmentLengthsAsStrings) {
 
-        final List<Tuple2<ChimericAlignment, String>> chimericAlignments = Collections.singletonList(
-                new Tuple2<>(
+        final List<SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring> chimericAlignments = Collections.singletonList(
+                new SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring(
                         new ChimericAlignment(testData.firstAlignment, testData.secondAlignment,
                                 Collections.emptyList(), testData.evidenceAssemblyContigName, b37_seqDict),
                         AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME));
@@ -129,14 +129,13 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
     @Test(groups = "sv", dataProvider = "forIntegrativeTest")
     public void testIntegrative(final TestDataForSimpleSVs testData,
                                 final List<String> expectedAttributeKeys,
-                                final byte[] altHaplotypeSeq,
                                 final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls,
                                 final Broadcast<ReferenceMultiSource> referenceBroadcast,
                                 final Broadcast<SAMSequenceDictionary> refSeqDictBroadcast) throws IOException {
 
         final NovelAdjacencyAndAltHaplotype breakpoints = testData.biPathBubble;
-        final List<Tuple2<ChimericAlignment, String>> chimericAlignments = Collections.singletonList(
-                new Tuple2<>(new ChimericAlignment(testData.firstAlignment, testData.secondAlignment,
+        final List<SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring> evidence = Collections.singletonList(
+                new SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring(new ChimericAlignment(testData.firstAlignment, testData.secondAlignment,
                         Collections.emptyList(), testData.evidenceAssemblyContigName, b37_seqDict),
                         AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME));
         final String sampleID = "testSample";
@@ -144,11 +143,9 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
         final VariantContext variantContext =
                 AnnotatedVariantProducer
                         .produceAnnotatedVcFromInferredTypeAndRefLocations(
-                                breakpoints.getLeftJustifiedLeftRefLoc(),
-                                breakpoints.getLeftJustifiedRightRefLoc().getStart(),
-                                breakpoints.getComplication(),
+                                breakpoints,
                                 DiscoverVariantsFromContigAlignmentsSAMSpark.inferSimpleTypeFromNovelAdjacency(breakpoints),
-                                altHaplotypeSeq, chimericAlignments,
+                                evidence,
                                 referenceBroadcast, refSeqDictBroadcast, broadcastCNVCalls, sampleID);
 
         final List<String> attributeKeys = variantContext.getAttributes().keySet().stream().sorted().collect(Collectors.toList());
@@ -164,70 +161,73 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
         final Broadcast<ReferenceMultiSource> referenceBroadcast = testSparkContext.broadcast(b37_reference);
         final Broadcast<SAMSequenceDictionary> refSeqDictBroadcast = testSparkContext.broadcast(b37_seqDict);
 
-        final byte[] altHaplotypeSeq = null;
         final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls = null;
 
         final Set<String> commonAttributes = Sets.newHashSet(VCFConstants.END_KEY, SVLEN, SVTYPE, TOTAL_MAPPINGS,
+                HQ_MAPPINGS, MAPPING_QUALITIES, ALIGN_LENGTHS, MAX_ALIGN_LENGTH, CONTIG_NAMES, SEQ_ALT_HAPLOTYPE);
+
+        final Set<String> commAttributesWithoutAltSeq = Sets.newHashSet(VCFConstants.END_KEY, SVLEN, SVTYPE, TOTAL_MAPPINGS,
                 HQ_MAPPINGS, MAPPING_QUALITIES, ALIGN_LENGTHS, MAX_ALIGN_LENGTH, CONTIG_NAMES);
 
         // inversion
-        data.add(new Object[]{forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(INV33, HOMOLOGY, HOMOLOGY_LENGTH).stream()).sorted().collect(Collectors.toList()),
-                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
+        data.add(new Object[]{forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint,
+                Stream.concat( commAttributesWithoutAltSeq.stream(), Sets.newHashSet(INV33, HOMOLOGY, HOMOLOGY_LENGTH).stream()).sorted().collect(Collectors.toList()),
+                 broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // simple deletion
-        data.add(new Object[]{forSimpleDeletion_minus, commonAttributes.stream().sorted().collect(Collectors.toList()),
-                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
+        data.add(new Object[]{forSimpleDeletion_minus,
+                commAttributesWithoutAltSeq.stream().sorted().collect(Collectors.toList()),
+                broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // simple insertion
-        data.add(new Object[]{forSimpleInsertion_plus, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(INSERTED_SEQUENCE, INSERTED_SEQUENCE_LENGTH).stream()).sorted().collect(Collectors.toList()),
-                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
+        data.add(new Object[]{forSimpleInsertion_plus,
+                Stream.concat( commonAttributes.stream(), Sets.newHashSet(INSERTED_SEQUENCE, INSERTED_SEQUENCE_LENGTH).stream()).sorted().collect(Collectors.toList()),
+                broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // long range substitution
-        data.add(new Object[]{forLongRangeSubstitution_minus, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(INSERTED_SEQUENCE, INSERTED_SEQUENCE_LENGTH).stream()).sorted().collect(Collectors.toList()),
-                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
+        data.add(new Object[]{forLongRangeSubstitution_minus,
+                Stream.concat( commonAttributes.stream(), Sets.newHashSet(INSERTED_SEQUENCE, INSERTED_SEQUENCE_LENGTH).stream()).sorted().collect(Collectors.toList()),
+                broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // simple deletion with homology
-        data.add(new Object[]{forDeletionWithHomology_plus, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(HOMOLOGY, HOMOLOGY_LENGTH).stream()).sorted().collect(Collectors.toList()),
-                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
+        data.add(new Object[]{forDeletionWithHomology_plus,
+                Stream.concat( commAttributesWithoutAltSeq.stream(), Sets.newHashSet(HOMOLOGY, HOMOLOGY_LENGTH).stream()).sorted().collect(Collectors.toList()),
+                broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // simple tandem dup contraction from 2 units to 1 unit
-        data.add(new Object[]{forSimpleTanDupContraction_minus, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(DUP_TAN_CONTRACTION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ORIENTATIONS, HOMOLOGY, HOMOLOGY_LENGTH).stream()).sorted().collect(Collectors.toList()),
-                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
+        data.add(new Object[]{forSimpleTanDupContraction_minus,
+                Stream.concat( commonAttributes.stream(), Sets.newHashSet(DUP_TAN_CONTRACTION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ORIENTATIONS, HOMOLOGY, HOMOLOGY_LENGTH).stream()).sorted().collect(Collectors.toList()),
+                broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // simple tandem dup expansion from 1 unit to 2 units
-        data.add(new Object[]{forSimpleTanDupExpansion_plus, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUP_SEQ_CIGARS, DUPLICATION_NUMBERS, DUP_ORIENTATIONS).stream()).sorted().collect(Collectors.toList()),
-                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
+        data.add(new Object[]{forSimpleTanDupExpansion_plus,
+                Stream.concat( commonAttributes.stream(), Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUP_SEQ_CIGARS, DUPLICATION_NUMBERS, DUP_ORIENTATIONS).stream()).sorted().collect(Collectors.toList()),
+                broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // simple tandem dup expansion from 1 unit to 2 units and novel insertion
-        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_minus, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUP_SEQ_CIGARS, DUPLICATION_NUMBERS, DUP_ORIENTATIONS, INSERTED_SEQUENCE, INSERTED_SEQUENCE_LENGTH).stream()).sorted().collect(Collectors.toList()),
-                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
+        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_minus,
+                Stream.concat( commonAttributes.stream(), Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUP_SEQ_CIGARS, DUPLICATION_NUMBERS, DUP_ORIENTATIONS, INSERTED_SEQUENCE, INSERTED_SEQUENCE_LENGTH).stream()).sorted().collect(Collectors.toList()),
+                broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // tandem dup expansion from 1 unit to 2 units with pseudo-homology
-        data.add(new Object[]{forComplexTanDup_1to2_pseudoHom_plus, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_ORIENTATIONS, HOMOLOGY, HOMOLOGY_LENGTH, DUP_IMPRECISE_AFFECTED_RANGE).stream()).sorted().collect(Collectors.toList()),
-                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
+        data.add(new Object[]{forComplexTanDup_1to2_pseudoHom_plus,
+                Stream.concat( commonAttributes.stream(), Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_ORIENTATIONS, HOMOLOGY, HOMOLOGY_LENGTH, DUP_IMPRECISE_AFFECTED_RANGE).stream()).sorted().collect(Collectors.toList()),
+                broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // tandem dup contraction from 2 units to 1 unit with pseudo-homology
-        data.add(new Object[]{forComplexTanDup_2to1_pseudoHom_minus, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(DUP_TAN_CONTRACTION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_ORIENTATIONS, HOMOLOGY, HOMOLOGY_LENGTH, DUP_IMPRECISE_AFFECTED_RANGE).stream()).sorted().collect(Collectors.toList()),
-                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
+        data.add(new Object[]{forComplexTanDup_2to1_pseudoHom_minus,
+                Stream.concat( commonAttributes.stream(), Sets.newHashSet(DUP_TAN_CONTRACTION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_ORIENTATIONS, HOMOLOGY, HOMOLOGY_LENGTH, DUP_IMPRECISE_AFFECTED_RANGE).stream()).sorted().collect(Collectors.toList()),
+                broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // tandem dup contraction from 3 units to 2 units
-        data.add(new Object[]{forComplexTanDup_3to2_noPseudoHom_plus, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(DUP_TAN_CONTRACTION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_ORIENTATIONS, HOMOLOGY, HOMOLOGY_LENGTH, DUP_IMPRECISE_AFFECTED_RANGE).stream()).sorted().collect(Collectors.toList()),
-                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
+        data.add(new Object[]{forComplexTanDup_3to2_noPseudoHom_plus,
+                Stream.concat( commonAttributes.stream(), Sets.newHashSet(DUP_TAN_CONTRACTION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_ORIENTATIONS, HOMOLOGY, HOMOLOGY_LENGTH, DUP_IMPRECISE_AFFECTED_RANGE).stream()).sorted().collect(Collectors.toList()),
+                broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // tandem dup expansion from 2 units to 3 units
-        data.add(new Object[]{forComplexTanDup_2to3_noPseudoHom_minus, Stream.concat( commonAttributes.stream(),
-                Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_ORIENTATIONS, HOMOLOGY, HOMOLOGY_LENGTH, DUP_IMPRECISE_AFFECTED_RANGE).stream()).sorted().collect(Collectors.toList()),
-                altHaplotypeSeq, broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
+        data.add(new Object[]{forComplexTanDup_2to3_noPseudoHom_minus,
+                Stream.concat( commonAttributes.stream(), Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_ORIENTATIONS, HOMOLOGY, HOMOLOGY_LENGTH, DUP_IMPRECISE_AFFECTED_RANGE).stream()).sorted().collect(Collectors.toList()),
+                broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         return data.toArray(new Object[data.size()][]);
     }

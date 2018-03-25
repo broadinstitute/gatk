@@ -14,9 +14,9 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.BreakpointComplications;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleNovelAdjacencyAndChimericAlignmentEvidence;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
@@ -38,30 +38,25 @@ public class AnnotatedVariantProducer implements Serializable {
 
     /**
      * Given novel adjacency and inferred BND variant types, produce annotated (and mate-connected) VCF BND records.
-     * @param novelAdjacencyAndAltHaplotype  novel adjacency suggesting BND records
      * @param breakendMates                     BND variants of mates to each other, assumed to be of size 2
-     * @param contigAlignments                  chimeric alignments of supporting contig
-     * @param broadcastReference                reference
-     * @param broadcastSequenceDictionary
+     * @param simpleNovelAdjacencyAndChimericAlignmentEvidence novel adjacency and contig alignment evidence that induced the novel adjacency
      * @throws IOException                      due to reference retrieval
      */
-    public static List<VariantContext> produceAnnotatedBNDmatesVcFromNovelAdjacency(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype,
-                                                                                    final Tuple2<BreakEndVariantType, BreakEndVariantType> breakendMates,
-                                                                                    final Iterable<Tuple2<ChimericAlignment, String>> contigAlignments,
+    public static List<VariantContext> produceAnnotatedBNDmatesVcFromNovelAdjacency(final Tuple2<BreakEndVariantType, BreakEndVariantType> breakendMates,
+                                                                                    final SimpleNovelAdjacencyAndChimericAlignmentEvidence simpleNovelAdjacencyAndChimericAlignmentEvidence,
                                                                                     final Broadcast<ReferenceMultiSource> broadcastReference,
                                                                                     final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
+                                                                                    final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls,
                                                                                     final String sampleId)
             throws IOException {
 
-        final VariantContext firstMate =
-                produceAnnotatedVcFromInferredTypeAndRefLocations(novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc(), -1,
-                        novelAdjacencyAndAltHaplotype.getComplication(), breakendMates._1, null, contigAlignments,
-                        broadcastReference, broadcastSequenceDictionary, null, sampleId);
+        final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype = simpleNovelAdjacencyAndChimericAlignmentEvidence.getNovelAdjacencyReferenceLocations();
+        final List<SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring> contigEvidence = simpleNovelAdjacencyAndChimericAlignmentEvidence.getAlignmentEvidence();
 
-        final VariantContext secondMate =
-                produceAnnotatedVcFromInferredTypeAndRefLocations(novelAdjacencyAndAltHaplotype.getLeftJustifiedRightRefLoc(), -1,
-                        novelAdjacencyAndAltHaplotype.getComplication(), breakendMates._2, null, contigAlignments,
-                        broadcastReference, broadcastSequenceDictionary, null, sampleId);
+        final VariantContext firstMate = produceAnnotatedVcFromInferredTypeAndRefLocations(novelAdjacencyAndAltHaplotype, breakendMates._1, contigEvidence,
+                broadcastReference, broadcastSequenceDictionary, broadcastCNVCalls, sampleId);
+        final VariantContext secondMate = produceAnnotatedVcFromInferredTypeAndRefLocations(novelAdjacencyAndAltHaplotype, breakendMates._2, contigEvidence,
+                broadcastReference, broadcastSequenceDictionary, broadcastCNVCalls, sampleId);
 
         final VariantContextBuilder builder0 = new VariantContextBuilder(firstMate);
         builder0.attribute(GATKSVVCFConstants.BND_MATEID_STR, secondMate.getID());
@@ -75,35 +70,41 @@ public class AnnotatedVariantProducer implements Serializable {
     /**
      * Produces a VC from a {@link NovelAdjacencyAndAltHaplotype}
      * (consensus among different assemblies if they all point to the same breakpoint).
-     * @param refLoc                            corresponds to POS field of the returned VC, hence must be a point location.
-     * @param end                               END of the VC, assumed to be < 0 if for BND formatted variant
-     * @param breakpointComplications           complications associated with this breakpoint
      * @param inferredType                      inferred type of variant
-     * @param altHaplotypeSeq                   alt haplotype sequence (could be null)
-     * @param contigAlignments                  chimeric alignments from contigs used for generating this novel adjacency,
-     *                                          and for each pair, the second is a string describing a good mapping to non-canonical chromosome, if available
      * @param broadcastReference                broadcast reference
      * @param broadcastSequenceDictionary       broadcast reference sequence dictionary
      * @param broadcastCNVCalls                 broadcast of external CNV calls (can be null)
      * @param sampleId                          sample identifier of the current sample
      * @throws IOException                      due to read operations on the reference
      */
-    public static VariantContext produceAnnotatedVcFromInferredTypeAndRefLocations(final SimpleInterval refLoc, final int end,
-                                                                                   final BreakpointComplications breakpointComplications,
+    public static VariantContext produceAnnotatedVcFromInferredTypeAndRefLocations(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype,
                                                                                    final SvType inferredType,
-                                                                                   final byte[] altHaplotypeSeq,
-                                                                                   final Iterable<Tuple2<ChimericAlignment, String>> contigAlignments,
+                                                                                   final Iterable<SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring> contigEvidence,
                                                                                    final Broadcast<ReferenceMultiSource> broadcastReference,
                                                                                    final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
                                                                                    final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls,
                                                                                    final String sampleId)
             throws IOException {
 
-        final int applicableEnd = end < 0 ? refLoc.getEnd() : end; // BND formatted variant shouldn't have END
+        final boolean variantIsBND = inferredType instanceof BreakEndVariantType;
+        final int applicableStop;
+        final SimpleInterval refLoc;
+        if ( variantIsBND ) {
+            final BreakEndVariantType breakEnd = (BreakEndVariantType) inferredType;
+            if (breakEnd.isTheUpstreamMate()) {
+                refLoc = novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc();
+            } else {
+                refLoc = novelAdjacencyAndAltHaplotype.getLeftJustifiedRightRefLoc();
+            }
+            applicableStop = refLoc.getEnd(); // BND formatted variant shouldn't have END, this is just for having a valid "stop" for VC
+        } else {
+            refLoc = novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc();
+            applicableStop = novelAdjacencyAndAltHaplotype.getLeftJustifiedRightRefLoc().getEnd();
+        }
 
         // basic information and attributes
         final VariantContextBuilder vcBuilder = new VariantContextBuilder()
-                .chr(refLoc.getContig()).start(refLoc.getStart()).stop(applicableEnd)
+                .chr(refLoc.getContig()).start(refLoc.getStart()).stop(applicableStop)
                 .alleles(produceAlleles(refLoc, broadcastReference.getValue(), inferredType))
                 .id(inferredType.getInternalVariantId())
                 .attribute(GATKSVVCFConstants.SVTYPE, inferredType.toString());
@@ -113,19 +114,20 @@ public class AnnotatedVariantProducer implements Serializable {
 
         // attributes from complications
         inferredType.getTypeSpecificAttributes().forEach(vcBuilder::attribute);
-        breakpointComplications.toVariantAttributes().forEach(vcBuilder::attribute);
+        novelAdjacencyAndAltHaplotype.getComplication().toVariantAttributes().forEach(vcBuilder::attribute);
 
         // evidence used for producing the novel adjacency
-        getEvidenceRelatedAnnotations(contigAlignments).forEach(vcBuilder::attribute);
+        getEvidenceRelatedAnnotations(contigEvidence).forEach(vcBuilder::attribute);
 
-        if (end > 0)
-            vcBuilder.attribute(VCFConstants.END_KEY, applicableEnd);
+        if ( ! variantIsBND )
+            vcBuilder.attribute(VCFConstants.END_KEY, applicableStop);
 
-        if (altHaplotypeSeq!=null && altHaplotypeSeq.length!=0)
-            vcBuilder.attribute(GATKSVVCFConstants.SEQ_ALT_HAPLOTYPE, new String(altHaplotypeSeq));
+        final byte[] altHaplotypeSequence = novelAdjacencyAndAltHaplotype.getAltHaplotypeSequence();
+        if (altHaplotypeSequence != null && altHaplotypeSequence.length != 0)
+            vcBuilder.attribute(GATKSVVCFConstants.SEQ_ALT_HAPLOTYPE, new String(altHaplotypeSequence));
 
-        if (broadcastCNVCalls != null && end > 0) {
-            final String cnvCallAnnotation = getExternalCNVCallAnnotation(refLoc, end, vcBuilder, broadcastSequenceDictionary, broadcastCNVCalls, sampleId);
+        if (broadcastCNVCalls != null && (! variantIsBND) ) {
+            final String cnvCallAnnotation = getExternalCNVCallAnnotation(refLoc, applicableStop, broadcastSequenceDictionary, broadcastCNVCalls, sampleId);
             if (! "".equals(cnvCallAnnotation)) {
                 vcBuilder.attribute(GATKSVVCFConstants.EXTERNAL_CNV_CALLS, cnvCallAnnotation);
             }
@@ -136,7 +138,6 @@ public class AnnotatedVariantProducer implements Serializable {
 
     private static String getExternalCNVCallAnnotation(final SimpleInterval refLoc,
                                                        final int end,
-                                                       final VariantContextBuilder vcBuilder,
                                                        final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
                                                        final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls,
                                                        final String sampleId) {
@@ -289,12 +290,12 @@ public class AnnotatedVariantProducer implements Serializable {
     }
 
     @VisibleForTesting
-    static Map<String, Object> getEvidenceRelatedAnnotations(final Iterable<Tuple2<ChimericAlignment, String>> splitAlignmentEvidence) {
+    static Map<String, Object> getEvidenceRelatedAnnotations(final Iterable<SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring> splitAlignmentEvidence) {
 
         final List<ChimericContigAlignmentEvidenceAnnotations> annotations =
                 Utils.stream(splitAlignmentEvidence)
-                        .sorted(Comparator.comparing(pair -> pair._1.sourceContigName))
-                        .map(pair -> new ChimericContigAlignmentEvidenceAnnotations(pair._1, pair._2))
+                        .sorted(Comparator.comparing(evidence -> evidence.simpleChimera.sourceContigName))
+                        .map(evidence -> new ChimericContigAlignmentEvidenceAnnotations(evidence.simpleChimera, evidence.goodNonCanonicalMappingSATag))
                         .collect(Collectors.toList());
 
         final Map<String, Object> attributeMap = new HashMap<>();

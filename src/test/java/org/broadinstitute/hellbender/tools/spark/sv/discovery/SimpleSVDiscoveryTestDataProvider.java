@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.ContigAl
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import scala.Tuple2;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -181,6 +182,58 @@ public final class SimpleSVDiscoveryTestDataProvider {
         } catch (final Exception ioex) {
             throw new GATKException("Failed to create test data ", ioex);
         }
+    }
+
+    public static List<TestDataForSimpleSVs> getAllTestData() {
+        final List<TestDataForSimpleSVs> testDataForSimpleSVs = Arrays.asList(forSimpleInversionWithNovelInsertion,
+                forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint,
+                forSimpleInversionWithHom_leftPlus,
+                forSimpleInversionWithHom_leftMinus,
+                forSimpleInversionWithHom_rightPlus,
+                forSimpleInversionWithHom_rightMinus,
+                forSimpleDeletion_plus,
+                forSimpleDeletion_minus,
+                forSimpleInsertion_plus,
+                forSimpleInsertion_minus,
+                forLongRangeSubstitution_plus,
+                forLongRangeSubstitution_minus,
+                forDeletionWithHomology_plus,
+                forDeletionWithHomology_minus,
+                forSimpleTanDupContraction_plus,
+                forSimpleTanDupContraction_minus,
+                forSimpleTanDupExpansion_plus,
+                forSimpleTanDupExpansion_minus,
+                forSimpleTanDupExpansionWithNovelIns_plus,
+                forSimpleTanDupExpansionWithNovelIns_minus,
+                forComplexTanDup_1to2_pseudoHom_plus,
+                forComplexTanDup_1to2_pseudoHom_minus,
+                forComplexTanDup_2to1_pseudoHom_plus,
+                forComplexTanDup_2to1_pseudoHom_minus,
+                forComplexTanDup_3to2_noPseudoHom_plus,
+                forComplexTanDup_3to2_noPseudoHom_minus,
+                forComplexTanDup_2to3_noPseudoHom_plus,
+                forComplexTanDup_2to3_noPseudoHom_minus);
+        return Collections.unmodifiableList(testDataForSimpleSVs);
+    }
+
+    // same event, two representations
+    public static List<Tuple2<TestDataForSimpleSVs, TestDataForSimpleSVs>> getAllTestDataPaired() {
+        final List<Tuple2<TestDataForSimpleSVs, TestDataForSimpleSVs>> testDataForSimpleSVs =
+                Arrays.asList(
+                        new Tuple2<>(forSimpleInversionWithHom_leftPlus, forSimpleInversionWithHom_leftMinus),
+                        new Tuple2<>(forSimpleInversionWithHom_rightPlus, forSimpleInversionWithHom_rightMinus),
+                        new Tuple2<>(forSimpleDeletion_plus, forSimpleDeletion_minus),
+                        new Tuple2<>(forSimpleInsertion_plus, forSimpleInsertion_minus),
+                        new Tuple2<>(forLongRangeSubstitution_plus, forLongRangeSubstitution_minus),
+                        new Tuple2<>(forDeletionWithHomology_plus, forDeletionWithHomology_minus),
+                        new Tuple2<>(forSimpleTanDupContraction_plus, forSimpleTanDupContraction_minus),
+                        new Tuple2<>(forSimpleTanDupExpansion_plus, forSimpleTanDupExpansion_minus),
+                        new Tuple2<>(forSimpleTanDupExpansionWithNovelIns_plus, forSimpleTanDupExpansionWithNovelIns_minus),
+                        new Tuple2<>(forComplexTanDup_1to2_pseudoHom_plus, forComplexTanDup_1to2_pseudoHom_minus),
+                        new Tuple2<>(forComplexTanDup_2to1_pseudoHom_plus, forComplexTanDup_2to1_pseudoHom_minus),
+                        new Tuple2<>(forComplexTanDup_3to2_noPseudoHom_plus, forComplexTanDup_3to2_noPseudoHom_minus),
+                        new Tuple2<>(forComplexTanDup_2to3_noPseudoHom_plus, forComplexTanDup_2to3_noPseudoHom_minus));
+        return Collections.unmodifiableList(testDataForSimpleSVs);
     }
 
     private static TestDataForSimpleSVs

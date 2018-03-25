@@ -76,7 +76,8 @@ public final class SimpleNovelAdjacencyInterpreter {
                             final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype =
                                     new NovelAdjacencyAndAltHaplotype(simpleChimera, contigSequence, refSeqDict);
                             return new Tuple2<>(novelAdjacencyAndAltHaplotype,
-                                    new Tuple2<>(simpleChimera, tig.getSAtagForGoodMappingToNonCanonicalChromosome()));
+                                    new SimpleNovelAdjacencyAndChimericAlignmentEvidence
+                                            .SimpleChimeraAndNCAMstring(simpleChimera, tig.getSAtagForGoodMappingToNonCanonicalChromosome()));
                         })
                         .groupByKey()       // group the same novel adjacency produced by different contigs together
                         .map(noveltyAndEvidence ->
