@@ -34,8 +34,8 @@ public final class SimpleNovelAdjacencyInterpreter {
     inferTypeFromSingleContigSimpleChimera(final JavaRDD<AssemblyContigWithFineTunedAlignments> assemblyContigs,
                                            final SvDiscoveryInputData svDiscoveryInputData) {
 
-        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceSequenceDictionaryBroadcast;
-        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputData.referenceBroadcast;
+        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceData.referenceSequenceDictionaryBroadcast;
+        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputData.referenceData.referenceBroadcast;
 
         final JavaRDD<SimpleNovelAdjacencyAndChimericAlignmentEvidence> simpleNovelAdjacencies =
                 getSimpleNovelAdjacencyAndChimeraEvidence(assemblyContigs, svDiscoveryInputData);
@@ -57,9 +57,9 @@ public final class SimpleNovelAdjacencyInterpreter {
     getSimpleNovelAdjacencyAndChimeraEvidence(final JavaRDD<AssemblyContigWithFineTunedAlignments> assemblyContigs,
                                               final SvDiscoveryInputData svDiscoveryInputData) {
         final Logger toolLogger = svDiscoveryInputData.toolLogger;
-        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceSequenceDictionaryBroadcast;
+        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceData.referenceSequenceDictionaryBroadcast;
         final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs = svDiscoveryInputData.discoverStageArgs;
-        final List<SVInterval> assembledIntervals = svDiscoveryInputData.assembledIntervals;
+        final List<SVInterval> assembledIntervals = svDiscoveryInputData.sampleSpecificData.assembledIntervals;
 
         final JavaRDD<SimpleNovelAdjacencyAndChimericAlignmentEvidence> simpleNovelAdjacencies =
                 assemblyContigs

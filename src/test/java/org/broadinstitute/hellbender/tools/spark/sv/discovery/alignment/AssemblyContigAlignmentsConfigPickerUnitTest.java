@@ -21,7 +21,6 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SVTestUtils.fromPrimarySAMRecordString;
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SVTestUtils.makeDummySequence;
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryTestDataProvider.b38_canonicalChromosomes;
-import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryTestDataProvider.b38_seqDict;
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigAlignmentsConfigPicker.GoodAndBadMappings;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
@@ -88,10 +87,10 @@ public class AssemblyContigAlignmentsConfigPickerUnitTest extends GATKBaseTest {
 
         if (expectedConfigurationCount == 1) {
 
-            final List<AlignmentInterval> alignments = AssemblyContigAlignmentsConfigPicker.gatherBestConfigurationsForOneContig(
-                    SparkContextFactory.getTestSparkContext().parallelize(Collections.singletonList(contig))
-                    , null, b38_seqDict, 0.0
-            ).values().collect().get(0).get(0).getGoodMappings();
+            final List<AlignmentInterval> alignments = AssemblyContigAlignmentsConfigPicker
+                    .gatherBestConfigurationsForOneContig(
+                            SparkContextFactory.getTestSparkContext().parallelize(Collections.singletonList(contig)),
+                            b38_canonicalChromosomes, 0.0).values().collect().get(0).get(0).getGoodMappings();
             assertEquals(alignments.size(), expectedAICount,
                     alignments.stream().map(AlignmentInterval::toPackedString).collect(Collectors.toList()).toString());
         }

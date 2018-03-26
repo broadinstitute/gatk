@@ -42,8 +42,8 @@ public final class CpxVariantInterpreter {
     public static List<VariantContext> inferCpxVariant(final JavaRDD<AssemblyContigWithFineTunedAlignments> assemblyContigs,
                                                        final SvDiscoveryInputData svDiscoveryInputData) {
 
-        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputData.referenceBroadcast;
-        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceSequenceDictionaryBroadcast;
+        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputData.referenceData.referenceBroadcast;
+        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceData.referenceSequenceDictionaryBroadcast;
 
         // almost every thing happens in this series of maps
         final JavaPairRDD<CpxVariantCanonicalRepresentation, Iterable<CpxVariantInducingAssemblyContig>> interpretationAndAssemblyEvidence =

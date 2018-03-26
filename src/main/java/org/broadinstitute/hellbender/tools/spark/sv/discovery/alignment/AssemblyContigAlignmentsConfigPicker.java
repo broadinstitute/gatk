@@ -5,13 +5,11 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoverFromLocalAssemblyContigAlignmentsSpark;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -64,7 +62,7 @@ public class AssemblyContigAlignmentsConfigPicker {
      */
     public static JavaRDD<AssemblyContigWithFineTunedAlignments> createOptimalCoverageAlignmentSetsForContigs(final JavaRDD<GATKRead> assemblyAlignments,
                                                                                                               final SAMFileHeader header,
-                                                                                                              final String nonCanonicalContigNamesFile,
+                                                                                                              final Set<String> canonicalChromosomes,
                                                                                                               final Double scoreDiffTolerance,
                                                                                                               final Logger toolLogger) {
 
@@ -72,8 +70,7 @@ public class AssemblyContigAlignmentsConfigPicker {
                 convertRawAlignmentsToAlignedContigAndFilterByQuality(assemblyAlignments, header, toolLogger);
 
         final JavaPairRDD<Tuple2<String, byte[]>, List<GoodAndBadMappings>> assemblyContigWithPickedConfigurations =
-                gatherBestConfigurationsForOneContig(parsedContigAlignments, nonCanonicalContigNamesFile,
-                        header.getSequenceDictionary(), scoreDiffTolerance);
+                gatherBestConfigurationsForOneContig(parsedContigAlignments, canonicalChromosomes, scoreDiffTolerance);
 
         return assemblyContigWithPickedConfigurations
                 .flatMap(AssemblyContigAlignmentsConfigPicker::reConstructContigFromPickedConfiguration);
@@ -141,11 +138,8 @@ public class AssemblyContigAlignmentsConfigPicker {
      */
     @VisibleForTesting
     static JavaPairRDD<Tuple2<String, byte[]>, List<GoodAndBadMappings>> gatherBestConfigurationsForOneContig(final JavaRDD<AlignedContig> parsedContigAlignments,
-                                                                                                              final String nonCanonicalContigNamesFile,
-                                                                                                              final SAMSequenceDictionary dictionary,
+                                                                                                              final Set<String> canonicalChromosomes,
                                                                                                               final Double scoreDiffTolerance) {
-
-        final Set<String> canonicalChromosomes = SvDiscoveryUtils.getCanonicalChromosomes(nonCanonicalContigNamesFile, dictionary);
 
         return parsedContigAlignments
                 .mapToPair(alignedContig -> new Tuple2<>(new Tuple2<>(alignedContig.getContigName(), alignedContig.getContigSequence()),
