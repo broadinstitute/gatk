@@ -31,7 +31,8 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
     public static final String CONVERGENCE_SNR_COUNTDOWN_WINDOW_LONG_NAME = "convergence-snr-countdown-window";
     public static final String MAX_CALLING_ITERS_LONG_NAME = "max-calling-iters";
     public static final String CALLER_UPDATE_CONVERGENCE_THRESHOLD_LONG_NAME = "caller-update-convergence-threshold";
-    public static final String CALLER_ADMIXING_RATE_LONG_NAME = "caller-admixing-rate";
+    public static final String CALLER_INTERNAL_ADMIXING_RATE_LONG_NAME = "caller-internal-admixing-rate";
+    public static final String CALLER_EXTERNAL_ADMIXING_RATE_LONG_NAME = "caller-external-admixing-rate";
     public static final String DISABLE_SAMPLER_LONG_NAME = "disable-sampler";
     public static final String DISABLE_CALLER_LONG_NAME = "disable-caller";
     public static final String DISABLE_ANNEALING_RATE_LONG_NAME = "disable-annealing";
@@ -54,7 +55,8 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
         CONVERGENCE_SNR_COUNTDOWN_WINDOW("convergence_snr_countdown_window"),
         MAX_CALLING_ITERS("max_calling_iters"),
         CALLER_UPDATE_CONVERGENCE_THRESHOLD("caller_update_convergence_threshold"),
-        CALLER_ADMIXING_RATE("caller_admixing_rate"),
+        CALLER_INTERNAL_ADMIXING_RATE("caller_internal_admixing_rate"),
+        CALLER_EXTERNAL_ADMIXING_RATE("caller_external_admixing_rate"),
         DISABLE_SAMPLER("disable_sampler"),
         DISABLE_CALLER("disable_caller"),
         DISABLE_ANNEALING("disable_annealing");
@@ -226,13 +228,23 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
 
     @Argument(
             doc="Admixing ratio of new and old called posteriors (between 0 and 1; larger values implies using " +
-                    "more of the new posterior and less of the old posterior).",
-            fullName = CALLER_ADMIXING_RATE_LONG_NAME,
+                    "more of the new posterior and less of the old posterior) for internal convergence loops.",
+            fullName = CALLER_INTERNAL_ADMIXING_RATE_LONG_NAME,
             optional = true,
             minValue = 0
     )
-    private double callerAdmixingRate =
-            (Double)getDefaultValue(HybridADVIArgument.CALLER_ADMIXING_RATE);
+    private double callerInternalAdmixingRate =
+            (Double)getDefaultValue(HybridADVIArgument.CALLER_INTERNAL_ADMIXING_RATE);
+
+    @Argument(
+            doc="Admixing ratio of new and old called posteriors (between 0 and 1; larger values implies using " +
+                    "more of the new posterior and less of the old posterior) after convergence.",
+            fullName = CALLER_EXTERNAL_ADMIXING_RATE_LONG_NAME,
+            optional = true,
+            minValue = 0
+    )
+    private double callerExternalAdmixingRate =
+            (Double)getDefaultValue(HybridADVIArgument.CALLER_EXTERNAL_ADMIXING_RATE);
 
     @Argument(
             doc="(advanced) Disable sampler.",
@@ -297,8 +309,10 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
                         maxCallingIters),
                 String.format("--" + HybridADVIArgument.CALLER_UPDATE_CONVERGENCE_THRESHOLD.pythonArg + "=%e",
                         callerUpdateConvergenceThreshold),
-                String.format("--" + HybridADVIArgument.CALLER_ADMIXING_RATE.pythonArg + "=%e",
-                        callerAdmixingRate)));
+                String.format("--" + HybridADVIArgument.CALLER_INTERNAL_ADMIXING_RATE.pythonArg + "=%e",
+                        callerInternalAdmixingRate),
+                String.format("--" + HybridADVIArgument.CALLER_EXTERNAL_ADMIXING_RATE.pythonArg + "=%e",
+                        callerExternalAdmixingRate)));
         if (disableCaller) {
             arguments.add("--" + HybridADVIArgument.DISABLE_CALLER.pythonArg + "=true");
         } else {

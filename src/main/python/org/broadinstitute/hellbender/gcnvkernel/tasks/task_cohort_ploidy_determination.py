@@ -1,12 +1,12 @@
+import logging
 import numpy as np
 import pymc3 as pm
-import logging
 from typing import Callable
 
-from .inference_task_base import Sampler, Caller, CallerUpdateSummary,\
+from .inference_task_base import Sampler, Caller, CallerUpdateSummary, \
     HybridInferenceTask, HybridInferenceParameters
 from .. import config, types
-from ..models.model_ploidy import PloidyModelConfig, PloidyModel,\
+from ..models.model_ploidy import PloidyModelConfig, PloidyModel, \
     PloidyWorkspace, PloidyEmissionBasicSampler, PloidyBasicCaller
 
 _logger = logging.getLogger(__name__)
@@ -19,6 +19,14 @@ class PloidyCaller(Caller):
                  ploidy_workspace: PloidyWorkspace):
         self.hybrid_inference_params = hybrid_inference_params
         self.ploidy_basic_caller = PloidyBasicCaller(hybrid_inference_params, ploidy_workspace)
+
+    def snapshot(self):
+        """Snapshot is not necessary since there is no internal consistency loop."""
+        pass
+
+    def finalize(self):
+        """Finalizing is not necessary since there is no internal consistency loop."""
+        pass
 
     def call(self) -> 'PloidyCallerUpdateSummary':
         update_norm_sj = self.ploidy_basic_caller.call()

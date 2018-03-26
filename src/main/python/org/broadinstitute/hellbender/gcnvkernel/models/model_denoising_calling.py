@@ -1079,10 +1079,8 @@ class HHMMClassAndCopyNumberBasicCaller:
             _fb_result = self._hmm_q_copy_number.perform_forward_backward(
                 log_prior_c, log_trans_tcc, log_copy_number_emission_tc,
                 prev_log_posterior_tc=prev_log_posterior_tc,
-                admixing_rate=self.inference_params.caller_admixing_rate,
+                admixing_rate=self.inference_params.caller_internal_admixing_rate,
                 temperature=self.temperature.get_value()[0])
-            del log_prior_c
-            del log_trans_tcc
             new_log_posterior_tc = _fb_result.log_posterior_probs_tc
             copy_number_update_size = copy_number_update_summary_statistic_reducer(_fb_result.update_norm_t)
             log_likelihood = float(_fb_result.log_data_likelihood)
@@ -1126,7 +1124,7 @@ class HHMMClassAndCopyNumberBasicCaller:
             self.shared_workspace.log_trans_tkk,
             self.shared_workspace.log_class_emission_tk.get_value(borrow=True),
             prev_log_posterior_tc=self.shared_workspace.log_q_tau_tk.get_value(borrow=True),
-            admixing_rate=self.inference_params.caller_admixing_rate,
+            admixing_rate=self.inference_params.caller_internal_admixing_rate,
             temperature=self.temperature.get_value()[0])
         class_update_size = class_update_summary_statistic_reducer(fb_result.update_norm_t)
         log_likelihood = float(fb_result.log_data_likelihood)

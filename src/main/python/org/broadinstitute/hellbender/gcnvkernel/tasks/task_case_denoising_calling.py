@@ -31,6 +31,12 @@ class HMMCopyNumberCaller(Caller):
         self.hybrid_inference_params = hybrid_inference_params
         self.copy_number_basic_caller = HHMMClassAndCopyNumberBasicCaller(
             calling_config, hybrid_inference_params, shared_workspace, True, temperature)
+        self.shared_workspace = shared_workspace
+        self.hybrid_inference_params = hybrid_inference_params
+        self.log_q_c_stc_snapshot: np.ndarray = None
+
+    def snapshot(self):
+        self.log_q_c_stc_snapshot = self.shared_workspace.log_q_c_stc.get_value()
 
     def call(self) -> 'HMMCopyNumberCallerUpdateSummary':
         copy_number_update_s, copy_number_log_likelihoods_s, _, _ = self.copy_number_basic_caller.call(
@@ -39,6 +45,17 @@ class HMMCopyNumberCaller(Caller):
         return HMMCopyNumberCallerUpdateSummary(
             copy_number_update_s, copy_number_log_likelihoods_s,
             self.hybrid_inference_params.caller_summary_statistics_reducer)
+
+    def finalize(self):
+        assert self.log_q_c_stc_snapshot is not None, "Snapshot is not taken -- forgot calling snapshot()?"
+        log_q_c_stc_latest = self.shared_workspace.log_q_c_stc.get_value(borrow=True)
+
+        # admix q_c_stc with the snapshot
+        self.shared_workspace.log_q_c_stc.set_value(
+            np.logaddexp(
+                log_q_c_stc_latest + np.log(self.hybrid_inference_params.caller_external_admixing_rate),
+                self.log_q_c_stc_snapshot + np.log(1 - self.hybrid_inference_params.caller_external_admixing_rate)),
+            borrow=True)
 
     def update_auxiliary_vars(self):
         self.copy_number_basic_caller.update_auxiliary_vars()

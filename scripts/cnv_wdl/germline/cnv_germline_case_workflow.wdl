@@ -85,7 +85,8 @@ workflow CNVGermlineCaseWorkflow {
     Int? gcnv_convergence_snr_countdown_window
     Int? gcnv_max_calling_iters
     Float? gcnv_caller_update_convergence_threshold
-    Float? gcnv_caller_admixing_rate
+    Float? gcnv_caller_internal_admixing_rate
+    Float? gcnv_caller_external_admixing_rate
     Boolean? gcnv_disable_annealing
 
     ###################################################
@@ -178,7 +179,8 @@ workflow CNVGermlineCaseWorkflow {
                 convergence_snr_countdown_window = gcnv_convergence_snr_countdown_window,
                 max_calling_iters = gcnv_max_calling_iters,
                 caller_update_convergence_threshold = gcnv_caller_update_convergence_threshold,
-                caller_admixing_rate = gcnv_caller_admixing_rate,
+                caller_internal_admixing_rate = gcnv_caller_internal_admixing_rate,
+                caller_external_admixing_rate = gcnv_caller_external_admixing_rate,
                 disable_annealing = gcnv_disable_annealing,
                 preemptible_attempts = preemptible_attempts
         }
@@ -318,7 +320,8 @@ task GermlineCNVCallerCaseMode {
     Int? convergence_snr_countdown_window
     Int? max_calling_iters
     Float? caller_update_convergence_threshold
-    Float? caller_admixing_rate
+    Float? caller_internal_admixing_rate
+    Float? caller_external_admixing_rate
     Boolean? disable_annealing
 
     Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
@@ -373,7 +376,8 @@ task GermlineCNVCallerCaseMode {
             --convergence-snr-countdown-window ${default="10" convergence_snr_countdown_window} \
             --max-calling-iters ${default="10" max_calling_iters} \
             --caller-update-convergence-threshold ${default="0.001" caller_update_convergence_threshold} \
-            --caller-admixing-rate ${default="0.75" caller_admixing_rate} \
+            --caller-internal-admixing-rate ${default="0.75" caller_internal_admixing_rate} \
+            --caller-external-admixing-rate ${default="1.00" caller_external_admixing_rate} \
             --disable-annealing ${default="false" disable_annealing}
 
         tar czf case-gcnv-calls-${scatter_index}.tar.gz -C ${output_dir_}/case-calls .

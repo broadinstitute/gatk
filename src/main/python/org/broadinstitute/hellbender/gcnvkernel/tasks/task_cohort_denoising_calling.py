@@ -1,13 +1,14 @@
-import numpy as np
-import pymc3 as pm
 import logging
 from typing import Callable
+
+import numpy as np
+import pymc3 as pm
 import theano as th
 
 from .inference_task_base import Sampler, Caller, CallerUpdateSummary, HybridInferenceTask, HybridInferenceParameters
 from .. import config, types
-from ..models.model_denoising_calling import DenoisingModel, DenoisingModelConfig,\
-    CopyNumberEmissionBasicSampler, InitialModelParametersSupplier,\
+from ..models.model_denoising_calling import DenoisingModel, DenoisingModelConfig, \
+    CopyNumberEmissionBasicSampler, InitialModelParametersSupplier, \
     DenoisingCallingWorkspace, CopyNumberCallingConfig, HHMMClassAndCopyNumberBasicCaller
 
 _logger = logging.getLogger(__name__)
@@ -24,6 +25,14 @@ class HHMMClassAndCopyNumberCaller(Caller):
         self.hybrid_inference_params = hybrid_inference_params
         self.copy_number_basic_caller = HHMMClassAndCopyNumberBasicCaller(
             calling_config, hybrid_inference_params, shared_workspace, False, temperature)
+        self.shared_workspace = shared_workspace
+        self.hybrid_inference_params = hybrid_inference_params
+        self.log_q_c_stc_snapshot: np.ndarray = None
+        self.log_q_tau_tk_snapshot: np.ndarray = None
+
+    def snapshot(self):
+        self.log_q_c_stc_snapshot = self.shared_workspace.log_q_c_stc.get_value()
+        self.log_q_tau_tk_snapshot = self.shared_workspace.log_q_tau_tk.get_value()
 
     def call(self) -> 'HHMMClassAndCopyNumberCallerUpdateSummary':
         (copy_number_update_s, copy_number_log_likelihoods_s,
@@ -34,6 +43,26 @@ class HHMMClassAndCopyNumberCaller(Caller):
             copy_number_update_s, copy_number_log_likelihoods_s,
             class_update, class_log_likelihood,
             self.hybrid_inference_params.caller_summary_statistics_reducer)
+
+    def finalize(self):
+        assert self.log_q_c_stc_snapshot is not None, "Snapshot is not taken -- forgot calling snapshot()?"
+        assert self.log_q_tau_tk_snapshot is not None, "Snapshot is not taken -- forgot calling snapshot()?"
+        log_q_c_stc_latest = self.shared_workspace.log_q_c_stc.get_value(borrow=True)
+        log_q_tau_tk_latest = self.shared_workspace.log_q_tau_tk.get_value(borrow=True)
+
+        # admix q_c_stc with the snapshot
+        self.shared_workspace.log_q_c_stc.set_value(
+            np.logaddexp(
+                log_q_c_stc_latest + np.log(self.hybrid_inference_params.caller_external_admixing_rate),
+                self.log_q_c_stc_snapshot + np.log(1 - self.hybrid_inference_params.caller_external_admixing_rate)),
+            borrow=True)
+
+        # admix q_tau_tk with the snapshot
+        self.shared_workspace.log_q_tau_tk.set_value(
+            np.logaddexp(
+                log_q_tau_tk_latest + np.log(self.hybrid_inference_params.caller_external_admixing_rate),
+                self.log_q_tau_tk_snapshot + np.log(1 - self.hybrid_inference_params.caller_external_admixing_rate)),
+            borrow=True)
 
     def update_auxiliary_vars(self):
         self.copy_number_basic_caller.update_auxiliary_vars()
