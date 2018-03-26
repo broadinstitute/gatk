@@ -79,7 +79,7 @@ In the same directory as your wdl scripts, fill in a file called specificity.jso
   "Mutect2ReplicateValidation.gnomad": "[path to panel of gnomAD vcf]",
   "Mutect2ReplicateValidation.gnomad_index": "[path to panel of gnomAD vcf index]",
   "Mutect2ReplicateValidation.scatter_count": "[How many ways to scatter runs on Mutect2 on each bam file]",
-  "Mutect2ReplicateValidation.is_run_orientation_bias_filter": "true/false depending on whether you wish to run this filter",
+  "Mutect2ReplicateValidation.run_orientation_bias_filter": "true/false depending on whether you wish to run this filter",
   "Mutect2ReplicateValidation.artifact_modes": The artifact modes of the orientation bias filter eg: ["G/T", "C/T"],
   "Mutect2ReplicateValidation.preemptible_attempts": "2",
   "Mutect2ReplicateValidation.m2_extra_args": "optionally, any additional Mutect2 command line arguments",
