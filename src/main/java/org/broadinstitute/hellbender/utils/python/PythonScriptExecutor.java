@@ -115,13 +115,9 @@ public class PythonScriptExecutor extends PythonExecutorBase {
      */
     public boolean executeScript(final Resource scriptResource, final List<String> pythonProcessArgs, final List<String> scriptArgs) {
         Utils.nonNull(scriptResource, "script resource cannot be null");
+        // this File is automatically scheduled for deletion on exit
         final File tempResourceFile = IOUtils.writeTempResource(scriptResource);
-
-        try {
-            return executeScript(tempResourceFile.getAbsolutePath(), pythonProcessArgs, scriptArgs);
-        } finally {
-            FileUtils.deleteQuietly(tempResourceFile);
-        }
+        return executeScript(tempResourceFile.getAbsolutePath(), pythonProcessArgs, scriptArgs);
     }
 
     /**

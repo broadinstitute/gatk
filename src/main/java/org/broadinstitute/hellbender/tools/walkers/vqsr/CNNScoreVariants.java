@@ -479,23 +479,18 @@ public class CNNScoreVariants extends VariantWalker {
     }
 
     private void setArchitectureAndWeightsFromResources() {
-        Resource architectureResource, weightsResourceHD5;
         if (tensorType.equals(TensorType.read_tensor)) {
-            architectureResource = new Resource(resourcePathReadTensor, null);
-            weightsResourceHD5 = new Resource(resourcePathReadTensor.replace(".json", ".hd5"), null);
+            architecture = IOUtils.writeTempResourceFromPath(resourcePathReadTensor, null).getAbsolutePath();
+            weights = IOUtils.writeTempResourceFromPath(
+                    resourcePathReadTensor.replace(".json", ".hd5"),
+                    null).getAbsolutePath();
         } else if (tensorType.equals(TensorType.reference)) {
-            architectureResource = new Resource(resourcePathReferenceTensor, null);
-            weightsResourceHD5 = new Resource(resourcePathReferenceTensor.replace(".json", ".hd5"), null);
+            architecture = IOUtils.writeTempResourceFromPath(resourcePathReferenceTensor, null).getAbsolutePath();
+            weights = IOUtils.writeTempResourceFromPath(
+                     resourcePathReferenceTensor.replace(".json", ".hd5"), null).getAbsolutePath();
         } else {
             throw new GATKException("No default architecture for tensor type:" + tensorType.name());
         }
-
-        File architectureFile = IOUtils.writeTempResource(architectureResource);
-        File weightsHD5 = IOUtils.writeTempResource(weightsResourceHD5);
-        architectureFile.deleteOnExit();
-        weightsHD5.deleteOnExit();
-        architecture = architectureFile.getAbsolutePath();
-        weights = weightsHD5.getAbsolutePath();
     }
 
 }
