@@ -612,7 +612,11 @@ artifacts {
     archives jar
     archives javadocJar
     archives sourcesJar
+
 }
+//remove zip and tar added by the application plugin
+configurations.archives.artifacts.removeAll {it.file =~ '.zip$'}
+configurations.archives.artifacts.removeAll {it.file =~ '.tar$'}
 
 /**
  * Sign non-snapshot releases with our secret key.  This should never need to be invoked directly.
