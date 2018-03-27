@@ -107,6 +107,8 @@ public class FuncotatorArgumentDefinitions {
             @Override
             public void assertConfigFilePropertiesAreValid(final Properties configFileProperties, final Path configFilePath) {
                 // There is no special check required for vcf files.
+                // This is because VCF data sources only require the source file, name, and version to be specified.
+                // No additional fields are required.
             }
         },
 
@@ -132,6 +134,8 @@ public class FuncotatorArgumentDefinitions {
             @Override
             public void assertConfigFilePropertiesAreValid(final Properties configFileProperties, final Path configFilePath) {
                 // There is no special check required for cosmic.
+                // This is because cosmic data sources only require the source file, name, and version to be specified.
+                // No additional fields are required.
             }
         };
 

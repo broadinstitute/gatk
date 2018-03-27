@@ -109,24 +109,7 @@ public abstract class DataSourceFuncotationFactory implements AutoCloseable {
      * @return {@link List} of {@link Funcotation} given the {@code variant}, {@code referenceContext}, and {@code featureContext}.  This should never be empty.
      */
     public List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final Map<String, List<Feature>> featureSourceMap) {
-
-        // Get the features that this funcotation factory is responsible for:
-        final List<Feature> featureList = getFeatureListFromMap(featureSourceMap);
-
-        // If our featureList is compatible with this DataSourceFuncotationFactory, then we make our funcotations:
-        if ( isFeatureListCompatible(featureList) ) {
-
-            // Create our funcotations:
-            final List<Funcotation> outputFuncotations = createFuncotationsOnVariant(variant, referenceContext, featureList);
-
-            // Set our overrides:
-            setOverrideValuesInFuncotations(outputFuncotations);
-
-            return outputFuncotations;
-        }
-        else {
-            return Collections.emptyList();
-        }
+        return createFuncotations(variant, referenceContext, featureSourceMap, null);
     }
 
     /**
@@ -148,7 +131,13 @@ public abstract class DataSourceFuncotationFactory implements AutoCloseable {
         if ( isFeatureListCompatible(featureList) ) {
 
             // Create our funcotations:
-            final List<Funcotation> outputFuncotations = createFuncotationsOnVariant(variant, referenceContext, featureList, gencodeFuncotations);
+            final List<Funcotation> outputFuncotations;
+            if ( gencodeFuncotations == null ) {
+                outputFuncotations = createFuncotationsOnVariant(variant, referenceContext, featureList);
+            }
+            else {
+                outputFuncotations = createFuncotationsOnVariant(variant, referenceContext, featureList, gencodeFuncotations);
+            }
 
             // Set our overrides:
             setOverrideValuesInFuncotations(outputFuncotations);

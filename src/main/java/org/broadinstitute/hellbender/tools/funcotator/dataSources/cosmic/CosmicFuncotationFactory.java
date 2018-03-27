@@ -198,7 +198,7 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
      * {@link GencodeFuncotation}s is required to create a {@link Funcotation} from here.
      */
     protected List<Funcotation> createFuncotationsOnVariant(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList) {
-        // TODO: this should be allowed, but with a warning to the user that only annotations with good Genome Positions can be used.
+        // TODO: this should be allowed, but with a warning to the user that only annotations with good Genome Positions can be used.  Issue: https://github.com/broadinstitute/gatk/issues/4594
         throw new GATKException(this.getClass().getName() + " requires a set of GencodeFuncotations in order to createFuncotationsOnVariant!  This method should never be called on a " + this.getClass().getName());
     }
 

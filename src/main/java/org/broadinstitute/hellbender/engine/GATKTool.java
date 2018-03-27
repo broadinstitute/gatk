@@ -41,8 +41,6 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Stream;
 
-import static org.broadinstitute.hellbender.engine.FeatureInput.FEATURE_ARGUMENT_TAG_DELIMITER;
-
 /**
  * Base class for all GATK tools. Tool authors that wish to write a "GATK" tool but not use one of
  * the pre-packaged Walker traversals should feel free to extend this class directly. All other
@@ -813,7 +811,7 @@ public abstract class GATKTool extends CommandLineProgram {
                                                                                   final String name,
                                                                                   final Class<? extends Feature> featureType) {
 
-        final FeatureInput<? extends Feature> featureInput = new FeatureInput<>(name + FEATURE_ARGUMENT_TAG_DELIMITER + filePath);
+        final FeatureInput<? extends Feature> featureInput = new FeatureInput<>(name + FeatureInput.FEATURE_ARGUMENT_TAG_DELIMITER + filePath);
 
         //Add datasource to the feature manager too so that it can be queried. Setting lookahead to 0 to avoid caching.
         //Note: we are disabling lookahead here because of windowed queries that need to "look behind" as well.
