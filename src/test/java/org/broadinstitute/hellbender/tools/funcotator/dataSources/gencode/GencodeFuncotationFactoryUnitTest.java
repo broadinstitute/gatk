@@ -7,6 +7,7 @@ import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.CloseableTribbleIterator;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureReader;
+import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -810,6 +811,175 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         };
     }
 
+    @DataProvider
+    private Object[][] provideDataForTestGetReferenceBases() {
+
+        // NOTE: Genome positions start at 1, not 0.
+        //                                                                                                                          1
+        //                       0        1         2         3         4    *    5         6         7         8         9         0
+        //                       1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+        final String sequence = "CGTCGACGGAACAAAAGTAGACCATCCCTCTTGGTAAGTACGTCTTCATACTCTACAAATACCCATAGCACAATTCGGAGCCCAACGCCCGACGGGTCAT";
+        //   REVERSE COMPLEMENT: ATGACCCGTCGGGCGTTGGGCTCCGAATTGTGCTATGGGTATTTGTAGAGTATGAAGACGTACTTACCAAGAGGGATGGTCTACTTTTGTTCCGTCGACG
+
+        final String contig = "specialTestContig";
+
+        final int startPos = 45;
+        final int endPos = 45;
+
+        // NOTE: Variants are always described in the + direction.
+        //       The start/end positions are for the REFERENCE allele ONLY.
+
+        return new Object[][] {
+                // SNP in + direction
+                {
+                        Allele.create("T", true),
+                        Allele.create("C"),
+                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos,  endPos),
+                        Strand.POSITIVE,
+                        "TAAGTACGTCTTCATACTCTA"
+                },
+                // DNP in + direction
+                {
+                        Allele.create("TT", true),
+                        Allele.create("CC"),
+                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos,  endPos+1),
+                        Strand.POSITIVE,
+                        "TAAGTACGTCTTCATACTCTAC"
+                },
+                // TNP in + direction
+                {
+                        Allele.create("TTC", true),
+                        Allele.create("CGG"),
+                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos,  endPos+2),
+                        Strand.POSITIVE,
+                        "TAAGTACGTCTTCATACTCTACA"
+                },
+                // Insertion - 1 base in + direction
+                {
+                        Allele.create("T", true),
+                        Allele.create("TC"),
+                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos,  endPos),
+                        Strand.POSITIVE,
+                        "TAAGTACGTCTTCATACTCTAC"
+                },
+                // Insertion - 2 bases in + direction
+                {
+                        Allele.create("T", true),
+                        Allele.create("TCC"),
+                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos,  endPos),
+                        Strand.POSITIVE,
+                        "TAAGTACGTCTTCATACTCTACA"
+                },
+                // Insertion - 3 bases in + direction
+                {
+                        Allele.create("T", true),
+                        Allele.create("TCCA"),
+                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos,  endPos),
+                        Strand.POSITIVE,
+                        "TAAGTACGTCTTCATACTCTACAA"
+                },
+                // Deletion - 1 base in + direction
+                {
+                        Allele.create("CT", true),
+                        Allele.create("T"),
+                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos-1,  endPos),
+                        Strand.POSITIVE,
+                        "GTAAGTACGTCTTCATACTCTA"
+                },
+                // Deletion - 2 bases in + direction
+                {
+                        Allele.create("CTT", true),
+                        Allele.create("T"),
+                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos-1,  endPos+1),
+                        Strand.POSITIVE,
+                        "GTAAGTACGTCTTCATACTCTAC"
+                },
+                // Deletion - 3 bases in + direction
+                {
+                        Allele.create("CTTC", true),
+                        Allele.create("T"),
+                        referenceHelperForTestCalculateGcContent(sequence, contig, startPos - 1, endPos + 2),
+                        Strand.POSITIVE,
+                        "GTAAGTACGTCTTCATACTCTACA"
+                },
+
+                // ================================================================================
+
+                // SNP in - direction
+                {
+                        Allele.create("T", true),
+                        Allele.create("C"),
+                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos,  endPos),
+                        Strand.NEGATIVE,
+                        "TAGAGTATGAAGACGTACTTA"
+                },
+                // DNP in - direction
+                {
+                        Allele.create("CT", true),
+                        Allele.create("TA"),
+                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos-1,  endPos),
+                        Strand.NEGATIVE,
+                        "TAGAGTATGAAGACGTACTTAC"
+                },
+                // TNP in - direction
+                {
+                        Allele.create("TCT", true),
+                        Allele.create("ATG"),
+                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos-2,  endPos),
+                        Strand.NEGATIVE,
+                        "TAGAGTATGAAGACGTACTTACC"
+                },
+                // Insertion - 1 base in - direction
+                {
+                        Allele.create("T", true),
+                        Allele.create("TC"),
+                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos,  endPos),
+                        Strand.NEGATIVE,
+                        "GTAGAGTATGAAGACGTACTTA"
+                },
+                // Insertion - 2 bases in - direction
+                {
+                        Allele.create("T", true),
+                        Allele.create("TCC"),
+                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos,  endPos),
+                        Strand.NEGATIVE,
+                        "TGTAGAGTATGAAGACGTACTTA"
+                },
+                // Insertion - 3 bases in - direction
+                {
+                        Allele.create("T", true),
+                        Allele.create("TCCA"),
+                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos,  endPos),
+                        Strand.NEGATIVE,
+                        "TTGTAGAGTATGAAGACGTACTTA"
+                },
+                // Deletion - 1 base in - direction
+                {
+                        Allele.create("TT", true),
+                        Allele.create("T"),
+                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos-1,  endPos),
+                        Strand.NEGATIVE,
+                        "TAGAGTATGAAGACGTACTTAC"
+                },
+                // Deletion - 2 bases in - direction
+                {
+                        Allele.create("CTT", true),
+                        Allele.create("C"),
+                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos-2,  endPos),
+                        Strand.NEGATIVE,
+                        "TAGAGTATGAAGACGTACTTACC"
+                },
+                // Deletion - 3 bases in - direction
+                {
+                        Allele.create("TCTT", true),
+                        Allele.create("T"),
+                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos-3,  endPos),
+                        Strand.NEGATIVE,
+                        "TAGAGTATGAAGACGTACTTACCA"
+                },
+        };
+    }
+
     //==================================================================================================================
     // Tests:
 
@@ -1176,5 +1346,10 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                                 final int windowSize,
                                 final double expected) {
         Assert.assertEquals( GencodeFuncotationFactory.calculateGcContent( referenceContext, windowSize ), expected, doubleEqualsEpsilon);
+    }
+
+    @Test(dataProvider = "provideDataForTestGetReferenceBases")
+    void testGetReferenceBases(final Allele refAllele, final Allele altAllele, final ReferenceContext reference, final Strand strand, final String expected ) {
+        Assert.assertEquals( GencodeFuncotationFactory.getReferenceBases(refAllele, altAllele, reference, strand) , expected);
     }
 }
