@@ -8,6 +8,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 
+import java.io.Closeable;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -15,7 +16,7 @@ import java.util.stream.Collectors;
  * An abstract class to allow for the creation of a {@link Funcotation} for a given data source.
  * Created by jonn on 8/30/17.
  */
-public abstract class DataSourceFuncotationFactory implements AutoCloseable {
+public abstract class DataSourceFuncotationFactory implements Closeable {
 
     //==================================================================================================================
 

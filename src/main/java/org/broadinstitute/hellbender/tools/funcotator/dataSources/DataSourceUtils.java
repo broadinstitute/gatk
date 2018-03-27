@@ -113,8 +113,7 @@ final public class DataSourceUtils {
 
             final Path p = IOUtils.getPath(pathString);
             if ( !isValidDirectory(p) ) {
-                logger.error("ERROR: Given data source path is not a valid directory: " + p.toUri().toString());
-                continue;
+                throw new UserException("ERROR: Given data source path is not a valid directory: " + p.toUri().toString());
             }
 
             // Log information from the datasources directory so we can have a record of what we're using:
@@ -454,6 +453,16 @@ final public class DataSourceUtils {
      * Logs the meta data about the data sources from the given {@code dataSourcesPath}.
      * We assume the data sources path is OK in the case that the version information cannot be read because the
      * user can create their own data sources directory, which may not contain the metadata we seek.
+     *
+     * NOTE: The README file in a Data Sources directory is assumed to have the following properties:
+     *       - Its name must be {@link #README_FILE_NAME}
+     *       - It must contain a line starting with {@link #README_VERSION_LINE_START} containing an alphanumeric string containing the version number information.
+     *           - This version information takes the form of:
+     *               [MAJOR_VERSION].[MINOR_VERSION].[RELEASE_YEAR][RELEASE_MONTH][RELEASE_DAY]
+     *               e.g.
+     *               1.1.20180204 (version 1.1 released Feb. 2, 2018)
+     *
+     *
      * @param dataSourcesPath {@link Path} to a Data Sources directory to check.
      * @return {@code True} if the given {@code dataSourcesPath} is equal to or newer than the minumum version, or if the version is unreadable.  {@code False} otherwise.
      */
@@ -546,7 +555,7 @@ final public class DataSourceUtils {
                 }
             }
             catch (final Exception ex) {
-                logger.warn("Could not read " + README_FILE_NAME + ": unable to log data sources version information.");
+                logger.warn("Could not read " + README_FILE_NAME + ": unable to log data sources version information.", ex);
             }
         }
         else {

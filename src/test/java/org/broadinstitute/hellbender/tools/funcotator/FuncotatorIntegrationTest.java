@@ -345,7 +345,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.addVCF(new File(inputFile));
         arguments.addReference(new File("/Users/jonn/Development/references/Homo_sapiens_assembly38.fasta"));
 
-        arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, "/Users/jonn/Development/funcotator_dataSources_latest");
+        arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, LOCAL_DATASOURCES_PATH);
 
         arguments.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME, false);
 
