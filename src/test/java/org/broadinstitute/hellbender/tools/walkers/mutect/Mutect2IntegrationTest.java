@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import htsjdk.samtools.SamFiles;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.collections4.ListUtils;
@@ -26,6 +27,7 @@ import java.io.File;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -201,7 +203,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     }
 
     // run tumor-only using our mini gnomAD on NA12878, which is not a tumor
-    // we're just making sure nothing blows up
     @Test
     public void testTumorOnly() throws Exception {
         Utils.resetRandomGenerator();
@@ -229,6 +230,29 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         // every variant on this interval in this sample is in gnomAD
         Assert.assertTrue(numVariantsPassingFilters < 2);
+    }
+
+    @Test
+    public void testGivenAllelesMode() throws Exception {
+        Utils.resetRandomGenerator();
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+
+        final File givenAllelesVcf = new File(toolsTestDir, "mutect/gga_mode.vcf");
+        final List<String> args = Arrays.asList("-I", NA12878_20_21_WGS_bam,
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "NA12878",
+                "-R", b37_reference_20_21,
+                "-L", "20:10000000-10010000",
+                "-O", unfilteredVcf.getAbsolutePath(),
+                "--genotyping-mode", "GENOTYPE_GIVEN_ALLELES",
+                "--alleles", givenAllelesVcf.getAbsolutePath());
+        runCommandLine(args);
+
+        final Map<Integer, List<Allele>> altAllelesByPosition = StreamSupport.stream(new FeatureDataSource<VariantContext>(unfilteredVcf).spliterator(), false)
+                .collect(Collectors.toMap(vc -> vc.getStart(), vc-> vc.getAlternateAlleles()));
+        for (final VariantContext vc : new FeatureDataSource<VariantContext>(givenAllelesVcf)) {
+            final List<Allele> altAllelesAtThisLocus = altAllelesByPosition.get(vc.getStart());
+            vc.getAlternateAlleles().forEach(a -> Assert.assertTrue(altAllelesAtThisLocus.contains(a)));
+        }
     }
 
     @Test

@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingGivenAllelesUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingOutputMode;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
@@ -37,6 +38,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Created by davidben on 9/15/16.
@@ -212,8 +214,13 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
             return NO_CALLS;
         }
 
+        // TODO perhaps option to keep filtered GGA alleles?
+        final List<VariantContext> givenAlleles = MTAC.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ?
+                featureContext.getValues(MTAC.alleles).stream().filter(VariantContext::isNotFiltered).collect(Collectors.toList()) :
+                Collections.emptyList();
+
         final AssemblyRegion assemblyActiveRegion = AssemblyBasedCallerUtils.assemblyRegionWithWellMappedReads(originalAssemblyRegion, READ_QUALITY_FILTER_THRESHOLD, header);
-        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyActiveRegion, Collections.emptyList(), MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner);
+        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyActiveRegion, givenAlleles, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner);
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents();
         final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(originalAssemblyRegion,allVariationEvents);
         if (!trimmingResult.isVariationPresent()) {
@@ -242,6 +249,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
                 referenceContext,
                 regionForGenotyping.getSpan(),
                 featureContext,
+                givenAlleles,
                 header);
 
         writeBamOutput(assemblyResult, readLikelihoods, calledHaplotypes);
@@ -285,6 +293,13 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
     @Override
     public ActivityProfileState isActive(final AlignmentContext context, final ReferenceContext ref, final FeatureContext featureContext) {
+        if ( MTAC.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
+            final VariantContext vcFromAllelesRod = GenotypingGivenAllelesUtils.composeGivenAllelesVariantContextFromRod(featureContext, ref.getInterval(), false, logger, MTAC.alleles);
+            if( vcFromAllelesRod != null ) {
+                return new ActivityProfileState(ref.getInterval(), 1.0);
+            }
+        }
+
         final byte refBase = ref.getBase();
         final SimpleInterval refInterval = ref.getInterval();
 
