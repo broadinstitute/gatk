@@ -118,6 +118,7 @@ public class CNNScoreVariants extends VariantWalker {
     private static final int ALT_INDEX = 3;
     private static final int KEY_INDEX = 4;
     private static final int FIFO_STRING_INITIAL_CAPACITY = 1024;
+    private static final int MAX_READ_BATCH = 2;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -449,8 +450,17 @@ public class CNNScoreVariants extends VariantWalker {
     }
 
     private String getScoreKeyAndCheckModelAndReadsHarmony() {
+        if (tensorType.isReadsRequired() && (MAX_READ_BATCH < transferBatchSize || MAX_READ_BATCH < inferenceBatchSize)) {
+            logger.warn(String.format("Max read batch exceeded, setting transfer and inference batch sizes to %d", MAX_READ_BATCH));
+            inferenceBatchSize = MAX_READ_BATCH;
+            transferBatchSize = MAX_READ_BATCH;
+        }
+
         if (tensorType.isReadsRequired() && this.hasReads()) {
             return GATKVCFConstants.CNN_2D_KEY;
+        } else if (!tensorType.isReadsRequired() && this.hasReads()) {
+            logger.warn(String.format("Reads are available, but tensor type %s does not use them.", tensorType.name()));
+            return GATKVCFConstants.CNN_1D_KEY;
         } else if (!tensorType.isReadsRequired()) {
             return GATKVCFConstants.CNN_1D_KEY;
         } else {
