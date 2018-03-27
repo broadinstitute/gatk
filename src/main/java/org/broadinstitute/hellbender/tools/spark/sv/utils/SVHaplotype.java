@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Common class of all haplotypes.
@@ -124,25 +125,27 @@ public interface SVHaplotype {
     <T> List<List<AlignmentInterval>> align(final Iterable<T> input, Function<T, byte[]> basesOf);
 
     default <T> List<AlignedContig> alignContigs(final Iterable<AlignedContig> contigs) {
-        final List<AlignedContig> contigsList = IterableUtils.toList(contigs);
         final List<String> names = Utils.stream(contigs).map(c -> c.contigName).collect(Collectors.toList());
         final List<byte[]> bases = Utils.stream(contigs).map(c -> c.contigSequence).collect(Collectors.toList());
         final List<List<AlignmentInterval>> intervals = align(bases, Function.identity());
+        final List<AlignedContig> realignedContigs = IntStream.range(0, names.size())
+                .mapToObj(i -> new AlignedContig(names.get(i), bases.get(i), intervals.get(i), false))
+                .collect(Collectors.toList());
         final List<AlignedContig> result = new ArrayList<>(intervals.size());
         final Set<String> haplotypeName = Collections.singleton(getName());
-        for (int i = 0; i < contigsList.size(); i++) {
+        for (int i = 0; i < realignedContigs.size(); i++) {
             final List<AssemblyContigAlignmentsConfigPicker.GoodAndBadMappings> mappings =
-                     AssemblyContigAlignmentsConfigPicker.pickBestConfigurations(contigsList.get(i), haplotypeName, 0.0);
+                     AssemblyContigAlignmentsConfigPicker.pickBestConfigurations(realignedContigs.get(i), haplotypeName, 0.0);
             if (mappings.isEmpty()) {
-                result.add(contigsList.get(i));
+                result.add(realignedContigs.get(i));
             } else {
                 final AssemblyContigAlignmentsConfigPicker.GoodAndBadMappings topMapping = mappings.get(0);
                 if (topMapping.getGoodMappings().isEmpty()) {
-                    result.add(contigsList.get(i));
-                } else if (topMapping.getGoodMappings().size() == contigsList.get(i).alignmentIntervals.size()) {
-                    result.add(contigsList.get(i));
+                    result.add(realignedContigs.get(i));
+                } else if (topMapping.getGoodMappings().size() == realignedContigs.get(i).alignmentIntervals.size()) {
+                    result.add(realignedContigs.get(i));
                 } else {
-                    result.add(new AlignedContig(contigsList.get(i).contigName, contigsList.get(i).contigSequence, topMapping.getGoodMappings(),
+                    result.add(new AlignedContig(realignedContigs.get(i).contigName, realignedContigs.get(i).contigSequence, topMapping.getGoodMappings(),
                             mappings.size() > 1));
                 }
             }
