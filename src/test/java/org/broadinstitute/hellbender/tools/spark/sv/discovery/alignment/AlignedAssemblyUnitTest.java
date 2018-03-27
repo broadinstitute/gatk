@@ -73,11 +73,11 @@ public class AlignedAssemblyUnitTest extends GATKBaseTest {
             alignmentIntervalsForSimpleInversion.add(alignmentIntervalRight);
 
             if (pair == 0) {
-                allContigs.add( new AlignedContig(AlignedAssemblyOrExcuse.formatContigName(0, 0), dummySequenceForContigOne, alignmentIntervalsForSimpleInversion, false) );
+                allContigs.add( new AlignedContig(AlignedAssemblyOrExcuse.formatContigName(0, 0), dummySequenceForContigOne, alignmentIntervalsForSimpleInversion) );
             } else if (pair <3) {
-                allContigs.add( new AlignedContig(AlignedAssemblyOrExcuse.formatContigName(1, pair-1), pair==1 ? dummySequenceForContigTwo : dummySequenceForContigThree, alignmentIntervalsForSimpleInversion, false) );
+                allContigs.add( new AlignedContig(AlignedAssemblyOrExcuse.formatContigName(1, pair-1), pair==1 ? dummySequenceForContigTwo : dummySequenceForContigThree, alignmentIntervalsForSimpleInversion) );
             } else {
-                allContigs.add( new AlignedContig(AlignedAssemblyOrExcuse.formatContigName(2, 0), dummySequenceForContigFour, alignmentIntervalsForSimpleInversion, false) );
+                allContigs.add( new AlignedContig(AlignedAssemblyOrExcuse.formatContigName(2, 0), dummySequenceForContigFour, alignmentIntervalsForSimpleInversion) );
             }
         }
 

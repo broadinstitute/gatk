@@ -29,6 +29,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.Chimeric
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
@@ -106,9 +107,10 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
     private final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs =
             new DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection();
 
-    @Argument(doc = "\"output path for discovery (non-genotyped) VCF", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+    @Argument(doc = "prefix for discovery (non-genotyped) VCF; sample name will be appended after the provided argument, followed by \"_inv_del_ins.vcf\"",
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
-    private String vcfOutputFileName;
+    private String prefixForOutput;
 
     @Override
     public boolean requiresReference() {
@@ -133,20 +135,23 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                         discoverStageArgs.cnvCallsFile);
 
         final SvDiscoveryInputData svDiscoveryInputData =
-                new SvDiscoveryInputData(ctx, discoverStageArgs, vcfOutputFileName,
+                new SvDiscoveryInputData(ctx,
+                        discoverStageArgs, prefixForOutput + "_" + SVUtils.getSampleId(getHeaderForReads()) + "_inv_del_ins.vcf",
                         null, null, null,
                         cnvCallsBroadcast,
                         getReads(), getHeaderForReads(), getReference(), localLogger);
 
         final JavaRDD<AlignedContig> parsedContigAlignments =
-                new SvDiscoverFromLocalAssemblyContigAlignmentsSpark.SAMFormattedContigAlignmentParser(svDiscoveryInputData.assemblyRawAlignments, svDiscoveryInputData.headerBroadcast.getValue(), true)
+                new SvDiscoverFromLocalAssemblyContigAlignmentsSpark
+                        .SAMFormattedContigAlignmentParser(svDiscoveryInputData.assemblyRawAlignments,
+                                                        svDiscoveryInputData.headerBroadcast.getValue(), true)
                         .getAlignedContigs();
 
         // assembly-based breakpoints
         List<VariantContext> annotatedVariants = discoverVariantsFromChimeras(svDiscoveryInputData, parsedContigAlignments);
 
         final SAMSequenceDictionary refSeqDictionary = svDiscoveryInputData.referenceSequenceDictionaryBroadcast.getValue();
-        SVVCFWriter.writeVCF(annotatedVariants, vcfOutputFileName, refSeqDictionary, localLogger);
+        SVVCFWriter.writeVCF(annotatedVariants, svDiscoveryInputData.outputPath, refSeqDictionary, localLogger);
     }
 
     @Deprecated
@@ -155,9 +160,9 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
         final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceSequenceDictionaryBroadcast;
 
         final JavaPairRDD<byte[], List<ChimericAlignment>> contigSeqAndChimeras =
-                alignedContigs.filter(alignedContig -> alignedContig.alignmentIntervals.size() > 1)
+                alignedContigs.filter(alignedContig -> alignedContig.getAlignments().size() > 1)
                         .mapToPair(alignedContig ->
-                                new Tuple2<>(alignedContig.contigSequence,
+                                new Tuple2<>(alignedContig.getContigSequence(),
                                         ChimericAlignment.parseOneContig(alignedContig, referenceSequenceDictionaryBroadcast.getValue(),
                                                 true, DEFAULT_MIN_ALIGNMENT_LENGTH,
                                                 CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, true)));

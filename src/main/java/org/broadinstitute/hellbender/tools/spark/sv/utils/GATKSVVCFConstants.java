@@ -41,6 +41,7 @@ public final class GATKSVVCFConstants {
     // applicable to all precise records when available
     public static final String SEQ_ALT_HAPLOTYPE = "SEQ_ALT_HAPLOTYPE";
     public static final String INSERTED_SEQUENCE = "INSSEQ";
+    public static final String INSERTED_SEQUENCE_LENGTH = "INSLEN";
     public static final String INSERTED_SEQUENCE_MAPPINGS = "INSSEQ_MAP";
     public static final String HOMOLOGY = "HOMSEQ";
     public static final String HOMOLOGY_LENGTH = "HOMLEN";
@@ -84,7 +85,7 @@ public final class GATKSVVCFConstants {
             = Stream.of("SVTYPE", "SVLEN", "MATEID", "INV", "DEL", "INS", "DUP", "DUP:INV",
                     "CIPOS", "CIEND", "IMPRECISE", "READ_PAIR_SUPPORT", "SPLIT_READ_SUPPORT",
                     "CTG_NAMES", "TOTAL_MAPPINGS", "MAPPING_QUALITIES", "HQ_MAPPINGS", "ALIGN_LENGTHS", "MAX_ALIGN_LENGTH",
-                    "SEQ_ALT_HAPLOTYPE", "INSSEQ", "INSSEQ_MAP", "HOMSEQ", "HOMLEN", "DUP_REPEAT_UNIT_REF_SPAN",
+                    "SEQ_ALT_HAPLOTYPE", "INSSEQ", "INSLEN", "INSSEQ_MAP", "HOMSEQ", "HOMLEN", "DUP_REPEAT_UNIT_REF_SPAN",
                     "DUP_SEQ_CIGARS", "DUP_NUM", "DUP_ANNOTATIONS_IMPRECISE", "CONTRACTION", "EXPANSION", "DUP_ORIENTATIONS",
                     "INV33", "INV55", "EXTERNAL_CNV_CALLS", "DUP_IMPRECISE_AFFECTED_RANGE", "CTG_GOOD_NONCANONICAL_MAPPING")
                     .sorted().collect(Collectors.toList());

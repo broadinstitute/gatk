@@ -150,11 +150,11 @@ public final class AssemblyContigAlignmentSignatureClassifier {
 
     static boolean indicatesIntraChrStrandSwitchBkpts(final AssemblyContigWithFineTunedAlignments decoratedContig) {
         final AlignedContig contig = decoratedContig.getSourceContig();
-        if (contig.alignmentIntervals.size() != 2)
+        if (contig.getAlignments().size() != 2)
             return false;
 
-        final AlignmentInterval first = contig.alignmentIntervals.get(0);
-        final AlignmentInterval last = contig.alignmentIntervals.get(1);
+        final AlignmentInterval first = contig.getAlignments().get(0);
+        final AlignmentInterval last = contig.getAlignments().get(1);
         if ( !first.referenceSpan.getContig().equals(last.referenceSpan.getContig()) )
             return false;
 
@@ -163,11 +163,11 @@ public final class AssemblyContigAlignmentSignatureClassifier {
 
     static boolean indicatesIntraChrTandemDupBkpts(final AssemblyContigWithFineTunedAlignments decoratedContig) {
         final AlignedContig contig = decoratedContig.getSourceContig();
-        if (contig.alignmentIntervals.size() != 2)
+        if (contig.getAlignments().size() != 2)
             return false;
 
-        final AlignmentInterval first = contig.alignmentIntervals.get(0);
-        final AlignmentInterval last = contig.alignmentIntervals.get(1);
+        final AlignmentInterval first = contig.getAlignments().get(0);
+        final AlignmentInterval last = contig.getAlignments().get(1);
         if ( !first.referenceSpan.getContig().equals(last.referenceSpan.getContig()) )
             return false;
 
@@ -329,10 +329,11 @@ public final class AssemblyContigAlignmentSignatureClassifier {
                             final AssemblyContigAlignmentsConfigPicker.GoodAndBadMappings refinedMappings =
                                     removeNonUniqueMappings(tig.getAlignments(), mapQThresholdInclusive, uniqReadLenInclusive);
 
-                            final AlignedContig updatedTig = new AlignedContig(tig.getSourceContig().contigName, tig.getSourceContig().contigSequence,
-                                    refinedMappings.getGoodMappings(), tig.hasEquallyGoodAlnConfigurations());
+                            final AlignedContig updatedTig = new AlignedContig(tig.getContigName(), tig.getContigSequence(),
+                                    refinedMappings.getGoodMappings());
                             return new AssemblyContigWithFineTunedAlignments(updatedTig,
                                             refinedMappings.getBadMappingsAsCompactStrings(),
+                                    tig.hasEquallyGoodAlnConfigurations(),
                                     tig.getSAtagForGoodMappingToNonCanonicalChromosome());
                         });
 

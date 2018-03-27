@@ -329,11 +329,11 @@ public class ChimericAlignment {
                                                          final int mapQualThresholdInclusive,
                                                          final boolean filterWhollyContainedAlignments) {
 
-        if (alignedContig.alignmentIntervals.size() < 2) {
+        if (alignedContig.getAlignments().size() < 2) {
             return new ArrayList<>();
         }
 
-        final Iterator<AlignmentInterval> iterator = alignedContig.alignmentIntervals.iterator();
+        final Iterator<AlignmentInterval> iterator = alignedContig.getAlignments().iterator();
 
         // fast forward to the first alignment region with high MapQ
         AlignmentInterval current = iterator.next();
@@ -343,7 +343,7 @@ public class ChimericAlignment {
             }
         }
 
-        final List<ChimericAlignment> results = new ArrayList<>(alignedContig.alignmentIntervals.size() - 1);
+        final List<ChimericAlignment> results = new ArrayList<>(alignedContig.getAlignments().size() - 1);
         final List<String> insertionMappings = new ArrayList<>();
 
         // then iterate over the AR's in pair to identify CA's.
@@ -366,7 +366,7 @@ public class ChimericAlignment {
             //       this was initially developed for ins/del (and tested for that purpose), simple translocations travel through a different code path at the moment.
             // TODO: ultimately we need to merge these two code paths
             final ChimericAlignment chimericAlignment = new ChimericAlignment(current, next, insertionMappings,
-                    alignedContig.contigName, referenceDictionary);
+                    alignedContig.getContigName(), referenceDictionary);
             // the following check/filter is due to the fact that simple translocations are to be handled in a different code path
             if (chimericAlignment.isNeitherSimpleTranslocationNorIncompletePicture())
                 results.add(chimericAlignment);

@@ -83,6 +83,10 @@ public final class GATKSVVCFHeaderLines {
                     VCFHeaderLineCount.UNBOUNDED,
                     VCFHeaderLineType.String,
                     "Inserted sequence at the breakpoint"));
+            addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.INSERTED_SEQUENCE_LENGTH,
+                    VCFHeaderLineCount.A,
+                    VCFHeaderLineType.Integer,
+                    "Length of inserted sequence (note for duplication records, this does not count the extra copies of the duplicated sequence)"));
             addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.INSERTED_SEQUENCE_MAPPINGS,
                     VCFHeaderLineCount.UNBOUNDED,
                     VCFHeaderLineType.String,

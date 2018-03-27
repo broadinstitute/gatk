@@ -283,10 +283,10 @@ final class CpxVariantInducingAssemblyContig {
 
         @VisibleForTesting
         BasicInfo(final AlignedContig contig) {
+            if (contig.isUnmapped())
+                throw new GATKException("Trying to extract information from unmapped read: " + contig.toString());
             final AlignmentInterval head = contig.getHeadAlignment();
             final AlignmentInterval tail = contig.getTailAlignment();
-            if (head == null || tail == null)
-                throw new GATKException("Head or tail alignment is null from contig:\n" + contig.toString());
 
             eventPrimaryChromosome = head.referenceSpan.getContig();
             forwardStrandRep = head.forwardStrand;

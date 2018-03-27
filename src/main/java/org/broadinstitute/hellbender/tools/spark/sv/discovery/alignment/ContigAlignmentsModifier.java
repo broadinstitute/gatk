@@ -323,7 +323,7 @@ public final class ContigAlignmentsModifier {
 
                     final AlignmentInterval split = new AlignmentInterval(referenceInterval, contigIntervalStart, contigIntervalEnd,
                             cigarForNewAlignmentInterval, oneRegion.forwardStrand, originalMapQ,
-                            AlignmentInterval.NO_NM, oneRegion.alnScore, ContigAlignmentsModifier.AlnModType.FROM_SPLIT_GAPPED_ALIGNMENT);
+                            AlignmentInterval.NO_NM, AlignmentInterval.NO_AS, ContigAlignmentsModifier.AlnModType.FROM_SPLIT_GAPPED_ALIGNMENT);
 
                     result.add(split);
 
@@ -366,7 +366,7 @@ public final class ContigAlignmentsModifier {
         result.add(new AlignmentInterval(lastReferenceInterval,
                 contigIntervalStart, unclippedContigLen-clippedNBasesFromEnd, lastForwardStrandCigar,
                 oneRegion.forwardStrand, originalMapQ,
-                AlignmentInterval.NO_NM, oneRegion.alnScore, ContigAlignmentsModifier.AlnModType.FROM_SPLIT_GAPPED_ALIGNMENT));
+                AlignmentInterval.NO_NM, AlignmentInterval.NO_AS, ContigAlignmentsModifier.AlnModType.FROM_SPLIT_GAPPED_ALIGNMENT));
 
 
         return result;

@@ -66,7 +66,7 @@ public class CpxVariantCanonicalRepresentationUnitTest extends GATKBaseTest {
         final AssemblyContigWithFineTunedAlignments preprocessedTig = new AssemblyContigWithFineTunedAlignments(alignedContig);
         final CpxVariantInducingAssemblyContig analysisReadyContig = new CpxVariantInducingAssemblyContig(preprocessedTig, CpxSVInferenceTestUtils.bareBoneHg38SAMSeqDict);
         final SimpleInterval manuallyCalculatedAffectedRefRegion = new SimpleInterval("chr1", 14492666, 14492666);
-        final byte[] manuallyCalculatedAltSeq = Arrays.copyOfRange(alignedContig.contigSequence, 1275, 1685);
+        final byte[] manuallyCalculatedAltSeq = Arrays.copyOfRange(alignedContig.getContigSequence(), 1275, 1685);
         final List<String> manuallyCalculatedAltArrangements = Arrays.asList("1", "UINS-61", "-chr4:8687087-8687132", "UINS-299", "1");
         final List<SimpleInterval> manuallyCalculatedSegments = Collections.singletonList(manuallyCalculatedAffectedRefRegion);
 

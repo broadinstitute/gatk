@@ -88,6 +88,7 @@ public abstract class BreakpointComplications {
 
         if ( !getInsertedSequenceForwardStrandRep().isEmpty() ) {
             attributeMap.put(GATKSVVCFConstants.INSERTED_SEQUENCE, getInsertedSequenceForwardStrandRep());
+            attributeMap.put(GATKSVVCFConstants.INSERTED_SEQUENCE_LENGTH, getInsertedSequenceForwardStrandRep().length());
         }
 
         if ( !getHomologyForwardStrandRep().isEmpty() ) {

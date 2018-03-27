@@ -4,7 +4,6 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
 
 import java.util.ArrayList;
@@ -22,18 +21,18 @@ import java.util.stream.Collectors;
 @DefaultSerializer(AlignedContig.Serializer.class)
 public final class AlignedContig {
 
-    public final String contigName;
-    public final byte[] contigSequence;
-    public final List<AlignmentInterval> alignmentIntervals;
-    public final boolean hasEquallyGoodAlnConfigurations;
+    private final String contigName;
+    private final byte[] contigSequence;
+    private final List<AlignmentInterval> alignmentIntervals;
 
-    public AlignedContig(final String contigName, final byte[] contigSequence, final List<AlignmentInterval> alignmentIntervals,
-                         final boolean hasEquallyGoodAlnConfigurations) {
+    // throws if alignment interval is null
+    public AlignedContig(final String contigName, final byte[] contigSequence, final List<AlignmentInterval> alignmentIntervals) {
+        if (alignmentIntervals == null) {
+            throw new IllegalArgumentException("AlignedContig being constructed with null alignments: " + contigName);
+        }
         this.contigName = contigName;
         this.contigSequence = contigSequence;
-        this.alignmentIntervals = Utils.stream( Utils.nonNull(alignmentIntervals) )
-                .sorted(getAlignmentIntervalComparator()).collect(Collectors.toList());
-        this.hasEquallyGoodAlnConfigurations = hasEquallyGoodAlnConfigurations;
+        this.alignmentIntervals = alignmentIntervals.stream().sorted(getAlignmentIntervalComparator()).collect(Collectors.toList());
     }
 
     AlignedContig(final Kryo kryo, final Input input) {
@@ -51,41 +50,47 @@ public final class AlignedContig {
         for (int i = 0; i < nAlignments; ++i) {
             alignmentIntervals.add(new AlignmentInterval(kryo, input));
         }
-
-        hasEquallyGoodAlnConfigurations = input.readBoolean();
     }
 
-    public static Comparator<AlignmentInterval> getAlignmentIntervalComparator() {
-        Comparator<AlignmentInterval> comparePos = (AlignmentInterval a1, AlignmentInterval a2) -> Integer.compare(a1.startInAssembledContig, a2.startInAssembledContig);
-        Comparator<AlignmentInterval> compareRefTig = (AlignmentInterval a1, AlignmentInterval a2) -> a1.referenceSpan.getContig().compareTo(a2.referenceSpan.getContig());
-        Comparator<AlignmentInterval> compareRefSpanStart = (AlignmentInterval a1, AlignmentInterval a2) -> a1.referenceSpan.getStart() - a2.referenceSpan.getStart();
+    static Comparator<AlignmentInterval> getAlignmentIntervalComparator() {
+        Comparator<AlignmentInterval> comparePos = Comparator.comparingInt(aln -> aln.startInAssembledContig);
+        Comparator<AlignmentInterval> compareRefTig = Comparator.comparing(aln -> aln.referenceSpan.getContig());
+        Comparator<AlignmentInterval> compareRefSpanStart = Comparator.comparingInt(aln -> aln.referenceSpan.getStart());
         return comparePos.thenComparing(compareRefTig).thenComparing(compareRefSpanStart);
     }
 
-    public boolean hasOnly2Alignments() {
+    boolean hasOnly2Alignments() {
         return alignmentIntervals.size() == 2;
     }
 
-    public boolean isInformative() {
-        return alignmentIntervals.size() > 1;
-    }
-
     /**
-     * @return first alignment of the contig, {@code null} if it is unmapped.
+     * @return first alignment of the contig
      */
     public AlignmentInterval getHeadAlignment() {
-        if (alignmentIntervals.isEmpty())
-            return null;
         return alignmentIntervals.get(0);
     }
 
     /**
-     * @return last alignment of the contig, {@code null} if it is unmapped.
+     * @return last alignment of the contig
      */
     public AlignmentInterval getTailAlignment() {
-        if (alignmentIntervals.isEmpty())
-            return null;
         return alignmentIntervals.get(alignmentIntervals.size() - 1);
+    }
+
+    public String getContigName() {
+        return contigName;
+    }
+
+    public byte[] getContigSequence() {
+        return contigSequence;
+    }
+
+    public boolean isUnmapped() {
+        return alignmentIntervals.isEmpty();
+    }
+
+    public List<AlignmentInterval> getAlignments() {
+        return alignmentIntervals;
     }
 
     @Override
@@ -102,13 +107,12 @@ public final class AlignedContig {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        AlignedContig that = (AlignedContig) o;
+        final AlignedContig that = (AlignedContig) o;
 
-        if (hasEquallyGoodAlnConfigurations != that.hasEquallyGoodAlnConfigurations) return false;
         if (!contigName.equals(that.contigName)) return false;
         if (!Arrays.equals(contigSequence, that.contigSequence)) return false;
         return alignmentIntervals.equals(that.alignmentIntervals);
@@ -119,7 +123,6 @@ public final class AlignedContig {
         int result = contigName.hashCode();
         result = 31 * result + Arrays.hashCode(contigSequence);
         result = 31 * result + alignmentIntervals.hashCode();
-        result = 31 * result + (hasEquallyGoodAlnConfigurations ? 1 : 0);
         return result;
     }
 
@@ -135,7 +138,6 @@ public final class AlignedContig {
         output.writeInt(alignmentIntervals.size());
         alignmentIntervals.forEach(it -> it.serialize(kryo, output));
 
-        output.writeBoolean(hasEquallyGoodAlnConfigurations);
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<AlignedContig> {

@@ -26,7 +26,7 @@ public class CpxVariantInducingAssemblyContigUnitTest extends GATKBaseTest {
     private Object[][] forBasicInfoCtor() {
         final List<Object[]> data = new ArrayList<>(20);
 
-        data.add(new Object[]{new AlignedContig("unmapped", "AAAAA".getBytes(), Collections.emptyList(), false),
+        data.add(new Object[]{new AlignedContig("unmapped", "AAAAA".getBytes(), Collections.emptyList()),
                               null, GATKException.class
         });
 

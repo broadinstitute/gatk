@@ -36,7 +36,7 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest extends
         String getCommandLine() {
             return  " -R " + SVIntegrationTestDataProvider.reference_2bit +
                     " -I " + SVIntegrationTestDataProvider.TEST_CONTIG_SAM +
-                    " -O " + outputDir + "/variants.vcf" +
+                    " -O " + outputDir + "/DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest" +
                     (cnvCallsLoc == null ? "" : " --cnv-calls " + cnvCallsLoc);
         }
 
@@ -58,7 +58,8 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest extends
 
         final List<String> args = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLine()).getArgsArray() );
         runCommandLine(args);
-        StructuralVariationDiscoveryPipelineSparkIntegrationTest.svDiscoveryVCFEquivalenceTest(args.get(args.indexOf("-O")+1),
+        final String newVCF = args.get(args.indexOf("-O") + 1) + "_sample_inv_del_ins.vcf";
+        StructuralVariationDiscoveryPipelineSparkIntegrationTest.svDiscoveryVCFEquivalenceTest(newVCF,
                 SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, null, annotationsToIgnoreWhenComparingVariants, false);
     }
 
@@ -86,13 +87,17 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest extends
 
             // outputs, prefix with hdfs address
             idx = argsToBeModified.indexOf("-O");
-            path = new Path(workingDirectory, "variants.vcf");
-            final String vcfOnHDFS = path.toUri().toString();
-            argsToBeModified.set(idx+1, vcfOnHDFS);
+            path = new Path(workingDirectory, "test");
+            final String vcfOnHDFS = path.toUri().toString() + "_sample_inv_del_ins.vcf";
+            argsToBeModified.set(idx+1, path.toUri().toString());
 
             runCommandLine(argsToBeModified);
-            StructuralVariationDiscoveryPipelineSparkIntegrationTest.svDiscoveryVCFEquivalenceTest(vcfOnHDFS,
-                    SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, null, annotationsToIgnoreWhenComparingVariants, true);
+            StructuralVariationDiscoveryPipelineSparkIntegrationTest.svDiscoveryVCFEquivalenceTest(
+                    vcfOnHDFS,
+                    SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF,
+                    null,
+                    annotationsToIgnoreWhenComparingVariants,
+                    true);
         });
     }
 }

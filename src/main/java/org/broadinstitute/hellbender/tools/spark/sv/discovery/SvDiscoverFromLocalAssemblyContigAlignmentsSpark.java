@@ -1,10 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
@@ -24,16 +21,14 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.*;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFileUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
@@ -113,10 +108,10 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
             fullName = "non-canonical-contig-names-file", optional = true)
     public String nonCanonicalChromosomeNamesFile;
 
-    @Argument(doc = "output directory for outputting VCF files for each type of variant, and if enabled, the signaling assembly contig's alignments",
+    @Argument(doc = "prefix for output files (including VCF files and if enabled, the signaling assembly contig's alignments); sample name will be appended after the provided argument",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
-    private String outputDir;
+    private String outputPrefix;
 
     @Argument(doc = "output SAM files", fullName = "write-sam", optional = true)
     private boolean writeSAMFiles;
@@ -142,8 +137,9 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast =
                 StructuralVariationDiscoveryPipelineSpark.broadcastCNVCalls(ctx, getHeaderForReads(),
                         discoverStageArgs.cnvCallsFile);
+        final String outputPrefixWithSampleName = outputPrefix + SVUtils.getSampleId(getHeaderForReads()) + "_";
         final SvDiscoveryInputData svDiscoveryInputData =
-                new SvDiscoveryInputData(ctx, discoverStageArgs, outputDir,
+                new SvDiscoveryInputData(ctx, discoverStageArgs, outputPrefixWithSampleName,
                         null, null, null,
                         cnvCallsBroadcast,
                         getReads(), getHeaderForReads(), getReference(), localLogger);
@@ -167,7 +163,6 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceSequenceDictionaryBroadcast;
         final Broadcast<SAMFileHeader> headerBroadcast = svDiscoveryInputData.headerBroadcast;
         final JavaRDD<GATKRead> assemblyRawAlignments = svDiscoveryInputData.assemblyRawAlignments;
-        final String outputPath = svDiscoveryInputData.outputPath;
         final Logger toolLogger = svDiscoveryInputData.toolLogger;
 
         // filter alignments and split the gaps, hence the name "reconstructed"
@@ -184,18 +179,18 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
                 AssemblyContigAlignmentSignatureClassifier.classifyContigs(contigsWithChimericAlignmentsReconstructed,
                         referenceSequenceDictionaryBroadcast, toolLogger);
 
-        try {
-            IOUtils.createDirectory(outputPath);
-            // write SAM file, if requested, for each type of possibly variant as recognized in {@link RawTypes}
-            // and stored in {@code contigsByPossibleRawTypes} by extracting original alignments,
-            if (writeSAMFiles) {
-                contigsByPossibleRawTypes.forEach(
-                        (k, v) ->
-                                writeSAM(v, k.name(), assemblyRawAlignments, headerBroadcast, outputPath, toolLogger));
-            }
-        } catch (final IOException x) {
-            throw new UserException.CouldNotCreateOutputFile("Could not create file at path:" +
-                    outputPath + " due to " + x.getMessage(), x);
+        // write SAM file, if requested, for original alignments of contigs recognized as "Ambiguous", "Incomplete", and "MisAssemblySuspect"
+        if (writeSAMFiles) {
+            final String outputPrefix = svDiscoveryInputData.outputPath;
+
+            final Set<String> ambiguousContigNames = new HashSet<>( contigsByPossibleRawTypes.get(RawTypes.Ambiguous).map(AssemblyContigWithFineTunedAlignments::getContigName).collect() );
+            final Set<String> incompleteContigNames = new HashSet<>( contigsByPossibleRawTypes.get(RawTypes.Incomplete).map(AssemblyContigWithFineTunedAlignments::getContigName).collect() );
+            final Set<String> misAssemblySuspectContigNames = new HashSet<>( contigsByPossibleRawTypes.get(RawTypes.MisAssemblySuspect).map(AssemblyContigWithFineTunedAlignments::getContigName).collect() );
+
+            final SAMFileHeader header = headerBroadcast.getValue();
+            SvDiscoveryUtils.writeSAMRecords(assemblyRawAlignments, ambiguousContigNames, outputPrefix + RawTypes.Ambiguous.name() + ".bam", header);
+            SvDiscoveryUtils.writeSAMRecords(assemblyRawAlignments, incompleteContigNames, outputPrefix + RawTypes.Incomplete.name() + ".bam", header);
+            SvDiscoveryUtils.writeSAMRecords(assemblyRawAlignments, misAssemblySuspectContigNames, outputPrefix + RawTypes.MisAssemblySuspect.name() + ".bam", header);
         }
 
         return contigsByPossibleRawTypes;
@@ -206,24 +201,23 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
     /**
      * Sends assembly contigs classified based on their alignment signature to
      * a corresponding breakpoint location inference unit.
-     * {@link AssemblyContigAlignmentSignatureClassifier.RawTypes#InsDel},
-     * {@link AssemblyContigAlignmentSignatureClassifier.RawTypes#IntraChrStrandSwitch},
-     * {@link AssemblyContigAlignmentSignatureClassifier.RawTypes#MappedInsertionBkpt}, and
-     * {@link AssemblyContigAlignmentSignatureClassifier.RawTypes#Cpx} (PR to be reviewed and merged)
-     * each will have its own VCF output in the directory specified in {@link #outputDir},
-     * whereas
+     *
+     * Two VCF files will be output: {@link #outputPrefix}"NonComplex.vcf" and {@link #outputPrefix}"Cpx.vcf".
+     *
+     * Note that
      * {@link AssemblyContigAlignmentSignatureClassifier.RawTypes#Incomplete},
      * {@link AssemblyContigAlignmentSignatureClassifier.RawTypes#Ambiguous}, and
      * {@link AssemblyContigAlignmentSignatureClassifier.RawTypes#MisAssemblySuspect}
      * currently DO NOT generate any VCF yet.
-     * However, if flag {@link #writeSAMFiles} is turned on, alignments of all contigs that are classified to be any of
+     * However, if flag {@link #writeSAMFiles} is turned on,
+     * alignments of all contigs that are classified to be any of
      * {@link AssemblyContigAlignmentSignatureClassifier.RawTypes}
-     * will be extracted and put in SAM files in {@link #outputDir} too.
+     * will be extracted and put in SAM files in {@link #outputPrefix} too.
      */
     public static void dispatchJobs(final EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> contigsByPossibleRawTypes,
                                     final SvDiscoveryInputData svDiscoveryInputData) {
 
-        final String outputDir = svDiscoveryInputData.outputPath;
+        final String outputPrefixWithSampleName = svDiscoveryInputData.outputPath;
 
         // TODO: 1/10/18 bring back read annotation, see ticket 4228
         forNonComplexVariants(contigsByPossibleRawTypes, svDiscoveryInputData);
@@ -231,7 +225,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         final List<VariantContext> complexVariants =
                 CpxVariantInterpreter.inferCpxVariant(contigsByPossibleRawTypes.get(RawTypes.Cpx), svDiscoveryInputData);
 
-        svDiscoveryInputData.updateOutputPath(outputDir+"/"+RawTypes.Cpx.name()+".vcf");
+        svDiscoveryInputData.updateOutputPath(outputPrefixWithSampleName + RawTypes.Cpx.name() + ".vcf");
         SVVCFWriter.writeVCF(complexVariants, svDiscoveryInputData.outputPath,
                 svDiscoveryInputData.referenceSequenceDictionaryBroadcast.getValue(), svDiscoveryInputData.toolLogger);
     }
@@ -243,9 +237,9 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputData.referenceBroadcast;
         final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceSequenceDictionaryBroadcast;
         final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast = svDiscoveryInputData.cnvCallsBroadcast;
-        final String outputDir = svDiscoveryInputData.outputPath;
+        final String outputPrefixWithSampleName = svDiscoveryInputData.outputPath;
 
-        svDiscoveryInputData.updateOutputPath(outputDir + "/nonComplex.vcf");
+        svDiscoveryInputData.updateOutputPath(outputPrefixWithSampleName + "NonComplex.vcf");
 
         final JavaRDD<AssemblyContigWithFineTunedAlignments> nonComplexSignatures =
                 contigsByPossibleRawTypes.get(RawTypes.InsDel)
@@ -305,23 +299,6 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
     }
 
     //==================================================================================================================
-
-    /**
-     * write SAM file for provided {@code filteredContigs}
-     * by extracting original alignments from {@code originalAlignments},
-     * to directory specified by {@code outputDir}.
-     */
-    private static void writeSAM(final JavaRDD<AssemblyContigWithFineTunedAlignments> filteredContigs, final String rawTypeString,
-                                 final JavaRDD<GATKRead> originalAlignments, final Broadcast<SAMFileHeader> headerBroadcast,
-                                 final String outputDir, final Logger toolLogger) {
-
-        final Set<String> filteredReadNames = new HashSet<>( filteredContigs.map(AssemblyContigWithFineTunedAlignments::getContigName).distinct().collect() );
-        toolLogger.info(filteredReadNames.size() + " contigs indicating " + rawTypeString);
-        final JavaRDD<SAMRecord> splitLongReads = originalAlignments.filter(read -> filteredReadNames.contains(read.getName()))
-                .map(read -> read.convertToSAMRecord(headerBroadcast.getValue()));
-        SVFileUtils.writeSAMFile(outputDir+"/"+rawTypeString+".sam", splitLongReads.collect().iterator(),
-                headerBroadcast.getValue(), false);
-    }
 
     public static final class SAMFormattedContigAlignmentParser extends AlignedContigGenerator implements Serializable {
         private static final long serialVersionUID = 1L;
@@ -389,7 +366,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
                     parsedAlignments = unSplitAIList.collect(Collectors.toList());
                 }
             }
-            return new AlignedContig(primaryAlignment.getReadName(), contigSequence, parsedAlignments, false);
+            return new AlignedContig(primaryAlignment.getReadName(), contigSequence, parsedAlignments);
         }
     }
 }
