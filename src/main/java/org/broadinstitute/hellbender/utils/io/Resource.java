@@ -11,6 +11,11 @@ public final class Resource {
     private final Class<?> relativeClass;
 
     /**
+     * Path to the directory for large runtime system resources
+     */
+    public final static String LARGE_RUNTIME_RESOURCES_PATH = "large";
+
+    /**
      * Create a resource with a path and a relative class.
      * @param path Relative or absolute path to the class.
      * @param relativeClass Relative class to use as a class loader and for a relative package.

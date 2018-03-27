@@ -204,7 +204,7 @@ public final class IOUtils {
     }
 
     /**
-     * Writes the an embedded resource to a temp file.
+     * Writes an embedded resource to a temp file.
      * File is not scheduled for deletion and must be cleaned up by the caller.
      * @param resource Embedded resource.
      * @return Path to the temp file with the contents of the resource.
@@ -218,6 +218,20 @@ public final class IOUtils {
         }
         writeResource(resource, temp);
         return temp;
+    }
+
+    /**
+     * Create a resource from a path and a relative class, and write it to a temporary file.
+     * If the relative class is null then the system classloader will be used and the path must be absolute.
+     * @param resourcePath Relative or absolute path to the class.
+     * @param relativeClass Relative class to use as a class loader and for a relative package.
+     * @return a temporary file containing the contents of the resource. the File is not automatically scheduled
+     * for deletion and must be cleaned up by the caller.
+     */
+    public static File writeTempResourceFromPath(final String resourcePath, final Class<?> relativeClass) {
+        Utils.nonNull(resourcePath, "A resource path must be provided");
+        final Resource resource = new Resource(resourcePath, relativeClass);
+        return writeTempResource(resource);
     }
 
     /**

@@ -56,6 +56,7 @@ repositories {
     mavenLocal()
 }
 
+final requiredJavaVersion = "8"
 final htsjdkVersion = System.getProperty('htsjdk.version','2.14.3')
 final picardVersion = System.getProperty('picard.version','2.17.2')
 final barclayVersion = System.getProperty('barclay.version','2.1.0')
@@ -69,6 +70,72 @@ final baseJarName = 'gatk'
 final secondaryBaseJarName = 'hellbender'
 final docBuildDir = "$buildDir/docs"
 final pythonPackageArchiveName = 'gatkPythonPackageArchive.zip'
+final largeResourcesFolder = "src/main/resources/large"
+final buildPrerequisitesMessage = "See https://github.com/broadinstitute/gatk#building for information on how to build GATK."
+
+// Returns true if any files in the target folder are git-lfs stub files.
+def checkForLFSStubFiles(targetFolder) {
+    final lfsStubFileHeader = "version https://git-lfs.github.com/spec/v1"  // first line of a git-lfs stub file
+    def readBytesFromFile = { largeFile, n ->
+        final byte[] bytes = new byte[n]
+        largeFile.withInputStream { stream -> stream.read(bytes, 0, bytes.length) }
+        return bytes
+    }
+    def targetFiles = fileTree(dir: targetFolder)
+    return targetFiles.any() { f ->
+        final byte[] actualBytes = readBytesFromFile(f, lfsStubFileHeader.length());
+        return new String(actualBytes, "UTF-8") == lfsStubFileHeader
+    }
+}
+
+// if any of the large resources are lfs stub files, download them
+def resolveLargeResourceStubFiles(largeResourcesFolder, buildPrerequisitesMessage) {
+    def execGitLFSCommand = { gitLFSExecCommand ->
+        println "Executing: $gitLFSExecCommand"
+        try {
+            def retCode = gitLFSExecCommand.execute().waitFor()
+            if (retCode.intValue() != 0) {
+                throw new GradleException("Execution of \"$gitLFSExecCommand\" failed with exit code: $retCode");
+            }
+            return retCode
+        } catch (IOException e) {
+            throw new GradleException(
+                    "An IOException occurred while attempting to execute the command $gitLFSExecCommand."
+                    + " git-lfs is required to build GATK but may not be installed. $buildPrerequisitesMessage", e)
+        }
+    }
+
+    // check for stub files, try to pull once if there are any, then check again
+    if (checkForLFSStubFiles(largeResourcesFolder)) {
+        final gitLFSPullLargeResources = "git lfs pull --include $largeResourcesFolder"
+        execGitLFSCommand(gitLFSPullLargeResources)
+        if (checkForLFSStubFiles(largeResourcesFolder)) {
+            throw new GradleException("$largeResourcesFolder contains one or more git-lfs stub files."
+                    + " The resource files in $largeResourcesFolder must be downloaded by running the git-lfs"
+                    + " command \"$gitLFSPullLargeResources\". $buildPrerequisitesMessage")
+        }
+    }
+}
+
+// Ensure that we have the right JDK version, a clone of the git repository, and resolve any required git-lfs
+// resource files that are needed to run the build but are still lfs stub files.
+def ensureBuildPrerequisites(requiredJavaVersion, largeResourcesFolder, buildPrerequisitesMessage) {
+    // Make sure we can get a ToolProvider class loader. If not we may have just a JRE, or a JDK from the future.
+    if (ToolProvider.getSystemToolClassLoader() == null) {
+        throw new GradleException(
+                "The ClassLoader obtained from the Java ToolProvider is null. "
+                + "A Java $requiredJavaVersion JDK must be installed. $buildPrerequisitesMessage")
+    }
+    if (!file(".git").isDirectory()) {
+        throw new GradleException("The GATK Github repository must be cloned using \"git clone\" to run the build. "
+                + "$buildPrerequisitesMessage")
+    }
+    // Large runtime resource files must be present at build time to be compiled into the jar, so
+    // try to resolve them to real files if any of them are stubs.
+    resolveLargeResourceStubFiles(largeResourcesFolder, buildPrerequisitesMessage)
+}
+
+ensureBuildPrerequisites(requiredJavaVersion, largeResourcesFolder, buildPrerequisitesMessage)
 
 configurations.all {
     resolutionStrategy {
@@ -264,6 +331,8 @@ processResources {
 processTestResources {
     //Don't waste time packaging unnecessary test data into the test resources:
     include "org/broadinstitute/hellbender/utils/config/*"
+    //Required for IOUtils resource tests
+    include "org/broadinstitute/hellbender/utils/io/*"
 }
 
 sourceCompatibility = 1.8

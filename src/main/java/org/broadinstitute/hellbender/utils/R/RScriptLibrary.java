@@ -30,7 +30,7 @@ public enum RScriptLibrary {
      * @return The path to the library source code. The caller must delete the code when done.
      */
     public File writeTemp() {
-        return IOUtils.writeTempResource(new Resource(getResourcePath(), RScriptLibrary.class));
+        return IOUtils.writeTempResourceFromPath(getResourcePath(), RScriptLibrary.class);
     }
 
     public File writeLibrary(File tempDir) {
