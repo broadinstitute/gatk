@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery.inference;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.OverlapDetector;
-import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.math3.linear.RealVector;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
@@ -62,7 +61,7 @@ public abstract class SimpleSVFactory {
 
     protected abstract Set<Integer> getValidHMMCopyStates(final int numStates);
 
-    protected abstract boolean supportedBySegmentCalls(final SVInterval interval, final Set<CalledCopyRatioSegment> overlappingSegments);
+    protected abstract boolean supportedBySegmentCalls(final SVInterval interval, final Set<CalledCopyRatioSegment> overlappingSegments, final SAMSequenceDictionary dictionary);
 
     protected abstract LargeSimpleSV getNewSV(final int start,
                                               final int end,
@@ -79,10 +78,14 @@ public abstract class SimpleSVFactory {
     public LargeSimpleSV create(final SVInterval leftInterval,
                                 final SVInterval rightInterval,
                                 final SVInterval callInterval,
-                                final IntrachromosomalBreakpointPair breakpoints) {
+                                final IntrachromosomalBreakpointPair breakpoints,
+                                final int evidencePadding) {
+
+        final SVInterval paddedLeftInterval = IntervalUtils.getPaddedInterval(leftInterval, evidencePadding, dictionary);
+        final SVInterval paddedRightInterval = IntervalUtils.getPaddedInterval(rightInterval, evidencePadding, dictionary);
 
         //Get evidence links whose left and right intervals overlap with the input intervals and have proper strandedness for the event type
-        final List<EvidenceTargetLink> overlappingLinks = overlappingLinks(leftInterval, rightInterval, intrachromosomalLinkTree, dictionary);
+        final List<EvidenceTargetLink> overlappingLinks = overlappingLinks(paddedLeftInterval, paddedRightInterval, intrachromosomalLinkTree, dictionary);
         final List<EvidenceTargetLink> evidenceLinks = getLinksWithEvidenceOrientation(overlappingLinks);
         if (evidenceLinks.isEmpty()) return null;
 
@@ -99,9 +102,9 @@ public abstract class SimpleSVFactory {
         }
 
         //Get overlapping counterevidence links that suggest a more complex signature
-        final List<EvidenceTargetLink> localOverlappingLinks = localOverlappingLinks(outerInterval, intrachromosomalLinkTree, arguments.SPANNING_COUNTEREVIDENCE_RANGE, dictionary);
-        localOverlappingLinks.addAll(IntervalUtils.getOverlappingLinksOnInterval(outerInterval, interchromosomalLinkTree));
-        final List<EvidenceTargetLink> counterEvidenceLinks = new ArrayList<>(CollectionUtils.subtract(localOverlappingLinks, evidenceLinks));
+        final List<EvidenceTargetLink> counterEvidenceLinks = localOverlappingLinks(outerInterval, intrachromosomalLinkTree, arguments.SPANNING_COUNTEREVIDENCE_RANGE, dictionary);
+        counterEvidenceLinks.addAll(IntervalUtils.getOverlappingLinksOnInterval(outerInterval, interchromosomalLinkTree));
+        counterEvidenceLinks.removeAll(evidenceLinks);
 
         //Tally evidence and counterevidence
         final int readPairEvidence = readPairEvidence(evidenceLinks);
@@ -115,7 +118,7 @@ public abstract class SimpleSVFactory {
 
         //Test if the event matches a model segments call
         final Set<CalledCopyRatioSegment> overlappingSegments = copyRatioSegmentOverlapDetector.getOverlaps(new SimpleInterval(contig, outerInterval.getStart(), outerInterval.getEnd()));
-        boolean supportedBySegmentCalls = supportedBySegmentCalls(outerInterval, overlappingSegments);
+        boolean supportedBySegmentCalls = supportedBySegmentCalls(innerInterval, overlappingSegments, dictionary);
         final SVInterval hmmInterval = IntervalUtils.getPaddedInterval(innerInterval, arguments.HMM_PADDING, dictionary);
         final List<CopyRatio> copyRatioBins = IntervalUtils.getCopyRatiosOnInterval(hmmInterval, readDepthOverlapDetector, arguments.COPY_NUMBER_BIN_TRIMMING, contigId, dictionary);
         if (isInvalidCoverage(copyRatioBins)) return null;

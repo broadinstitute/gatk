@@ -255,24 +255,21 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
             this.highDepthCoveragePeakFactor = highDepthCoveragePeakFactor;
         }
 
-        public final double MIN_EVIDENCE_TO_COUNTEREVIDENCE_RATIO = 3.0;
+        public final double MIN_EVIDENCE_TO_COUNTEREVIDENCE_RATIO = 4; //4
         public final double COUNTEREVIDENCE_PSEUDOCOUNT = 1;
         public final int BREAKPOINT_INTERVAL_PADDING = 100;
-        public final int COPY_RATIO_SEGMENT_PADDING = 100;
-        public final int EVIDENCE_LINK_INTERVAL_PADDING = 200;
-        public final int SPANNING_COUNTEREVIDENCE_RANGE = 100000;
-        public final int MIN_LINK_COUNTEREVIDENCE = 2;
+        public final int EVIDENCE_LINK_INTERVAL_PADDING = 500; //500
+        public final int SPANNING_COUNTEREVIDENCE_RANGE = 1000; //1000
+        public final int MIN_LINK_COUNTEREVIDENCE = 3; //3
         public final int HMM_PADDING = 0;
         public final double MIN_EVENT_HMM_COVERAGE = 0.70;
         public final double COPY_NUMBER_HMM_ALPHA = 0.01;
         public final int COPY_NUMBER_BIN_TRIMMING = 1;
         public final double NON_DELETION_INVALID_BIN_FRACTION = 0.30;
-        public final double NON_DELETION_INVALID_COPY_RATIO_THRESHOLD = -1;
+        public final double NON_DELETION_INVALID_LOG2_COPY_RATIO_THRESHOLD = -1;
         public final double MAX_CANDIDATE_EVENT_RECIPROCAL_OVERLAP = 0.1;
-        public final double MIN_SEGMENT_RECIPROCAL_OVERLAP = 0.5;
-        public final double MIN_COPY_NEUTRAL_SV_SEGMENT_OVERLAP = 0.5;
-        public final int MIN_SV_SIZE = 1000;
-        public final int MAX_SV_SIZE = 1000000;
+        public final double MIN_SEGMENT_OVERLAP = 0.5; //0.5
+        public final int MIN_SV_SIZE = 500; //1000;
     }
 
 }

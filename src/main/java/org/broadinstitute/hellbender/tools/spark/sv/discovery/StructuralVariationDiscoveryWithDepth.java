@@ -145,8 +145,9 @@ public class StructuralVariationDiscoveryWithDepth extends GATKTool {
         logger.info("Loading copy ratio bins...");
         final CopyRatioCollection copyRatios = getCopyRatios(copyRatioFilePath);
 
-        logger.info("Working...");
         final DepthBasedSVCaller depthBasedSVCaller = new DepthBasedSVCaller(breakpoints, assembly, evidenceTargetLinks, copyRatios, copyRatioSegments, dictionary, arguments);
+
+        logger.info("Working...");
         final List<LargeSimpleSV> events = depthBasedSVCaller.callEvents();
         writeEvents(outputPath, events, dictionary);
     }

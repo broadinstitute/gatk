@@ -84,6 +84,25 @@ public class IntervalUtils {
         return Math.min(overlap / a.getLength(), overlap / b.getLength());
     }
 
+    public static int overlappingBases(final SimpleInterval a, final SVInterval b, final SAMSequenceDictionary dictionary) {
+        return overlappingBases(convertInterval(a, dictionary), b);
+    }
+
+    public static double percentOverlap(final SimpleInterval a, final SVInterval b, final SAMSequenceDictionary dictionary) {
+        return overlappingBases(a, b, dictionary) / (double) a.getLengthOnReference();
+    }
+
+    public static SVInterval convertInterval(final SimpleInterval interval, final SAMSequenceDictionary dictionary) {
+        return new SVInterval(dictionary.getSequenceIndex(interval.getContig()), interval.getStart(), interval.getEnd());
+    }
+
+    public static int overlappingBases(final SVInterval a, final SVInterval b) {
+        if (a.getContig() != b.getContig()) return 0;
+        final int overlapStart = Math.max(a.getStart(), b.getStart());
+        final int overlapEnd = Math.min(a.getEnd(), b.getEnd());
+        return Math.max(0, overlapEnd - overlapStart);
+    }
+
     public static List<CopyRatio> getCopyRatiosOnInterval(final SVInterval interval, final OverlapDetector<CopyRatio> overlapDetector, final int binsToTrim, final int contig, final SAMSequenceDictionary dictionary) {
         final int start = interval.getStart();
         final int end = interval.getEnd();

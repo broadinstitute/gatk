@@ -57,6 +57,8 @@ public class DepthBasedSVCaller {
         this.dictionary = dictionary;
         this.arguments = arguments;
 
+        logger.info("Building interval trees...");
+
         final List<EvidenceTargetLink> intrachromosomalEvidenceLinkTargets = getIntrachromosomalLinks(evidenceTargetLinks);
         final List<EvidenceTargetLink> interchromosomalEvidenceLinkTargets = getInterchromosomalLinks(evidenceTargetLinks);
         intrachromosomalLinkTree = buildEvidenceIntervalTree(intrachromosomalEvidenceLinkTargets, 0, false);
@@ -64,12 +66,39 @@ public class DepthBasedSVCaller {
 
         pairedBreakpoints = getIntrachromosomalBreakpointPairs(breakpoints);
         contigTree = buildReadIntervalTree(assembledContigs);
-        copyRatioOverlapDetector = copyRatios.getOverlapDetector();
+        copyRatioOverlapDetector = getCopyRatioOverlapDetector(copyRatios, pairedBreakpoints,
+                Arrays.asList(intrachromosomalLinkTree, interchromosomalLinkTree), arguments.HMM_PADDING, dictionary);
         copyRatioSegmentOverlapDetector = copyRatioSegments.getOverlapDetector();
+
+        logger.info("Initializing event factories...");
         tandemDuplicationFactory = new LargeTandemDuplicationFactory(intrachromosomalLinkTree, interchromosomalLinkTree,
                 contigTree, arguments, copyRatioSegmentOverlapDetector, copyRatioOverlapDetector, dictionary);
 
     }
+
+    private static OverlapDetector<CopyRatio> getCopyRatioOverlapDetector(final CopyRatioCollection copyRatios,
+                                                           final List<IntrachromosomalBreakpointPair> breakpoints,
+                                                           final List<SVIntervalTree<?>> evidenceTrees,
+                                                           final int padding,
+                                                           final SAMSequenceDictionary dictionary) {
+        final SVIntervalTree<IntrachromosomalBreakpointPair> breakpointTree = buildBreakpointTree(breakpoints);
+        final List<CopyRatio> countsList = copyRatios.getRecords().stream()
+                .filter(ratio -> {
+                    final SVInterval interval = IntervalUtils.convertInterval(ratio.getInterval(), dictionary);
+                    final SVInterval paddedInterval = IntervalUtils.getPaddedInterval(interval, padding, dictionary);
+                    return breakpointTree.hasOverlapper(paddedInterval) || evidenceTrees.stream().anyMatch(tree -> tree.hasOverlapper(paddedInterval));
+                }).collect(Collectors.toList());
+        return new CopyRatioCollection(copyRatios.getMetadata(), countsList).getOverlapDetector();
+    }
+
+    private static SVIntervalTree<IntrachromosomalBreakpointPair> buildBreakpointTree(final List<IntrachromosomalBreakpointPair> breakpoints) {
+        final SVIntervalTree<IntrachromosomalBreakpointPair> tree = new SVIntervalTree<>();
+        for (final IntrachromosomalBreakpointPair breakpointPair : breakpoints) {
+            tree.put(breakpointPair.getInterval(), breakpointPair);
+        }
+        return tree;
+    }
+
 
     /**
      * Returns only links that are on the same chromosome
@@ -83,7 +112,7 @@ public class DepthBasedSVCaller {
      * Returns only links that are on different chromosomes
      */
     private static List<EvidenceTargetLink> getInterchromosomalLinks(final List<EvidenceTargetLink> links) {
-        return links.stream().filter(link -> link.getPairedStrandedIntervals().getLeft().getInterval().getContig() ==
+        return links.stream().filter(link -> link.getPairedStrandedIntervals().getLeft().getInterval().getContig() !=
                 link.getPairedStrandedIntervals().getRight().getInterval().getContig()).collect(Collectors.toList());
     }
 
@@ -193,9 +222,9 @@ public class DepthBasedSVCaller {
      * @param breakpoints Breakpoints associated with the interval (may be null)
      * @return Optional containing the called event, if any
      */
-    private Optional<LargeSimpleSV> getHighestScoringEventOnInterval(final SVInterval leftInterval, final SVInterval rightInterval, final SVInterval callInterval, final SVIntervalTree<LargeSimpleSV> disallowedIntervals, final IntrachromosomalBreakpointPair breakpoints) {
+    private Optional<LargeSimpleSV> getHighestScoringEventOnInterval(final SVInterval leftInterval, final SVInterval rightInterval, final SVInterval callInterval, final SVIntervalTree<LargeSimpleSV> disallowedIntervals, final IntrachromosomalBreakpointPair breakpoints, final int evidencePadding) {
         if (IntervalUtils.hasReciprocalOverlapInTree(callInterval, disallowedIntervals, arguments.MAX_CANDIDATE_EVENT_RECIPROCAL_OVERLAP)) return Optional.empty();
-        final Stream<LargeSimpleSV> candidateEvents = getEventsOnInterval(leftInterval, rightInterval, callInterval, breakpoints).stream();
+        final Stream<LargeSimpleSV> candidateEvents = getEventsOnInterval(leftInterval, rightInterval, callInterval, breakpoints, evidencePadding).stream();
         return candidateEvents.max(Comparator.comparingDouble(event -> event.getScore(arguments.COUNTEREVIDENCE_PSEUDOCOUNT)));
     }
 
@@ -211,9 +240,10 @@ public class DepthBasedSVCaller {
         for (final IntrachromosomalBreakpointPair breakpoints : pairedBreakpoints) {
             final SVInterval leftBreakpointInterval = new SVInterval(breakpoints.getContig(), breakpoints.getInterval().getStart(), breakpoints.getInterval().getStart());
             final SVInterval rightBreakpointInterval = new SVInterval(breakpoints.getContig(), breakpoints.getInterval().getEnd(), breakpoints.getInterval().getEnd());
-            final SVInterval leftInterval = IntervalUtils.getPaddedInterval(leftBreakpointInterval, arguments.BREAKPOINT_INTERVAL_PADDING, dictionary);
-            final SVInterval rightInterval = IntervalUtils.getPaddedInterval(rightBreakpointInterval, arguments.BREAKPOINT_INTERVAL_PADDING, dictionary);
-            final Optional<LargeSimpleSV> event = getHighestScoringEventOnInterval(leftInterval, rightInterval, breakpoints.getInterval(), calledEventTree, breakpoints);
+            if (breakpoints.getInterval().getStart() == 1728544) {
+                int x = 0;
+            }
+            final Optional<LargeSimpleSV> event = getHighestScoringEventOnInterval(leftBreakpointInterval, rightBreakpointInterval, breakpoints.getInterval(), calledEventTree, breakpoints, arguments.BREAKPOINT_INTERVAL_PADDING);
             if (event.isPresent()) {
                 calledEventTree.put(event.get().getInterval(), event.get());
             }
@@ -223,12 +253,15 @@ public class DepthBasedSVCaller {
         final Iterator<SVIntervalTree.Entry<EvidenceTargetLink>> linkIter = intrachromosomalLinkTree.iterator();
         while (linkIter.hasNext()) {
             final EvidenceTargetLink link = linkIter.next().getValue();
-            final SVInterval leftInterval = IntervalUtils.getPaddedInterval(link.getPairedStrandedIntervals().getLeft().getInterval(), arguments.EVIDENCE_LINK_INTERVAL_PADDING, dictionary);
-            final SVInterval rightInterval = IntervalUtils.getPaddedInterval(link.getPairedStrandedIntervals().getRight().getInterval(), arguments.EVIDENCE_LINK_INTERVAL_PADDING, dictionary);
+            final SVInterval leftInterval = link.getPairedStrandedIntervals().getLeft().getInterval();
+            final SVInterval rightInterval = link.getPairedStrandedIntervals().getRight().getInterval();
             final int callStart = (leftInterval.getStart() + leftInterval.getEnd()) / 2;
             final int callEnd = (rightInterval.getStart() + rightInterval.getEnd()) / 2;
             final SVInterval callInterval = new SVInterval(leftInterval.getContig(), callStart, callEnd);
-            final Optional<LargeSimpleSV> event = getHighestScoringEventOnInterval(leftInterval, rightInterval, callInterval, calledEventTree, null);
+            if (leftInterval.getStart() == 1728544) {
+                int x = 0;
+            }
+            final Optional<LargeSimpleSV> event = getHighestScoringEventOnInterval(leftInterval, rightInterval, callInterval, calledEventTree, null, arguments.EVIDENCE_LINK_INTERVAL_PADDING);
             if (event.isPresent()) {
                 calledEventTree.put(event.get().getInterval(), event.get());
             }
@@ -248,15 +281,16 @@ public class DepthBasedSVCaller {
     private List<LargeSimpleSV> getEventsOnInterval(final SVInterval leftInterval,
                                                     final SVInterval rightInterval,
                                                     final SVInterval callInterval,
-                                                    final IntrachromosomalBreakpointPair breakpoints) {
+                                                    final IntrachromosomalBreakpointPair breakpoints,
+                                                    final int evidencePadding) {
 
         if (leftInterval.getContig() != rightInterval.getContig()) return Collections.emptyList();
-        if (callInterval.getLength() < arguments.MIN_SV_SIZE || callInterval.getLength() > arguments.MAX_SV_SIZE)
+        if (callInterval.getLength() < arguments.MIN_SV_SIZE)
             return Collections.emptyList();
 
         final List<LargeSimpleSV> events = new ArrayList<>();
 
-        final LargeSimpleSV tandemDuplication = tandemDuplicationFactory.create(leftInterval, rightInterval, callInterval, breakpoints);
+        final LargeSimpleSV tandemDuplication = tandemDuplicationFactory.create(leftInterval, rightInterval, callInterval, breakpoints, evidencePadding);
         if (tandemDuplication != null) events.add(tandemDuplication);
 
         return events;

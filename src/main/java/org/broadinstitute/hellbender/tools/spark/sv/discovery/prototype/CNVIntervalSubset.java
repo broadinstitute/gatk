@@ -49,9 +49,9 @@ public class CNVIntervalSubset extends GATKSparkTool {
     private String breakpointVCFPath;
     @Argument(doc = "evidence target links file", fullName = "evidence-target-links-file")
     private String evidenceTargetLinksFilePath;
-    @Argument(doc = "gCNV read depth HDF5", fullName = "read-depth-file")
+    @Argument(doc = "Read depth file (hdf5 or tsv)", fullName = "read-depth-file")
     private String readDepthFilePath;
-    @Argument(doc = "Output HDF5 file path", fullName = "output")
+    @Argument(doc = "Output file path", fullName = "output")
     private String outputPath;
     @Argument(doc = "Contig dictionary", fullName = "contig-dict")
     private String contigDictPath;

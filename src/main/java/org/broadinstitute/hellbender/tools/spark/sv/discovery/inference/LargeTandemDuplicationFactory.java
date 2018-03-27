@@ -66,8 +66,11 @@ public class LargeTandemDuplicationFactory extends SimpleSVFactory {
      * Tests if an amplification call matches the interval
      */
     @Override
-    protected boolean supportedBySegmentCalls(final SVInterval interval, final Set<CalledCopyRatioSegment> overlappingSegments) {
-        return overlappingSegments.stream().anyMatch(segment -> segmentCallMatchesInterval(segment, interval, CalledCopyRatioSegment.Call.AMPLIFICATION, dictionary, arguments.MIN_SEGMENT_RECIPROCAL_OVERLAP));
+    protected boolean supportedBySegmentCalls(final SVInterval interval, final Set<CalledCopyRatioSegment> overlappingSegments, final SAMSequenceDictionary dictionary) {
+        final int amplifiedBases = overlappingSegments.stream().filter(segment -> segment.getCall() == CalledCopyRatioSegment.Call.AMPLIFICATION)
+                //.filter(segment -> IntervalUtils.percentOverlap(segment.getInterval(), interval, dictionary) >= arguments.MIN_SEGMENT_OVERLAP)
+                .mapToInt(segment -> IntervalUtils.overlappingBases(segment.getInterval(), interval, dictionary)).sum();
+        return amplifiedBases / (double) interval.getLength() >= arguments.MIN_SEGMENT_OVERLAP;
     }
 
     /**
@@ -75,7 +78,7 @@ public class LargeTandemDuplicationFactory extends SimpleSVFactory {
      */
     @Override
     protected boolean isInvalidCoverage(final List<CopyRatio> copyRatios) {
-        if (!(copyRatios.stream().filter(ratio -> ratio.getLog2CopyRatioValue() < arguments.NON_DELETION_INVALID_COPY_RATIO_THRESHOLD).count() > arguments.NON_DELETION_INVALID_BIN_FRACTION * copyRatios.size())) {
+        if (!(copyRatios.stream().filter(ratio -> ratio.getLog2CopyRatioValue() < arguments.NON_DELETION_INVALID_LOG2_COPY_RATIO_THRESHOLD).count() > arguments.NON_DELETION_INVALID_BIN_FRACTION * copyRatios.size())) {
             return false;
         }
         return copyRatios.stream().anyMatch(ratio -> Math.pow(2.0, ratio.getLog2CopyRatioValue())  >= arguments.highDepthCoveragePeakFactor);
