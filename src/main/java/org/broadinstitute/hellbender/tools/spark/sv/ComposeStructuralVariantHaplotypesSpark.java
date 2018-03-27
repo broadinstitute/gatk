@@ -30,6 +30,7 @@ import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSourc
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFHeaderLines;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVContext;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalLocator;
@@ -372,7 +373,6 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
     private static final Comparator<GATKRead> GATK_WITHIN_READ_RECORD_COMPARATOR =
             Comparator.comparing(GATKRead::getContig).thenComparingInt(GATKRead::getStart);
 
-
     private static boolean supportedVariant(final VariantContext vc, final int paddingSize) {
         final StructuralVariantType type = vc.getStructuralVariantType();
 
@@ -380,12 +380,14 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
             return false;
         } else if (vc.getAlternateAlleles().size() != 1) {
             return false;
+        } else if (vc.hasAttribute(GATKSVVCFConstants.IMPRECISE)) {
+            return false;
         } else if (type == StructuralVariantType.INS || type == StructuralVariantType.DEL) {
             return vc.hasAttribute(GATKSVVCFConstants.SVLEN); // for now we skip indels without SVLEN... there are some, perhaps a bug
-       // } else if (type == StructuralVariantType.DUP) {
-       //     return true;
-       // } else if (type == StructuralVariantType.INV) {
-       //     return true;
+        } else if (type == StructuralVariantType.DUP) {
+            return true;
+        } else if (type == StructuralVariantType.INV) {
+            return true;
         } else {
             return false;
         }
@@ -710,6 +712,36 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
     static class VariantHaplotypesAndContigsComposite implements Serializable {
 
         private static final long serialVersionUID = 1L;
+        private static final SerializableComparator<AlignmentInterval> ALIGNMENT_INTERVAL_PRIMARY_SECONDARY_SORTER =
+                (a, b) -> {
+                    if (a.mapQual != b.mapQual) {
+                        return Integer.compare(b.mapQual == SAMRecord.UNKNOWN_MAPPING_QUALITY ? -1 : b.mapQual,
+                                a.mapQual == SAMRecord.UNKNOWN_MAPPING_QUALITY ? - 1: a.mapQual);
+                    } else if (a.alnScore != b.alnScore) {
+                        return Integer.compare(b.alnScore == AlignmentInterval.NO_AS? -1 : b.alnScore,
+                                a.alnScore == AlignmentInterval.NO_AS? -1 : a.alnScore);
+                    } else {
+                        final int bAlignedBases = CigarUtils.countAlignedBases(b.cigarAlong5to3DirectionOfContig);
+                        final int aAlignedBases = CigarUtils.countAlignedBases(a.cigarAlong5to3DirectionOfContig);
+                        if (bAlignedBases != aAlignedBases) {
+                            return Integer.compare(bAlignedBases, aAlignedBases);
+                        } else if (a.mismatches != AlignmentInterval.NO_NM && b.mismatches != AlignmentInterval.NO_NM && a.mismatches != b.mismatches) {
+                            return Integer.compare(b.mismatches, a.mismatches);
+                        } else if (!a.referenceSpan.getContig().equals(b.referenceSpan.getContig())) {
+                            return b.referenceSpan.getContig().compareTo(a.referenceSpan.getContig());
+                        } else if (a.referenceSpan.getStart() != b.referenceSpan.getStart()) {
+                            return Integer.compare(b.referenceSpan.getStart(), a.referenceSpan.getStart());
+                        } else if (a.referenceSpan.getEnd() != b.referenceSpan.getEnd()) {
+                            return Integer.compare(a.referenceSpan.getStart(), b.referenceSpan.getStart());
+                        } else if (a.startInAssembledContig != b.startInAssembledContig) {
+                            return Integer.compare(b.startInAssembledContig, a.startInAssembledContig);
+                        } else if (a.endInAssembledContig != b.endInAssembledContig) {
+                            return Integer.compare(a.endInAssembledContig, b.endInAssembledContig);
+                        } else { // last resort, compare the cigar representation as text.... this probrably never happens though.
+                            return a.cigarAlong5to3DirectionOfContig.toString().compareTo(b.cigarAlong5to3DirectionOfContig.toString());
+                        }
+                    }
+                };
         private final SVHaplotype referenceHaplotype;
         private final SVHaplotype alternativeHaplotype;
         private final AlignedContig[] originalAlignments;
@@ -922,12 +954,13 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         }
 
         private List<SAMRecord> composeAlignedOutputHaplotypeSAMRecords(SAMFileHeader header, SVContext variant, SVHaplotype haplotype) {
-            final List<AlignmentInterval> intervals = haplotype.getReferenceAlignmentIntervals();
+            final List<AlignmentInterval> intervals = haplotype.getReferenceAlignmentIntervals()
+                    .stream().sorted(ALIGNMENT_INTERVAL_PRIMARY_SECONDARY_SORTER).collect(Collectors.toList());
             final List<SAMRecord> result = new ArrayList<>(intervals.size());
             final String vcUID = variant.getUniqueID();
             for (int i = 0; i < intervals.size(); i++) {
                 final AlignmentInterval interval = intervals.get(i);
-                final SAMRecord record = intervals.get(i).toSAMRecord(header, haplotype.getName(), haplotype.getBases(), i != 0, 0, null);
+                final SAMRecord record = intervals.get(i).toSAMRecord(header, haplotype.getName(), haplotype.getBases(), i != 0, SAMFlag.SUPPLEMENTARY_ALIGNMENT.intValue(), null);
                 record.setReadNegativeStrandFlag(!interval.forwardStrand);
                 record.setReadName(haplotype.getName());
                 record.setAttribute(SAMTag.RG.name(), HAPLOTYPE_READ_GROUP);

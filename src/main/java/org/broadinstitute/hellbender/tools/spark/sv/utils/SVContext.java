@@ -370,13 +370,14 @@ public final class SVContext extends VariantContext {
         final ReferenceBases duplicatedUnitBases = referenceBases.getInterval().contains(duplicatedUnitSpan) ?
                 referenceBases : getReferenceBases(reference, getDuplicatedUnitSpan(), referenceBasesList);
         final byte[] insertedSequence = getInsertedSequence();
-        final byte[] homologySequence = getHomologySequence();
+        // Homology sequence only applies to imprecise entries not yet supported
+        //final byte[] homologySequence = getHomologySequence();
         final int insertedSequenceLength = insertedSequence == null ? 0 : insertedSequence.length;
-        final int homologySequenceLength = homologySequence == null ? 0 : homologySequence.length;
-        final SequenceBuilder sequenceBuilder = new SequenceBuilder(referenceBases.getInterval().size() + duplicatedUnitSpan.size() + insertedSequenceLength - homologySequenceLength);
+        //final int homologySequenceLength = homologySequence == null ? 0 : homologySequence.length;
+        final SequenceBuilder sequenceBuilder = new SequenceBuilder(referenceBases.getInterval().size() + duplicatedUnitSpan.size() + insertedSequenceLength);
         sequenceBuilder.append(referenceBases, referenceBases.getInterval().getStart(), getStart(), false);
         final int prefixLength = sequenceBuilder.getLength();
-        sequenceBuilder.append(duplicatedUnitBases, duplicatedUnitBases.getInterval().getStart(), duplicatedUnitBases.getInterval().getEnd() - homologySequenceLength, false);
+        sequenceBuilder.append(duplicatedUnitBases, duplicatedUnitBases.getInterval().getStart(), duplicatedUnitBases.getInterval().getEnd(), false);
         if (insertedSequenceLength > 0) {
             sequenceBuilder.append(insertedSequence, false);
         }
@@ -635,7 +636,24 @@ public final class SVContext extends VariantContext {
     }
 
     public SimpleInterval getDuplicatedUnitSpan() {
-        final String asString  = getAttributeAsString("DUP_REPEAT_UNIT_REF_SPAN", null);
+        final String asString  = getAttributeAsString(GATKSVVCFConstants.DUP_REPEAT_UNIT_REF_SPAN, null);
         return asString != null && !asString.isEmpty() ? new SimpleInterval(asString) : null;
+    }
+
+    /**
+     * Return {@code null} if such annotation is not present in the input.
+     * <p>
+     *     Some of the result array entry may contain -1 to indicate that the unknown copy number "." was use in the annotation.
+     * </p>
+     *
+     * @return {@code null} or an array with the values enclosed in the {@value GATKSVVCFConstants#DUPLICATION_NUMBERS}
+     * info field.
+     */
+    public int[] getDuplicationNumbers() {
+        if (hasAttribute(GATKSVVCFConstants.DUPLICATION_NUMBERS)) {
+            return getAttributeAsIntList(GATKSVVCFConstants.DUPLICATION_NUMBERS, -1).stream().mapToInt(Integer::intValue).toArray();
+        } else {
+            return null;
+        }
     }
 }

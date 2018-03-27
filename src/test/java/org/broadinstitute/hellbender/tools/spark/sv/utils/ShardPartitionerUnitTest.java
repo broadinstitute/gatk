@@ -48,12 +48,9 @@ public final class ShardPartitionerUnitTest {
                     Assert.assertEquals(partition, partitioner.getPartition(new SimpleInterval(contig, i - 1, i - 1)));
                 } else {
                     Assert.assertEquals(partition, partitioner.getPartition(new SimpleInterval(contig, i + 1, i + 1)));
-
                 }
             }
-
         }
-
     }
 
     @DataProvider(name = "shardPartitionerData")
