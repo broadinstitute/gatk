@@ -247,13 +247,8 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         public boolean outputCpxResultsInHumanReadableFormat = false;
     }
 
-    public static class SimpleVariantDiscoveryArgumentCollection implements Serializable {
+    public static class DiscoverVariantsFromReadDepth implements Serializable {
         private static final long serialVersionUID = 1L;
-
-        final public int highDepthCoveragePeakFactor;
-        public SimpleVariantDiscoveryArgumentCollection(final int highDepthCoveragePeakFactor) {
-            this.highDepthCoveragePeakFactor = highDepthCoveragePeakFactor;
-        }
 
         public final double MIN_EVIDENCE_TO_COUNTEREVIDENCE_RATIO = 4; //4
         public final double COUNTEREVIDENCE_PSEUDOCOUNT = 1;
@@ -270,6 +265,7 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         public final double MAX_CANDIDATE_EVENT_RECIPROCAL_OVERLAP = 0.1;
         public final double MIN_SEGMENT_OVERLAP = 0.5; //0.5
         public final int MIN_SV_SIZE = 500; //1000;
+        public final int MAX_COPY_RATIO_STATE = 7;
     }
 
 }

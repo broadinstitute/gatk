@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype;
+package org.broadinstitute.hellbender.tools.spark.sv.discovery.readdepth;
 
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.linear.ArrayRealVector;

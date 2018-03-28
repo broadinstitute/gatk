@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.spark.sv.discovery.prototype;
+package org.broadinstitute.hellbender.tools.spark.sv.discovery.readdepth;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;

@@ -1,10 +1,11 @@
-package org.broadinstitute.hellbender.tools.spark.sv.discovery;
+package org.broadinstitute.hellbender.tools.spark.sv.discovery.readdepth;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.GATKTool;
@@ -27,7 +28,6 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -94,7 +94,7 @@ import java.util.stream.Collectors;
  * <h3>Usage example</h3>
  *
  * <pre>
- * gatk StructuralVariationDiscoveryWithDepth  \
+ * gatk DiscoverVariantsFromReadDepth  \
  *   --breakpoint-vcf breakpoints.vcf \
  *   --evidence-target-links-file target_links.bedpe \
  *   --model-segments-file segments.seg \
@@ -112,60 +112,80 @@ import java.util.stream.Collectors;
         summary = "This tool uses the output from StructuralVariationDiscoveryPipelineSpark and the Model Segments CNV pipeline " +
                 "to call large tandem duplications.",
         programGroup = StructuralVariantDiscoveryProgramGroup.class)
-public class StructuralVariationDiscoveryWithDepth extends GATKTool {
+public class DiscoverVariantsFromReadDepth extends GATKTool {
 
     private static final long serialVersionUID = 1L;
-    private static final int HIGH_DEPTH_COVERAGE_PEAK_FACTOR = 7;
 
-    @Argument(doc = "Breakpoint VCF", fullName = "breakpoint-vcf")
+    public static final String BREAKPOINTS_LONG_NAME = "breakpoint-vcf";
+    public static final String EVIDENCE_TARGET_LINKS_LONG_NAME = "evidence-target-links-file";
+    public static final String SEGMENT_CALLS_LONG_NAME = "model-segments-file";
+    public static final String COPY_RATIOS_LONG_NAME = "copy-ratio-file";
+    public static final String ASSEMBLY_CONTIGS_LONG_NAME = "assembly-bam";
+
+    @Argument(doc = "Breakpoints list (.vcf)", fullName = BREAKPOINTS_LONG_NAME)
     private String breakpointVCFPath;
-    @Argument(doc = "Evidence target links bedpe file", fullName = "evidence-target-links-file")
+    @Argument(doc = "Evidence target links file (.bedpe)", fullName = EVIDENCE_TARGET_LINKS_LONG_NAME)
     private String evidenceTargetLinksFilePath;
-    @Argument(doc = "Model segments pipeline calls", fullName = "model-segments-file")
+    @Argument(doc = "Model segments pipeline calls", fullName = SEGMENT_CALLS_LONG_NAME)
     private String segmentCallsFilePath;
-    @Argument(doc = "Copy number ratio tsv file", fullName = "copy-ratio-file")
+    @Argument(doc = "Copy number ratio file (.tsv or .hdf5)", fullName = COPY_RATIOS_LONG_NAME)
     private String copyRatioFilePath;
-    @Argument(doc = "Assembly SAM/BAM", fullName = "assembly-bam", optional = true)
+    @Argument(doc = "Assembly contigs (.bam or .sam)", fullName = ASSEMBLY_CONTIGS_LONG_NAME, optional = true)
     private String assemblyBamPath;
-    @Argument(doc = "Output path", fullName = "output")
+    @Argument(doc = "Output intervals path (.bed)", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String outputPath;
 
-    final StructuralVariationDiscoveryArgumentCollection.SimpleVariantDiscoveryArgumentCollection arguments = new StructuralVariationDiscoveryArgumentCollection.SimpleVariantDiscoveryArgumentCollection(HIGH_DEPTH_COVERAGE_PEAK_FACTOR);
+    private final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepth arguments = new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepth();
+    private LargeSimpleSVCaller largeSimpleSVCaller;
+    private SAMSequenceDictionary dictionary;
+    private Collection<LargeSimpleSV> events;
 
-    public void traverse() {
-        final SAMSequenceDictionary dictionary = getBestAvailableSequenceDictionary();
+    @Override
+    public void onTraversalStart() {
+        dictionary = getBestAvailableSequenceDictionary();
         logger.info("Loading assembly...");
-        final List<GATKRead> assembly = getReads(assemblyBamPath);
+        final Collection<GATKRead> assembly = getReads(assemblyBamPath);
         logger.info("Loading breakpoints...");
-        final List<VariantContext> breakpoints = readVCF(breakpointVCFPath, dictionary);
+        final Collection<VariantContext> breakpoints = readVCF(breakpointVCFPath, dictionary);
         logger.info("Loading copy ratio segment calls...");
         final CalledCopyRatioSegmentCollection copyRatioSegments = getCalledCopyRatioSegments(segmentCallsFilePath);
         logger.info("Loading evidence target links...");
-        final List<EvidenceTargetLink> evidenceTargetLinks = getEvidenceTargetLinks(evidenceTargetLinksFilePath, dictionary);
+        final Collection<EvidenceTargetLink> evidenceTargetLinks = getEvidenceTargetLinks(evidenceTargetLinksFilePath, dictionary);
         logger.info("Loading copy ratio bins...");
         final CopyRatioCollection copyRatios = getCopyRatios(copyRatioFilePath);
 
-        final DepthBasedSVCaller depthBasedSVCaller = new DepthBasedSVCaller(breakpoints, assembly, evidenceTargetLinks, copyRatios, copyRatioSegments, dictionary, arguments);
-
-        logger.info("Working...");
-        final List<LargeSimpleSV> events = depthBasedSVCaller.callEvents();
-        writeEvents(outputPath, events, dictionary);
+        largeSimpleSVCaller = new LargeSimpleSVCaller(breakpoints, assembly, evidenceTargetLinks, copyRatios, copyRatioSegments, dictionary, arguments);
     }
 
+    @Override
+    public void traverse() {
+        events = largeSimpleSVCaller.callEvents(progressMeter);
+    }
+
+    @Override
+    public Object onTraversalSuccess() {
+        writeEvents(outputPath, events, dictionary);
+        return null;
+    }
+
+    /**
+     * Writes events collection to BED file
+     */
     private void writeEvents(final String outputPath, final Collection<LargeSimpleSV> events, final SAMSequenceDictionary dictionary) {
         try (final OutputStream outputStream = BucketUtils.createFile(outputPath)) {
+            outputStream.write((LargeSimpleSV.getBedHeader() + "\n").getBytes());
             for (final LargeSimpleSV event : events) {
-                outputStream.write((event.getString(dictionary, arguments.COUNTEREVIDENCE_PSEUDOCOUNT) + "\n").getBytes());
+                outputStream.write((event.toBedString(dictionary, arguments.COUNTEREVIDENCE_PSEUDOCOUNT) + "\n").getBytes());
             }
         } catch (final IOException e) {
             throw new GATKException("Error writing output BED file", e);
         }
     }
 
-    private static List<VariantContext> readVCF(final String vcfPath, final SAMSequenceDictionary dictionary) {
+    private static Collection<VariantContext> readVCF(final String vcfPath, final SAMSequenceDictionary dictionary) {
         try (final FeatureDataSource<VariantContext> dataSource =
                      new FeatureDataSource<>(vcfPath, null, 0, VariantContext.class)) {
-            List<VariantContext> variants = Utils.stream(dataSource.iterator()).collect(Collectors.toList());
+            Collection<VariantContext> variants = Utils.stream(dataSource.iterator()).collect(Collectors.toList());
             if (variants.stream().anyMatch(variant -> dictionary.getSequenceIndex(variant.getContig()) < 0)) {
                 throw new UserException("Found a VCF entry contig that does not appear in the dictionary.");
             }
@@ -173,7 +193,7 @@ public class StructuralVariationDiscoveryWithDepth extends GATKTool {
         }
     }
 
-    private static List<GATKRead> getReads(final String bamPath) {
+    private static Collection<GATKRead> getReads(final String bamPath) {
         if (bamPath != null) {
             final ReadsDataSource reads = new ReadsDataSource(IOUtils.getPath(bamPath));
             return Utils.stream(reads.iterator()).collect(Collectors.toList());
@@ -191,9 +211,9 @@ public class StructuralVariationDiscoveryWithDepth extends GATKTool {
         return new CalledCopyRatioSegmentCollection(modelSegmentsCallsFile);
     }
 
-    private static List<EvidenceTargetLink> getEvidenceTargetLinks(final String path, final SAMSequenceDictionary dictionary) {
+    private static Collection<EvidenceTargetLink> getEvidenceTargetLinks(final String path, final SAMSequenceDictionary dictionary) {
         final File file = new File(path);
-        final List<EvidenceTargetLink> links = new ArrayList<>();
+        final Collection<EvidenceTargetLink> links = new ArrayList<>();
         final String[] evidenceTargetFileLines = new String(IOUtils.readFileIntoByteArray(file)).split("\n");
         for (final String line : evidenceTargetFileLines) {
             links.add(EvidenceTargetLink.fromBedpeString(line.trim(), dictionary));

@@ -1,12 +1,14 @@
-package org.broadinstitute.hellbender.tools.spark.sv.discovery.inference;
+package org.broadinstitute.hellbender.tools.spark.sv.discovery.readdepth;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.OverlapDetector;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.IntrachromosomalBreakpointPair;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.IntrachromosomalBreakpointPair;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.LargeSimpleSV;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervals;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
@@ -18,12 +20,15 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class LargeTandemDuplicationFactory extends SimpleSVFactory {
+/**
+ * Calls large tandem duplication variants
+ */
+public class LargeTandemDuplicationFactory extends LargeSimpleSVFactory {
 
     public LargeTandemDuplicationFactory(final SVIntervalTree<EvidenceTargetLink> intrachromosomalLinkTree,
                                          final SVIntervalTree<EvidenceTargetLink> interchromosomalLinkTree,
                                          final SVIntervalTree<GATKRead> contigTree,
-                                         final StructuralVariationDiscoveryArgumentCollection.SimpleVariantDiscoveryArgumentCollection arguments,
+                                         final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepth arguments,
                                          final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector,
                                          final OverlapDetector<CopyRatio> readDepthOverlapDetector,
                                          final SAMSequenceDictionary dictionary) {
@@ -69,7 +74,7 @@ public class LargeTandemDuplicationFactory extends SimpleSVFactory {
     protected boolean supportedBySegmentCalls(final SVInterval interval, final Set<CalledCopyRatioSegment> overlappingSegments, final SAMSequenceDictionary dictionary) {
         final int amplifiedBases = overlappingSegments.stream().filter(segment -> segment.getCall() == CalledCopyRatioSegment.Call.AMPLIFICATION)
                 //.filter(segment -> IntervalUtils.percentOverlap(segment.getInterval(), interval, dictionary) >= arguments.MIN_SEGMENT_OVERLAP)
-                .mapToInt(segment -> IntervalUtils.overlappingBases(segment.getInterval(), interval, dictionary)).sum();
+                .mapToInt(segment -> SVIntervalUtils.convertInterval(segment.getInterval(), dictionary).overlapLen(interval)).sum();
         return amplifiedBases / (double) interval.getLength() >= arguments.MIN_SEGMENT_OVERLAP;
     }
 
@@ -81,6 +86,6 @@ public class LargeTandemDuplicationFactory extends SimpleSVFactory {
         if (!(copyRatios.stream().filter(ratio -> ratio.getLog2CopyRatioValue() < arguments.NON_DELETION_INVALID_LOG2_COPY_RATIO_THRESHOLD).count() > arguments.NON_DELETION_INVALID_BIN_FRACTION * copyRatios.size())) {
             return false;
         }
-        return copyRatios.stream().anyMatch(ratio -> Math.pow(2.0, ratio.getLog2CopyRatioValue())  >= arguments.highDepthCoveragePeakFactor);
+        return copyRatios.stream().anyMatch(ratio -> Math.pow(2.0, ratio.getLog2CopyRatioValue())  >= arguments.MAX_COPY_RATIO_STATE);
     }
 }

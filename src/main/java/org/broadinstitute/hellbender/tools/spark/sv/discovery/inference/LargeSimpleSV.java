@@ -1,10 +1,13 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.inference;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.IntrachromosomalBreakpointPair;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.IntrachromosomalBreakpointPair;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 
+/**
+ * Represents a simple structural variant (e.g. deletion, duplication, etc.) and associated evidence
+ */
 public class LargeSimpleSV {
 
     protected final SimpleSVType.TYPES type;
@@ -79,7 +82,11 @@ public class LargeSimpleSV {
         return type;
     }
 
-    public String getString(final SAMSequenceDictionary dictionary, final double counterEvidencePseudocount) {
+    public static String getBedHeader() {
+        return "#CONTIG\tSTART\tEND\tTYPE\tE_RP\tE_SR\tCE_RP\tCE_SR\tSCORE\tBRKPTS";
+    }
+
+    public String toBedString(final SAMSequenceDictionary dictionary, final double counterEvidencePseudocount) {
         return dictionary.getSequence(contigId).getSequenceName() + "\t" + start + "\t" + end + "\t" + type + "\t" + readPairEvidence + "\t" + splitReadEvidence +
                 "\t" + readPairCounterEvidence + "\t" + splitReadCounterEvidence + "\t" + getScore(counterEvidencePseudocount) + "\t" + (breakpoints == null ? "none" : breakpoints.getString(dictionary));
     }

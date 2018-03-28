@@ -1,31 +1,32 @@
-package org.broadinstitute.hellbender.tools.spark.sv.discovery;
+package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 
-import java.util.List;
+import java.util.Collection;
 
 public final class IntrachromosomalBreakpointPair {
     private final int contig;
     private final int first;
     private final int second;
-    private final List<String> firstContigs;
-    private final List<String> secondContigs;
+    private final Collection<String> firstAssembledContigs;
+    private final Collection<String> secondAssembledContigs;
 
-    public IntrachromosomalBreakpointPair(final int contig, final int first, final int second, final List<String> firstContigs, final List<String> secondContigs) {
+    public IntrachromosomalBreakpointPair(final int contig, final int first, final int second,
+                                          final Collection<String> firstAssembledContigs,
+                                          final Collection<String> secondAssembledContigs) {
         this.contig = contig;
         this.first = first;
         this.second = second;
-        this.firstContigs = firstContigs;
-        this.secondContigs = secondContigs;
+        this.firstAssembledContigs = firstAssembledContigs;
+        this.secondAssembledContigs = secondAssembledContigs;
     }
 
-    public List<String> getFirstContigs() {
-        return firstContigs;
+    public Collection<String> getFirstAssembledContigs() {
+        return firstAssembledContigs;
     }
 
-    public List<String> getSecondContigs() {
-        return secondContigs;
+    public Collection<String> getSecondAssembledContigs() {
+        return secondAssembledContigs;
     }
 
     public int getContig() {
