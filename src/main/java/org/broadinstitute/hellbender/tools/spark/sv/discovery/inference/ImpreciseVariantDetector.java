@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvType;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervalTree;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.List;

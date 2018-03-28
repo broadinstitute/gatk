@@ -29,7 +29,7 @@ public final class SVFileUtils {
     /**
      * Supported format: BAM and SAM. CRAM is unsupported. Other requested type will default to SAM.
      */
-    private static SAMFileWriter getSAMFileWriter(final String outputName, final SAMFileHeader header, final boolean preOrdered) {
+    public static SAMFileWriter getSAMFileWriter(final String outputName, final SAMFileHeader header, final boolean preOrdered) {
         final int idx = outputName.lastIndexOf(".");
         if ( idx < 0) {
             throw new IllegalArgumentException("Provided path doesn't have a proper extension: " + outputName);

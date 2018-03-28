@@ -28,6 +28,7 @@
 ##INFO=<ID=INSSEQ_MAP,Number=.,Type=String,Description="Alignments of inserted sequence">
 ##INFO=<ID=INV33,Number=0,Type=Flag,Description="Whether the event represents a 3' to 5' breakpoint">
 ##INFO=<ID=INV55,Number=0,Type=Flag,Description="Whether the event represents a 5' to 3' breakpoint">
+##INFO=<ID=LINK,Number=.,Type=String,Description="ID(s) of other variants that are linked to this record, i.e. they constitute a larger more complex variant">
 ##INFO=<ID=MAPPING_QUALITIES,Number=.,Type=Integer,Description="Mapping qualities of the contig alignments that support the variant">
 ##INFO=<ID=MATEID,Number=.,Type=String,Description="ID(s) for mate(s) of a BND record">
 ##INFO=<ID=MAX_ALIGN_LENGTH,Number=1,Type=Integer,Description="Maximum of the values listed in ALIGN_LENGTHS">

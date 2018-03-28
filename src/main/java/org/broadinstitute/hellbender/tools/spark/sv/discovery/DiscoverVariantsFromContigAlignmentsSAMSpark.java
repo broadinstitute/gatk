@@ -23,20 +23,21 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleChimera;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
-import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
@@ -112,6 +113,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String prefixForOutput;
 
+
     @Override
     public boolean requiresReference() {
         return true;
@@ -134,53 +136,59 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                 StructuralVariationDiscoveryPipelineSpark.broadcastCNVCalls(ctx, getHeaderForReads(),
                         discoverStageArgs.cnvCallsFile);
 
-        final SvDiscoveryInputData svDiscoveryInputData =
-                new SvDiscoveryInputData(ctx,
-                        discoverStageArgs, prefixForOutput + "_" + SVUtils.getSampleId(getHeaderForReads()) + "_inv_del_ins.vcf",
+        final String vcfOutputFile = prefixForOutput + "_" + SVUtils.getSampleId(getHeaderForReads()) + "_inv_del_ins.vcf";
+
+        final SvDiscoveryInputMetaData svDiscoveryInputMetaData =
+                new SvDiscoveryInputMetaData(ctx, discoverStageArgs, null, vcfOutputFile,
                         null, null, null,
                         cnvCallsBroadcast,
-                        getReads(), getHeaderForReads(), getReference(), localLogger);
+                        getHeaderForReads(), getReference(), localLogger);
 
         final JavaRDD<AlignedContig> parsedContigAlignments =
                 new SvDiscoverFromLocalAssemblyContigAlignmentsSpark
-                        .SAMFormattedContigAlignmentParser(svDiscoveryInputData.assemblyRawAlignments,
-                                                        svDiscoveryInputData.headerBroadcast.getValue(), true)
+                        .SAMFormattedContigAlignmentParser(getReads(),
+                                                           svDiscoveryInputMetaData.sampleSpecificData.headerBroadcast.getValue(), true)
                         .getAlignedContigs();
 
         // assembly-based breakpoints
-        List<VariantContext> annotatedVariants = discoverVariantsFromChimeras(svDiscoveryInputData, parsedContigAlignments);
+        List<VariantContext> annotatedVariants = discoverVariantsFromChimeras(svDiscoveryInputMetaData, parsedContigAlignments);
 
-        final SAMSequenceDictionary refSeqDictionary = svDiscoveryInputData.referenceSequenceDictionaryBroadcast.getValue();
-        SVVCFWriter.writeVCF(annotatedVariants, svDiscoveryInputData.outputPath, refSeqDictionary, localLogger);
+        final SAMSequenceDictionary refSeqDictionary = svDiscoveryInputMetaData.referenceData.referenceSequenceDictionaryBroadcast.getValue();
+        SVVCFWriter.writeVCF(annotatedVariants, vcfOutputFile, refSeqDictionary, localLogger);
     }
 
     @Deprecated
-    public static List<VariantContext> discoverVariantsFromChimeras(final SvDiscoveryInputData svDiscoveryInputData,
+    public static List<VariantContext> discoverVariantsFromChimeras(final SvDiscoveryInputMetaData svDiscoveryInputMetaData,
                                                                     final JavaRDD<AlignedContig> alignedContigs) {
-        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceSequenceDictionaryBroadcast;
 
-        final JavaPairRDD<byte[], List<ChimericAlignment>> contigSeqAndChimeras =
-                alignedContigs.filter(alignedContig -> alignedContig.getAlignments().size() > 1)
-                        .mapToPair(alignedContig ->
-                                new Tuple2<>(alignedContig.getContigSequence(),
-                                        ChimericAlignment.parseOneContig(alignedContig, referenceSequenceDictionaryBroadcast.getValue(),
-                                                true, DEFAULT_MIN_ALIGNMENT_LENGTH,
-                                                CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, true)));
+        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast =
+                svDiscoveryInputMetaData.referenceData.referenceSequenceDictionaryBroadcast;
 
-        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputData.referenceBroadcast;
-        final List<SVInterval> assembledIntervals = svDiscoveryInputData.assembledIntervals;
-        final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast = svDiscoveryInputData.cnvCallsBroadcast;
-        final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs = svDiscoveryInputData.discoverStageArgs;
-        final String sampleId = svDiscoveryInputData.sampleId;
-        final Logger toolLogger = svDiscoveryInputData.toolLogger;
+        final JavaPairRDD<byte[], List<SimpleChimera>> contigSeqAndChimeras =
+                alignedContigs
+                        .filter(alignedContig -> alignedContig.getAlignments().size() > 1)
+                        .mapToPair(alignedContig -> {
+                            final List<SimpleChimera> chimeras =
+                                    parseOneContig(alignedContig, referenceSequenceDictionaryBroadcast.getValue(),
+                                    true, DEFAULT_MIN_ALIGNMENT_LENGTH,
+                                    CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, true);
+                            return new Tuple2<>(alignedContig.getContigSequence(), chimeras);
+                        });
 
-        final JavaPairRDD<NovelAdjacencyAndAltHaplotype, Iterable<ChimericAlignment>> narlsAndSources =
+        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputMetaData.referenceData.referenceBroadcast;
+        final List<SVInterval> assembledIntervals = svDiscoveryInputMetaData.sampleSpecificData.assembledIntervals;
+        final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast = svDiscoveryInputMetaData.sampleSpecificData.cnvCallsBroadcast;
+        final String sampleId = svDiscoveryInputMetaData.sampleSpecificData.sampleId;
+        final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs = svDiscoveryInputMetaData.discoverStageArgs;
+        final Logger toolLogger = svDiscoveryInputMetaData.toolLogger;
+
+        final JavaPairRDD<NovelAdjacencyAndAltHaplotype, Iterable<SimpleChimera>> narlsAndSources =
                 contigSeqAndChimeras
                         .flatMapToPair(tigSeqAndChimeras -> {
                             final byte[] contigSeq = tigSeqAndChimeras._1;
-                            final List<ChimericAlignment> chimericAlignments = tigSeqAndChimeras._2;
-                            final Stream<Tuple2<NovelAdjacencyAndAltHaplotype, ChimericAlignment>> novelAdjacencyAndSourceChimera =
-                                    chimericAlignments.stream()
+                            final List<SimpleChimera> simpleChimeras = tigSeqAndChimeras._2;
+                            final Stream<Tuple2<NovelAdjacencyAndAltHaplotype, SimpleChimera>> novelAdjacencyAndSourceChimera =
+                                    simpleChimeras.stream()
                                             .map(ca -> new Tuple2<>(
                                                     new NovelAdjacencyAndAltHaplotype(ca, contigSeq,
                                                             referenceSequenceDictionaryBroadcast.getValue()), ca));
@@ -202,19 +210,10 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                             {
                                 final NovelAdjacencyAndAltHaplotype novelAdjacency = noveltyTypeAndEvidence._1;
                                 final SimpleSVType inferredSimpleType = noveltyTypeAndEvidence._2._1;
-                                final List<Tuple2<ChimericAlignment, String>> evidence =
-                                        Utils.stream(noveltyTypeAndEvidence._2._2)
-                                                .map(ca -> new Tuple2<>(ca,
-                                                        AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME))
-                                                .collect(Collectors.toList());
+                                final Iterable<SimpleChimera> evidence = noveltyTypeAndEvidence._2._2;
                                 return AnnotatedVariantProducer
                                         .produceAnnotatedVcFromInferredTypeAndRefLocations(
-                                                novelAdjacency.getLeftJustifiedLeftRefLoc(),
-                                                novelAdjacency.getLeftJustifiedRightRefLoc().getStart(),
-                                                novelAdjacency.getComplication(),
-                                                inferredSimpleType,
-                                                null,
-                                                evidence,
+                                                novelAdjacency, inferredSimpleType, evidence,
                                                 referenceBroadcast,
                                                 referenceSequenceDictionaryBroadcast,
                                                 cnvCallsBroadcast,
@@ -227,13 +226,118 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
         }
     }
 
+    // =================================================================================================================
+
+    /**
+     * Parse all alignment records for a single locally-assembled contig and generate chimeric alignments if available.
+     * Applies certain filters to skip the input alignment regions that are:
+     *     1) if the alignment region's mapping quality is below a certain threshold, it is skipped
+     *     2) if the alignment region is too small, it is skipped
+     * If the alignment region passes the above two filters and the next alignment region could be treated as potential inserted sequence,
+     * note down the mapping & alignment information of that region and skip it
+     * @param alignedContig          made of (sorted {alignmentIntervals}, sequence) of a potentially-signalling locally-assembled contig
+     * @param referenceDictionary    reference sequence dictionary
+     * @param filterAlignmentByMqOrLength
+     * @param uniqueRefSpanThreshold for an alignment interval to be used to construct a SimpleChimera,
+     *                               how long a unique--i.e. the same ref span is not covered by other alignment intervals--alignment on the reference must it have
+     * @param mapQualThresholdInclusive
+     * @param filterWhollyContainedAlignments
+     */
+    @VisibleForTesting
+    public static List<SimpleChimera> parseOneContig(final AlignedContig alignedContig,
+                                                     final SAMSequenceDictionary referenceDictionary,
+                                                     final boolean filterAlignmentByMqOrLength,
+                                                     final int uniqueRefSpanThreshold,
+                                                     final int mapQualThresholdInclusive,
+                                                     final boolean filterWhollyContainedAlignments) {
+
+        if (alignedContig.getAlignments().size() < 2) {
+            return new ArrayList<>();
+        }
+
+        final Iterator<AlignmentInterval> iterator = alignedContig.getAlignments().iterator();
+
+        // fast forward to the first alignment region with high MapQ
+        AlignmentInterval current = iterator.next();
+        if (filterAlignmentByMqOrLength) {
+            while (mapQualTooLow(current, mapQualThresholdInclusive) && iterator.hasNext()) {
+                current = iterator.next();
+            }
+        }
+
+        final List<SimpleChimera> results = new ArrayList<>(alignedContig.getAlignments().size() - 1);
+        final List<String> insertionMappings = new ArrayList<>();
+
+        // then iterate over the AR's in pair to identify CA's.
+        while ( iterator.hasNext() ) {
+            final AlignmentInterval next = iterator.next();
+            if (filterAlignmentByMqOrLength) {
+                if (firstAlignmentIsTooShort(current, next, uniqueRefSpanThreshold)) {
+                    continue;
+                } else if (nextAlignmentMayBeInsertion(current, next, mapQualThresholdInclusive, uniqueRefSpanThreshold, filterWhollyContainedAlignments)) {
+                    if (iterator.hasNext()) {
+                        insertionMappings.add(next.toPackedString());
+                        continue;
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            // TODO: 10/18/17 this way of filtering CA based on not quality but alignment characteristics is temporary:
+            //       this was initially developed for ins/del (and tested for that purpose), simple translocations travel through a different code path at the moment.
+            // TODO: ultimately we need to merge these two code paths
+            final SimpleChimera simpleChimera = new SimpleChimera(current, next, insertionMappings,
+                    alignedContig.getContigName(), AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME,
+                    referenceDictionary);
+            // the following check/filter is due to the fact that simple translocations are to be handled in a different code path
+            if (simpleChimera.isNeitherIncompleteNorSimpleTranslocation())
+                results.add(simpleChimera);
+
+            current = next;
+        }
+
+        return results;
+    }
+
+    // TODO: 11/22/16 it might also be suitable to consider the reference context this alignment region is mapped to
+    //       and not simply apply a hard filter (need to think about how to test)
+    private static boolean mapQualTooLow(final AlignmentInterval aln, final int mapQThresholdInclusive) {
+        return aln.mapQual < mapQThresholdInclusive;
+    }
+
+    /**
+     * @return if {@code first} is too short, when considering overlap with {@code second}
+     */
+    @VisibleForTesting
+    static boolean firstAlignmentIsTooShort(final AlignmentInterval first, final AlignmentInterval second,
+                                            final Integer minAlignLength) {
+        return first.referenceSpan.size() - AlignmentInterval.overlapOnContig(first, second) < minAlignLength;
+    }
+
+    /**
+     * To implement the idea that for two consecutive alignment regions of a contig, the one with higher reference coordinate might be a novel insertion.
+     */
+    @VisibleForTesting
+    static boolean nextAlignmentMayBeInsertion(final AlignmentInterval current, final AlignmentInterval next,
+                                               final Integer mapQThresholdInclusive, final Integer minAlignLength,
+                                               final boolean filterWhollyContained) {
+        // not unique: inserted sequence may have low mapping quality (low reference uniqueness) or may be very small (low read uniqueness)
+        final boolean isNotUnique = mapQualTooLow(next, mapQThresholdInclusive) || firstAlignmentIsTooShort(next, current, minAlignLength);
+        return isNotUnique
+                ||
+                (filterWhollyContained && (current.referenceSpan.contains(next.referenceSpan) || next.referenceSpan.contains(current.referenceSpan)));
+    }
+
+    // =================================================================================================================
+
     // TODO: 2/28/18 this function is now used only in this tool (and tested accordingly),
     //      its updated version is
     //      {@link BreakpointsInference#TypeInferredFromSimpleChimera()}, and
     //      {@link SimpleNovelAdjacencyInterpreter#inferSimpleOrBNDTypesFromNovelAdjacency}
     //      which should be tested accordingly
     @VisibleForTesting
-    public static SimpleSVType inferSimpleTypeFromNovelAdjacency(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype) {
+    static SimpleSVType inferSimpleTypeFromNovelAdjacency(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype) {
 
         final int start = novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getEnd();
         final int end = novelAdjacencyAndAltHaplotype.getLeftJustifiedRightRefLoc().getStart();

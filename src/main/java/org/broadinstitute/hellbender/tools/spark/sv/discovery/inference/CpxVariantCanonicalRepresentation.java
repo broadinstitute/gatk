@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AnnotatedVariantProducer;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import scala.Tuple2;
 
@@ -382,7 +381,7 @@ final class CpxVariantCanonicalRepresentation {
     @VisibleForTesting
     VariantContextBuilder toVariantContext(final byte[] refBases) {
 
-        final CpxVariantType cpxVariant = new CpxVariantType(affectedRefRegion, typeSpecificExtraAttributes());
+        final CpxVariantType cpxVariant = new CpxVariantType(affectedRefRegion, altSeq.length, typeSpecificExtraAttributes());
 
         final VariantContextBuilder vcBuilder = new VariantContextBuilder()
                 .chr(affectedRefRegion.getContig()).start(affectedRefRegion.getStart()).stop(affectedRefRegion.getEnd())

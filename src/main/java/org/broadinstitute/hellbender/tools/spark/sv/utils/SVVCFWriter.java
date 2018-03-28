@@ -22,9 +22,11 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * A utility class that writes out variants to a VCF file.

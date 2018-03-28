@@ -5,9 +5,6 @@ import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
-
-import java.util.Map;
 
 public class SVVCFReader {
     public static SVIntervalTree<String> readBreakpointsFromTruthVCF(final String truthVCF,

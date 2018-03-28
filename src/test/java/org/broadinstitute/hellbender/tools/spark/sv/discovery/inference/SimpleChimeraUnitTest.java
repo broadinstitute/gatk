@@ -8,9 +8,9 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryTestDataProvider;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.ContigAlignmentsModifier;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -26,31 +26,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD;
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryTestDataProvider.*;
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME;
 
-public class ChimericAlignmentUnitTest extends GATKBaseTest {
-
-    @Test(groups = "sv")
-    public void testFilterByRegionTooSmall() {
-        final byte[] contigSequence = SimpleSVDiscoveryTestDataProvider.LONG_CONTIG1.getBytes();
-        final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval(SimpleSVDiscoveryTestDataProvider.chrForLongContig1, 20138007, 20142231), 1, contigSequence.length - 1986, TextCigarCodec.decode("1986S236M2D1572M1I798M5D730M1I347M4I535M"), false, 60, 36, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval(SimpleSVDiscoveryTestDataProvider.chrForLongContig1, 20152030, 20154634), 3604, contigSequence.length, TextCigarCodec.decode("3603H24M1I611M1I1970M"), true, 60, 36, 100, ContigAlignmentsModifier.AlnModType.NONE);
-
-        Assert.assertFalse( ChimericAlignment.firstAlignmentIsTooShort(region1, region2, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH) );
-        Assert.assertFalse( ChimericAlignment.firstAlignmentIsTooShort(region2, region1, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH) );
-
-        Assert.assertFalse( ChimericAlignment.firstAlignmentIsTooShort(region1, region2, 3000) );
-        Assert.assertTrue( ChimericAlignment.firstAlignmentIsTooShort(region2, region1, 3000) );
-    }
-
-    @Test(groups = "sv")
-    public void testFilterByNextAlignmentMayBeInsertion() {
-        final AlignmentInterval overlappingRegion1 = new AlignmentInterval(new SimpleInterval("19", 48699881, 48700034), 1, 154, TextCigarCodec.decode("47S154M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        final AlignmentInterval overlappingRegion2 = new AlignmentInterval(new SimpleInterval("19", 48700584, 48700668), 117, 201, TextCigarCodec.decode("116H85M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-
-        Assert.assertTrue(ChimericAlignment.nextAlignmentMayBeInsertion(overlappingRegion1, overlappingRegion2,  CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, 50,true));
-    }
+public class SimpleChimeraUnitTest extends GATKBaseTest {
 
     static List<Tuple3<AlignmentInterval, AlignmentInterval, SAMSequenceDictionary>> alignmentPairsForSimpleChimeraAndRefSeqDict() {
 
@@ -87,10 +66,10 @@ public class ChimericAlignmentUnitTest extends GATKBaseTest {
         result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
 
         // long range substitution
-        testData = SimpleSVDiscoveryTestDataProvider.forLongRangeSubstitution_plus;
+        testData = SimpleSVDiscoveryTestDataProvider.forLongRangeSubstitution_fudgedDel_plus;
         result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
 
-        testData = SimpleSVDiscoveryTestDataProvider.forLongRangeSubstitution_minus;
+        testData = SimpleSVDiscoveryTestDataProvider.forLongRangeSubstitution_fudgedDel_minus;
         result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
 
         // simple deletion with homology
@@ -108,17 +87,17 @@ public class ChimericAlignmentUnitTest extends GATKBaseTest {
         result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
 
         // tandem duplication simple expansion
-        testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansion_plus;
+        testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansion_ins_plus;
         result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
 
-        testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansion_minus;
+        testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansion_ins_minus;
         result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
 
         // tandem duplication simple expansion with novel insertion
-        testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_plus;
+        testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_dup_plus;
         result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
 
-        testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_minus;
+        testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_dup_minus;
         result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
 
 
@@ -211,8 +190,8 @@ public class ChimericAlignmentUnitTest extends GATKBaseTest {
         return result;
     }
 
-    @DataProvider(name = "forRepresentationAndSerialization")
-    private Object[][] forSimpleChimera() {
+    @DataProvider(name = "testRepresentationAndSerialization")
+    private Object[][] testRepresentationAndSerialization() {
         final List<Tuple3<AlignmentInterval, AlignmentInterval, SAMSequenceDictionary>> tuple3s = alignmentPairsForSimpleChimeraAndRefSeqDict();
         final List<Object[]> data = new ArrayList<>(tuple3s.size());
 
@@ -311,29 +290,29 @@ public class ChimericAlignmentUnitTest extends GATKBaseTest {
         return data.toArray(new Object[data.size()][]);
     }
 
-    @Test(dataProvider = "forRepresentationAndSerialization", groups = "sv")
-    public void forRepresentationAndSerialization(Tuple3<AlignmentInterval, AlignmentInterval, SAMSequenceDictionary> chimericPairsAndRefSeqDict,
-                                                  final StrandSwitch expectedStrandSwitch,
-                                                  final boolean expectedIsForwardStrandRepresentation) {
+    @Test(dataProvider = "testRepresentationAndSerialization", groups = "sv")
+    public void testRepresentationAndSerialization(Tuple3<AlignmentInterval, AlignmentInterval, SAMSequenceDictionary> chimericPairsAndRefSeqDict,
+                                                   final StrandSwitch expectedStrandSwitch,
+                                                   final boolean expectedIsForwardStrandRepresentation) {
         final AlignmentInterval region1 = chimericPairsAndRefSeqDict._1();
         final AlignmentInterval region2 = chimericPairsAndRefSeqDict._2();
         final SAMSequenceDictionary refDict = chimericPairsAndRefSeqDict._3();
 
-        Assert.assertEquals(ChimericAlignment.determineStrandSwitch(region1, region2), expectedStrandSwitch);
-        Assert.assertEquals(ChimericAlignment.isForwardStrandRepresentation(region1, region2, expectedStrandSwitch, refDict), expectedIsForwardStrandRepresentation);
+        Assert.assertEquals(SimpleChimera.determineStrandSwitch(region1, region2), expectedStrandSwitch);
+        Assert.assertEquals(SimpleChimera.isForwardStrandRepresentation(region1, region2, expectedStrandSwitch, refDict), expectedIsForwardStrandRepresentation);
 
-        final ChimericAlignment chimericAlignment = new ChimericAlignment(region1, region2, Collections.emptyList(), "dummyName", refDict);
+        final SimpleChimera simpleChimera = new SimpleChimera(region1, region2, Collections.emptyList(), "dummyName", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, refDict);
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
         final Output out = new Output(bos);
         final Kryo kryo = new Kryo();
-        kryo.writeClassAndObject(out, chimericAlignment);
+        kryo.writeClassAndObject(out, simpleChimera);
         out.flush();
 
         final ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
         final Input in = new Input(bis);
         @SuppressWarnings("unchecked")
-        final ChimericAlignment roundTrip = (ChimericAlignment) kryo.readClassAndObject(in);
-        Assert.assertEquals(roundTrip, chimericAlignment);
-        Assert.assertEquals(roundTrip.hashCode(), chimericAlignment.hashCode());
+        final SimpleChimera roundTrip = (SimpleChimera) kryo.readClassAndObject(in);
+        Assert.assertEquals(roundTrip, simpleChimera);
+        Assert.assertEquals(roundTrip.hashCode(), simpleChimera.hashCode());
     }
 }
