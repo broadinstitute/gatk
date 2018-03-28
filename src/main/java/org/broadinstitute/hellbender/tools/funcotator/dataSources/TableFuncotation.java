@@ -58,6 +58,37 @@ public class TableFuncotation implements Funcotation {
         this.dataSourceName = dataSourceName;
     }
 
+    public TableFuncotation(final LinkedHashSet<String> fieldNames, final List<String> fieldValues, final Allele altAllele, final String dataSourceName ) {
+        if ( fieldNames.size() != fieldValues.size() ) {
+            throw new UserException.BadInput("Field names and Field values are of different lengths!  This must not be!");
+        }
+
+        fieldMap = new LinkedHashMap<>(fieldNames.size());
+        int i = 0;
+        for ( final String fieldName : fieldNames ) {
+            fieldMap.put(fieldName, fieldValues.get(i++));
+        }
+
+        this.altAllele = altAllele;
+        this.dataSourceName = dataSourceName;
+    }
+
+    public TableFuncotation(final Map<String, Object> data, final Allele altAllele, final String dataSourceName ) {
+
+        fieldMap = new LinkedHashMap<>(data.size());
+
+        // Make sure we do this in the same order every time:
+        final List<String> dataKeys = new ArrayList<>(data.keySet());
+        dataKeys.sort(Comparator.naturalOrder());
+
+        for (final String key : dataKeys ) {
+            fieldMap.put(key, data.get(key).toString());
+        }
+
+        this.altAllele = altAllele;
+        this.dataSourceName = dataSourceName;
+    }
+
     public TableFuncotation(final XsvTableFeature xsvTableFeature, final Allele altAllele, final String dataSourceName) {
 
         final List<String> keys = xsvTableFeature.getHeaderWithoutLocationColuns();

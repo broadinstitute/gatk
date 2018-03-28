@@ -203,6 +203,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     // Override Methods:
 
     @Override
+    protected Class<? extends Feature> getAnnotationFeatureClass() {
+        return GencodeGtfFeature.class;
+    }
+
+    @Override
     public String getInfoString() {
         return getName() + " " + getVersion() + " " + transcriptSelectionMode.toString();
     }
@@ -251,7 +256,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * Attempts to treat the given features as {@link GencodeGtfFeature} objects in order to
      * create funcotations for the given variant and reference.
      */
-    public List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList) {
+    protected List<Funcotation> createFuncotationsOnVariant(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList) {
         final List<Funcotation> outputFuncotations = new ArrayList<>();
 
         // If we have features we need to annotate, go through them and create annotations:
@@ -259,9 +264,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             for ( final Allele altAllele : variant.getAlternateAlleles() ) {
                 for ( final Feature feature : featureList ) {
 
-                    // Get the kind of feature we want here:
-                    if ( (feature != null) && GencodeGtfGeneFeature.class.isAssignableFrom(feature.getClass()) ) {
-                        final List<GencodeFuncotation> gencodeFuncotationList = createFuncotations(variant, altAllele, (GencodeGtfGeneFeature) feature, referenceContext);
+                    if ( (feature != null) ) {
+                        // By this point we know the feature type is correct, so we cast it:
+                        final List<GencodeFuncotation> gencodeFuncotationList = createFuncotationsHelper(variant, altAllele, (GencodeGtfGeneFeature) feature, referenceContext);
 
                         // Now we have to filter out the output gencodeFuncotations if they are not on the list the user provided:
                         filterAnnotationsByUserTranscripts( gencodeFuncotationList, userRequestedTranscripts );
@@ -281,11 +286,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             }
         }
 
-        // Now we set the override values for each annotation:
-        for ( final Funcotation funcotation : outputFuncotations ) {
-            funcotation.setFieldSerializationOverrideValues( annotationOverrideMap );
-        }
-
         return outputFuncotations;
     }
 
@@ -294,7 +294,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * {@inheritDoc}
      * This method should never be called on a {@link GencodeFuncotationFactory}, as that would imply a time-loop.
      */
-    public List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList, final List<GencodeFuncotation> gencodeFuncotations) {
+    protected List<Funcotation> createFuncotationsOnVariant(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList, final List<GencodeFuncotation> gencodeFuncotations) {
         throw new GATKException("This method should never be called on a "+ this.getClass().getName());
     }
 
@@ -496,7 +496,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @return A {@link List} of {@link GencodeFuncotation}s for the given variant, allele and gtf feature.
      */
     @VisibleForTesting
-    List<GencodeFuncotation> createFuncotations(final VariantContext variant, final Allele altAllele, final GencodeGtfGeneFeature gtfFeature, final ReferenceContext reference) {
+    List<GencodeFuncotation> createFuncotationsHelper(final VariantContext variant, final Allele altAllele, final GencodeGtfGeneFeature gtfFeature, final ReferenceContext reference) {
         // For each applicable transcript, create an annotation.
 
         final List<GencodeFuncotation> outputFuncotations = new ArrayList<>();

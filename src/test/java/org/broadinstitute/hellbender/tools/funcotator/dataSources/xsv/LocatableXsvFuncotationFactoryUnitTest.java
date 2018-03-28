@@ -184,15 +184,15 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                         Arrays.asList(null, null, null), Collections.emptyList(),
                         Collections.singletonList(new TableFuncotation(reportableFieldNames, emptyFieldList, defaultAltAllele, defaultDataSourceName))
                 ),
-                // Trivial case where no XsvTableFeatures are in the list:
-                helpProvideForTestCreateFuncotations(
-                        "chr3", 178866314, 178866314,
-                        "C", defaultAltAllele.getBaseString(), FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME,
-                        reportableFieldNames,
-                        Collections.singletonList(new DummyTestFeature("chr3", 178866314,178866314)),
-                        Collections.emptyList(),
-                        Collections.singletonList(new TableFuncotation(reportableFieldNames, emptyFieldList, defaultAltAllele, defaultDataSourceName))
-                ),
+//                // Trivial case where no XsvTableFeatures are in the list:
+//                helpProvideForTestCreateFuncotations(
+//                        "chr3", 178866314, 178866314,
+//                        "C", defaultAltAllele.getBaseString(), FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME,
+//                        reportableFieldNames,
+//                        Collections.singletonList(new DummyTestFeature("chr3", 178866314,178866314)),
+//                        Collections.emptyList(),
+//                        Collections.singletonList(new TableFuncotation(reportableFieldNames, emptyFieldList, defaultAltAllele, defaultDataSourceName))
+//                ),
                 // One XsvTableFeature in list
                 helpProvideForTestCreateFuncotations(
                         "chr3", 178866314, 178866314,
@@ -300,12 +300,12 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
 
 
         Assert.assertEquals(
-                locatableXsvFuncotationFactory.createFuncotations( variant, referenceContext, featureList ),
+                locatableXsvFuncotationFactory.createFuncotationsOnVariant( variant, referenceContext, featureList ),
                 expected
         );
 
         Assert.assertEquals(
-                locatableXsvFuncotationFactory.createFuncotations( variant, referenceContext, featureList, gencodeFuncotations ),
+                locatableXsvFuncotationFactory.createFuncotationsOnVariant( variant, referenceContext, featureList, gencodeFuncotations ),
                 expected
         );
     }

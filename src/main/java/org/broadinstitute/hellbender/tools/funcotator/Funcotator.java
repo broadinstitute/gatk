@@ -292,9 +292,9 @@ public class Funcotator extends VariantWalker {
 
     private OutputRenderer outputRenderer;
     private final List<DataSourceFuncotationFactory> dataSourceFactories = new ArrayList<>();
-    private List<GencodeFuncotationFactory> gencodeFuncotationFactories = new ArrayList<>();
+    private final List<GencodeFuncotationFactory> gencodeFuncotationFactories = new ArrayList<>();
 
-    private List<FeatureInput<? extends Feature>> manualFeatureInputs = new ArrayList<>();
+    private final List<FeatureInput<? extends Feature>> manualLocatableFeatureInputs = new ArrayList<>();
 
     private boolean inputReferenceIsB37 = false;
 
@@ -352,7 +352,6 @@ public class Funcotator extends VariantWalker {
                         unaccountedForOverrideAnnotations,
                         getDefaultToolVCFHeaderLines().stream().map(Object::toString).collect(Collectors.toCollection(LinkedHashSet::new)));
                 break;
-            // Default to VCF output:
             case VCF:
                 outputRenderer = new VcfOutputRenderer(createVCFWriter(outputFile),
                         dataSourceFactories,
@@ -397,9 +396,13 @@ public class Funcotator extends VariantWalker {
     public void closeTool() {
 
         for(final DataSourceFuncotationFactory factory : dataSourceFactories) {
-            factory.close();
+            if ( factory != null ) {
+                factory.close();
+            }
         }
-        outputRenderer.close();
+        if ( outputRenderer != null ) {
+            outputRenderer.close();
+        }
 
     }
 
@@ -449,7 +452,7 @@ public class Funcotator extends VariantWalker {
         }
 
         // Get our feature inputs:
-        final List<Feature> featureList = new ArrayList<>();
+        final Map<String, List<Feature>> featureSourceMap = new HashMap<>();
 
         // Create a variant context for annotation that has a new contig based on whether we need to overwrite the
         // contig names in the next section.
@@ -465,13 +468,17 @@ public class Funcotator extends VariantWalker {
             variantContextBuilderForFixedContigForDataSources.chr(hg19Contig);
 
             // Get our features for the new interval:
-            for ( final FeatureInput<? extends Feature> featureInput : manualFeatureInputs ) {
-                featureList.addAll(featureContext.getValues(featureInput, hg19Interval));
+            for ( final FeatureInput<? extends Feature> featureInput : manualLocatableFeatureInputs ) {
+                @SuppressWarnings("unchecked")
+                final List<Feature> featureList = (List<Feature>)featureContext.getValues(featureInput, hg19Interval);
+                featureSourceMap.put( featureInput.getName(), featureList);
             }
         }
         else {
-            for ( final FeatureInput<? extends Feature> featureInput : manualFeatureInputs ) {
-                featureList.addAll(featureContext.getValues(featureInput));
+            for ( final FeatureInput<? extends Feature> featureInput : manualLocatableFeatureInputs ) {
+                @SuppressWarnings("unchecked")
+                final List<Feature> featureList = (List<Feature>)featureContext.getValues(featureInput);
+                featureSourceMap.put( featureInput.getName(), featureList );
             }
         }
 
@@ -486,7 +493,7 @@ public class Funcotator extends VariantWalker {
         final List<GencodeFuncotation> gencodeFuncotations = new ArrayList<>();
 
         for ( final GencodeFuncotationFactory factory : gencodeFuncotationFactories ) {
-            final List<Funcotation> funcotationsFromGencodeFactory = factory.createFuncotations(variantContextFixedContigForDataSources, referenceContext, featureList);
+            final List<Funcotation> funcotationsFromGencodeFactory = factory.createFuncotations(variantContextFixedContigForDataSources, referenceContext, featureSourceMap);
             funcotations.addAll(funcotationsFromGencodeFactory);
             gencodeFuncotations.addAll(
                     funcotationsFromGencodeFactory.stream()
@@ -502,7 +509,7 @@ public class Funcotator extends VariantWalker {
             if ( funcotationFactory.getType().equals(FuncotatorArgumentDefinitions.DataSourceType.GENCODE) ) {
                 continue;
             }
-            funcotations.addAll( funcotationFactory.createFuncotations(variantContextFixedContigForDataSources, referenceContext, featureList, gencodeFuncotations) );
+            funcotations.addAll( funcotationFactory.createFuncotations(variantContextFixedContigForDataSources, referenceContext, featureSourceMap, gencodeFuncotations) );
         }
 
         outputRenderer.write(variant, funcotations);
@@ -541,11 +548,15 @@ public class Funcotator extends VariantWalker {
             switch ( FuncotatorArgumentDefinitions.DataSourceType.getEnum(stringType) ) {
                 case LOCATABLE_XSV:
                     // Add our features manually so we can match over them:
-                    addFeaturesForLocatableXsvDataSource(entry.getKey(), entry.getValue());
+                    addFeaturesForLocatableDataSource(entry.getKey(), entry.getValue(), XsvTableFeature.class);
                     break;
                 case GENCODE:
                     // Add our features manually so we can match over them:
-                    addFeaturesForGencodeDataSource(entry.getKey(), entry.getValue());
+                    addFeaturesForLocatableDataSource(entry.getKey(), entry.getValue(), GencodeGtfFeature.class);
+                    break;
+                case VCF:
+                    // Add our features manually so we can match over them:
+                    addFeaturesForLocatableDataSource(entry.getKey(), entry.getValue(), VariantContext.class);
                     break;
                 // Non-locatable data source types go here:
                 case SIMPLE_XSV:
@@ -557,39 +568,23 @@ public class Funcotator extends VariantWalker {
         }
     }
 
-    private void addFeaturesForLocatableXsvDataSource(final Path dataSourceFile,
-                                                      final Properties dataSourceProperties) {
-        final String name      = dataSourceProperties.getProperty(DataSourceUtils.CONFIG_FILE_FIELD_NAME_NAME);
+    private void addFeaturesForLocatableDataSource( final Path dataSourceFile,
+                                                    final Properties dataSourceProperties,
+                                                    final Class<? extends Feature> featureClazz ) {
+
+        final String name = dataSourceProperties.getProperty(DataSourceUtils.CONFIG_FILE_FIELD_NAME_NAME);
 
         // Inject our features into our list of feature data sources:
-        final FeatureInput<? extends Feature> featureInput = addFeatureInputsAfterInitialization(
-                dataSourceFile.resolveSibling(
-                    IOUtils.getPath( dataSourceProperties.getProperty(DataSourceUtils.CONFIG_FILE_FIELD_NAME_SRC_FILE) )
-                ).toUri().toString(),
-                name,
-                XsvTableFeature.class
-        );
-
-        // Add our feature input to our list of manual inputs:
-        manualFeatureInputs.add(featureInput);
-    }
-
-    private void addFeaturesForGencodeDataSource(final Path dataSourceFile,
-                                                 final Properties dataSourceProperties) {
-        // Get some metadata:
-        final String name   = dataSourceProperties.getProperty(DataSourceUtils.CONFIG_FILE_FIELD_NAME_NAME);
-
-        // Inject our Gencode GTF features into our list of feature data sources:
         final FeatureInput<? extends Feature> featureInput = addFeatureInputsAfterInitialization(
                 dataSourceFile.resolveSibling(
                         IOUtils.getPath( dataSourceProperties.getProperty(DataSourceUtils.CONFIG_FILE_FIELD_NAME_SRC_FILE) )
                 ).toUri().toString(),
                 name,
-                GencodeGtfFeature.class
+                featureClazz
         );
 
         // Add our feature input to our list of manual inputs:
-        manualFeatureInputs.add(featureInput);
+        manualLocatableFeatureInputs.add(featureInput);
     }
 
     /**

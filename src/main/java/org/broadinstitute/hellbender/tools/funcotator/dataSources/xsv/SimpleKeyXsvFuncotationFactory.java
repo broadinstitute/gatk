@@ -150,6 +150,12 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
     // Override Methods:
 
     @Override
+    protected Class<? extends Feature> getAnnotationFeatureClass() {
+        // Returning Feature.class here implies that this class doesn't care about what features it gets.
+        return Feature.class;
+    }
+
+    @Override
     public String getName() {
         return name;
     }
@@ -165,8 +171,8 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
      * This method should never be called on a {@link SimpleKeyXsvFuncotationFactory} - knowledge of the applied
      * {@link GencodeFuncotation}s is required to create an {@link TableFuncotation} from here.
      */
-    public List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList) {
-        throw new GATKException(this.getClass().getName() + " requires a set of GencodeFuncotations in order to createFuncotations!  This method should never be called on a " + this.getClass().getName());
+    protected List<Funcotation> createFuncotationsOnVariant(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList) {
+        throw new GATKException(this.getClass().getName() + " requires a set of GencodeFuncotations in order to createFuncotationsOnVariant!  This method should never be called on a " + this.getClass().getName());
     }
 
     @Override
@@ -176,10 +182,10 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
      * is checked for a match against the key of any annotation in {@link SimpleKeyXsvFuncotationFactory#annotationMap}.
      * If a match is found, an {@link TableFuncotation} is added to the list to be returned.
      */
-    public List<Funcotation> createFuncotations(final VariantContext variant,
-                                                final ReferenceContext referenceContext,
-                                                final List<Feature> featureList,
-                                                final List<GencodeFuncotation> gencodeFuncotations) {
+    protected List<Funcotation> createFuncotationsOnVariant(final VariantContext variant,
+                                                         final ReferenceContext referenceContext,
+                                                         final List<Feature> featureList,
+                                                         final List<GencodeFuncotation> gencodeFuncotations) {
         final List<Funcotation> outputFuncotations = new ArrayList<>();
 
         // If we have gencodeFuncotations we go through them and check for the correct Gene Name / TranscriptID.
@@ -219,9 +225,6 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
                 }
             }
         }
-
-        // Set our overrides:
-        setOverrideValuesInFuncotations(outputFuncotations);
 
         return outputFuncotations;
     }

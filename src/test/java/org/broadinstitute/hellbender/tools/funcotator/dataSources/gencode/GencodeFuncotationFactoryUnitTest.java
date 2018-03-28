@@ -960,7 +960,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
             // Generate our funcotations:
             final List<Feature> featureList = new ArrayList<>();
             featureList.add( gene );
-            final List<Funcotation> funcotations = funcotationFactory.createFuncotations(variantContext, referenceContext, featureList);
+            final List<Funcotation> funcotations = funcotationFactory.createFuncotationsOnVariant(variantContext, referenceContext, featureList);
 
             // Make sure we get what we expected:
             Assert.assertEquals(funcotations.size(), 1);
@@ -1011,7 +1011,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
             // Generate our funcotations:
             final List<Feature> featureList = new ArrayList<>();
             featureList.add( gene );
-            final List<Funcotation> funcotations = funcotationFactory.createFuncotations(variantContext, referenceContext, featureList);
+            final List<Funcotation> funcotations = funcotationFactory.createFuncotationsOnVariant(variantContext, referenceContext, featureList);
 
             // Make sure we get what we expected:
             Assert.assertEquals(funcotations.size(), 0);
@@ -1074,7 +1074,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
             final List<Feature> featureList = new ArrayList<>();
             featureList.add( gene );
-            final List<Funcotation> funcotations = funcotationFactory.createFuncotations(variantContext, referenceContext, featureList);
+            final List<Funcotation> funcotations = funcotationFactory.createFuncotationsOnVariant(variantContext, referenceContext, featureList);
 
             // Make sure we get what we expected:
             Assert.assertEquals(funcotations.size(), 1);

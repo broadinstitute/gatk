@@ -99,6 +99,11 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
     // Override Methods:
 
     @Override
+    protected Class<? extends Feature> getAnnotationFeatureClass() {
+        return XsvTableFeature.class;
+    }
+
+    @Override
     public String getName() {
         return name;
     }
@@ -115,7 +120,7 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
     }
 
     @Override
-    public List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList) {
+    protected List<Funcotation> createFuncotationsOnVariant(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList) {
         final List<Funcotation> outputFuncotations = new ArrayList<>();
 
         final List<Allele> alternateAlleles = variant.getAlternateAlleles();
@@ -128,10 +133,13 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
             for ( final Feature feature : featureList ) {
 
                 // Get the kind of feature we want here:
-                if ( (feature != null) && XsvTableFeature.class.isAssignableFrom(feature.getClass()) ) {
+                if ( feature != null ) {
+
+                    // By this point we know the feature type is correct, so we cast it:
+                    final XsvTableFeature tableFeature = (XsvTableFeature) feature;
 
                     // Make sure we are annotating the correct XSVTableFeature:
-                    final XsvTableFeature tableFeature = (XsvTableFeature) feature;
+                    // NOTE: This is probably redundant to the name check in DataSourceFuncotationFactory
                     if ( tableFeature.getDataSourceName().equals(name) ) {
 
                         // Now we create one funcotation for each Alternate allele:
@@ -154,15 +162,12 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
             }
         }
 
-        // Set our overrides:
-        setOverrideValuesInFuncotations(outputFuncotations);
-
         return outputFuncotations;
     }
 
     @Override
-    public List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList, final List<GencodeFuncotation> gencodeFuncotations) {
-        return createFuncotations(variant, referenceContext, featureList);
+    protected List<Funcotation> createFuncotationsOnVariant(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList, final List<GencodeFuncotation> gencodeFuncotations) {
+        return createFuncotationsOnVariant(variant, referenceContext, featureList);
     }
 
     @Override

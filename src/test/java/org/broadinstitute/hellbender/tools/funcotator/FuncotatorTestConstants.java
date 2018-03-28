@@ -54,6 +54,8 @@ public class FuncotatorTestConstants {
 
     public static final String COSMIC_TEST_DB = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "cosmic" + File.separator + "hg19" + File.separator + "CosmicTest.db";
 
+    public static final String DBSNP_HG19_SNIPPET_FILE_PATH = FUNCOTATOR_TEST_DIR + "dbSNP_hg19_snippet.vcf";
+
     // ----------------------------------------------------------------------
     // Integration Test Variables:
     public static final String MUC16_MNP_FILE_BASE_NAME    = FUNCOTATOR_TEST_DIR + "MUC16_MNP";

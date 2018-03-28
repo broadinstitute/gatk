@@ -258,7 +258,7 @@ public class CosmicFuncotationFactoryUnitTest extends GATKBaseTest {
     public void testCreateFuncotationsNoGencodeInput() {
         final CosmicFuncotationFactory cosmicFuncotationFactory = new CosmicFuncotationFactory(PATH_TO_TEST_DB);
 
-        cosmicFuncotationFactory.createFuncotations(defaultVariantContext, defaultReferenceContext, Collections.emptyList());
+        cosmicFuncotationFactory.createFuncotationsOnVariant(defaultVariantContext, defaultReferenceContext, Collections.emptyList());
     }
 
     @Test(dataProvider = "provideForTestCreateFuncotations")
@@ -271,7 +271,7 @@ public class CosmicFuncotationFactoryUnitTest extends GATKBaseTest {
         final CosmicFuncotationFactory cosmicFuncotationFactory = new CosmicFuncotationFactory(PATH_TO_TEST_DB);
 
         Assert.assertEquals(
-            cosmicFuncotationFactory.createFuncotations(
+            cosmicFuncotationFactory.createFuncotationsOnVariant(
                 variant,
                 referenceContext,
                 featureList,
