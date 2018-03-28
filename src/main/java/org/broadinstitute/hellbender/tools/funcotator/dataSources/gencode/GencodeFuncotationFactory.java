@@ -1037,7 +1037,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         }
 
         // Set GC Content:
-        gencodeFuncotationBuilder.setGcContent( calculateGcContent( reference, gcContentWindowSizeBases ) );
+        gencodeFuncotationBuilder.setGcContent( calculateGcContent( variant.getReference(), altAllele, reference, gcContentWindowSizeBases ) );
 
         // Get the strand:
         final Strand strand = transcript.getGenomicStrand();
@@ -1158,7 +1158,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         }
 
         // Set GC Content:
-        gencodeFuncotationBuilder.setGcContent( calculateGcContent( reference, gcContentWindowSizeBases ) );
+        gencodeFuncotationBuilder.setGcContent( calculateGcContent( variant.getReference(), altAllele, reference, gcContentWindowSizeBases ) );
 
         // Need to check if we're within the window for splice site variants:
         final GencodeGtfExonFeature spliceSiteExon = getExonWithinSpliceSiteWindow(variant, transcript, spliceSiteVariantWindowBases);
@@ -1354,7 +1354,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         sequenceComparison.setReferenceBases(referenceBases);
 
         // Set our GC content:
-        sequenceComparison.setGcContent(calculateGcContent(reference, gcContentWindowSizeBases));
+        sequenceComparison.setGcContent(calculateGcContent(variant.getReference(), altAllele, reference, gcContentWindowSizeBases));
 
         // Get the ref allele:
         sequenceComparison.setReferenceAllele(refAllele.getBaseString());
@@ -1491,21 +1491,47 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     /**
      * Calculates the fraction of Guanine and Cytosine bases in a window of a given size around a variant.
      * Note: Since Guanine and Cytosine are complementary bases, strandedness makes no difference.
+     * @param refAllele Reference {@link Allele} for the locus in question.
+     * @param altAllele Alternate {@link Allele} for the locus in question.
      * @param referenceContext The {@link ReferenceContext} for a variant.  Assumed to already be centered on the variant of interest.  Must not be {@code null}.
      * @param windowSize The number of bases to the left and right of the given {@code variant} to calculate the GC Content.  Must be >=1.
      * @return The fraction of Guanine and Cytosine bases / total bases in a window of size {@code windowSize} around a variant.
      */
-    public static double calculateGcContent( final ReferenceContext referenceContext,
+    public static double calculateGcContent( final Allele refAllele,
+                                             final Allele altAllele,
+                                             final ReferenceContext referenceContext,
                                              final int windowSize ) {
 
         Utils.nonNull( referenceContext );
         ParamUtils.isPositive( windowSize, "Window size must be >= 1." );
 
+
+        final int leadingWindowSize;
+        final int trailingWindowSize = windowSize;
+
+        if ( GATKVariantContextUtils.isInsertion(refAllele, altAllele) ||
+                GATKVariantContextUtils.isDeletion(refAllele, altAllele)) {
+            // If we have an insertion, we take 1 less base from the front
+            // because the insertion happens between two codons.
+            // The preceding padding base is there as a convenience in VCF files.
+            // Thus the prior <windowSize> bases will contain this leading padding base.
+
+            // If we have a deletion, the convention in VCF files is to include a
+            // padding base at the front prior to the deleted bases so the alternate
+            // allele can be non-empty.
+            // Because of this we subtract 1 from the leading window size.
+
+            leadingWindowSize = windowSize - 1;
+        }
+        else {
+            leadingWindowSize = windowSize;
+        }
+
         // Create a placeholder for the bases:
         final byte[] bases;
 
         // Get the bases:
-        bases = referenceContext.getBases(windowSize, windowSize);
+        bases = referenceContext.getBases(leadingWindowSize, trailingWindowSize);
 
         // Get the gcCount:
         long gcCount = 0;
@@ -1738,7 +1764,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         final GencodeFuncotationBuilder funcotationBuilder = new GencodeFuncotationBuilder();
 
         // Get GC Content:
-        funcotationBuilder.setGcContent( calculateGcContent( reference, gcContentWindowSizeBases ) );
+        funcotationBuilder.setGcContent( calculateGcContent( variant.getReference(), altAllele, reference, gcContentWindowSizeBases ) );
 
         funcotationBuilder.setVariantClassification( GencodeFuncotation.VariantClassification.IGR )
                           .setRefAllele( variant.getReference() )
