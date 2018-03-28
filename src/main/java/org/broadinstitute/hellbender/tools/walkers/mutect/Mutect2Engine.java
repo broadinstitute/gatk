@@ -214,9 +214,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
             return NO_CALLS;
         }
 
-        // TODO perhaps option to keep filtered GGA alleles?
         final List<VariantContext> givenAlleles = MTAC.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ?
-                featureContext.getValues(MTAC.alleles).stream().filter(VariantContext::isNotFiltered).collect(Collectors.toList()) :
+                featureContext.getValues(MTAC.alleles).stream().filter(vc -> MTAC.genotypeFilteredAlleles || vc.isNotFiltered()).collect(Collectors.toList()) :
                 Collections.emptyList();
 
         final AssemblyRegion assemblyActiveRegion = AssemblyBasedCallerUtils.assemblyRegionWithWellMappedReads(originalAssemblyRegion, READ_QUALITY_FILTER_THRESHOLD, header);
@@ -294,7 +293,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     @Override
     public ActivityProfileState isActive(final AlignmentContext context, final ReferenceContext ref, final FeatureContext featureContext) {
         if ( MTAC.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
-            final VariantContext vcFromAllelesRod = GenotypingGivenAllelesUtils.composeGivenAllelesVariantContextFromRod(featureContext, ref.getInterval(), false, logger, MTAC.alleles);
+            final VariantContext vcFromAllelesRod = GenotypingGivenAllelesUtils.composeGivenAllelesVariantContextFromRod(featureContext, ref.getInterval(), false, MTAC.genotypeFilteredAlleles, logger, MTAC.alleles);
             if( vcFromAllelesRod != null ) {
                 return new ActivityProfileState(ref.getInterval(), 1.0);
             }
