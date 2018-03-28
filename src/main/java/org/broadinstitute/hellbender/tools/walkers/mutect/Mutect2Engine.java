@@ -313,8 +313,11 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
             }
         } else if (!MTAC.genotypeGermlineSites) {
             final List<VariantContext> germline = featureContext.getValues(MTAC.germlineResource, refInterval);
-            if (!germline.isEmpty() && germline.get(0).getAttributeAsDoubleList(VCFConstants.ALLELE_FREQUENCY_KEY, 0.0).get(0) > MTAC.maxPopulationAlleleFrequency) {
-                return new ActivityProfileState(refInterval, 0.0);
+            if (!germline.isEmpty()){
+                final List<Double> germlineAlleleFrequencies = germline.get(0).getAttributeAsDoubleList(VCFConstants.ALLELE_FREQUENCY_KEY, 0.0);
+                if (! germlineAlleleFrequencies.isEmpty() && germlineAlleleFrequencies.get(0) > MTAC.maxPopulationAlleleFrequency) {
+                    return new ActivityProfileState(refInterval, 0.0);
+                }
             }
         }
 
