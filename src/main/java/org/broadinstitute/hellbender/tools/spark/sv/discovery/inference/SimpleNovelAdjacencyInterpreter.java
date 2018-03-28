@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.inference;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -8,6 +9,7 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.*;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import scala.Tuple2;
@@ -68,7 +70,7 @@ public final class SimpleNovelAdjacencyInterpreter {
                                         MORE_RELAXED_ALIGNMENT_MIN_MQ, MORE_RELAXED_ALIGNMENT_MIN_LENGTH))
                         .mapToPair(tig -> {
                             final SAMSequenceDictionary refSeqDict = referenceSequenceDictionaryBroadcast.getValue();
-                            final ChimericAlignment simpleChimera = ChimericAlignment.extractSimpleChimera(tig, refSeqDict);
+                            final ChimericAlignment simpleChimera = extractSimpleChimera(tig, refSeqDict);
                             final byte[] contigSequence = tig.getContigSequence();
 
                             final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype =
@@ -85,5 +87,25 @@ public final class SimpleNovelAdjacencyInterpreter {
                 referenceSequenceDictionaryBroadcast.getValue(), discoverStageArgs, toolLogger);
 
         return simpleNovelAdjacencies;
+    }
+
+    /**
+     * @return a simple chimera indicated by the alignments of the input contig;
+     *         if the input chimeric alignments are not strong enough to support an CA, a {@code null} is returned
+     *
+     * @throws IllegalArgumentException if the input contig doesn't have exactly two good input alignments
+     */
+    @VisibleForTesting
+    static ChimericAlignment extractSimpleChimera(final AssemblyContigWithFineTunedAlignments contig,
+                                                  final SAMSequenceDictionary referenceDictionary) {
+        if ( ! contig.hasOnly2GoodAlignments() )
+            throw new IllegalArgumentException("assembly contig sent to the wrong path: assumption that contig has only 2 good alignments is violated for\n" +
+                    contig.toString());
+
+        final AlignmentInterval alignmentOne = contig.getAlignments().get(0);
+        final AlignmentInterval alignmentTwo = contig.getAlignments().get(1);
+
+        return new ChimericAlignment(alignmentOne, alignmentTwo, contig.getInsertionMappings(),
+                contig.getContigName(), referenceDictionary);
     }
 }

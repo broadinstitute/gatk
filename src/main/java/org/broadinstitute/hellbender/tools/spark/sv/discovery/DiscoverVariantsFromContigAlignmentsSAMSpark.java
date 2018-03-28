@@ -23,6 +23,7 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment;
@@ -34,7 +35,9 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -112,6 +115,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String prefixForOutput;
 
+
     @Override
     public boolean requiresReference() {
         return true;
@@ -163,7 +167,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                 alignedContigs.filter(alignedContig -> alignedContig.getAlignments().size() > 1)
                         .mapToPair(alignedContig ->
                                 new Tuple2<>(alignedContig.getContigSequence(),
-                                        ChimericAlignment.parseOneContig(alignedContig, referenceSequenceDictionaryBroadcast.getValue(),
+                                        parseOneContig(alignedContig, referenceSequenceDictionaryBroadcast.getValue(),
                                                 true, DEFAULT_MIN_ALIGNMENT_LENGTH,
                                                 CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, true)));
 
@@ -227,13 +231,117 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
         }
     }
 
+    // =================================================================================================================
+
+    /**
+     * Parse all alignment records for a single locally-assembled contig and generate chimeric alignments if available.
+     * Applies certain filters to skip the input alignment regions that are:
+     *     1) if the alignment region's mapping quality is below a certain threshold, it is skipped
+     *     2) if the alignment region is too small, it is skipped
+     * If the alignment region passes the above two filters and the next alignment region could be treated as potential inserted sequence,
+     * note down the mapping & alignment information of that region and skip it
+     * @param alignedContig          made of (sorted {alignmentIntervals}, sequence) of a potentially-signalling locally-assembled contig
+     * @param referenceDictionary    reference sequence dictionary
+     * @param filterAlignmentByMqOrLength
+     * @param uniqueRefSpanThreshold for an alignment interval to be used to construct a ChimericAlignment,
+     *                               how long a unique--i.e. the same ref span is not covered by other alignment intervals--alignment on the reference must it have
+     * @param mapQualThresholdInclusive
+     * @param filterWhollyContainedAlignments
+     */
+    @VisibleForTesting
+    public static List<ChimericAlignment> parseOneContig(final AlignedContig alignedContig,
+                                                         final SAMSequenceDictionary referenceDictionary,
+                                                         final boolean filterAlignmentByMqOrLength,
+                                                         final int uniqueRefSpanThreshold,
+                                                         final int mapQualThresholdInclusive,
+                                                         final boolean filterWhollyContainedAlignments) {
+
+        if (alignedContig.getAlignments().size() < 2) {
+            return new ArrayList<>();
+        }
+
+        final Iterator<AlignmentInterval> iterator = alignedContig.getAlignments().iterator();
+
+        // fast forward to the first alignment region with high MapQ
+        AlignmentInterval current = iterator.next();
+        if (filterAlignmentByMqOrLength) {
+            while (mapQualTooLow(current, mapQualThresholdInclusive) && iterator.hasNext()) {
+                current = iterator.next();
+            }
+        }
+
+        final List<ChimericAlignment> results = new ArrayList<>(alignedContig.getAlignments().size() - 1);
+        final List<String> insertionMappings = new ArrayList<>();
+
+        // then iterate over the AR's in pair to identify CA's.
+        while ( iterator.hasNext() ) {
+            final AlignmentInterval next = iterator.next();
+            if (filterAlignmentByMqOrLength) {
+                if (firstAlignmentIsTooShort(current, next, uniqueRefSpanThreshold)) {
+                    continue;
+                } else if (nextAlignmentMayBeInsertion(current, next, mapQualThresholdInclusive, uniqueRefSpanThreshold, filterWhollyContainedAlignments)) {
+                    if (iterator.hasNext()) {
+                        insertionMappings.add(next.toPackedString());
+                        continue;
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            // TODO: 10/18/17 this way of filtering CA based on not quality but alignment characteristics is temporary:
+            //       this was initially developed for ins/del (and tested for that purpose), simple translocations travel through a different code path at the moment.
+            // TODO: ultimately we need to merge these two code paths
+            final ChimericAlignment chimericAlignment = new ChimericAlignment(current, next, insertionMappings,
+                    alignedContig.getContigName(), referenceDictionary);
+            // the following check/filter is due to the fact that simple translocations are to be handled in a different code path
+            if (chimericAlignment.isNeitherSimpleTranslocationNorIncompletePicture())
+                results.add(chimericAlignment);
+
+            current = next;
+        }
+
+        return results;
+    }
+
+    // TODO: 11/22/16 it might also be suitable to consider the reference context this alignment region is mapped to
+    //       and not simply apply a hard filter (need to think about how to test)
+    private static boolean mapQualTooLow(final AlignmentInterval aln, final int mapQThresholdInclusive) {
+        return aln.mapQual < mapQThresholdInclusive;
+    }
+
+    /**
+     * @return if {@code first} is too short, when considering overlap with {@code second}
+     */
+    @VisibleForTesting
+    static boolean firstAlignmentIsTooShort(final AlignmentInterval first, final AlignmentInterval second,
+                                            final Integer minAlignLength) {
+        return first.referenceSpan.size() - AlignmentInterval.overlapOnContig(first, second) < minAlignLength;
+    }
+
+    /**
+     * To implement the idea that for two consecutive alignment regions of a contig, the one with higher reference coordinate might be a novel insertion.
+     */
+    @VisibleForTesting
+    static boolean nextAlignmentMayBeInsertion(final AlignmentInterval current, final AlignmentInterval next,
+                                               final Integer mapQThresholdInclusive, final Integer minAlignLength,
+                                               final boolean filterWhollyContained) {
+        // not unique: inserted sequence may have low mapping quality (low reference uniqueness) or may be very small (low read uniqueness)
+        final boolean isNotUnique = mapQualTooLow(next, mapQThresholdInclusive) || firstAlignmentIsTooShort(next, current, minAlignLength);
+        return isNotUnique
+                ||
+                (filterWhollyContained && (current.referenceSpan.contains(next.referenceSpan) || next.referenceSpan.contains(current.referenceSpan)));
+    }
+
+    // =================================================================================================================
+
     // TODO: 2/28/18 this function is now used only in this tool (and tested accordingly),
     //      its updated version is
     //      {@link BreakpointsInference#TypeInferredFromSimpleChimera()}, and
     //      {@link SimpleNovelAdjacencyInterpreter#inferSimpleOrBNDTypesFromNovelAdjacency}
     //      which should be tested accordingly
     @VisibleForTesting
-    public static SimpleSVType inferSimpleTypeFromNovelAdjacency(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype) {
+    static SimpleSVType inferSimpleTypeFromNovelAdjacency(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype) {
 
         final int start = novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getEnd();
         final int end = novelAdjacencyAndAltHaplotype.getLeftJustifiedRightRefLoc().getStart();
