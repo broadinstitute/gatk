@@ -7,32 +7,24 @@ RUN apt-get update && \
      apt-get upgrade -y && \
      apt-get install -y python && \
      apt-get install -y python3-pip && \
-     apt-get install -y wget curl unzip gcc python-dev python-setuptools git less lynx hdfview
-##########
-
-# Install some more useful tools
-RUN apt-get install -y \
- aufs-tools \
- automake \
- bedtools \
- btrfs-tools \
- build-essential \
- dpkg-sig \
- iptables \
- samtools \
- software-properties-common
+     apt-get install -y wget curl unzip gcc python-dev python-setuptools git less lynx hdfview \
+     aufs-tools \
+     automake \
+     bedtools \
+     btrfs-tools \
+     build-essential \
+     dpkg-sig \
+     iptables \
+     samtools \
+     software-properties-common && \
+     apt-get -y autoremove && \
+     apt-get -y clean 
 
 #### Specific for google cloud support
-RUN wget https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.zip \
-    && unzip google-cloud-sdk.zip \
-    && rm google-cloud-sdk.zip
-
-RUN google-cloud-sdk/install.sh --usage-reporting=true --path-update=true --bash-completion=true --rc-path=/.bashrc --disable-installation-options
-VOLUME ["/root/.config"]
-ENV PATH /google-cloud-sdk/bin:$PATH
-
-RUN yes | gcloud components update
-RUN yes | gcloud components update preview
+RUN export CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)" && \
+    echo "deb http://packages.cloud.google.com/apt $CLOUD_SDK_REPO main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && \
+    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - && \
+    apt-get update -y && apt-get install google-cloud-sdk -y
 ###########
 
 # Get OpenJDK8 on here.
