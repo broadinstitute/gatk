@@ -175,7 +175,7 @@ public class DiscoverVariantsFromReadDepth extends GATKTool {
         try (final OutputStream outputStream = BucketUtils.createFile(outputPath)) {
             outputStream.write((LargeSimpleSV.getBedHeader() + "\n").getBytes());
             for (final LargeSimpleSV event : events) {
-                outputStream.write((event.toBedString(dictionary, arguments.COUNTEREVIDENCE_PSEUDOCOUNT) + "\n").getBytes());
+                outputStream.write((event.toBedString(dictionary, arguments.counterEvidencePseudocount) + "\n").getBytes());
             }
         } catch (final IOException e) {
             throw new GATKException("Error writing output BED file", e);

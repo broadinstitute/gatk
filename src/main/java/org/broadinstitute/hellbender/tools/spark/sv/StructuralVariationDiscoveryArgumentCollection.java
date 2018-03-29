@@ -250,22 +250,106 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
     public static class DiscoverVariantsFromReadDepth implements Serializable {
         private static final long serialVersionUID = 1L;
 
-        public final double MIN_EVIDENCE_TO_COUNTEREVIDENCE_RATIO = 4; //4
-        public final double COUNTEREVIDENCE_PSEUDOCOUNT = 1;
-        public final int BREAKPOINT_INTERVAL_PADDING = 100;
-        public final int EVIDENCE_LINK_INTERVAL_PADDING = 500; //500
-        public final int SPANNING_COUNTEREVIDENCE_RANGE = 1000; //1000
-        public final int MIN_LINK_COUNTEREVIDENCE = 3; //3
-        public final int HMM_PADDING = 0;
-        public final double MIN_EVENT_HMM_COVERAGE = 0.70;
-        public final double COPY_NUMBER_HMM_ALPHA = 0.01;
-        public final int COPY_NUMBER_BIN_TRIMMING = 1;
-        public final double NON_DELETION_INVALID_BIN_FRACTION = 0.30;
-        public final double NON_DELETION_INVALID_LOG2_COPY_RATIO_THRESHOLD = -1;
-        public final double MAX_CANDIDATE_EVENT_RECIPROCAL_OVERLAP = 0.1;
-        public final double MIN_SEGMENT_OVERLAP = 0.5; //0.5
-        public final int MIN_SV_SIZE = 500; //1000;
-        public final int MAX_COPY_RATIO_STATE = 7;
+        public final int DEFAULT_MIN_EVENT_SIZE = 1000;
+        public final double DEFAULT_MIN_SCORE = 4;
+
+        public final double DEFAULT_COUNTEREVIDENCE_PSEUDOCOUNT = 1;
+        public final int DEFAULT_BREAKPOINT_PADDING = 100;
+        public final int DEFAULT_EVIDENCE_TARGET_LINK_PADDING = 500;
+        public final int DEFAULT_LOCAL_COUNTEREVIDENCE_RANGE = 1000;
+        public final int DEFAULT_MIN_COUNTERVIDENCE_CLUSTER_SIZE = 3;
+
+        public final int DEFAULT_HMM_PADDING = 0;
+        public final double DEFAULT_HMM_VALID_STATES_MIN_FRACTION = 0.70;
+        public final double DEFAULT_HMM_TRANSITION_PROB = 0.01;
+        public final int DEFAULT_HMM_MAX_STATES = 14;
+
+        public final int DEFAULT_COPY_RATIO_BIN_TRIMMING = 1;
+        public final double DEFAULT_TANDEM_DUP_EVENT_INVALID_BIN_FRACTION = 0.30;
+        public final double DEFAULT_TANDEM_DUP_EVENT_INVALID_LOG2_COPY_RATIO_THRESHOLD = -1;
+        public final double DEFAULT_MAX_CALL_RECIPROCAL_OVERLAP = 0.1;
+        public final double DEFAULT_MIN_SEGMENT_OVERLAP = 0.5;
+
+        public static final String DEFAULT_MIN_EVENT_SIZE_LONG_NAME = "min-size";
+        public static final String DEFAULT_MIN_SCORE_LONG_NAME = "min-score";
+        public static final String DEFAULT_COUNTEREVIDENCE_PSEUDOCOUNT_LONG_NAME = "counter-evidence-pseudocount";
+        public static final String DEFAULT_BREAKPOINT_PADDING_LONG_NAME = "breakpoint-padding";
+        public static final String DEFAULT_EVIDENCE_TARGET_LINK_PADDING_LONG_NAME = "cluster-padding";
+        public static final String DEFAULT_LOCAL_COUNTEREVIDENCE_RANGE_LONG_NAME = "counter-evidence-range";
+        public static final String DEFAULT_MIN_COUNTERVIDENCE_CLUSTER_SIZE_LONG_NAME = "min-counter-evidence-size";
+        public static final String DEFAULT_HMM_PADDING_LONG_NAME = "hmm-padding";
+        public static final String DEFAULT_HMM_VALID_STATES_MIN_FRACTION_LONG_NAME = "hmm-min-valid-states";
+        public static final String DEFAULT_HMM_TRANSITION_PROB_LONG_NAME = "hmm-transition-prob";
+        public static final String DEFAULT_HMM_MAX_STATES_LONG_NAME = "hmm-max-states";
+        public static final String DEFAULT_COPY_RATIO_BIN_TRIMMING_LONG_NAME = "copy-ratio-trimming";
+        public static final String DEFAULT_TANDEM_DUP_INVALID_BIN_FRACTION_LONG_NAME = "invalid-bin-fraction";
+        public static final String DEFAULT_TANDEM_DUP_INVALID_LOG2_COPY_RATIO_THRESHOLD_LONG_NAME = "invalid-log2-threshold";
+        public static final String DEFAULT_MAX_CALL_RECIPROCAL_OVERLAP_LONG_NAME = "max-call-overlap";
+        public static final String DEFAULT_MIN_SEGMENT_OVERLAP_LONG_NAME = "min-segment-overlap";
+
+        @Argument(doc = "Minimum event size",
+                fullName = DEFAULT_MIN_EVENT_SIZE_LONG_NAME, optional = true)
+        public int minEventSize = DEFAULT_MIN_EVENT_SIZE;
+
+        @Argument(doc = "Minimum event score",
+                fullName = DEFAULT_MIN_SCORE_LONG_NAME, optional = true)
+        public double minScore = DEFAULT_MIN_SCORE;
+
+        @Argument(doc = "Counter-evidence pseudocount",
+                fullName = DEFAULT_COUNTEREVIDENCE_PSEUDOCOUNT_LONG_NAME, optional = true)
+        public double counterEvidencePseudocount = DEFAULT_COUNTEREVIDENCE_PSEUDOCOUNT;
+
+        @Argument(doc = "Padding to apply to each breakpoint when searching for supporting evidence",
+                fullName = DEFAULT_BREAKPOINT_PADDING_LONG_NAME, optional = true)
+        public int breakpointPadding = DEFAULT_BREAKPOINT_PADDING;
+
+        @Argument(doc = "Padding to apply to each interval of clustered read evidence when searching for supporting evidence",
+                fullName = DEFAULT_EVIDENCE_TARGET_LINK_PADDING_LONG_NAME, optional = true)
+        public int evidenceTargetLinkPadding = DEFAULT_EVIDENCE_TARGET_LINK_PADDING;
+
+        @Argument(doc = "Padding to apply to event interval when searching for counter-evidence",
+                fullName = DEFAULT_LOCAL_COUNTEREVIDENCE_RANGE_LONG_NAME, optional = true)
+        public int localCounterevidenceRange = DEFAULT_LOCAL_COUNTEREVIDENCE_RANGE;
+
+        @Argument(doc = "Minimum size of any cluster of counter-evidence",
+                fullName = DEFAULT_MIN_COUNTERVIDENCE_CLUSTER_SIZE_LONG_NAME, optional = true)
+        public int minCountervidenceClusterSize = DEFAULT_MIN_COUNTERVIDENCE_CLUSTER_SIZE;
+
+        @Argument(doc = "Padding to apply to event interval for the HMM (in bp)",
+                fullName = DEFAULT_HMM_PADDING_LONG_NAME, optional = true)
+        public int hmmPadding = DEFAULT_HMM_PADDING;
+
+        @Argument(doc = "Threshold fraction of valid event HMM states",
+                fullName = DEFAULT_HMM_VALID_STATES_MIN_FRACTION_LONG_NAME, optional = true)
+        public double hmmValidStatesMinFraction = DEFAULT_HMM_VALID_STATES_MIN_FRACTION;
+
+        @Argument(doc = "HMM probability of transitioning to a different copy ratio state",
+                fullName = DEFAULT_HMM_TRANSITION_PROB_LONG_NAME, optional = true)
+        public double hmmTransitionProb = DEFAULT_HMM_TRANSITION_PROB;
+
+        @Argument(doc = "Max number of HMM states",
+                fullName = DEFAULT_HMM_MAX_STATES_LONG_NAME, optional = true)
+        public int hmmMaxStates = DEFAULT_HMM_MAX_STATES;
+
+        @Argument(doc = "Number of bins to trim from either side of the copy ratios",
+                fullName = DEFAULT_COPY_RATIO_BIN_TRIMMING_LONG_NAME, optional = true)
+        public int copyRatioBinTrimming = DEFAULT_COPY_RATIO_BIN_TRIMMING;
+
+        @Argument(doc = "Threshold allowable invalid copy ratio bin fraction for tandem duplications",
+                fullName = DEFAULT_TANDEM_DUP_INVALID_BIN_FRACTION_LONG_NAME, optional = true)
+        public double tandemDuplicationInvalidBinFraction = DEFAULT_TANDEM_DUP_EVENT_INVALID_BIN_FRACTION;
+
+        @Argument(doc = "Threshold log2 copy ratio, below which is invalid for tandem duplications",
+                fullName = DEFAULT_TANDEM_DUP_INVALID_LOG2_COPY_RATIO_THRESHOLD_LONG_NAME, optional = true)
+        public double tandemDuplicationInvalidLog2CopyRatioThreshold = DEFAULT_TANDEM_DUP_EVENT_INVALID_LOG2_COPY_RATIO_THRESHOLD;
+
+        @Argument(doc = "Maximum allowable reciprocal overlap of any two calls",
+                fullName = DEFAULT_MAX_CALL_RECIPROCAL_OVERLAP_LONG_NAME, optional = true)
+        public double maxCallReciprocalOverlap = DEFAULT_MAX_CALL_RECIPROCAL_OVERLAP;
+
+        @Argument(doc = "Required fraction overlap of segment calls with the event",
+                fullName = DEFAULT_MIN_SEGMENT_OVERLAP_LONG_NAME, optional = true)
+        public double minSegmentOverlap = DEFAULT_MIN_SEGMENT_OVERLAP;
     }
 
 }

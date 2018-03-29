@@ -10,20 +10,24 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public final class CopyNumberHMM implements HMM<Double, Integer, Integer> {
+public final class CopyRatioHMM implements HMM<Double, Integer, Integer> {
 
-    private final RealVector priors;
+    private final RealVector logPriors;
     private final int numStates;
-    private final double alpha;
-    private final List<NormalDistribution> copyNumberRatioEmissionDistributions;
+    private final double logStateChangeProbability;
+    private final double logStateSameProbability;
+    private final List<NormalDistribution> copyRatioEmissionDistributions;
 
-    public CopyNumberHMM(final RealVector priors, final double alpha) {
-        this.priors = priors;
-        numStates = priors.getDimension();
-        this.alpha = alpha;
-        copyNumberRatioEmissionDistributions = new ArrayList<>(numStates);
+    private static final double COPY_RATIO_STDEV = 0.25;
+
+    public CopyRatioHMM(final RealVector priors, final double stateChangeProbability) {
+        this.numStates = priors.getDimension();
+        this.logPriors = priors.map(Math::log);
+        this.logStateChangeProbability = Math.log(stateChangeProbability);
+        this.logStateSameProbability = Math.log(1 - stateChangeProbability);
+        copyRatioEmissionDistributions = new ArrayList<>(numStates);
         for (int i = 0; i < numStates; i++) {
-            copyNumberRatioEmissionDistributions.add(new NormalDistribution(i * 0.5, 0.25));
+            copyRatioEmissionDistributions.add(new NormalDistribution(i * 0.5, COPY_RATIO_STDEV));
         }
     }
 
@@ -34,7 +38,7 @@ public final class CopyNumberHMM implements HMM<Double, Integer, Integer> {
 
     @Override
     public double logPriorProbability(final Integer state, final Integer position) {
-        return Math.log(priors.getEntry(state));
+        return logPriors.getEntry(state);
     }
 
     @Override
@@ -42,13 +46,13 @@ public final class CopyNumberHMM implements HMM<Double, Integer, Integer> {
                                            final Integer currentPosition,
                                            final Integer nextState,
                                            final Integer nextPosition) {
-        return currentState == nextState ? Math.log(1 - alpha) : Math.log(alpha);
+        return currentState == nextState ? logStateSameProbability : logStateChangeProbability;
     }
 
     @Override
-    public double logEmissionProbability(final Double log2CopyRatio, final Integer state,
+    public double logEmissionProbability(final Double copyRatio, final Integer state,
                                          final Integer position) {
-        return copyNumberRatioEmissionDistributions.get(state).logDensity(Math.pow(2, log2CopyRatio));
+        return copyRatioEmissionDistributions.get(state).logDensity(copyRatio);
     }
 
     public static RealVector getCopyNumberPrior(final int numStates) {

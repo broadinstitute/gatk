@@ -68,7 +68,7 @@ public class LargeSimpleSVCaller {
         pairedBreakpoints = getIntrachromosomalBreakpointPairs(breakpoints);
         contigTree = buildReadIntervalTree(assembledContigs);
         copyRatioOverlapDetector = getCopyRatioOverlapDetector(copyRatios, pairedBreakpoints,
-                Arrays.asList(intrachromosomalLinkTree, interchromosomalLinkTree), arguments.HMM_PADDING, dictionary);
+                Arrays.asList(intrachromosomalLinkTree, interchromosomalLinkTree), arguments.hmmPadding, dictionary);
         copyRatioSegmentOverlapDetector = copyRatioSegments.getOverlapDetector();
 
         logger.info("Initializing event factories...");
@@ -235,7 +235,7 @@ public class LargeSimpleSVCaller {
         for (final IntrachromosomalBreakpointPair breakpoints : pairedBreakpoints) {
             final SVInterval leftBreakpointInterval = new SVInterval(breakpoints.getContig(), breakpoints.getInterval().getStart(), breakpoints.getInterval().getStart());
             final SVInterval rightBreakpointInterval = new SVInterval(breakpoints.getContig(), breakpoints.getInterval().getEnd(), breakpoints.getInterval().getEnd());
-            final Optional<LargeSimpleSV> event = getHighestScoringEventOnInterval(leftBreakpointInterval, rightBreakpointInterval, breakpoints.getInterval(), calledEventTree, breakpoints, arguments.BREAKPOINT_INTERVAL_PADDING);
+            final Optional<LargeSimpleSV> event = getHighestScoringEventOnInterval(leftBreakpointInterval, rightBreakpointInterval, breakpoints.getInterval(), calledEventTree, breakpoints, arguments.breakpointPadding);
             if (event.isPresent()) {
                 calledEventTree.put(event.get().getInterval(), event.get());
             }
@@ -253,7 +253,7 @@ public class LargeSimpleSVCaller {
             final int callEnd1 = (leftInterval.getStart() + leftInterval.getEnd()) / 2;
             final int callEnd2 = (rightInterval.getStart() + rightInterval.getEnd()) / 2;
             final SVInterval callInterval = new SVInterval(leftInterval.getContig(), Math.min(callEnd1, callEnd2), Math.max(callEnd1, callEnd2));
-            final Optional<LargeSimpleSV> event = getHighestScoringEventOnInterval(leftInterval, rightInterval, callInterval, calledEventTree, null, arguments.EVIDENCE_LINK_INTERVAL_PADDING);
+            final Optional<LargeSimpleSV> event = getHighestScoringEventOnInterval(leftInterval, rightInterval, callInterval, calledEventTree, null, arguments.evidenceTargetLinkPadding);
             if (event.isPresent()) {
                 calledEventTree.put(event.get().getInterval(), event.get());
             }
@@ -276,10 +276,10 @@ public class LargeSimpleSVCaller {
      * @return Optional containing the called event, if any
      */
     private Optional<LargeSimpleSV> getHighestScoringEventOnInterval(final SVInterval leftInterval, final SVInterval rightInterval, final SVInterval callInterval, final SVIntervalTree<LargeSimpleSV> disallowedIntervals, final IntrachromosomalBreakpointPair breakpoints, final int evidencePadding) {
-        if (SVIntervalUtils.hasReciprocalOverlapInTree(callInterval, disallowedIntervals, arguments.MAX_CANDIDATE_EVENT_RECIPROCAL_OVERLAP))
+        if (SVIntervalUtils.hasReciprocalOverlapInTree(callInterval, disallowedIntervals, arguments.maxCallReciprocalOverlap))
             return Optional.empty();
         final Stream<LargeSimpleSV> candidateEvents = getEventsOnInterval(leftInterval, rightInterval, callInterval, breakpoints, evidencePadding).stream();
-        return candidateEvents.max(Comparator.comparingDouble(event -> event.getScore(arguments.COUNTEREVIDENCE_PSEUDOCOUNT)));
+        return candidateEvents.max(Comparator.comparingDouble(event -> event.getScore(arguments.counterEvidencePseudocount)));
     }
 
     /**
@@ -298,7 +298,7 @@ public class LargeSimpleSVCaller {
                                                     final int evidencePadding) {
 
         if (leftInterval.getContig() != rightInterval.getContig()) return Collections.emptyList();
-        if (callInterval.getLength() < arguments.MIN_SV_SIZE)
+        if (callInterval.getLength() < arguments.minEventSize)
             return Collections.emptyList();
 
         final Collection<LargeSimpleSV> events = new ArrayList<>();
