@@ -1187,48 +1187,38 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
-     * Get the bases around the given variant (as specified by {@code refAllele} and {@code altAllele}).
+     * Get the bases around the given variant (as specified by {@code refAllele} and {@code altAllele})
+     * in the correct direction of the strand for this variant.
      * The number of bases before and after the variant is specified by {@link #referenceWindow}.
      * @param refAllele The reference {@link Allele} for the variant.
      * @param altAllele The alternate {@link Allele} for the variant.
      * @param reference The {@link ReferenceContext} for the variant, with the current window around the variant.
      * @param strand The {@link Strand} on which the variant occurs.
-     * @return A {@link String} of bases of length {@link #referenceWindow} * 2 + |variant|
+     * @return A {@link String} of bases of length {@link #referenceWindow} * 2 + |variant| correct for strandedness.
      */
-    private static String getReferenceBases(final Allele refAllele, final Allele altAllele, final ReferenceContext reference, final Strand strand ) {
+    @VisibleForTesting
+    static String getReferenceBases(final Allele refAllele, final Allele altAllele, final ReferenceContext reference, final Strand strand ) {
 
-        // Adjustment for the start of the variant based on whether it's a deletion or not.
-        // NOTE: This is an artifact of the GATK representation of variants (that they must be at least 1 base)
-        final int deletionStartAdjustment = GATKVariantContextUtils.isDeletion(refAllele, altAllele) ? 1 : 0;
-
-        if ( strand == Strand.POSITIVE ) {
-
-            final int endWindow = Math.max(refAllele.length(), altAllele.length()) + referenceWindow - 1;
-
-            // Get the reference sequence:
-             return new String(reference.getBases(
-                     new SimpleInterval(reference.getWindow().getContig(),
-                             reference.getWindow().getStart() - referenceWindow,
-                             reference.getWindow().getEnd() + endWindow)
-                )
-            );
+        final int indelAdjustment;
+        if ( altAllele.length() > refAllele.length() ) {
+            indelAdjustment = altAllele.length() - refAllele.length();
         }
         else {
-            // Calculate our window to include any extra bases but also have the right referenceWindow.
-            final int frontPadding = Math.max(refAllele.length(), altAllele.length()) + referenceWindow - 1;
+            indelAdjustment = 0;
+        }
 
-            // Get the reference sequence:
-            // NOTE: The "frontPadding" actually adds padding to the back of the coding sequence because the strand
-            //       is negative and we have to reverse complement the bases.
-            //       However, we pass in the overall interval before reverse complementing, so this padding happens on
-            //       the front of the query interval.
-            return ReadUtils.getBasesReverseComplement(
-                    reference.getBases(
-                            new SimpleInterval(reference.getWindow().getContig(),
-                                    reference.getWindow().getStart() - frontPadding,
-                                    reference.getWindow().getEnd() + referenceWindow)
-                    )
-            );
+        // Calculate the interval from which to get the reference:
+        final SimpleInterval refBasesInterval = new SimpleInterval(
+                    reference.getWindow().getContig(),
+                    reference.getWindow().getStart() - referenceWindow,
+                    reference.getWindow().getEnd() + referenceWindow + indelAdjustment);
+
+        // Get the bases in the correct direction:
+        if ( strand == Strand.POSITIVE ) {
+            return new String(reference.getBases(refBasesInterval));
+        }
+        else {
+            return ReadUtils.getBasesReverseComplement(reference.getBases(refBasesInterval));
         }
     }
 
