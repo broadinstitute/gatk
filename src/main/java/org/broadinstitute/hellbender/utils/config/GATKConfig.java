@@ -144,6 +144,9 @@ public interface GATKConfig extends Mutable, Accessible {
     @DefaultValue("htsjdk.variant,htsjdk.tribble,org.broadinstitute.hellbender.utils.codecs")
     List<String> codec_packages();
 
+    @DefaultValue("org.broadinstitute.hellbender.engine.filters")
+    List<String> read_filter_packages();
+
     // ----------------------------------------------------------
     // GATKTool Options:
     // ----------------------------------------------------------
