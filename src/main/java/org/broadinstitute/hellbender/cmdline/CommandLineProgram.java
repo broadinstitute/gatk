@@ -14,6 +14,8 @@ import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.DocOnlyArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.GATKDocOnlyArgumentCollection;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
@@ -81,16 +83,8 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     @Argument(fullName = StandardArgumentDefinitions.NIO_MAX_REOPENS_LONG_NAME, shortName = StandardArgumentDefinitions.NIO_MAX_REOPENS_SHORT_NAME, doc = "If the GCS bucket channel errors out, how many times it will attempt to re-initiate the connection", optional = true)
     public int NIO_MAX_REOPENS = ConfigFactory.getInstance().getGATKConfig().gcsMaxRetries();
 
-    // This option is here for documentation completeness.
-    // This is actually parsed out in Main to initialize configuration files because
-    // we need to have the configuration completely set up before we create our CommandLinePrograms.
-    // (Some of the CommandLinePrograms have default values set to config values, and these are loaded
-    // at class load time as static initializers).
-    @Argument(fullName = StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION,
-              doc = "A configuration file to use with the GATK.",
-                common = true,
-                optional = true)
-    public String GATK_CONFIG_FILE = null;
+    @ArgumentCollection(doc = "Special documentation-only arguments.")
+    public DocOnlyArgumentCollection documentationArgumentsCollection = getDocOnlyArguments();
 
     private CommandLineParser commandLineParser;
 
@@ -101,6 +95,18 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
      * and debugging.
      */
     private String commandLine;
+
+    /**
+     * Returns documentation-only arguments.
+     *
+     * <p>Default behavior returns {@link GATKDocOnlyArgumentCollection}. Subclasses can override to extend/hide
+     * documentation arguments that are unused for other purposes.
+     *
+     * @return documentation-only argument collection.
+     */
+    protected DocOnlyArgumentCollection getDocOnlyArguments() {
+        return new GATKDocOnlyArgumentCollection();
+    }
 
     /**
      * Perform initialization/setup after command-line argument parsing but before doWork() is invoked.
