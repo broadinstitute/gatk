@@ -11,6 +11,8 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.PedigreeAnnotation;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.config.ConfigFactory;
+import org.broadinstitute.hellbender.utils.config.GATKConfig;
 
 import java.io.File;
 import java.lang.reflect.Modifier;
@@ -33,9 +35,18 @@ import java.util.stream.Stream;
  *       as no such annotations exist in the GATK.
  */
 public class GATKAnnotationPluginDescriptor  extends CommandLinePluginDescriptor<Annotation> {
-    //TODO this should be a configurable option or otherwise exposed to the user when configurations are fully supported.
-    public static final String pluginPackageName = "org.broadinstitute.hellbender.tools.walkers.annotator";
-    public static final Class<?> pluginBaseClass = org.broadinstitute.hellbender.tools.walkers.annotator.Annotation.class;
+    /**
+     * At startup, set the plugin package name to the one(s) in the configuration file.
+     */
+    private static final List<String> PLUGIN_PACKAGE_NAMES;
+    static {
+        // Get our configuration:
+        final GATKConfig config = ConfigFactory.getInstance().getGATKConfig();
+        // Exclude abstract classes and interfaces from the list of discovered codec classes
+        PLUGIN_PACKAGE_NAMES = Collections.unmodifiableList(config.codec_packages());
+    }
+
+    private static final Class<?> pluginBaseClass = org.broadinstitute.hellbender.tools.walkers.annotator.Annotation.class;
 
     protected transient Logger logger = LogManager.getLogger(this.getClass());
 
@@ -84,7 +95,7 @@ public class GATKAnnotationPluginDescriptor  extends CommandLinePluginDescriptor
      */
     @Override
     public List<String> getPackageNames() {
-        return Collections.singletonList(pluginPackageName);
+        return PLUGIN_PACKAGE_NAMES;
     }
 
     /**
@@ -125,7 +136,7 @@ public class GATKAnnotationPluginDescriptor  extends CommandLinePluginDescriptor
     }
     /**
      * Constructor that allows client tools to specify what annotations (optionally with parameters specified) to use as their defaults
-     * before discovery of user specified annotations. Defaults to using an empty GATKAnnotationArgumentCollection object. 
+     * before discovery of user specified annotations. Defaults to using an empty GATKAnnotationArgumentCollection object.
      *
      * @param toolDefaultAnnotations Default annotations that may be supplied with arguments
      *                               on the command line. May be null.
