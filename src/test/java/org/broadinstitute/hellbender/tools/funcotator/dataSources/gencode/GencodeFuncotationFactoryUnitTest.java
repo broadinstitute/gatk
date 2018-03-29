@@ -787,27 +787,45 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final String contig = "test";
 
         return new Object[][] {
-                { referenceHelperForTestCalculateGcContent(seq, contig,  1,  1),  1, 0.0 },
-                { referenceHelperForTestCalculateGcContent(seq, contig,  1,  1),  9, 0.0 },
-                { referenceHelperForTestCalculateGcContent(seq, contig,  1,  1), 10, 1.0/11.0 },
-                { referenceHelperForTestCalculateGcContent(seq, contig,100,100),  1, 1 },
-                { referenceHelperForTestCalculateGcContent(seq, contig,100,100),  9, 1 },
-                { referenceHelperForTestCalculateGcContent(seq, contig,100,100), 10, 10.0/11.0 },
-                { referenceHelperForTestCalculateGcContent(seq, contig, 50, 50),  1, 1.0/3.0 },
-                { referenceHelperForTestCalculateGcContent(seq, contig, 50, 50),  9, 9.0/19.0 },
-                { referenceHelperForTestCalculateGcContent(seq, contig, 50, 50), 10, 11.0/21.0 },
-                { referenceHelperForTestCalculateGcContent(seq, contig, 50, 50), 50, 50.0/100.0 },
+                // MNPs:
+                { Allele.create("A", true), Allele.create("G"), referenceHelperForTestCalculateGcContent(seq, contig,  1,  1),  1, 0.0 },
+                { Allele.create("A", true), Allele.create("G"), referenceHelperForTestCalculateGcContent(seq, contig,  1,  1),  9, 0.0 },
+                { Allele.create("A", true), Allele.create("G"), referenceHelperForTestCalculateGcContent(seq, contig,  1,  1), 10, 1.0/11.0 },
+                { Allele.create("C", true), Allele.create("G"), referenceHelperForTestCalculateGcContent(seq, contig,100,100),  1, 1 },
+                { Allele.create("C", true), Allele.create("G"), referenceHelperForTestCalculateGcContent(seq, contig,100,100),  9, 1 },
+                { Allele.create("C", true), Allele.create("G"), referenceHelperForTestCalculateGcContent(seq, contig,100,100), 10, 10.0/11.0 },
+                { Allele.create("T", true), Allele.create("G"), referenceHelperForTestCalculateGcContent(seq, contig, 50, 50),  1, 1.0/3.0 },
+                { Allele.create("T", true), Allele.create("G"), referenceHelperForTestCalculateGcContent(seq, contig, 50, 50),  9, 9.0/19.0 },
+                { Allele.create("T", true), Allele.create("G"), referenceHelperForTestCalculateGcContent(seq, contig, 50, 50), 10, 11.0/21.0 },
+                { Allele.create("T", true), Allele.create("G"), referenceHelperForTestCalculateGcContent(seq, contig, 50, 50), 50, 50.0/100.0 },
+                { Allele.create("AAAAA",  true), Allele.create("GGGGG"), referenceHelperForTestCalculateGcContent(seq, contig, 1,  5),   1, 0.0 },
+                { Allele.create("AAAAA",  true), Allele.create("GGGGG"), referenceHelperForTestCalculateGcContent(seq, contig, 1,  5),   9, 4.0 / 14.0 },
+                { Allele.create("AAAAA",  true), Allele.create("GGGGG"), referenceHelperForTestCalculateGcContent(seq, contig, 1,  5),  10, 5.0/15.0 },
+                { Allele.create("GCCCCC", true), Allele.create("AGGGGG"), referenceHelperForTestCalculateGcContent(seq, contig,95,100),   1, 1 },
+                { Allele.create("GCCCCC", true), Allele.create("AGGGGG"), referenceHelperForTestCalculateGcContent(seq, contig,95,100),   9, 10.0/15.0 },
+                { Allele.create("GCCCCC", true), Allele.create("AGGGGG"), referenceHelperForTestCalculateGcContent(seq, contig,95,100),  10, 10.0/16.0 },
+                { Allele.create("TGGGGG", true), Allele.create("AAAAAA"), referenceHelperForTestCalculateGcContent(seq, contig,50, 55),   1, 6.0/8.0 },
+                { Allele.create("TGGGGG", true), Allele.create("AAAAAA"), referenceHelperForTestCalculateGcContent(seq, contig,50, 55),   9, 10.0/24.0 },
+                { Allele.create("TGGGGG", true), Allele.create("AAAAAA"), referenceHelperForTestCalculateGcContent(seq, contig,50, 55),  10, 11.0/26.0 },
+                { Allele.create("TGGGGG", true), Allele.create("AAAAAA"), referenceHelperForTestCalculateGcContent(seq, contig,50, 55),  50, 50.0/100.0 },
 
-                { referenceHelperForTestCalculateGcContent(seq, contig, 1,  5),   1, 0.0 },
-                { referenceHelperForTestCalculateGcContent(seq, contig, 1,  5),   9, 4.0 / 14.0 },
-                { referenceHelperForTestCalculateGcContent(seq, contig, 1,  5),  10, 5.0/15.0 },
-                { referenceHelperForTestCalculateGcContent(seq, contig,95,100),   1, 1 },
-                { referenceHelperForTestCalculateGcContent(seq, contig,95,100),   9, 10.0/15.0 },
-                { referenceHelperForTestCalculateGcContent(seq, contig,95,100),  10, 10.0/16.0 },
-                { referenceHelperForTestCalculateGcContent(seq, contig,50, 55),   1, 6.0/8.0 },
-                { referenceHelperForTestCalculateGcContent(seq, contig,50, 55),   9, 10.0/24.0 },
-                { referenceHelperForTestCalculateGcContent(seq, contig,50, 55),  10, 11.0/26.0 },
-                { referenceHelperForTestCalculateGcContent(seq, contig,50, 55),  50, 50.0/100.0 },
+                // Insertions:
+                { Allele.create("A", true), Allele.create("AG"),    referenceHelperForTestCalculateGcContent(seq, contig,  1,  1),  1, 0.0 },
+                { Allele.create("A", true), Allele.create("AGG"),   referenceHelperForTestCalculateGcContent(seq, contig,  1,  1),  9, 0.0 },
+                { Allele.create("A", true), Allele.create("AGGG"),  referenceHelperForTestCalculateGcContent(seq, contig,  1,  1), 10, 1.0/11.0 },
+                { Allele.create("C", true), Allele.create("CG"),    referenceHelperForTestCalculateGcContent(seq, contig,100,100),  1, 1 },
+                { Allele.create("C", true), Allele.create("CGG"),   referenceHelperForTestCalculateGcContent(seq, contig,100,100),  9, 1 },
+                { Allele.create("C", true), Allele.create("CGGG"),  referenceHelperForTestCalculateGcContent(seq, contig,100,100), 10, 1 },
+                { Allele.create("T", true), Allele.create("TG"),    referenceHelperForTestCalculateGcContent(seq, contig, 50, 50),  1, 1.0/2.0 },
+                { Allele.create("T", true), Allele.create("TGG"),   referenceHelperForTestCalculateGcContent(seq, contig, 50, 50),  9, 9.0/18.0 },
+                { Allele.create("T", true), Allele.create("TGGG"),  referenceHelperForTestCalculateGcContent(seq, contig, 50, 50), 10, 10.0/20.0 },
+                { Allele.create("T", true), Allele.create("TGGGG"), referenceHelperForTestCalculateGcContent(seq, contig, 50, 50), 49, 49.0/98.0 },
+
+                // Deletions:
+                { Allele.create("AAAAA",  true), Allele.create("A"), referenceHelperForTestCalculateGcContent(seq, contig, 1,  5),  10,  5.0/15.0 },
+                { Allele.create("GCCCCC", true), Allele.create("G"), referenceHelperForTestCalculateGcContent(seq, contig,95,100),  10, 10.0/15.0  },
+                { Allele.create("TGGGGG", true), Allele.create("T"), referenceHelperForTestCalculateGcContent(seq, contig,50, 55),  10, 10.0/25.0 },
+                { Allele.create("TG", true),     Allele.create("T"), referenceHelperForTestCalculateGcContent(seq, contig,50, 51),  10, 10.0/21.0 },
         };
     }
 
@@ -1342,10 +1360,12 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     }
 
     @Test (dataProvider = "provideDataForTestCalculateGcContent")
-    void testCalculateGcContent(final ReferenceContext referenceContext,
+    void testCalculateGcContent(final Allele refAllele,
+                                final Allele altAllele,
+                                final ReferenceContext referenceContext,
                                 final int windowSize,
                                 final double expected) {
-        Assert.assertEquals( GencodeFuncotationFactory.calculateGcContent( referenceContext, windowSize ), expected, doubleEqualsEpsilon);
+        Assert.assertEquals( GencodeFuncotationFactory.calculateGcContent( refAllele, altAllele, referenceContext, windowSize ), expected, doubleEqualsEpsilon);
     }
 
     @Test(dataProvider = "provideDataForTestGetReferenceBases")
