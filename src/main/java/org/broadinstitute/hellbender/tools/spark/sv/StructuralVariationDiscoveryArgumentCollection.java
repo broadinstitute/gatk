@@ -295,54 +295,67 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
                 fullName = DEFAULT_MIN_SCORE_LONG_NAME, optional = true)
         public double minScore = DEFAULT_MIN_SCORE;
 
+        @Advanced
         @Argument(doc = "Counter-evidence pseudocount",
                 fullName = DEFAULT_COUNTEREVIDENCE_PSEUDOCOUNT_LONG_NAME, optional = true)
         public double counterEvidencePseudocount = DEFAULT_COUNTEREVIDENCE_PSEUDOCOUNT;
 
+        @Advanced
         @Argument(doc = "Padding to apply to each breakpoint when searching for supporting evidence",
                 fullName = DEFAULT_BREAKPOINT_PADDING_LONG_NAME, optional = true)
         public int breakpointPadding = DEFAULT_BREAKPOINT_PADDING;
 
+        @Advanced
         @Argument(doc = "Padding to apply to each interval of clustered read evidence when searching for supporting evidence",
                 fullName = DEFAULT_EVIDENCE_TARGET_LINK_PADDING_LONG_NAME, optional = true)
         public int evidenceTargetLinkPadding = DEFAULT_EVIDENCE_TARGET_LINK_PADDING;
 
+        @Advanced
         @Argument(doc = "Padding to apply to event interval when searching for counter-evidence",
                 fullName = DEFAULT_LOCAL_COUNTEREVIDENCE_RANGE_LONG_NAME, optional = true)
         public int localCounterevidenceRange = DEFAULT_LOCAL_COUNTEREVIDENCE_RANGE;
 
+        @Advanced
         @Argument(doc = "Minimum size of any cluster of counter-evidence",
                 fullName = DEFAULT_MIN_COUNTERVIDENCE_CLUSTER_SIZE_LONG_NAME, optional = true)
         public int minCountervidenceClusterSize = DEFAULT_MIN_COUNTERVIDENCE_CLUSTER_SIZE;
 
+        @Advanced
         @Argument(doc = "Padding to apply to event interval for the HMM (in bp)",
                 fullName = DEFAULT_HMM_PADDING_LONG_NAME, optional = true)
         public int hmmPadding = DEFAULT_HMM_PADDING;
 
+        @Advanced
         @Argument(doc = "Threshold fraction of valid event HMM states",
                 fullName = DEFAULT_HMM_VALID_STATES_MIN_FRACTION_LONG_NAME, optional = true)
         public double hmmValidStatesMinFraction = DEFAULT_HMM_VALID_STATES_MIN_FRACTION;
 
+        @Advanced
         @Argument(doc = "HMM probability of transitioning to a different copy ratio state",
                 fullName = DEFAULT_HMM_TRANSITION_PROB_LONG_NAME, optional = true)
         public double hmmTransitionProb = DEFAULT_HMM_TRANSITION_PROB;
 
+        @Advanced
         @Argument(doc = "Max number of HMM states",
                 fullName = DEFAULT_HMM_MAX_STATES_LONG_NAME, optional = true)
         public int hmmMaxStates = DEFAULT_HMM_MAX_STATES;
 
+        @Advanced
         @Argument(doc = "Number of bins to trim from either side of the copy ratios",
                 fullName = DEFAULT_COPY_RATIO_BIN_TRIMMING_LONG_NAME, optional = true)
         public int copyRatioBinTrimming = DEFAULT_COPY_RATIO_BIN_TRIMMING;
 
+        @Advanced
         @Argument(doc = "Threshold allowable invalid copy ratio bin fraction for tandem duplications",
                 fullName = DEFAULT_TANDEM_DUP_INVALID_BIN_FRACTION_LONG_NAME, optional = true)
         public double tandemDuplicationInvalidBinFraction = DEFAULT_TANDEM_DUP_EVENT_INVALID_BIN_FRACTION;
 
-        @Argument(doc = "Threshold log2 copy ratio, below which is invalid for tandem duplications",
+        @Advanced
+        @Argument(doc = "Threshold log2 copy ratio, below which is bins are considered invalid for tandem duplications",
                 fullName = DEFAULT_TANDEM_DUP_INVALID_LOG2_COPY_RATIO_THRESHOLD_LONG_NAME, optional = true)
         public double tandemDuplicationInvalidLog2CopyRatioThreshold = DEFAULT_TANDEM_DUP_EVENT_INVALID_LOG2_COPY_RATIO_THRESHOLD;
 
+        @Advanced
         @Argument(doc = "Maximum allowable reciprocal overlap of any two calls",
                 fullName = DEFAULT_MAX_CALL_RECIPROCAL_OVERLAP_LONG_NAME, optional = true)
         public double maxCallReciprocalOverlap = DEFAULT_MAX_CALL_RECIPROCAL_OVERLAP;

@@ -69,7 +69,7 @@ public class SVIntervalUtils {
     /**
      * Returns stream of tree Entry objects that overlap the given interval
      */
-    public static <T> Stream<SVIntervalTree.Entry<T>> getTreeOverlapperStream(final SVInterval interval, final SVIntervalTree<T> tree) {
+    private static <T> Stream<SVIntervalTree.Entry<T>> getTreeOverlapperStream(final SVInterval interval, final SVIntervalTree<T> tree) {
         Utils.nonNull(interval, "SVInterval cannot be null");
         Utils.nonNull(tree, "SVIntervalTree cannot be null");
         return Utils.stream(tree.overlappers(interval));
@@ -86,6 +86,8 @@ public class SVIntervalUtils {
      * Returns true if the two intervals have at least the given amount of reciprocal overlap
      */
     public static boolean hasReciprocalOverlap(final SVInterval a, final SVInterval b, final double minFractionOverlap) {
+        Utils.validateArg(minFractionOverlap >= 0, "Overlap fraction must be non-negative");
+        Utils.validateArg(minFractionOverlap <= 1, "Overlap fraction must less than or equal to 1");
         return reciprocalOverlap(a, b) >= minFractionOverlap;
     }
 
@@ -102,7 +104,7 @@ public class SVIntervalUtils {
     }
 
     /**
-     * Converts a SimpleInterval to an SVInterval
+     * Converts SimpleInterval to SVInterval
      */
     public static SVInterval convertInterval(final SimpleInterval interval, final SAMSequenceDictionary dictionary) {
         final int sequenceIndex = dictionary.getSequenceIndex(interval.getContig());
@@ -113,7 +115,7 @@ public class SVIntervalUtils {
     }
 
     /**
-     * Converts a SVInterval to a SimpleInterval
+     * Converts SVInterval to SimpleInterval
      */
     public static SimpleInterval convertInterval(final SVInterval interval, final SAMSequenceDictionary dictionary) {
         final SAMSequenceRecord sequenceRecord = dictionary.getSequence(interval.getContig());

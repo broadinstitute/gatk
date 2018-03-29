@@ -217,8 +217,8 @@ public abstract class LargeSimpleSVFactory {
         final int splitReadCounterEvidence = countUniqueCounterEvidenceSplitReads(counterEvidenceLinks, evidenceLinks, arguments.minCountervidenceClusterSize);
 
         //Score the event and reject if too small
-        final double evidenceToCounterEvidenceRatio = LargeSimpleSV.computeScore(readPairEvidence, splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, arguments.counterEvidencePseudocount);
-        if (evidenceToCounterEvidenceRatio < arguments.minScore) return null;
+        final double eventScore = LargeSimpleSV.computeScore(readPairEvidence, splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, arguments.counterEvidencePseudocount);
+        if (eventScore < arguments.minScore) return null;
 
         //Test if the event matches a model segments call
         final String contigName = sequence.getSequenceName();
