@@ -192,6 +192,26 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     @Override
+    protected List<Funcotation> createDefaultFuncotationsOnVariant( final VariantContext variant, final ReferenceContext referenceContext ) {
+
+        final List<Funcotation> funcotationList = new ArrayList<>();
+
+        // Add our tally for all alternate alleles in this variant:
+        for ( final Allele altAllele : variant.getAlternateAlleles() ) {
+            funcotationList.add(
+                    new TableFuncotation(
+                            new ArrayList<>(supportedFields),
+                            new ArrayList<>(Collections.singletonList(String.valueOf(0))),
+                            altAllele,
+                            name
+                    )
+            );
+        }
+
+        return funcotationList;
+    }
+
+    @Override
     /**
      * {@inheritDoc}
      * This method should never be called on a {@link CosmicFuncotationFactory} - knowledge of the applied

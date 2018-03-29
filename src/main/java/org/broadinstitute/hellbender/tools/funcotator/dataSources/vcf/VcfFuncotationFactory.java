@@ -114,6 +114,16 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     @Override
+    protected List<Funcotation> createDefaultFuncotationsOnVariant( final VariantContext variant, final ReferenceContext referenceContext ) {
+        if ( supportedFieldNames.size() != 0 ) {
+            return createDefaultFuncotationsOnVariantHelper(variant, referenceContext, Collections.emptySet());
+        }
+        else {
+            return Collections.emptyList();
+        }
+    }
+
+    @Override
     /**
      * {@inheritDoc}
      * {@link VcfFuncotationFactory} can be used with or without Gencode annotations.
@@ -172,11 +182,7 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
             // If we didn't add funcotations for an allele, we should add in blank funcotations to that allele for each field that can be produced
             // by this VcfFuncotationFactory:
             if ( annotatedAltAlleles.size() != alternateAlleles.size() ) {
-                for ( final Allele altAllele : alternateAlleles ) {
-                    if ( !annotatedAltAlleles.contains(altAllele) ) {
-                        outputFuncotations.add(new TableFuncotation(supportedFieldNamesAndDefaults, altAllele, name));
-                    }
-                }
+                outputFuncotations.addAll( createDefaultFuncotationsOnVariantHelper(variant, referenceContext, annotatedAltAlleles) );
             }
         }
 
@@ -198,6 +204,24 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
 
     //==================================================================================================================
     // Instance Methods:
+
+    private List<Funcotation> createDefaultFuncotationsOnVariantHelper( final VariantContext variant, final ReferenceContext referenceContext, final Set<Allele> annotatedAltAlleles  ) {
+
+        final List<Funcotation> funcotationList = new ArrayList<>();
+
+        if ( supportedFieldNames.size() != 0 ) {
+
+            final List<Allele> alternateAlleles = variant.getAlternateAlleles();
+
+            for ( final Allele altAllele : alternateAlleles ) {
+                if ( !annotatedAltAlleles.contains(altAllele) ) {
+                    funcotationList.add(new TableFuncotation(supportedFieldNamesAndDefaults, altAllele, name));
+                }
+            }
+        }
+
+        return funcotationList;
+    }
 
     /**
      * Populates {@link VcfFuncotationFactory#supportedFieldNames} and {@link VcfFuncotationFactory#supportedFieldNamesAndDefaults}.

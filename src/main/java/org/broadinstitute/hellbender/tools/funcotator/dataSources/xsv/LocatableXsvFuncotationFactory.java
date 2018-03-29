@@ -120,6 +120,11 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
     }
 
     @Override
+    protected List<Funcotation> createDefaultFuncotationsOnVariant( final VariantContext variant, final ReferenceContext referenceContext ) {
+        return createDefaultFuncotationsOnVariantHelper(variant, referenceContext, Collections.emptySet());
+    }
+
+    @Override
     protected List<Funcotation> createFuncotationsOnVariant(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList) {
         final List<Funcotation> outputFuncotations = new ArrayList<>();
 
@@ -155,11 +160,7 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
         // If we didn't add funcotations for an allele, we should add in blank funcotations to that allele for each field that can be produced
         // by this LocatableXsvFuncotationFactory:
         if ( annotatedAltAlleles.size() != alternateAlleles.size() ) {
-            for ( final Allele altAllele : alternateAlleles ) {
-                if ( !annotatedAltAlleles.contains(altAllele) ) {
-                    outputFuncotations.add(new TableFuncotation(supportedFieldNameList, emptyFieldList, altAllele, name));
-                }
-            }
+            outputFuncotations.addAll(createDefaultFuncotationsOnVariantHelper(variant, referenceContext, annotatedAltAlleles));
         }
 
         return outputFuncotations;
@@ -180,6 +181,21 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
 
     //==================================================================================================================
     // Instance Methods:
+
+    private List<Funcotation> createDefaultFuncotationsOnVariantHelper( final VariantContext variant, final ReferenceContext referenceContext, final Set<Allele> annotatedAltAlleles  ) {
+
+        final List<Funcotation> funcotationList = new ArrayList<>();
+
+        final List<Allele> alternateAlleles = variant.getAlternateAlleles();
+
+        for ( final Allele altAllele : alternateAlleles ) {
+            if ( !annotatedAltAlleles.contains(altAllele) ) {
+                funcotationList.add(new TableFuncotation(supportedFieldNameList, emptyFieldList, altAllele, name));
+            }
+        }
+
+        return funcotationList;
+    }
 
     public void setSupportedFuncotationFields(final List<Path> inputDataFilePaths) {
 

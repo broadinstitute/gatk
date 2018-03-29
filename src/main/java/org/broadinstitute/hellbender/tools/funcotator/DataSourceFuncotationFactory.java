@@ -146,7 +146,7 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
             return outputFuncotations;
         }
         else {
-            return Collections.emptyList();
+            return createDefaultFuncotationsOnVariant(variant, referenceContext);
         }
     }
 
@@ -193,6 +193,15 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
         }
         return featureList;
     }
+
+    /**
+     * Creates a {@link List} of {@link Funcotation} for the given {@code variant} and {@code referenceContext}.
+     * These will be default funcotations that essentially have empty values.
+     * @param variant {@link VariantContext} to annotate.
+     * @param referenceContext {@link ReferenceContext} corresponding to the given {@code variant}.
+     * @return {@link List} of {@link Funcotation} given the {@code variant}, {@code referenceContext}, and {@code featureContext}.  This should never be empty.
+     */
+    protected abstract List<Funcotation> createDefaultFuncotationsOnVariant( final VariantContext variant, final ReferenceContext referenceContext);
 
     /**
      * Creates a {@link List} of {@link Funcotation} for the given {@code variant}, {@code referenceContext}, and {@code featureContext}.
