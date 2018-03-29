@@ -49,15 +49,31 @@ public final class ClassUtils {
         final List<T> results = new ArrayList<>(classes.size());
 
         for (final Class<?> found: classes){
-            if (canMakeInstances(found)){
-                try {
-                    results.add((T)found.newInstance());
-                } catch (InstantiationException | IllegalAccessException e) {
-                    throw new GATKException("Problem making an instance of " + found + " Do check that the class has a non-arg constructor", e);
-                }
+            final T instance = (T) makeInstanceOf(found);
+            if (instance != null) {
+                results.add(instance);
             }
         }
         return results;
+    }
+
+    /**
+     * Create objects of a concrete class.
+     *
+     * The public no-arg constructor is called to create the objects.
+     *
+     * @param clazz class to be instantiated
+     * @return new object or {@code null} if cannot be instantiated.
+     */
+    public static <T> T makeInstanceOf(final Class<T> clazz) {
+        if (canMakeInstances(clazz)) {
+            try {
+                return clazz.newInstance();
+            } catch (final InstantiationException | IllegalAccessException e) {
+                throw new GATKException("Problem making an instance of " + clazz + " Do check that the class has a non-arg constructor", e);
+            }
+        }
+        return null;
     }
 
     /**
