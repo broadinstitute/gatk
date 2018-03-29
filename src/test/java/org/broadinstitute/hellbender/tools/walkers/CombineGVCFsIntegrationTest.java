@@ -74,7 +74,10 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
                 //Testing allele-specific annotations
                 {new File[]{getTestFile("NA12878.AS.chr20snippet.g.vcf"), getTestFile("NA12892.AS.chr20snippet.g.vcf")}, getTestFile("testAlleleSpecificAnnotations.vcf"), Arrays.asList("-G", "Standard", "-G", "AS_Standard"), b37_reference_20_21},
                 //Testing allele-specific annotations missing AS_Standard Group
-                {new File[]{getTestFile("NA12878.AS.chr20snippet.g.vcf"), getTestFile("NA12892.AS.chr20snippet.g.vcf")}, getTestFile("testAlleleSpecificAnnotationsNoGroup.vcf"), Arrays.asList("-G", "Standard", "-G", "AS_Standard"), b37_reference_20_21},};
+                {new File[]{getTestFile("NA12878.AS.chr20snippet.g.vcf"), getTestFile("NA12892.AS.chr20snippet.g.vcf")}, getTestFile("testAlleleSpecificAnnotationsNoGroup.vcf"), Arrays.asList("-G", "Standard", "-G", "AS_Standard"), b37_reference_20_21},
+                //Test that trailing reference blocks are emitted with correct intervals
+                {new File[]{getTestFile("gvcfExample1WithTrailingReferenceBlocks.g.vcf"), getTestFile("gvcfExample2WithTrailingReferenceBlocks.g.vcf")}, getTestFile("gvcfWithTrailingReferenceBlocksExpected.g.vcf"), NO_EXTRA_ARGS, b38_reference_20_21},
+        };
     }
 
 
@@ -118,11 +121,6 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         } else {
             System.out.println("Found precomputed gatk3Result");
         }
-        final Path expectedResultsDir = Paths.get(getToolTestDataDir());
-        if ( !Files.exists(expectedResultsDir)) {
-            Files.createDirectory(expectedResultsDir);
-        }
-        Files.copy(gatk3Result.toPath(), expectedResultsDir.resolve(outputFile.getName()), StandardCopyOption.REPLACE_EXISTING);
 
         assertVariantContextsMatch(Arrays.asList(inputs), gatk3Result, extraArgs, reference);
     }
@@ -151,7 +149,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
     }
 
     public void runCombineGVCFSandAssertSomething(List<File> inputs, File expected, List<String> additionalArguments, BiConsumer<VariantContext, VariantContext> assertion, String reference) throws IOException {
-        final File output = createTempFile("genotypegvcf", ".vcf");
+        final File output = createTempFile("combinegvcfs", ".vcf");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(reference))
@@ -195,7 +193,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testOneStartsBeforeTwoAndEndsAfterwards() throws Exception {
-        final File output = createTempFile("genotypegvcf", ".vcf");
+        final File output = createTempFile("combinegvcfs", ".vcf");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(b37_reference_20_21))
@@ -227,7 +225,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
 
     @Test()
     public void testTetraploidRun() throws IOException {
-        final File output = createTempFile("genotypegvcf", ".vcf");
+        final File output = createTempFile("combinegvcfs", ".vcf");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(b37_reference_20_21))
@@ -248,7 +246,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testTwoSpansManyBlocksInOne() throws Exception {
-        final File output = createTempFile("genotypegvcf", ".vcf");
+        final File output = createTempFile("combinegvcfs", ".vcf");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(b37_reference_20_21))
@@ -267,7 +265,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
     // Ensuring that no exception is thrown and that the resulting VCF is empty
     @Test
     public void testNoDataInInterval() throws Exception {
-        final File output = createTempFile("genotypegvcf", ".vcf");
+        final File output = createTempFile("combinegvcfs", ".vcf");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(b37_reference_20_21))
@@ -286,7 +284,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testOneHasAltAndTwoHasNothing() throws Exception {
-        final File output = createTempFile("genotypegvcf", ".vcf");
+        final File output = createTempFile("combinegvcfs", ".vcf");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(b37_reference_20_21))
@@ -307,7 +305,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testOneHasAltAndTwoHasRefBlock() throws Exception {
-        final File output = createTempFile("genotypegvcf", ".vcf");
+        final File output = createTempFile("combinegvcfs", ".vcf");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(b37_reference_20_21))
@@ -332,7 +330,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testOneHasDeletionAndTwoHasRefBlock() throws Exception {
-        final File output = createTempFile("genotypegvcf", ".vcf");
+        final File output = createTempFile("combinegvcfs", ".vcf");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(b37_reference_20_21))
@@ -369,7 +367,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
     // This test asserts that the behavior is rational in the case of whole genome gvcfs which have variants starting at
     // the first and ending on the last base of each contig.
     public void testStartChromosome() throws Exception {
-        final File output = createTempFile("genotypegvcf", ".vcf");
+        final File output = createTempFile("combinegvcfs", ".vcf");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(b37_reference_20_21))

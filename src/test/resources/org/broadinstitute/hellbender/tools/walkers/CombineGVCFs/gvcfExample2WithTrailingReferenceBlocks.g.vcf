@@ -1,0 +1,41 @@
+##fileformat=VCFv4.1
+##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
+##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+##FORMAT=<ID=MIN_GQ,Number=1,Type=Integer,Description="Minimum GQ observed within the GVCF block">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
+##GVCFBlock=minGQ=0(inclusive),maxGQ=5(exclusive)
+##INFO=<ID=BLOCK_SIZE,Number=1,Type=Integer,Description="Size of the homozygous reference GVCF block">
+##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+##INFO=<ID=HaplotypeScore,Number=1,Type=Float,Description="Consistency of the site with at most two segregating haplotypes">
+##INFO=<ID=MQ,Number=1,Type=Float,Description="RMS Mapping Quality">
+##INFO=<ID=MQ0,Number=1,Type=Integer,Description="Total Mapping Quality Zero Reads">
+##INFO=<ID=MQRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref read mapping qualities">
+##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
+##contig=<ID=chr20,length=64444167>
+##contig=<ID=chr21,length=46709983>
+##contig=<ID=chr20_GL383577v2_alt,length=128386>
+##contig=<ID=chr20_KI270869v1_alt,length=118774>
+##contig=<ID=chr20_KI270871v1_alt,length=58661>
+##contig=<ID=chr20_KI270870v1_alt,length= 183433>
+##contig=<ID=chr21_GL383578v2_alt,length=63917>
+##contig=<ID=chr21_KI270874v1_alt,length= 166743>
+##contig=<ID=chr21_KI270873v1_alt,length=143900>
+##contig=<ID=chr21_GL383579v2_alt,length=201197>
+##contig=<ID=chr21_GL383580v2_alt,length=74653>
+##contig=<ID=chr21_GL383581v2_alt,length=116689>
+##contig=<ID=chr21_KI270872v1_alt,length=82692>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA2
+chr20	69498	.	C	<NON_REF>	.	.	BLOCK_SIZE=9;END=69506	GT:DP:GQ:MIN_DP:MIN_GQ:PL	0/0:94:99:82:99:0,120,1800
+chr20	69514	.	T	<NON_REF>	.	.	BLOCK_SIZE=111;END=69624	GT:DP:GQ:MIN_DP:MIN_GQ:PL	0/0:96:99:82:99:0,120,1800
+chr20	69625	.	A	<NON_REF>	.	.	BLOCK_SIZE=51;END=69675	GT:DP:GQ:MIN_DP:MIN_GQ:PL	0/0:7:18:7:18:0,18,270
+chr20	69767	.	C	<NON_REF>	.	.	BLOCK_SIZE=8;END=69774	GT:DP:GQ:MIN_DP:MIN_GQ:PL	0/0:7:12:7:15:0,12,180
+chr20	69775	.	C	<NON_REF>	.	.	BLOCK_SIZE=17;END=69791	GT:DP:GQ:MIN_DP:MIN_GQ:PL	0/0:7:15:7:15:0,15,160
+chr21	1	.	G	<NON_REF>	.	.	END=46709983	GT:DP:GQ:MIN_DP:PL	0/0:0:0:0:0,0,0
+chr20_GL383577v2_alt	1	.	G	<NON_REF>	.	.	END=128386	GT:DP:GQ:MIN_DP:PL	0/0:0:0:0:0,0,0
