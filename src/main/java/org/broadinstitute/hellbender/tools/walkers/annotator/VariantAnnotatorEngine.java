@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.barclay.argparser.ClassFinder;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.DefaultGATKVariantAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationArgumentCollection;
@@ -15,6 +16,8 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.Redu
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotationData;
 import org.broadinstitute.hellbender.utils.ClassUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.config.ConfigFactory;
+import org.broadinstitute.hellbender.utils.config.GATKConfig;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.reflections.ReflectionUtils;
@@ -490,7 +493,15 @@ public final class VariantAnnotatorEngine {
         }
 
         private static List<InfoFieldAnnotation> makeAllInfoFieldAnnotations() {
-            return ClassUtils.makeInstancesOfSubclasses(InfoFieldAnnotation.class, Annotation.class.getPackage());
+            // Get our configuration:
+            final GATKConfig config = ConfigFactory.getInstance().getGATKConfig();
+
+            final ClassFinder finder = new ClassFinder();
+            for ( final String codecPackage : config.annotation_packages() ) {
+                finder.find(codecPackage, InfoFieldAnnotation.class);
+            }
+            return finder.getConcreteClasses().stream().map(c -> (InfoFieldAnnotation) ClassUtils.makeInstanceOf(c))
+                    .filter(Objects::isNull).collect(Collectors.toList());
         }
 
         public List<GenotypeAnnotation> createGenotypeAnnotations() {
@@ -499,7 +510,15 @@ public final class VariantAnnotatorEngine {
         }
 
         private static List<GenotypeAnnotation> makeAllGenotypeAnnotations() {
-            return ClassUtils.makeInstancesOfSubclasses(GenotypeAnnotation.class, Annotation.class.getPackage());
+            // Get our configuration:
+            final GATKConfig config = ConfigFactory.getInstance().getGATKConfig();
+
+            final ClassFinder finder = new ClassFinder();
+            for ( final String codecPackage : config.annotation_packages() ) {
+                finder.find(codecPackage, GenotypeAnnotation.class);
+            }
+            return finder.getConcreteClasses().stream().map(c -> (GenotypeAnnotation) ClassUtils.makeInstanceOf(c))
+                    .filter(Objects::isNull).collect(Collectors.toList());
         }
 
         /**
