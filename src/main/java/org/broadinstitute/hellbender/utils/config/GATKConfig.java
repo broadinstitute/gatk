@@ -147,6 +147,9 @@ public interface GATKConfig extends Mutable, Accessible {
     @DefaultValue("org.broadinstitute.hellbender.engine.filters")
     List<String> read_filter_packages();
 
+    @DefaultValue("org.broadinstitute.hellbender.tools.walkers.annotator")
+    List<String> annotation_packages();
+
     // ----------------------------------------------------------
     // GATKTool Options:
     // ----------------------------------------------------------
