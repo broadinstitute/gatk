@@ -61,7 +61,7 @@ final public class DataSourceUtils {
     @VisibleForTesting
     static final int MIN_MONTH_RELEASED       = 3;
     @VisibleForTesting
-    static final int MIN_DAY_RELEASED         = 23;
+    static final int MIN_DAY_RELEASED         = 29;
 
     //==================================================================================================================
     // Public Static Members:
