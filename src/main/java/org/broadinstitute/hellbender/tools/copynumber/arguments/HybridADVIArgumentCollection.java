@@ -25,7 +25,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
     public static final String MIN_TRAINING_EPOCHS_LONG_NAME = "min-training-epochs";
     public static final String MAX_TRAINING_EPOCHS_LONG_NAME = "max-training-epochs";
     public static final String INITIAL_TEMPERATURE_LONG_NAME = "initial-temperature";
-    public static final String NUM_THERMAL_EPOCHS_LONG_NAME = "num-thermal-epochs";
+    public static final String NUM_THERMAL_ADVI_ITERS_LONG_NAME = "num-thermal-advi-iters";
     public static final String CONVERGENCE_SNR_AVERAGING_WINDOW_LONG_NAME = "convergence-snr-averaging-window";
     public static final String CONVERGENCE_SNR_TRIGGER_THRESHOLD_LONG_NAME = "convergence-snr-trigger-threshold";
     public static final String CONVERGENCE_SNR_COUNTDOWN_WINDOW_LONG_NAME = "convergence-snr-countdown-window";
@@ -49,7 +49,7 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
         MIN_TRAINING_EPOCHS("min_training_epochs"),
         MAX_TRAINING_EPOCHS("max_training_epochs"),
         INITIAL_TEMPERATURE("initial_temperature"),
-        NUM_THERMAL_EPOCHS("num_thermal_epochs"),
+        NUM_THERMAL_ADVI_ITERS("num_thermal_advi_iters"),
         CONVERGENCE_SNR_AVERAGING_WINDOW("convergence_snr_averaging_window"),
         CONVERGENCE_SNR_TRIGGER_THRESHOLD("convergence_snr_trigger_threshold"),
         CONVERGENCE_SNR_COUNTDOWN_WINDOW("convergence_snr_countdown_window"),
@@ -172,13 +172,13 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
             (Double)getDefaultValue(HybridADVIArgument.INITIAL_TEMPERATURE);
 
     @Argument(
-            doc="Number of thermal epochs (for DA-ADVI).",
-            fullName = NUM_THERMAL_EPOCHS_LONG_NAME,
+            doc="Number of thermal ADVI iterations (for DA-ADVI).",
+            fullName = NUM_THERMAL_ADVI_ITERS_LONG_NAME,
             optional = true,
             minValue = 0
     )
-    private int numThermalEpochs =
-            (Integer)getDefaultValue(HybridADVIArgument.NUM_THERMAL_EPOCHS);
+    private int numThermalADVIIters =
+            (Integer)getDefaultValue(HybridADVIArgument.NUM_THERMAL_ADVI_ITERS);
 
     @Argument(
             doc="Averaging window for calculating training signal-to-noise ratio (SNR) for convergence checking.",
@@ -297,8 +297,8 @@ public abstract class HybridADVIArgumentCollection implements Serializable {
                         maxTrainingEpochs),
                 String.format("--" + HybridADVIArgument.INITIAL_TEMPERATURE.pythonArg + "=%e",
                         initialTemperature),
-                String.format("--" + HybridADVIArgument.NUM_THERMAL_EPOCHS.pythonArg + "=%d",
-                        numThermalEpochs),
+                String.format("--" + HybridADVIArgument.NUM_THERMAL_ADVI_ITERS.pythonArg + "=%d",
+                        numThermalADVIIters),
                 String.format("--" + HybridADVIArgument.CONVERGENCE_SNR_AVERAGING_WINDOW.pythonArg + "=%d",
                         convergenceSNRAveragingWindow),
                 String.format("--" + HybridADVIArgument.CONVERGENCE_SNR_TRIGGER_THRESHOLD.pythonArg + "=%e",

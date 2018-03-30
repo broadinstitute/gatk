@@ -21,7 +21,7 @@ public final class GermlineContigPloidyHybridADVIArgumentCollection extends Hybr
         defaultValue.put(HybridADVIArgument.MIN_TRAINING_EPOCHS, 20);
         defaultValue.put(HybridADVIArgument.MAX_TRAINING_EPOCHS, 100);
         defaultValue.put(HybridADVIArgument.INITIAL_TEMPERATURE, 2.0);
-        defaultValue.put(HybridADVIArgument.NUM_THERMAL_EPOCHS, 20);
+        defaultValue.put(HybridADVIArgument.NUM_THERMAL_ADVI_ITERS, 5000);
         defaultValue.put(HybridADVIArgument.CONVERGENCE_SNR_AVERAGING_WINDOW, 5000);
         defaultValue.put(HybridADVIArgument.CONVERGENCE_SNR_TRIGGER_THRESHOLD, 0.1);
         defaultValue.put(HybridADVIArgument.CONVERGENCE_SNR_COUNTDOWN_WINDOW, 10);

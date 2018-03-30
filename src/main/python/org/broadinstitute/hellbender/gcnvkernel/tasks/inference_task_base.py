@@ -263,10 +263,8 @@ class HybridInferenceTask(InferenceTask):
                 temperature_update = None
             else:
                 # linear annealing
-                max_thermal_advi_iterations = self.hybrid_inference_params.max_advi_iter_first_epoch
-                max_thermal_advi_iterations += ((self.hybrid_inference_params.num_thermal_epochs - 1)
-                                                * self.hybrid_inference_params.max_advi_iter_subsequent_epochs)
-                temperature_drop_per_iter = (initial_temperature - 1.0) / max_thermal_advi_iterations
+                temperature_drop_per_iter = ((initial_temperature - 1.0) /
+                                             self.hybrid_inference_params.num_thermal_advi_iters)
                 temperature_update = [(self.temperature,
                                        tt.maximum(1.0, self.temperature - temperature_drop_per_iter))]
 
@@ -392,11 +390,15 @@ class HybridInferenceTask(InferenceTask):
                 for _ in progress_bar:
                     loss = self.continuous_model_step_func() / self.elbo_normalization_factor
                     self.i_advi += 1
+
                     try:
                         self.advi_convergence_tracker(self.continuous_model_advi.approx, loss, self.i_advi)
                     except StopIteration:
                         if not self._premature_convergence():  # suppress signal if deemed premature
                             raise StopIteration
+                        else:
+                            self.advi_convergence_tracker.reset_convergence_counter()
+
                     snr = self.advi_convergence_tracker.snr
                     elbo_mean = self.advi_convergence_tracker.mean
                     elbo_variance = self.advi_convergence_tracker.variance
@@ -546,12 +548,12 @@ class HybridInferenceParameters:
                  log_emission_samples_per_round: int = 50,
                  log_emission_sampling_median_rel_error: float = 5e-3,
                  log_emission_sampling_rounds: int = 10,
-                 max_advi_iter_first_epoch: int = 100,
+                 max_advi_iter_first_epoch: int = 1000,
                  max_advi_iter_subsequent_epochs: int = 100,
                  min_training_epochs: int = 5,
                  max_training_epochs: int = 50,
                  initial_temperature: float = 2.0,
-                 num_thermal_epochs: int = 20,
+                 num_thermal_advi_iters: int = 500,
                  track_model_params: bool = False,
                  track_model_params_every: int = 10,
                  param_tracker_config: Optional['VariationalParameterTrackerConfig'] = None,
@@ -582,7 +584,7 @@ class HybridInferenceParameters:
         self.min_training_epochs = min_training_epochs
         self.max_training_epochs = max_training_epochs
         self.initial_temperature = initial_temperature
-        self.num_thermal_epochs = num_thermal_epochs
+        self.num_thermal_advi_iters = num_thermal_advi_iters
         self.track_model_params = track_model_params
         self.track_model_params_every = track_model_params_every
         self.param_tracker_config = param_tracker_config
@@ -614,9 +616,11 @@ class HybridInferenceParameters:
         assert self.min_training_epochs > 0
         assert self.max_training_epochs > 0
         assert self.max_training_epochs >= self.min_training_epochs
-        assert self.num_thermal_epochs <= self.max_training_epochs
+        total_max_advi_iters = (self.max_advi_iter_first_epoch +
+                                (self.max_training_epochs - 1) * self.max_advi_iter_subsequent_epochs)
+        assert self.num_thermal_advi_iters <= total_max_advi_iters
         assert self.initial_temperature >= 1.0
-        assert self.disable_annealing or self.num_thermal_epochs > 0
+        assert self.disable_annealing or self.num_thermal_advi_iters > 0
         assert self.track_model_params_every > 0
         assert self.convergence_snr_averaging_window > 0
         assert self.convergence_snr_trigger_threshold > 0
@@ -661,8 +665,8 @@ class HybridInferenceParameters:
                 "choices are: {1}".format(hidden_arg, valid_args)
         for override_default_arg in override_default.keys():
             assert override_default_arg in valid_args, \
-                "Initializer argument of which the default is to be overridden {0} is not a valid initializer " \
-                "arguments; possible choices are: {1}".format(override_default_arg, valid_args)
+                "Initializer argument of which the default is to be overridden {0} is not a valid; possible " \
+                "choices are: {1}".format(override_default_arg, valid_args)
 
         def process_and_maybe_add(arg, **kwargs):
             full_arg = "--" + arg
@@ -726,9 +730,9 @@ class HybridInferenceParameters:
                               type=float,
                               help="Initial temperature for deterministic annealing (must be >= 1.0)")
 
-        process_and_maybe_add("num_thermal_epochs",
+        process_and_maybe_add("num_thermal_advi_iters",
                               type=int,
-                              help="Annealing duration (in the units of training epochs)")
+                              help="Annealing duration (in the units of ADVI iterations)")
 
         process_and_maybe_add("convergence_snr_averaging_window",
                               type=int,

@@ -86,8 +86,7 @@ gcnvkernel.CopyNumberCallingConfig.expose_args(
     parser,
     hide={
         '--p_active',
-        '--class_coherence_length',
-        '--initialize_to_active_class'
+        '--class_coherence_length'
     })
 
 # override some inference parameters

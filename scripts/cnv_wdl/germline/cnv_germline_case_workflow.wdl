@@ -79,7 +79,7 @@ workflow CNVGermlineCaseWorkflow {
     Int? gcnv_min_training_epochs
     Int? gcnv_max_training_epochs
     Float? gcnv_initial_temperature
-    Int? gcnv_num_thermal_epochs
+    Int? gcnv_num_thermal_advi_iters
     Int? gcnv_convergence_snr_averaging_window
     Float? gcnv_convergence_snr_trigger_threshold
     Int? gcnv_convergence_snr_countdown_window
@@ -173,7 +173,7 @@ workflow CNVGermlineCaseWorkflow {
                 min_training_epochs = gcnv_min_training_epochs,
                 max_training_epochs = gcnv_max_training_epochs,
                 initial_temperature = gcnv_initial_temperature,
-                num_thermal_epochs = gcnv_num_thermal_epochs,
+                num_thermal_advi_iters = gcnv_num_thermal_advi_iters,
                 convergence_snr_averaging_window = gcnv_convergence_snr_averaging_window,
                 convergence_snr_trigger_threshold = gcnv_convergence_snr_trigger_threshold,
                 convergence_snr_countdown_window = gcnv_convergence_snr_countdown_window,
@@ -314,7 +314,7 @@ task GermlineCNVCallerCaseMode {
     Int? min_training_epochs
     Int? max_training_epochs
     Float? initial_temperature
-    Int? num_thermal_epochs
+    Int? num_thermal_advi_iters
     Int? convergence_snr_averaging_window
     Float? convergence_snr_trigger_threshold
     Int? convergence_snr_countdown_window
@@ -365,12 +365,12 @@ task GermlineCNVCallerCaseMode {
             --log-emission-samples-per-round ${default="50" log_emission_samples_per_round} \
             --log-emission-sampling-median-rel-error ${default="0.005" log_emission_sampling_median_rel_error} \
             --log-emission-sampling-rounds ${default="10" log_emission_sampling_rounds} \
-            --max-advi-iter-first-epoch ${default="100" max_advi_iter_first_epoch} \
+            --max-advi-iter-first-epoch ${default="5000" max_advi_iter_first_epoch} \
             --max-advi-iter-subsequent-epochs ${default="100" max_advi_iter_subsequent_epochs} \
             --min-training-epochs ${default="10" min_training_epochs} \
             --max-training-epochs ${default="100" max_training_epochs} \
             --initial-temperature ${default="2.0" initial_temperature} \
-            --num-thermal-epochs ${default="50" num_thermal_epochs} \
+            --num-thermal-advi-iters ${default="2500" num_thermal_advi_iters} \
             --convergence-snr-averaging-window ${default="500" convergence_snr_averaging_window} \
             --convergence-snr-trigger-threshold ${default="0.1" convergence_snr_trigger_threshold} \
             --convergence-snr-countdown-window ${default="10" convergence_snr_countdown_window} \

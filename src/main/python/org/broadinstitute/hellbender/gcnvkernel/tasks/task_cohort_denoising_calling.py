@@ -1,5 +1,5 @@
 import logging
-from typing import Callable
+from typing import Callable, Optional
 
 import numpy as np
 import pymc3 as pm
@@ -129,15 +129,35 @@ class CopyNumberEmissionSampler(Sampler):
         return self.shared_workspace.log_copy_number_emission_stc.get_value(borrow=True)
 
 
-class CohortDenoisingAndCallingTask(HybridInferenceTask):
-    """Cohort denoising and calling inference task."""
+class CohortDenoisingAndCallingWarmUpTask(HybridInferenceTask):
+    """Cohort denoising and calling warm-up task (no sampling/calling -- just DA-ADVI)."""
+    def __init__(self,
+                 denoising_config: DenoisingModelConfig,
+                 hybrid_inference_params: HybridInferenceParameters,
+                 shared_workspace: DenoisingCallingWorkspace,
+                 initial_param_supplier: InitialModelParametersSupplier):
+        _logger.info("Instantiating the denoising model (warm-up)...")
+        denoising_model = DenoisingModel(denoising_config, shared_workspace, initial_param_supplier)
+
+        elbo_normalization_factor = shared_workspace.num_samples * shared_workspace.num_intervals
+        super().__init__(hybrid_inference_params, denoising_model, None, None,
+                         elbo_normalization_factor=elbo_normalization_factor,
+                         advi_task_name="denoising (warm-up)")
+
+    def disengage(self):
+        pass
+
+
+class CohortDenoisingAndCallingMainTask(HybridInferenceTask):
+    """Cohort denoising and calling inference task (w/ sampling and calling)."""
     def __init__(self,
                  denoising_config: DenoisingModelConfig,
                  calling_config: CopyNumberCallingConfig,
                  hybrid_inference_params: HybridInferenceParameters,
                  shared_workspace: DenoisingCallingWorkspace,
-                 initial_param_supplier: InitialModelParametersSupplier):
-        _logger.info("Instantiating the denoising model...")
+                 initial_param_supplier: InitialModelParametersSupplier,
+                 warm_up_task: Optional[CohortDenoisingAndCallingWarmUpTask]):
+        _logger.info("Instantiating the denoising model (main)...")
         denoising_model = DenoisingModel(
             denoising_config, shared_workspace, initial_param_supplier)
 
@@ -158,11 +178,27 @@ class CohortDenoisingAndCallingTask(HybridInferenceTask):
             copy_number_caller = HHMMClassAndCopyNumberCaller(
                 calling_config, hybrid_inference_params, shared_workspace, self.temperature)
 
+        # initialize hybrid ADVI
         elbo_normalization_factor = shared_workspace.num_samples * shared_workspace.num_intervals
         super().__init__(hybrid_inference_params, denoising_model, copy_number_emission_sampler, copy_number_caller,
                          elbo_normalization_factor=elbo_normalization_factor,
-                         advi_task_name="denoising",
+                         advi_task_name="denoising (main)",
                          calling_task_name="CNV calling")
+
+        if warm_up_task is not None:
+            _logger.info("A warm-up task was provided -- copying mean-field parameter values, temperature, "
+                         "and optimizer moments from the warm-up task...")
+
+            # temperature
+            self.temperature.set_value(warm_up_task.temperature.get_value())
+
+            # meanfield parameters
+            for main_param, warm_up_param in zip(self.continuous_model_approx.params,
+                                                 warm_up_task.continuous_model_approx.params):
+                main_param.set_value(warm_up_param.get_value())
+
+            # optimizer state
+            self.fancy_opt.initialize_state_from_instance(warm_up_task.fancy_opt)
 
     def disengage(self):
         pass
