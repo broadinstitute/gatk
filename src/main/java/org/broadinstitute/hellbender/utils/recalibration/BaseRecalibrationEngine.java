@@ -24,7 +24,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.CovariateKeyCache;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.ReadCovariates;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.BQSRCovariateList;
 
 import java.io.Serializable;
 import java.util.Arrays;
@@ -67,7 +67,7 @@ public final class BaseRecalibrationEngine implements Serializable {
     /**
      * list to hold the all the covariate objects that were requested (required + standard + experimental)
      */
-    private StandardCovariateList covariates;
+    private BQSRCovariateList covariates;
 
     private BAQ baq; // BAQ the reads on the fly to generate the alignment uncertainty vector
     private static final byte NO_BAQ_UNCERTAINTY = (byte)'@';
@@ -89,7 +89,7 @@ public final class BaseRecalibrationEngine implements Serializable {
             baq = null;
         }
 
-        covariates = new StandardCovariateList(recalArgs, readsHeader);
+        covariates = new BQSRCovariateList(recalArgs, readsHeader);
 
         final int numReadGroups = readsHeader.getReadGroups().size();
         if ( numReadGroups < 1 ) {
@@ -227,7 +227,7 @@ public final class BaseRecalibrationEngine implements Serializable {
         return recalTables;
     }
 
-    public StandardCovariateList getCovariates() {
+    public BQSRCovariateList getCovariates() {
         return covariates;
     }
 
@@ -247,7 +247,7 @@ public final class BaseRecalibrationEngine implements Serializable {
         final NestedIntegerArray<RecalDatum> qualityScoreTable = recalTables.getQualityScoreTable();
 
         final int nCovariates = covariates.size();
-        final int nSpecialCovariates = covariates.numberOfSpecialCovariates();
+        final int nSpecialCovariates = BQSRCovariateList.numberOfRequiredCovariates();
         final int readLength = read.getLength();
         for( int offset = 0; offset < readLength; offset++ ) {
             if( ! recalInfo.skip(offset) ) {

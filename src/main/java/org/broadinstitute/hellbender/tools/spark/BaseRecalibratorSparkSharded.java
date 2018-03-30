@@ -31,7 +31,7 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.recalibration.BaseRecalibrationEngine;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationTables;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.BQSRCovariateList;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
@@ -154,7 +154,7 @@ public class BaseRecalibratorSparkSharded extends SparkCommandLineProgram {
         BaseRecalibratorEngineSparkWrapper recal = new BaseRecalibratorEngineSparkWrapper(readsHeaderBcast, refDictionaryBcast, bqsrArgs);
         JavaRDD<RecalibrationTables> tables = readsWithContext.mapPartitions(s->recal.apply(s));
 
-        final RecalibrationTables emptyRecalibrationTable = new RecalibrationTables(new StandardCovariateList(bqsrArgs, readsHeader));
+        final RecalibrationTables emptyRecalibrationTable = new RecalibrationTables(new BQSRCovariateList(bqsrArgs, readsHeader));
         final RecalibrationTables table = tables.treeAggregate(emptyRecalibrationTable,
                 RecalibrationTables::inPlaceCombine,
                 RecalibrationTables::inPlaceCombine,

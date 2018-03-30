@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.recalibration.*;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.CovariateKeyCache;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.ReadCovariates;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.BQSRCovariateList;
 
 import java.io.File;
 import java.util.Arrays;
@@ -29,7 +29,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
 
     private final QuantizationInfo quantizationInfo; // histogram containing the map for qual quantization (calculated after recalibration is done)
     private final RecalibrationTables recalibrationTables;
-    private final StandardCovariateList covariates; // list of all covariates to be used in this calculation
+    private final BQSRCovariateList covariates; // list of all covariates to be used in this calculation
     private final SAMFileHeader header;
     
     private final int preserveQLessThan;
@@ -69,7 +69,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
      * @param covariates standard covariate set
      * @param args ApplyBQSR arguments
      */
-    private BQSRReadTransformer(final SAMFileHeader header, final RecalibrationTables recalibrationTables, final QuantizationInfo quantizationInfo, final StandardCovariateList covariates, final ApplyBQSRArgumentCollection args) {
+    private BQSRReadTransformer( final SAMFileHeader header, final RecalibrationTables recalibrationTables, final QuantizationInfo quantizationInfo, final BQSRCovariateList covariates, final ApplyBQSRArgumentCollection args) {
         this.header = header;
         this.recalibrationTables = recalibrationTables;
         this.covariates = covariates;
@@ -93,7 +93,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
         }
 
         totalCovariateCount = covariates.size();
-        specialCovariateCount = covariates.numberOfSpecialCovariates();
+        specialCovariateCount = BQSRCovariateList.numberOfRequiredCovariates();
 
         //Note: We pre-create the varargs arrays that will be used in the calls. Otherwise we're spending a lot of time allocating those int[] objects
         empiricalQualCovsArgs = new RecalDatum[totalCovariateCount - specialCovariateCount];
@@ -109,6 +109,10 @@ public final class BQSRReadTransformer implements ReadTransformer {
      */
     public BQSRReadTransformer(final SAMFileHeader header, final RecalibrationReport recalInfo, final ApplyBQSRArgumentCollection args) {
         this(header, recalInfo.getRecalibrationTables(), recalInfo.getQuantizationInfo(), recalInfo.getCovariates(), args);
+    }
+
+    public BQSRCovariateList getCovariates() {
+        return covariates;
     }
 
     /**

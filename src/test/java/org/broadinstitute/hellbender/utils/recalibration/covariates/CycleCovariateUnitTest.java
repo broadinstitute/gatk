@@ -13,6 +13,8 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.Arrays;
+
 import static java.lang.Math.abs;
 
 public final class CycleCovariateUnitTest extends GATKBaseTest {
@@ -23,10 +25,12 @@ public final class CycleCovariateUnitTest extends GATKBaseTest {
 
     @BeforeClass
     public void init() {
-        RAC = new RecalibrationArgumentCollection();
-        covariate = new CycleCovariate(RAC);
         illuminaReadGroup = new SAMReadGroupRecord("MY.ID");
         illuminaReadGroup.setPlatform("illumina");
+
+        RAC = new RecalibrationArgumentCollection();
+        covariate = new CycleCovariate();
+        covariate.initialize(RAC, Arrays.asList(illuminaReadGroup.getId()));
     }
 
     @Test

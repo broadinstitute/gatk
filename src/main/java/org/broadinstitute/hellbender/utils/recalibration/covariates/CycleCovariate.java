@@ -5,6 +5,8 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 
+import java.util.List;
+
 /**
  * The Cycle covariate.
  * For ILLUMINA the cycle is simply the position in the read (counting backwards if it is a negative strand read)
@@ -12,10 +14,12 @@ import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCo
 public final class CycleCovariate implements Covariate {
     private static final long serialVersionUID = 1L;
 
-    private final int MAXIMUM_CYCLE_VALUE;
+    private int MAXIMUM_CYCLE_VALUE;
     public static final int CUSHION_FOR_INDELS = 4;
 
-    public CycleCovariate(final RecalibrationArgumentCollection RAC){
+
+    @Override
+    public void initialize(final RecalibrationArgumentCollection RAC, final List<String> readGroups) {
         this.MAXIMUM_CYCLE_VALUE = RAC.MAXIMUM_CYCLE_VALUE;
     }
 

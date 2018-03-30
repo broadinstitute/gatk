@@ -13,6 +13,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.Collections;
 import java.util.Random;
 
 import static org.broadinstitute.hellbender.utils.recalibration.covariates.ContextCovariate.getStrandedClippedBytes;
@@ -25,7 +26,8 @@ public final class ContextCovariateUnitTest extends GATKBaseTest {
     @BeforeClass
     public void init() {
         RAC = new RecalibrationArgumentCollection();
-        covariate = new ContextCovariate(RAC);
+        covariate = new ContextCovariate();
+        covariate.initialize(RAC, Collections.emptyList());
     }
 
     @Test
