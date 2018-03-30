@@ -14,22 +14,20 @@ import java.util.stream.Collectors;
  */
 public final class ReadGroupCovariate implements Covariate {
     private static final long serialVersionUID = 1L;
-
     public static final int MISSING_READ_GROUP_KEY = -1;
 
     //Note: these maps are initialized and made umodifiable at construction so the whole covariate is an immutable object once it's constructed.
-
     /*
      * Stores the mapping from read group id to a number.
      */
-    private final Map<String, Integer> readGroupLookupTable;
+    private Map<String, Integer> readGroupLookupTable;
 
     /*
      * Stores the reverse mapping, from number to read group id.
      */
-    private final Map<Integer, String> readGroupReverseLookupTable;
+    private Map<Integer, String> readGroupReverseLookupTable;
 
-    public ReadGroupCovariate(final List<String> readGroups){
+    public void initialize(final RecalibrationArgumentCollection RAC, final List<String> readGroups) {
         final Map<String, Integer> rgLookupTable = new LinkedHashMap<>();
         final Map<Integer, String> rgReverseLookupTable = new LinkedHashMap<>();
 

@@ -165,7 +165,7 @@ public final class RecalibrationReportUnitTest extends GATKBaseTest {
 
         quantizationInfo.noQuantization();
         final String readGroupID = "id";
-        final StandardCovariateList covariateList = new StandardCovariateList(RAC, Collections.singletonList(readGroupID));
+        final BQSRCovariateList covariateList = new BQSRCovariateList(RAC, Collections.singletonList(readGroupID));
 
         final SAMReadGroupRecord rg = new SAMReadGroupRecord(readGroupID);
         rg.setPlatform("illumina");
