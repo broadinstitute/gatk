@@ -210,7 +210,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
     // This test is to make sure we don't create a bunch of temp files anywhere.
     // It will force anyone who changes the outputToTmpDir flag to make it true when they check in this test file.
-    @Test
+    @Test(groups = {"funcotatorValidation"})
     public void metaTestEnsureTempDirs() {
         Assert.assertEquals(doDebugTests, false);
     }
@@ -240,7 +240,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test(enabled = doDebugTests,
-          groups = {"funcotator_acceptance"},
+          groups = {"funcotatorValidation"},
           dataProvider = "provideForLargeDataValidationTest")
     public void largeDataValidationTest(final FuncotatorArgumentDefinitions.OutputFormatType outputType,
                           final String inputVcfPath,
