@@ -169,7 +169,7 @@ class HMMSegmentationQualityCalculator:
 
     def get_segment_quality_some_called(self, start_index: int, end_index: int, call_state: int) -> float:
         """Calculates the phred-scaled posterior probability that one or more ("some") sites in a segment have
-        the same hidden state ("call") normalized by the length of the segment.
+        the same hidden state ("call").
 
         Args:
             start_index: first site index (inclusive)
@@ -184,7 +184,7 @@ class HMMSegmentationQualityCalculator:
         all_other_states_logp = self.get_log_constrained_posterior_prob(
             start_index, end_index, self.leave_one_out_state_lists[call_state])
 
-        return logp_to_phred(all_other_states_logp, complement=False) / (end_index - start_index + 1)
+        return logp_to_phred(all_other_states_logp, complement=False)
 
     def get_segment_quality_all_called(self, start_index: int, end_index: int, call_state: int,
                                        quality_switch_threshold: float = 60.0) -> float:

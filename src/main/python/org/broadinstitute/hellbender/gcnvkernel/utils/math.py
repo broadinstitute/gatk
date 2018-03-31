@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 
 # 10 / ln(10)
@@ -5,6 +7,9 @@ INV_LN_10_TIMES_10 = 4.342944819032518
 
 # ln(1/2)
 LN_HALF = -0.6931471805599453
+
+# maximum possible phred-scaled value
+MAX_PHRED = -INV_LN_10_TIMES_10 * np.log(sys.float_info.min)
 
 
 def logp_to_phred(logp: float, complement: bool = False) -> float:
@@ -18,7 +23,8 @@ def logp_to_phred(logp: float, complement: bool = False) -> float:
         phred-scaled probability
     """
     logp_zero_capped = min(0., logp)
-    return -INV_LN_10_TIMES_10 * (logp_zero_capped if not complement else logp_complement(logp_zero_capped))
+    value = -INV_LN_10_TIMES_10 * (logp_zero_capped if not complement else logp_complement(logp_zero_capped))
+    return min(value, MAX_PHRED)
 
 
 def logp_complement(logp: float) -> float:
