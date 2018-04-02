@@ -122,6 +122,10 @@ public interface SVHaplotype {
         return getBases(0, getLength());
     }
 
+    default AlignedContig toAlignedContig() {
+        return new AlignedContig(this, this.getName());
+    }
+
     <T> List<List<AlignmentInterval>> align(final Iterable<T> input, Function<T, byte[]> basesOf);
 
     default <T> List<AlignedContig> alignContigs(final Iterable<AlignedContig> contigs) {

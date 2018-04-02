@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
+import org.broadinstitute.hellbender.utils.report.GATKReportColumnFormat;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -214,56 +215,88 @@ public final class SVContext extends VariantContext {
                                                     final ReferenceBases endReferenceBases,
                                                     final byte[] insertedBases,
                                                     final int insertedBasesLength) {
-        final SequenceBuilder sequence = new SequenceBuilder(insertedBasesLength +
-                startReferenceBases.getInterval().size() + endReferenceBases.getInterval().size());
-        sequence.append(startReferenceBases, startReferenceBases.getInterval().getStart(), getStart(), false);
-        final int basesBeforeInversion = sequence.getLength();
-        if (insertedBasesLength > 0) {
-            sequence.append(insertedBases);
+        if (startReferenceBases.getInterval().overlapsWithMargin(endReferenceBases.getInterval(), 1)) {
+            final ReferenceBases allReferenceBases = ReferenceBases.union(startReferenceBases, endReferenceBases);
+            final SequenceBuilder sequence = new SequenceBuilder(insertedBasesLength + allReferenceBases.getInterval().size());
+            sequence.append(allReferenceBases, allReferenceBases.getInterval().getStart(), getStart() - 1, false);
+            final int insertOffset = sequence.getLength();
+            if (insertedBasesLength > 0) {
+                sequence.append(insertedBases);
+            }
+            final int inversionOffset = sequence.getLength();
+            sequence.append(allReferenceBases, getStart(), getEnd() - 1, true);
+            final int suffixOffset = sequence.getLength();
+            sequence.append(allReferenceBases, getEnd(), allReferenceBases.getInterval().getEnd(), false);
+            final AlignmentInterval firstInterval = new AlignmentInterval(
+                    new SimpleInterval(getContig(), allReferenceBases.getInterval().getStart(), getStart() - 1),
+                    1, insertOffset,
+                    new Cigar(Arrays.asList(new CigarElement(insertOffset, CigarOperator.M),
+                                            new CigarElement(sequence.getLength() - insertOffset, CigarOperator.S))), true,
+                    SAMRecord.UNKNOWN_MAPPING_QUALITY, AlignmentInterval.NO_AS, AlignmentInterval.NO_NM, ContigAlignmentsModifier.AlnModType.NONE);
+            final AlignmentInterval inversionInterval = new AlignmentInterval(
+                    new SimpleInterval(getContig(), getStart(), getEnd() - 1),
+                    inversionOffset + 1, suffixOffset,
+                    new Cigar(Arrays.asList(new CigarElement(inversionOffset, CigarOperator.S),
+                                            new CigarElement(suffixOffset - inversionOffset, CigarOperator.M),
+                                            new CigarElement(sequence.getLength() - suffixOffset, CigarOperator.S))), false,
+                    SAMRecord.UNKNOWN_MAPPING_QUALITY, AlignmentInterval.NO_AS, AlignmentInterval.NO_NM, ContigAlignmentsModifier.AlnModType.NONE);
+            final AlignmentInterval lastInterval = new AlignmentInterval(
+                    new SimpleInterval(allReferenceBases.getInterval().getContig(), getEnd(), allReferenceBases.getInterval().getEnd()),
+                    suffixOffset + 1, sequence.getLength(),
+                    new Cigar(Arrays.asList(new CigarElement(suffixOffset, CigarOperator.S),
+                            new CigarElement(sequence.getLength() - suffixOffset, CigarOperator.M))), true,
+                    SAMRecord.UNKNOWN_MAPPING_QUALITY, AlignmentInterval.NO_AS, AlignmentInterval.NO_NM, ContigAlignmentsModifier.AlnModType.NONE);
+            final List<AlignmentInterval> intervals = Arrays.asList(firstInterval, inversionInterval, lastInterval);
+            return new ArraySVHaplotype(SVHaplotype.ALT_HAPLOTYPE_NAME, intervals, sequence.toArray(), getID(), getStartPositionInterval(), false);
+        } else {
+            final SequenceBuilder sequence = new SequenceBuilder(insertedBasesLength +
+                    startReferenceBases.getInterval().size() + endReferenceBases.getInterval().size());
+            sequence.append(startReferenceBases, startReferenceBases.getInterval().getStart(), getStart() - 1, false);
+            final int basesBeforeInversion = sequence.getLength();
+            if (insertedBasesLength > 0) {
+                sequence.append(insertedBases);
+            }
+            final int threeEndStart = Math.max(endReferenceBases.getInterval().getStart(), getStart());
+            sequence.append(endReferenceBases, threeEndStart, getEnd() - 1, true);
+
+            final AlignmentInterval firstInterval = new AlignmentInterval(
+                    new SimpleInterval(startReferenceBases.getInterval().getContig(), startReferenceBases.getInterval().getStart(), getStart() - 1),
+                    1, basesBeforeInversion, new Cigar(Arrays.asList(new CigarElement(basesBeforeInversion, CigarOperator.M), new CigarElement(sequence.getLength() - basesBeforeInversion, CigarOperator.S))), true,
+                    SAMRecord.UNKNOWN_MAPPING_QUALITY, AlignmentInterval.NO_AS, AlignmentInterval.NO_NM, ContigAlignmentsModifier.AlnModType.NONE);
+
+            final AlignmentInterval secondInterval = new AlignmentInterval(
+                    new SimpleInterval(startReferenceBases.getInterval().getContig(), threeEndStart, getEnd() - 1),
+                    basesBeforeInversion + insertedBasesLength + 1, sequence.getLength(),
+                    new Cigar(Arrays.asList(new CigarElement(basesBeforeInversion + insertedBasesLength, CigarOperator.S), new CigarElement(sequence.getLength() - basesBeforeInversion - insertedBasesLength, CigarOperator.M))), false,
+                    SAMRecord.UNKNOWN_MAPPING_QUALITY, AlignmentInterval.NO_AS, AlignmentInterval.NO_NM, ContigAlignmentsModifier.AlnModType.NONE);
+
+            final List<AlignmentInterval> intervals = Arrays.asList(firstInterval, secondInterval);
+            return new ArraySVHaplotype(SVHaplotype.ALT_HAPLOTYPE_NAME, intervals, sequence.toArray(), getID(), getStartPositionInterval(), false);
         }
-        final int threeEndStart = Math.max(endReferenceBases.getInterval().getStart(), getStart() + 1);
-        sequence.append(endReferenceBases, threeEndStart, getEnd(), true);
-
-        final AlignmentInterval firstInterval = new AlignmentInterval(
-                new SimpleInterval(startReferenceBases.getInterval().getContig(), startReferenceBases.getInterval().getStart(), getStart()),
-                1, basesBeforeInversion, new Cigar(Collections.singletonList(new CigarElement(basesBeforeInversion, CigarOperator.M))), true,
-                SAMRecord.UNKNOWN_MAPPING_QUALITY, AlignmentInterval.NO_AS, AlignmentInterval.NO_NM, ContigAlignmentsModifier.AlnModType.NONE);
-
-        final AlignmentInterval secondInterval = new AlignmentInterval(
-                new SimpleInterval(startReferenceBases.getInterval().getContig(), threeEndStart, getEnd()),
-                basesBeforeInversion + insertedBasesLength + 1, sequence.getLength(),
-                new Cigar(Collections.singletonList(new CigarElement(sequence.getLength() - basesBeforeInversion - insertedBasesLength, CigarOperator.M))), false,
-                SAMRecord.UNKNOWN_MAPPING_QUALITY, AlignmentInterval.NO_AS, AlignmentInterval.NO_NM, ContigAlignmentsModifier.AlnModType.NONE);
-
-        final List<AlignmentInterval> intervals = Arrays.asList(firstInterval, secondInterval);
-        return new ArraySVHaplotype(SVHaplotype.ALT_HAPLOTYPE_NAME, intervals, sequence.toArray(), getID(), getStartPositionInterval(), false);
     }
 
     private SVHaplotype compose33InversionHaplotype(final ReferenceBases startReferenceBases,
                                                     final ReferenceBases endReferenceBases,
                                                     final byte[] insertedBases, final int insertedBasesLength) {
-        final int invertedBasesEnd = Math.min(startReferenceBases.getInterval().getEnd(), getEnd());
-        final int basesBeforeInversionEnd = Math.min(startReferenceBases.getInterval().getEnd(), getEnd());
-
+        final int invertedBasesEnd = Math.min(startReferenceBases.getInterval().getEnd(), getEnd() - 1);
         final SequenceBuilder sequence = new SequenceBuilder(startReferenceBases.getInterval().size()
                 + endReferenceBases.getInterval().size() + insertedBasesLength);
+        sequence.append(startReferenceBases, getStart(), invertedBasesEnd, true);
         final int numberOfInvertedBases = sequence.getLength();
-
-                sequence.append(startReferenceBases, getStart() + 1, invertedBasesEnd, true);
         if (insertedBasesLength > 0) {
-            sequence.append(insertedBases);
+            sequence.append(insertedBases, true);
         }
-        sequence.append(endReferenceBases, getEnd() + 1, endReferenceBases.getInterval().getEnd(), false);
+        sequence.append(endReferenceBases, getEnd(), endReferenceBases.getInterval().getEnd(), false);
 
         final AlignmentInterval firstInterval = new AlignmentInterval(
-                new SimpleInterval(startReferenceBases.getInterval().getContig(), getStart() + 1, invertedBasesEnd),
-                1, numberOfInvertedBases, new Cigar(Collections.singletonList(new CigarElement(numberOfInvertedBases, CigarOperator.M))), false,
+                new SimpleInterval(startReferenceBases.getInterval().getContig(), getStart(), invertedBasesEnd),
+                1, numberOfInvertedBases, new Cigar(Arrays.asList(new CigarElement(numberOfInvertedBases, CigarOperator.M), new CigarElement(sequence.getLength() - numberOfInvertedBases, CigarOperator.S))), false,
                 SAMRecord.UNKNOWN_MAPPING_QUALITY, AlignmentInterval.NO_AS, AlignmentInterval.NO_NM, ContigAlignmentsModifier.AlnModType.NONE);
 
         final AlignmentInterval secondInterval = new AlignmentInterval(
-                new SimpleInterval(startReferenceBases.getInterval().getContig(), getEnd() + 1, endReferenceBases.getInterval().getEnd()),
+                new SimpleInterval(startReferenceBases.getInterval().getContig(), getEnd(), endReferenceBases.getInterval().getEnd()),
                 numberOfInvertedBases + insertedBasesLength + 1, sequence.getLength(),
-                new Cigar(Collections.singletonList(new CigarElement(sequence.getLength() - numberOfInvertedBases - insertedBasesLength, CigarOperator.M))), true,
+                new Cigar(Arrays.asList(new CigarElement(numberOfInvertedBases + insertedBasesLength, CigarOperator.S), new CigarElement(sequence.getLength() - numberOfInvertedBases - insertedBasesLength, CigarOperator.M))), true,
                 SAMRecord.UNKNOWN_MAPPING_QUALITY, AlignmentInterval.NO_AS, AlignmentInterval.NO_NM, ContigAlignmentsModifier.AlnModType.NONE);
 
         final List<AlignmentInterval> intervals = Arrays.asList(firstInterval, secondInterval);
@@ -282,7 +315,6 @@ public final class SVContext extends VariantContext {
             cigarElements.add(new CigarElement(nextInterval.getLengthOnReference(), CigarOperator.M));
             previousInterval = nextInterval;
         }
-        List<?> x;
         final Cigar cigar = new Cigar(cigarElements);
         final SimpleInterval startInterval = referenceBases.get(0).getInterval();
         return new ArraySVHaplotype(SVHaplotype.REF_HAPLOTYPE_NAME,
@@ -377,7 +409,7 @@ public final class SVContext extends VariantContext {
         final SequenceBuilder sequenceBuilder = new SequenceBuilder(referenceBases.getInterval().size() + duplicatedUnitSpan.size() + insertedSequenceLength);
         sequenceBuilder.append(referenceBases, referenceBases.getInterval().getStart(), getStart(), false);
         final int prefixLength = sequenceBuilder.getLength();
-        sequenceBuilder.append(duplicatedUnitBases, duplicatedUnitBases.getInterval().getStart(), duplicatedUnitBases.getInterval().getEnd(), false);
+        sequenceBuilder.append(duplicatedUnitBases, duplicatedUnitSpan, false);
         if (insertedSequenceLength > 0) {
             sequenceBuilder.append(insertedSequence, false);
         }
@@ -495,11 +527,12 @@ public final class SVContext extends VariantContext {
         final String contigName = getContig();
         final int contigLength = dictionary.getSequence(contigName).getSequenceLength();
         final StructuralVariantType type = getStructuralVariantType();
-        final int start = getStart();
         if (type == StructuralVariantType.INS || type == StructuralVariantType.DUP) {
+            final int start = getStart();
             return Collections.singletonList(
                     composePaddedInterval(contigName, contigLength, start, start, padding));
-        } else if (type == StructuralVariantType.DEL) {
+        } else if (type == StructuralVariantType.DEL || type == StructuralVariantType.INV) {
+            final int start = getStart();
             final int end = getEnd();
             final int homologyPadding = (padForHomology ? getAttributeAsInt(GATKSVVCFConstants.HOMOLOGY_LENGTH, 0) : 0);
             return Arrays.asList(
@@ -507,14 +540,6 @@ public final class SVContext extends VariantContext {
                             start + 1 + homologyPadding, padding),
                     composePaddedInterval(contigName, contigLength, end,
                             end + homologyPadding, padding));
-        } else if (type == StructuralVariantType.INV) {
-            if (is55Inversion()) {
-                return Collections.singletonList(composePaddedInterval(contigName, contigLength, start, start + 1, padding));
-            } else if (is33Inversion()) {
-                return Collections.singletonList(composePaddedInterval(contigName, contigLength, end, end + 1, padding));
-            } else {
-                throw new IllegalStateException("inversion must be either 3to3 or 5to5");
-            }
         } else {
             // Please, add more types as needed!
             throw new UnsupportedOperationException("currently only supported for INS and DELs");

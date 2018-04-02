@@ -30,7 +30,6 @@ import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSourc
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFHeaderLines;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVContext;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalLocator;
@@ -494,7 +493,6 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                     List<Tuple2<SimpleInterval, SVContext>>>> contigAndVariantsInShards
                 = contigsInShards.join(variantsInShards);
 
-
         final JavaPairRDD<SVContext, List<GATKRead>> contigsPerVariantInterval
                 = contigAndVariantsInShards.flatMapToPair(t -> {
                     final List<Tuple2<SimpleInterval, SVContext>> vars = t._2()._2();
@@ -548,12 +546,15 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         final PairFlatMapFunction<T, SimpleInterval, Tuple2<SimpleInterval, T>> flatMapIntervals =
                 t -> intervalsOf.call(t).stream().map(i -> new Tuple2<>(i, new Tuple2<>(i,t))).iterator();
 
-        return elements
-                .flatMapToPair(flatMapIntervals)
-                .flatMapToPair(t -> shards.getValue().getOverlapping(t._1()).stream().map(i -> new Tuple2<>(i, t._2())).iterator())
+        final JavaPairRDD<SimpleInterval, Tuple2<SimpleInterval, T>> elements2 = elements
+                .flatMapToPair(flatMapIntervals);
+        final JavaPairRDD<SimpleInterval, Tuple2<SimpleInterval, T>> elements3 = elements2
+                .flatMapToPair(t -> shards.getValue().getOverlapping(t._1()).stream().map(i -> new Tuple2<>(i, t._2())).iterator());
+        final JavaPairRDD<SimpleInterval, List<Tuple2<SimpleInterval, T>>> result = elements3
                 .aggregateByKey(new ArrayList<Tuple2<SimpleInterval, T>>(10),
                         (l1, c) -> { l1.add(c); return l1;},
                         (l1, l2) -> {l1.addAll(l2); return l1;});
+        return result;
     }
 
     protected void processVariants(final JavaPairRDD<SVContext, List<AlignedContig>> variantsAndOverlappingUniqueContigs,
@@ -612,11 +613,10 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                 final SVContext variant = tuple._1();
                 final VariantHaplotypesAndContigsComposite haplotypesAndContigs = tuple._2();
                 final List<SAMRecord> result = new ArrayList<>();
-
-                result.addAll(haplotypesAndContigs.composeAlignedOutputReferenceHaplotypeSAMRecords(null, variant));
-                result.addAll(haplotypesAndContigs.composeAlignedOutputAlternativeHaplotypeSAMRecords(null, variant));
+                result.addAll(haplotypesAndContigs.composeAlignedOutputAlternativeHaplotypeSAMRecords(outputHeader, variant));
+                result.addAll(haplotypesAndContigs.composeAlignedOutputReferenceHaplotypeSAMRecords(outputHeader, variant));
                 for (int i = 0; i < haplotypesAndContigs.numberOfContigs(); i++) {
-                    result.addAll(haplotypesAndContigs.composeAlignedOutputSAMRecords(null, variant, i));
+                    result.addAll(haplotypesAndContigs.composeAlignedOutputSAMRecords(outputHeader, variant, i));
                 }
                 final IntervalsSkipList<SimpleInterval> shards = shardBroadcast.getValue();
                 return result.stream()
@@ -712,7 +712,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
     static class VariantHaplotypesAndContigsComposite implements Serializable {
 
         private static final long serialVersionUID = 1L;
-        private static final SerializableComparator<AlignmentInterval> ALIGNMENT_INTERVAL_PRIMARY_SECONDARY_SORTER =
+        private static final Comparator<AlignmentInterval> ALIGNMENT_INTERVAL_PRIMARY_SECONDARY_SORTER =
                 (a, b) -> {
                     if (a.mapQual != b.mapQual) {
                         return Integer.compare(b.mapQual == SAMRecord.UNKNOWN_MAPPING_QUALITY ? -1 : b.mapQual,
@@ -946,11 +946,27 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         }
 
         private List<SAMRecord> composeAlignedOutputReferenceHaplotypeSAMRecords(final SAMFileHeader header, final SVContext variant) {
-            return composeAlignedOutputHaplotypeSAMRecords(header, variant, referenceHaplotype);
+            return composeAlignedOutputSAMRecords(header, referenceHaplotype.toAlignedContig(),
+                    HAPLOTYPE_READ_GROUP,
+                    variant.getUniqueID(),
+                    referenceHaplotype.getName(),
+                    60.0,
+                    null,
+                    null,
+                    null,
+                    null);
         }
 
         private List<SAMRecord> composeAlignedOutputAlternativeHaplotypeSAMRecords(final SAMFileHeader header, final SVContext variant) {
-            return composeAlignedOutputHaplotypeSAMRecords(header, variant, alternativeHaplotype);
+            return composeAlignedOutputSAMRecords(header, alternativeHaplotype.toAlignedContig(),
+                  HAPLOTYPE_READ_GROUP,
+                  variant.getUniqueID(),
+                  alternativeHaplotype.getName(),
+                  60.0,
+                  null,
+                  null,
+                  null,
+                  null);
         }
 
         private List<SAMRecord> composeAlignedOutputHaplotypeSAMRecords(SAMFileHeader header, SVContext variant, SVHaplotype haplotype) {
@@ -986,25 +1002,39 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
             return result;
         }
 
+
         private List<SAMRecord> composeAlignedOutputSAMRecords(final SAMFileHeader header,
-                                                           final SVContext vc, final int index) {
-            final AlignedContig alignment = originalAlignments[index];
-            final List<SAMRecord> result = new ArrayList<>(alignment.alignmentIntervals.size());
-            result.add(alignment.alignmentIntervals.get(0).toSAMRecord(header, alignment.contigName, alignment.contigSequence, false, 0, Collections.emptyList()));
-            final String vcUID = vc.getUniqueID();
-            for (int i = 1; i < alignment.alignmentIntervals.size(); i++) {
-                result.add(alignment.alignmentIntervals.get(i).toSAMRecord(header, alignment.contigName, alignment.contigSequence, true, SAMFlag.SUPPLEMENTARY_ALIGNMENT.intValue(), Collections.emptyList()));
+                                                               final AlignedContig alignment,
+                                                               final String readGroup,
+                                                               final String vcUID,
+                                                               final String hpTagValue,
+                                                               final Double hpQualValue,
+                                                               final String referenceScoreTagValue,
+                                                               final String alternativeScoreTagValue,
+                                                               final AlignedContig referenceAlignment,
+                                                               final AlignedContig alternativeAlignment) {
+            final List<AlignmentInterval> intervals = alignment.alignmentIntervals;
+
+            final List<SAMRecord> result = new ArrayList<>(intervals.size());
+            result.add(intervals.get(0).toSAMRecord(header, alignment.contigName, alignment.contigSequence,
+                    false, 0, Collections.emptyList()));
+            for (int i = 1; i < intervals.size(); i++) {
+                result.add(alignment.alignmentIntervals.get(i)
+                        .toSAMRecord(header, alignment.contigName,
+                                alignment.contigSequence, false,
+                                SAMFlag.SUPPLEMENTARY_ALIGNMENT.intValue(),
+                                Collections.emptyList()));
             }
             for (final SAMRecord record : result) {
                 record.setReadName(alignment.contigName);
-                record.setAttribute(SAMTag.RG.name(), CONTIG_READ_GROUP);
-                record.setAttribute(HAPLOTYPE_CALL_TAG, hpTagValue[index]);
-                record.setAttribute(HAPLOTYPE_QUAL_TAG, "" + hpQualTagValue[index]);
-                record.setAttribute(REFERENCE_SCORE_TAG, referenceScoreTagValue[index]);
-                record.setAttribute(ALTERNATIVE_SCORE_TAG, alternativeScoreTagValue[index]);
-                record.setAttribute(VARIANT_CONTEXT_TAG, vcUID);
-                record.setAttribute(REFERENCE_ALIGNMENT_TAG, composeSupplementaryLikeString(referenceAlignments[index]) + ';');
-                record.setAttribute(ALTERNATIVE_ALIGNMENT_TAG, composeSupplementaryLikeString(alternativeAlignments[index]) + ';');
+                if (readGroup != null) record.setAttribute(SAMTag.RG.name(), readGroup);
+                if (hpTagValue != null) record.setAttribute(HAPLOTYPE_CALL_TAG, hpTagValue);
+                if (hpQualValue != null) record.setAttribute(HAPLOTYPE_QUAL_TAG, "" + hpQualValue);
+                if (referenceScoreTagValue != null) record.setAttribute(REFERENCE_SCORE_TAG, referenceScoreTagValue);
+                if (alternativeScoreTagValue != null) record.setAttribute(ALTERNATIVE_SCORE_TAG, alternativeScoreTagValue);
+                if (vcUID != null) record.setAttribute(VARIANT_CONTEXT_TAG, vcUID);
+                if (referenceAlignment != null) record.setAttribute(REFERENCE_ALIGNMENT_TAG, composeSupplementaryLikeString(referenceAlignment) + ';');
+                if (alternativeAlignment != null) record.setAttribute(ALTERNATIVE_ALIGNMENT_TAG, composeSupplementaryLikeString(alternativeAlignment) + ';');
             }
             final List<String> saTagValues = alignment.alignmentIntervals.stream()
                     .map(AlignmentInterval::toSumpplementaryAlignmentString)
@@ -1022,6 +1052,12 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
             }
             return result;
         }
+        private List<SAMRecord> composeAlignedOutputSAMRecords(final SAMFileHeader header,
+                                                           final SVContext vc, final int index) {
+            return composeAlignedOutputSAMRecords(header, originalAlignments[index], CONTIG_READ_GROUP, vc.getUniqueID(),
+                    hpTagValue[index], hpQualTagValue[index], referenceScoreTagValue[index], alternativeScoreTagValue[index], referenceAlignments[index], alternativeAlignments[index]);
+        }
+
 
         private SAMRecord composeOutputReferenceHaplotypeRecord(final SAMFileHeader outputHeader, final SVContext variant) {
             return composeOutputReferenceHaplotypeRecord(outputHeader, referenceHaplotype, variant);
@@ -1033,7 +1069,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
 
         private SAMRecord composeOutputReferenceHaplotypeRecord(final SAMFileHeader outputHeader, final SVHaplotype haplotype,
                                                                 final SVContext variant) {
-                final SAMRecord result = new SAMRecord(outputHeader);
+            final SAMRecord result = new SAMRecord(outputHeader);
             result.setReadName(haplotype.getName());
             result.setReadName(haplotype.getName());
             result.setReadUnmappedFlag(true);

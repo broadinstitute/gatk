@@ -96,8 +96,8 @@ public final class ReferenceBases implements Serializable {
      *
      * @param dest the destination array.
      * @param offset the offset in the destination array of the first base copied.
-     * @param start the absolute position in the enclosing contig of the first base to be copied.
-     * @param end the absolute position in the enclosing contig of the last base to be copied.
+     * @param start the absolute position in the enclosing contig of the first base to be copied (inclusive).
+     * @param end the absolute position in the enclosing contig of the last base to be copied (inclusive).
      * @param complement whether to copy the complement bases rather than the actual bases.
      * @throws IllegalArgumentException if {@code dest} is {@code null}, it is not large enough to contain the requested
      * bases given the input {@code offset} or if the requested sub-interval and offset values are invalid (negative or outside this reference-bases interval) otherwise.
@@ -126,6 +126,41 @@ public final class ReferenceBases implements Serializable {
             for (int i = 0; i < length; i++) {
                 dest[offset + i] = SequenceUtil.complement(dest[offset + i]);
             }
+        }
+    }
+
+    /**
+     * Returns the union of two overlapping reference-bases.
+     * @param a
+     * @param b
+     * @throws IllegalArgumentException if either input in {@code null} or they don't overlap or they are not
+     * adjacent.
+     * @return never {@code null}
+     */
+    public static ReferenceBases union(final ReferenceBases a, final ReferenceBases b) {
+        Utils.nonNull(a, "the input reference bases cannot be null");
+        Utils.nonNull(b, "the input reference bases cannot be null");
+        Utils.validateArg(a.getInterval().overlapsWithMargin(b.getInterval(), 1), "the input reference bases must overlap or be adjacent");
+        if (a.getInterval().contains(b.getInterval())) {
+            return a;
+        } else if (b.getInterval().contains(b.getInterval())) {
+            return b;
+        } else {
+            final ReferenceBases upstream, downstream;
+            if (a.getInterval().getStart() < b.getInterval().getStart()) {
+                upstream = a; downstream = b;
+            } else {
+                upstream = b; downstream = a;
+            }
+            final SimpleInterval resultInterval = new SimpleInterval(upstream.getInterval().getContig(),
+                    upstream.getInterval().getStart(),
+               downstream.getInterval().getEnd());
+
+            final byte[] bases = new byte[resultInterval.size()];
+            upstream.copyBases(bases, 0, upstream.getInterval().getStart(), upstream.getInterval().getEnd(), false);
+            downstream.copyBases(bases, upstream.getInterval().size(), upstream.getInterval().getEnd() + 1,
+                    downstream.getInterval().getEnd(), false);
+            return new ReferenceBases(bases, resultInterval);
         }
     }
 

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.utils.Nucleotide;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -73,6 +74,8 @@ public class SequenceBuilder {
      * @param start first position in {@code source} to append (inclusive).
      * @param end last position in {@code source} to append (inclusive).
      * @param reverseComplement whether the appended sequence should be reversed and complemented in the buffer.
+     * @throws IllegalArgumentException if {@code source} is {@code null}, {@code end} is smaller than {@code start} or
+     * these are not enclosed in the source's interval.
      * @return this buffer.
      */
     public SequenceBuilder append(final ReferenceBases source, final int start, final int end, final boolean reverseComplement) {
@@ -81,6 +84,29 @@ public class SequenceBuilder {
         final int expansion = end - start + 1;
         expandCapacity(expansion);
         source.copyBases(bases, length, start, end, false);
+        if (reverseComplement) {
+            SequenceUtil.reverseComplement(bases, length, expansion);
+        }
+        length += expansion;
+        return this;
+    }
+
+    /**
+     * Appends bases from a {@link ReferenceBases} instance.
+     * @param source the source {@link ReferenceBases}.
+     * @param range within the source to append.
+     * @param reverseComplement whether the appended sequence should be reversed and complemented in the buffer.
+     * @throws IllegalArgumentException if {@code source} or {@code range} is {@code null}, or {@code range} is not
+     * within the source's interval.
+     * @return this buffer.
+     */
+    public SequenceBuilder append(final ReferenceBases source, final SimpleInterval range, final boolean reverseComplement) {
+        Utils.nonNull(source, "the source cannot be null");
+        Utils.nonNull(range, "the range cannot be null");
+        Utils.validateArg(source.getInterval().contains(range), "the range must be contained within the source");
+        final int expansion = range.size();
+        expandCapacity(expansion);
+        source.copyBases(bases, length, range.getStart(), range.getEnd(), false);
         if (reverseComplement) {
             SequenceUtil.reverseComplement(bases, length, expansion);
         }
