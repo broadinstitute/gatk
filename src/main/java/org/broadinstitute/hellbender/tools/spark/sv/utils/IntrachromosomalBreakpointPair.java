@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Collection;
+import java.util.Objects;
 
 public final class IntrachromosomalBreakpointPair {
     private final int contig;
@@ -56,5 +57,22 @@ public final class IntrachromosomalBreakpointPair {
             return new SVInterval(contig, first, second);
         }
         return new SVInterval(contig, second, first);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof IntrachromosomalBreakpointPair)) return false;
+        if (this == o) return true;
+        IntrachromosomalBreakpointPair that = (IntrachromosomalBreakpointPair) o;
+        return contig == that.contig &&
+                first == that.first &&
+                second == that.second &&
+                Objects.equals(firstAssembledContigs, that.firstAssembledContigs) &&
+                Objects.equals(secondAssembledContigs, that.secondAssembledContigs);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(contig, first, second, firstAssembledContigs, secondAssembledContigs);
     }
 }

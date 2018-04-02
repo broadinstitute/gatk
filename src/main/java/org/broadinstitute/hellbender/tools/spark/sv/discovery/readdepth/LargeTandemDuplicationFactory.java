@@ -28,11 +28,11 @@ public class LargeTandemDuplicationFactory extends LargeSimpleSVFactory {
     public LargeTandemDuplicationFactory(final SVIntervalTree<EvidenceTargetLink> intrachromosomalLinkTree,
                                          final SVIntervalTree<EvidenceTargetLink> interchromosomalLinkTree,
                                          final SVIntervalTree<GATKRead> contigTree,
-                                         final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepth arguments,
+                                         final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments,
                                          final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector,
-                                         final OverlapDetector<CopyRatio> readDepthOverlapDetector,
+                                         final OverlapDetector<CopyRatio> copyRatioOverlapDetector,
                                          final SAMSequenceDictionary dictionary) {
-        super(intrachromosomalLinkTree, interchromosomalLinkTree, contigTree, arguments, copyRatioSegmentOverlapDetector, readDepthOverlapDetector, dictionary);
+        super(intrachromosomalLinkTree, interchromosomalLinkTree, contigTree, arguments, copyRatioSegmentOverlapDetector, copyRatioOverlapDetector, dictionary);
     }
 
     @Override
@@ -44,8 +44,6 @@ public class LargeTandemDuplicationFactory extends LargeSimpleSVFactory {
                                      final int splitReadEvidence,
                                      final int readPairCounterEvidence,
                                      final int splitReadCounterEvidence,
-                                     final List<CopyRatio> coverage,
-                                     final List<Integer> copyNumberStates,
                                      final IntrachromosomalBreakpointPair breakpoints) {
         return new LargeSimpleSV(SimpleSVType.TYPES.DUP, start, end, contigId, readPairEvidence, splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, breakpoints);
     }

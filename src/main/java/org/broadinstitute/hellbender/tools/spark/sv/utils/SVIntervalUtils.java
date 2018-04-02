@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.utils;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
+import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -52,9 +53,8 @@ public class SVIntervalUtils {
     /**
      * Gets all EvidenceTargetLink objects in the tree that overlap the given interval
      */
-    public static Collection<EvidenceTargetLink> getOverlappingLinksOnInterval(final SVInterval interval, final SVIntervalTree<EvidenceTargetLink> tree) {
-        Utils.nonNull(interval, "SVInterval cannot be null");
-        return getTreeOverlapperStream(interval, tree).filter(node -> node.getInterval().getContig() == interval.getContig()).map(SVIntervalTree.Entry::getValue).collect(Collectors.toList());
+    public static <T> Collection<T> getOverlappingLinksOnInterval(final SVInterval interval, final SVIntervalTree<T> tree) {
+        return getTreeOverlapperStream(interval, tree).map(SVIntervalTree.Entry::getValue).collect(Collectors.toList());
     }
 
     /**
@@ -123,6 +123,17 @@ public class SVIntervalUtils {
             throw new IllegalArgumentException("Could not find contig " + interval.getContig() + " in sequence ditionary");
         }
         return new SimpleInterval(sequenceRecord.getSequenceName(), interval.getStart(), interval.getEnd());
+    }
+
+    /**
+     * Converts SVInterval to GenomeLoc
+     */
+    public static GenomeLoc convertIntervalToGenomeLoc(final SVInterval interval, final SAMSequenceDictionary dictionary) {
+        final SAMSequenceRecord sequenceRecord = dictionary.getSequence(interval.getContig());
+        if (sequenceRecord == null) {
+            throw new IllegalArgumentException("Could not find contig " + interval.getContig() + " in sequence ditionary");
+        }
+        return new GenomeLoc(sequenceRecord.getSequenceName(), interval.getContig(), interval.getStart(), interval.getEnd());
     }
 
 }

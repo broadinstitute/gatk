@@ -135,7 +135,7 @@ public class DiscoverVariantsFromReadDepth extends GATKTool {
     @Argument(doc = "Output intervals path (.bed)", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String outputPath;
 
-    private final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepth arguments = new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepth();
+    private final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments = new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection();
     private LargeSimpleSVCaller largeSimpleSVCaller;
     private SAMSequenceDictionary dictionary;
     private Collection<LargeSimpleSV> events;

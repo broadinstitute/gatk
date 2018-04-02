@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.readdepth;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.OverlapDetector;
@@ -24,7 +25,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Base class for calling large (i.e. > 500 bp) non-complex structural variants with breakpoints on the same chromosome.
+ * Base class for calling large (i.e. > 500 bp) non-complex structural variants a breakpoint pair on the same chromosome.
  * It requires the putative event interval to be known and makes calls by integrating evidence target links, copy ratios,
  * and copy ratio segments.
  */
@@ -33,7 +34,7 @@ public abstract class LargeSimpleSVFactory {
     protected final SVIntervalTree<EvidenceTargetLink> intrachromosomalLinkTree;
     protected final SVIntervalTree<EvidenceTargetLink> interchromosomalLinkTree;
     protected final SVIntervalTree<GATKRead> contigTree;
-    protected final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepth arguments;
+    protected final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments;
     protected final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector;
     protected final OverlapDetector<CopyRatio> copyRatioOverlapDetector;
     protected final SAMSequenceDictionary dictionary;
@@ -41,7 +42,7 @@ public abstract class LargeSimpleSVFactory {
     public LargeSimpleSVFactory(final SVIntervalTree<EvidenceTargetLink> intrachromosomalLinkTree,
                                 final SVIntervalTree<EvidenceTargetLink> interchromosomalLinkTree,
                                 final SVIntervalTree<GATKRead> contigTree,
-                                final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepth arguments,
+                                final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments,
                                 final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector,
                                 final OverlapDetector<CopyRatio> copyRatioOverlapDetector,
                                 final SAMSequenceDictionary dictionary) {
@@ -70,15 +71,10 @@ public abstract class LargeSimpleSVFactory {
      * @param dictionary      Sequence dictionary
      * @return List of copy ratios
      */
-    private static List<CopyRatio> getCopyRatiosOnInterval(final SVInterval interval, final OverlapDetector<CopyRatio> overlapDetector,
+    @VisibleForTesting
+    protected static List<CopyRatio> getCopyRatiosOnInterval(final SVInterval interval, final OverlapDetector<CopyRatio> overlapDetector,
                                                            final int binsToTrim, final SAMSequenceDictionary dictionary) {
-        final int start = interval.getStart();
-        final int end = interval.getEnd();
-        final SAMSequenceRecord sequence = dictionary.getSequence(interval.getContig());
-        if (sequence == null) {
-            throw new IllegalArgumentException("Could not find contig with index " + interval.getContig() + " in the sequence dictionary");
-        }
-        final SimpleInterval simpleInterval = new SimpleInterval(sequence.getSequenceName(), start + 1, end + 1);
+        final SimpleInterval simpleInterval = SVIntervalUtils.convertInterval(interval, dictionary);
         if (simpleInterval.size() == 0) {
             return Collections.emptyList();
         }
@@ -98,7 +94,7 @@ public abstract class LargeSimpleSVFactory {
      * @param evidenceTypeGetter   Function that returns the type of evidence (i.e. split reads or read pairs)
      * @return Counter-evidence count
      */
-    private static int countUniqueCounterEvidence(final Collection<EvidenceTargetLink> counterEvidenceLinks, final Collection<EvidenceTargetLink> evidenceLinks,
+    protected static int countUniqueCounterEvidence(final Collection<EvidenceTargetLink> counterEvidenceLinks, final Collection<EvidenceTargetLink> evidenceLinks,
                                                   final int minEvidenceCount, final Function<EvidenceTargetLink, Set<String>> evidenceTypeGetter) {
         final Set<String> counterEvidenceTemplates = counterEvidenceLinks.stream()
                 .map(link -> evidenceTypeGetter.apply(link))
@@ -155,8 +151,6 @@ public abstract class LargeSimpleSVFactory {
                                               final int splitReadEvidence,
                                               final int readPairCounterEvidence,
                                               final int splitReadCounterEvidence,
-                                              final List<CopyRatio> coverage,
-                                              final List<Integer> copyNumberStates,
                                               final IntrachromosomalBreakpointPair breakpoints);
 
     /**
@@ -192,7 +186,7 @@ public abstract class LargeSimpleSVFactory {
         //Get evidence links whose left and right intervals overlap with the padded intervals and have proper strandedness for the event type
         final SVInterval paddedLeftInterval = SVIntervalUtils.getPaddedInterval(leftInterval, evidencePadding, dictionary);
         final SVInterval paddedRightInterval = SVIntervalUtils.getPaddedInterval(rightInterval, evidencePadding, dictionary);
-        final Collection<EvidenceTargetLink> overlappingLinks = getOverlappingLinks(paddedLeftInterval, paddedRightInterval, intrachromosomalLinkTree, dictionary);
+        final Collection<EvidenceTargetLink> overlappingLinks = getMatchingLinks(paddedLeftInterval, paddedRightInterval, intrachromosomalLinkTree);
         final Collection<EvidenceTargetLink> evidenceLinks = getLinksWithEvidenceOrientation(overlappingLinks);
         if (evidenceLinks.isEmpty()) return null;
 
@@ -211,8 +205,8 @@ public abstract class LargeSimpleSVFactory {
         counterEvidenceLinks.removeAll(evidenceLinks);
 
         //Tally evidence and counterevidence
-        final int readPairEvidence = readPairEvidence(evidenceLinks);
-        final int splitReadEvidence = splitReadEvidence(evidenceLinks);
+        final int readPairEvidence = countReadPairs(evidenceLinks);
+        final int splitReadEvidence = countSplitReads(evidenceLinks);
         final int readPairCounterEvidence = countUniqueCounterEvidenceReadPairs(counterEvidenceLinks, evidenceLinks, arguments.minCountervidenceClusterSize);
         final int splitReadCounterEvidence = countUniqueCounterEvidenceSplitReads(counterEvidenceLinks, evidenceLinks, arguments.minCountervidenceClusterSize);
 
@@ -220,28 +214,22 @@ public abstract class LargeSimpleSVFactory {
         final double eventScore = LargeSimpleSV.computeScore(readPairEvidence, splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, arguments.counterEvidencePseudocount);
         if (eventScore < arguments.minScore) return null;
 
-        //Test if the event matches a model segments call
-        final String contigName = sequence.getSequenceName();
-        final Set<CalledCopyRatioSegment> overlappingSegments = copyRatioSegmentOverlapDetector.getOverlaps(new SimpleInterval(contigName, outerInterval.getStart(), outerInterval.getEnd()));
-        boolean supportedBySegmentCalls = supportedBySegmentCalls(innerInterval, overlappingSegments, dictionary);
+        //Test if the copy ratio bins indicate we should reject this call
         final SVInterval hmmInterval = SVIntervalUtils.getPaddedInterval(innerInterval, arguments.hmmPadding, dictionary);
         final List<CopyRatio> copyRatioBins = getCopyRatiosOnInterval(hmmInterval, copyRatioOverlapDetector, arguments.copyRatioBinTrimming, dictionary);
         if (isInvalidCoverage(copyRatioBins)) return null;
-        if (supportedBySegmentCalls) {
-            return getNewSV(callInterval.getStart(), callInterval.getEnd(), contigId, contigName, readPairEvidence, splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence,
-                    Collections.emptyList(), Collections.emptyList(), breakpoints);
+
+        //Test if the event matches a model segments call
+        final String contigName = sequence.getSequenceName();
+        final Set<CalledCopyRatioSegment> overlappingSegments = copyRatioSegmentOverlapDetector.getOverlaps(new SimpleInterval(contigName, outerInterval.getStart(), outerInterval.getEnd()));
+        if (supportedBySegmentCalls(innerInterval, overlappingSegments, dictionary)) {
+            return getNewSV(callInterval.getStart(), callInterval.getEnd(), contigId, contigName, readPairEvidence,
+                    splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, breakpoints);
         }
 
         //Run copy number state HMM over copy ratios and test if the states (a la Viterbi) match the valid states for the event type
-        if (copyRatioBins.isEmpty()) return null;
-        final List<Double> copyRatios = copyRatioBins.stream().map(CopyRatio::getLog2CopyRatioValue).map(val -> Math.pow(2.0, val)).collect(Collectors.toList());
-        final int numStates = Math.min(arguments.hmmMaxStates + 1, copyRatios.stream().mapToInt(Double::intValue).max().getAsInt() + 2);
-        final RealVector copyNumberPriors = CopyRatioHMM.getCopyNumberPrior(numStates);
-        final List<Integer> positionsList = CopyRatioHMM.getCopyNumberHMMPositions(copyRatios.size());
-        final CopyRatioHMM copyRatioHMM = new CopyRatioHMM(copyNumberPriors, arguments.hmmTransitionProb);
-        final List<Integer> copyNumberStates = ViterbiAlgorithm.apply(copyRatios, positionsList, copyRatioHMM);
-        if (testHMMState(copyNumberStates, numStates, arguments.hmmValidStatesMinFraction)) {
-            return getNewSV(callInterval.getStart(), callInterval.getEnd(), contigId, contigName, readPairEvidence, splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, copyRatioBins, copyNumberStates, breakpoints);
+        if (supportedByHMM(copyRatioBins)) {
+            return getNewSV(callInterval.getStart(), callInterval.getEnd(), contigId, contigName, readPairEvidence, splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, breakpoints);
         }
 
         return null;
@@ -250,15 +238,15 @@ public abstract class LargeSimpleSVFactory {
     /**
      * Counts the number of unique split reads
      */
-    protected int splitReadEvidence(final Collection<EvidenceTargetLink> links) {
+    protected static int countSplitReads(final Collection<EvidenceTargetLink> links) {
         return (int) links.stream().flatMap(link -> link.getSplitReadTemplateNames().stream()).distinct().count();
     }
 
     /**
      * Counts the number of unique read pairs
      */
-    protected int readPairEvidence(final Collection<EvidenceTargetLink> links) {
-        return (int) links.stream().filter(link -> isEvidenceOrientation(link)).flatMap(link -> link.getReadPairTemplateNames().stream()).distinct().count();
+    protected static int countReadPairs(final Collection<EvidenceTargetLink> links) {
+        return (int) links.stream().flatMap(link -> link.getReadPairTemplateNames().stream()).distinct().count();
     }
 
     /**
@@ -274,10 +262,9 @@ public abstract class LargeSimpleSVFactory {
      * @param leftInterval  Left interval that must overlap the link's left interval
      * @param rightInterval Right interval that much overlap the link's right interval
      * @param tree          Tree of evidence
-     * @param dictionary    Sequence dictionary
      * @return Collection of overlapping links
      */
-    private Collection<EvidenceTargetLink> getOverlappingLinks(final SVInterval leftInterval, final SVInterval rightInterval, final SVIntervalTree<EvidenceTargetLink> tree, final SAMSequenceDictionary dictionary) {
+    protected static Collection<EvidenceTargetLink> getMatchingLinks(final SVInterval leftInterval, final SVInterval rightInterval, final SVIntervalTree<EvidenceTargetLink> tree) {
         final Collection<EvidenceTargetLink> leftOverlappingLinks = SVIntervalUtils.getOverlappingLinksOnInterval(leftInterval, tree);
         return leftOverlappingLinks.stream().filter(link -> link.getPairedStrandedIntervals().getRight().getInterval().overlaps(rightInterval)).collect(Collectors.toList());
     }
@@ -294,33 +281,50 @@ public abstract class LargeSimpleSVFactory {
      * @param dictionary Sequence dictionary
      * @return Collection of locally overlapping links
      */
-    private Collection<EvidenceTargetLink> localOverlappingLinks(final SVInterval interval, final SVIntervalTree<EvidenceTargetLink> tree, final int localRange, final SAMSequenceDictionary dictionary) {
-        final Collection<EvidenceTargetLink> overlappingLinks = SVIntervalUtils.getOverlappingLinksOnInterval(interval, tree);
+    protected static Collection<EvidenceTargetLink> localOverlappingLinks(final SVInterval interval, final SVIntervalTree<EvidenceTargetLink> tree, final int localRange, final SAMSequenceDictionary dictionary) {
         final SVInterval localInterval = SVIntervalUtils.getPaddedInterval(interval, localRange, dictionary);
+        final Collection<EvidenceTargetLink> overlappingLinks = SVIntervalUtils.getOverlappingLinksOnInterval(localInterval, tree);
         return overlappingLinks.stream().filter(link -> {
             final SVInterval linkInterval = SVIntervalUtils.getOuterIntrachromosomalLinkInterval(link);
             final SVInterval leftInterval = link.getPairedStrandedIntervals().getLeft().getInterval();
             final SVInterval rightInterval = link.getPairedStrandedIntervals().getRight().getInterval();
-            return SVIntervalUtils.containsInterval(localInterval, linkInterval) || interval.overlaps(leftInterval) || interval.overlaps(rightInterval);
+            return linkInterval.overlaps(interval) && (localInterval.overlaps(leftInterval) || localInterval.overlaps(rightInterval));
         }).collect(Collectors.toList());
+    }
+
+    /**
+     * Tests whether the copy ratios support an event with an HMM
+     *
+     * @param copyRatioBins Copy ratios over the interval
+     * @return True if supported
+     */
+    private boolean supportedByHMM(final List<CopyRatio> copyRatioBins) {
+        if (copyRatioBins.isEmpty()) return false;
+        final List<Double> copyRatios = copyRatioBins.stream().map(CopyRatio::getLog2CopyRatioValue).map(val -> Math.pow(2.0, val)).collect(Collectors.toList());
+        final int numStates = Math.min(arguments.hmmMaxStates, copyRatios.stream().mapToInt(val -> (int) (2 * val)).max().getAsInt() + 1);
+        final RealVector copyNumberPriors = CopyNumberHMM.uniformPrior(numStates);
+        final List<Integer> positionsList = CopyNumberHMM.positionsList(copyRatios.size());
+        final CopyNumberHMM copyNumberHMM = new CopyNumberHMM(copyNumberPriors, arguments.hmmTransitionProb);
+        final List<Integer> copyNumberStates = ViterbiAlgorithm.apply(copyRatios, positionsList, copyNumberHMM);
+        return testHMMState(copyNumberStates, numStates);
     }
 
     /**
      * Tests if the HMM state path contains a sufficient proportion of valid states
      *
-     * @param states              State path
-     * @param numStates           Number of HMM states
-     * @param minEventHMMCoverage Minimum proportion of valid states
+     * @param states    State path
+     * @param numStates Number of HMM states
      * @return True if the threshold is met
      */
-    private boolean testHMMState(final List<Integer> states, final int numStates, final double minEventHMMCoverage) {
-        return validStateFrequency(states, getValidHMMCopyStates(numStates)) >= minEventHMMCoverage * states.size();
+    private boolean testHMMState(final List<Integer> states, final int numStates) {
+        return validStateFrequency(states, numStates) >= arguments.hmmValidStatesMinFraction * states.size();
     }
 
     /**
      * Counts the number of states in the path that are one of the valid states
      */
-    private int validStateFrequency(final List<Integer> states, final Set<Integer> validStates) {
+    private int validStateFrequency(final List<Integer> states, final int numStates) {
+        final Set<Integer> validStates = getValidHMMCopyStates(numStates);
         return (int) states.stream().filter(validStates::contains).count();
     }
 }

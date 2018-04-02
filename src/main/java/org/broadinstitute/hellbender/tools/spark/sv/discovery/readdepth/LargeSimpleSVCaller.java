@@ -8,12 +8,16 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CalledCopyRatioSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.LargeSimpleSV;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
+import org.broadinstitute.hellbender.utils.GenomeLoc;
+import org.broadinstitute.hellbender.utils.IntervalMergingRule;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -30,6 +34,8 @@ public class LargeSimpleSVCaller {
 
     private static final Logger logger = LogManager.getLogger(LargeSimpleSVCaller.class);
 
+    private static final int MAX_COPY_RATIO_EVENT_SIZE = 100000;
+
     private final OverlapDetector<CopyRatio> copyRatioOverlapDetector;
     private final SVIntervalTree<EvidenceTargetLink> intrachromosomalLinkTree;
     private final SVIntervalTree<EvidenceTargetLink> interchromosomalLinkTree;
@@ -38,7 +44,7 @@ public class LargeSimpleSVCaller {
     private final LargeSimpleSVFactory tandemDuplicationFactory;
     private final SAMSequenceDictionary dictionary;
     private final Collection<IntrachromosomalBreakpointPair> pairedBreakpoints;
-    private final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepth arguments;
+    private final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments;
 
     public LargeSimpleSVCaller(final Collection<VariantContext> breakpoints,
                                final Collection<GATKRead> assembledContigs,
@@ -46,7 +52,7 @@ public class LargeSimpleSVCaller {
                                final CopyRatioCollection copyRatios,
                                final CalledCopyRatioSegmentCollection copyRatioSegments,
                                final SAMSequenceDictionary dictionary,
-                               final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepth arguments) {
+                               final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments) {
         Utils.nonNull(breakpoints, "Breakpoint collection cannot be null");
         Utils.nonNull(assembledContigs, "Contig collection cannot be null");
         Utils.nonNull(evidenceTargetLinks, "Evidence target link collection cannot be null");
@@ -67,8 +73,10 @@ public class LargeSimpleSVCaller {
 
         pairedBreakpoints = getIntrachromosomalBreakpointPairs(breakpoints);
         contigTree = buildReadIntervalTree(assembledContigs);
-        copyRatioOverlapDetector = getCopyRatioOverlapDetector(copyRatios, pairedBreakpoints,
-                Arrays.asList(intrachromosomalLinkTree, interchromosomalLinkTree), arguments.hmmPadding, dictionary);
+        copyRatioOverlapDetector = getMinimalCopyRatioCollection(copyRatios.getOverlapDetector(), copyRatios.getMetadata(),
+                evidenceTargetLinks, pairedBreakpoints, dictionary, arguments.minEventSize, MAX_COPY_RATIO_EVENT_SIZE,
+                arguments.breakpointPadding + arguments.hmmPadding,
+                arguments.evidenceTargetLinkPadding + arguments.hmmPadding).getOverlapDetector();
         copyRatioSegmentOverlapDetector = copyRatioSegments.getOverlapDetector();
 
         logger.info("Initializing event factories...");
@@ -78,21 +86,41 @@ public class LargeSimpleSVCaller {
     }
 
     /**
-     * Builds overlap detector over a minimal set of copy ratio bins over breakpoint and evidence intervals.
+     * Gets minimal list of copy ratio bins that overlap relevant evidence.
      */
-    private static OverlapDetector<CopyRatio> getCopyRatioOverlapDetector(final CopyRatioCollection copyRatios,
-                                                                          final Collection<IntrachromosomalBreakpointPair> breakpoints,
-                                                                          final Collection<SVIntervalTree<?>> evidenceTrees,
-                                                                          final int padding,
-                                                                          final SAMSequenceDictionary dictionary) {
-        final SVIntervalTree<IntrachromosomalBreakpointPair> breakpointTree = buildBreakpointTree(breakpoints);
-        final List<CopyRatio> countsList = copyRatios.getRecords().stream()
-                .filter(ratio -> {
-                    final SVInterval interval = SVIntervalUtils.convertInterval(ratio.getInterval(), dictionary);
-                    final SVInterval paddedInterval = SVIntervalUtils.getPaddedInterval(interval, padding, dictionary);
-                    return breakpointTree.hasOverlapper(paddedInterval) || evidenceTrees.stream().anyMatch(tree -> tree.hasOverlapper(paddedInterval));
-                }).collect(Collectors.toList());
-        return new CopyRatioCollection(copyRatios.getMetadata(), countsList).getOverlapDetector();
+    public static CopyRatioCollection getMinimalCopyRatioCollection(final OverlapDetector<CopyRatio> copyRatioOverlapDetector,
+                                                                    final SampleLocatableMetadata copyRatioMetadata,
+                                                                    final Collection<EvidenceTargetLink> evidenceTargetLinks,
+                                                                    final Collection<IntrachromosomalBreakpointPair> pairedBreakpoints,
+                                                                    final SAMSequenceDictionary dictionary,
+                                                                    final int minIntervalSize,
+                                                                    final int maxIntervalSize,
+                                                                    final int breakpointIntervalPadding,
+                                                                    final int linkIntervalPadding) {
+
+        //Map evidence to padded intervals
+        final Stream<SVInterval> breakpointIntervalStream = pairedBreakpoints.stream().map(IntrachromosomalBreakpointPair::getInterval)
+                .filter(interval -> interval.getLength() <= maxIntervalSize && interval.getLength() >= minIntervalSize)
+                .map(interval -> SVIntervalUtils.getPaddedInterval(interval, breakpointIntervalPadding, dictionary));
+        final Stream<SVInterval> linkIntervalStream = evidenceTargetLinks.stream()
+                .filter(link -> link.getPairedStrandedIntervals().getLeft().getInterval().getContig() == link.getPairedStrandedIntervals().getRight().getInterval().getContig())
+                .map(SVIntervalUtils::getOuterIntrachromosomalLinkInterval)
+                .filter(interval -> interval.getLength() <= maxIntervalSize && interval.getLength() >= minIntervalSize)
+                .map(interval -> SVIntervalUtils.getPaddedInterval(interval, linkIntervalPadding, dictionary));
+
+        //Merge streams and convert intervals to GenomeLoc
+        final List<GenomeLoc> intervalList = Stream.concat(breakpointIntervalStream, linkIntervalStream)
+                .map(interval -> SVIntervalUtils.convertIntervalToGenomeLoc(interval, dictionary))
+                .collect(Collectors.toList());
+
+        //Merge intervals
+        Collections.sort(intervalList, IntervalUtils.getDictionaryOrderComparator(dictionary));
+        final List<GenomeLoc> mergedIntervals = IntervalUtils.mergeIntervalLocations(intervalList, IntervalMergingRule.ALL);
+
+        //Return copy ratios overlapping evidence intervals
+        final List<CopyRatio> countsList = mergedIntervals.stream().map(copyRatioOverlapDetector::getOverlaps).flatMap(Set::stream).collect(Collectors.toList());
+        Collections.sort(countsList, IntervalUtils.getDictionaryOrderComparator(dictionary));
+        return new CopyRatioCollection(copyRatioMetadata, countsList);
     }
 
     /**

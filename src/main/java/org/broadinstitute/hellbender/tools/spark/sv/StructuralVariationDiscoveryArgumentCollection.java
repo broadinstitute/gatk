@@ -247,7 +247,7 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         public boolean outputCpxResultsInHumanReadableFormat = false;
     }
 
-    public static class DiscoverVariantsFromReadDepth implements Serializable {
+    public static class DiscoverVariantsFromReadDepthArgumentCollection implements Serializable {
         private static final long serialVersionUID = 1L;
 
         public final int DEFAULT_MIN_EVENT_SIZE = 1000;
