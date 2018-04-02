@@ -129,9 +129,6 @@ public final class GATKVCFConstants {
     public static final String STRAND_BIAS_BY_SAMPLE_KEY =          "SB";
     public final static String TRANSMISSION_PROBABILITY_KEY =       "TP"; //PhaseByTransmission
     public static final String ZERO_COVERAGE_LOCI =                 "ZL"; //DiagnoseTargets
-    public static final String F1R2_KEY =                           "F1R2";
-    public static final String F2R1_KEY =                           "F2R1";
-
 
     // M2-specific FORMAT keys
     public static final String ALLELE_FRACTION_KEY =                "AF";
