@@ -16,10 +16,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import javax.annotation.Nonnull;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -500,7 +497,7 @@ final class CpxVariantInducingAssemblyContig {
         public int hashCode() {
             int result = start.hashCode();
             result = 31 * result + landing.hashCode();
-            result = 31 * result + strandSwitch.hashCode();
+            result = 31 * result + Objects.hashCode(strandSwitch.ordinal());
             result = 31 * result + gapSize;
             return result;
         }
