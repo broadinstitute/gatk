@@ -21,6 +21,9 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.IntervalCoverageFinder.CandidateCoverageInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.BreakpointEvidence.ExternalEvidence;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.BreakpointEvidence.ReadEvidence;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.tools.spark.utils.FlatMapGluer;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMap;
@@ -36,10 +39,6 @@ import java.io.*;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
-import static org.broadinstitute.hellbender.tools.spark.sv.evidence.BreakpointEvidence.ExternalEvidence;
-import static org.broadinstitute.hellbender.tools.spark.sv.evidence.BreakpointEvidence.ReadEvidence;
 
 /**
  * (Internal) Produces local assemblies of genomic regions that may harbor structural variants
@@ -177,7 +176,10 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         // write a FASTQ file for each interval
         final FermiLiteAssemblyHandler fermiLiteAssemblyHandler =
-                new FermiLiteAssemblyHandler(params.alignerIndexImageFile, params.maxFASTQSize, params.fastqDir, params.writeGFAs);
+                new FermiLiteAssemblyHandler(params.alignerIndexImageFile, params.maxFASTQSize,
+                                                params.fastqDir, params.writeGFAs,
+                                                params.popVariantBubbles, params.removeShadowedContigs,
+                                                params.expandAssemblyGraph);
         alignedAssemblyOrExcuseList.addAll(
                 handleAssemblies(ctx, qNamesMultiMap, unfilteredReads, filter, intervals.size(),
                         params.includeMappingLocation, fermiLiteAssemblyHandler));
@@ -190,8 +192,10 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         }
 
         // write alignments of the assembled contigs
-        AlignedAssemblyOrExcuse.writeAssemblySAMFile(outputAssemblyAlignments, alignedAssemblyOrExcuseList, header, params.assembliesSortOrder);
-        log("Wrote SAM file of aligned contigs.", logger);
+        if ( outputAssemblyAlignments != null ) {
+            AlignedAssemblyOrExcuse.writeAssemblySAMFile(outputAssemblyAlignments, alignedAssemblyOrExcuseList, header, params.assembliesSortOrder);
+            log("Wrote SAM file of aligned contigs.", logger);
+        }
 
         return new AssembledEvidenceResults(evidenceScanResults.readMetadata, intervals, alignedAssemblyOrExcuseList,
                                             evidenceScanResults.evidenceTargetLinks);

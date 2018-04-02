@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
+import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -9,8 +10,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import java.io.Serializable;
 import java.util.Iterator;
 import java.util.function.BiPredicate;
-
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
 
 public class SVReadFilter implements Serializable {
     private static final long serialVersionUID = 1L;
