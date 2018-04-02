@@ -206,6 +206,7 @@ workflow CNVGermlineCaseWorkflow {
         File read_counts = CollectCounts.counts
         File contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar
         Array[File] gcnv_calls_tars = GermlineCNVCallerCaseMode.gcnv_calls_tar
+        Array[File] gcnv_tracking_tars = GermlineCNVCallerCaseMode.gcnv_tracking_tar
         File genotyped_intervals_vcf = PostprocessGermlineCNVCalls.genotyped_intervals_vcf
         File genotyped_segments_vcf = PostprocessGermlineCNVCalls.genotyped_segments_vcf
     }
@@ -381,6 +382,7 @@ task GermlineCNVCallerCaseMode {
             --disable-annealing ${default="false" disable_annealing}
 
         tar czf case-gcnv-calls-${scatter_index}.tar.gz -C ${output_dir_}/case-calls .
+        tar czf case-gcnv-tracking-${scatter_index}.tar.gz -C ${output_dir_}/case-tracking .
     >>>
 
     runtime {
@@ -393,5 +395,6 @@ task GermlineCNVCallerCaseMode {
 
     output {
         File gcnv_calls_tar = "case-gcnv-calls-${scatter_index}.tar.gz"
+        File gcnv_tracking_tar = "case-gcnv-tracking-${scatter_index}.tar.gz"
     }
 }

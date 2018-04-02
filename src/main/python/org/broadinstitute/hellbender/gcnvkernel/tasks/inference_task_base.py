@@ -17,6 +17,7 @@ from ..inference import fancy_optimizers
 from ..inference.convergence_tracker import NoisyELBOConvergenceTracker
 from ..inference.deterministic_annealing import ADVIDeterministicAnnealing
 from ..inference.param_tracker import VariationalParameterTrackerConfig, VariationalParameterTracker
+from ..io import io_commons
 from ..models.fancy_model import GeneralizedContinuousModel
 
 _logger = logging.getLogger(__name__)
@@ -346,6 +347,8 @@ class HybridInferenceTask(InferenceTask):
                 self.i_epoch += 1
                 if all_converged and not self._premature_convergence():
                     break
+                else:  # reset ADVI convergence tracker so that ADVI is run again
+                    self.advi_convergence_tracker.reset_convergence_counter()
             if all_converged:
                 _logger.info("Inference task completed successfully and convergence achieved.")
             else:
@@ -533,7 +536,10 @@ class HybridInferenceTask(InferenceTask):
                                     'if this behavior persists.'.format(
                         self.calling_task_name, self.hybrid_inference_params.max_calling_iters))
 
-        return first_call_converged
+        return iters_converged
+
+    def save_elbo_history(self, output_file):
+        io_commons.write_ndarray_to_tsv(output_file, np.asarray(self.elbo_hist), write_shape_info=False)
 
 
 class HybridInferenceParameters:

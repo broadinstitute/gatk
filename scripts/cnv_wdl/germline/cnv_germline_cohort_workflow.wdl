@@ -262,6 +262,7 @@ workflow CNVGermlineCohortWorkflow {
         File contig_ploidy_calls_tar = DetermineGermlineContigPloidyCohortMode.contig_ploidy_calls_tar
         Array[File] gcnv_model_tars = GermlineCNVCallerCohortMode.gcnv_model_tar
         Array[File] gcnv_calls_tars = GermlineCNVCallerCohortMode.gcnv_calls_tar
+        Array[File] gcnv_tracking_tars = GermlineCNVCallerCohortMode.gcnv_tracking_tar
         Array[File] genotyped_intervals_vcfs = PostprocessGermlineCNVCalls.genotyped_intervals_vcf
         Array[File] genotyped_segments_vcfs = PostprocessGermlineCNVCalls.genotyped_segments_vcf
     }
@@ -459,6 +460,7 @@ task GermlineCNVCallerCohortMode {
 
         tar czf ${cohort_entity_id}-gcnv-model-${scatter_index}.tar.gz -C ${output_dir_}/${cohort_entity_id}-model .
         tar czf ${cohort_entity_id}-gcnv-calls-${scatter_index}.tar.gz -C ${output_dir_}/${cohort_entity_id}-calls .
+        tar czf ${cohort_entity_id}-gcnv-tracking-${scatter_index}.tar.gz -C ${output_dir_}/${cohort_entity_id}-tracking .
     >>>
 
     runtime {
@@ -472,5 +474,6 @@ task GermlineCNVCallerCohortMode {
     output {
         File gcnv_model_tar = "${cohort_entity_id}-gcnv-model-${scatter_index}.tar.gz"
         File gcnv_calls_tar = "${cohort_entity_id}-gcnv-calls-${scatter_index}.tar.gz"
+        File gcnv_tracking_tar = "${cohort_entity_id}-gcnv-tracking-${scatter_index}.tar.gz"
     }
 }

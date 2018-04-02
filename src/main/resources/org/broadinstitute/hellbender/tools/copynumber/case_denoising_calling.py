@@ -52,6 +52,12 @@ group.add_argument("--output_opt_path",
                    default=argparse.SUPPRESS,
                    help="(advanced) Output path to write the latest optimizer state")
 
+group.add_argument("--output_tracking_path",
+                   type=str,
+                   required=True,
+                   default=argparse.SUPPRESS,
+                   help="Output path to write tracked parameters, ELBO, etc.")
+
 group.add_argument("--input_calls_path",
                    type=str,
                    required=False,
@@ -211,3 +217,10 @@ if __name__ == "__main__":
     # save optimizer state
     if hasattr(args, 'output_opt_path'):
         task.fancy_opt.save(args.output_opt_path)
+
+    # save ELBO history
+    if hasattr(args, 'output_tracking_path'):
+        gcnvkernel.io_commons.assert_output_path_writable(args.output_tracking_path)
+
+        elbo_hist_file = os.path.join(args.output_tracking_path, "elbo_history.tsv")
+        task.save_elbo_history(elbo_hist_file)

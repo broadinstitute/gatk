@@ -190,6 +190,7 @@ public final class GermlineCNVCaller extends CommandLineProgram {
 
     public static final String MODEL_PATH_SUFFIX = "-model";
     public static final String CALLS_PATH_SUFFIX = "-calls";
+    public static final String TRACKING_PATH_SUFFIX = "-tracking";
 
     public static final String CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME = "contig-ploidy-calls";
     public static final String RUN_MODE_LONG_NAME = "run-mode";
@@ -417,7 +418,8 @@ public final class GermlineCNVCaller extends CommandLineProgram {
         //add required arguments
         final List<String> arguments = new ArrayList<>(Arrays.asList(
                 "--ploidy_calls_path=" + inputContigPloidyCallsDir,
-                "--output_calls_path=" + outputDirArg + outputPrefix + CALLS_PATH_SUFFIX));
+                "--output_calls_path=" + outputDirArg + outputPrefix + CALLS_PATH_SUFFIX,
+                "--output_tracking_path=" + outputDirArg + outputPrefix + TRACKING_PATH_SUFFIX));
 
         //if a model path is given, add it to the argument (both COHORT and CASE modes)
         if (inputModelDir != null) {

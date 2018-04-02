@@ -50,6 +50,12 @@ group.add_argument("--output_calls_path",
                    default=argparse.SUPPRESS,
                    help="Output path to write CNV calls")
 
+group.add_argument("--output_tracking_path",
+                   type=str,
+                   required=True,
+                   default=argparse.SUPPRESS,
+                   help="Output path to write tracked parameters, ELBO, etc.")
+
 group.add_argument("--output_opt_path",
                    type=str,
                    required=False,
@@ -187,3 +193,13 @@ if __name__ == "__main__":
     # save optimizer state
     if hasattr(args, 'output_opt_path'):
         main_task.fancy_opt.save(args.output_opt_path)
+
+    # save ELBO history
+    if hasattr(args, 'output_tracking_path'):
+        gcnvkernel.io_commons.assert_output_path_writable(args.output_tracking_path)
+
+        warm_up_elbo_hist_file = os.path.join(args.output_tracking_path, "warm_up_elbo_history.tsv")
+        warm_up_task.save_elbo_history(warm_up_elbo_hist_file)
+
+        main_elbo_hist_file = os.path.join(args.output_tracking_path, "main_elbo_history.tsv")
+        main_task.save_elbo_history(main_elbo_hist_file)
