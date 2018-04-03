@@ -73,7 +73,7 @@ public class LargeSimpleSVCaller {
 
         pairedBreakpoints = getIntrachromosomalBreakpointPairs(breakpoints);
         contigTree = buildReadIntervalTree(assembledContigs);
-        copyRatioOverlapDetector = getMinimalCopyRatioCollection(copyRatios.getOverlapDetector(), copyRatios.getMetadata(),
+        copyRatioOverlapDetector = getMinimalCopyRatioCollection(copyRatios, copyRatios.getMetadata(),
                 evidenceTargetLinks, pairedBreakpoints, dictionary, arguments.minEventSize, MAX_COPY_RATIO_EVENT_SIZE,
                 arguments.breakpointPadding + arguments.hmmPadding,
                 arguments.evidenceTargetLinkPadding + arguments.hmmPadding).getOverlapDetector();
@@ -88,7 +88,7 @@ public class LargeSimpleSVCaller {
     /**
      * Gets minimal list of copy ratio bins that overlap relevant evidence.
      */
-    public static CopyRatioCollection getMinimalCopyRatioCollection(final OverlapDetector<CopyRatio> copyRatioOverlapDetector,
+    public static CopyRatioCollection getMinimalCopyRatioCollection(final CopyRatioCollection copyRatioCollection,
                                                                     final SampleLocatableMetadata copyRatioMetadata,
                                                                     final Collection<EvidenceTargetLink> evidenceTargetLinks,
                                                                     final Collection<IntrachromosomalBreakpointPair> pairedBreakpoints,
@@ -110,30 +110,24 @@ public class LargeSimpleSVCaller {
 
         //Merge streams and convert intervals to GenomeLoc
         final List<GenomeLoc> intervalList = Stream.concat(breakpointIntervalStream, linkIntervalStream)
-                .map(interval -> SVIntervalUtils.convertIntervalToGenomeLoc(interval, dictionary))
+                .map(interval -> SVIntervalUtils.convertToGenomeLoc(interval, dictionary))
                 .collect(Collectors.toList());
 
-        //Merge intervals
+        //Merge intervals and build into a tree
         Collections.sort(intervalList, IntervalUtils.getDictionaryOrderComparator(dictionary));
         final List<GenomeLoc> mergedIntervals = IntervalUtils.mergeIntervalLocations(intervalList, IntervalMergingRule.ALL);
+        final SVIntervalTree mergedIntervalTree = new SVIntervalTree();
+        for (final GenomeLoc loc : mergedIntervals) {
+            mergedIntervalTree.put(new SVInterval(loc.getContigIndex(), loc.getStart(), loc.getEnd()), null);
+        }
 
         //Return copy ratios overlapping evidence intervals
-        final List<CopyRatio> countsList = mergedIntervals.stream().map(copyRatioOverlapDetector::getOverlaps).flatMap(Set::stream).collect(Collectors.toList());
+        final List<CopyRatio> countsList = copyRatioCollection.getRecords().stream()
+                .filter(copyRatio -> mergedIntervalTree.hasOverlapper(SVIntervalUtils.convertToSVInterval(copyRatio.getInterval(), dictionary)))
+                .collect(Collectors.toList());
         Collections.sort(countsList, IntervalUtils.getDictionaryOrderComparator(dictionary));
         return new CopyRatioCollection(copyRatioMetadata, countsList);
     }
-
-    /**
-     * Builds interval tree of breakpoint pairs
-     */
-    private static SVIntervalTree<IntrachromosomalBreakpointPair> buildBreakpointTree(final Collection<IntrachromosomalBreakpointPair> breakpoints) {
-        final SVIntervalTree<IntrachromosomalBreakpointPair> tree = new SVIntervalTree<>();
-        for (final IntrachromosomalBreakpointPair breakpointPair : breakpoints) {
-            tree.put(breakpointPair.getInterval(), breakpointPair);
-        }
-        return tree;
-    }
-
 
     /**
      * Returns only links that are on the same chromosome
@@ -268,7 +262,7 @@ public class LargeSimpleSVCaller {
                 calledEventTree.put(event.get().getInterval(), event.get());
             }
             if (progressMeter != null) {
-                progressMeter.update(SVIntervalUtils.convertInterval(breakpoints.getInterval(), dictionary));
+                progressMeter.update(SVIntervalUtils.convertToSimpleInterval(breakpoints.getInterval(), dictionary));
             }
         }
 
@@ -286,7 +280,7 @@ public class LargeSimpleSVCaller {
                 calledEventTree.put(event.get().getInterval(), event.get());
             }
             if (progressMeter != null) {
-                progressMeter.update(SVIntervalUtils.convertInterval(callInterval, dictionary));
+                progressMeter.update(SVIntervalUtils.convertToSimpleInterval(callInterval, dictionary));
             }
         }
         return Utils.stream(calledEventTree.iterator()).map(SVIntervalTree.Entry::getValue).collect(Collectors.toList());
@@ -331,7 +325,7 @@ public class LargeSimpleSVCaller {
 
         final Collection<LargeSimpleSV> events = new ArrayList<>();
 
-        final LargeSimpleSV tandemDuplication = tandemDuplicationFactory.create(leftInterval, rightInterval, callInterval, breakpoints, evidencePadding);
+        final LargeSimpleSV tandemDuplication = tandemDuplicationFactory.call(leftInterval, rightInterval, callInterval, breakpoints, evidencePadding);
         if (tandemDuplication != null) events.add(tandemDuplication);
 
         return events;

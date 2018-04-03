@@ -5,6 +5,8 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.IntrachromosomalBreakp
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 
+import java.util.Objects;
+
 /**
  * Represents a simple structural variant (e.g. deletion, duplication, etc.) and associated evidence
  */
@@ -15,6 +17,7 @@ public class LargeSimpleSV {
     protected final int end;
     protected final int contigId;
     protected final int readPairEvidence;
+
     protected final int splitReadEvidence;
     protected final int readPairCounterEvidence;
     protected final int splitReadCounterEvidence;
@@ -45,7 +48,8 @@ public class LargeSimpleSV {
     }
 
     public static double computeScore(final int readPairEvidence, final int splitReadEvidence, final int readPairCounterEvidence, final int splitReadCounterEvidence, final double counterEvidencePseudocount) {
-        return (readPairEvidence + splitReadEvidence) / Math.max(readPairCounterEvidence + splitReadCounterEvidence, counterEvidencePseudocount);
+        return (readPairCounterEvidence + splitReadCounterEvidence > 0) ? 0 : 1;
+        //return (readPairEvidence + splitReadEvidence) / Math.max(readPairCounterEvidence + splitReadCounterEvidence, counterEvidencePseudocount);
     }
 
     public SVInterval getInterval() {
@@ -89,5 +93,26 @@ public class LargeSimpleSV {
     public String toBedString(final SAMSequenceDictionary dictionary, final double counterEvidencePseudocount) {
         return dictionary.getSequence(contigId).getSequenceName() + "\t" + start + "\t" + end + "\t" + type + "\t" + readPairEvidence + "\t" + splitReadEvidence +
                 "\t" + readPairCounterEvidence + "\t" + splitReadCounterEvidence + "\t" + getScore(counterEvidencePseudocount) + "\t" + (breakpoints == null ? "none" : breakpoints.getString(dictionary));
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof LargeSimpleSV)) return false;
+        LargeSimpleSV that = (LargeSimpleSV) o;
+        return start == that.start &&
+                end == that.end &&
+                contigId == that.contigId &&
+                readPairEvidence == that.readPairEvidence &&
+                splitReadEvidence == that.splitReadEvidence &&
+                readPairCounterEvidence == that.readPairCounterEvidence &&
+                splitReadCounterEvidence == that.splitReadCounterEvidence &&
+                type == that.type &&
+                Objects.equals(breakpoints, that.breakpoints);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(type, start, end, contigId, readPairEvidence, splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, breakpoints);
     }
 }

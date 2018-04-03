@@ -139,11 +139,11 @@ public class SVIntervalUtilsUnitTest extends BaseTest {
         final SVInterval svInterval = new SVInterval(0, 100, 200);
         final SAMSequenceDictionary dictionary = new SAMSequenceDictionary();
         dictionary.addSequence(new SAMSequenceRecord("seq0", 1000));
-        final SimpleInterval simpleInterval = SVIntervalUtils.convertInterval(svInterval, dictionary);
+        final SimpleInterval simpleInterval = SVIntervalUtils.convertToSimpleInterval(svInterval, dictionary);
         Assert.assertEquals(simpleInterval, new SimpleInterval("seq0", 100, 200));
-        final SVInterval convertedSVInterval = SVIntervalUtils.convertInterval(simpleInterval, dictionary);
+        final SVInterval convertedSVInterval = SVIntervalUtils.convertToSVInterval(simpleInterval, dictionary);
         Assert.assertEquals(convertedSVInterval, svInterval);
-        final GenomeLoc genomeLoc = SVIntervalUtils.convertIntervalToGenomeLoc(svInterval, dictionary);
+        final GenomeLoc genomeLoc = SVIntervalUtils.convertToGenomeLoc(svInterval, dictionary);
         Assert.assertEquals(genomeLoc, new GenomeLoc("seq0", 0, 100, 200));
     }
 

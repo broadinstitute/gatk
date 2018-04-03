@@ -251,16 +251,16 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         private static final long serialVersionUID = 1L;
 
         public final int DEFAULT_MIN_EVENT_SIZE = 1000;
-        public final double DEFAULT_MIN_SCORE = 4;
+        public final double DEFAULT_MIN_SCORE = 0.5;
 
         public final double DEFAULT_COUNTEREVIDENCE_PSEUDOCOUNT = 1;
         public final int DEFAULT_BREAKPOINT_PADDING = 100;
-        public final int DEFAULT_EVIDENCE_TARGET_LINK_PADDING = 500;
+        public final int DEFAULT_EVIDENCE_TARGET_LINK_PADDING = 100;
         public final int DEFAULT_LOCAL_COUNTEREVIDENCE_RANGE = 1000;
         public final int DEFAULT_MIN_COUNTERVIDENCE_CLUSTER_SIZE = 3;
 
         public final int DEFAULT_HMM_PADDING = 0;
-        public final double DEFAULT_HMM_VALID_STATES_MIN_FRACTION = 0.70;
+        public final double DEFAULT_HMM_VALID_STATES_MIN_FRACTION = 0.90;
         public final double DEFAULT_HMM_TRANSITION_PROB = 0.01;
         public final int DEFAULT_HMM_MAX_STATES = 14;
 
@@ -268,7 +268,7 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         public final double DEFAULT_TANDEM_DUP_EVENT_INVALID_BIN_FRACTION = 0.30;
         public final double DEFAULT_TANDEM_DUP_EVENT_INVALID_LOG2_COPY_RATIO_THRESHOLD = -1;
         public final double DEFAULT_MAX_CALL_RECIPROCAL_OVERLAP = 0.1;
-        public final double DEFAULT_MIN_SEGMENT_OVERLAP = 0.5;
+        public final double DEFAULT_MIN_SEGMENT_OVERLAP = 0.8;
 
         public static final String DEFAULT_MIN_EVENT_SIZE_LONG_NAME = "min-size";
         public static final String DEFAULT_MIN_SCORE_LONG_NAME = "min-score";

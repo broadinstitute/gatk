@@ -9,7 +9,10 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLoc
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatioSegment;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.LargeSimpleSV;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
@@ -18,22 +21,31 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
 
 public class LargeSimpleSVFactoryTest extends BaseTest {
 
-    private static LargeSimpleSVFactory getEmptyTandemDuplicationFactory() {
+    private static LargeSimpleSVFactory getEmptyTandemDuplicationFactory(final List<EvidenceTargetLink> intrachromosomalEvidenceTargetLinks,
+                                                                         final List<CopyRatio> copyRatioList,
+                                                                         final List<CalledCopyRatioSegment> copyRatioSegmentList,
+                                                                         final SAMSequenceDictionary dictionary) {
         final SVIntervalTree<EvidenceTargetLink> intrachromosomalLinkTree = new SVIntervalTree<>();
+        for (final EvidenceTargetLink link : intrachromosomalEvidenceTargetLinks) {
+            final SVInterval leftInterval = link.getPairedStrandedIntervals().getLeft().getInterval();
+            final SVInterval rightInterval = link.getPairedStrandedIntervals().getRight().getInterval();
+            intrachromosomalLinkTree.put(leftInterval, link);
+            intrachromosomalLinkTree.put(rightInterval, link);
+        }
         final SVIntervalTree<EvidenceTargetLink> interchromosomalLinkTree = new SVIntervalTree<>();
         final SVIntervalTree<GATKRead> contigTree = new SVIntervalTree<>();
         final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments = new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection();
-        final SAMSequenceDictionary dictionary = new SAMSequenceDictionary();
 
         final SampleLocatableMetadata sampleLocatableMetadata = new SimpleSampleLocatableMetadata("test", dictionary);
-        final CalledCopyRatioSegmentCollection calledCopyRatioSegmentCollection = new CalledCopyRatioSegmentCollection(sampleLocatableMetadata, Collections.emptyList());
-        final CopyRatioCollection copyRatioSegmentCollection = new CopyRatioCollection(sampleLocatableMetadata, Collections.emptyList());
+        final CalledCopyRatioSegmentCollection calledCopyRatioSegmentCollection = new CalledCopyRatioSegmentCollection(sampleLocatableMetadata, copyRatioSegmentList);
+        final CopyRatioCollection copyRatioSegmentCollection = new CopyRatioCollection(sampleLocatableMetadata, copyRatioList);
 
         final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector = calledCopyRatioSegmentCollection.getOverlapDetector();
         final OverlapDetector<CopyRatio> copyRatioOverlapDetector = copyRatioSegmentCollection.getOverlapDetector();
@@ -42,7 +54,36 @@ public class LargeSimpleSVFactoryTest extends BaseTest {
     }
 
     @Test(groups = "sv")
-    public void testCreate() {
+    public void testCall() {
+
+        //Test case with amplification at contig0:300-350
+        final List<Double> rawCopyRatios = new ArrayList<>(100);
+        for (int i = 0; i < 100; i++) {
+            if (i >= 30 && i < 35) {
+                rawCopyRatios.add(1.5);
+            } else {
+                rawCopyRatios.add(1.0);
+            }
+        }
+        final int binSize = 10;
+        final List<CopyRatio> copyRatiosList = getCopyRatioBins(rawCopyRatios, "contig0", 0, binSize);
+        final List<CalledCopyRatioSegment> calledCopyRatioSegmentList = Arrays.asList(
+                new CalledCopyRatioSegment(new CopyRatioSegment(new SimpleInterval("contig0", 1, 300), 30, 0.0), CalledCopyRatioSegment.Call.NEUTRAL),
+                new CalledCopyRatioSegment(new CopyRatioSegment(new SimpleInterval("contig0", 301, 350), 5, 0.585), CalledCopyRatioSegment.Call.AMPLIFICATION),
+                new CalledCopyRatioSegment(new CopyRatioSegment(new SimpleInterval("contig0", 351, binSize * rawCopyRatios.size()), 65, 0.0), CalledCopyRatioSegment.Call.NEUTRAL));
+        final List<EvidenceTargetLink> intrachromosomalEvidenceTargetLinks = Arrays.asList(
+                new EvidenceTargetLink(new StrandedInterval(new SVInterval(0, 290, 310), false),
+                        new StrandedInterval(new SVInterval(0, 340, 360), true),
+                        0, 5, new HashSet<>(Arrays.asList("read1", "read2", "read3", "read4", "read5")), Collections.emptySet()));
+        final SAMSequenceDictionary dictionary = new SAMSequenceDictionary();
+        dictionary.addSequence(new SAMSequenceRecord("contig0", 2000));
+        final LargeSimpleSVFactory factory = getEmptyTandemDuplicationFactory(intrachromosomalEvidenceTargetLinks, copyRatiosList, calledCopyRatioSegmentList, dictionary);
+
+        final LargeSimpleSV emptyResult = factory.call(new SVInterval(0, 600, 700), new SVInterval(0, 1100, 1200), new SVInterval(0, 650, 1150), null, 0);
+        Assert.assertNull(emptyResult);
+
+        final LargeSimpleSV result = factory.call(new SVInterval(0, 285, 295), new SVInterval(0, 345, 355), new SVInterval(0, 290, 350), null, 10);
+        Assert.assertEquals(result, new LargeSimpleSV(SimpleSVType.TYPES.DUP, 290, 350, 0, 5, 0, 0, 0, null));
     }
 
     @Test(groups = "sv")
@@ -207,5 +248,36 @@ public class LargeSimpleSVFactoryTest extends BaseTest {
         Assert.assertEquals(LargeSimpleSVFactory.localOverlappingLinks(new SVInterval(0, 550, 650), tree, 0, dictionary), Collections.singletonList(link));
         Assert.assertEquals(LargeSimpleSVFactory.localOverlappingLinks(new SVInterval(0, 800, 900), tree, 50, dictionary), Collections.emptyList());
         Assert.assertEquals(LargeSimpleSVFactory.localOverlappingLinks(new SVInterval(0, 650, 750), tree, 0, dictionary), Collections.singletonList(link));
+    }
+
+    @DataProvider(name = "supportedByHMMData")
+    public Object[][] getSupportedByHMMTestData() {
+        return new Object[][]{
+                {Arrays.asList(1.1, 1.02, 0.95, 1.03, 1.0, 0.87, 1.22, 1.05, 1.04, 1.37, 0.9, 1.15), false},
+                {Arrays.asList(1.4, 1.5, 1.8, 1.6, 1.5, 1.4, 1.45, 1.65, 1.3, 1.6, 1.5), true},
+                {Arrays.asList(0.1, 0.2, 0.1, 0.05, 0.01, 0.3, 0.2, 0.05, 0.01, 0.01, 0.25), false},
+                {Arrays.asList(1.1, 0.9, 0.8, 0.9, 1.2, 1.7, 1.6, 1.4, 1.5, 1.5), true},
+                {Arrays.asList(1.1, 0.9, 0.8, 0.9, 1.2, 1.1, 1.2, 1.0, 1.5, 1.5), false}
+        };
+    }
+
+    @Test(groups = "sv",
+            dataProvider = "supportedByHMMData")
+    public void testSupportedByHMM(final List<Double> rawCopyRatios, final boolean expectedResult) {
+        final SAMSequenceDictionary dictionary = new SAMSequenceDictionary();
+        dictionary.addSequence(new SAMSequenceRecord("contig0", 2000));
+        final List<CopyRatio> copyRatiosList = getCopyRatioBins(rawCopyRatios, "contig0", 0, 10);
+        final LargeSimpleSVFactory factory = getEmptyTandemDuplicationFactory(Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), dictionary);
+        factory.arguments.hmmTransitionProb = 0.01;
+        factory.arguments.hmmValidStatesMinFraction = 0.5;
+        Assert.assertEquals(factory.supportedByHMM(copyRatiosList), expectedResult);
+    }
+
+    private List<CopyRatio> getCopyRatioBins(final List<Double> rawCopyRatios, final String contig, final int start, final int binSize) {
+        final List<CopyRatio> copyRatiosList = new ArrayList(rawCopyRatios.size());
+        for (int i = 0; i < rawCopyRatios.size(); i++) {
+            copyRatiosList.add(new CopyRatio(new SimpleInterval(contig, start + 1 + i * binSize, start + (i + 1) * binSize), Math.log(rawCopyRatios.get(i)) / Math.log(2.0)));
+        }
+        return copyRatiosList;
     }
 }

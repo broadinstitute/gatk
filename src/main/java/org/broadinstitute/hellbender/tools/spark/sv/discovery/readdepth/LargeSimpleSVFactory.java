@@ -74,7 +74,7 @@ public abstract class LargeSimpleSVFactory {
     @VisibleForTesting
     protected static List<CopyRatio> getCopyRatiosOnInterval(final SVInterval interval, final OverlapDetector<CopyRatio> overlapDetector,
                                                            final int binsToTrim, final SAMSequenceDictionary dictionary) {
-        final SimpleInterval simpleInterval = SVIntervalUtils.convertInterval(interval, dictionary);
+        final SimpleInterval simpleInterval = SVIntervalUtils.convertToSimpleInterval(interval, dictionary);
         if (simpleInterval.size() == 0) {
             return Collections.emptyList();
         }
@@ -118,7 +118,7 @@ public abstract class LargeSimpleSVFactory {
     /**
      * Returns true if the link is of proper orientation to support the event
      */
-    protected abstract boolean isEvidenceOrientation(final EvidenceTargetLink link);
+    protected abstract boolean hasSupportingEvidenceOrientation(final EvidenceTargetLink link);
 
     /**
      * Returns true if this event should be filtered based on the copy ratio bins found in the interval
@@ -163,11 +163,11 @@ public abstract class LargeSimpleSVFactory {
      * @param evidencePadding Amount to pad the left and right intervals when searching for supporting evidence
      * @return An event call or null if unsuccessful
      */
-    public LargeSimpleSV create(final SVInterval leftInterval,
-                                final SVInterval rightInterval,
-                                final SVInterval callInterval,
-                                final IntrachromosomalBreakpointPair breakpoints,
-                                final int evidencePadding) {
+    public LargeSimpleSV call(final SVInterval leftInterval,
+                              final SVInterval rightInterval,
+                              final SVInterval callInterval,
+                              final IntrachromosomalBreakpointPair breakpoints,
+                              final int evidencePadding) {
 
         Utils.nonNull(leftInterval, "Left interval cannot be null");
         Utils.nonNull(rightInterval, "Right interval cannot be null");
@@ -206,6 +206,7 @@ public abstract class LargeSimpleSVFactory {
 
         //Tally evidence and counterevidence
         final int readPairEvidence = countReadPairs(evidenceLinks);
+        if (readPairEvidence == 0) return null; //TODO
         final int splitReadEvidence = countSplitReads(evidenceLinks);
         final int readPairCounterEvidence = countUniqueCounterEvidenceReadPairs(counterEvidenceLinks, evidenceLinks, arguments.minCountervidenceClusterSize);
         final int splitReadCounterEvidence = countUniqueCounterEvidenceSplitReads(counterEvidenceLinks, evidenceLinks, arguments.minCountervidenceClusterSize);
@@ -215,24 +216,38 @@ public abstract class LargeSimpleSVFactory {
         if (eventScore < arguments.minScore) return null;
 
         //Test if the copy ratio bins indicate we should reject this call
-        final SVInterval hmmInterval = SVIntervalUtils.getPaddedInterval(innerInterval, arguments.hmmPadding, dictionary);
-        final List<CopyRatio> copyRatioBins = getCopyRatiosOnInterval(hmmInterval, copyRatioOverlapDetector, arguments.copyRatioBinTrimming, dictionary);
-        if (isInvalidCoverage(copyRatioBins)) return null;
+        final SVInterval leftFlank = new SVInterval(leftInterval.getContig(), leftInterval.getStart() - 1000, leftInterval.getStart() - 500);
+        final SVInterval rightFlank = new SVInterval(leftInterval.getContig(), rightInterval.getEnd() + 500, rightInterval.getEnd() + 1000);
+        final List<CopyRatio> eventBins = getCopyRatiosOnInterval(innerInterval, copyRatioOverlapDetector, arguments.copyRatioBinTrimming, dictionary);
+        final List<CopyRatio> leftBins = getCopyRatiosOnInterval(leftFlank, copyRatioOverlapDetector, arguments.copyRatioBinTrimming, dictionary);
+        final List<CopyRatio> rightBins = getCopyRatiosOnInterval(rightFlank, copyRatioOverlapDetector, arguments.copyRatioBinTrimming, dictionary);
+        if (isInvalidCoverage(eventBins)) return null;
 
         //Test if the event matches a model segments call
         final String contigName = sequence.getSequenceName();
-        final Set<CalledCopyRatioSegment> overlappingSegments = copyRatioSegmentOverlapDetector.getOverlaps(new SimpleInterval(contigName, outerInterval.getStart(), outerInterval.getEnd()));
-        if (supportedBySegmentCalls(innerInterval, overlappingSegments, dictionary)) {
+        final Set<CalledCopyRatioSegment> overlappingSegments = copyRatioSegmentOverlapDetector.getOverlaps(SVIntervalUtils.convertToSimpleInterval(innerInterval, dictionary));
+        final Set<CalledCopyRatioSegment> overlappingLeftSegments = copyRatioSegmentOverlapDetector.getOverlaps(SVIntervalUtils.convertToSimpleInterval(leftFlank, dictionary));
+        final Set<CalledCopyRatioSegment> overlappingRightSegments = copyRatioSegmentOverlapDetector.getOverlaps(SVIntervalUtils.convertToSimpleInterval(rightFlank, dictionary));
+        final boolean eventSegmentSupport = false; //supportedBySegmentCalls(innerInterval, overlappingSegments, dictionary);
+        final boolean leftSegmentSupport = true; //checkFlankingSegments(leftFlank, overlappingLeftSegments, dictionary);
+        final boolean rightSegmentSupport = true ;//checkFlankingSegments(rightFlank, overlappingRightSegments, dictionary);
+        if (eventSegmentSupport && leftSegmentSupport && rightSegmentSupport) {
             return getNewSV(callInterval.getStart(), callInterval.getEnd(), contigId, contigName, readPairEvidence,
                     splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, breakpoints);
         }
 
         //Run copy number state HMM over copy ratios and test if the states (a la Viterbi) match the valid states for the event type
-        if (supportedByHMM(copyRatioBins)) {
+        if (supportedByHMM(eventBins)) {
             return getNewSV(callInterval.getStart(), callInterval.getEnd(), contigId, contigName, readPairEvidence, splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, breakpoints);
         }
 
         return null;
+    }
+
+    private boolean checkFlankingSegments(final SVInterval interval, final Set<CalledCopyRatioSegment> overlappingSegments, final SAMSequenceDictionary dictionary) {
+        final int neutralBases = overlappingSegments.stream().filter(segment -> segment.getCall() == CalledCopyRatioSegment.Call.NEUTRAL)
+                .mapToInt(segment -> SVIntervalUtils.convertToSVInterval(segment.getInterval(), dictionary).overlapLen(interval)).sum();
+        return neutralBases / (double) interval.getLength() >= arguments.minSegmentOverlap;
     }
 
     /**
@@ -253,7 +268,7 @@ public abstract class LargeSimpleSVFactory {
      * Returns collection of the links with the proper orientation that supports the event
      */
     protected Collection<EvidenceTargetLink> getLinksWithEvidenceOrientation(final Collection<EvidenceTargetLink> links) {
-        return links.stream().filter(link -> isEvidenceOrientation(link)).collect(Collectors.toList());
+        return links.stream().filter(link -> hasSupportingEvidenceOrientation(link)).collect(Collectors.toList());
     }
 
     /**
@@ -298,7 +313,7 @@ public abstract class LargeSimpleSVFactory {
      * @param copyRatioBins Copy ratios over the interval
      * @return True if supported
      */
-    private boolean supportedByHMM(final List<CopyRatio> copyRatioBins) {
+    protected boolean supportedByHMM(final List<CopyRatio> copyRatioBins) {
         if (copyRatioBins.isEmpty()) return false;
         final List<Double> copyRatios = copyRatioBins.stream().map(CopyRatio::getLog2CopyRatioValue).map(val -> Math.pow(2.0, val)).collect(Collectors.toList());
         final int numStates = Math.min(arguments.hmmMaxStates, copyRatios.stream().mapToInt(val -> (int) (2 * val)).max().getAsInt() + 1);

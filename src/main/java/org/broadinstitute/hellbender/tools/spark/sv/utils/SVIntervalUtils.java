@@ -85,10 +85,10 @@ public class SVIntervalUtils {
     /**
      * Returns true if the two intervals have at least the given amount of reciprocal overlap
      */
-    public static boolean hasReciprocalOverlap(final SVInterval a, final SVInterval b, final double minFractionOverlap) {
-        Utils.validateArg(minFractionOverlap >= 0, "Overlap fraction must be non-negative");
-        Utils.validateArg(minFractionOverlap <= 1, "Overlap fraction must less than or equal to 1");
-        return reciprocalOverlap(a, b) >= minFractionOverlap;
+    public static boolean hasReciprocalOverlap(final SVInterval a, final SVInterval b, final double minOverlapFraction) {
+        Utils.validateArg(minOverlapFraction >= 0, "Overlap fraction must be non-negative");
+        Utils.validateArg(minOverlapFraction <= 1, "Overlap fraction must less than or equal to 1");
+        return reciprocalOverlap(a, b) >= minOverlapFraction;
     }
 
     /**
@@ -106,7 +106,7 @@ public class SVIntervalUtils {
     /**
      * Converts SimpleInterval to SVInterval
      */
-    public static SVInterval convertInterval(final SimpleInterval interval, final SAMSequenceDictionary dictionary) {
+    public static SVInterval convertToSVInterval(final SimpleInterval interval, final SAMSequenceDictionary dictionary) {
         final int sequenceIndex = dictionary.getSequenceIndex(interval.getContig());
         if (sequenceIndex == -1) {
             throw new IllegalArgumentException("Could not find contig " + interval.getContig() + " in sequence ditionary");
@@ -117,7 +117,7 @@ public class SVIntervalUtils {
     /**
      * Converts SVInterval to SimpleInterval
      */
-    public static SimpleInterval convertInterval(final SVInterval interval, final SAMSequenceDictionary dictionary) {
+    public static SimpleInterval convertToSimpleInterval(final SVInterval interval, final SAMSequenceDictionary dictionary) {
         final SAMSequenceRecord sequenceRecord = dictionary.getSequence(interval.getContig());
         if (sequenceRecord == null) {
             throw new IllegalArgumentException("Could not find contig " + interval.getContig() + " in sequence ditionary");
@@ -128,7 +128,7 @@ public class SVIntervalUtils {
     /**
      * Converts SVInterval to GenomeLoc
      */
-    public static GenomeLoc convertIntervalToGenomeLoc(final SVInterval interval, final SAMSequenceDictionary dictionary) {
+    public static GenomeLoc convertToGenomeLoc(final SVInterval interval, final SAMSequenceDictionary dictionary) {
         final SAMSequenceRecord sequenceRecord = dictionary.getSequence(interval.getContig());
         if (sequenceRecord == null) {
             throw new IllegalArgumentException("Could not find contig " + interval.getContig() + " in sequence ditionary");
