@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Holds information about a split alignment of a contig, which may represent an SV breakpoint. Each ChimericAlignment
@@ -463,7 +464,7 @@ public class ChimericAlignment {
         int result = sourceContigName.hashCode();
         result = 31 * result + regionWithLowerCoordOnContig.hashCode();
         result = 31 * result + regionWithHigherCoordOnContig.hashCode();
-        result = 31 * result + strandSwitch.hashCode();
+        result = 31 * result + Objects.hashCode(strandSwitch.ordinal());
         result = 31 * result + (isForwardStrandRepresentation ? 1 : 0);
         result = 31 * result + insertionMappings.hashCode();
         return result;

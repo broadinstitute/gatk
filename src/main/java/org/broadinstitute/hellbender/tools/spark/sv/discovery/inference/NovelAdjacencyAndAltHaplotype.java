@@ -17,6 +17,7 @@ import scala.Tuple2;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * This class represents a pair of inferred genomic locations on the reference whose novel adjacency is generated
@@ -124,7 +125,7 @@ public class NovelAdjacencyAndAltHaplotype {
     public int hashCode() {
         int result = leftJustifiedLeftRefLoc.hashCode();
         result = 31 * result + leftJustifiedRightRefLoc.hashCode();
-        result = 31 * result + strandSwitch.hashCode();
+        result = 31 * result + Objects.hashCode(strandSwitch.ordinal());
         result = 31 * result + complication.hashCode();
         result = 31 * result + Arrays.hashCode(altHaplotypeSequence);
         return result;
