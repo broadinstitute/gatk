@@ -88,8 +88,8 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
         // record the assembly as a GFA, if requested
         if ( fastqDir != null && writeGFAs ) {
             final String gfaName =  String.format("%s/%s.gfa", fastqDir, assemblyName);
-            try ( final OutputStream os = BucketUtils.createFile(gfaName) ) {
-                assembly.writeGFA(os);
+            try ( final Writer writer = new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(gfaName))) ) {
+                assembly.writeGFA(writer);
             }
             catch ( final IOException ioe ) {
                 throw new GATKException("Can't write "+gfaName, ioe);
@@ -137,7 +137,7 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
             }
         });
 
-        /** Remove contigs that vary by a small number of SNVs from another contig. E.g.,
+        /* Remove contigs that vary by a small number of SNVs from another contig. E.g.,
          *  <-------contigA----------->
          *     ||x|||||x||||x|||
          *     <---contigB----->
@@ -241,40 +241,21 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
             if ( !examined.add(tig) ) return;
             Connection conn;
             Connection conn2;
-            while ( (conn = getSolePredecessor(tig)) != null &&
+            while ( (conn = tig.getSolePredecessor()) != null &&
                     !examined.contains(conn.getTarget()) &&
-                    (conn2 = getSingletonConnection(conn.getTarget(), !conn.isTargetRC())) != null ) {
+                    (conn2 = conn.getTarget().getSingletonConnection(!conn.isTargetRC())) != null ) {
                 examined.add(conn.getTarget());
                 tig = joinContigsWithConnections(tig, conn, conn2);
             }
-            while ( (conn = getSoleSuccessor(tig)) != null &&
+            while ( (conn = tig.getSoleSuccessor()) != null &&
                     !examined.contains(conn.getTarget()) &&
-                    (conn2 = getSingletonConnection(conn.getTarget(), !conn.isTargetRC())) != null ) {
+                    (conn2 = conn.getTarget().getSingletonConnection(!conn.isTargetRC())) != null ) {
                 examined.add(conn.getTarget());
                 tig = joinContigsWithConnections(tig, conn, conn2);
             }
             contigList.add(tig);
         });
         return new FermiLiteAssembly(contigList);
-    }
-
-    private static Connection getSolePredecessor( final Contig contig ) {
-        return getSingletonConnection(contig, true);
-    }
-
-    private static Connection getSoleSuccessor( final Contig contig ) {
-        return getSingletonConnection(contig, false);
-    }
-
-    private static Connection getSingletonConnection( final Contig contig, final boolean isRC ) {
-        Connection singleton = null;
-        for ( Connection conn : contig.getConnections() ) {
-            if ( conn.isRC() == isRC ) {
-                if ( singleton != null ) return null; // found multiple connections, return null
-                singleton = conn;
-            }
-        }
-        return singleton;
     }
 
     // combine two connected contigs into one, preserving all their connections, except their connections to each other.
@@ -292,8 +273,8 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
                 final Connection newConnection =
                         new Connection(conn.getTarget(), conn.getOverlapLen(), true, conn.isTargetRC());
                 replaceConnection(conn.getTarget(),
-                                    rcConnection(firstContig, conn),
-                                    rcConnection(joinedContig, newConnection));
+                                    conn.rcConnection(firstContig),
+                                    newConnection.rcConnection(joinedContig));
                 connections.add(newConnection);
             }
         }
@@ -302,17 +283,13 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
                 final Connection newConnection =
                         new Connection(conn.getTarget(), conn.getOverlapLen(), false, conn.isTargetRC());
                 replaceConnection(conn.getTarget(),
-                                    rcConnection(lastContig, conn),
-                                    rcConnection(joinedContig, newConnection));
+                                    conn.rcConnection(lastContig),
+                                    newConnection.rcConnection(joinedContig));
                 connections.add(newConnection);
             }
         }
         joinedContig.setConnections(connections);
         return joinedContig;
-    }
-
-    private static Connection rcConnection( final Contig contig, final Connection connection ) {
-        return new Connection(contig, connection.getOverlapLen(), !connection.isTargetRC(), !connection.isRC());
     }
 
     private static void replaceConnection( final Contig contig,
@@ -486,6 +463,7 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
         private final Contig contig;
         private final int offset;
         private final boolean canonical;
+
         public ContigLocation(final Contig contig, final int offset, final boolean canonical ) {
             this.contig = contig;
             this.offset = offset;
