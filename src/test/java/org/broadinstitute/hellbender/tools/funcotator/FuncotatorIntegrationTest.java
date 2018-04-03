@@ -15,7 +15,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 
 /**
  * An integration test for the {@link Funcotator} tool.
@@ -30,8 +29,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
     // Whether to do debug output (i.e. leave output around).
     // This should always be false when checked in.
-    private static final boolean doDebugTests = false;
-    private static final String LOCAL_DATASOURCES_PATH = "/Users/jonn/Development/funcotator_dataSources_latest";
+    private static final boolean doDebugTests           = false;
+    private static final String  LARGE_DATASOURCES_PATH = getFuncotatorLargeDataValidationTestInputPath() + "funcotator_dataSources_latest";
 
     static {
         if ( !doDebugTests ) {
@@ -183,21 +182,18 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     public Object[][] provideForLargeDataValidationTest() {
         return new Object[][] {
                 {
-                        FuncotatorArgumentDefinitions.OutputFormatType.MAF,
                         "M2_01115161-TA1-filtered.vcf",
                         "Homo_sapiens_assembly19.fasta",
                         true,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                 },
                 {
-                        FuncotatorArgumentDefinitions.OutputFormatType.MAF,
                         "C828.TCGA-D3-A2JP-06A-11D-A19A-08.3-filtered.PASS.vcf",
                         "Homo_sapiens_assembly19.fasta",
                         true,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19
                 },
                 {
-                        FuncotatorArgumentDefinitions.OutputFormatType.MAF,
                         "hg38_test_variants.vcf",
                         "Homo_sapiens_assembly38.fasta",
                         false,
@@ -242,8 +238,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     @Test(enabled = doDebugTests,
           groups = {"funcotatorValidation"},
           dataProvider = "provideForLargeDataValidationTest")
-    public void largeDataValidationTest(final FuncotatorArgumentDefinitions.OutputFormatType outputType,
-                          final String inputVcfPath,
+    public void largeDataValidationTest(final String inputVcfName,
                           final String referencePath,
                           final boolean allowHg19B37ContigMatches,
                           final String referenceVersion) throws IOException {
@@ -254,30 +249,29 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         long startTime = 0, endTime = 0;
         final long overallStartTime = System.nanoTime();
 
-        final List<FuncotatorArgumentDefinitions.OutputFormatType> outFormatList = new ArrayList<>();
-        outFormatList.add(outputType);
+        final String outFileBaseName = inputVcfName + ".funcotator";
 
-        for ( final FuncotatorArgumentDefinitions.OutputFormatType outFormat : outFormatList) {
+        for ( final FuncotatorArgumentDefinitions.OutputFormatType outFormat : FuncotatorArgumentDefinitions.OutputFormatType.values()) {
 
             startTime = System.nanoTime();
 
             final File outputFile;
             if ( outFormat == FuncotatorArgumentDefinitions.OutputFormatType.VCF ) {
-                outputFile = getOutputFile("funcotator_tmp_out_spot_check", outFormat.toString().toLowerCase());
+                outputFile = getOutputFile(outFileBaseName, outFormat.toString().toLowerCase());
             }
             else {
-                outputFile = getOutputFile("funcotator_tmp_out_spot_check.maf", "tsv");
+                outputFile = getOutputFile(outFileBaseName + ".maf", "tsv");
             }
 
             final ArgumentsBuilder arguments = new ArgumentsBuilder();
 
             arguments.addArgument("verbosity", "INFO");
 
-            arguments.addVCF(new File(testFolderInputPath + inputVcfPath));
+            arguments.addVCF(new File(testFolderInputPath + inputVcfName));
 
             arguments.addReference(new File(testFolderInputPath + referencePath));
 
-            arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, LOCAL_DATASOURCES_PATH);
+            arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, LARGE_DATASOURCES_PATH);
 
             arguments.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME, allowHg19B37ContigMatches);
 
