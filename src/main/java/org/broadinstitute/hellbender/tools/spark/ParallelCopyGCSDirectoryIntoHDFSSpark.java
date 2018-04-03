@@ -8,6 +8,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.utils.Utils;
 import picard.cmdline.programgroups.OtherProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -83,10 +84,16 @@ public class ParallelCopyGCSDirectoryIntoHDFSSpark extends GATKSparkTool {
     public static final int SIXTY_FOUR_MIB = 67108864;
     public static final String INPUT_GCS_PATH_LONG_NAME = "input-gcs-path";
     public static final String OUTPUT_HDFS_DIRECTORY_LONG_NAME = "output-hdfs-directory";
+    public static final String INPUT_GLOB = "input-file-glob";
+    public static final String INPUT_GLOB_ALL_FILES = "*";
 
     @Argument(doc = "input GCS file path (add trailing slash when specifying a directory)",
             fullName = INPUT_GCS_PATH_LONG_NAME)
     private String inputGCSPath = null;
+
+    @Argument(doc = "optional wildcard glob to subset files in the input directory to copy",
+            fullName = INPUT_GLOB)
+    private String inputGlob = INPUT_GLOB_ALL_FILES;
 
     @Argument(doc = "output directory on HDFS to into which to transfer the data (will be created by the tool)",
             fullName = OUTPUT_HDFS_DIRECTORY_LONG_NAME)
@@ -117,7 +124,7 @@ public class ParallelCopyGCSDirectoryIntoHDFSSpark extends GATKSparkTool {
 
             final long chunkSize = getChunkSize(fs);
 
-            final List<Path> gcsNIOPaths = getGCSFilePathsToCopy(inputGCSPathFinal);
+            final List<Path> gcsNIOPaths = getGCSFilePathsToCopy(inputGCSPathFinal, inputGlob);
 
             List<Tuple2<String, Integer>> chunkList = setupChunks(chunkSize, gcsNIOPaths);
 
@@ -193,14 +200,17 @@ public class ParallelCopyGCSDirectoryIntoHDFSSpark extends GATKSparkTool {
         return chunkList;
     }
 
-    private List<Path> getGCSFilePathsToCopy(final String inputGCSPathFinal) throws IOException {
+    private List<Path> getGCSFilePathsToCopy(final String inputGCSPathFinal, final String inputGlob) throws IOException {
         final List<Path> gcsNIOPaths;
         final Path inputGCSNIOPath = IOUtils.getPath(inputGCSPathFinal);
         if (Files.isDirectory(inputGCSNIOPath)) {
             logger.info("transferring input directory: " + inputGCSPathFinal);
-            gcsNIOPaths = Files.list(inputGCSNIOPath).collect(Collectors.toList());
+            gcsNIOPaths = Utils.stream(Files.newDirectoryStream(inputGCSNIOPath, inputGlob)).collect(Collectors.toList());
         } else {
             logger.info("transferring single file: " + inputGCSNIOPath);
+            if (! INPUT_GLOB_ALL_FILES.equals(inputGlob)) {
+                logger.warn("Input glob " + inputGlob + " specified, but input argument was not a directory. Ignoring glob.");
+            }
             gcsNIOPaths = Collections.singletonList(inputGCSNIOPath);
         }
         return gcsNIOPaths;
