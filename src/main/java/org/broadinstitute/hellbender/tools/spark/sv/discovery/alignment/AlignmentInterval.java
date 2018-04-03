@@ -472,7 +472,7 @@ public final class AlignmentInterval {
         result = 31 * result + mapQual;
         result = 31 * result + mismatches;
         result = 31 * result + alnScore;
-        result = 31 * result + Objects.hashCode(alnModType.ordinal());
+        result = 31 * result + alnModType.ordinal();
         return result;
     }
 

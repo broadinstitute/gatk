@@ -497,7 +497,7 @@ final class CpxVariantInducingAssemblyContig {
         public int hashCode() {
             int result = start.hashCode();
             result = 31 * result + landing.hashCode();
-            result = 31 * result + Objects.hashCode(strandSwitch.ordinal());
+            result = 31 * result + strandSwitch.ordinal();
             result = 31 * result + gapSize;
             return result;
         }

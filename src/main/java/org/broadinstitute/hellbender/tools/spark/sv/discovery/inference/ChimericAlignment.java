@@ -464,7 +464,7 @@ public class ChimericAlignment {
         int result = sourceContigName.hashCode();
         result = 31 * result + regionWithLowerCoordOnContig.hashCode();
         result = 31 * result + regionWithHigherCoordOnContig.hashCode();
-        result = 31 * result + Objects.hashCode(strandSwitch.ordinal());
+        result = 31 * result + strandSwitch.ordinal();
         result = 31 * result + (isForwardStrandRepresentation ? 1 : 0);
         result = 31 * result + insertionMappings.hashCode();
         return result;
