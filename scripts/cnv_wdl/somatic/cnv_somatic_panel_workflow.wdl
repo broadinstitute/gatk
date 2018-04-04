@@ -68,6 +68,7 @@ workflow CNVSomaticPanelWorkflow {
     Boolean? do_impute_zeros
     Float? extreme_outlier_truncation_percentile
     Int? number_of_eigensamples
+    Int? maximum_chunk_size
     Int? mem_gb_for_create_read_count_pon
 
     Array[Pair[String, String]] normal_bams_and_bais = zip(normal_bams, normal_bais)
@@ -128,6 +129,7 @@ workflow CNVSomaticPanelWorkflow {
             do_impute_zeros = do_impute_zeros,
             extreme_outlier_truncation_percentile = extreme_outlier_truncation_percentile,
             number_of_eigensamples = number_of_eigensamples,
+            maximum_chunk_size = maximum_chunk_size,
             annotated_intervals = AnnotateIntervals.annotated_intervals,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
@@ -153,6 +155,7 @@ task CreateReadCountPanelOfNormals {
     Boolean? do_impute_zeros
     Float? extreme_outlier_truncation_percentile
     Int? number_of_eigensamples
+    Int? maximum_chunk_size
     File? annotated_intervals   #do not perform explicit GC correction by default
     File? gatk4_jar_override
 
@@ -180,6 +183,7 @@ task CreateReadCountPanelOfNormals {
             --do-impute-zeros ${default="true" do_impute_zeros} \
             --extreme-outlier-truncation-percentile ${default="0.1" extreme_outlier_truncation_percentile} \
             --number-of-eigensamples ${default="20" number_of_eigensamples} \
+            --maximum-chunk-size ${default="16777216" maximum_chunk_size} \
             ${"--annotated-intervals " + annotated_intervals} \
             --output ${pon_entity_id}.pon.hdf5
     >>>
