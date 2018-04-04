@@ -13,5 +13,6 @@
   "Mutect2_Multi.preemptible_attempts": 2,
   "Mutect2_Multi.artifact_modes": ["G/T", "C/T"],
   "Mutect2_Multi.compress_vcfs": false,
+  "Mutect2_Multi.make_bamout": true,
   "Mutect2_Multi.onco_ds_local_db_dir": "/root/"
 }

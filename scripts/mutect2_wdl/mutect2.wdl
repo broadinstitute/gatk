@@ -563,8 +563,15 @@ task MergeBamOuts {
         set -e
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
         gatk --java-options "-Xmx${command_mem}m" GatherBamFiles \
-            -I ${sep=" -I " bam_outs} -O ${output_vcf_name}.out.bam -R ${ref_fasta}
-        samtools index ${output_vcf_name}.out.bam ${output_vcf_name}.out.bam.bai
+            -I ${sep=" -I " bam_outs} -O unsorted.out.bam -R ${ref_fasta}
+
+        # We must sort because adjacent scatters may have overlapping (padded) assembly regions, hence
+        # overlapping bamouts
+
+        gatk --java-options "-Xmx${command_mem}m" SortSam -I unsorted.out.bam \
+            -O ${output_vcf_name}.out.bam \
+            --SORT_ORDER coordinate
+        gatk --java-options "-Xmx${command_mem}m" BuildBamIndex -I ${output_vcf_name}.out.bam
     >>>
 
     runtime {
@@ -577,7 +584,7 @@ task MergeBamOuts {
 
     output {
         File merged_bam_out = "${output_vcf_name}.out.bam"
-        File merged_bam_out_index = "${output_vcf_name}.out.bam.bai"
+        File merged_bam_out_index = "${output_vcf_name}.out.bai"
     }
 }
 
