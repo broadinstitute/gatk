@@ -94,9 +94,11 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
         final List<Haplotype> haplotypes = log10ReadLikelihoods.alleles();
 
-        // update the haplotypes so we're ready to call, getting the ordered list of positions on the reference
-        // that carry events among the haplotypes
-        final List<Integer> startPosKeySet = decomposeHaplotypesIntoVariantContexts(haplotypes, assemblyResultSet.getFullReferenceWithPadding(), assemblyResultSet.getPaddedReferenceLoc(), givenAlleles).stream()
+        // Note: passing an empty list of activeAllelesToGenotype is the correct behavior even when givenAlleles is
+        // non-empty.  At this point any given alleles have already been injected into the haplotypes, and passing
+        // givenAlleles to {@code decomposeHaplotypesIntoVariantContexts} actually overrides any non-given (discovery) alleles, which
+        // is not what we want.
+        final List<Integer> startPosKeySet = decomposeHaplotypesIntoVariantContexts(haplotypes, assemblyResultSet.getFullReferenceWithPadding(), assemblyResultSet.getPaddedReferenceLoc(), Collections.emptyList()).stream()
                 .filter(loc -> activeRegionWindow.getStart() <= loc && loc <= activeRegionWindow.getEnd())
                 .collect(Collectors.toList());
 
@@ -104,10 +106,8 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
         final List<VariantContext> returnCalls = new ArrayList<>();
 
         for( final int loc : startPosKeySet ) {
-            // Note: passing an empty list of activeAllelesToGenotype is the correct behavior even when givenAlleles is
-            // non-empty.  At this point any given alleles have already been injected into the haplotypes, and passing
-            // givenAlleles to getVCsAtThisLocation actually overrides any non-given (discovery) alleles, which
-            // is not what we want.
+            // Note: as above, passing an empty list of activeAllelesToGenotype is the correct behavior even when givenAlleles is
+            // non-empty, for the same reason.  If you don't believe this, check {@code testGivenAllelesMode} in {@link Mutect2IntegrationTest}.
             final List<VariantContext> eventsAtThisLoc = getVCsAtThisLocation(haplotypes, loc, Collections.emptyList());
             final VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLoc);
             if( mergedVC == null ) {
@@ -128,11 +128,13 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             final Optional<PerAlleleCollection<Double>> normalLog10Odds = getForNormal(() -> diploidAltLog10Odds(log10NormalMatrix.get()));
             final Optional<PerAlleleCollection<Double>> normalArtifactLog10Odds = getForNormal(() -> somaticLog10Odds(log10NormalMatrix.get()));
 
-            final List<Allele> givenAllelesInOriginalContext =  getVCsAtThisLocation(Collections.emptyList(), loc, givenAlleles).stream()
-                    .flatMap(vc -> vc.getAlternateAlleles().stream()).collect(Collectors.toList());
+            final List<Pair<Allele, Allele>> givenAltAndRefAllelesInOriginalContext =  getVCsAtThisLocation(Collections.emptyList(), loc, givenAlleles).stream()
+                    .flatMap(vc -> vc.getAlternateAlleles().stream().map(allele -> ImmutablePair.of(allele, vc.getReference()))).collect(Collectors.toList());
 
             final Set<Allele> allelesConsistentWithGivenAlleles = mergedVC.getAlternateAlleles().stream()
-                    .filter(allele -> givenAllelesInOriginalContext.stream().anyMatch(givenAllele -> allelesAreConsistent(givenAllele, allele)))
+                    .map(allele -> ImmutablePair.of(allele, mergedVC.getReference()))
+                    .filter(altAndRef -> givenAltAndRefAllelesInOriginalContext.stream().anyMatch(givenAltAndRef -> allelesAreConsistent(givenAltAndRef, altAndRef)))
+                    .map(altAndRefPair -> altAndRefPair.getLeft())
                     .collect(Collectors.toSet());
 
             final List<Allele> somaticAltAlleles = mergedVC.getAlternateAlleles().stream()
@@ -188,13 +190,17 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
     // check whether two alleles coming from different variant contexts and with possibly different reference alleles
     // could in fact be the same.  The condition is that one is a prefix of the other
-    private boolean allelesAreConsistent(final Allele allele1, final Allele allele2) {
-        if (allele1.isSymbolic() || allele2.isSymbolic()) {
+    private boolean allelesAreConsistent(final Pair<Allele,Allele> altAndRef1, final Pair<Allele,Allele> altAndRef2) {
+        final Allele alt1 = altAndRef1.getLeft();
+        final Allele alt2 = altAndRef2.getLeft();
+        if (alt1.isSymbolic() || alt2.isSymbolic()) {
             return false;
         } else {
-            return allele1.length() < allele2.length() ?
-                    allele1.basesMatch(Arrays.copyOf(allele2.getBases(), allele1.length())) :
-                    allele2.basesMatch(Arrays.copyOf(allele1.getBases(), allele2.length()));
+            final int sizeDiff1 = alt1.length() - altAndRef1.getRight().length();
+            final int sizeDiff2 = alt2.length() - altAndRef2.getRight().length();
+            return (sizeDiff1 == sizeDiff2) && (alt1.length() < alt2.length() ?
+                    alt1.basesMatch(Arrays.copyOf(alt2.getBases(), alt1.length())) :
+                    alt2.basesMatch(Arrays.copyOf(alt1.getBases(), alt2.length())));
         }
     }
 
