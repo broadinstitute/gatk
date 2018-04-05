@@ -69,6 +69,12 @@ before_install:
     fi;
     $GCLOUD_HOME/gcloud config set project broad-dsde-dev;
     $GCLOUD_HOME/gcloud auth activate-service-account --key-file servicekey.json;
+    gcloud auth list;
+    ls -l servicekey.json;
+    fgrep project_id servicekey.json;
+    fgrep client_id servicekey.json;
+    gsutil version -l;
+    gcloud info;
     openssl aes-256-cbc -K $encrypted_4823d58debd3_key -iv $encrypted_4823d58debd3_iv -in resources_for_CI/github_deploy_key.enc -out ~/.ssh/id_rsa -d;
     chmod 600 ~/.ssh/id_rsa;
     echo "Testing github authentication:";
@@ -147,6 +153,10 @@ script:
     sudo docker run -v $(pwd)/src/test/resources:/testdata -v $(pwd)/build/reports/:/gatk/build/reports/ --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh;
   else
     ./gatk PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
+    gcloud auth list;
+    ls -l servicekey.json;
+    gsutil version -l;
+    gcloud info;
     travis_wait 50 ./gradlew jacocoTestReport;
   fi
 
