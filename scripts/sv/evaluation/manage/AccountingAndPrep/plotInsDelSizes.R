@@ -2,7 +2,6 @@
 # and deletion calls
 
 #########################################################################
-source("../../general/AccountingAndPrep/func_collectSizes.R")
 
 args<-commandArgs(TRUE)
 wd <- args[1]
@@ -11,6 +10,10 @@ setwd(wd)
 print(paste("working in directory", wd))
 
 mantaAndPacBioDir <- args[2]
+
+scriptDir <- args[3]
+helperPath <- paste0(scriptDir, "AccountingAndPrep/func_collectSizes.R")
+source( helperPath )
 
 sizesCollection <- collectSizes(paste0(mantaAndPacBioDir, "/mantaExactCleanDeletionSizes.txt"), 
                                 paste0(mantaAndPacBioDir, "/mantaExactCleanInsertionSizes.txt"),

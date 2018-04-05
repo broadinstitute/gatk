@@ -47,6 +47,11 @@ else
         exit 1
 fi
 
+command -v bedtools >/dev/null 2>&1 || { echo >&2 "I require bedtools for interval intersection analysis but it's not installed. Aborting."; exit 1; }
+command -v R >/dev/null 2>&1 || { echo >&2 "I require R but it's not installed. Aborting."; exit 1; }
+temp=$(Rscript -e 'packages <-c("stringr", "plyr");  uninstalled <- packages[ which(packages %in% installed.packages()[, "Package"]==F) ]; uninstalled')if [[ $ALL_RPACK_INSTALLED == "FALSE" ]]; then
+if [[ $temp != "character(0)" ]]; then echo "Required R package(s) $temp not installed; Aborting."; exit 1; fi
+
 ########## get primary contigs pattern given requested assembly version (must be 19 or 38)
 function get_primary_contigs_pattern() {
     PRIMARY_CONTIGS_PATTERN=""

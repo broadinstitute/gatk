@@ -35,8 +35,8 @@ echo " Delegating to R for producing plots"
 echo 
 
 CURR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-Rscript "$CURR_DIR/plotInsDelSizes.R" "$ANALYSIS_DIR_MASTER" "$MANTA_AND_PACBIO_PREANALYSIS_DIR"
-Rscript "$CURR_DIR/plotInsDelSizes.R" "$ANALYSIS_DIR_FEATURE" "$MANTA_AND_PACBIO_PREANALYSIS_DIR"
+Rscript "$CURR_DIR/plotInsDelSizes.R" "$ANALYSIS_DIR_MASTER" "$MANTA_AND_PACBIO_PREANALYSIS_DIR" "$SCRIPT_DIR"
+Rscript "$CURR_DIR/plotInsDelSizes.R" "$ANALYSIS_DIR_FEATURE" "$MANTA_AND_PACBIO_PREANALYSIS_DIR" "$SCRIPT_DIR"
 
 echo 
 echo " Done producing plots"
