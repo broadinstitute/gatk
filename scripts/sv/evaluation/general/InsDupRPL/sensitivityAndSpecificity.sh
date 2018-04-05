@@ -10,7 +10,7 @@ if [[ "$#" -lt 9 ]]; then
     echo "[4] absolute path to Manta duplication VCF"
     echo "[5] absolute path to the directory where analysis outputs are to be written to"
     echo "[6] absolute path to GATK active region interval bed file"
-    echo "[7] validataion call set tool name (\"Manta\"|\"Pacbio\")"
+    echo "[7] validataion call set tool name (\"Manta\"|\"PacBio\")"
     echo "[8] absolute path to file listing uniq GATK IDs with overlapping Manta calls, and"
     echo "[9] absolute path to file listing uniq Manta IDs with overlapping GATK calls, or"
     echo "[8] absolute path to file listing uniq PacBio IDs with overlapping GATK calls, and"
@@ -86,20 +86,20 @@ if [[ $7 == "Manta" ]]; then
     echo
 
     rm -f temp*
-elif [[ $7 == "Pacbio" ]]; then
+elif [[ $7 == "PacBio" ]]; then
     
     ## validated Manta calls not caught by GATK
     echo "Number of Manta calls validated by PacBio but not caught in the GATK call set:"
     comm -13 "$8" "$9" |
         awk -F ':' 'BEGIN{OFS="	"} {print $1, $2-1, $2}' > \
-        "$OUTPUT_DIR""mantaRecordsValidatedByPacbioUncaughtByGATK.bed"
-    wc -l "$OUTPUT_DIR""mantaRecordsValidatedByPacbioUncaughtByGATK.bed" | awk '{print $1}'
+        "$OUTPUT_DIR""mantaRecordsValidatedByPacBioUncaughtByGATK.bed"
+    wc -l "$OUTPUT_DIR""mantaRecordsValidatedByPacBioUncaughtByGATK.bed" | awk '{print $1}'
     echo 
 
     ## active region sensitivity
-    echo "Overlapping the unmatched, Pacbio-validated Manta calls with GATK-SV pipeline local assembly intervals"
+    echo "Overlapping the unmatched, PacBio-validated Manta calls with GATK-SV pipeline local assembly intervals"
     bedtools window \
-        -a "$OUTPUT_DIR""mantaRecordsValidatedByPacbioUncaughtByGATK.bed" \
+        -a "$OUTPUT_DIR""mantaRecordsValidatedByPacBioUncaughtByGATK.bed" \
         -b "$GATK_ACTIVE_REGIONS" \
         -w 50 |
         awk '{print $NF}' | \
@@ -111,8 +111,8 @@ elif [[ $7 == "Pacbio" ]]; then
     ## Manta and GATK calls un-validated by PacBio
     echo "Number of calls shared by GATK and Manta but un-validated by PacBio:"
     comm -23 "${10}" "${11}" > \
-        "$OUTPUT_DIR""recordsSharedByGATKandManta.unvalidatedByPacbio.gatkIDs.txt"
-    wc -l "$OUTPUT_DIR""recordsSharedByGATKandManta.unvalidatedByPacbio.gatkIDs.txt" | awk '{print $1}'
+        "$OUTPUT_DIR""recordsSharedByGATKandManta.unvalidatedByPacBio.gatkIDs.txt"
+    wc -l "$OUTPUT_DIR""recordsSharedByGATKandManta.unvalidatedByPacBio.gatkIDs.txt" | awk '{print $1}'
     echo
 
 else

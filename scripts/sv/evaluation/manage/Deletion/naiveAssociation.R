@@ -36,22 +36,22 @@ names(gatkIntersectManta) <- c("gatkCHR", "gatkPOS", "gatkEND", "gatkAnnot",
                                "mantaCHR", "mantaPOS", "mantaEND", "mantaAnnot", 
                                "ovpLen")
 
-gatkIntersectPacbio <- read.table("Results/cleanDel.gatkVSpacbio.intersection_f08r.txt", 
+gatkIntersectPacBio <- read.table("Results/cleanDel.gatkVSpacbio.intersection_f08r.txt", 
                                   stringsAsFactors = F, header = F, 
                                   na.strings = c(".", "-1", "0"))
-names(gatkIntersectPacbio) <- c("gatkCHR", "gatkPOS", "gatkEND", "gatkAnnot", 
+names(gatkIntersectPacBio) <- c("gatkCHR", "gatkPOS", "gatkEND", "gatkAnnot", 
                                 "pbCHR", "pbPOS", "pbEND", "pbAnnot", 
                                 "ovpLen")
 
-mantaIntersectPacbio <- read.table("Results/cleanDel.mantaVSpacbio.intersection_f08r.txt", 
+mantaIntersectPacBio <- read.table("Results/cleanDel.mantaVSpacbio.intersection_f08r.txt", 
                                    stringsAsFactors = F, header = F, 
                                    na.strings = c(".", "-1", "0"))
-names(mantaIntersectPacbio) <- c("mantaCHR", "mantaPOS", "mantaEND", "mantaAnnot",
+names(mantaIntersectPacBio) <- c("mantaCHR", "mantaPOS", "mantaEND", "mantaAnnot",
                                  "pbCHR", "pbPOS", "pbEND", "pbAnnot", 
                                  "ovpLen")
 ################################################################################
 # extract "relevant" pacbio annotations on the overlaps
-extractPacbioInfoOnOverlaps <- function(x) {
+extractPacBioInfoOnOverlaps <- function(x) {
     info <- strsplit(x$pbAnnot, ";")[[1]]
     ls <- list()
     ls[["pacbioQual"]] <- info[2]
@@ -59,13 +59,13 @@ extractPacbioInfoOnOverlaps <- function(x) {
     unlist(ls)
 }
 
-temp <- adply(gatkIntersectPacbio, 1, extractPacbioInfoOnOverlaps)
-gatkIntersectPacbio <- temp
+temp <- adply(gatkIntersectPacBio, 1, extractPacBioInfoOnOverlaps)
+gatkIntersectPacBio <- temp
 
-temp <- adply(mantaIntersectPacbio, 1, extractPacbioInfoOnOverlaps)
-mantaIntersectPacbio <- temp
+temp <- adply(mantaIntersectPacBio, 1, extractPacBioInfoOnOverlaps)
+mantaIntersectPacBio <- temp
 
-rm(temp, extractPacbioInfoOnOverlaps)
+rm(temp, extractPacBioInfoOnOverlaps)
 ################################################################################
 # stratify PacBio records by length
 classifyLen <- function(l) {
@@ -77,7 +77,7 @@ classifyLen <- function(l) {
         3;
     }
 }
-factoredPacbioLength <- factor(unlist(lapply(background_pacbio$INFO, 
+factoredPacBioLength <- factor(unlist(lapply(background_pacbio$INFO, 
                                        function(x) classifyLen(as.numeric(sub("SVLEN=", "", strsplit(x, ";")[[1]][3]))))))
 rm(classifyLen)
 ################################################################################
@@ -90,11 +90,11 @@ par(mfrow=c(2,2))
 par(mar=c(5.1,3.0,3.1,0.5))
 # par(mar=c(5.1,4.1,4.1,2.1))
 # (1,1)
-temp <- factor(gatkIntersectPacbio$pacbioREPEAT)
+temp <- factor(gatkIntersectPacBio$pacbioREPEAT)
 barplot(table(temp), ylim=c(0, 1200),
         las=2, col = rgb(0,0,1,0.5), cex.names = 0.7, 
         main = "\"Validated\" short-read del, by repeat types")
-temp <- factor(mantaIntersectPacbio$pacbioREPEAT)
+temp <- factor(mantaIntersectPacBio$pacbioREPEAT)
 barplot(table(temp), ylim=c(0, 1200),
         las=2, col = rgb(1,0,0,0.5), cex.names = 0.7, 
         main = "", add = T)
@@ -161,14 +161,14 @@ dev.off()
 ################################################################################
 # # Look at the non-linear correlation between the Manata and PacBio overlapping calls.
 # cat("", file = T)
-# cat("Next look at the Spearman correlation between the", nrow(mantaIntersectPacbio), "overlapping Manta and PacBio calls", sep=" ")
+# cat("Next look at the Spearman correlation between the", nrow(mantaIntersectPacBio), "overlapping Manta and PacBio calls", sep=" ")
 # extractQUALs <- function(x) {
 #     ls <- list()
 #     ls[["mantaQual"]] <- strsplit(x$mantaAnnot, ";")[[1]][2]
 #     ls[["pbQual"]] <- strsplit(x$pbAnnot, ";")[[1]][2]
 #     unlist(ls)
 # }
-# temp <- adply(mantaIntersectPacbio, 1, extractQUALs)
+# temp <- adply(mantaIntersectPacBio, 1, extractQUALs)
 # library(Hmisc)
 # rcorr(cbind(as.integer(temp$pbQual), as.integer(temp$mantaQual)), type = "spearman")
 # rm(temp, extractQUALs)
@@ -179,11 +179,11 @@ dev.off()
 #                   col=rgb(0,1,0,0.5), 
 #                   main="Overlapping and PacBio deletions", 
 #                   xlab="QUAL", ylab="counts")
-# hist(as.integer(gatkIntersectPacbio$pacbioQual),
+# hist(as.integer(gatkIntersectPacBio$pacbioQual),
 #      breaks = seq(from=0, to=100, by=10),
 #      col=rgb(0,0,1,0.5),
 #      add=T)
-# hist(as.integer(mantaIntersectPacbio$pacbioQual),
+# hist(as.integer(mantaIntersectPacBio$pacbioQual),
 #      breaks = seq(from=0, to=100, by=10),
 #      col=rgb(1,0,0,0.5), 
 #      add=T)
@@ -193,16 +193,16 @@ dev.off()
 #        cex=0.7)
 # 
 # # (1,2)
-# hist(background_pacbio$QUAL[factoredPacbioLength==1], 
+# hist(background_pacbio$QUAL[factoredPacBioLength==1], 
 #      col=rgb(1,0,0,0.5), 
 #      breaks = seq(from=0, to=100, by=10),
 #      main = "PacBio deletions, stratified by length", 
 #      xlab = "QUAL", ylab = "counts")
-# hist(background_pacbio$QUAL[factoredPacbioLength==2], 
+# hist(background_pacbio$QUAL[factoredPacBioLength==2], 
 #      breaks = seq(from=0, to=100, by=10),
 #      col=rgb(0,1,0,0.5),
 #      add = T)
-# hist(background_pacbio$QUAL[factoredPacbioLength==3],
+# hist(background_pacbio$QUAL[factoredPacBioLength==3],
 #      breaks = seq(from=0, to=100, by=10),
 #      col=rgb(0,0,1,0.5),
 #      add = T)

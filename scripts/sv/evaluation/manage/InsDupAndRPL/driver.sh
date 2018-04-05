@@ -74,11 +74,11 @@ bash "$SCRIPT_DIR""againstPacBio.sh" \
 # 	 "$DIR"Manta_PASS_PRECISE_nonBND_primaryContigs_tandup_below10000.vcf \
 # 	 "$DIR" \
 # 	 "$INTERVAL_BED_FILE" \
-# 	 "Pacbio" \
-# 	 "$DIR"Results/combined.GATKvsPacbio.uniqPacbioIDs.txt \
-# 	 "$DIR"Results/combined.MantavsPacbio.uniqPacbioIDs.txt \
+# 	 "PacBio" \
+# 	 "$DIR"Results/combined.GATKvsPacBio.uniqPacBioIDs.txt \
+# 	 "$DIR"Results/combined.MantavsPacBio.uniqPacBioIDs.txt \
 # 	 "$DIR"Results/combined.GATKvsManta.uniqGATKids.txt \
-# 	 "$DIR"Results/combined.GATKvsPacbio.uniqGATKids.txt
+# 	 "$DIR"Results/combined.GATKvsPacBio.uniqGATKids.txt
 
 # Rscript concordanceOnOneHits.R
 

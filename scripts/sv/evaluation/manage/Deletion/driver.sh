@@ -42,9 +42,7 @@ bash "$SCRIPT_DIR/parseGATK.sh" \
 ##### feature
 bash "$SCRIPT_DIR/parseGATK.sh" \
      "$ANALYSIS_DIR_FEATURE"GATK_primaryContigs_cleanDel.txt \
-     "$ANALYSIS_DIR_FEATURE" \
-     60 \
-     50
+     "$ANALYSIS_DIR_FEATURE"
 
 echo "#################################################"
 echo "Now we run simple intersection analsis: gatk master callset"

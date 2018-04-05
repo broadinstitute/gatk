@@ -69,7 +69,7 @@ expr "$NUM_GATK" - "$N"
 echo
 
 echo "######################"
-echo "GATK vs Pacbio"
+echo "GATK vs PacBio"
 
 bedtools intersect \
     -a "$GATKBED" \

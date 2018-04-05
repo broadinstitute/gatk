@@ -78,7 +78,7 @@ bash "$SCRIPT_DIR/parseManta.sh" \
 bash "$SCRIPT_DIR/checkPacBioVCF.sh" \
      "$MANTA_AND_PACBIO_PREANALYSIS_DIR/PacBio_primaryContigs_cleanDel_0.txt" \
      "$MANTA_AND_PACBIO_PREANALYSIS_DIR"
-bash "$SCRIPT_DIR/parsePacbio.sh" \
+bash "$SCRIPT_DIR/parsePacBio.sh" \
      "$MANTA_AND_PACBIO_PREANALYSIS_DIR/PacBio_primaryContigs_cleanDel_0.txt" \
      "$MANTA_AND_PACBIO_PREANALYSIS_DIR" \
      0
@@ -86,7 +86,7 @@ bash "$SCRIPT_DIR/parsePacbio.sh" \
 bash "$SCRIPT_DIR/checkPacBioVCF.sh" \
      "$MANTA_AND_PACBIO_PREANALYSIS_DIR/PacBio_primaryContigs_cleanDel_1.txt" \
      "$MANTA_AND_PACBIO_PREANALYSIS_DIR"
-bash "$SCRIPT_DIR/parsePacbio.sh" \
+bash "$SCRIPT_DIR/parsePacBio.sh" \
      "$MANTA_AND_PACBIO_PREANALYSIS_DIR/PacBio_primaryContigs_cleanDel_1.txt" \
      "$MANTA_AND_PACBIO_PREANALYSIS_DIR" \
      1
@@ -94,7 +94,7 @@ bash "$SCRIPT_DIR/parsePacbio.sh" \
 bash "$SCRIPT_DIR/checkPacBioVCF.sh" \
      "$MANTA_AND_PACBIO_PREANALYSIS_DIR/PacBio_primaryContigs_cleanDel_13.txt" \
      "$MANTA_AND_PACBIO_PREANALYSIS_DIR"
-bash "$SCRIPT_DIR/parsePacbio.sh" \
+bash "$SCRIPT_DIR/parsePacBio.sh" \
      "$MANTA_AND_PACBIO_PREANALYSIS_DIR/PacBio_primaryContigs_cleanDel_13.txt" \
      "$MANTA_AND_PACBIO_PREANALYSIS_DIR" \
      13

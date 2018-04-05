@@ -23,15 +23,16 @@ if [[ "$#" -lt 9 ]]; then
 fi
 
 NAME=$1
+caseID=$(echo "$NAME"|tr '[:upper:]' '[:lower:]')
 
-TEST_INS_VCF=$2
-TEST_DUP_VCF=$3
-TEST_RPL_VCF=$4
+TEST_INS_VAR=$2
+TEST_DUP_VAR=$3
+TEST_RPL_VAR=$4
 
-PABIO_CHM_1_INS_VCF=$5
-PABIO_CHM_13_INS_VCF=$6
-PABIO_CHM_1_DEL_VCF=$7
-PABIO_CHM_13_DEL_VCF=$8
+PABIO_CHM_1_INS_VAR=$5
+PABIO_CHM_13_INS_VAR=$6
+PABIO_CHM_1_DEL_VAR=$7
+PABIO_CHM_13_DEL_VAR=$8
 
 OUTPUT_DIR=$9
 if [[ ! $9 =~ .+/$ ]]; then
@@ -39,28 +40,35 @@ if [[ ! $9 =~ .+/$ ]]; then
 fi
 
 IDNAMES=$1"IDS"
-COMPARISON=$1"vsPacbio"
+COMPARISON=$1"vsPacBio"
 echo "#################################################"
 echo "$NAME VS PacBio"
 echo
 
-ins_against_ins "$TEST_INS_VCF" "$PABIO_CHM_1_INS_VCF" "CONTIG_DEPTH" "$COMPARISON" 1
-dup_against_ins "$TEST_DUP_VCF" "$PABIO_CHM_1_INS_VCF" "CONTIG_DEPTH" "$COMPARISON" 1
-rpl_against_ins "$TEST_RPL_VCF" "$PABIO_CHM_1_INS_VCF" "CONTIG_DEPTH" "$COMPARISON" 1
-rpl_against_del "$TEST_RPL_VCF" "$PABIO_CHM_1_DEL_VCF" "CONTIG_DEPTH" "$COMPARISON" 1
+# run simple intersection analysis which outputs variant id and matching PacBio POS (possible many)
+ins_against_ins "$TEST_INS_VAR" "$PABIO_CHM_1_INS_VAR" "$COMPARISON" 1 "$caseID"
+dup_against_ins "$TEST_DUP_VAR" "$PABIO_CHM_1_INS_VAR" "$COMPARISON" 1 "$caseID"
+rpl_against_ins "$TEST_RPL_VAR" "$PABIO_CHM_1_INS_VAR" "$COMPARISON" 1 "$caseID"
+rpl_against_del "$TEST_RPL_VAR" "$PABIO_CHM_1_DEL_VAR" "$COMPARISON" 1 "$caseID"
 
-ins_against_ins "$TEST_INS_VCF" "$PABIO_CHM_13_INS_VCF" "CONTIG_DEPTH" "$COMPARISON" 13
-dup_against_ins "$TEST_DUP_VCF" "$PABIO_CHM_13_INS_VCF" "CONTIG_DEPTH" "$COMPARISON" 13
-rpl_against_ins "$TEST_RPL_VCF" "$PABIO_CHM_13_INS_VCF" "CONTIG_DEPTH" "$COMPARISON" 13
-rpl_against_del "$TEST_RPL_VCF" "$PABIO_CHM_13_DEL_VCF" "CONTIG_DEPTH" "$COMPARISON" 13
+ins_against_ins "$TEST_INS_VAR" "$PABIO_CHM_13_INS_VAR" "$COMPARISON" 13 "$caseID"
+dup_against_ins "$TEST_DUP_VAR" "$PABIO_CHM_13_INS_VAR" "$COMPARISON" 13 "$caseID"
+rpl_against_ins "$TEST_RPL_VAR" "$PABIO_CHM_13_INS_VAR" "$COMPARISON" 13 "$caseID"
+rpl_against_del "$TEST_RPL_VAR" "$PABIO_CHM_13_DEL_VAR" "$COMPARISON" 13 "$caseID"
 
-
-grep -v '^#' "$TEST_INS_VCF" | awk '{print $3}' > temp."$IDNAMES".ins.txt
-grep -v '^#' "$TEST_DUP_VCF" | awk '{print $3}' > temp."$IDNAMES".dup.txt
-grep -v '^#' "$TEST_RPL_VCF" | awk '{print $3}' > temp."$IDNAMES".rpl.txt
-cat temp."$IDNAMES".ins.txt temp."$IDNAMES".dup.txt temp."$IDNAMES".rpl.txt | sort > temp."$IDNAMES".txt
+# get IDS of test variant
+awk '{print $3}' "$TEST_INS_VAR" > temp."$IDNAMES".ins.txt
+awk '{print $3}' "$TEST_DUP_VAR" > temp."$IDNAMES".dup.txt
+awk '{print $3}' "$TEST_RPL_VAR" > temp."$IDNAMES".rpl.txt
+cat temp."$IDNAMES".ins.txt \
+    temp."$IDNAMES".dup.txt \
+    temp."$IDNAMES".rpl.txt | \
+    sort \
+    > temp.allTestVars.txt
 echo "Total number of variants from $NAME to be tested:"
-wc -l temp."$IDNAMES".txt | awk '{print $1}'
+wc -l temp.allTestVars.txt | awk '{print $1}'
+
+# get total overlaps from either cell lines
 echo "Total overlaps on CHM1"
 cat "$OUTPUT_DIR""insIns.""$COMPARISON""_1.window_w50.IDs.txt" \
     "$OUTPUT_DIR""dupIns.""$COMPARISON""_1.window_l0r50.IDs.txt" \
@@ -77,20 +85,29 @@ cat "$OUTPUT_DIR""insIns.""$COMPARISON""_13.window_w50.IDs.txt" \
     > temp_13.txt
 wc -l temp_13.txt | awk '{print $1}'
 
-
-caseID=$(echo "$NAME"|tr '[:upper:]' '[:lower:]')
-caseID+="IDs"
 cat temp_1.txt temp_13.txt > temp.txt
 
-echo "among these, number of uniq $NAME IDs"
-awk '{print $1}' temp.txt | sort | uniq > "$OUTPUT_DIR$caseID""WithMatchingPacBio.txt"
-wc -l "$OUTPUT_DIR$caseID""WithMatchingPacBio.txt" | awk '{print $1}'
-comm -23 temp."$IDNAMES".txt "$OUTPUT_DIR$caseID""WithMatchingPacBio.txt" \
+# count number of uniq variants from test set and from PacBio calls
+caseID+="IDs"
+awk '{print $1}' temp.txt | \
+    sort | \
+    uniq \
+    > "$OUTPUT_DIR$caseID""WithMatchingPacBio.txt"
+comm -23 \
+    temp.allTestVars.txt \
+    "$OUTPUT_DIR$caseID""WithMatchingPacBio.txt" \
     > "$OUTPUT_DIR$caseID""NoMatchingPacBio.txt"
+echo "  among these, number of uniq $NAME IDs"
+wc -l "$OUTPUT_DIR$caseID""WithMatchingPacBio.txt" | awk '{print $1}'
+echo "  and the number of variants without matching PacBio calls"
+wc -l "$OUTPUT_DIR$caseID""NoMatchingPacBio.txt" | awk '{print $1}'
 
-echo "and number of uniq PacBio IDs"
-awk '{print $2}' temp.txt | sort | uniq > "$OUTPUT_DIR""combined.$COMPARISON.uniqPacbioIDs.txt"
-wc -l "$OUTPUT_DIR""combined.$COMPARISON.uniqPacbioIDs.txt" | awk '{print $1}'
+echo "  and the number of uniq PacBio call locations"
+awk '{print $2}' temp.txt | \
+    sort | \
+    uniq \
+    > "$OUTPUT_DIR""combined.$COMPARISON.uniqPacBioIDs.txt"
+wc -l "$OUTPUT_DIR""combined.$COMPARISON.uniqPacBioIDs.txt" | awk '{print $1}'
 echo
 
 rm -f temp*

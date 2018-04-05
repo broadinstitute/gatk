@@ -116,8 +116,8 @@ else
 	awk '{print $4}' "$OUTPUT_DIR""cleanDel.gatkVSmanta.intersection_f08r.txt" > temp.txt
 	grep -vf temp.txt "$OUTPUT_DIR""cleanDel.gatkVSpacbio.intersection_f08r.txt" | \
 	    awk '{print $4}' | awk -F ';' '{print $1}' > \
-	    "$OUTPUT_DIR""variants.discoveredByGATKandMANTA.missingInPacbio.gatkID.txt"
-	wc -l "$OUTPUT_DIR""variants.discoveredByGATKandMANTA.missingInPacbio.gatkID.txt"
+	    "$OUTPUT_DIR""variants.discoveredByGATKandMANTA.missingInPacBio.gatkID.txt"
+	wc -l "$OUTPUT_DIR""variants.discoveredByGATKandMANTA.missingInPacBio.gatkID.txt"
 fi
 
 rm -f temp*

@@ -23,20 +23,24 @@ GATK_SCRIPT="$SCRIPT_DIR""AccountingAndPrep/checkSplitAndCollectSizes_gatk.sh"
 bash "$GATK_SCRIPT" \
      "$GATK_VCF_MASTER"  \
      "$ANALYSIS_DIR_MASTER" \
+     "$GATK_CPX_DERIVED_ONE_SEG_VCF_MASTER" \
+     "$GATK_CPX_DERIVED_MULTI_SEG_VCF_MASTER" \
      "$REF_VER"
 
 bash "$GATK_SCRIPT" \
      "$GATK_VCF_FEATURE"  \
      "$ANALYSIS_DIR_FEATURE" \
+     "$GATK_CPX_DERIVED_ONE_SEG_VCF_FEATURE" \
+     "$GATK_CPX_DERIVED_MULTI_SEG_VCF_FEATURE" \
      "$REF_VER"
 
 echo "#################################################"
 echo " Delegating to R for producing plots"
 echo 
 
-CURR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-Rscript "$CURR_DIR/plotInsDelSizes.R" "$ANALYSIS_DIR_MASTER" "$MANTA_AND_PACBIO_PREANALYSIS_DIR" "$SCRIPT_DIR"
-Rscript "$CURR_DIR/plotInsDelSizes.R" "$ANALYSIS_DIR_FEATURE" "$MANTA_AND_PACBIO_PREANALYSIS_DIR" "$SCRIPT_DIR"
+#CURR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+#Rscript "$CURR_DIR/plotInsDelSizes.R" "$ANALYSIS_DIR_MASTER" "$MANTA_AND_PACBIO_PREANALYSIS_DIR" "$SCRIPT_DIR"
+#Rscript "$CURR_DIR/plotInsDelSizes.R" "$ANALYSIS_DIR_FEATURE" "$MANTA_AND_PACBIO_PREANALYSIS_DIR" "$SCRIPT_DIR"
 
 echo 
 echo " Done producing plots"

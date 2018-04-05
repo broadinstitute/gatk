@@ -14,49 +14,49 @@ names(background_pacbio) <- c("CHROM", "POS", "ID", "REF", "ALT",
                               "QUAL", "FILTER", "INFO")
 ################################################################################
 # intersections
-gatkIntersectPacbio_insIns <- read.table("Results/insIns.GATKvsPacbio.window_w50.txt", 
+gatkIntersectPacBio_insIns <- read.table("Results/insIns.GATKvsPacBio.window_w50.txt", 
                                          stringsAsFactors = F, header = F, 
                                          na.strings = c(".", "-1", "0"))
-gatkIntersectPacbio_dupIns <- read.table("Results/dupIns.GATKvsPacbio.window_l0r50.txt", 
+gatkIntersectPacBio_dupIns <- read.table("Results/dupIns.GATKvsPacBio.window_l0r50.txt", 
                                          stringsAsFactors = F, header = F, 
                                          na.strings = c(".", "-1", "0"))
-names(gatkIntersectPacbio_insIns) <- c("gatkCHR", "gatkPOS", "gatkID", "gatkREF", "gatkALT", "gatkQUAL", 
+names(gatkIntersectPacBio_insIns) <- c("gatkCHR", "gatkPOS", "gatkID", "gatkREF", "gatkALT", "gatkQUAL", 
                                        "gatkFILTER", "gatkINFO", 
                                        "pbCHR", "pbPOS", "pbID", "pbREF", "pbALT", "pbQUAL", 
                                        "pbFILTER", "pbINFO")
-names(gatkIntersectPacbio_dupIns) <- names(gatkIntersectPacbio_insIns)
-gatkIntersectPacbio <- rbind(gatkIntersectPacbio_insIns, gatkIntersectPacbio_dupIns)
-rm(gatkIntersectPacbio_insIns, gatkIntersectPacbio_dupIns)
+names(gatkIntersectPacBio_dupIns) <- names(gatkIntersectPacBio_insIns)
+gatkIntersectPacBio <- rbind(gatkIntersectPacBio_insIns, gatkIntersectPacBio_dupIns)
+rm(gatkIntersectPacBio_insIns, gatkIntersectPacBio_dupIns)
 
-mantaIntersectPacbio_insIns <- read.table("Results/insIns.MantavsPacbio.window_w50.txt", 
+mantaIntersectPacBio_insIns <- read.table("Results/insIns.MantavsPacBio.window_w50.txt", 
                                          stringsAsFactors = F, header = F, 
                                          na.strings = c(".", "-1", "0"))
-mantaIntersectPacbio_dupIns <- read.table("Results/dupIns.MantavsPacbio.window_l0r50.txt", 
+mantaIntersectPacBio_dupIns <- read.table("Results/dupIns.MantavsPacBio.window_l0r50.txt", 
                                          stringsAsFactors = F, header = F, 
                                          na.strings = c(".", "-1", "0"))
-names(mantaIntersectPacbio_insIns) <- c("mantaCHR", "mantaPOS", "mantaID", "mantaREF", "mantaALT", "mantaQUAL", 
+names(mantaIntersectPacBio_insIns) <- c("mantaCHR", "mantaPOS", "mantaID", "mantaREF", "mantaALT", "mantaQUAL", 
                                        "mantaFILTER", "mantaINFO", "mantaFORMAT", "mantaSAMPLE",
                                        "pbCHR", "pbPOS", "pbID", "pbREF", "pbALT", "pbQUAL", 
                                        "pbFILTER", "pbINFO")
-names(mantaIntersectPacbio_dupIns) <- names(mantaIntersectPacbio_insIns)
-mantaIntersectPacbio <- rbind(mantaIntersectPacbio_insIns, mantaIntersectPacbio_dupIns)
-rm(mantaIntersectPacbio_insIns,mantaIntersectPacbio_dupIns)
+names(mantaIntersectPacBio_dupIns) <- names(mantaIntersectPacBio_insIns)
+mantaIntersectPacBio <- rbind(mantaIntersectPacBio_insIns, mantaIntersectPacBio_dupIns)
+rm(mantaIntersectPacBio_insIns,mantaIntersectPacBio_dupIns)
 ################################################################################
 # extract "relevant" pacbio annotations on the overlaps
-extractPacbioInfoOnOverlaps <- function(x) {
+extractPacBioInfoOnOverlaps <- function(x) {
     ls <- list()
     str_extract(x$pbINFO, "REPEAT_TYPE=[A-Za-z0-9]+(_[A-Za-z0-9]+)?")
     ls[["pacbioREPEAT"]] <- sub("REPEAT_TYPE=", "", str_extract(x$pbINFO, "REPEAT_TYPE=[A-Za-z0-9]+(_[A-Za-z0-9]+)?"))
     unlist(ls)
 }
 
-temp <- adply(gatkIntersectPacbio, 1, extractPacbioInfoOnOverlaps)
-gatkIntersectPacbio <- temp
+temp <- adply(gatkIntersectPacBio, 1, extractPacBioInfoOnOverlaps)
+gatkIntersectPacBio <- temp
 
-temp <- adply(mantaIntersectPacbio, 1, extractPacbioInfoOnOverlaps)
-mantaIntersectPacbio <- temp
+temp <- adply(mantaIntersectPacBio, 1, extractPacBioInfoOnOverlaps)
+mantaIntersectPacBio <- temp
 
-rm(temp, extractPacbioInfoOnOverlaps)
+rm(temp, extractPacBioInfoOnOverlaps)
 ################################################################################
 # association with PacBio repeat type
 pdf("Results/associationWithPacBioQualAndRepeatTypes.pdf")
@@ -70,7 +70,7 @@ pacbioRepeatTypes <- factor(apply(background_pacbio, 1,
 # and PacBio background records
 par(mar=c(5.1,3.0,3.1,0.5))
 # (1,1)
-temp <- table(factor(gatkIntersectPacbio$pacbioREPEAT))
+temp <- table(factor(gatkIntersectPacBio$pacbioREPEAT))
 missingRepeats <- setdiff(names(table(pacbioRepeatTypes)), names(temp))
 height <- as.vector(temp)
 names(height) <- names(temp)
@@ -82,7 +82,7 @@ barplot(height, ylim=c(0, 1200), names.arg = names(height),
         las=2, col = rgb(0,0,1,0.5), cex.names = 0.7, 
         main = "\"Validated\" short-read ins, by repeat types")
 
-temp <- table(factor(mantaIntersectPacbio$pacbioREPEAT))
+temp <- table(factor(mantaIntersectPacBio$pacbioREPEAT))
 missingRepeats <- setdiff(names(table(pacbioRepeatTypes)), names(temp))
 height <- as.vector(temp)
 names(height) <- names(temp)

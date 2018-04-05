@@ -2,11 +2,13 @@
 
 set -eu
 
-if [[ "$#" -ne 3 ]]; then
+if [[ "$#" -ne 5 ]]; then
 	echo "Please provide:"
 	echo "[1] absolute path to GATK VCF"
 	echo "[2] absolute path to the directory where analysis outputs are to be written to"
-	echo "[3] reference version (\"19\"|\"38\")"
+    echo "[3] absolute path to GATK VCF containing simple variants re-interpreted from 1-seg CPX calls"
+    echo "[4] absolute path to GATK VCF containing simple variants re-interpreted from multi-seg CPX calls"
+	echo "[5] reference version (\"19\"|\"38\")"
 	exit 1
 fi
 
@@ -26,10 +28,32 @@ fi
 
 mkdir -p "$OUTPUT_DIR"
 
+
+GATK_one_seg_VCF=""
+if [[ $3 == *.vcf.gz ]]; then
+    COMPRESSED=$(basename "$3")
+    pattern=".gz"
+    GATK_one_seg_VCF=${COMPRESSED//$pattern/}
+    bgzip -c -d "$3" > "$GATK_one_seg_VCF"
+elif [[ $3 == *.vcf  ]]; then
+    GATK_one_seg_VCF=$3
+fi
+
+GATK_multi_seg_VCF=""
+if [[ $4 == *.vcf.gz ]]; then
+    COMPRESSED=$(basename "$4")
+    pattern=".gz"
+    GATK_multi_seg_VCF=${COMPRESSED//$pattern/}
+    bgzip -c -d "$4" > "$GATK_multi_seg_VCF"
+elif [[ $4 == *.vcf  ]]; then
+    GATK_multi_seg_VCF=$4
+fi
+
+
 PRIMARY_CONTIGS_PATTERN=""
-if [[ $3 == "19" ]]; then
+if [[ $5 == "19" ]]; then
 	PRIMARY_CONTIGS_PATTERN="^([0-9]{1,2}|X|Y)	"
-elif [[ $3 == "38" ]]; then
+elif [[ $5 == "38" ]]; then
 	PRIMARY_CONTIGS_PATTERN="^chr([0-9]{1,2}|X|Y)	"
 else
 	echo "reference version must be either 19 or 38"
@@ -91,13 +115,15 @@ echo " they differ, very slightly, in their INSSEQ and/or DUPLICATED_SEQUENCE an
 
 awk '{print $3}' "$GATK_PRIME_VAR_NO_WARN" | uniq -d > temp.duplicatedGATKIDs.ins.txt
 
-grep -vf temp.duplicatedGATKIDs.ins.txt "$GATK_PRIME_VAR_NO_WARN" > \
-    "$GATK_PRIME_VAR_NO_WARN_UNIQUE_RECORDS"
+grep -vf temp.duplicatedGATKIDs.ins.txt \
+    "$GATK_PRIME_VAR_NO_WARN" \
+    > "$GATK_PRIME_VAR_NO_WARN_UNIQUE_RECORDS"
 echo "Number of variants in" "$GATK_PRIME_VAR_NO_WARN_UNIQUE_RECORDS"
 wc -l "$GATK_PRIME_VAR_NO_WARN_UNIQUE_RECORDS" | awk '{print $1}'
 echo
 
-grep -f temp.duplicatedGATKIDs.ins.txt "$GATK_PRIME_VAR_NO_WARN" > \
+parallel_grep 10 temp.duplicatedGATKIDs.ins.txt \
+    "$GATK_PRIME_VAR_NO_WARN" \
     "$GATK_PRIME_VAR_NO_WARN_DUPLICATED_RECORDS"
 echo "Number of variants in" "$GATK_PRIME_VAR_NO_WARN_DUPLICATED_RECORDS"
 wc -l "$GATK_PRIME_VAR_NO_WARN_DUPLICATED_RECORDS" | awk '{print $1}'
@@ -106,6 +132,23 @@ echo
 echo "#################################################"
 echo "Done checking on"
 echo "  $1"
+
+if [[ ! -z "${GATK_one_seg_VCF}" ]] && [[ ! -z "${GATK_multi_seg_VCF}" ]]; then
+
+    echo "Now merging $GATKVCF with $GATK_one_seg_VCF and $GATK_multi_seg_VCF"
+    echo
+
+    grep -v '^#' "$GATK_one_seg_VCF" > temp.oneseg.txt
+    grep -v '^#' "$GATK_multi_seg_VCF" > temp.multiseg.txt
+
+    cp "$GATK_PRIME_VAR_NO_WARN_UNIQUE_RECORDS" temp.major.txt
+    cat temp.major.txt temp.oneseg.txt temp.multiseg.txt | \
+       gsort -V \
+       > temp.merged.txt
+    mv temp.merged.txt "$GATK_PRIME_VAR_NO_WARN_UNIQUE_RECORDS"
+
+    echo "Done merging"
+fi
 echo "#################################################"
 echo
 
@@ -191,8 +234,10 @@ if [[ $NUM != 0 ]]; then
     wc -l tempVar.txt | awk '{print $1}'
     mkdir -p "$OUTPUT_DIR""BND"
     mv tempVar.txt "$OUTPUT_DIR""BND/GATK_primaryContigs_bnd.txt"
-    echo
+else 
+    echo "0"
 fi
+echo 
 
 ########## clean up
 rm -f temp*

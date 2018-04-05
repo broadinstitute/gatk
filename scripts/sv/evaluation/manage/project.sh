@@ -43,8 +43,12 @@ export ANALYSIS_DIR_FEATURE="/Users/shuang/Project/SV/Discovery/Evaluation/Analy
 rm -rf "$ANALYSIS_DIR_MASTER" && mkdir "$ANALYSIS_DIR_MASTER"
 rm -rf "$ANALYSIS_DIR_FEATURE" && mkdir "$ANALYSIS_DIR_FEATURE"
 
-export GATK_CPX_VCF_MASTER=""
-export GATK_CPX_VCF_FEATURE="/Users/shuang/Project/SV/Discovery/GATK/G94794.CHMI_CHMI3_WGS1/expInterpretCpx.vcf.gz"
+# export GATK_CPX_VCF_MASTER=""
+# export GATK_CPX_VCF_FEATURE="/Users/shuang/Project/SV/Discovery/GATK/G94794.CHMI_CHMI3_WGS1/expInterpretCpx.vcf.gz"
+export GATK_CPX_DERIVED_ONE_SEG_VCF_MASTER=""
+export GATK_CPX_DERIVED_MULTI_SEG_VCF_MASTER=""
+export GATK_CPX_DERIVED_ONE_SEG_VCF_FEATURE=""
+export GATK_CPX_DERIVED_MULTI_SEG_VCF_FEATURE=""
 
 ################### conditioanlly run pre-analysis on Manta and PacBio callsets
 RUN_ANALYSIS_ON_MANTA_AND_PACIO=false

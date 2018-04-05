@@ -22,6 +22,7 @@ function review() {
     echo -e '\033[0;35mambiguous\033[0m' && grep -F "$TIG_NAME" "$AMBIGUOUS_SAM"
     echo -e '\033[0;35mincomplete\033[0m' && grep -F "$TIG_NAME" "$INCOMPLETE_SAM"
 }
+export -f review
 
 ########## error and clean up
 on_error() {
@@ -30,6 +31,15 @@ on_error() {
     rm -rf "$directory/temp*"
     exit 1
 }
+export -f on_error
+
+########## check for required programs
+command -v bedtools >/dev/null 2>&1 || { echo >&2 "I require bedtools for interval intersection analysis but it's not installed. Aborting."; exit 1; }
+command -v parallel >/dev/null 2>&1 || { echo >&2 "I require parallel but it's not installed. Aborting."; exit 1; }
+command -v R >/dev/null 2>&1 || { echo >&2 "I require R but it's not installed. Aborting."; exit 1; }
+temp=$(Rscript -e 'packages <-c("stringr", "plyr");  uninstalled <- packages[ which(packages %in% installed.packages()[, "Package"]==F) ]; uninstalled')
+if [[ $temp != "character(0)" ]]; then echo "Required R package(s) $temp not installed; Aborting."; exit 1; fi
+
 
 ########## get the correct "sort" and "uniq" function (GNU version "gsort" and "gnuiq" on darwin systems)
 SORT="sort"
@@ -47,11 +57,6 @@ else
         exit 1
 fi
 
-command -v bedtools >/dev/null 2>&1 || { echo >&2 "I require bedtools for interval intersection analysis but it's not installed. Aborting."; exit 1; }
-command -v R >/dev/null 2>&1 || { echo >&2 "I require R but it's not installed. Aborting."; exit 1; }
-temp=$(Rscript -e 'packages <-c("stringr", "plyr");  uninstalled <- packages[ which(packages %in% installed.packages()[, "Package"]==F) ]; uninstalled')if [[ $ALL_RPACK_INSTALLED == "FALSE" ]]; then
-if [[ $temp != "character(0)" ]]; then echo "Required R package(s) $temp not installed; Aborting."; exit 1; fi
-
 ########## get primary contigs pattern given requested assembly version (must be 19 or 38)
 function get_primary_contigs_pattern() {
     PRIMARY_CONTIGS_PATTERN=""
@@ -64,3 +69,43 @@ function get_primary_contigs_pattern() {
         exit 1
     fi
 }
+export -f get_primary_contigs_pattern
+
+########## parallel grep for taking pattern from files (naive grep -f is too slow)
+function parallel_grep() {
+
+    MAX_MATCH_CNT=$1
+
+    PATTERN_FILE=$2
+    TARGET_FILE=$3
+    if [[ "$#" -eq 3 ]]; then
+        parallel -a "$PATTERN_FILE" "grep -m $MAX_MATCH_CNT -F {} $TARGET_FILE"
+    elif [[ "$#" -ge 4 ]]; then
+        OUTPUT=$4
+        parallel -a "$PATTERN_FILE" "grep -m $MAX_MATCH_CNT -F {} $TARGET_FILE" > "$OUTPUT"
+    fi
+}
+export -f parallel_grep
+
+# function parallel_grep_v() { # this requires target file to be sorted
+
+#     parallel_grep "$1" "$2" temp_parallel_grep.out
+
+#     comm -23 "$2" temp_parallel_grep.out > temp_parallel_grep_v.out 
+#     mv temp_parallel_grep_v.out "$3"
+# }
+
+function cite() {
+    echo "We use a program parallel for fast greping."
+    echo "@book{tange_ole_2018_1146014,
+      author       = {Tange, Ole},
+      title        = {GNU Parallel 2018},
+      publisher    = {Ole Tange},
+      year         = 2018,
+      month        = apr,
+      doi          = {10.5281/zenodo.1146014},
+      url          = {https://doi.org/10.5281/zenodo.1146014}
+    }"
+}
+
+export -f cite
