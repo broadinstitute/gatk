@@ -232,7 +232,7 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
             doc = "Number of eigensamples to use for truncated SVD and to store in the panel of normals.  " +
                     "The number of samples retained after filtering will be used instead if it is smaller than this.",
             fullName = CopyNumberStandardArgument.NUMBER_OF_EIGENSAMPLES_LONG_NAME,
-            minValue = 1,
+            minValue = 0,
             optional = true
     )
     private int numEigensamplesRequested = DEFAULT_NUMBER_OF_EIGENSAMPLES;

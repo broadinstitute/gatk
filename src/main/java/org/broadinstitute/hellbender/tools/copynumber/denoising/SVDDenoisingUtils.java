@@ -123,13 +123,13 @@ public final class SVDDenoisingUtils {
         logger.info("Preprocessing and standardizing sample read counts...");
         final RealMatrix standardizedCopyRatioValues = preprocessAndStandardizeSample(panelOfNormals, readCounts.getCounts());
 
-        logger.info(String.format("Using %d out of %d eigensamples to denoise...", numEigensamples, panelOfNormals.getNumEigensamples()));
-
         final RealMatrix denoisedCopyRatioValues;
-        if (panelOfNormals.getOriginalReadCounts().length == 1) {
-            logger.warn("Only a single sample was used to build the panel of normals, not cannot perform denoising...");
+        if (numEigensamples == 0 || panelOfNormals.getNumEigensamples() == 0) {
+            logger.warn("A zero number of eigensamples was specified or no eigensamples were available to perform denoising; " +
+                    "denoised copy ratios will be identical to the standardized copy ratios...");
             denoisedCopyRatioValues = standardizedCopyRatioValues;
         } else {
+            logger.info(String.format("Using %d out of %d eigensamples to denoise...", numEigensamples, panelOfNormals.getNumEigensamples()));
             logger.info("Subtracting projection onto space spanned by eigensamples...");
             denoisedCopyRatioValues = subtractProjection(standardizedCopyRatioValues, panelOfNormals.getEigensampleVectors(), numEigensamples);
         }
