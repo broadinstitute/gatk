@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -16,10 +17,13 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyX
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.*;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -40,8 +44,33 @@ final public class DataSourceUtils {
     private static final PathMatcher configFileMatcher =
             FileSystems.getDefault().getPathMatcher("glob:**/*.config");
 
+    private static final String README_VERSION_LINE_START    = "Version:";
+    private static final String README_SOURCE_LINE_START     = "Source:";
+    private static final String README_ALT_SOURCE_LINE_START = "Alternate Source:";
+    private static final Pattern VERSION_PATTERN    = Pattern.compile(README_VERSION_LINE_START + "\\s+(\\d+)\\.(\\d+)\\.(\\d\\d\\d\\d)(\\d\\d)(\\d\\d)");
+    private static final Pattern SOURCE_PATTERN     = Pattern.compile(README_SOURCE_LINE_START + "\\s+(ftp.*)");
+    private static final Pattern ALT_SOURCE_PATTERN = Pattern.compile(README_ALT_SOURCE_LINE_START + "\\s+(gs.*)");
+
+    // Track our minimum version number here:
+    @VisibleForTesting
+    static final int MIN_MAJOR_VERSION_NUMBER = 1;
+    @VisibleForTesting
+    static final int MIN_MINOR_VERSION_NUMBER = 2;
+    @VisibleForTesting
+    static final int MIN_YEAR_RELEASED        = 2018;
+    @VisibleForTesting
+    static final int MIN_MONTH_RELEASED       = 3;
+    @VisibleForTesting
+    static final int MIN_DAY_RELEASED         = 29;
+
     //==================================================================================================================
     // Public Static Members:
+
+    /** The minimum version of the data sources required for funcotator to run.  */
+    public static final String CURRENT_MINIMUM_DATA_SOURCE_VERSION         = String.format("v%d.%d.%d%02d%02d", MIN_MAJOR_VERSION_NUMBER, MIN_MINOR_VERSION_NUMBER, MIN_YEAR_RELEASED, MIN_MONTH_RELEASED, MIN_DAY_RELEASED);
+    public static final String README_FILE_NAME                            = "README.txt";
+    public static final String DATA_SOURCES_FTP_PATH                       = "ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/";
+    public static final String DATA_SOURCES_BUCKET_PATH                    = "gs://broad-public-datasets/funcotator/";
 
     public static final String CONFIG_FILE_FIELD_NAME_NAME                 = "name";
     public static final String CONFIG_FILE_FIELD_NAME_VERSION              = "version";
@@ -79,9 +108,18 @@ final public class DataSourceUtils {
         // Go through our directories:
         final Set<String> names = new LinkedHashSet<>();
         for ( final String pathString : dataSourceDirectories ) {
+
+            logger.info("Initializing data sources from directory: " + pathString);
+
             final Path p = IOUtils.getPath(pathString);
             if ( !isValidDirectory(p) ) {
-                logger.warn("WARNING: Given path is not a valid directory: " + p.toUri().toString());
+                throw new UserException("ERROR: Given data source path is not a valid directory: " + p.toUri().toString());
+            }
+
+            // Log information from the datasources directory so we can have a record of what we're using:
+            final boolean isGoodVersionOfDataSources = logDataSourcesInfo(p);
+
+            if ( !isGoodVersionOfDataSources ) {
                 continue;
             }
 
@@ -409,6 +447,157 @@ final public class DataSourceUtils {
         }
 
         return configProperties;
+    }
+
+    /**
+     * Logs the meta data about the data sources from the given {@code dataSourcesPath}.
+     * We assume the data sources path is OK in the case that the version information cannot be read because the
+     * user can create their own data sources directory, which may not contain the metadata we seek.
+     *
+     * NOTE: The README file in a Data Sources directory is assumed to have the following properties:
+     *       - Its name must be {@link #README_FILE_NAME}
+     *       - It must contain a line starting with {@link #README_VERSION_LINE_START} containing an alphanumeric string containing the version number information.
+     *           - This version information takes the form of:
+     *               [MAJOR_VERSION].[MINOR_VERSION].[RELEASE_YEAR][RELEASE_MONTH][RELEASE_DAY]
+     *               e.g.
+     *               1.1.20180204 (version 1.1 released Feb. 2, 2018)
+     *
+     *
+     * @param dataSourcesPath {@link Path} to a Data Sources directory to check.
+     * @return {@code True} if the given {@code dataSourcesPath} is equal to or newer than the minumum version, or if the version is unreadable.  {@code False} otherwise.
+     */
+    private static boolean logDataSourcesInfo(final Path dataSourcesPath) {
+
+        boolean dataSourcesPathIsAcceptable = true;
+
+        final Path readmePath = dataSourcesPath.resolve(IOUtils.getPath(README_FILE_NAME));
+
+        String version = null;
+
+        if ( Files.exists(readmePath) && Files.isRegularFile(readmePath) && Files.isReadable(readmePath) ) {
+
+            try ( final BufferedReader reader = Files.newBufferedReader(readmePath) ) {
+
+                Integer versionMajor   = null;
+                Integer versionMinor   = null;
+                Integer versionYear    = null;
+                Integer versionMonth   = null;
+                Integer versionDay     = null;
+                String source          = null;
+                String alternateSource = null;
+
+                // Get the info from our README file:
+                String line = reader.readLine();
+                while ((line != null) && ((version == null) || (source == null) || (alternateSource == null))) {
+
+                    if (version == null && line.startsWith(README_VERSION_LINE_START)) {
+                        final Matcher m = VERSION_PATTERN.matcher(line);
+                        if ( m.matches() ) {
+                            versionMajor  = Integer.valueOf(m.group(1));
+                            versionMinor  = Integer.valueOf(m.group(2));
+                            versionYear   = Integer.valueOf(m.group(3));
+                            versionMonth  = Integer.valueOf(m.group(4));
+                            versionDay    = Integer.valueOf(m.group(5));
+
+                            version = versionMajor + "." + versionMinor + "." + versionYear + "" + versionMonth + "" + versionDay;
+                        }
+                        else {
+                            logger.warn("README file has improperly formatted version string: " + line);
+                        }
+                    }
+
+                    if (source == null && line.startsWith(README_SOURCE_LINE_START)) {
+                        final Matcher m = SOURCE_PATTERN.matcher(line);
+                        if ( m.matches() ) {
+                            source = m.group(1);
+                        }
+                        else {
+                            logger.warn("README file has improperly formatted source string: " + line);
+                        }
+                    }
+
+                    if (alternateSource == null && line.startsWith(README_ALT_SOURCE_LINE_START)) {
+                        final Matcher m = ALT_SOURCE_PATTERN.matcher(line);
+                        if ( m.matches() ) {
+                            alternateSource = m.group(1);
+                        }
+                        else {
+                            logger.warn("README file has improperly formatted alternate source string: " + line);
+                        }
+                    }
+
+                    line = reader.readLine();
+                }
+
+                // Make sure we have good info:
+                if ( version == null ) {
+                    logger.warn("Unable to read version information from data sources info/readme file: " + readmePath.toUri().toString());
+                }
+                else {
+                    logger.info("Data sources version: " + version);
+
+                    // Make sure our version is OK:
+                    dataSourcesPathIsAcceptable = validateVersionInformation(versionMajor, versionMinor, versionYear, versionMonth, versionDay);
+                }
+
+                if ( source == null ) {
+                    logger.warn("Unable to read source information from data sources info/readme file: " + readmePath.toUri().toString());
+                }
+                else {
+                    logger.info("Data sources source: " + source);
+                }
+
+                if ( alternateSource == null ) {
+                    logger.warn("Unable to read alternate source information from data sources info/readme file: " + readmePath.toUri().toString());
+                }
+                else {
+                    logger.info("Data sources alternate source: " + alternateSource);
+                }
+            }
+            catch (final Exception ex) {
+                logger.warn("Could not read " + README_FILE_NAME + ": unable to log data sources version information.", ex);
+            }
+        }
+        else {
+            logger.warn("Could not read " + README_FILE_NAME + ": unable to log data sources version information.");
+        }
+
+        // Warn the user if they need newer stuff.
+        if ( !dataSourcesPathIsAcceptable ) {
+            logger.error("ERROR: Given data source path is too old!  Minimum required version is: " + CURRENT_MINIMUM_DATA_SOURCE_VERSION + " (yours: " + version + ")");
+            logger.error("       You must download a newer version of the data sources from the Broad Institute FTP site: " + DATA_SOURCES_FTP_PATH);
+            logger.error("       or the Broad Institute Google Bucket: " + DATA_SOURCES_BUCKET_PATH);
+        }
+
+        return dataSourcesPathIsAcceptable;
+    }
+
+    @VisibleForTesting
+    static boolean validateVersionInformation(final int major, final int minor, final int year, final int month, final int day) {
+
+        // Compare from largest to smallest differences:
+
+        if ( major < MIN_MAJOR_VERSION_NUMBER ) {
+            return false;
+        }
+
+        if ( minor <  MIN_MINOR_VERSION_NUMBER ) {
+            return false;
+        }
+
+        if ( year < MIN_YEAR_RELEASED ) {
+            return false;
+        }
+
+        if ( month < MIN_MONTH_RELEASED ) {
+            return false;
+        }
+
+        if ( day < MIN_DAY_RELEASED ) {
+            return false;
+        }
+
+        return true;
     }
 
     // ========================================================================================================

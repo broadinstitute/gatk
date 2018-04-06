@@ -227,9 +227,9 @@ class MafOutputRendererConstants {
     static final List<String> OutputFieldNameMap_CCLE_ONCOMAP_total_mutations_in_gene   = Arrays.asList(FieldName_CCLE_ONCOMAP_total_mutations_in_gene, "CCLE_By_Gene_total_mutations_in_gene");
     static final List<String> OutputFieldNameMap_CGC_Mutation_Type                      = Arrays.asList(FieldName_CGC_Mutation_Type, "CGC_Mutation Type");
     static final List<String> OutputFieldNameMap_CGC_Translocation_Partner              = Arrays.asList(FieldName_CGC_Translocation_Partner, "CGC_Translocation Partner");
-    static final List<String> OutputFieldNameMap_CGC_Tumor_Types_Somatic                = Arrays.asList(FieldName_CGC_Tumor_Types_Somatic, "CGC_Tumour Types  (Somatic Mutations)");
-    static final List<String> OutputFieldNameMap_CGC_Tumor_Types_Germline               = Arrays.asList(FieldName_CGC_Tumor_Types_Germline, "CGC_Tumour Types (Germline Mutations)");
-    static final List<String> OutputFieldNameMap_CGC_Other_Diseases                     = Arrays.asList(FieldName_CGC_Other_Diseases, "CGC_Other Syndrome/Disease");
+    static final List<String> OutputFieldNameMap_CGC_Tumor_Types_Somatic                = Arrays.asList(FieldName_CGC_Tumor_Types_Somatic, "CGC_Tumour Types  (Somatic Mutations)", "CGC_Tumour_Types__(Somatic_Mutations)");
+    static final List<String> OutputFieldNameMap_CGC_Tumor_Types_Germline               = Arrays.asList(FieldName_CGC_Tumor_Types_Germline, "CGC_Tumour Types (Germline Mutations)", "CGC_Tumour_Types_(Germline_Mutations)");
+    static final List<String> OutputFieldNameMap_CGC_Other_Diseases                     = Arrays.asList(FieldName_CGC_Other_Diseases, "CGC_Other Syndrome/Disease", "CGC_Other_Syndrome/Disease");
     static final List<String> OutputFieldNameMap_DNARepairGenes_Activity_linked_to_OMIM = Collections.singletonList(FieldName_DNARepairGenes_Activity_linked_to_OMIM);
     static final List<String> OutputFieldNameMap_FamilialCancerDatabase_Syndromes       = Arrays.asList(FieldName_FamilialCancerDatabase_Syndromes, "Familial_Cancer_Genes_Syndrome");
     static final List<String> OutputFieldNameMap_MUTSIG_Published_Results               = Arrays.asList(FieldName_MUTSIG_Published_Results, "MutSig Published Results_Published_Results");

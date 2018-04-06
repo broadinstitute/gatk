@@ -395,7 +395,7 @@ public class Funcotator extends VariantWalker {
     @Override
     public void closeTool() {
 
-        for(final DataSourceFuncotationFactory factory : dataSourceFactories) {
+        for ( final DataSourceFuncotationFactory factory : dataSourceFactories ) {
             if ( factory != null ) {
                 factory.close();
             }

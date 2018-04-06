@@ -166,6 +166,11 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
     }
 
     @Override
+    protected List<Funcotation> createDefaultFuncotationsOnVariant( final VariantContext variant, final ReferenceContext referenceContext ) {
+        return createDefaultFuncotationsOnVariantHelper(variant, referenceContext, Collections.emptySet());
+    }
+
+    @Override
     /**
      * {@inheritDoc}
      * This method should never be called on a {@link SimpleKeyXsvFuncotationFactory} - knowledge of the applied
@@ -218,11 +223,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
             // If we didn't add funcotations for an allele, we should add in blank funcotations to that allele for
             // each field that can be produced by this SimpleKeyXsvFuncotationFactory:
             if ( annotatedAltAlleles.size() != variant.getAlternateAlleles().size() ) {
-                for ( final Allele altAllele : variant.getAlternateAlleles() ) {
-                    if ( !annotatedAltAlleles.contains(altAllele) ) {
-                        outputFuncotations.add(new TableFuncotation(annotationColumnNames, emptyAnnotationList, altAllele, name));
-                    }
-                }
+                outputFuncotations.addAll(createDefaultFuncotationsOnVariantHelper(variant, referenceContext, annotatedAltAlleles));
             }
         }
 
@@ -239,6 +240,21 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
 
     //==================================================================================================================
     // Instance Methods:
+
+    private List<Funcotation> createDefaultFuncotationsOnVariantHelper( final VariantContext variant, final ReferenceContext referenceContext, final Set<Allele> annotatedAltAlleles  ) {
+
+        final List<Funcotation> funcotationList = new ArrayList<>();
+
+        final List<Allele> alternateAlleles = variant.getAlternateAlleles();
+
+        for ( final Allele altAllele : alternateAlleles ) {
+            if ( !annotatedAltAlleles.contains(altAllele) ) {
+                funcotationList.add(new TableFuncotation(annotationColumnNames, emptyAnnotationList, altAllele, name));
+            }
+        }
+
+        return funcotationList;
+    }
 
     /**
      * Creates the annotation column names from the given iterator.

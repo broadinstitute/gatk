@@ -19,8 +19,8 @@ BUILD_NUMBER='150'
 DATA_SOURCE_NAME="dbSNP"
 OUT_DIR_NAME='dbsnp'
 
-#SRC_FILE_BASE_NAME="All_"
-SRC_FILE_BASE_NAME="common_all_"
+SRC_FILE_BASE_NAME="All_"
+#SRC_FILE_BASE_NAME="common_all_"
 
 SRC_FILE_REGEX="${SRC_FILE_BASE_NAME}\\d+.vcf.gz\\s*\$"
 MD5_FILE_REGEX="${SRC_FILE_BASE_NAME}\\d+.vcf.gz.md5\\s*\$"

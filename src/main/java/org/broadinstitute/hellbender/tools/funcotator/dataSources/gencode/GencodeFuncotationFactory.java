@@ -252,6 +252,13 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     @Override
+    protected List<Funcotation> createDefaultFuncotationsOnVariant( final VariantContext variant, final ReferenceContext referenceContext ) {
+        final List<Funcotation> funcotationList = new ArrayList<>();
+        funcotationList.addAll(createIgrFuncotations(variant, referenceContext));
+        return funcotationList;
+    }
+
+    @Override
     /**
      * Attempts to treat the given features as {@link GencodeGtfFeature} objects in order to
      * create funcotations for the given variant and reference.
@@ -279,11 +286,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             }
         }
         else {
-            // This is an IGR.  Only bother with it if the User has not asked for a specific transcript (because IGRs
-            // by definition have no associated transcript).
-            if ( userRequestedTranscripts.size() == 0 ) {
-                outputFuncotations.addAll(createIgrFuncotations(variant, referenceContext));
-            }
+            // This is an IGR.  We have to have an annotation on all variants, so we must annotate it.
+            outputFuncotations.addAll(createIgrFuncotations(variant, referenceContext));
         }
 
         return outputFuncotations;

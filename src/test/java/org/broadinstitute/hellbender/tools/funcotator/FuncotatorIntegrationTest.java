@@ -15,7 +15,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 
 /**
  * An integration test for the {@link Funcotator} tool.
@@ -30,8 +29,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
     // Whether to do debug output (i.e. leave output around).
     // This should always be false when checked in.
-    private static final boolean doDebugTests = false;
-    private static final String LOCAL_DATASOURCES_PATH = "/Users/jonn/Development/funcotator_dataSources_latest";
+    private static final boolean doDebugTests           = false;
+    private static final String  LARGE_DATASOURCES_FOLDER = "funcotator_dataSources_latest";
 
     static {
         if ( !doDebugTests ) {
@@ -179,11 +178,35 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         return testCases.iterator();
     }
 
+    @DataProvider
+    public Object[][] provideForLargeDataValidationTest() {
+        return new Object[][] {
+                {
+                        "M2_01115161-TA1-filtered.vcf",
+                        "Homo_sapiens_assembly19.fasta",
+                        true,
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                },
+                {
+                        "C828.TCGA-D3-A2JP-06A-11D-A19A-08.3-filtered.PASS.vcf",
+                        "Homo_sapiens_assembly19.fasta",
+                        true,
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG19
+                },
+                {
+                        "hg38_test_variants.vcf",
+                        "Homo_sapiens_assembly38.fasta",
+                        false,
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG38
+                }
+        };
+    }
+
     //==================================================================================================================
 
     // This test is to make sure we don't create a bunch of temp files anywhere.
     // It will force anyone who changes the outputToTmpDir flag to make it true when they check in this test file.
-    @Test
+    @Test(groups = {"funcotatorValidation"})
     public void metaTestEnsureTempDirs() {
         Assert.assertEquals(doDebugTests, false);
     }
@@ -212,39 +235,47 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         runCommandLine(arguments);
     }
 
-    @Test(enabled = doDebugTests)
-    public void spotCheck() throws IOException {
+    @Test(enabled = doDebugTests,
+          groups = {"funcotatorValidation"},
+          dataProvider = "provideForLargeDataValidationTest")
+    public void largeDataValidationTest(final String inputVcfName,
+                          final String referencePath,
+                          final boolean allowHg19B37ContigMatches,
+                          final String referenceVersion) throws IOException {
+
+        // Get our main test folder path from our environment:
+        final String testFolderInputPath = getFuncotatorLargeDataValidationTestInputPath();
 
         long startTime = 0, endTime = 0;
         final long overallStartTime = System.nanoTime();
 
-        final List<FuncotatorArgumentDefinitions.OutputFormatType> outFormatList = new ArrayList<>();
-//        outFormatList.add(FuncotatorArgumentDefinitions.OutputFormatType.VCF);
-        outFormatList.add(FuncotatorArgumentDefinitions.OutputFormatType.MAF);
+        final String outFileBaseName = inputVcfName + ".funcotator";
 
-        for ( final FuncotatorArgumentDefinitions.OutputFormatType outFormat : outFormatList) {
+        for ( final FuncotatorArgumentDefinitions.OutputFormatType outFormat : FuncotatorArgumentDefinitions.OutputFormatType.values()) {
 
             startTime = System.nanoTime();
 
             final File outputFile;
             if ( outFormat == FuncotatorArgumentDefinitions.OutputFormatType.VCF ) {
-                outputFile = getOutputFile("funcotator_tmp_out_spot_check", outFormat.toString().toLowerCase());
+                outputFile = getOutputFile(outFileBaseName, outFormat.toString().toLowerCase());
             }
             else {
-                outputFile = getOutputFile("funcotator_tmp_out_spot_check.maf", "tsv");
+                outputFile = getOutputFile(outFileBaseName + ".maf", "tsv");
             }
 
             final ArgumentsBuilder arguments = new ArgumentsBuilder();
 
-            arguments.addVCF(new File("/Users/jonn/Development/M2_01115161-TA1-filtered.vcf"));
+            arguments.addArgument("verbosity", "INFO");
 
-            arguments.addReference(new File("/Users/jonn/Development/references/Homo_sapiens_assembly19.fasta"));
+            arguments.addVCF(new File(testFolderInputPath + inputVcfName));
 
-            arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, LOCAL_DATASOURCES_PATH);
+            arguments.addReference(new File(testFolderInputPath + referencePath));
 
-            arguments.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME, true);
+            arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, getFuncotatorLargeDataValidationTestInputPath() + LARGE_DATASOURCES_FOLDER);
 
-            arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19);
+            arguments.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME, allowHg19B37ContigMatches);
+
+            arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, referenceVersion);
             arguments.addOutput(outputFile);
             arguments.addArgument( FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outFormat.toString() );
 
@@ -258,126 +289,6 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
             System.out.println("  Elapsed Time (" + outFormat.toString() + "): " + (endTime - startTime)/1e9 + "s");
         }
-
-        System.out.println("Total Elapsed Time: " + (endTime - overallStartTime)/1e9 + "s");
-    }
-
-    @Test(enabled = doDebugTests)
-    public void spotCheck2() throws IOException {
-
-        long startTime = 0, endTime = 0;
-        final long overallStartTime = System.nanoTime();
-
-        final String inputFile = "/Users/jonn/Development/data_to_run/C828.TCGA-D3-A2JP-06A-11D-A19A-08.3-filtered.PASS.vcf";
-
-        startTime = System.nanoTime();
-
-        final File outputFile = new File(inputFile + ".funcotator.maf.tsv");
-
-        final ArgumentsBuilder arguments = new ArgumentsBuilder();
-
-        arguments.addVCF(new File(inputFile));
-        arguments.addReference(new File("/Users/jonn/Development/references/Homo_sapiens_assembly19.fasta"));
-
-        arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, LOCAL_DATASOURCES_PATH);
-
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME, true);
-
-        arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19);
-
-        arguments.addOutput(outputFile);
-
-        arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, FuncotatorArgumentDefinitions.OutputFormatType.MAF.toString());
-
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.IGNORE_FILTERED_VARIANTS_LONG_NAME, true);
-
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Center:broad.mit.edu");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "source:WES");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "normal_barcode:normal_sample");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "tumor_barcode:tumor_sample");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_LONG_NAME, "NCBI_Build:37");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Strand:+");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "status:Somatic");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "phase:Phase_I");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "sequencer:Illumina");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Tumor_Validation_Allele1:");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Tumor_Validation_Allele2:");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Match_Norm_Validation_Allele1:");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Match_Norm_Validation_Allele2:");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Verification_Status:");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Validation_Status:");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Validation_Method:");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Score:");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "BAM_file:");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Match_Norm_Seq_Allele1:");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Match_Norm_Seq_Allele2:");
-
-        // Run the tool with our args:
-        runCommandLine(arguments);
-
-        endTime = System.nanoTime();
-
-        System.out.println("  Elapsed Time (MAF): " + (endTime - startTime)/1e9 + "s");
-
-        System.out.println("Total Elapsed Time: " + (endTime - overallStartTime)/1e9 + "s");
-    }
-
-    @Test(enabled = doDebugTests)
-    public void spotCheck4() throws IOException {
-
-        long startTime = 0, endTime = 0;
-        final long overallStartTime = System.nanoTime();
-
-        final String inputFile = "/Users/jonn/Development/tmp.vcf";
-
-        startTime = System.nanoTime();
-
-        final File outputFile = new File(inputFile + ".funcotator.maf.tsv");
-
-        final ArgumentsBuilder arguments = new ArgumentsBuilder();
-
-        arguments.addVCF(new File(inputFile));
-        arguments.addReference(new File("/Users/jonn/Development/references/Homo_sapiens_assembly38.fasta"));
-
-        arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, LOCAL_DATASOURCES_PATH);
-
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME, false);
-
-        arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG38);
-
-        arguments.addOutput(outputFile);
-
-        arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, FuncotatorArgumentDefinitions.OutputFormatType.MAF.toString());
-
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.IGNORE_FILTERED_VARIANTS_LONG_NAME, true);
-
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Center:broad.mit.edu");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "source:WES");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "normal_barcode:normal_sample");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "tumor_barcode:tumor_sample");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_LONG_NAME, "NCBI_Build:38");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Strand:+");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "status:Somatic");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "phase:Phase_I");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "sequencer:Illumina");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Tumor_Validation_Allele1:");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Tumor_Validation_Allele2:");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Match_Norm_Validation_Allele1:");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Match_Norm_Validation_Allele2:");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Verification_Status:");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Validation_Status:");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Validation_Method:");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Score:");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "BAM_file:");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Match_Norm_Seq_Allele1:");
-        arguments.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, "Match_Norm_Seq_Allele2:");
-
-        // Run the tool with our args:
-        runCommandLine(arguments);
-
-        endTime = System.nanoTime();
-
-        System.out.println("  Elapsed Time (MAF): " + (endTime - startTime)/1e9 + "s");
 
         System.out.println("Total Elapsed Time: " + (endTime - overallStartTime)/1e9 + "s");
     }

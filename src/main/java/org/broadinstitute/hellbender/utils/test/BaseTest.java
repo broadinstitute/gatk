@@ -1,24 +1,6 @@
 package org.broadinstitute.hellbender.utils.test;
 
 import htsjdk.samtools.util.Log;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.nio.file.FileSystem;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
@@ -32,6 +14,18 @@ import org.broadinstitute.hellbender.utils.runtime.ProcessSettings;
 import org.testng.Assert;
 import org.testng.Reporter;
 import org.testng.annotations.BeforeSuite;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.file.FileSystem;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 
 /**
@@ -115,6 +109,17 @@ public abstract class BaseTest {
      */
     public static String getGCPTestInputPath() {
         return getNonNullEnvironmentVariable("HELLBENDER_TEST_INPUTS");
+    }
+
+    /**
+     *  A path where the test inputs for the Funcotator LargeDataValidationTest are stored.
+     *
+     *  The value of FUNCOTATOR_LARGE_TEST_INPUTS should end in a "/" (for example, "gs://hellbender/funcotator/test/resources/")
+     *
+     *  @return FUNCOTATOR_LARGE_TEST_INPUTS env. var if defined, throws otherwise.
+     */
+    public static String getFuncotatorLargeDataValidationTestInputPath() {
+        return getNonNullEnvironmentVariable("FUNCOTATOR_LARGE_TEST_INPUTS");
     }
 
     /**

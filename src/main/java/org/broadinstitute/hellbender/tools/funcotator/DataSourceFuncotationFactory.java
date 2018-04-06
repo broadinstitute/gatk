@@ -8,6 +8,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 
+import java.io.Closeable;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -15,7 +16,7 @@ import java.util.stream.Collectors;
  * An abstract class to allow for the creation of a {@link Funcotation} for a given data source.
  * Created by jonn on 8/30/17.
  */
-public abstract class DataSourceFuncotationFactory implements AutoCloseable {
+public abstract class DataSourceFuncotationFactory implements Closeable {
 
     //==================================================================================================================
 
@@ -145,7 +146,7 @@ public abstract class DataSourceFuncotationFactory implements AutoCloseable {
             return outputFuncotations;
         }
         else {
-            return Collections.emptyList();
+            return createDefaultFuncotationsOnVariant(variant, referenceContext);
         }
     }
 
@@ -192,6 +193,15 @@ public abstract class DataSourceFuncotationFactory implements AutoCloseable {
         }
         return featureList;
     }
+
+    /**
+     * Creates a {@link List} of {@link Funcotation} for the given {@code variant} and {@code referenceContext}.
+     * These will be default funcotations that essentially have empty values.
+     * @param variant {@link VariantContext} to annotate.
+     * @param referenceContext {@link ReferenceContext} corresponding to the given {@code variant}.
+     * @return {@link List} of {@link Funcotation} given the {@code variant}, {@code referenceContext}, and {@code featureContext}.  This should never be empty.
+     */
+    protected abstract List<Funcotation> createDefaultFuncotationsOnVariant( final VariantContext variant, final ReferenceContext referenceContext);
 
     /**
      * Creates a {@link List} of {@link Funcotation} for the given {@code variant}, {@code referenceContext}, and {@code featureContext}.
