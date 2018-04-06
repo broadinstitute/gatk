@@ -399,4 +399,61 @@ Here for convenience is a table of \code{Mutect2} filters with their correspondi
  \end{tabular}
 \end{table}
 
+%%%%%%%%%%
+\section{Read Orientation Artifact Filter}
+
+Read orientation artifact (or orientation bias) is a type of sequencing artifact in which evidence for the alternate allele is almost exclusely from read pairs that have the F1R2 read orientation alone or F2R1 orientation alone. The read orientation of an insert maps to which of the two possible orientation the adapter ligated to the insert. As we have no reason to believe that the orientation of the adapter affect the variant call downstream, this is a signal of sequencing artifact. The Oxo-G and deaminations artifact are examples of this kind of sequencing artifact.
+
+We train the model separately for each $k$-mer context in the reference sequence, where $k=3$ by default. Let us suppose that $\text{context} = ACT$. Extending to other reference contexts is straightforward.
+
+At each locus under the reference context ACT, the discrete latent variable $z$ is the artifact state of the locus, where
+
+$$z \in \{ \text{F1R2}_A, \text{F1R2}_G, \text{F1R2}_T, \text{F2R1}_A, \text{F2R1}_G, \text{F2R1}_T,  \text{Hom Ref}, \text{Germline Het}, \text{Somatic Het}, \text{Hom Var} \}$$
+
+We set $z_n = \text{F1R2}_A$ when we observe a sequencing artifact at locus $n$ in which the evidence for alt allele A comes disproportionately from the F1R2 reads. $z_n \sim \mathrm{Categorial}(\pi)$ where $\pi$ is a vector of prior probabilities. The particular assignment to $z$ affects the number of alt reads $m$, to the extend that the sequencing artifact generally have lower than diploid allele fraction of 0.5. $z$ also affects the number of F1R2 reads $x$, as . The conditional distributions of the model may be summarize
+
+
+
+Step sequence \code{CollectDataForReadOrientatioinFilter} \code{LearnHyperparameters}. The table of hyperparameters output by \code{LearnHyperparameters} may be given to \code{Mutect2}, which will assign a posterior probability of the artifact to each candidate variant.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 \end{document}
