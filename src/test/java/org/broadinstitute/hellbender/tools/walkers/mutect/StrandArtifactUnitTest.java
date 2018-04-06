@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
@@ -42,12 +43,19 @@ public class StrandArtifactUnitTest {
     final byte baseq = 30;
     final int mapq = 60;
 
+
+    @DataProvider
+    public Object[][] snpTestData(){
+        return new Object[][]{
+                {25, 75, 1.0},
+                {15, 75, 0.95},
+                {10, 75, 0.90}
+        };
+    }
+
     // all of the evidence for alt base comes from one strand
-    @Test
-    public void testSNP() throws IOException {
-        // 25% ALT allele fraction at 100x coverage
-        final int numAltReads = 25;
-        final int numRefReads = 75;
+    @Test(dataProvider = "snpTestData")
+    public void testSNP(final int numAltReads, final int numRefReads, final double expectedProbOfArtifact) throws IOException {
         final int numReads = numAltReads + numRefReads;
 
         final Map<String, List<GATKRead>> readMap = new LinkedHashMap<>();
