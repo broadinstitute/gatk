@@ -30,7 +30,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     // Whether to do debug output (i.e. leave output around).
     // This should always be false when checked in.
     private static final boolean doDebugTests           = false;
-    private static final String  LARGE_DATASOURCES_PATH = getFuncotatorLargeDataValidationTestInputPath() + "funcotator_dataSources_latest";
+    private static final String  LARGE_DATASOURCES_FOLDER = "funcotator_dataSources_latest";
 
     static {
         if ( !doDebugTests ) {
@@ -271,7 +271,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
             arguments.addReference(new File(testFolderInputPath + referencePath));
 
-            arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, LARGE_DATASOURCES_PATH);
+            arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, getFuncotatorLargeDataValidationTestInputPath() + LARGE_DATASOURCES_FOLDER);
 
             arguments.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME, allowHg19B37ContigMatches);
 
