@@ -125,7 +125,7 @@ public class NovelAdjacencyAndAltHaplotype {
     public int hashCode() {
         int result = leftJustifiedLeftRefLoc.hashCode();
         result = 31 * result + leftJustifiedRightRefLoc.hashCode();
-        result = 31 * result + Objects.hashCode(strandSwitch.ordinal());
+        result = 31 * result + strandSwitch.ordinal();
         result = 31 * result + complication.hashCode();
         result = 31 * result + Arrays.hashCode(altHaplotypeSequence);
         return result;

@@ -377,8 +377,12 @@ public abstract class BreakpointComplications {
             result = 31 * result + dupSeqRepeatUnitRefSpan.hashCode();
             result = 31 * result + dupSeqRepeatNumOnRef;
             result = 31 * result + dupSeqRepeatNumOnCtg;
-            result = 31 * result + dupSeqStrandOnRef.hashCode();
-            result = 31 * result + dupSeqStrandOnCtg.hashCode();
+            for (final Strand strand : dupSeqStrandOnRef) {
+                result = 31 * result + strand.ordinal();
+            }
+            for (final Strand strand : dupSeqStrandOnCtg) {
+                result = 31 * result + strand.ordinal();
+            }
             return result;
         }
     }
@@ -1072,8 +1076,16 @@ public abstract class BreakpointComplications {
             result = 31 * result + (dupSeqRepeatUnitRefSpan != null ? dupSeqRepeatUnitRefSpan.hashCode() : 0);
             result = 31 * result + dupSeqRepeatNumOnRef;
             result = 31 * result + dupSeqRepeatNumOnCtg;
-            result = 31 * result + (dupSeqStrandOnRef != null ? dupSeqStrandOnRef.hashCode() : 0);
-            result = 31 * result + (dupSeqStrandOnCtg != null ? dupSeqStrandOnCtg.hashCode() : 0);
+            if (dupSeqStrandOnRef != null) {
+                for (final Strand strand : dupSeqStrandOnRef) {
+                    result = 31 * result + strand.ordinal() ;
+                }
+            }
+            if (dupSeqStrandOnCtg != null) {
+                for (final Strand strand : dupSeqStrandOnCtg) {
+                    result = 31 * result + strand.ordinal() ;
+                }
+            }
             result = 31 * result + (cigarStringsForDupSeqOnCtg != null ? cigarStringsForDupSeqOnCtg.hashCode() : 0);
             result = 31 * result + (dupAnnotIsFromOptimization ? 1 : 0);
             result = 31 * result + (invertedTransInsertionRefSpan != null ? invertedTransInsertionRefSpan.hashCode() : 0);
