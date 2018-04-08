@@ -84,6 +84,8 @@ workflow Mutect2 {
     Boolean make_bamout_or_default = select_first([make_bamout, false])
     Boolean? compress_vcfs
     Boolean compress = select_first([compress_vcfs, false])
+    File? gga_vcf
+    File? gga_vcf_idx
 
     # oncotator inputs
     Boolean? run_oncotator
@@ -182,6 +184,8 @@ workflow Mutect2 {
                 m2_extra_args = m2_extra_args,
                 make_bamout = make_bamout_or_default,
                 compress = compress,
+                gga_vcf = gga_vcf,
+                gga_vcf_idx = gga_vcf_idx,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts,
@@ -425,6 +429,8 @@ task M2 {
     String? m2_extra_args
     Boolean? make_bamout
     Boolean compress
+    File? gga_vcf
+    File? gga_vcf_idx
 
     String output_vcf = "output" + if compress then ".vcf.gz" else ".vcf"
     String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
@@ -468,6 +474,7 @@ task M2 {
             ${"--germline-resource " + gnomad} \
             ${"-pon " + pon} \
             ${"-L " + intervals} \
+            ${"--genotyping-mode GENOTYPE_GIVEN_ALLELES --alleles " + gga_vcf} \
             -O "${output_vcf}" \
             ${true='--bam-output bamout.bam' false='' make_bamout} \
             ${m2_extra_args}

@@ -56,6 +56,13 @@ public class StandardCallerArgumentCollection implements Serializable {
     public FeatureInput<VariantContext> alleles;
 
     /**
+     * When set to true an when in GENOTYPE_GIVEN_ALLELES mode all given alleles, even filtered ones, are genotyped
+     */
+    @Advanced
+    @Argument(fullName = "genotype-filtered-alleles", doc = "Whether to genotype all given alleles, even filtered ones, --genotyping_mode is GENOTYPE_GIVEN_ALLELES", optional = true)
+    public boolean genotypeFilteredAlleles = false;
+
+    /**
      * If this fraction is greater is than zero, the caller will aggressively attempt to remove contamination through biased down-sampling of reads.
      * Basically, it will ignore the contamination fraction of reads for each alternate allele.  So if the pileup contains N total bases, then we
      * will try to remove (N * contamination fraction) bases for each alternate allele.

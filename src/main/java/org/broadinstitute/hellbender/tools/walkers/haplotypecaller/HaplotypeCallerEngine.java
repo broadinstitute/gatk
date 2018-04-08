@@ -416,7 +416,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     public ActivityProfileState isActive( final AlignmentContext context, final ReferenceContext ref, final FeatureContext features ) {
 
         if ( hcArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
-            final VariantContext vcFromAllelesRod = GenotypingGivenAllelesUtils.composeGivenAllelesVariantContextFromRod(features, ref.getInterval(), false, logger, hcArgs.alleles);
+            final VariantContext vcFromAllelesRod = GenotypingGivenAllelesUtils.composeGivenAllelesVariantContextFromRod(features, ref.getInterval(), false, hcArgs.genotypeFilteredAlleles, logger, hcArgs.alleles);
             if( vcFromAllelesRod != null ) {
                 return new ActivityProfileState(ref.getInterval(), 1.0);
             }
@@ -489,7 +489,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         final List<VariantContext> givenAlleles = new ArrayList<>();
         if ( hcArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
-            features.getValues(hcArgs.alleles).stream().filter(VariantContext::isNotFiltered).forEach(givenAlleles::add);
+            features.getValues(hcArgs.alleles).stream().filter(vc -> hcArgs.genotypeFilteredAlleles || vc.isNotFiltered()).forEach(givenAlleles::add);
 
             // No alleles found in this region so nothing to do!
             if ( givenAlleles.isEmpty() ) {
