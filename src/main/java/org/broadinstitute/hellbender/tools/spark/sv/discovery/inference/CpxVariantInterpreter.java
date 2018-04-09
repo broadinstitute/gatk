@@ -89,6 +89,7 @@ public final class CpxVariantInterpreter {
 
         return new AssemblyContigWithFineTunedAlignments(
                 new AlignedContig(contigWithFineTunedAlignments.getContigName(), contigWithFineTunedAlignments.getContigSequence(),
+                        contigWithFineTunedAlignments.getSourceContig().getContigScore(),
                         deOverlappedAlignmentConfiguration),
                 contigWithFineTunedAlignments.getInsertionMappings(),
                 contigWithFineTunedAlignments.hasEquallyGoodAlnConfigurations(),

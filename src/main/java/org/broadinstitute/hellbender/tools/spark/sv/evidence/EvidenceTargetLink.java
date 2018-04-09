@@ -4,11 +4,17 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervals;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.StrandedInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -168,5 +174,19 @@ public final class EvidenceTargetLink {
                 ", splitReads=" + splitReads +
                 ", readPairs=" + readPairs +
                 '}';
+    }
+
+    public static void writeTargetLinks( final ReadMetadata readMetadata,
+                                          final List<EvidenceTargetLink> targetLinks,
+                                          final String targetLinkFile ) {
+        try ( final BufferedWriter writer =
+                      new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(targetLinkFile)))) {
+            for ( final EvidenceTargetLink link : targetLinks ) {
+                writer.write(link.toBedpeString(readMetadata));
+                writer.newLine();
+            }
+        } catch ( final IOException ioe ) {
+            throw new GATKException("Can't write target links to "+ targetLinkFile, ioe);
+        }
     }
 }

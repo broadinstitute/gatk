@@ -1,10 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFlag;
-import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.*;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -28,10 +25,8 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedC
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.ContigAlignmentsModifier;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ImpreciseVariantDetector;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.FindBreakpointEvidenceSpark;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.*;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.FermiLiteAssemblyHandler.ContigScore;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -126,7 +121,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
     @Advanced
     @Argument(doc = "flag to signal that user wants to run experimental interpretation tool as well",
             fullName = "exp-interpret", optional = true)
-    private Boolean expInterpret = false;
+    private boolean expInterpret = true;
 
     @Override
     public boolean requiresReads()
@@ -165,7 +160,10 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
 
         // parse the contig alignments and extract necessary information
         final JavaRDD<AlignedContig> parsedAlignments =
-                new InMemoryAlignmentParser(ctx, assembledEvidenceResults.getAlignedAssemblyOrExcuseList(), headerForReads)
+                new InMemoryAlignmentParser(ctx,
+                                            assembledEvidenceResults.getAlignedAssemblyOrExcuseList(),
+                                            assembledEvidenceResults.getContigScorer(),
+                                            headerForReads)
                         .getAlignedContigs();
 
         // todo: when we call imprecise variants don't return here
@@ -188,7 +186,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         SVVCFWriter.writeVCF(annotatedVariants, outputPath + "inv_del_ins.vcf", refSeqDictionary, toolLogger);
 
         // TODO: 1/14/18 this is the next version of precise variant calling
-        if ( expInterpret != null ) {
+        if ( expInterpret ) {
             experimentalInterpretation(ctx, assembledEvidenceResults, svDiscoveryInputMetaData);
         }
     }
@@ -212,6 +210,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         return new SvDiscoveryInputMetaData(ctx, discoverStageArgs, evidenceAndAssemblyArgs.crossContigsToIgnoreFile,
                 outputPrefixWithSampleName,
                 assembledEvidenceResults.getReadMetadata(), assembledEvidenceResults.getAssembledIntervals(),
+                assembledEvidenceResults.getAlignedAssemblyOrExcuseList(),
                 makeEvidenceLinkTree(assembledEvidenceResults.getEvidenceTargetLinks()),
                 cnvCallsBroadcast, getHeaderForReads(), getReference(), localLogger);
     }
@@ -284,12 +283,14 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         final SAMFileHeader headerForReads = headerBroadcast.getValue();
         final SAMReadGroupRecord contigAlignmentsReadGroup = new SAMReadGroupRecord(SVUtils.GATKSV_CONTIG_ALIGNMENTS_READ_GROUP_ID);
         final List<String> refNames = SequenceDictionaryUtils.getContigNamesList(referenceSequenceDictionaryBroadcast.getValue());
+        final ContigScorer contigScorer = assembledEvidenceResults.getContigScorer();
 
         return ctx.parallelize(
                 assembledEvidenceResults
                         .getAlignedAssemblyOrExcuseList().stream()
                         .filter(AlignedAssemblyOrExcuse::isNotFailure)
-                        .flatMap(aa -> aa.toSAMStreamForAlignmentsOfThisAssembly(headerForReads, refNames, contigAlignmentsReadGroup))
+                        .flatMap(aa ->
+                                aa.toSAMStreamForAlignmentsOfThisAssembly(headerForReads, refNames, contigAlignmentsReadGroup, contigScorer))
                         .map(SAMRecordToGATKReadAdapter::new)
                         .collect(Collectors.toList())
         );
@@ -316,25 +317,29 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
 
         private final JavaSparkContext ctx;
         private final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList;
+        private final ContigScorer contigScorer;
         private final SAMFileHeader header;
 
 
         InMemoryAlignmentParser(final JavaSparkContext ctx,
                                 final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList,
+                                final ContigScorer contigScorer,
                                 final SAMFileHeader header) {
             this.ctx = ctx;
             this.alignedAssemblyOrExcuseList = alignedAssemblyOrExcuseList;
+            this.contigScorer = contigScorer;
             this.header = header;
         }
 
         /**
          * Filters out "failed" assemblies, unmapped and secondary (i.e. "XA") alignments, and
          * turn the alignments of contigs into custom {@link AlignmentInterval} format.
-         * Should be generating the same output as {@link #filterAndConvertToAlignedContigDirect(Iterable, List, SAMFileHeader)};
+         * Should be generating the same output as {@link #filterAndConvertToAlignedContigDirect(Iterable, ContigScorer, List, SAMFileHeader)};
          * and currently this assertion is tested in {@see AlignedContigGeneratorUnitTest#testConvertAlignedAssemblyOrExcuseToAlignedContigsDirectAndConcordanceWithSAMRoute()}
          */
         @VisibleForTesting
         public static JavaRDD<AlignedContig> filterAndConvertToAlignedContigViaSAM(final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList,
+                                                                                   final ContigScorer contigScorer,
                                                                                    final SAMFileHeader header,
                                                                                    final JavaSparkContext ctx) {
 
@@ -344,22 +349,25 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
             return ctx.parallelize(alignedAssemblyOrExcuseList)
                     .filter(AlignedAssemblyOrExcuse::isNotFailure)
                     .flatMap(alignedAssemblyNoExcuse -> {
-                                final FermiLiteAssembly assembly = alignedAssemblyNoExcuse.getAssembly();
-                                final int assemblyId = alignedAssemblyNoExcuse.getAssemblyId();
-                                final List<List<BwaMemAlignment>> allAlignmentsOfThisAssembly = alignedAssemblyNoExcuse.getContigAlignments();
-                                final int nContigs = assembly.getNContigs();
-                                return IntStream.range(0, nContigs)
-                                        .mapToObj(contigIdx ->
-                                                BwaMemAlignmentUtils.toSAMStreamForRead(
-                                                        AlignedAssemblyOrExcuse.formatContigName(assemblyId, contigIdx),
-                                                        assembly.getContig(contigIdx).getSequence(),
-                                                        allAlignmentsOfThisAssembly.get(contigIdx),
-                                                        cleanHeader, refNames,
-                                                        new SAMReadGroupRecord(SVUtils.GATKSV_CONTIG_ALIGNMENTS_READ_GROUP_ID)
-                                                )
-                                        ).iterator();
-                            }
-                    )
+                            final FermiLiteAssembly assembly = alignedAssemblyNoExcuse.getAssembly();
+                            final int assemblyId = alignedAssemblyNoExcuse.getAssemblyId();
+                            final List<List<BwaMemAlignment>> allAlignmentsOfThisAssembly = alignedAssemblyNoExcuse.getContigAlignments();
+                            final int nContigs = assembly.getNContigs();
+                            return IntStream.range(0, nContigs)
+                                .mapToObj(contigIdx ->
+                                        BwaMemAlignmentUtils.toSAMStreamForRead(
+                                                AlignedAssemblyOrExcuse.formatContigName(assemblyId, contigIdx),
+                                                assembly.getContig(contigIdx).getSequence(),
+                                                null,
+                                                allAlignmentsOfThisAssembly.get(contigIdx),
+                                                cleanHeader, refNames)
+                                        .map( rec -> {
+                                            final float contigScore = contigScorer.score(alignedAssemblyNoExcuse.getContigScore(contigIdx));
+                                            rec.setAttribute(AlignedAssemblyOrExcuse.CONTIG_QUALITY_TAG, contigScore);
+                                            rec.setAttribute(SAMTag.RG.name(), SVUtils.GATKSV_CONTIG_ALIGNMENTS_READ_GROUP_ID);
+                                            return rec;
+                                        })).iterator();
+                    })
                     .map(forOneContig ->
                             forOneContig.filter(sam -> !sam.getReadUnmappedFlag() && !sam.isSecondaryAlignment())
                                     .collect(Collectors.toList()))
@@ -377,16 +385,18 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         /**
          * Filter out "failed" assemblies, unmapped and secondary (i.e. "XA") alignments, and
          * turn the alignments of contigs into custom {@link AlignmentInterval} format.
-         * Should be generating the same output as {@link #filterAndConvertToAlignedContigViaSAM(List, SAMFileHeader, JavaSparkContext)};
+         * Should be generating the same output as {@link #filterAndConvertToAlignedContigViaSAM(List, ContigScorer, SAMFileHeader, JavaSparkContext)};
          * and currently this assertion is tested in {@see AlignedContigGeneratorUnitTest#testConvertAlignedAssemblyOrExcuseToAlignedContigsDirectAndConcordanceWithSAMRoute()}
          */
         @VisibleForTesting
         public static List<AlignedContig> filterAndConvertToAlignedContigDirect(final Iterable<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseIterable,
-                                                                                final List<String> refNames, final SAMFileHeader header) {
+                                                                                final ContigScorer contigScorer,
+                                                                                final List<String> refNames,
+                                                                                final SAMFileHeader header) {
 
             return Utils.stream(alignedAssemblyOrExcuseIterable)
                     .filter(AlignedAssemblyOrExcuse::isNotFailure)
-                    .map(alignedAssembly -> getAlignedContigsInOneAssembly(alignedAssembly, refNames, header))
+                    .map(alignedAssembly -> getAlignedContigsInOneAssembly(alignedAssembly, contigScorer, refNames, header))
                     .flatMap(Utils::stream)                                     // size == total # of contigs' from all successful assemblies
                     .filter(contig -> !contig.getAlignments().isEmpty())     // filter out unmapped and contigs without primary alignments
                     .collect(Collectors.toList());
@@ -397,6 +407,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
          */
         @VisibleForTesting
         public static Iterable<AlignedContig> getAlignedContigsInOneAssembly(final AlignedAssemblyOrExcuse alignedAssembly,
+                                                                             final ContigScorer contigScorer,
                                                                              final List<String> refNames,
                                                                              final SAMFileHeader header) {
 
@@ -407,10 +418,12 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
             return IntStream.range(0, assembly.getNContigs())
                     .mapToObj( contigIdx -> {
                         final byte[] contigSequence = assembly.getContig(contigIdx).getSequence();
-                        final String contigName = AlignedAssemblyOrExcuse.formatContigName(alignedAssembly.getAssemblyId(), contigIdx);
-                        final List<AlignmentInterval> alignmentsForOneContig
-                                = getAlignmentsForOneContig(contigName, contigSequence, allAlignments.get(contigIdx), refNames, header);
-                        return new AlignedContig(contigName, contigSequence, alignmentsForOneContig);
+                        final ContigScore contigScore = alignedAssembly.getContigScore(contigIdx);
+                        final String contigName =
+                                AlignedAssemblyOrExcuse.formatContigName(alignedAssembly.getAssemblyId(), contigIdx);
+                        final List<AlignmentInterval> alignmentsForOneContig =
+                                getAlignmentsForOneContig(contigName, contigSequence, allAlignments.get(contigIdx), refNames, header);
+                        return new AlignedContig(contigName, contigSequence, contigScorer.score(contigScore), alignmentsForOneContig);
                     } ).collect(Collectors.toList());
         }
 
@@ -444,7 +457,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
             //                           which is the route if the discovery pipeline is run by "FindBreakpointEvidenceSpark -> write sam file -> load sam file -> DiscoverVariantsFromContigAlignmentsSAMSpark"
             //                         , the other is to go directly "BwaMemAlignment -> AlignmentInterval" by calling into {@code filterAndConvertToAlignedContigDirect()}, which is faster but not used here.
             //                         ; the two routes are tested to be generating the same output via {@code AlignedContigGeneratorUnitTest#testConvertAlignedAssemblyOrExcuseToAlignedContigsDirectAndConcordanceWithSAMRoute()}
-            return filterAndConvertToAlignedContigViaSAM(alignedAssemblyOrExcuseList, header, ctx);
+            return filterAndConvertToAlignedContigViaSAM(alignedAssemblyOrExcuseList, contigScorer, header, ctx);
         }
     }
 

@@ -140,7 +140,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
 
         final SvDiscoveryInputMetaData svDiscoveryInputMetaData =
                 new SvDiscoveryInputMetaData(ctx, discoverStageArgs, null, vcfOutputFile,
-                        null, null, null,
+                        null, null, null, null,
                         cnvCallsBroadcast,
                         getHeaderForReads(), getReference(), localLogger);
 
@@ -199,8 +199,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
 
 
         try {
-            SvDiscoveryUtils.evaluateIntervalsAndNarls(assembledIntervals, narlsAndSources.map(Tuple2::_1).collect(),
-                    referenceSequenceDictionaryBroadcast.getValue(), discoverStageArgs, toolLogger);
+            SvDiscoveryUtils.evaluateIntervalsAndNarls(svDiscoveryInputMetaData, narlsAndSources.map(Tuple2::_1).collect());
 
             List<VariantContext> annotatedVariants =
                     narlsAndSources
@@ -288,7 +287,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
             //       this was initially developed for ins/del (and tested for that purpose), simple translocations travel through a different code path at the moment.
             // TODO: ultimately we need to merge these two code paths
             final SimpleChimera simpleChimera = new SimpleChimera(current, next, insertionMappings,
-                    alignedContig.getContigName(), AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME,
+                    alignedContig, AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME,
                     referenceDictionary);
             // the following check/filter is due to the fact that simple translocations are to be handled in a different code path
             if (simpleChimera.isNeitherIncompleteNorSimpleTranslocation())

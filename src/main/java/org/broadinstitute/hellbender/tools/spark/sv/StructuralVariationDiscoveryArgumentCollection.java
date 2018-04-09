@@ -143,9 +143,6 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         @Argument(doc = "directory for evidence output", fullName = "unfiltered-breakpoint-evidence-dir", optional = true)
         public String unfilteredEvidenceDir;
 
-        @Argument(doc = "file for breakpoint intervals output", fullName = "breakpoint-intervals", optional = true)
-        public String intervalFile;
-
         @Argument(doc = "file for high-coverage intervals output", fullName = "high-coverage-intervals", optional = true)
         public String highCoverageIntervalsFile;
 
@@ -239,6 +236,12 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         @Argument(doc = "Maximum size deletion to call based on imprecise evidence without corroborating read depth evidence",
                 fullName = "max-callable-imprecise-deletion-size", optional=true)
         public int maxCallableImpreciseVariantDeletionSize = DEFAULT_MAX_CALLABLE_IMPRECISE_DELETION_SIZE;
+
+        @Argument(doc = "file for breakpoint intervals output", fullName = "breakpoint-intervals", optional = true)
+        public String intervalFile;
+
+        @Argument(doc = "file for narls output", fullName = "narls-file", optional = true)
+        public String narlsFile;
 
         @Advanced
         @Hidden

@@ -7,6 +7,7 @@
 ##INFO=<ID=ALIGN_LENGTHS,Number=.,Type=Integer,Description="Minimum lengths of the flanking aligned region from each contig alignment">
 ##INFO=<ID=CIEND,Number=2,Type=Integer,Description="Confidence interval around END for imprecise variants">
 ##INFO=<ID=CIPOS,Number=2,Type=Integer,Description="Confidence interval around POS for imprecise variants">
+##INFO=<ID=CONTIG_QUALITY,Number=.,Type=Float,Description="Quality of local assembly contigs as judged by contig coverage and read alignment accuracy">
 ##INFO=<ID=CONTRACTION,Number=0,Type=Flag,Description="Tandem repeats contraction compared to reference">
 ##INFO=<ID=CTG_GOOD_NONCANONICAL_MAPPING,Number=.,Type=String,Description="Good mapping of evidence contigs as listed in CTG_NAMES to non-canonical reference chromosomes that could potentially offer better explanation of the assembly contig without the SV record. One for each evidence assembly contig, if available; otherwise a \".\"". If no evidence contig has such mapping, this annotation is omitted for the record.>
 ##INFO=<ID=CTG_NAMES,Number=.,Type=String,Description="Name of local assembly contigs supporting this variant, formatted as \"asm%06d:tig%05d\"">

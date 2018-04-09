@@ -1,19 +1,24 @@
 package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils.FastqRead;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchMultiMap;
 import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
-import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
-import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexCache;
+import org.broadinstitute.hellbender.utils.bwa.*;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembler;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly.Contig;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly.Connection;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import scala.Tuple2;
 
 import java.io.*;
@@ -22,6 +27,7 @@ import java.util.*;
 /** LocalAssemblyHandler that uses FermiLite. */
 public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpark.LocalAssemblyHandler {
     private static final long serialVersionUID = 1L;
+    private static final int assemblyKmerSize = 31;
     private final String alignerIndexFile;
     private final int maxFastqSize;
     private final String fastqDir;
@@ -31,10 +37,10 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
     private final boolean expandAssemblyGraph;
     private final int zDropoff;
 
-    public FermiLiteAssemblyHandler( final String alignerIndexFile, final int maxFastqSize,
-                                     final String fastqDir, final boolean writeGFAs,
-                                     final boolean popVariantBubbles, final boolean removeShadowedContigs,
-                                     final boolean expandAssemblyGraph, final int zDropoff ) {
+    public FermiLiteAssemblyHandler(final String alignerIndexFile, final int maxFastqSize,
+                                    final String fastqDir, final boolean writeGFAs,
+                                    final boolean popVariantBubbles, final boolean removeShadowedContigs,
+                                    final boolean expandAssemblyGraph, final int zDropoff) {
         this.alignerIndexFile = alignerIndexFile;
         this.maxFastqSize = maxFastqSize;
         this.fastqDir = fastqDir;
@@ -45,17 +51,19 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
         this.zDropoff = zDropoff;
     }
 
-    /** This method creates an assembly with FermiLite, and uses the graph information returned by that
-     *  assembler to stitch together valid paths through the contigs.
-     *  These paths are then aligned to reference with BWA. */
+    /**
+     * This method creates an assembly with FermiLite, and uses the graph information returned by that
+     * assembler to stitch together valid paths through the contigs.
+     * These paths are then aligned to reference with BWA.
+     */
     @Override
-    public AlignedAssemblyOrExcuse apply( final Tuple2<Integer, List<SVFastqUtils.FastqRead>> intervalAndReads ) {
+    public AlignedAssemblyOrExcuse apply(final Tuple2<Integer, List<FastqRead>> intervalAndReads) {
         final int intervalID = intervalAndReads._1();
         final String assemblyName = AlignedAssemblyOrExcuse.formatAssemblyID(intervalID);
-        final List<SVFastqUtils.FastqRead> readsList = intervalAndReads._2();
+        final List<FastqRead> readsList = intervalAndReads._2();
 
         // bail if the assembly will be too large
-        final int fastqSize = readsList.stream().mapToInt(FastqRead -> FastqRead.getBases().length).sum();
+        final int fastqSize = readsList.stream().mapToInt(fastqRead -> fastqRead.getBases().length).sum();
         if ( fastqSize > maxFastqSize ) {
             return new AlignedAssemblyOrExcuse(intervalID, "no assembly -- too big (" + fastqSize + " bytes).");
         }
@@ -63,8 +71,8 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
         // record the reads in the assembly as a FASTQ, if requested
         if ( fastqDir != null ) {
             final String fastqName = String.format("%s/%s.fastq", fastqDir, assemblyName);
-            final ArrayList<SVFastqUtils.FastqRead> sortedReads = new ArrayList<>(readsList);
-            sortedReads.sort(Comparator.comparing(SVFastqUtils.FastqRead::getHeader));
+            final ArrayList<FastqRead> sortedReads = new ArrayList<>(readsList);
+            sortedReads.sort(Comparator.comparing(FastqRead::getHeader));
             SVFastqUtils.writeFastqFile(fastqName, sortedReads.iterator());
         }
 
@@ -79,7 +87,7 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
         }
         final long timeStart = System.currentTimeMillis();
         final FermiLiteAssembly initialAssembly = assembler.createAssembly(readsList);
-        final int secondsInAssembly = (int)((System.currentTimeMillis() - timeStart + 500)/1000);
+        final int secondsInAssembly = (int) ((System.currentTimeMillis() - timeStart + 500) / 1000);
         if ( initialAssembly.getNContigs() == 0 ) {
             return new AlignedAssemblyOrExcuse(intervalID, "no assembly -- no contigs produced by assembler.");
         }
@@ -87,14 +95,17 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
         // patch up the assembly to improve contiguity
         final FermiLiteAssembly assembly = reviseAssembly(initialAssembly, removeShadowedContigs, expandAssemblyGraph);
 
+        final ContigScore[] contigScores = scoreAssembly(readsList, assembly, assemblyName, fastqDir);
+
+        final int readBases = readsList.stream().mapToInt(read -> read.getBases().length).sum();
+
         // record the assembly as a GFA, if requested
         if ( fastqDir != null && writeGFAs ) {
-            final String gfaName =  String.format("%s/%s.gfa", fastqDir, assemblyName);
+            final String gfaName = String.format("%s/%s.gfa", fastqDir, assemblyName);
             try ( final Writer writer = new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(gfaName))) ) {
                 assembly.writeGFA(writer);
-            }
-            catch ( final IOException ioe ) {
-                throw new GATKException("Can't write "+gfaName, ioe);
+            } catch ( final IOException ioe ) {
+                throw new GATKException("Can't write " + gfaName, ioe);
             }
         }
 
@@ -107,38 +118,42 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
                             .map(Contig::getSequence)
                             .collect(SVUtils.arrayListCollector(assembly.getNContigs()));
             final List<List<BwaMemAlignment>> alignments = aligner.alignSeqs(sequences);
-            return new AlignedAssemblyOrExcuse(intervalID, assembly, secondsInAssembly, alignments);
+            return new AlignedAssemblyOrExcuse(intervalID, assembly, contigScores,
+                                                    secondsInAssembly, readBases, alignments);
         }
     }
 
     @VisibleForTesting
-    static FermiLiteAssembly reviseAssembly( final FermiLiteAssembly initialAssembly,
-                                             final boolean removeShadowedContigs,
-                                             final boolean expandAssemblyGraph ) {
-        final FermiLiteAssembly unshadowedAssembly =
-                removeShadowedContigs ? removeShadowedContigs(initialAssembly) : initialAssembly;
-        return expandAssemblyGraph ? expandAssemblyGraph(removeUnbranchedConnections(unshadowedAssembly)) : unshadowedAssembly;
+    static FermiLiteAssembly reviseAssembly(final FermiLiteAssembly initialAssembly,
+                                            final boolean removeShadowedContigs,
+                                            final boolean expandAssemblyGraph) {
+        final FermiLiteAssembly result;
+        if ( removeShadowedContigs ) {
+            if ( expandAssemblyGraph ) {
+                result = removeShadowedContigs(
+                            expandAssemblyGraph(
+                                    removeUnbranchedConnections(
+                                            removeShadowedContigs(initialAssembly))));
+            } else {
+                result = removeShadowedContigs(initialAssembly);
+            }
+        } else if ( expandAssemblyGraph ) {
+            result = expandAssemblyGraph(removeUnbranchedConnections(initialAssembly));
+        } else {
+            result = initialAssembly;
+        }
+        return result;
     }
 
-    /** Eliminate contigs from the assembly that vary from another contig by just a few SNVs. */
+    /**
+     * Eliminate contigs from the assembly that vary from another contig by just a few SNVs.
+     */
     @VisibleForTesting
-    static FermiLiteAssembly removeShadowedContigs( final FermiLiteAssembly assembly ) {
-        final int kmerSize = 31;
+    static FermiLiteAssembly removeShadowedContigs(final FermiLiteAssembly assembly) {
         final double maxMismatchRate = .01;
 
         // make a map of assembled kmers
-        final int capacity = assembly.getContigs().stream().mapToInt(tig -> tig.getSequence().length - kmerSize + 1).sum();
-        final HopscotchMultiMap<SVKmerShort, ContigLocation, KmerLocation> kmerMap = new HopscotchMultiMap<>(capacity);
-        assembly.getContigs().forEach(tig -> {
-            int contigOffset = 0;
-            final Iterator<SVKmer> contigKmerItr = new SVKmerizer(tig.getSequence(), kmerSize, new SVKmerShort());
-            while ( contigKmerItr.hasNext() ) {
-                final SVKmerShort kmer = (SVKmerShort)contigKmerItr.next();
-                final SVKmerShort canonicalKmer = kmer.canonical(kmerSize);
-                final ContigLocation location = new ContigLocation(tig, contigOffset++, kmer.equals(canonicalKmer));
-                kmerMap.add(new KmerLocation(canonicalKmer, location));
-            }
-        });
+        final HopscotchMultiMap<SVKmerShort, ContigLocation, KmerLocation> kmerMap = kmerizeAssembly(assembly);
 
         /* Remove contigs that vary by a small number of SNVs from another contig. E.g.,
          *  <-------contigA----------->
@@ -151,24 +166,26 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
         assembly.getContigs().forEach(tig -> {
             final Set<ContigLocation> testedLocations = new HashSet<>();
             final byte[] tigBases = tig.getSequence();
-            final int maxMismatches = (int)(tigBases.length * maxMismatchRate);
+            final int maxMismatches = (int) (tigBases.length * maxMismatchRate);
             int tigOffset = 0;
-            final SVKmerizer contigKmerItr = new SVKmerizer(tig.getSequence(), kmerSize, new SVKmerShort(kmerSize));
+            final SVKmerizer contigKmerItr =
+                    new SVKmerizer(tig.getSequence(), assemblyKmerSize, new SVKmerShort(assemblyKmerSize));
             while ( contigKmerItr.hasNext() ) {
-                final SVKmerShort contigKmer = (SVKmerShort)contigKmerItr.next();
-                final SVKmerShort canonicalContigKmer = contigKmer.canonical(kmerSize);
+                final SVKmerShort contigKmer = (SVKmerShort) contigKmerItr.next();
+                final SVKmerShort canonicalContigKmer = contigKmer.canonical(assemblyKmerSize);
                 final boolean contigKmerIsCanonical = contigKmer.equals(canonicalContigKmer);
                 final Iterator<KmerLocation> locItr = kmerMap.findEach(canonicalContigKmer);
                 while ( locItr.hasNext() ) {
                     final ContigLocation tig2Location = locItr.next().getLocation();
                     final Contig tig2 = tig2Location.getContig();
                     if ( tig == tig2 || contigsToRemove.contains(tig2) ) continue;
+                    //TODO: rewrite some of these calculations using ContigLocation methods rc(), upstream(), etc.
                     // having found a kmer that matches between two contigs, and knowing the offsets of those kmers, we'll
                     // figure out the regions of the two contigs that overlap if the shared kmer implies a valid identity
                     final byte[] tig2Bases = tig2.getSequence();
                     final boolean isRC = contigKmerIsCanonical != tig2Location.isCanonical();
                     final int tig2Offset =
-                            isRC ? tig2Bases.length - tig2Location.getOffset() - kmerSize : tig2Location.getOffset();
+                            isRC ? tig2Bases.length - tig2Location.getOffset() - assemblyKmerSize : tig2Location.getOffset();
                     // if the number of bases upstream of the matching kmer is greater for tig than for tig2, then
                     // tig2 doesn't completely cover tig and so can't shadow it
                     if ( tigOffset > tig2Offset ) continue;
@@ -182,7 +199,7 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
                         int nMismatches = 0;
                         if ( !isRC ) {
                             for ( int idx = 0; idx != tigBases.length; ++idx ) {
-                                if ( tigBases[idx] != tig2Bases[tig2Start+idx] ) {
+                                if ( tigBases[idx] != tig2Bases[tig2Start + idx] ) {
                                     nMismatches += 1;
                                     if ( nMismatches > maxMismatches ) break;
                                 }
@@ -190,7 +207,7 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
                         } else {
                             final int tig2RCOffset = tig2Bases.length - tig2Start - 1;
                             for ( int idx = 0; idx != tigBases.length; ++idx ) {
-                                if ( tigBases[idx] != BaseUtils.simpleComplement(tig2Bases[tig2RCOffset-idx]) ) {
+                                if ( tigBases[idx] != BaseUtils.simpleComplement(tig2Bases[tig2RCOffset - idx]) ) {
                                     nMismatches += 1;
                                     if ( nMismatches > maxMismatches ) break;
                                 }
@@ -207,7 +224,7 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
         });
 
         // make a new contig list without the shadowed contigs
-        final List<Contig> contigList = new ArrayList<>(assembly.getContigs().size()-contigsToRemove.size());
+        final List<Contig> contigList = new ArrayList<>(assembly.getContigs().size() - contigsToRemove.size());
         assembly.getContigs().stream()
                 .filter(tig -> !contigsToRemove.contains(tig))
                 .forEach(contigList::add);
@@ -230,11 +247,33 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
         return new FermiLiteAssembly(contigList);
     }
 
+    /**
+     * make a map of assembled kmers
+     */
+    private static HopscotchMultiMap<SVKmerShort, ContigLocation, KmerLocation> kmerizeAssembly(
+            final FermiLiteAssembly assembly) {
+        final int capacity =
+                assembly.getContigs().stream().mapToInt(tig -> tig.getSequence().length - assemblyKmerSize + 1).sum();
+        final HopscotchMultiMap<SVKmerShort, ContigLocation, KmerLocation> kmerMap = new HopscotchMultiMap<>(capacity);
+        assembly.getContigs().forEach(tig -> {
+            int contigOffset = 0;
+            final Iterator<SVKmer> contigKmerItr =
+                    new SVKmerizer(tig.getSequence(), assemblyKmerSize, new SVKmerShort());
+            while ( contigKmerItr.hasNext() ) {
+                final SVKmerShort kmer = (SVKmerShort) contigKmerItr.next();
+                final SVKmerShort canonicalKmer = kmer.canonical(assemblyKmerSize);
+                final ContigLocation location = new ContigLocation(tig, contigOffset++, kmer.equals(canonicalKmer));
+                kmerMap.add(new KmerLocation(canonicalKmer, location));
+            }
+        });
+        return kmerMap;
+    }
+
     // join contigs that connect without any other branches
     // i.e., if contig A has contig B as its sole successor, and contig B has contig A as its sole predecessor,
     // then combine contigs A and B into a single contig AB.
     @VisibleForTesting
-    static FermiLiteAssembly removeUnbranchedConnections( final FermiLiteAssembly assembly ) {
+    static FermiLiteAssembly removeUnbranchedConnections(final FermiLiteAssembly assembly) {
         final int nContigs = assembly.getNContigs();
         final List<Contig> contigList = new ArrayList<>(nContigs);
         final Set<Contig> examined = new HashSet<>(SVUtils.hashMapCapacity(nContigs));
@@ -264,9 +303,9 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
     // combine two connected contigs into one, preserving all their connections, except their connections to each other.
     // (i.e., firstContig gets joined to connection.getTarget().)  the connection argument is the pointer from
     // firstContig to the 2nd contig, and rcConnection is the back-pointer from 2nd contig to firstContig.
-    private static Contig joinContigsWithConnections( final Contig firstContig,
-                                                      final Connection connection,
-                                                      final Connection rcConnection ) {
+    private static Contig joinContigsWithConnections(final Contig firstContig,
+                                                     final Connection connection,
+                                                     final Connection rcConnection) {
         final Contig joinedContig = joinContigs(firstContig, Collections.singletonList(connection));
         final Contig lastContig = connection.getTarget();
         final int capacity = firstContig.getConnections().size() + lastContig.getConnections().size() - 2;
@@ -276,8 +315,8 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
                 final Connection newConnection =
                         new Connection(conn.getTarget(), conn.getOverlapLen(), true, conn.isTargetRC());
                 replaceConnection(conn.getTarget(),
-                                    conn.rcConnection(firstContig),
-                                    newConnection.rcConnection(joinedContig));
+                        conn.rcConnection(firstContig),
+                        newConnection.rcConnection(joinedContig));
                 connections.add(newConnection);
             }
         }
@@ -286,8 +325,8 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
                 final Connection newConnection =
                         new Connection(conn.getTarget(), conn.getOverlapLen(), false, conn.isTargetRC());
                 replaceConnection(conn.getTarget(),
-                                    conn.rcConnection(lastContig),
-                                    newConnection.rcConnection(joinedContig));
+                        conn.rcConnection(lastContig),
+                        newConnection.rcConnection(joinedContig));
                 connections.add(newConnection);
             }
         }
@@ -295,9 +334,9 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
         return joinedContig;
     }
 
-    private static void replaceConnection( final Contig contig,
-                                           final Connection oldConnection,
-                                           final Connection newConnection ) {
+    private static void replaceConnection(final Contig contig,
+                                          final Connection oldConnection,
+                                          final Connection newConnection) {
         final List<Connection> oldConnections = contig.getConnections();
         final List<Connection> newConnections = new ArrayList<>(oldConnections.size());
         for ( final Connection conn : oldConnections ) {
@@ -315,7 +354,7 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
     }
 
     // join the sequences of a chain of contigs to produce a single, new contig
-    private static Contig joinContigs( final Contig firstContig, final List<Connection> path ) {
+    private static Contig joinContigs(final Contig firstContig, final List<Connection> path) {
         if ( path.isEmpty() ) return firstContig;
         final int nSupportingReads =
                 path.stream()
@@ -347,7 +386,7 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
     // walk the graph to trace out all paths, breaking only at cycles and at contigs that require phasing
     // N.B.: the per-base-coverage info is stripped away when contigs are joined.
     @VisibleForTesting
-    static FermiLiteAssembly expandAssemblyGraph( final FermiLiteAssembly assembly ) {
+    static FermiLiteAssembly expandAssemblyGraph(final FermiLiteAssembly assembly) {
         final int nContigs = assembly.getNContigs();
         // this will hold the new compound contigs that we build
         final List<Contig> contigList = new ArrayList<>(nContigs);
@@ -389,17 +428,17 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
         return new FermiLiteAssembly(contigList);
     }
 
-    private static int countPredecessors( final Contig contig ) {
+    private static int countPredecessors(final Contig contig) {
         return contig.getConnections().stream().mapToInt(conn -> conn.isRC() ? 1 : 0).sum();
     }
 
     // called for each connected source and each connected sink that hasn't already been examined.
     // starts a depth-first search through the graph.
-    private static void tracePaths( final Contig contig,
-                                    final boolean isRC,
-                                    final List<Contig> contigList,
-                                    final Set<Contig> examined,
-                                    final Set<ContigStrand> visited ) {
+    private static void tracePaths(final Contig contig,
+                                   final boolean isRC,
+                                   final List<Contig> contigList,
+                                   final Set<Contig> examined,
+                                   final Set<ContigStrand> visited) {
         examined.add(contig);
         final LinkedList<Connection> path = new LinkedList<>();
         final ContigStrand contigStrand = new ContigStrand(contig, isRC);
@@ -413,12 +452,12 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
     }
 
     // called to add another connection to the path we're building.
-    private static void extendPath( final Contig firstContig,
-                                    final Connection connection,
-                                    final LinkedList<Connection> path,
-                                    final List<Contig> contigList,
-                                    final Set<Contig> examined,
-                                    final Set<ContigStrand> visited ) {
+    private static void extendPath(final Contig firstContig,
+                                   final Connection connection,
+                                   final LinkedList<Connection> path,
+                                   final List<Contig> contigList,
+                                   final Set<Contig> examined,
+                                   final Set<ContigStrand> visited) {
         // note that the connection gets added to the path regardless of whether it's cyclic or not.
         // this will create a contig with exactly one repeat of the first contig that we detect to be part of a cycle.
         // so, for example, A -> B -> C -> C will produce a contig ABCC, but not ABCCC or ABCCCC, etc.
@@ -467,25 +506,44 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
         private final int offset;
         private final boolean canonical;
 
-        public ContigLocation(final Contig contig, final int offset, final boolean canonical ) {
+        public ContigLocation(final Contig contig, final int offset, final boolean canonical) {
             this.contig = contig;
             this.offset = offset;
             this.canonical = canonical;
         }
-        public Contig getContig() { return contig; }
-        public int getOffset() { return offset; }
-        public boolean isCanonical() { return canonical; }
 
-        @Override public boolean equals( final Object obj ) {
-            return obj instanceof ContigLocation && equals((ContigLocation)obj);
+        public Contig getContig() {
+            return contig;
         }
 
-        public boolean equals( final ContigLocation that ) {
+        public int getOffset() {
+            return offset;
+        }
+
+        public boolean isCanonical() {
+            return canonical;
+        }
+
+        public ContigLocation upstream(final int distance) {
+            return new ContigLocation(contig, offset - distance, canonical);
+        }
+
+        public ContigLocation rc() {
+            return new ContigLocation(contig, contig.getSequence().length - offset - 1, !canonical);
+        }
+
+        @Override
+        public boolean equals(final Object obj) {
+            return obj instanceof ContigLocation && equals((ContigLocation) obj);
+        }
+
+        public boolean equals(final ContigLocation that) {
             if ( this == that ) return true;
             return contig == that.contig && offset == that.offset && canonical == that.canonical;
         }
 
-        @Override public int hashCode() {
+        @Override
+        public int hashCode() {
             return 47 * (47 * (contig.hashCode() + 47 * offset) + (canonical ? 31 : 5));
         }
     }
@@ -495,16 +553,31 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
         private final SVKmerShort kmer;
         private final ContigLocation location;
 
-        public KmerLocation( final SVKmerShort kmer, final ContigLocation location ) {
+        public KmerLocation(final SVKmerShort kmer, final ContigLocation location) {
             this.kmer = kmer;
             this.location = location;
         }
 
-        public SVKmerShort getKmer() { return kmer; }
-        public ContigLocation getLocation() { return location; }
-        @Override public SVKmerShort getKey() { return kmer; }
-        @Override public ContigLocation getValue() { return location; }
-        @Override public ContigLocation setValue(final ContigLocation value ) {
+        public SVKmerShort getKmer() {
+            return kmer;
+        }
+
+        public ContigLocation getLocation() {
+            return location;
+        }
+
+        @Override
+        public SVKmerShort getKey() {
+            return kmer;
+        }
+
+        @Override
+        public ContigLocation getValue() {
+            return location;
+        }
+
+        @Override
+        public ContigLocation setValue(final ContigLocation value) {
             throw new UnsupportedOperationException("KmerLocation is immutable");
         }
     }
@@ -514,27 +587,180 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
         private final Contig contig;
         private final boolean isRC;
 
-        public ContigStrand( final Contig contig, final boolean isRC ) {
+        public ContigStrand(final Contig contig, final boolean isRC) {
             this.contig = contig;
             this.isRC = isRC;
         }
 
-        public Contig getContig() { return contig; }
-        public boolean isRC() { return isRC; }
+        public Contig getContig() {
+            return contig;
+        }
 
-        public ContigStrand rc() { return new ContigStrand(contig, !isRC); }
+        public boolean isRC() {
+            return isRC;
+        }
 
-        @Override public boolean equals( final Object obj ) {
+        public ContigStrand rc() {
+            return new ContigStrand(contig, !isRC);
+        }
+
+        @Override
+        public boolean equals(final Object obj) {
             return obj instanceof ContigStrand && equals((ContigStrand) obj);
         }
 
-        public boolean equals( final ContigStrand that ) {
+        public boolean equals(final ContigStrand that) {
             if ( this == that ) return true;
             return contig == that.contig && isRC == that.isRC;
         }
 
-        @Override public int hashCode() {
+        @Override
+        public int hashCode() {
             return isRC ? -contig.hashCode() : contig.hashCode();
         }
+    }
+
+    @DefaultSerializer(ContigScore.Serializer.class)
+    public static class ContigScore {
+        private final float meanAS;
+        private final float meanCoverage;
+
+        public ContigScore() {
+            this(0.f, 0.f);
+        }
+
+        public ContigScore( final float meanAS, final float meanCoverage ) {
+            this.meanAS = meanAS;
+            this.meanCoverage = meanCoverage;
+        }
+
+        public ContigScore( final Kryo kryo, final Input input ) {
+            meanAS = input.readFloat();
+            meanCoverage = input.readFloat();
+        }
+
+        public float getMeanAS() { return meanAS; }
+        public float getMeanCoverage() { return meanCoverage; }
+
+        public void serialize( final Kryo kryo, final Output output ) {
+            output.writeFloat(meanAS);
+            output.writeFloat(meanCoverage);
+        }
+
+        public static final class Serializer extends com.esotericsoftware.kryo.Serializer<ContigScore> {
+            @Override
+            public void write(final Kryo kryo, final Output output, final ContigScore contigScore ) {
+                contigScore.serialize(kryo, output);
+            }
+
+            @Override
+            public ContigScore read(final Kryo kryo, final Input input, final Class<ContigScore> klass ) {
+                return new ContigScore(kryo, input);
+            }
+        }
+    }
+
+    private static ContigScore[] scoreAssembly(final List<FastqRead> readsList,
+                                       final FermiLiteAssembly assembly,
+                                       final String assemblyName,
+                                       final String fastqDir) {
+        final String fastaFile = String.format("%s/%s.fasta", fastqDir, assemblyName);
+        final String imageFile;
+        final List<Contig> contigs = assembly.getContigs();
+        final int nContigs = contigs.size();
+        try {
+            final File tmpFasta = File.createTempFile(assemblyName, ".fasta");
+            final String tmpFastaFile = tmpFasta.getPath();
+            imageFile = tmpFastaFile + ".img";
+            try ( final BufferedWriter writer1 =
+                          new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(fastaFile)));
+                  final BufferedWriter writer2 =
+                          new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(tmpFastaFile))) ) {
+                for ( int idx = 0; idx != nContigs; ++idx ) {
+                    final String header = String.format(">tig%05d", idx);
+                    final String sequence = new String(contigs.get(idx).getSequence());
+                    writer1.write(header);
+                    writer1.newLine();
+                    writer1.write(sequence);
+                    writer1.newLine();
+                    writer2.write(header);
+                    writer2.newLine();
+                    writer2.write(sequence);
+                    writer2.newLine();
+                }
+            }
+            BwaMemIndex.createIndexImageFromFastaFile(tmpFastaFile, imageFile);
+            tmpFasta.delete();
+        } catch ( final IOException ioe ) {
+            throw new GATKException("can't write local assembly as fasta file", ioe);
+        }
+
+        final List<List<BwaMemAlignment>> alignments;
+        try ( final BwaMemIndex index = new BwaMemIndex(imageFile) ) {
+            final BwaMemAligner aligner = new BwaMemAligner(index);
+            aligner.setIntraCtgOptions();
+            aligner.setZDropOption(20);
+            aligner.alignPairs();
+            alignments = aligner.alignSeqs(readsList, FastqRead::getBases);
+        }
+        new File(imageFile).delete();
+
+        final List<SAMSequenceRecord> recList = new ArrayList<>(nContigs);
+        final List<String> refNames = new ArrayList<>(nContigs);
+        for ( int idx = 0; idx != nContigs; ++idx ) {
+            final String contigName = String.format("tig%05d", idx);
+            recList.add(new SAMSequenceRecord(contigName, contigs.get(idx).getSequence().length));
+            refNames.add(contigName);
+        }
+        final SAMFileHeader header = new SAMFileHeader(new SAMSequenceDictionary(recList));
+        header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
+        final List<SAMRecord> samReads =
+                new ArrayList<>(alignments.stream().mapToInt(alnList -> Math.min(1, alnList.size())).sum());
+        final int nReads = readsList.size();
+        for ( int idx = 0; idx != nReads; ++idx ) {
+            final FastqRead read = readsList.get(idx);
+            final List<BwaMemAlignment> readAlignments = alignments.get(idx);
+            if ( readAlignments.isEmpty() ) {
+                final SAMRecord unmappedRec = new SAMRecord(header);
+                unmappedRec.setReadName(read.getName());
+                unmappedRec.setReadBases(read.getBases());
+                unmappedRec.setBaseQualities(read.getQuals());
+                samReads.add(unmappedRec);
+                continue;
+            }
+            BwaMemAlignmentUtils.toSAMStreamForRead(read.getName(), read.getBases(), read.getQuals(), readAlignments,
+                    header, refNames).forEach(samReads::add);
+        }
+        samReads.sort(new SAMRecordCoordinateComparator());
+        final String bamFile = String.format("%s/%s.bam", fastqDir, assemblyName);
+        SVFileUtils.writeSAMFile(bamFile, samReads.iterator(), header, true);
+
+        final int[] sumAS = new int[nContigs];
+        final int[] nBases = new int[nContigs];
+        final int[] nScores = new int[nContigs];
+        for ( final List<BwaMemAlignment> readAlignments : alignments ) {
+            if ( !readAlignments.isEmpty() ) {
+                BwaMemAlignment primaryLine = readAlignments.get(0);
+                final int contigId = primaryLine.getRefId();
+                if ( contigId >= 0 ) {
+                    sumAS[contigId] += primaryLine.getAlignerScore();
+                    nBases[contigId] += CigarUtils.countAlignedBases(TextCigarCodec.decode(primaryLine.getCigar()));
+                    nScores[contigId] += 1;
+                }
+            }
+        }
+        final ContigScore[] contigScores = new ContigScore[nContigs];
+        for ( int contigIdx = 0; contigIdx != nContigs; ++contigIdx ) {
+            final int scoreCount = nScores[contigIdx];
+            if ( scoreCount > 0 ) {
+                final int contigLength = contigs.get(contigIdx).getSequence().length;
+                contigScores[contigIdx] =
+                        new ContigScore((float)sumAS[contigIdx]/scoreCount,
+                                        (float)nBases[contigIdx]/contigLength);
+            } else {
+                contigScores[contigIdx] = new ContigScore(0.f, 0.f);
+            }
+        }
+        return contigScores;
     }
 }

@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleChimera;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
@@ -63,10 +64,13 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
     public void testEvidenceAnnotation(final TestDataForSimpleSVs testData,
                                        final String[] expectedMappingQualitiesAsStrings,
                                        final String[] expectedAlignmentLengthsAsStrings) {
+        final AlignedContig fakeAlignedContig =
+                new AlignedContig("asm000001:tig00001", "ACGTACGT".getBytes(),
+                        0.f, new ArrayList<>());
 
         final List<SimpleChimera> chimericAlignments =
                 Collections.singletonList( new SimpleChimera(testData.firstAlignment, testData.secondAlignment,
-                        Collections.emptyList(), testData.evidenceAssemblyContigName, NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME,
+                        Collections.emptyList(), fakeAlignedContig, NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME,
                         SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
         final Map<String, Object> attributeMap =
                 AnnotatedVariantProducer.getEvidenceRelatedAnnotations(chimericAlignments);
@@ -136,10 +140,13 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
                                 final Broadcast<ReferenceMultiSource> referenceBroadcast,
                                 final Broadcast<SAMSequenceDictionary> refSeqDictBroadcast) throws IOException {
 
+        final AlignedContig fakeAlignedContig =
+                new AlignedContig("asm000001:tig00001", "ACGTACGT".getBytes(),
+                        0.f, new ArrayList<>());
         final NovelAdjacencyAndAltHaplotype breakpoints = testData.biPathBubble;
         final List<SimpleChimera> evidence =
                 Collections.singletonList(new SimpleChimera(testData.firstAlignment, testData.secondAlignment,
-                        Collections.emptyList(), testData.evidenceAssemblyContigName, NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME,
+                        Collections.emptyList(), fakeAlignedContig, NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME,
                                 SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
         final String sampleID = "testSample";
 
@@ -167,10 +174,10 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
         final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls = null;
 
         final Set<String> commonAttributes = Sets.newHashSet(VCFConstants.END_KEY, SVLEN, SVTYPE, TOTAL_MAPPINGS,
-                HQ_MAPPINGS, MAPPING_QUALITIES, ALIGN_LENGTHS, MAX_ALIGN_LENGTH, CONTIG_NAMES, SEQ_ALT_HAPLOTYPE);
+                HQ_MAPPINGS, MAPPING_QUALITIES, ALIGN_LENGTHS, MAX_ALIGN_LENGTH, CONTIG_QUALITY, CONTIG_NAMES, SEQ_ALT_HAPLOTYPE);
 
         final Set<String> commAttributesWithoutAltSeq = Sets.newHashSet(VCFConstants.END_KEY, SVLEN, SVTYPE, TOTAL_MAPPINGS,
-                HQ_MAPPINGS, MAPPING_QUALITIES, ALIGN_LENGTHS, MAX_ALIGN_LENGTH, CONTIG_NAMES);
+                HQ_MAPPINGS, MAPPING_QUALITIES, ALIGN_LENGTHS, MAX_ALIGN_LENGTH, CONTIG_QUALITY, CONTIG_NAMES);
 
         // inversion
         data.add(new Object[]{forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint,

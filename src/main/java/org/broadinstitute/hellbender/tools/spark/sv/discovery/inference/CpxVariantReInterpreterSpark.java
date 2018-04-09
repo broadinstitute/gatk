@@ -85,7 +85,7 @@ public class CpxVariantReInterpreterSpark extends GATKSparkTool {
         final SvDiscoveryInputMetaData svDiscoveryInputMetaData =
                 new SvDiscoveryInputMetaData(ctx, discoverStageArgs, nonCanonicalChromosomeNamesFile,
                         derivedSimpleVCFPrefix,
-                        null, null, null, null,
+                        null, null, null, null, null,
                         headerForReads, getReference(), localLogger);
 
         final JavaRDD<VariantContext> complexVariants = new VariantsSparkSource(ctx)

@@ -461,7 +461,7 @@ public final class CpxSVInferenceTestUtils extends GATKBaseTest {
 
         final AssemblyContigWithFineTunedAlignments intermediate =
                 AssemblyContigAlignmentsConfigPicker.reConstructContigFromPickedConfiguration(
-                        new Tuple2<>(new Tuple2<>(alignedContig.getContigName(), alignedContig.getContigSequence()),
+                        new Tuple2<>(alignedContig,
                                 AssemblyContigAlignmentsConfigPicker.pickBestConfigurations(alignedContig, canonicalChromosomes,
                                                                             0.0)))
                         .next();

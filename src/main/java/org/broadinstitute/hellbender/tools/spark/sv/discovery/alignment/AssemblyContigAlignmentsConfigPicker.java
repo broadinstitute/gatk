@@ -10,6 +10,7 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoverFromLocalAssemblyContigAlignmentsSpark;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.FermiLiteAssemblyHandler.ContigScore;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -83,7 +84,7 @@ public class AssemblyContigAlignmentsConfigPicker {
         final JavaRDD<AlignedContig> parsedContigAlignments =
                 convertRawAlignmentsToAlignedContigAndFilterByQuality(assemblyAlignments, header, toolLogger);
 
-        final JavaPairRDD<Tuple2<String, byte[]>, List<GoodAndBadMappings>> assemblyContigWithPickedConfigurations =
+        final JavaPairRDD<AlignedContig, List<GoodAndBadMappings>> assemblyContigWithPickedConfigurations =
                 gatherBestConfigurationsForOneContig(parsedContigAlignments, canonicalChromosomes, scoreDiffTolerance);
 
         return assemblyContigWithPickedConfigurations
@@ -153,15 +154,15 @@ public class AssemblyContigAlignmentsConfigPicker {
      * For each assembly contig, scores its alignment configurations and pick the best one(s).
      */
     @VisibleForTesting
-    static JavaPairRDD<Tuple2<String, byte[]>, List<GoodAndBadMappings>> gatherBestConfigurationsForOneContig(final JavaRDD<AlignedContig> parsedContigAlignments,
+    static JavaPairRDD<AlignedContig, List<GoodAndBadMappings>> gatherBestConfigurationsForOneContig(final JavaRDD<AlignedContig> parsedContigAlignments,
                                                                                                               final Set<String> canonicalChromosomes,
                                                                                                               final Double scoreDiffTolerance) {
 
         return parsedContigAlignments
-                .mapToPair(alignedContig -> new Tuple2<>(new Tuple2<>(alignedContig.getContigName(), alignedContig.getContigSequence()),
-                        pickBestConfigurations(alignedContig, canonicalChromosomes, scoreDiffTolerance)))
-                .mapToPair(nameSeqAndConfigurations -> new Tuple2<>(nameSeqAndConfigurations._1,
-                        filterSecondaryConfigurationsByMappingQualityThreshold(nameSeqAndConfigurations._2, mqThreshold)));
+                .mapToPair(alignedContig ->
+                        new Tuple2<>(alignedContig, pickBestConfigurations(alignedContig, canonicalChromosomes, scoreDiffTolerance)))
+                .mapToPair(tigAndConfigs -> new Tuple2<>(tigAndConfigs._1,
+                        filterSecondaryConfigurationsByMappingQualityThreshold(tigAndConfigs._2, mqThreshold)));
     }
 
     /**
@@ -415,22 +416,21 @@ public class AssemblyContigAlignmentsConfigPicker {
      */
     @VisibleForTesting
     public static Iterator<AssemblyContigWithFineTunedAlignments> reConstructContigFromPickedConfiguration(
-            final Tuple2<Tuple2<String, byte[]>, List<GoodAndBadMappings>> nameSeqAndBestConfigurationsOfOneAssemblyContig) {
+            final Tuple2<AlignedContig, List<GoodAndBadMappings>> nameSeqAndBestConfigurationsOfOneAssemblyContig) {
 
-        final String contigName = nameSeqAndBestConfigurationsOfOneAssemblyContig._1._1;
-        final byte[] contigSeq = nameSeqAndBestConfigurationsOfOneAssemblyContig._1._2;
+        final AlignedContig alignedContig = nameSeqAndBestConfigurationsOfOneAssemblyContig._1;
         final List<GoodAndBadMappings> bestConfigurations = nameSeqAndBestConfigurationsOfOneAssemblyContig._2;
         if (bestConfigurations.size() > 1) { // more than one best configuration
             return bestConfigurations.stream()
-                    .map(configuration -> updateContigMappingsWithGapSplit(contigName, contigSeq, configuration, true))
+                    .map(configuration -> updateContigMappingsWithGapSplit(alignedContig, configuration, true))
                     .sorted(getConfigurationComparator())
                     .iterator();
         } else {
-            return Collections.singletonList(updateContigMappingsWithGapSplit(contigName, contigSeq, bestConfigurations.get(0), false)).iterator();
+            return Collections.singletonList(updateContigMappingsWithGapSplit(alignedContig, bestConfigurations.get(0), false)).iterator();
         }
     }
 
-    private static AssemblyContigWithFineTunedAlignments updateContigMappingsWithGapSplit(final String contigName, final byte[] contigSeq,
+    private static AssemblyContigWithFineTunedAlignments updateContigMappingsWithGapSplit(final AlignedContig alignedContig,
                                                                                           final GoodAndBadMappings configuration,
                                                                                           final boolean setResultContigAsAmbiguous) {
         final GoodAndBadMappings goodAndBadMappings;
@@ -441,7 +441,8 @@ public class AssemblyContigAlignmentsConfigPicker {
         }
 
         return new AssemblyContigWithFineTunedAlignments(
-                new AlignedContig(contigName, contigSeq, goodAndBadMappings.goodMappings),
+                new AlignedContig(alignedContig.getContigName(), alignedContig.getContigSequence(),
+                                    alignedContig.getContigScore(), goodAndBadMappings.goodMappings),
                 goodAndBadMappings.badMappings.stream().map(AlignmentInterval::toPackedString).collect(Collectors.toList()),
                 setResultContigAsAmbiguous,
                 goodAndBadMappings.getMayBeNullGoodMappingToNonCanonicalChromosome());
@@ -678,7 +679,9 @@ public class AssemblyContigAlignmentsConfigPicker {
             }
         }
 
-        final AlignedContig updatedTig = new AlignedContig(tig.getContigName(), tig.getContigSequence(), selectedAlignments);
+        final AlignedContig updatedTig =
+                new AlignedContig(tig.getContigName(), tig.getContigSequence(),
+                                    tig.getSourceContig().getContigScore(), selectedAlignments);
         return new AssemblyContigWithFineTunedAlignments(
                 updatedTig,
                 lowUniquenessMappings.stream().map(AlignmentInterval::toPackedString).collect(Collectors.toList()),

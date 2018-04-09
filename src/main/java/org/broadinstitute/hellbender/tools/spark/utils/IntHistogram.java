@@ -6,11 +6,14 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.io.Serializable;
 import java.util.Arrays;
 
 /** Histogram of observations on a compact set of non-negative integer values. */
 @DefaultSerializer(IntHistogram.Serializer.class)
-public final class IntHistogram {
+public final class IntHistogram implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     // the final slot (i.e., counts[counts.length-1]) accumulates the count of all observations greater than
     // the maximum tracked value -- it's the "overflow" bin
     private final long[] counts;
@@ -77,6 +80,14 @@ public final class IntHistogram {
         Utils.validateArg(observedValue >= 0 && observedValue < counts.length,
                 "observedValue must be non-negative, and no more than 1 greater than the maximum tracked observed value");
         return counts[observedValue];
+    }
+
+    public long getMaxNObservations() {
+        long maxCount = 0;
+        for ( final long count : counts ) {
+            if ( count > maxCount ) maxCount = count;
+        }
+        return maxCount;
     }
 
     public void clear() {

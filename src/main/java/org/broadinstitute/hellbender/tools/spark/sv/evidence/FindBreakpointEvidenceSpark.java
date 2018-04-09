@@ -130,9 +130,11 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     @Override
     protected void runTool( final JavaSparkContext ctx ) {
 
-        gatherEvidenceAndWriteContigSamFile(ctx, params, getHeaderForReads(), getUnfilteredReads(),
-                outputAssemblyAlignments, logger);
+        final SAMFileHeader header = getHeaderForReads();
 
+        final AssembledEvidenceResults results =
+                gatherEvidenceAndWriteContigSamFile(ctx, params, header, getUnfilteredReads(),
+                                                        outputAssemblyAlignments, logger);
     }
 
     /**
@@ -161,7 +163,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                 evidenceScanResults.readMetadata,
                 intervals,
                 new ArrayList<>(),
-                evidenceScanResults.evidenceTargetLinks);
+                evidenceScanResults.evidenceTargetLinks,
+                null);
 
         final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap = evidenceScanResults.qNamesForAssemblyMultiMap;
 
@@ -186,19 +189,17 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         alignedAssemblyOrExcuseList.sort(Comparator.comparingInt(AlignedAssemblyOrExcuse::getAssemblyId));
 
-        // record the intervals
-        if ( params.intervalFile != null ) {
-            AlignedAssemblyOrExcuse.writeIntervalFile(params.intervalFile, header, intervals, alignedAssemblyOrExcuseList);
-        }
+        final ContigScorer contigScorer = new ContigScorer(alignedAssemblyOrExcuseList);
 
         // write alignments of the assembled contigs
         if ( outputAssemblyAlignments != null ) {
-            AlignedAssemblyOrExcuse.writeAssemblySAMFile(outputAssemblyAlignments, alignedAssemblyOrExcuseList, header, params.assembliesSortOrder);
+            AlignedAssemblyOrExcuse.writeAssemblySAMFile(outputAssemblyAlignments, alignedAssemblyOrExcuseList,
+                                                            contigScorer, header, params.assembliesSortOrder);
             log("Wrote SAM file of aligned contigs.", logger);
         }
 
         return new AssembledEvidenceResults(evidenceScanResults.readMetadata, intervals, alignedAssemblyOrExcuseList,
-                                            evidenceScanResults.evidenceTargetLinks);
+                                            evidenceScanResults.evidenceTargetLinks, contigScorer);
     }
 
     public static final class AssembledEvidenceResults {
@@ -206,15 +207,18 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final List<SVInterval> assembledIntervals;
         final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList;
         final List<EvidenceTargetLink> evidenceTargetLinks;
+        final ContigScorer contigScorer;
 
         public AssembledEvidenceResults(final ReadMetadata readMetadata,
                                         final List<SVInterval> assembledIntervals,
                                         final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList,
-                                        final List<EvidenceTargetLink> evidenceTargetLinks) {
+                                        final List<EvidenceTargetLink> evidenceTargetLinks,
+                                        final ContigScorer contigScorer) {
             this.readMetadata = readMetadata;
             this.assembledIntervals = assembledIntervals;
             this.alignedAssemblyOrExcuseList = alignedAssemblyOrExcuseList;
             this.evidenceTargetLinks = evidenceTargetLinks;
+            this.contigScorer = contigScorer;
         }
 
         public ReadMetadata getReadMetadata() {
@@ -230,6 +234,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         public List<EvidenceTargetLink> getEvidenceTargetLinks() {
             return evidenceTargetLinks;
         }
+
+        public ContigScorer getContigScorer() { return contigScorer; }
     }
 
     public static ReadMetadata buildMetadata( final FindBreakpointEvidenceSparkArgumentCollection params,

@@ -278,6 +278,7 @@ public class AnnotatedVariantProducer implements Serializable {
         final String sourceContigName;
         final List<String> insSeqMappings;
         final String goodNonCanonicalMappingSATag;
+        final float contigScore;
 
         ChimericContigAlignmentEvidenceAnnotations(final SimpleChimera simpleChimera){
             minMQ = Math.min(simpleChimera.regionWithLowerCoordOnContig.mapQual,
@@ -289,6 +290,7 @@ public class AnnotatedVariantProducer implements Serializable {
             sourceContigName = simpleChimera.sourceContigName;
             insSeqMappings = simpleChimera.insertionMappings;
             this.goodNonCanonicalMappingSATag = simpleChimera.goodNonCanonicalMappingSATag;
+            this.contigScore = simpleChimera.contigScore;
         }
     }
 
@@ -308,7 +310,7 @@ public class AnnotatedVariantProducer implements Serializable {
         attributeMap.put(GATKSVVCFConstants.ALIGN_LENGTHS,     annotations.stream().map(annotation -> String.valueOf(annotation.minAL)).collect(Collectors.joining(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)));
         attributeMap.put(GATKSVVCFConstants.MAX_ALIGN_LENGTH,  annotations.stream().map(annotation -> annotation.minAL).max(Comparator.naturalOrder()).orElse(0));
         attributeMap.put(GATKSVVCFConstants.CONTIG_NAMES,      annotations.stream().map(annotation -> annotation.sourceContigName).collect(Collectors.joining(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)));
-
+        attributeMap.put(GATKSVVCFConstants.CONTIG_QUALITY,    annotations.stream().map(annotation -> String.valueOf(annotation.contigScore)).collect(Collectors.joining(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)));
         final List<String> insertionMappings = annotations.stream().map(annotation -> annotation.insSeqMappings).flatMap(List::stream).sorted().collect(Collectors.toList());
 
         if (!insertionMappings.isEmpty()) {

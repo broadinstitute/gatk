@@ -80,6 +80,13 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
         return new SVKmerLong(newV1, newV2);
     }
 
+    public boolean isCanonical( final int kSize ) {
+        Utils.validateArg( (kSize & 1) != 0, "Kmer length must be odd to canonicalize.");
+        // for odd-size kmers, the high bit of the middle base is in least significant position in valHigh.
+        // test its value by ANDing with 1.  if it's zero the middle base is A or C and we're canonical.
+        return (valHigh & 1L) == 0;
+    }
+
     /**
      * Returns a new SVKmerLong that's the reverse-complement of this one.
      * E.g., if kmer.toString(5) is "ACTGA", then kmer.rc(5).toString(5) is "TCAGT".
@@ -123,6 +130,12 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
     public final Base lastBase() { return Base.values()[(int)(valLow & 3)]; }
     public final int firstTrimer(final int kSize ) { return (int)(valHigh >>> (kSize-6)); }
     public final int lastTrimer() { return (int)valLow & 0x3F; }
+
+    /** Returns a kmer of size kSize-2 by removing the first and last base */
+    public final SVKmerLong removeFirstAndLastBase( final int kSize ) {
+        return new SVKmerLong(valHigh & ((1L << (kSize-2)) - 1L), valLow >> 2);
+    }
+
     @Override
     public boolean equals( final Object obj ) {
         return obj instanceof SVKmerLong && equals((SVKmerLong)obj);

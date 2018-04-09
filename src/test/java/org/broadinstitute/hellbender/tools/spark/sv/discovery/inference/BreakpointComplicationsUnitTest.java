@@ -5,14 +5,17 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestUtilsAndCommonDataProvider;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.ContigAlignmentsModifier;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.FermiLiteAssemblyHandler;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -89,7 +92,10 @@ public class BreakpointComplicationsUnitTest extends GATKBaseTest {
         final AlignmentInterval region6 = new AlignmentInterval(new SimpleInterval("chr20", 1293941, 1295139),
                 463, 1663, TextCigarCodec.decode("462S1098M2I101M"),
                 false, 60, 17, 1106, ContigAlignmentsModifier.AlnModType.NONE);
-        final SimpleChimera simpleChimera = new SimpleChimera(region5, region6, Collections.emptyList(), "asm030282:tig00005",
+        final AlignedContig alignedContig =
+                new AlignedContig("asm030282:tig00005", "ACGTACGT".getBytes(),
+                        0.f, new ArrayList<>());
+        final SimpleChimera simpleChimera = new SimpleChimera(region5, region6, Collections.emptyList(), alignedContig,
                 AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME,
                 SVDiscoveryTestUtilsAndCommonDataProvider.b38_seqDict_chr20_chr21);
         final BreakpointComplications.SmallDuplicationWithPreciseDupRangeBreakpointComplications smallDuplicationWithPreciseDupRangeBreakpointComplications = new BreakpointComplications.SmallDuplicationWithPreciseDupRangeBreakpointComplications(simpleChimera, "CTCCTGTCGTCCAGGTAGACATGGAGCAGGCTCTCCTTCTTGTCTACACTGGGTCCAGGTGGTTGTGGGACAAGATCTCCTCTTGTCTACACTGGATCGAGGTGGATGTGAGGCAGTCTCTCTTCCTGTCTACACTGGGTCCAGGTGGTTGTGGGACAAGAGCTCCTCCTGTCTACACTGGGTCCAGGTAGCTGTGGGACAAGAGCTCCTCCTGTCTACACTGGGTCTCCATGGAGGTGGGGCAGGGTCTCCTTCTGTCTACACTGCGTGTAGTTGGAGGTGGGGCAGGGTCTCCTCCTGTCTACACTGGGTCCAGGTAGACATGGGGCAGTCTCTCCTTCTTGTCTACACTGGGTCCAGGTGGTTGTGGGACAAGAGCTCCTCCTGTCTACACTGGGTCCAGGTAGTTGTGGGACAAGAGCTCCTCCTGTCTACACTGGGTCTCCATGGAGGTGGGGCAGTCTCTCCTTCTTGTCTACACTGGGTCCAGGTGGTTGTGGGACAAGATCTCCTCTTGTCTACACTGGCTCGAGGTGGACATGGGGCAGGGTCTCTTCTTGTCTACACTGGGTCCAGGAGGTTGTGAGACAAGATCTCCTCTTGTCTACACTGGATCGAGGTGGACGTGAGGCAGTCTCTCTCCCTGTCTACACTGGGTCCAGGTAGTTGTGGGACAAGAGCTCCTCCTGTCTACACTGGGTCTCCATGGAGGTGGAGCAGGGTCTCCTCCTGTCTACACTGGGTGTAGGTGGAGGTGGGGTCGGGTGTCCTCCTATCTACACTGGGTCCAGGTAGACATGGGGCAGGGTCTCCTTCTCTCTACACTGCGTCCAGCTGGAGGTGGAGCAGAGGCTCTCCTTGCTTGTGGCATCGTCCCCCACACCTCCCGGTCCACTTCCTGGTTCCATGGTTGCAGGATCATCCTTGTCCACCCTCCCTGCAACCTCTTTCAAGGTGGCTCCACAGGCCACAGACCCTTCACCTCTTCCTCCGCTACCCGAAGTGTGTTCACCCCAGAGTCACCGCTCACCACCCACCCATCCTTCCCCCAGGCCACTTCCCCGGGATTCCCAGGCTCCTGTGCGGGCGTGTCCCGTACGCCTCCCTCCTGGTGCCCAGCCCCGGGGAGCTCTCACCGACCTTTCTGTGGACGTCCAGCTGGTACTGAAAGTCCAGGTACGACAGCTTCTGATAGGTCCTGGGCTGTTTCCACCGTACGAGGCAGTGCGTCGTGTTGCAACGTACGGTGACATTGCTGGGAGGGTTGAATCGTTCTGTAACGAGGGCGCAGGACACACCCCTGAACCCGAGAGGTCCTGTCTACACTGGGTCCAGGTGGAGGTGGTGCAGAGTCTCCTCCTGTCTACACTGGGTCCAGGTGGAGGTGGAGTAGGTCCTGTCTACACTGGGTCCAGGTGGAGGTGGAGTAGGGACACCTCTTTGACTACACTGGGTCCAGGTGGAGATGGGGCAGGGTCTCCTCCTGTCTACACTGGGTCCAGGTGGAGGTGGGGCAGGGTCTCCTCCTGTCTACACTGGGTCTAGGTGGAGGTGGTGCAGAGTCTTCTCCTGTCTACACTGGGTCCAGGTGGAGGTGGGGCAGGGTCTCCTCCTGTCTACACTCGGTCCAGGTGGATGTGGACTAGGGACACCTCTTTGTCTA".getBytes());

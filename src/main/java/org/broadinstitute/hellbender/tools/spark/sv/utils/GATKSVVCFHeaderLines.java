@@ -143,6 +143,10 @@ public final class GATKSVVCFHeaderLines {
                     1,
                     VCFHeaderLineType.Integer,
                     "Maximum of the values listed in " + GATKSVVCFConstants.ALIGN_LENGTHS));
+            addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.CONTIG_QUALITY,
+                    VCFHeaderLineCount.UNBOUNDED,
+                    VCFHeaderLineType.Float,
+                    "Quality of local assembly contigs as judged by contig coverage and read alignment accuracy"));
             addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.CTG_GOOD_NONCANONICAL_MAPPING,
                     VCFHeaderLineCount.UNBOUNDED,
                     VCFHeaderLineType.String,

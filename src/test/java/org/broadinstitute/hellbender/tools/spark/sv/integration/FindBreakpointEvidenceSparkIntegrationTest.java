@@ -43,7 +43,6 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
                     " -O "                    + "%s" +
                     " --aligner-index-image " + alignerRefIndexImgLoc +
                     " --kmers-to-ignore " + kmerIgnoreListLoc +
-                    " --breakpoint-intervals " + outputDir + "/intervals" +
                     " --fastq-dir "            + outputDir + "/fastq" +
                     " --target-link-file "      + outputDir + "/targetLinks.bedpe";
         }
@@ -109,10 +108,6 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
             // outputs, prefix with hdfs address
             idx = argsToBeModified.indexOf("-O");
             path = new Path(workingDirectory, "assemblies.sam");
-            argsToBeModified.set(idx+1, path.toUri().toString());
-
-            idx = argsToBeModified.indexOf("--breakpoint-intervals");
-            path = new Path(workingDirectory, "intervals");
             argsToBeModified.set(idx+1, path.toUri().toString());
 
             idx = argsToBeModified.indexOf("--fastq-dir");

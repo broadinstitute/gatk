@@ -37,6 +37,7 @@ public final class GATKSVVCFConstants {
     public static final String HQ_MAPPINGS = "HQ_MAPPINGS";
     public static final String ALIGN_LENGTHS = "ALIGN_LENGTHS";
     public static final String MAX_ALIGN_LENGTH = "MAX_ALIGN_LENGTH";
+    public static final String CONTIG_QUALITY = "CONTIG_QUALITY";
 
     // applicable to all precise records when available
     public static final String SEQ_ALT_HAPLOTYPE = "SEQ_ALT_HAPLOTYPE";
@@ -86,6 +87,7 @@ public final class GATKSVVCFConstants {
             = Stream.of("SVTYPE", "SVLEN", "MATEID", "INV", "DEL", "INS", "DUP", "DUP:INV",
                     "CIPOS", "CIEND", "IMPRECISE", "READ_PAIR_SUPPORT", "SPLIT_READ_SUPPORT", "LINK",
                     "CTG_NAMES", "TOTAL_MAPPINGS", "MAPPING_QUALITIES", "HQ_MAPPINGS", "ALIGN_LENGTHS", "MAX_ALIGN_LENGTH",
+                    "CONTIG_QUALITY",
                     "SEQ_ALT_HAPLOTYPE", "INSSEQ", "INSLEN", "INSSEQ_MAP", "HOMSEQ", "HOMLEN", "DUP_REPEAT_UNIT_REF_SPAN",
                     "DUP_SEQ_CIGARS", "DUP_NUM", "DUP_ANNOTATIONS_IMPRECISE", "CONTRACTION", "EXPANSION", "DUP_ORIENTATIONS",
                     "INV33", "INV55", "EXTERNAL_CNV_CALLS", "DUP_IMPRECISE_AFFECTED_RANGE", "CTG_GOOD_NONCANONICAL_MAPPING")

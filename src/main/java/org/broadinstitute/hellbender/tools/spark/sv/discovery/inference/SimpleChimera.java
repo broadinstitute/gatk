@@ -7,6 +7,7 @@ import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
@@ -26,6 +27,7 @@ import java.util.List;
 public class SimpleChimera {
 
     public final String sourceContigName;
+    public final float contigScore;
 
     public final AlignmentInterval regionWithLowerCoordOnContig;
     public final AlignmentInterval regionWithHigherCoordOnContig;
@@ -43,6 +45,7 @@ public class SimpleChimera {
     protected SimpleChimera(final Kryo kryo, final Input input) {
 
         this.sourceContigName = input.readString();
+        this.contigScore = input.readFloat();
 
         this.regionWithLowerCoordOnContig = kryo.readObject(input, AlignmentInterval.class);
         this.regionWithHigherCoordOnContig = kryo.readObject(input, AlignmentInterval.class);
@@ -65,10 +68,11 @@ public class SimpleChimera {
      */
     @VisibleForTesting
     public SimpleChimera(final AlignmentInterval intervalWithLowerCoordOnContig, final AlignmentInterval intervalWithHigherCoordOnContig,
-                         final List<String> insertionMappings, final String sourceContigName, final String goodNonCanonicalMappingSATag,
+                         final List<String> insertionMappings, final AlignedContig alignedContig, final String goodNonCanonicalMappingSATag,
                          final SAMSequenceDictionary referenceDictionary) {
 
-        this.sourceContigName = sourceContigName;
+        this.sourceContigName = alignedContig.getContigName();
+        this.contigScore = alignedContig.getContigScore();
 
         this.regionWithLowerCoordOnContig = intervalWithLowerCoordOnContig;
         this.regionWithHigherCoordOnContig = intervalWithHigherCoordOnContig;
@@ -394,6 +398,7 @@ public class SimpleChimera {
     protected void serialize(final Kryo kryo, final Output output) {
 
         output.writeString(sourceContigName);
+        output.writeFloat(contigScore);
 
         kryo.writeObject(output, regionWithLowerCoordOnContig);
         kryo.writeObject(output, regionWithHigherCoordOnContig);

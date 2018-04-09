@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
@@ -23,28 +24,32 @@ public final class AlignedContig {
 
     private final String contigName;
     private final byte[] contigSequence;
+    private final float contigScore;
     private final List<AlignmentInterval> alignmentIntervals;
 
     // throws if alignment interval is null
-    public AlignedContig(final String contigName, final byte[] contigSequence, final List<AlignmentInterval> alignmentIntervals) {
+    public AlignedContig(final String contigName, final byte[] contigSequence, final float contigScore,
+                         final List<AlignmentInterval> alignmentIntervals) {
         if (alignmentIntervals == null) {
             throw new IllegalArgumentException("AlignedContig being constructed with null alignments: " + contigName);
         }
         this.contigName = contigName;
         this.contigSequence = contigSequence;
+        this.contigScore = contigScore;
         this.alignmentIntervals = alignmentIntervals.stream().sorted(getAlignmentIntervalComparator()).collect(Collectors.toList());
+    }
+
+    @VisibleForTesting
+    public AlignedContig(final String contigName, final byte[] contigSequence, final List<AlignmentInterval> alignmentIntervals) {
+        this(contigName, contigSequence, 0.f, alignmentIntervals);
     }
 
     AlignedContig(final Kryo kryo, final Input input) {
 
         contigName = input.readString();
-
         final int nBases = input.readInt();
-        contigSequence = new byte[nBases];
-        for (int b = 0; b < nBases; ++b) {
-            contigSequence[b] = input.readByte();
-        }
-
+        contigSequence = input.readBytes(nBases);
+        contigScore = input.readFloat();
         final int nAlignments = input.readInt();
         alignmentIntervals = new ArrayList<>(nAlignments);
         for (int i = 0; i < nAlignments; ++i) {
@@ -84,6 +89,8 @@ public final class AlignedContig {
     public byte[] getContigSequence() {
         return contigSequence;
     }
+
+    public float getContigScore() { return contigScore; }
 
     public boolean isUnmapped() {
         return alignmentIntervals.isEmpty();
@@ -127,17 +134,12 @@ public final class AlignedContig {
     }
 
     void serialize(final Kryo kryo, final Output output) {
-
         output.writeString(contigName);
-
         output.writeInt(contigSequence.length);
-        for (final byte base : contigSequence) {
-            output.writeByte(base);
-        }
-
+        output.writeBytes(contigSequence);
+        output.writeFloat(contigScore);
         output.writeInt(alignmentIntervals.size());
         alignmentIntervals.forEach(it -> it.serialize(kryo, output));
-
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<AlignedContig> {

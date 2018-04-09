@@ -332,7 +332,7 @@ public class AssemblyContigAlignmentsConfigPickerUnitTest extends GATKBaseTest {
         List<AssemblyContigWithFineTunedAlignments> result =
                 IteratorUtils.toList(
                         AssemblyContigAlignmentsConfigPicker.reConstructContigFromPickedConfiguration(
-                                new Tuple2<>(new Tuple2<>(alignedContig.getContigName(), alignedContig.getContigSequence()),
+                                new Tuple2<>(alignedContig,
                                         AssemblyContigAlignmentsConfigPicker.pickBestConfigurations(alignedContig,
                                                 CpxSVInferenceTestUtils.hg38CanonicalChromosomes, 0.0))));
 

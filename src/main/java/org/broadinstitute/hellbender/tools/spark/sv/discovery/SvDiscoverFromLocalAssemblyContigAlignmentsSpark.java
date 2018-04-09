@@ -25,6 +25,9 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.CpxVariantInterpreter;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SegmentedCpxVariantSimpleVariantExtractor;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleNovelAdjacencyInterpreter;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.FermiLiteAssemblyHandler;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.FermiLiteAssemblyHandler.ContigScore;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFileUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
@@ -141,7 +144,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         final String outputPrefixWithSampleName = outputPrefix + SVUtils.getSampleId(getHeaderForReads()) + "_";
         final SvDiscoveryInputMetaData svDiscoveryInputMetaData =
                 new SvDiscoveryInputMetaData(ctx, discoverStageArgs, nonCanonicalChromosomeNamesFile, outputPrefixWithSampleName,
-                        null, null, null,
+                        null, null, null, null,
                         cnvCallsBroadcast,
                         getHeaderForReads(), getReference(), localLogger);
         final JavaRDD<GATKRead> assemblyRawAlignments = getReads();
@@ -349,7 +352,9 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
                     parsedAlignments = unSplitAIList.collect(Collectors.toList());
                 }
             }
-            return new AlignedContig(primaryAlignment.getReadName(), contigSequence, parsedAlignments);
+            final Float contigScore = primaryAlignment.getFloatAttribute(AlignedAssemblyOrExcuse.CONTIG_QUALITY_TAG);
+            return new AlignedContig(primaryAlignment.getReadName(), contigSequence,
+                    contigScore==null ? 0.f : contigScore, parsedAlignments);
         }
     }
 }

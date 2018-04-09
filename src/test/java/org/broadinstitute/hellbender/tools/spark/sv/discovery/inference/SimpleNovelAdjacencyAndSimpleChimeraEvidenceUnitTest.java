@@ -6,6 +6,8 @@ import com.esotericsoftware.kryo.io.Output;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestUtilsAndCommonDataProvider;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryTestDataProvider;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.FermiLiteAssemblyHandler;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -32,11 +34,17 @@ public class SimpleNovelAdjacencyAndSimpleChimeraEvidenceUnitTest extends GATKBa
                 pair :
                 SimpleSVDiscoveryTestDataProvider.getAllTestDataPaired()) {
             final NovelAdjacencyAndAltHaplotype biPathBubble = pair._1.biPathBubble;
+            final AlignedContig alignedContig1 =
+                    new AlignedContig(pair._1.evidenceAssemblyContigName, "ACGTACGT".getBytes(),
+                            0.f, new ArrayList<>());
+            final AlignedContig alignedContig2 =
+                    new AlignedContig(pair._2.evidenceAssemblyContigName, "ACGTACGT".getBytes(),
+                            0.f, new ArrayList<>());
             final SimpleChimera forwardRep = new SimpleChimera(pair._1.firstAlignment, pair._1.secondAlignment, Collections.emptyList(),
-                    pair._1.evidenceAssemblyContigName, NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME,
+                    alignedContig1, NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME,
                     SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21);
             final SimpleChimera reverseRep = new SimpleChimera(pair._2.firstAlignment, pair._2.secondAlignment, Collections.emptyList(),
-                    pair._2.evidenceAssemblyContigName, NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME,
+                    alignedContig2, NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME,
                     SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21);
             final List<SimpleChimera> evidence = Arrays.asList(forwardRep, reverseRep);
             data.add(new Object[]{new SimpleNovelAdjacencyAndChimericAlignmentEvidence(biPathBubble, evidence)});

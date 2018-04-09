@@ -120,8 +120,8 @@ public class AssemblyContigWithFineTunedAlignmentsUnitTest extends GATKBaseTest 
         final AlignedContig sourceTig = new AlignedContig("asm002362:tig00002", "GTCCCTGAGGGGCACACCAGGCTCTCGCTCTCCCCATGGCCCAGCGCGGCGCCTGCACGAGGTCGGTCCAGCGCGGCGCCTGCACGAGGTCGGTCCAGGAGAGGCGCCTGCACGAGGTCTGTCCAGGAGAGGCGCCTGCACGAGGTCGGTCCAGGAGAGGCGCCTGCACGAGGTCTGTCCAGGAGAGGCGCCTGCGGGGTCTTCAAGGCTTCAGTCCCACGCGCCTTCCATGCTCGTCCCCACCCAAGGAGCACACAAATTCCCCAGCAT".getBytes(),
                 Arrays.asList(one, two));
         final List<AssemblyContigAlignmentsConfigPicker.GoodAndBadMappings> config = AssemblyContigAlignmentsConfigPicker.pickBestConfigurations(sourceTig, new HashSet<>(Collections.singletonList("chr2")), 0.);
-        final AssemblyContigWithFineTunedAlignments tig = AssemblyContigAlignmentsConfigPicker.reConstructContigFromPickedConfiguration(new Tuple2<>(new Tuple2<>(sourceTig.getContigName(), sourceTig.getContigSequence()),
-                config)).next();
+        final AssemblyContigWithFineTunedAlignments tig =
+                AssemblyContigAlignmentsConfigPicker.reConstructContigFromPickedConfiguration(new Tuple2<>(sourceTig, config)).next();
 
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
         final Output out = new Output(bos);

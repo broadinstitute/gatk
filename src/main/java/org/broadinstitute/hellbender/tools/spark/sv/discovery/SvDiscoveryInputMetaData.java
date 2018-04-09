@@ -7,6 +7,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervalTree;
@@ -76,15 +77,18 @@ public final class SvDiscoveryInputMetaData {
         private final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast;
         private final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks;
         private final List<SVInterval> assembledIntervals;
+        public final List<AlignedAssemblyOrExcuse> intervalAssemblies;
 
         public SampleSpecificData(final String sampleId, final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast,
                                   final List<SVInterval> assembledIntervals,
+                                  final List<AlignedAssemblyOrExcuse> intervalAssemblies,
                                   final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
                                   final ReadMetadata readMetadata,
                                   final Broadcast<SAMFileHeader> headerBroadcast) {
             this.sampleId = sampleId;
             this.cnvCallsBroadcast = cnvCallsBroadcast;
             this.assembledIntervals = assembledIntervals;
+            this.intervalAssemblies = intervalAssemblies;
             this.evidenceTargetLinks = evidenceTargetLinks;
             this.readMetadata = readMetadata;
             this.headerBroadcast = headerBroadcast;
@@ -131,6 +135,7 @@ public final class SvDiscoveryInputMetaData {
                                     final String outputPath,
                                     final ReadMetadata readMetadata,
                                     final List<SVInterval> assembledIntervals,
+                                    final List<AlignedAssemblyOrExcuse> intervalAssemblies,
                                     final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
                                     final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast,
                                     final SAMFileHeader headerForReads,
@@ -143,7 +148,9 @@ public final class SvDiscoveryInputMetaData {
         final String sampleId = SVUtils.getSampleId(headerForReads);
 
         this.referenceData = new ReferenceData(canonicalChromosomesBroadcast, ctx.broadcast(reference), ctx.broadcast(sequenceDictionary));
-        this.sampleSpecificData = new SampleSpecificData(sampleId, cnvCallsBroadcast, assembledIntervals, evidenceTargetLinks, readMetadata, ctx.broadcast(headerForReads));
+        this.sampleSpecificData =
+                new SampleSpecificData(sampleId, cnvCallsBroadcast, assembledIntervals, intervalAssemblies,
+                                        evidenceTargetLinks, readMetadata, ctx.broadcast(headerForReads));
         this.discoverStageArgs = discoverStageArgs;
         this.outputPath = outputPath;
         this.toolLogger = toolLogger;

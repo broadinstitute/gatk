@@ -13,6 +13,8 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryT
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.ContigAlignmentsModifier;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.FermiLiteAssemblyHandler;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.testng.Assert;
@@ -301,7 +303,10 @@ public class SimpleChimeraUnitTest extends GATKBaseTest {
         Assert.assertEquals(SimpleChimera.determineStrandSwitch(region1, region2), expectedStrandSwitch);
         Assert.assertEquals(SimpleChimera.isForwardStrandRepresentation(region1, region2, expectedStrandSwitch, refDict), expectedIsForwardStrandRepresentation);
 
-        final SimpleChimera simpleChimera = new SimpleChimera(region1, region2, Collections.emptyList(), "dummyName", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, refDict);
+        final AlignedContig alignedContig =
+                new AlignedContig("dummyName", "ACGTACGT".getBytes(),
+                        0.f, new ArrayList<>());
+        final SimpleChimera simpleChimera = new SimpleChimera(region1, region2, Collections.emptyList(), alignedContig, NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, refDict);
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
         final Output out = new Output(bos);
         final Kryo kryo = new Kryo();
