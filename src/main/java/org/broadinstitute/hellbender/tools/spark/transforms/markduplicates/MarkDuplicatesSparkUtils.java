@@ -228,7 +228,7 @@ public class MarkDuplicatesSparkUtils {
                 final List<PairedEnds> pairs = stratifiedByType.get(PairedEnds.Type.PAIR);
                 final List<PairedEnds> pairsMissingSecondRead = stratifiedByType.get(PairedEnds.Type.PAIRED_BUT_MISSING_SECOND_READ);
 
-                if (!pairsMissingSecondRead.isEmpty()) {
+                if (pairsMissingSecondRead!=null && !pairsMissingSecondRead.isEmpty()) {
                     System.out.println("Read found without a mate as a pair: " + pairsMissingSecondRead.get(0).toString());
                 }
                 if (fragments != null && !fragments.isEmpty()) { // fragments
