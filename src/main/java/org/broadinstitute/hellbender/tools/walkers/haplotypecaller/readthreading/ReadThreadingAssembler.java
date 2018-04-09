@@ -27,6 +27,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public final class ReadThreadingAssembler {
     private static final Logger logger = LogManager.getLogger(ReadThreadingAssembler.class);
@@ -201,39 +203,45 @@ public final class ReadThreadingAssembler {
             final SeqVertex source = graph.getReferenceSourceVertex();
             final SeqVertex sink = graph.getReferenceSinkVertex();
             Utils.validateArg( source != null && sink != null, () -> "Both source and sink cannot be null but got " + source + " and sink " + sink + " for graph " + graph);
-            final KBestHaplotypeFinder haplotypeFinder = new KBestHaplotypeFinder(graph,source,sink);
-            finders.add(haplotypeFinder);
-            final Iterator<KBestHaplotype> bestHaplotypes = haplotypeFinder.iterator(numBestHaplotypesPerGraph);
+            final SeqGraphHaplotypeStreamer haplotypeStreamer = new SeqGraphHaplotypeStreamer(graph);
+            final Stream<Haplotype> haplotypeStream;
+            if (haplotypeStreamer.getNumberOfHaplotypes() < numBestHaplotypesPerGraph) {
+                haplotypeStream = haplotypeStreamer.deepFirst();
+            } else {
+                haplotypeStream = haplotypeStreamer.sampleByLikelihood(Utils.getRandomGenerator(), true, Math.max(10, numBestHaplotypesPerGraph >> 1)).limit(numBestHaplotypesPerGraph);
+            }
+            final List<Haplotype> candidateHaplotypes = haplotypeStream
+                .sorted(Comparator.comparingDouble(Haplotype::getScore))
+                .collect(Collectors.toList());
 
-            while (bestHaplotypes.hasNext()) {
-                final KBestHaplotype kBestHaplotype = bestHaplotypes.next();
-                final Haplotype h = kBestHaplotype.haplotype();
-                if( !returnHaplotypes.contains(h) ) {
-                    final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), h.getBases(), aligner);
 
-                    if ( cigar == null ) {
+            for (final Haplotype haplotype : candidateHaplotypes) {
+                if (!returnHaplotypes.contains(haplotype)) {
+                    final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), haplotype.getBases(), aligner);
+
+                    if (cigar == null) {
                         failedCigars++; // couldn't produce a meaningful alignment of haplotype to reference, fail quietly
                         continue;
-                    } else if( cigar.isEmpty() ) {
+                    } else if (cigar.isEmpty()) {
                         throw new IllegalStateException("Smith-Waterman alignment failure. Cigar = " + cigar + " with reference length " + cigar.getReferenceLength() +
                                 " but expecting reference length of " + refHaplotype.getCigar().getReferenceLength());
-                    } else if ( pathIsTooDivergentFromReference(cigar) || cigar.getReferenceLength() < MIN_HAPLOTYPE_REFERENCE_LENGTH ) {
+                    } else if (pathIsTooDivergentFromReference(cigar) || cigar.getReferenceLength() < MIN_HAPLOTYPE_REFERENCE_LENGTH) {
                         // N cigar elements means that a bubble was too divergent from the reference so skip over this path
                         continue;
-                    } else if( cigar.getReferenceLength() != refHaplotype.getCigar().getReferenceLength() ) { // SW failure
+                    } else if (cigar.getReferenceLength() != refHaplotype.getCigar().getReferenceLength()) { // SW failure
                         throw new IllegalStateException("Smith-Waterman alignment failure. Cigar = " + cigar + " with reference length "
                                 + cigar.getReferenceLength() + " but expecting reference length of " + refHaplotype.getCigar().getReferenceLength()
-                                + " ref = " + refHaplotype + " path " + new String(h.getBases()));
+                                + " ref = " + refHaplotype + " path " + new String(haplotype.getBases()));
                     }
 
-                    h.setCigar(cigar);
-                    h.setAlignmentStartHapwrtRef(activeRegionStart);
-                    h.setGenomeLocation(activeRegionWindow);
-                    returnHaplotypes.add(h);
-                    assemblyResultSet.add(h, assemblyResultByGraph.get(graph));
+                    haplotype.setCigar(cigar);
+                    haplotype.setAlignmentStartHapwrtRef(activeRegionStart);
+                    haplotype.setGenomeLocation(activeRegionWindow);
+                    returnHaplotypes.add(haplotype);
+                    assemblyResultSet.add(haplotype, assemblyResultByGraph.get(graph));
 
-                    if ( debug ) {
-                        logger.info("Adding haplotype " + h.getCigar() + " from graph with kmer " + graph.getKmerSize());
+                    if (debug) {
+                        logger.info("Adding haplotype " + haplotype.getCigar() + " from graph with kmer " + graph.getKmerSize());
                     }
                 }
             }
@@ -242,16 +250,14 @@ public final class ReadThreadingAssembler {
         // Make sure that the ref haplotype is amongst the return haplotypes and calculate its score as
         // the first returned by any finder.
         if (!returnHaplotypes.contains(refHaplotype)) {
-            double refScore = Double.NaN;
-            for (final KBestHaplotypeFinder finder : finders) {
-                final double candidate = finder.score(refHaplotype);
-                if (Double.isNaN(candidate)) {
-                    continue;
+            for (final SeqGraph graph : graphs) {
+                final KBestHaplotypeFinder finder = new KBestHaplotypeFinder(graph);
+                final double score = finder.score(refHaplotype);
+                if (!Double.isNaN(score)) {
+                    refHaplotype.setScore(score);
+                    break;
                 }
-                refScore = candidate;
-                break;
             }
-            refHaplotype.setScore(refScore);
             returnHaplotypes.add(refHaplotype);
         }
 

@@ -227,6 +227,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
         }
 
         final MultiDeBruijnVertex startingVertex = getOrCreateKmerVertex(seqForKmers.sequence, uniqueStartPos);
+        startingVertex.increaseDensity();
 
         // increase the counts of all edges incoming into the starting vertex supported by going back in sequence
         if (INCREASE_COUNTS_BACKWARDS) {
@@ -1049,6 +1050,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
             final byte seqBase = originalKmer[offset];
             if ( suffix == seqBase && (increaseCountsThroughBranches || inDegreeOf(vertex) == 1) ) {
                 edge.incMultiplicity(seqForKmers.count);
+                prev.increaseDensity();
                 increaseCountsInMatchedKmers(seqForKmers, prev, originalKmer, offset-1);
             }
         }
@@ -1127,6 +1129,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
             final MultiDeBruijnVertex target = getEdgeTarget(outgoingEdge);
             if ( target.getSuffix() == sequence[nextPos] ) {
                 // we've got a match in the chain, so simply increase the count of the edge by 1 and continue
+                target.increaseDensity();
                 outgoingEdge.incMultiplicity(count);
                 return target;
             }
@@ -1142,6 +1145,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
 
         // either use our unique merge vertex, or create a new one in the chain
         final MultiDeBruijnVertex nextVertex = uniqueMergeVertex == null ? createVertex(kmer) : uniqueMergeVertex;
+        nextVertex.increaseDensity();
         addEdge(prevVertex, nextVertex, ((MyEdgeFactory)getEdgeFactory()).createEdge(isRef, count));
         return nextVertex;
     }

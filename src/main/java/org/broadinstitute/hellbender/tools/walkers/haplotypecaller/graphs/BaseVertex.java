@@ -15,6 +15,19 @@ public class BaseVertex {
     private final int cachedHashCode;
 
     /**
+     * Measure of how many reads have thread thru this vertex.
+     */
+    private int density = 0;
+
+    public void increaseDensity() {
+        density++;
+    }
+
+    public int getDensity() {
+        return density;
+    }
+
+    /**
      * Create a new sequence vertex with sequence
      *
      * This code doesn't copy sequence for efficiency reasons, so sequence must absolutely not be modified
