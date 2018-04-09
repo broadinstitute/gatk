@@ -235,18 +235,19 @@ public class MarkDuplicatesSparkUtils {
                     final Tuple2<IndexPair<String>, Integer> bestFragment = handleFragments(fragments);
                     if( bestFragment != null) {
                         nonDuplicates.add(bestFragment);
-                    }
-                    if (bestFragment._1.getValue()==null || bestFragment._1.getValue().equals("0")) {
-                        System.out.println("The Problem was in the bad fragments");
-                        for (PairedEnds p: fragments){
-                            System.out.println("Possible Fragment: " + p.toString());
+                        if (bestFragment._1.getValue()==null || bestFragment._1.getValue().equals("0")) {
+                            System.out.println("The Problem was in the bad fragments");
+                            for (PairedEnds p: fragments){
+                                System.out.println("Possible Fragment: " + p.toString());
+                            }
                         }
                     }
+
                 }
 
                 if (pairs != null && !pairs.isEmpty()) {
                     Tuple2<IndexPair<String>, Integer> handlePairs = handlePairs(pairs, finder);
-                    if (handlePairs._1.getValue()==null || handlePairs._1.getValue().equals("0")) {
+                    if (handlePairs!= null && (handlePairs._1.getValue()==null || handlePairs._1.getValue().equals("0"))) {
                         System.out.println("The Problem was in the bad fragments");
                         for (PairedEnds p: fragments){
                             System.out.println("Possible Fragment: " + p.toString());
