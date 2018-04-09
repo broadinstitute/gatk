@@ -18,12 +18,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-/**
- * Calls large tandem duplication variants
- */
-public class LargeTandemDuplicationFactory extends LargeSimpleSVFactory {
+public class LargeDeletionFactory extends LargeSimpleSVFactory {
 
-    public LargeTandemDuplicationFactory(final SVIntervalTree<EvidenceTargetLink> intrachromosomalLinkTree,
+    public LargeDeletionFactory(final SVIntervalTree<EvidenceTargetLink> intrachromosomalLinkTree,
                                          final SVIntervalTree<EvidenceTargetLink> interchromosomalLinkTree,
                                          final SVIntervalTree<VariantContext> structuralVariantCallTree,
                                          final SVIntervalTree<GATKRead> contigTree,
@@ -45,7 +42,7 @@ public class LargeTandemDuplicationFactory extends LargeSimpleSVFactory {
                                      final int splitReadCounterEvidence,
                                      final IntrachromosomalBreakpointPair breakpoints,
                                      final Collection<EvidenceTargetLink> supportingEvidence) {
-        return new LargeSimpleSV(SimpleSVType.TYPES.DUP_TAND, start, end, contigId, readPairEvidence, splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, breakpoints, supportingEvidence);
+        return new LargeSimpleSV(SimpleSVType.TYPES.DEL, start, end, contigId, readPairEvidence, splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, breakpoints, supportingEvidence);
     }
 
     @Override
@@ -64,7 +61,7 @@ public class LargeTandemDuplicationFactory extends LargeSimpleSVFactory {
     @Override
     protected boolean hasSupportingEvidenceOrientation(final EvidenceTargetLink link) {
         final PairedStrandedIntervals intervals = link.getPairedStrandedIntervals();
-        return !intervals.getLeft().getStrand() && intervals.getRight().getStrand();
+        return intervals.getLeft().getStrand() && !intervals.getRight().getStrand();
     }
 
     /**
@@ -72,7 +69,7 @@ public class LargeTandemDuplicationFactory extends LargeSimpleSVFactory {
      */
     @Override
     protected Set<Integer> getValidHMMCopyStates(final int numStates) {
-        return IntStream.range(3, numStates).boxed().collect(Collectors.toSet());
+        return IntStream.range(0, 3).boxed().collect(Collectors.toSet());
     }
 
     /**
@@ -80,9 +77,9 @@ public class LargeTandemDuplicationFactory extends LargeSimpleSVFactory {
      */
     @Override
     protected boolean supportedBySegmentCalls(final SVInterval interval, final Set<CalledCopyRatioSegment> overlappingSegments, final SAMSequenceDictionary dictionary) {
-        final int amplifiedBases = overlappingSegments.stream().filter(segment -> segment.getCall() == CalledCopyRatioSegment.Call.AMPLIFICATION)
+        final int deletedBases = overlappingSegments.stream().filter(segment -> segment.getCall() == CalledCopyRatioSegment.Call.DELETION)
                 .mapToInt(segment -> SVIntervalUtils.convertToSVInterval(segment.getInterval(), dictionary).overlapLen(interval)).sum();
-        return amplifiedBases / (double) interval.getLength() >= arguments.minSegmentOverlap;
+        return deletedBases / (double) interval.getLength() >= arguments.minSegmentOverlap;
     }
 
     /**
@@ -90,9 +87,6 @@ public class LargeTandemDuplicationFactory extends LargeSimpleSVFactory {
      */
     @Override
     protected boolean isInvalidCoverage(final List<CopyRatio> copyRatios) {
-        if (!(copyRatios.stream().filter(ratio -> ratio.getLog2CopyRatioValue() < arguments.tandemDuplicationInvalidLog2CopyRatioThreshold).count() > arguments.tandemDuplicationInvalidBinFraction * copyRatios.size())) {
-            return false;
-        }
-        return copyRatios.stream().anyMatch(ratio -> Math.pow(2.0, ratio.getLog2CopyRatioValue())  >= arguments.hmmMaxStates);
+        return copyRatios.stream().anyMatch(ratio -> Math.pow(2.0, ratio.getLog2CopyRatioValue()) >= arguments.hmmMaxStates);
     }
 }

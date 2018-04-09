@@ -61,12 +61,12 @@ public class SVIntervalUtilsUnitTest extends BaseTest {
         tree.put(new SVInterval(0, 300, 400), link1);
         final SVInterval interval = new SVInterval(1, 0, 500);
 
-        final Collection<EvidenceTargetLink> emptyOverlapResult = SVIntervalUtils.getOverlappingLinksOnInterval(interval, tree);
+        final Collection<EvidenceTargetLink> emptyOverlapResult = SVIntervalUtils.getOverlappingValuesOnInterval(interval, tree);
         Assert.assertTrue(emptyOverlapResult.isEmpty());
         Assert.assertFalse(SVIntervalUtils.hasReciprocalOverlapInTree(interval, tree, 0));
 
         final SVInterval interval2 = new SVInterval(0, 150, 250);
-        final Collection<EvidenceTargetLink> overlapResult = SVIntervalUtils.getOverlappingLinksOnInterval(interval2, tree);
+        final Collection<EvidenceTargetLink> overlapResult = SVIntervalUtils.getOverlappingValuesOnInterval(interval2, tree);
         final Iterator<EvidenceTargetLink> resultIter = overlapResult.iterator();
         Assert.assertTrue(resultIter.hasNext());
         Assert.assertEquals(resultIter.next(), link0);

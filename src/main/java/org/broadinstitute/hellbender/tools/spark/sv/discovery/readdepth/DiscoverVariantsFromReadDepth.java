@@ -17,10 +17,12 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRa
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.LargeSimpleSV;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import scala.Tuple2;
 
 import java.io.File;
 import java.io.IOException;
@@ -28,6 +30,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -116,14 +119,18 @@ public class DiscoverVariantsFromReadDepth extends GATKTool {
 
     private static final long serialVersionUID = 1L;
 
+    public static final String SV_CALLS_LONG_NAME = "sv-calls-vcf";
     public static final String BREAKPOINTS_LONG_NAME = "breakpoint-vcf";
     public static final String EVIDENCE_TARGET_LINKS_LONG_NAME = "evidence-target-links-file";
     public static final String SEGMENT_CALLS_LONG_NAME = "model-segments-file";
     public static final String COPY_RATIOS_LONG_NAME = "copy-ratio-file";
     public static final String ASSEMBLY_CONTIGS_LONG_NAME = "assembly-bam";
+    public static final String FILTERED_CALLS_LONG_NAME = "filtered-calls";
 
     @Argument(doc = "Breakpoints list (.vcf)", fullName = BREAKPOINTS_LONG_NAME)
     private String breakpointVCFPath;
+    @Argument(doc = "Structural variant calls list (.vcf)", fullName = SV_CALLS_LONG_NAME)
+    private String svCallVCFPath;
     @Argument(doc = "Evidence target links file (.bedpe)", fullName = EVIDENCE_TARGET_LINKS_LONG_NAME)
     private String evidenceTargetLinksFilePath;
     @Argument(doc = "Model segments pipeline calls", fullName = SEGMENT_CALLS_LONG_NAME)
@@ -134,11 +141,14 @@ public class DiscoverVariantsFromReadDepth extends GATKTool {
     private String assemblyBamPath;
     @Argument(doc = "Output intervals path (.bed)", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String outputPath;
+    @Argument(doc = "Output filtered calls path (.vcf)",fullName = FILTERED_CALLS_LONG_NAME)
+    private String filteredCallsPath;
 
     private final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments = new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection();
     private LargeSimpleSVCaller largeSimpleSVCaller;
     private SAMSequenceDictionary dictionary;
     private Collection<LargeSimpleSV> events;
+    private List<VariantContext> filteredCalls;
 
     @Override
     public void onTraversalStart() {
@@ -146,7 +156,9 @@ public class DiscoverVariantsFromReadDepth extends GATKTool {
         logger.info("Loading assembly...");
         final Collection<GATKRead> assembly = getReads(assemblyBamPath);
         logger.info("Loading breakpoints...");
-        final Collection<VariantContext> breakpoints = readVCF(breakpointVCFPath, dictionary);
+        final Collection<VariantContext> breakpointCalls = readVCF(breakpointVCFPath, dictionary);
+        logger.info("Loading SV calls...");
+        final Collection<VariantContext> svCalls = readVCF(svCallVCFPath, dictionary);
         logger.info("Loading copy ratio segment calls...");
         final CalledCopyRatioSegmentCollection copyRatioSegments = getCalledCopyRatioSegments(segmentCallsFilePath);
         logger.info("Loading evidence target links...");
@@ -154,17 +166,20 @@ public class DiscoverVariantsFromReadDepth extends GATKTool {
         logger.info("Loading copy ratio bins...");
         final CopyRatioCollection copyRatios = getCopyRatios(copyRatioFilePath);
 
-        largeSimpleSVCaller = new LargeSimpleSVCaller(breakpoints, assembly, evidenceTargetLinks, copyRatios, copyRatioSegments, dictionary, arguments);
+        largeSimpleSVCaller = new LargeSimpleSVCaller(breakpointCalls, svCalls, assembly, evidenceTargetLinks, copyRatios, copyRatioSegments, dictionary, arguments);
     }
 
     @Override
     public void traverse() {
-        events = largeSimpleSVCaller.callEvents(progressMeter);
+        final Tuple2<Collection<LargeSimpleSV>,List<VariantContext>> result = largeSimpleSVCaller.callEvents(progressMeter);
+        events = result._1;
+        filteredCalls = result._2;
     }
 
     @Override
     public Object onTraversalSuccess() {
         writeEvents(outputPath, events, dictionary);
+        SVVCFWriter.writeVCF(filteredCalls, filteredCallsPath, dictionary, logger);
         return null;
     }
 

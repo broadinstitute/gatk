@@ -25,7 +25,7 @@ public abstract class SimpleSVType extends SvType {
     }
 
     public enum TYPES {
-        INV, DEL, INS, DUP, DUP_INV;
+        INV, DEL, INS, DUP, DUP_INV, DUP_DISP, DUP_TAND;
     }
 
     public static final class Inversion extends SimpleSVType {

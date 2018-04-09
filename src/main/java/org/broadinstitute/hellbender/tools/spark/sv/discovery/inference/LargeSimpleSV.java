@@ -1,10 +1,12 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.inference;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.IntrachromosomalBreakpointPair;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.IntrachromosomalBreakpointPair;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 
+import java.util.Collection;
 import java.util.Objects;
 
 /**
@@ -21,6 +23,7 @@ public class LargeSimpleSV {
     protected final int splitReadEvidence;
     protected final int readPairCounterEvidence;
     protected final int splitReadCounterEvidence;
+    protected final Collection<EvidenceTargetLink> supportingEvidence;
     protected final IntrachromosomalBreakpointPair breakpoints;
 
     public LargeSimpleSV(final SimpleSVType.TYPES type,
@@ -31,7 +34,8 @@ public class LargeSimpleSV {
                          final int splitReadEvidence,
                          final int readPairCounterEvidence,
                          final int splitReadCounterEvidence,
-                         final IntrachromosomalBreakpointPair breakpoints) {
+                         final IntrachromosomalBreakpointPair breakpoints,
+                         final Collection<EvidenceTargetLink> supportingEvidence) {
         this.type = type;
         this.start = start;
         this.end = end;
@@ -41,15 +45,15 @@ public class LargeSimpleSV {
         this.readPairCounterEvidence = readPairCounterEvidence;
         this.splitReadCounterEvidence = splitReadCounterEvidence;
         this.breakpoints = breakpoints;
+        this.supportingEvidence = supportingEvidence;
     }
 
     public double getScore(final double counterEvidencePseudocount) {
-        return computeScore(readPairEvidence, splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, counterEvidencePseudocount);
+        return computeScore(readPairEvidence, splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, counterEvidencePseudocount, breakpoints != null);
     }
 
-    public static double computeScore(final int readPairEvidence, final int splitReadEvidence, final int readPairCounterEvidence, final int splitReadCounterEvidence, final double counterEvidencePseudocount) {
-        return (readPairCounterEvidence + splitReadCounterEvidence > 0) ? 0 : 1;
-        //return (readPairEvidence + splitReadEvidence) / Math.max(readPairCounterEvidence + splitReadCounterEvidence, counterEvidencePseudocount);
+    public static double computeScore(final int readPairEvidence, final int splitReadEvidence, final int readPairCounterEvidence, final int splitReadCounterEvidence, final double counterEvidencePseudocount, final boolean hasBreakpoints) {
+        return (readPairEvidence + splitReadEvidence) / Math.max(readPairCounterEvidence + splitReadCounterEvidence, counterEvidencePseudocount) + (hasBreakpoints ? 0.001 : 0);
     }
 
     public SVInterval getInterval() {
@@ -78,6 +82,8 @@ public class LargeSimpleSV {
 
     public IntrachromosomalBreakpointPair getBreakpoints() { return breakpoints; }
 
+    public Collection<EvidenceTargetLink> getSupportingEvidence() { return supportingEvidence; }
+
     public int getSize() {
         return end - start;
     }
@@ -87,11 +93,11 @@ public class LargeSimpleSV {
     }
 
     public static String getBedHeader() {
-        return "#CONTIG\tSTART\tEND\tTYPE\tE_RP\tE_SR\tCE_RP\tCE_SR\tSCORE\tBRKPTS";
+        return "#CONTIG\tSTART\tEND\tLEN\tTYPE\tE_RP\tE_SR\tCE_RP\tCE_SR\tSCORE\tBRKPTS";
     }
 
     public String toBedString(final SAMSequenceDictionary dictionary, final double counterEvidencePseudocount) {
-        return dictionary.getSequence(contigId).getSequenceName() + "\t" + start + "\t" + end + "\t" + type + "\t" + readPairEvidence + "\t" + splitReadEvidence +
+        return dictionary.getSequence(contigId).getSequenceName() + "\t" + start + "\t" + end + "\t" + (end-start) + "\t" + type + "\t" + readPairEvidence + "\t" + splitReadEvidence +
                 "\t" + readPairCounterEvidence + "\t" + splitReadCounterEvidence + "\t" + getScore(counterEvidencePseudocount) + "\t" + (breakpoints == null ? "none" : breakpoints.getString(dictionary));
     }
 

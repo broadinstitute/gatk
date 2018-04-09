@@ -254,10 +254,10 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         public final double DEFAULT_MIN_SCORE = 0.5;
 
         public final double DEFAULT_COUNTEREVIDENCE_PSEUDOCOUNT = 1;
-        public final int DEFAULT_BREAKPOINT_PADDING = 100;
-        public final int DEFAULT_EVIDENCE_TARGET_LINK_PADDING = 100;
+        public final int DEFAULT_BREAKPOINT_PADDING = 500;
+        public final int DEFAULT_EVIDENCE_TARGET_LINK_PADDING = 500;
         public final int DEFAULT_LOCAL_COUNTEREVIDENCE_RANGE = 1000;
-        public final int DEFAULT_MIN_COUNTERVIDENCE_CLUSTER_SIZE = 3;
+        public final int DEFAULT_MIN_COUNTERVIDENCE_CLUSTER_SIZE = 1;
 
         public final int DEFAULT_HMM_PADDING = 0;
         public final double DEFAULT_HMM_VALID_STATES_MIN_FRACTION = 0.90;

@@ -53,7 +53,7 @@ public class SVIntervalUtils {
     /**
      * Gets all EvidenceTargetLink objects in the tree that overlap the given interval
      */
-    public static <T> Collection<T> getOverlappingLinksOnInterval(final SVInterval interval, final SVIntervalTree<T> tree) {
+    public static <T> Collection<T> getOverlappingValuesOnInterval(final SVInterval interval, final SVIntervalTree<T> tree) {
         return getTreeOverlapperStream(interval, tree).map(SVIntervalTree.Entry::getValue).collect(Collectors.toList());
     }
 

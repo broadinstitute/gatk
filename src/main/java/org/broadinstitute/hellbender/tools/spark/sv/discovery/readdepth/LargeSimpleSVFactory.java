@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.OverlapDetector;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.math3.linear.RealVector;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
@@ -33,6 +34,7 @@ public abstract class LargeSimpleSVFactory {
 
     protected final SVIntervalTree<EvidenceTargetLink> intrachromosomalLinkTree;
     protected final SVIntervalTree<EvidenceTargetLink> interchromosomalLinkTree;
+    protected final SVIntervalTree<VariantContext> structuralVariantCallTree;
     protected final SVIntervalTree<GATKRead> contigTree;
     protected final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments;
     protected final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector;
@@ -41,6 +43,7 @@ public abstract class LargeSimpleSVFactory {
 
     public LargeSimpleSVFactory(final SVIntervalTree<EvidenceTargetLink> intrachromosomalLinkTree,
                                 final SVIntervalTree<EvidenceTargetLink> interchromosomalLinkTree,
+                                final SVIntervalTree<VariantContext> structuralVariantCallTree,
                                 final SVIntervalTree<GATKRead> contigTree,
                                 final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments,
                                 final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector,
@@ -48,6 +51,7 @@ public abstract class LargeSimpleSVFactory {
                                 final SAMSequenceDictionary dictionary) {
         Utils.nonNull(intrachromosomalLinkTree, "Intrachromosomal link tree cannot be null");
         Utils.nonNull(interchromosomalLinkTree, "Interchromosomal link tree cannot be null");
+        Utils.nonNull(structuralVariantCallTree, "Structural variant call tree cannot be null");
         Utils.nonNull(contigTree, "Contig tree cannot be null");
         Utils.nonNull(arguments, "Arguments cannot be null");
         Utils.nonNull(copyRatioSegmentOverlapDetector, "Copy ratio segment overlap detector cannot be null");
@@ -55,6 +59,7 @@ public abstract class LargeSimpleSVFactory {
         Utils.nonNull(dictionary, "Sequence dictionary cannot be null");
         this.intrachromosomalLinkTree = intrachromosomalLinkTree;
         this.interchromosomalLinkTree = interchromosomalLinkTree;
+        this.structuralVariantCallTree = structuralVariantCallTree;
         this.contigTree = contigTree;
         this.arguments = arguments;
         this.copyRatioSegmentOverlapDetector = copyRatioSegmentOverlapDetector;
@@ -72,8 +77,8 @@ public abstract class LargeSimpleSVFactory {
      * @return List of copy ratios
      */
     @VisibleForTesting
-    protected static List<CopyRatio> getCopyRatiosOnInterval(final SVInterval interval, final OverlapDetector<CopyRatio> overlapDetector,
-                                                           final int binsToTrim, final SAMSequenceDictionary dictionary) {
+    static List<CopyRatio> getCopyRatiosOnInterval(final SVInterval interval, final OverlapDetector<CopyRatio> overlapDetector,
+                                                             final int binsToTrim, final SAMSequenceDictionary dictionary) {
         final SimpleInterval simpleInterval = SVIntervalUtils.convertToSimpleInterval(interval, dictionary);
         if (simpleInterval.size() == 0) {
             return Collections.emptyList();
@@ -95,7 +100,7 @@ public abstract class LargeSimpleSVFactory {
      * @return Counter-evidence count
      */
     protected static int countUniqueCounterEvidence(final Collection<EvidenceTargetLink> counterEvidenceLinks, final Collection<EvidenceTargetLink> evidenceLinks,
-                                                  final int minEvidenceCount, final Function<EvidenceTargetLink, Set<String>> evidenceTypeGetter) {
+                                                    final int minEvidenceCount, final Function<EvidenceTargetLink, Set<String>> evidenceTypeGetter) {
         final Set<String> counterEvidenceTemplates = counterEvidenceLinks.stream()
                 .map(link -> evidenceTypeGetter.apply(link))
                 .filter(set -> set.size() >= minEvidenceCount)
@@ -113,6 +118,59 @@ public abstract class LargeSimpleSVFactory {
 
     private static int countUniqueCounterEvidenceSplitReads(final Collection<EvidenceTargetLink> counterEvidenceLinks, final Collection<EvidenceTargetLink> evidenceLinks, final int minEvidenceCount) {
         return countUniqueCounterEvidence(counterEvidenceLinks, evidenceLinks, minEvidenceCount, EvidenceTargetLink::getSplitReadTemplateNames);
+    }
+
+    /**
+     * Counts the number of unique split reads
+     */
+    protected static int countSplitReads(final Collection<EvidenceTargetLink> links) {
+        return (int) links.stream().flatMap(link -> link.getSplitReadTemplateNames().stream()).distinct().count();
+    }
+
+    /**
+     * Counts the number of unique read pairs
+     */
+    protected static int countReadPairs(final Collection<EvidenceTargetLink> links) {
+        return (int) links.stream().flatMap(link -> link.getReadPairTemplateNames().stream()).distinct().count();
+    }
+
+    /**
+     * Gets collection of evidence links whose target intervals align with the given left and right interval.
+     *
+     * @param leftInterval  Left interval that must overlap the link's left interval
+     * @param rightInterval Right interval that much overlap the link's right interval
+     * @param tree          Tree of evidence
+     * @return Collection of overlapping links
+     */
+    protected static Collection<EvidenceTargetLink> getMatchingLinks(final SVInterval leftInterval, final SVInterval rightInterval, final SVIntervalTree<EvidenceTargetLink> tree) {
+        final Collection<EvidenceTargetLink> leftOverlappingLinks = SVIntervalUtils.getOverlappingValuesOnInterval(leftInterval, tree);
+        return leftOverlappingLinks.stream()
+                .filter(link -> link.getPairedStrandedIntervals().getLeft().getInterval().overlaps(leftInterval)
+                        && link.getPairedStrandedIntervals().getRight().getInterval().overlaps(rightInterval))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Gets collection of evidence links that overlap the given interval "locally." This means that at least one of the
+     * evidence left or right intervals must overlap the interval after being padded by some amount (i.e. the evidence cannot
+     * completely span the padded interval). This approach is useful for finding counter-evidence on the interval without
+     * pulling in evidence from irrelevant distant events.
+     *
+     * @param interval   Interval to retrieve evidence on
+     * @param tree       Tree of evidence
+     * @param localRange Number of bases to pad the given interval
+     * @param dictionary Sequence dictionary
+     * @return Collection of locally overlapping links
+     */
+    protected static Collection<EvidenceTargetLink> localOverlappingLinks(final SVInterval interval, final SVIntervalTree<EvidenceTargetLink> tree, final int localRange, final SAMSequenceDictionary dictionary) {
+        final SVInterval localInterval = SVIntervalUtils.getPaddedInterval(interval, localRange, dictionary);
+        final Collection<EvidenceTargetLink> overlappingLinks = SVIntervalUtils.getOverlappingValuesOnInterval(localInterval, tree);
+        return overlappingLinks.stream().filter(link -> {
+            final SVInterval linkInterval = SVIntervalUtils.getOuterIntrachromosomalLinkInterval(link);
+            final SVInterval leftInterval = link.getPairedStrandedIntervals().getLeft().getInterval();
+            final SVInterval rightInterval = link.getPairedStrandedIntervals().getRight().getInterval();
+            return linkInterval.overlaps(interval) && (localInterval.overlaps(leftInterval) || localInterval.overlaps(rightInterval));
+        }).collect(Collectors.toList());
     }
 
     /**
@@ -141,6 +199,16 @@ public abstract class LargeSimpleSVFactory {
     protected abstract boolean supportedBySegmentCalls(final SVInterval interval, final Set<CalledCopyRatioSegment> overlappingSegments, final SAMSequenceDictionary dictionary);
 
     /**
+     * Returns number of supporting evidence read pairs
+     */
+    protected abstract int countSupportingEvidenceReadPairs(final Collection<EvidenceTargetLink> links);
+
+    /**
+     * Returns number of supporting evidence split reads
+     */
+    protected abstract int countSupportingEvidenceSplitReads(final Collection<EvidenceTargetLink> links);
+
+    /**
      * Gets a new call object corresponding to the factory's type
      */
     protected abstract LargeSimpleSV getNewSV(final int start,
@@ -151,7 +219,8 @@ public abstract class LargeSimpleSVFactory {
                                               final int splitReadEvidence,
                                               final int readPairCounterEvidence,
                                               final int splitReadCounterEvidence,
-                                              final IntrachromosomalBreakpointPair breakpoints);
+                                              final IntrachromosomalBreakpointPair breakpoints,
+                                              final Collection<EvidenceTargetLink> supportingEvidence);
 
     /**
      * Generates a call for an event with breakpoint supporting evidence on the given intervals
@@ -201,37 +270,33 @@ public abstract class LargeSimpleSVFactory {
 
         //Get overlapping counterevidence links that suggest a more complex signature
         final Collection<EvidenceTargetLink> counterEvidenceLinks = localOverlappingLinks(outerInterval, intrachromosomalLinkTree, arguments.localCounterevidenceRange, dictionary);
-        counterEvidenceLinks.addAll(SVIntervalUtils.getOverlappingLinksOnInterval(outerInterval, interchromosomalLinkTree));
+        counterEvidenceLinks.addAll(SVIntervalUtils.getOverlappingValuesOnInterval(outerInterval, interchromosomalLinkTree));
         counterEvidenceLinks.removeAll(evidenceLinks);
 
         //Tally evidence and counterevidence
-        final int readPairEvidence = countReadPairs(evidenceLinks);
+        final int readPairEvidence = countSupportingEvidenceReadPairs(evidenceLinks);
         if (readPairEvidence == 0) return null; //TODO
-        final int splitReadEvidence = countSplitReads(evidenceLinks);
+        final int splitReadEvidence = countSupportingEvidenceSplitReads(evidenceLinks);
         final int readPairCounterEvidence = countUniqueCounterEvidenceReadPairs(counterEvidenceLinks, evidenceLinks, arguments.minCountervidenceClusterSize);
         final int splitReadCounterEvidence = countUniqueCounterEvidenceSplitReads(counterEvidenceLinks, evidenceLinks, arguments.minCountervidenceClusterSize);
 
         //Score the event and reject if too small
-        final double eventScore = LargeSimpleSV.computeScore(readPairEvidence, splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, arguments.counterEvidencePseudocount);
+        final double eventScore = LargeSimpleSV.computeScore(readPairEvidence, splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, arguments.counterEvidencePseudocount, breakpoints != null);
         if (eventScore < arguments.minScore) return null;
 
+        final String contigName = sequence.getSequenceName();
+        return getNewSV(callInterval.getStart(), callInterval.getEnd(), contigId, contigName, readPairEvidence, splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, breakpoints, evidenceLinks);
+
+        /*
         //Test if the copy ratio bins indicate we should reject this call
-        final SVInterval leftFlank = new SVInterval(leftInterval.getContig(), leftInterval.getStart() - 1000, leftInterval.getStart() - 500);
-        final SVInterval rightFlank = new SVInterval(leftInterval.getContig(), rightInterval.getEnd() + 500, rightInterval.getEnd() + 1000);
         final List<CopyRatio> eventBins = getCopyRatiosOnInterval(innerInterval, copyRatioOverlapDetector, arguments.copyRatioBinTrimming, dictionary);
-        final List<CopyRatio> leftBins = getCopyRatiosOnInterval(leftFlank, copyRatioOverlapDetector, arguments.copyRatioBinTrimming, dictionary);
-        final List<CopyRatio> rightBins = getCopyRatiosOnInterval(rightFlank, copyRatioOverlapDetector, arguments.copyRatioBinTrimming, dictionary);
         if (isInvalidCoverage(eventBins)) return null;
 
         //Test if the event matches a model segments call
         final String contigName = sequence.getSequenceName();
         final Set<CalledCopyRatioSegment> overlappingSegments = copyRatioSegmentOverlapDetector.getOverlaps(SVIntervalUtils.convertToSimpleInterval(innerInterval, dictionary));
-        final Set<CalledCopyRatioSegment> overlappingLeftSegments = copyRatioSegmentOverlapDetector.getOverlaps(SVIntervalUtils.convertToSimpleInterval(leftFlank, dictionary));
-        final Set<CalledCopyRatioSegment> overlappingRightSegments = copyRatioSegmentOverlapDetector.getOverlaps(SVIntervalUtils.convertToSimpleInterval(rightFlank, dictionary));
-        final boolean eventSegmentSupport = false; //supportedBySegmentCalls(innerInterval, overlappingSegments, dictionary);
-        final boolean leftSegmentSupport = true; //checkFlankingSegments(leftFlank, overlappingLeftSegments, dictionary);
-        final boolean rightSegmentSupport = true ;//checkFlankingSegments(rightFlank, overlappingRightSegments, dictionary);
-        if (eventSegmentSupport && leftSegmentSupport && rightSegmentSupport) {
+        final boolean eventSegmentSupport = supportedBySegmentCalls(innerInterval, overlappingSegments, dictionary);
+        if (eventSegmentSupport) {
             return getNewSV(callInterval.getStart(), callInterval.getEnd(), contigId, contigName, readPairEvidence,
                     splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, breakpoints);
         }
@@ -242,6 +307,7 @@ public abstract class LargeSimpleSVFactory {
         }
 
         return null;
+        */
     }
 
     private boolean checkFlankingSegments(final SVInterval interval, final Set<CalledCopyRatioSegment> overlappingSegments, final SAMSequenceDictionary dictionary) {
@@ -251,60 +317,10 @@ public abstract class LargeSimpleSVFactory {
     }
 
     /**
-     * Counts the number of unique split reads
-     */
-    protected static int countSplitReads(final Collection<EvidenceTargetLink> links) {
-        return (int) links.stream().flatMap(link -> link.getSplitReadTemplateNames().stream()).distinct().count();
-    }
-
-    /**
-     * Counts the number of unique read pairs
-     */
-    protected static int countReadPairs(final Collection<EvidenceTargetLink> links) {
-        return (int) links.stream().flatMap(link -> link.getReadPairTemplateNames().stream()).distinct().count();
-    }
-
-    /**
      * Returns collection of the links with the proper orientation that supports the event
      */
     protected Collection<EvidenceTargetLink> getLinksWithEvidenceOrientation(final Collection<EvidenceTargetLink> links) {
         return links.stream().filter(link -> hasSupportingEvidenceOrientation(link)).collect(Collectors.toList());
-    }
-
-    /**
-     * Gets collection of evidence links whose target intervals align with the given left and right interval.
-     *
-     * @param leftInterval  Left interval that must overlap the link's left interval
-     * @param rightInterval Right interval that much overlap the link's right interval
-     * @param tree          Tree of evidence
-     * @return Collection of overlapping links
-     */
-    protected static Collection<EvidenceTargetLink> getMatchingLinks(final SVInterval leftInterval, final SVInterval rightInterval, final SVIntervalTree<EvidenceTargetLink> tree) {
-        final Collection<EvidenceTargetLink> leftOverlappingLinks = SVIntervalUtils.getOverlappingLinksOnInterval(leftInterval, tree);
-        return leftOverlappingLinks.stream().filter(link -> link.getPairedStrandedIntervals().getRight().getInterval().overlaps(rightInterval)).collect(Collectors.toList());
-    }
-
-    /**
-     * Gets collection of evidence links that overlap the given interval "locally." This means that at least one of the
-     * evidence left or right intervals must overlap the interval after being padded by some amount (i.e. the evidence cannot
-     * completely span the padded interval). This approach is useful for finding counter-evidence on the interval without
-     * pulling in evidence from irrelevant distant events.
-     *
-     * @param interval   Interval to retrieve evidence on
-     * @param tree       Tree of evidence
-     * @param localRange Number of bases to pad the given interval
-     * @param dictionary Sequence dictionary
-     * @return Collection of locally overlapping links
-     */
-    protected static Collection<EvidenceTargetLink> localOverlappingLinks(final SVInterval interval, final SVIntervalTree<EvidenceTargetLink> tree, final int localRange, final SAMSequenceDictionary dictionary) {
-        final SVInterval localInterval = SVIntervalUtils.getPaddedInterval(interval, localRange, dictionary);
-        final Collection<EvidenceTargetLink> overlappingLinks = SVIntervalUtils.getOverlappingLinksOnInterval(localInterval, tree);
-        return overlappingLinks.stream().filter(link -> {
-            final SVInterval linkInterval = SVIntervalUtils.getOuterIntrachromosomalLinkInterval(link);
-            final SVInterval leftInterval = link.getPairedStrandedIntervals().getLeft().getInterval();
-            final SVInterval rightInterval = link.getPairedStrandedIntervals().getRight().getInterval();
-            return linkInterval.overlaps(interval) && (localInterval.overlaps(leftInterval) || localInterval.overlaps(rightInterval));
-        }).collect(Collectors.toList());
     }
 
     /**
