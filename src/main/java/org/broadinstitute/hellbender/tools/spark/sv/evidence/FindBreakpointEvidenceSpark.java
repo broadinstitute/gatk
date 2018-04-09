@@ -27,6 +27,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.evidence.BreakpointEvidence.
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.tools.spark.utils.FlatMapGluer;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMap;
+import org.broadinstitute.hellbender.tools.spark.utils.IntHistogram;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexCache;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -165,6 +166,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap = evidenceScanResults.qNamesForAssemblyMultiMap;
 
+        final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMapMerged = mergeAssemblies(qNamesMultiMap, evidenceScanResults.intervals.size(), logger);
+
         // supplement the template names with other reads that share kmers
         final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList;
         if ( params.intervalOnlyAssembly ) {
@@ -199,6 +202,46 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         return new AssembledEvidenceResults(evidenceScanResults.readMetadata, intervals, alignedAssemblyOrExcuseList,
                                             evidenceScanResults.evidenceTargetLinks);
+    }
+
+    static HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> mergeAssemblies(final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap, final int nIntervals, final Logger logger) {
+
+        final Map<Tuple2<Integer, Integer>, Integer> intervalLinkCounts = new HashMap<>();
+        final int[] intervalQnameCounts = new int[nIntervals];
+
+        final Iterator<QNameAndInterval> groupingIterator = qNamesMultiMap.getGroupingIterator();
+        String prevQname = null;
+        int prevInterval = -1;
+        Set<Integer> intervalsForQname = new HashSet<>();
+        IntHistogram multiQnameIntervalCounts = new IntHistogram(100);
+        while (groupingIterator.hasNext()) {
+            final QNameAndInterval next = groupingIterator.next();
+            final String newQname = next.getKey();
+            final int newInterval = next.getValue();
+            intervalQnameCounts[newInterval] += 1;
+
+            intervalsForQname.add(newInterval);
+            if (! newQname.equals(prevQname)) {
+                if (intervalsForQname.size() > 1) {
+                    multiQnameIntervalCounts.addObservation(intervalsForQname.size());
+                }
+                intervalsForQname.clear();
+            }
+            //if (newQname.equals(prevQname)) {
+                //final Tuple2<Integer, Integer> intervalPair = new Tuple2<>(Math.min(prevInterval, newInterval), Math.max(prevInterval, newInterval));
+                //if (intervalLinkCounts.containsKey(intervalPair)) {
+                //    intervalLinkCounts.put(intervalPair, intervalLinkCounts.get(intervalPair) + 1);
+                //} else {
+                //    intervalLinkCounts.put(intervalPair, 1);
+                //}
+            //}
+            prevQname = newQname;
+            prevInterval = newInterval;
+        }
+
+        log( multiQnameIntervalCounts.textRep(1), logger);
+
+        return qNamesMultiMap;
     }
 
     public static final class AssembledEvidenceResults {
@@ -260,7 +303,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
      * clean up by removing some intervals that are bogus as evidenced by ubiquitous kmers,
      * and return a set of template names and the intervals to which they belong.
      */
-    private static EvidenceScanResults getMappedQNamesSet(
+    static EvidenceScanResults getMappedQNamesSet(
             final FindBreakpointEvidenceSparkArgumentCollection params,
             final ReadMetadata readMetadata,
             final JavaSparkContext ctx,

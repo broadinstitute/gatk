@@ -172,7 +172,23 @@ public final class FindBreakpointEvidenceSparkUnitTest extends GATKBaseTest {
         }
     }
 
-    /** This LocalAssemblyHandler compares an assembly with expected results. */
+    @Test(groups = "sv")
+    public void testMergeAssemblies() {
+        HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap = new HopscotchUniqueMultiMap<>(8);
+        qNamesMultiMap.add(new QNameAndInterval("q1", 1));
+        qNamesMultiMap.add(new QNameAndInterval("q2", 1));
+        qNamesMultiMap.add(new QNameAndInterval("q3", 1));
+        qNamesMultiMap.add(new QNameAndInterval("q4", 2));
+        qNamesMultiMap.add(new QNameAndInterval("q5", 2));
+        qNamesMultiMap.add(new QNameAndInterval("q2", 3));
+        qNamesMultiMap.add(new QNameAndInterval("q3", 3));
+        qNamesMultiMap.add(new QNameAndInterval("q6", 3));
+
+
+
+    }
+
+        /** This LocalAssemblyHandler compares an assembly with expected results. */
     private static final class LocalAssemblyComparator implements FindBreakpointEvidenceSpark.LocalAssemblyHandler {
         private static final long serialVersionUID = 1L;
         private final String expectedFastqFilePrefix;

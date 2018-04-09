@@ -69,6 +69,22 @@ public final class IntHistogram {
         totalObservations += intHistogram.totalObservations;
     }
 
+    public String textRep(final int binSize) {
+        StringBuffer buffer = new StringBuffer();
+        for (int i = 0; i < counts.length ; i++) {
+            if (i % binSize == 0) {
+                buffer.append("\n");
+                buffer.append(i);
+                buffer.append("\t");
+            }
+            for (int j = 0; j < counts[i] ; j++) {
+                buffer.append("X");
+            }
+        }
+        return buffer.toString();
+    }
+
+
     public int getMaximumTrackedValue() { return counts.length - 2; }
 
     public long getTotalObservations() { return totalObservations; }
