@@ -1,10 +1,6 @@
 package org.broadinstitute.hellbender.utils.config;
 
-import org.aeonbits.owner.Accessible;
 import org.aeonbits.owner.Config;
-import org.aeonbits.owner.Mutable;
-
-import java.util.List;
 
 /**
  * Simple test configuration file to check overrides and other configuration features.
