@@ -52,9 +52,38 @@
 \begin{document}
 \pagenumbering{gobble}
 
-\section{Proposal for the new artifact filter}
+\section{Proposed New Strand Artifact Filter}
 
-Let 
+\bigbreak \noindent
+The job of the strand artifact filter model is twofold. One, the model must detect that the strand composition is different between the ref and alt reads. If it is then, two, the model should check that the alt reads are heavily biased towards one read direction over the other. If both conditions are met, the variant is suspect and should be filtered. Fisher's Exact Test addresses the first criterion well but not the second. 
+
+\bigbreak \noindent
+The new model consists of a simple binomial likelihood with the beta prior. Let $\mathrm{ref}^+$, $\mathrm{ref}^-$ denote the number of forward and reverse ref reads, respectively, and define ${\rm alt^+}$ and ${\rm alt}^-$ analogously. The model stipulates that $\mathrm{alt}^+ \sim {\rm Binomial}(n_{\rm alt}, p)$ for some $p \sim {\rm Beta}(p|\alpha, \beta)$ and ${\rm n_{\rm alt}} = {\rm alt^+} + {\rm alt}^-$. Note that this is equivalent to $\mathrm{alt}^+ \sim {\rm BetaBinomial}(n_{\rm alt}, \alpha, \beta)$
+
+\bigbreak \noindent
+Given that the variant is real (i.e. the null model),  we use the strand composition of ref reads as pseudocounts for the beta prior; that is, $\alpha = {\rm ref^+}$ and $\beta = {\rm ref}^-$. 
+
+\bigbreak \noindent
+Under the artifact model, we set the hyperparameters according to our prior belief. I think that if we see only 1 forward strand out of 10 alt reads, that sites is suspect. So we set $\alpha = 1$ and $\beta = 9$.
+
+\bigbreak \noindent
+Finally, we take the likelihood ratio for each strand 
+
+\begin{align*}
+L^+ = \frac{P({\rm alt^+ | {\rm Artifact}})}{P({\rm alt^+ | {\rm Real Variant}})} \\
+L^- = \frac{P({\rm alt^- | {\rm Artifact}})}{P({\rm alt^+ | {\rm Real Variant}})}
+\end{align*}
+
+and filter if either exceeds a threshold.
+
+
+
+
+
+% \bigbreak \noindent
+
+
+
 
 
 \end{document}

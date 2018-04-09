@@ -27,7 +27,7 @@ public class NewStrandArtifact extends GenotypeAnnotation implements StandardMut
     // TODO: learn the prior. A fixed prior merely shifts the threshold and thus is not helpful
     final double artifactPrior = 1; // 1e-3;
     final double realVariantPrior = 1; // 1 - 2*artifactPrior;
-    public static final double LOD_THRESHOLD = 1.5;
+    public static final double LOD_THRESHOLD = 0.9;
 
     public static final String STRAND_ARTIFACT_DIRECTION_KEY = "SA";
     public static final String STRAND_ARTIFACT_LOG10_ODDS_KEY = "SA_LOD";
@@ -69,34 +69,35 @@ public class NewStrandArtifact extends GenotypeAnnotation implements StandardMut
                 .filter(ba -> ba.isInformative() && ba.allele.equals(refAllele) && ba.read.isReverseStrand())
                 .count();
 
-        final int numFwdReads = (int) bestAlleles.stream().filter(ba -> !ba.read.isReverseStrand() && ba.isInformative()).count();
-        final int numRevReads = (int) bestAlleles.stream().filter(ba -> ba.read.isReverseStrand() && ba.isInformative()).count();
         final int numAltReads = numFwdAltReads + numRevAltReads;
-        final int numReads = numFwdReads + numRevReads;
+        final int numRefReads = numFwdRefReads + numRevRefReads;
+        final int balancedPseudocount = 5;
 
         // For the null model, we use the forward and reverse strand count as the pseudocounts to the beta-binomial distribution,
-        // where the beta encodes the distribution over the probability of drawing a forward alt read
-        final BetaBinomialDistribution betaBinomForNull = new BetaBinomialDistribution(null,
-                numFwdRefReads == 0 ? 0.1 : numFwdRefReads, // alpha must be > 0
-                numRevRefReads == 0 ? 0.1 : numRevRefReads, // beta > 0
-                numAltReads);
+        // where the beta encodes the distribution over the probability of drawing a forward alt read.
+        // If we don't have enough ref reads, use a distribution with good density around p = 0.5
+        final BetaBinomialDistribution betaBinomForNull = numRefReads < 5 ?
+                new BetaBinomialDistribution(null, balancedPseudocount, balancedPseudocount, numAltReads) :
+                new BetaBinomialDistribution(null,
+                        numFwdRefReads == 0 ? 1 : numFwdRefReads, // alpha must be > 0
+                        numRevRefReads == 0 ? 1 : numRevRefReads, // beta > 0
+                        numAltReads);
 
         final double likelihoodOfRealVariant = betaBinomForNull.probability(numFwdAltReads);
 
-        // For the alt model, pick reasonable pseudocounts for the betabinomial.
-        // I would be suspicious if I see 9 forward reads out of 10 alt reads, so that's what we'll use
-        final int alpha = 9;
+        // For the alt model, pick reasonable pseudocounts for the betabinomial, keeping in mind that if the site is an artifact,
+        // it's highly unlikely to see the other strand. So we'll encode that as our prior belief.
+        final int alpha = 99;
         final int beta = 1;
 
         final BetaBinomialDistribution betaBinomForArtifact = new BetaBinomialDistribution(null, alpha, beta, numAltReads);
         final double likelihoodOfFwdArtifact = betaBinomForArtifact.probability(numFwdAltReads);
         final double likelihoodOfRevArtifact = betaBinomForArtifact.probability(numRevAltReads);
 
-        final double normalizingConstant = artifactPrior*(likelihoodOfFwdArtifact + likelihoodOfRevArtifact) +
-                realVariantPrior * likelihoodOfRealVariant;
-        final double posteriorOfRealVariant = (1/normalizingConstant)*(realVariantPrior * likelihoodOfRealVariant);
-        final double posteriorOfFwdArtifact = (1/normalizingConstant)*(artifactPrior * likelihoodOfFwdArtifact);
-        final double posteriorOfRevArtifact = (1/normalizingConstant)*(artifactPrior * likelihoodOfRevArtifact);
+        final double normalizingConstant = likelihoodOfFwdArtifact + likelihoodOfRevArtifact + likelihoodOfRealVariant;
+        final double posteriorOfRealVariant = (1/normalizingConstant) * likelihoodOfRealVariant;
+        final double posteriorOfFwdArtifact = (1/normalizingConstant) * likelihoodOfFwdArtifact;
+        final double posteriorOfRevArtifact = (1/normalizingConstant) * likelihoodOfRevArtifact;
         Utils.validate(Math.abs(posteriorOfFwdArtifact + posteriorOfRevArtifact + posteriorOfRealVariant - 1) < 1e-5,
                 "Posterior probabilities must be normalized");
 
@@ -105,15 +106,16 @@ public class NewStrandArtifact extends GenotypeAnnotation implements StandardMut
             return;
         }
 
-        // Take the posterior log odds
-        final double posteriorLog10OddsFwd = Math.log10(posteriorOfFwdArtifact/posteriorOfRealVariant);
-        final double posteriorLog10OddsRev = Math.log10(posteriorOfRevArtifact/posteriorOfRealVariant);
+//        // Take the posterior log odds
+//        final double posteriorLog10OddsFwd = Math.log10(posteriorOfFwdArtifact/posteriorOfRealVariant);
+//        final double posteriorLog10OddsRev = Math.log10(posteriorOfRevArtifact/posteriorOfRealVariant);
 
-        final ReadStrand artifactStrand = posteriorLog10OddsFwd > posteriorLog10OddsRev ? FWD : REV;
-        final double artifactLogOdds = artifactStrand == FWD ? posteriorLog10OddsFwd : posteriorLog10OddsRev;
+        final ReadStrand artifactStrand = posteriorOfFwdArtifact > posteriorOfRevArtifact ? FWD : REV;
+        // final double artifactLogOdds = artifactStrand == FWD ? posteriorLog10OddsFwd : posteriorLog10OddsRev;
+        final double artifactProbability = artifactStrand == FWD ? posteriorOfFwdArtifact : posteriorOfRevArtifact;
 
-        gb.attribute(STRAND_ARTIFACT_LOG10_ODDS_KEY, artifactLogOdds);
-        if (artifactLogOdds > LOD_THRESHOLD) {
+        gb.attribute(STRAND_ARTIFACT_LOG10_ODDS_KEY, artifactProbability);
+        if (artifactProbability > LOD_THRESHOLD) {
             gb.attribute(STRAND_ARTIFACT_DIRECTION_KEY, artifactStrand == FWD ? FWD : REV);
         }
     }
