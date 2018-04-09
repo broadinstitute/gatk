@@ -240,6 +240,7 @@ public class MarkDuplicatesSparkUtils {
                             for (PairedEnds p: fragments){
                                 System.out.println("Possible Fragment: " + p.toString());
                             }
+                            throw new GATKException("e");
                         }
                     }
 
@@ -248,10 +249,11 @@ public class MarkDuplicatesSparkUtils {
                 if (pairs != null && !pairs.isEmpty()) {
                     Tuple2<IndexPair<String>, Integer> handlePairs = handlePairs(pairs, finder);
                     if (handlePairs!= null && (handlePairs._1.getValue()==null || handlePairs._1.getValue().equals("0"))) {
-                        System.out.println("The Problem was in the bad fragments");
+                        System.out.println("The Problem was in the bad pairs");
                         for (PairedEnds p: fragments){
-                            System.out.println("Possible Fragment: " + p.toString());
+                            System.out.println("Possible pair: " + p.toString());
                         }
+                        throw new GATKException("e");
                     }
                     nonDuplicates.add(handlePairs);
                 }
