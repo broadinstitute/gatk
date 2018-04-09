@@ -188,7 +188,6 @@ workflow Mutect2 {
                 gga_vcf_idx = gga_vcf_idx,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
-                preemptible_attempts = preemptible_attempts,
                 disk_space = tumor_bam_size + normal_bam_size + ref_size + gnomad_vcf_size + m2_output_size + disk_pad
         }
 
@@ -724,7 +723,7 @@ task Filter {
         gatk --java-options "-Xmx${command_mem}m" FilterMutectCalls -V ${unfiltered_vcf} \
       	    -O ${output_vcf} \
       	    ${"--contamination-table " + contamination_table} \
-      	    ${"--tumor-segmentation " + maf_segments}
+      	    ${"--tumor-segmentation " + maf_segments} \
       	    ${m2_extra_filtering_args}
     }
 
