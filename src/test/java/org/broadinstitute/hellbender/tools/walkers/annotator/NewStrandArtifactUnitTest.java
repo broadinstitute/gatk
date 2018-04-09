@@ -9,13 +9,11 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.IOException;
 import java.util.*;
 
 import static org.broadinstitute.hellbender.tools.walkers.annotator.NewStrandArtifact.ReadStrand.FWD;
@@ -49,7 +47,7 @@ public class NewStrandArtifactUnitTest {
     @DataProvider
     public Object[][] failingCases(){
         return new Object[][]{
-                {40, 40, 0, 7, "REV"}, // The old filter gave this case the posterior artifact probability of 0.3
+                {0, 50, 1, 0, NEITHER},
         };
     }
 
@@ -70,12 +68,16 @@ public class NewStrandArtifactUnitTest {
                 {15, 0, 5, 5, NEITHER}, // REF is biased, ALT is balanced
                 {15, 0, 0, 5, "REV"}, // Opposite bias between REF and ALT
                 {0, 15, 5, 0, "FWD"}, // Other way
-                {30, 15, 15, 30, NEITHER} //
+                {30, 15, 15, 30, NEITHER}, // REF and ALT have different distributions
+                {50, 20, 5, 4, NEITHER},
+                {25, 25, 1, 0, NEITHER}, // Low alt count
+                {10, 40, 1, 0, NEITHER}, // Low alt count with opposing imbalance in ref
+                {0, 50, 1, 0, NEITHER}
         };
     }
 
     // all of the evidence for alt base comes from one strand
-    @Test(dataProvider = "snpTestData")
+    @Test(dataProvider = "failingCases")
     public void testSNP(final int numRefFwd, final int numRefRev,
                         final int numAltFwd, final int numAltRev,
                         final String expectedArtifact){
@@ -118,7 +120,7 @@ public class NewStrandArtifactUnitTest {
                 NewStrandArtifact.STRAND_ARTIFACT_DIRECTION_KEY, NEITHER);
         // This is more of a sanity check - make sure the lod exists and exceeds threshold
         final double lod = GATKProtectedVariantContextUtils.getAttributeAsDouble(genotype,
-                NewStrandArtifact.STRAND_ARTIFACT_LOG10_ODDS_KEY, -1.0);
+                NewStrandArtifact.STRAND_ARTIFACT_PROBABILITY_KEY, -1.0);
 
         Assert.assertEquals(artifact, expectedArtifact);
 //        final double lodThresholdForBorderLineCases = 1.0;

@@ -5,12 +5,16 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFormatHeaderLine;
+import htsjdk.variant.vcf.VCFHeaderLineType;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpileup.BetaBinomialDistribution;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.Arrays;
@@ -21,20 +25,25 @@ import static org.broadinstitute.hellbender.tools.walkers.annotator.NewStrandArt
 import static org.broadinstitute.hellbender.tools.walkers.annotator.NewStrandArtifact.ReadStrand.REV;
 
 /**
+ * Add Docs Here
+ */
+
+/**
  * Created by tsato on 4/6/18.
  */
+
+@DocumentedFeature(groupName= HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Annotations for strand artifact filter (SA, SA_PROB)")
 public class NewStrandArtifact extends GenotypeAnnotation implements StandardMutectAnnotation {
-    // TODO: learn the prior. A fixed prior merely shifts the threshold and thus is not helpful
-    final double artifactPrior = 1; // 1e-3;
-    final double realVariantPrior = 1; // 1 - 2*artifactPrior;
-    public static final double LOD_THRESHOLD = 0.9;
+    protected final OneShotLogger warning = new OneShotLogger(this.getClass());
+
+    public static final double PROBABILITY_THRESHOLD = 0.9;
 
     public static final String STRAND_ARTIFACT_DIRECTION_KEY = "SA";
-    public static final String STRAND_ARTIFACT_LOG10_ODDS_KEY = "SA_LOD";
+    public static final String STRAND_ARTIFACT_PROBABILITY_KEY = "SA_PROB";
 
     @Override
     public List<String> getKeyNames() {
-        return Arrays.asList(STRAND_ARTIFACT_DIRECTION_KEY, STRAND_ARTIFACT_LOG10_ODDS_KEY);
+        return Arrays.asList(STRAND_ARTIFACT_DIRECTION_KEY, STRAND_ARTIFACT_PROBABILITY_KEY);
     }
 
     @Override
@@ -44,7 +53,8 @@ public class NewStrandArtifact extends GenotypeAnnotation implements StandardMut
         Utils.nonNull(likelihoods);
 
         // Get the tumor lods to find the alt allele with highest LOD score
-        final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY, () -> null, -1);
+        final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY,
+                () -> null, -1);
 
         if (tumorLods==null) {
             // Skip a variant that's missing tumor lod
@@ -106,23 +116,22 @@ public class NewStrandArtifact extends GenotypeAnnotation implements StandardMut
             return;
         }
 
-//        // Take the posterior log odds
-//        final double posteriorLog10OddsFwd = Math.log10(posteriorOfFwdArtifact/posteriorOfRealVariant);
-//        final double posteriorLog10OddsRev = Math.log10(posteriorOfRevArtifact/posteriorOfRealVariant);
-
         final ReadStrand artifactStrand = posteriorOfFwdArtifact > posteriorOfRevArtifact ? FWD : REV;
-        // final double artifactLogOdds = artifactStrand == FWD ? posteriorLog10OddsFwd : posteriorLog10OddsRev;
         final double artifactProbability = artifactStrand == FWD ? posteriorOfFwdArtifact : posteriorOfRevArtifact;
 
-        gb.attribute(STRAND_ARTIFACT_LOG10_ODDS_KEY, artifactProbability);
-        if (artifactProbability > LOD_THRESHOLD) {
+        gb.attribute(STRAND_ARTIFACT_PROBABILITY_KEY, artifactProbability);
+        if (artifactProbability > PROBABILITY_THRESHOLD) {
             gb.attribute(STRAND_ARTIFACT_DIRECTION_KEY, artifactStrand == FWD ? FWD : REV);
         }
     }
 
     @Override
     public List<VCFFormatHeaderLine> getDescriptions() {
-        return null;
+        return Arrays.asList(
+                new VCFFormatHeaderLine(STRAND_ARTIFACT_DIRECTION_KEY, 1, VCFHeaderLineType.String,
+                        "If FWD, then the forward alt reads are overrepresented. Similarly for REV"),
+                new VCFFormatHeaderLine(STRAND_ARTIFACT_PROBABILITY_KEY, 1, VCFHeaderLineType.Float,
+                        "Probability of strand artifact"));
     }
 
     public enum ReadStrand {
