@@ -259,7 +259,17 @@ public class MarkDuplicatesSparkUtils {
                 }
 
                 if ( pairsMissingSecondRead != null && !pairsMissingSecondRead.isEmpty()){
-                    nonDuplicates.addAll(handlePairsMissingSecondRead(pairsMissingSecondRead));
+                    List<Tuple2<IndexPair<String>, Integer>> c = handlePairsMissingSecondRead(pairsMissingSecondRead);
+                    for (Tuple2<IndexPair<String>, Integer> t : c) {
+                        if (t._1.getValue()==null || t._1.getValue().equals("0")) {
+                            System.out.println("The Problem was in the bad unmatched pairs");
+                            for (PairedEnds p: pairsMissingSecondRead){
+                                System.out.println("Possible unmatched pairs: " + p.toString());
+                            }
+                            throw new GATKException("e");
+                        }
+                    }
+                    nonDuplicates.addAll(c);
                 }
             }
 
