@@ -85,6 +85,9 @@ public class MarkDuplicatesSparkUtils {
                     // Make a PairedEnd object with no second read for each fragment (and an empty one for each paired read)
                     .peek(readWithIndex -> {
                         final GATKRead read = readWithIndex.getValue();
+                        if (read.getName()==null || read.getName().equals("0")) {
+                            System.out.println("Read found with no name: " + read.toString());
+                        }
                         PairedEnds fragment = (ReadUtils.readHasMappedMate(read)) ?
                                 PairedEnds.placeHolder(read, header, readWithIndex.getIndex()) :
                                 PairedEnds.newFragment(read, header, readWithIndex.getIndex(), scoringStrategy);
@@ -225,15 +228,31 @@ public class MarkDuplicatesSparkUtils {
                 final List<PairedEnds> pairs = stratifiedByType.get(PairedEnds.Type.PAIR);
                 final List<PairedEnds> pairsMissingSecondRead = stratifiedByType.get(PairedEnds.Type.PAIRED_BUT_MISSING_SECOND_READ);
 
+                if (!pairsMissingSecondRead.isEmpty()) {
+                    System.out.println("Read found without a mate as a pair: " + pairsMissingSecondRead.get(0).toString());
+                }
                 if (fragments != null && !fragments.isEmpty()) { // fragments
                     final Tuple2<IndexPair<String>, Integer> bestFragment = handleFragments(fragments);
                     if( bestFragment != null) {
                         nonDuplicates.add(bestFragment);
                     }
+                    if (bestFragment._1.getValue()==null || bestFragment._1.getValue().equals("0")) {
+                        System.out.println("The Problem was in the bad fragments");
+                        for (PairedEnds p: fragments){
+                            System.out.println("Possible Fragment: " + p.toString());
+                        }
+                    }
                 }
 
                 if (pairs != null && !pairs.isEmpty()) {
-                    nonDuplicates.add(handlePairs(pairs, finder));
+                    Tuple2<IndexPair<String>, Integer> handlePairs = handlePairs(pairs, finder);
+                    if (handlePairs._1.getValue()==null || handlePairs._1.getValue().equals("0")) {
+                        System.out.println("The Problem was in the bad fragments");
+                        for (PairedEnds p: fragments){
+                            System.out.println("Possible Fragment: " + p.toString());
+                        }
+                    }
+                    nonDuplicates.add(handlePairs);
                 }
 
                 if ( pairsMissingSecondRead != null && !pairsMissingSecondRead.isEmpty()){
