@@ -5,8 +5,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 
-import java.util.Collection;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 
 /**
@@ -35,4 +34,83 @@ public class HopscotchMultiMap<K, V, T extends Map.Entry<K, V>>  extends Hopscot
             return new HopscotchMultiMap(kryo, input);
         }
     }
+
+    /**
+     * Returns an iterator that is guaranteed to iterate over all entries that share the same key in one consecutive
+     * stretch.
+     */
+    public Iterator<T> getGroupingIterator() {
+        return new GroupingIterator();
+    }
+
+    protected class GroupingIterator extends CompleteIterator {
+
+        private Set<K> keysInBucket = new HashSet<>();
+        private ElementIterator elementIterator = null;
+
+        public GroupingIterator() {
+            super();
+        }
+
+        @Override
+        protected void nextBucketHead() {
+            super.nextBucketHead();
+            if (bucketHeadIndex != NO_ELEMENT_INDEX) {
+                keysInBucket = findKeysInBucket();
+                elementIterator = getNextElementIterator();
+            }
+        }
+
+        @Override
+        public boolean hasNext() {
+            return ( elementIterator != null && elementIterator.hasNext() );
+        }
+
+        @Override
+        public T next() {
+            final T next = elementIterator.next();
+            if (! elementIterator.hasNext()) {
+                if (! keysInBucket.isEmpty()) {
+                    elementIterator = getNextElementIterator();
+                } else {
+                    nextBucketHead();
+                }
+            }
+            return next;
+        }
+
+        private Set<K> findKeysInBucket() {
+            final HashSet<K> keys = new HashSet<>();
+            final BucketIterator bucketIterator = new BucketIterator(bucketHeadIndex);
+            while (bucketIterator.hasNext()) {
+                T next = bucketIterator.next();
+                keys.add(next.getKey());
+            }
+            return keys;
+        }
+
+        private ElementIterator getNextElementIterator() {
+            if (keysInBucket.isEmpty()) {
+                throw new NoSuchElementException("No more keys in bucket.");
+            }
+            final Iterator<K> keyIterator = keysInBucket.iterator();
+            final K nextKey = keyIterator.next();
+            keyIterator.remove();
+            return new ElementIterator(nextKey);
+        }
+    }
+
+    private class BucketIterator extends CompleteIterator {
+
+        private BucketIterator(int bucketHeadIndex) {
+            this.bucketHeadIndex = bucketHeadIndex;
+            currentIndex = bucketHeadIndex;
+        }
+
+        @Override
+        protected void nextBucketHead() {
+            bucketHeadIndex = NO_ELEMENT_INDEX;
+        }
+    }
+
 }

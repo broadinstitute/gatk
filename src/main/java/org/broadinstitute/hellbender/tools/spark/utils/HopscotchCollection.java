@@ -46,7 +46,7 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
     private byte[] status;
 
     private static final double LOAD_FACTOR = .85;
-    private static final int NO_ELEMENT_INDEX = -1;
+    protected static final int NO_ELEMENT_INDEX = -1;
     private static final int SPREADER = 241;
 
     /** make a small HopscotchCollection */
@@ -486,7 +486,7 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
         return SetSizeUtils.legalSizes[SetSizeUtils.legalSizes.length-1];
     }
 
-    private abstract class BaseIterator implements Iterator<T> {
+    protected abstract class BaseIterator implements Iterator<T> {
         protected int currentIndex;
         protected int prevIndex;
         protected int removeIndex;
@@ -513,7 +513,7 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
         }
     }
 
-    private final class ElementIterator extends BaseIterator {
+    protected final class ElementIterator extends BaseIterator {
         private final Object key;
 
         ElementIterator( final Object key ) {
@@ -565,7 +565,7 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
         }
     }
 
-    private final class CompleteIterator extends BaseIterator {
+    protected class CompleteIterator extends BaseIterator {
         // Class Invariants:
         //  bucketHeadIndex is a valid bucket head until the iteration is complete.
         //    When iteration is complete it has the value buckets.length.
@@ -575,7 +575,7 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
         //  removeIndex is set by calling next.  It is set to the invalid value following a call to remove,
         //    as well as at the beginning of iteration (before the first call to next).  It remains valid when iteration
         //    is complete, unless and until remove is called.
-        private int bucketHeadIndex;
+        protected int bucketHeadIndex;
 
         CompleteIterator() {
             bucketHeadIndex = NO_ELEMENT_INDEX;
@@ -603,7 +603,7 @@ public class HopscotchCollection<T> extends AbstractCollection<T> {
             return buckets[removeIndex];
         }
 
-        private void nextBucketHead() {
+        protected void nextBucketHead() {
             while ( ++bucketHeadIndex < buckets.length ) {
                 if ( isChainHead(bucketHeadIndex) ) {
                     currentIndex = bucketHeadIndex;

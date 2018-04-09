@@ -6,8 +6,7 @@ import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public final class HopscotchMultiMapTest extends GATKBaseTest {
@@ -94,4 +93,76 @@ public final class HopscotchMultiMapTest extends GATKBaseTest {
         Assert.assertTrue(hopscotchMultiMap.removeEach(1));
         Assert.assertEquals(hopscotchMultiMap.size(),2);
     }
+
+    static class CollidingHashMapKey {
+
+        Integer value;
+
+        public CollidingHashMapKey(final Integer value) {
+            this.value = value;
+        }
+
+        @Override
+        public int hashCode() {
+            return 10;
+        }
+
+        public Integer getValue() {
+            return value;
+        }
+    }
+
+    static final class CollidingHashMapPair implements Map.Entry<CollidingHashMapKey, Integer> {
+        private final CollidingHashMapKey key;
+        private int value;
+
+        CollidingHashMapPair(final int key, final int value) {
+            this.key = new CollidingHashMapKey(key);
+            this.value = value;
+        }
+
+        @Override
+        public CollidingHashMapKey getKey() {
+            return key;
+        }
+
+        @Override
+        public Integer getValue() {
+            return value;
+        }
+
+        @Override
+        public Integer setValue(final Integer value) {
+            final int oldValue = this.value;
+            this.value = value;
+            return oldValue;
+        }
+    }
+
+    @Test
+    public void testGroupingIterator() {
+        HopscotchUniqueMultiMap<CollidingHashMapKey, Integer, CollidingHashMapPair> qNamesMultiMap = new HopscotchUniqueMultiMap<>(8);
+        qNamesMultiMap.add(new CollidingHashMapPair(1, 1));
+        qNamesMultiMap.add(new CollidingHashMapPair(2, 1));
+        qNamesMultiMap.add(new CollidingHashMapPair(3, 1));
+        qNamesMultiMap.add(new CollidingHashMapPair(4, 2));
+        qNamesMultiMap.add(new CollidingHashMapPair(5, 2));
+        qNamesMultiMap.add(new CollidingHashMapPair(2, 3));
+        qNamesMultiMap.add(new CollidingHashMapPair(3, 3));
+        qNamesMultiMap.add(new CollidingHashMapPair(6, 3));
+
+        final Iterator<CollidingHashMapPair> iterator = qNamesMultiMap.getGroupingIterator();
+        final Set<Integer> keysSeen = new HashSet<>(5);
+        Integer prevQname = null;
+        while (iterator.hasNext()) {
+            CollidingHashMapPair next = iterator.next();
+            if (prevQname != null) {
+                Assert.assertTrue(! keysSeen.contains(next.getKey().value) || next.getKey().getValue().equals(prevQname));
+
+            }
+            prevQname = next.getKey().getValue();
+            keysSeen.add(next.getKey().getValue());
+        }
+    }
+
 }
