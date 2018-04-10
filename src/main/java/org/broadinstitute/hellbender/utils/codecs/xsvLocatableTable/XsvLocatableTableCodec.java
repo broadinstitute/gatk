@@ -32,7 +32,6 @@ import java.util.stream.Stream;
 
 /**
  * Codec class to read from XSV (e.g. csv, tsv, etc.) files.
- * Designed specifically with use by {@link org.broadinstitute.hellbender.tools.funcotator.Funcotator} in mind.
  *
  * Files that can be parsed by the {@link XsvLocatableTableCodec} will have a sibling configuration file of the same
  * name and the `.config` extension.  This file will contain the following keys:
@@ -43,7 +42,7 @@ import java.util.stream.Stream;
  *      name
  *
  * Alternatively, an arbitrary configuration file can be specified in the {@link XsvLocatableTableCodec#XsvLocatableTableCodec(Path)}.
- *  This cannot be used within tribble, such as in a FeatureWalker.
+ *  However, this cannot be used within tribble, such as in a FeatureWalker.
  *
  * These tables are assumed to have preamble lines that start with `#` (comments) or '@' (SAM File Header) and a
  * header that has the names for each column in the table as the top row.  The type of preamble (comments vs.
@@ -55,6 +54,8 @@ import java.util.stream.Stream;
  *
  * Two or three columns will specify the location of each row in the data (contig, start, end; start and end can be the same
  * column).
+ *
+ * contig, start, and end can be specified as a comma-separated list.
  *
  * Created by jonn on 12/4/17.
  */

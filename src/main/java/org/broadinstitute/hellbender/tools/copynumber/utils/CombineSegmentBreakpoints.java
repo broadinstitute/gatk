@@ -34,8 +34,7 @@ import java.util.stream.Collectors;
         oneLineSummary = "Combine the breakpoints of two segment files and annotate the resulting intervals with chosen columns from each file.",
         summary = "Combine the breakpoints of two segment files while preserving annotations.\n" +
                 "This tool will load all segments into RAM.\n"+
-                "Column headers for locatable information are taken from the first segment file.\n" +
-                "Comments lines start with '#'.\n" +
+                "Comments lines start with '#' or the data can be prepended by a SAM File Header (not both).\n" +
                 "Output file comments will be the first segment file comments concatenated with the second file comments.\n" +
                 "SAMFileHeaders in the input seg files are supported and will be merged in the output.\n" +
                 "Output seg file will have a SAMFileHeader, even if the inputs did not.  If neither input file has " +

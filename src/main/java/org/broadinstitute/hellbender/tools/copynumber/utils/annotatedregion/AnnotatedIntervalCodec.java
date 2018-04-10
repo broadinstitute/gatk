@@ -25,6 +25,12 @@ import java.util.stream.IntStream;
 /**
  * Read AnnotatedIntervals from a xsv file (see {@link XsvLocatableTableCodec}.
  *
+ * This class also depends on the config file detailed in {@link XsvLocatableTableCodec}.
+ *
+ * For writing, see {@link AnnotatedIntervalCodec#createHeaderForWriter(Path, List, SAMFileHeader)}.  In the case of
+ *  config files that have multiple columns specified (comma delimited), the first value will be selected as the one to
+ *  use for output.
+ *
  */
 public class AnnotatedIntervalCodec extends AsciiFeatureCodec<AnnotatedInterval> {
 
