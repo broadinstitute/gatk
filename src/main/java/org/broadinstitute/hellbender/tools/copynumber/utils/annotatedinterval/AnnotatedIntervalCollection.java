@@ -125,7 +125,7 @@ public class AnnotatedIntervalCollection {
                 throw new GATKException("Error - IO problem with file " + input, ex);
             }
         } else {
-            throw new UserException.BadInput("Could not parse xsv file.");
+            throw new UserException.BadInput("Could not parse xsv file: " + input.toUri().toString());
         }
     }
 
