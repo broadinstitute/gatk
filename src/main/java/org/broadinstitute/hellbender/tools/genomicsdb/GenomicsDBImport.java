@@ -678,26 +678,17 @@ public final class GenomicsDBImport extends GATKTool {
      */
     private void initializeIntervals() {
         if (intervalArgumentCollection.intervalsSpecified()) {
-
             final SAMSequenceDictionary intervalDictionary = getBestAvailableSequenceDictionary();
+
             if (intervalDictionary == null) {
                 throw new UserException("We require at least one input source that " +
                     "has a sequence dictionary (reference or reads) when intervals are specified");
             }
 
             intervals = new ArrayList<>();
-
-            final List<SimpleInterval> simpleIntervalList =
-                intervalArgumentCollection.getIntervals(intervalDictionary);
-
-            if (simpleIntervalList.size() > 1) {
-                throw new UserException("More than one interval specified. The tool takes only one");
-            }
-
-            for (final SimpleInterval simpleInterval : simpleIntervalList) {
-                intervals.add(new ChromosomeInterval(simpleInterval.getContig(),
-                  simpleInterval.getStart(), simpleInterval.getEnd()));
-            }
+            final List<SimpleInterval> simpleIntervalList = intervalArgumentCollection.getIntervals(intervalDictionary);
+            simpleIntervalList.forEach(interval -> intervals.add(new ChromosomeInterval(interval.getContig(),
+                    interval.getStart(), interval.getEnd())));
         } else {
             throw new UserException("No intervals specified");
         }
