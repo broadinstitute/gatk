@@ -27,6 +27,7 @@ import scala.Tuple2;
 
 import javax.validation.constraints.Max;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -74,7 +75,28 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                 .values();
         
         return reads.zipPartitions(repartitionedReadNames, (readsIter, readNamesIter)  -> {
-            final Map<String,Integer> namesOfNonDuplicateReadsAndOpticalCounts = Utils.stream(readNamesIter).collect(Collectors.toMap(Tuple2::_1,Tuple2::_2)); //TODO there is a bug here with value 0 being overloaded with entries, this is a stopgap for profiling
+            //final Map<String,Integer> namesOfNonDuplicateReadsAndOpticalCounts = Utils.stream(readNamesIter).collect(Collectors.toMap(Tuple2::_1,Tuple2::_2)); //TODO there is a bug here with value 0 being overloaded with entries, this is a stopgap for profiling
+            final Map<String,Integer> namesOfNonDuplicateReadsAndOpticalCounts = new HashMap<>();
+            Iterable<Tuple2<String,Integer>> iter =  () -> readNamesIter;
+            for (Tuple2<String,Integer> tup : iter) {
+                if (tup._1 == null || tup._1.equals("0")) {
+                    System.out.println("Tup has bad key: "+ tup._1+"  v: "+tup._2);
+                }
+
+                if (namesOfNonDuplicateReadsAndOpticalCounts.containsKey(tup._1)) {
+                    System.out.println("Key is duplicated: "+ tup._1+"  v: "+tup._2);
+                    int val = namesOfNonDuplicateReadsAndOpticalCounts.get(tup._1);
+                    if (val > 0) {
+                        val = (tup._2>0)?val+tup._2:val;
+                    } else {
+                        val = Math.max(tup._2,val);
+                    }
+                    namesOfNonDuplicateReadsAndOpticalCounts.put(tup._1, val);
+                } else {
+                    namesOfNonDuplicateReadsAndOpticalCounts.put(tup._1, tup._2);
+                }
+            }
+
             return Utils.stream(readsIter).peek(read -> {
                 // Handle read that aren't duplicates (and thus may be marked as containing opticalDuplicates)
                 if( namesOfNonDuplicateReadsAndOpticalCounts.containsKey(read.getName())) { //todo figure out if we should be marking the unmapped mates of duplicate reads as duplicates
