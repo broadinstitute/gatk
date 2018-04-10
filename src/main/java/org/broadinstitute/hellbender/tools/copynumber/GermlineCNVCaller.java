@@ -144,7 +144,8 @@ import java.util.stream.Collectors;
  * gatk GermlineCNVCaller \
  *   --run-mode COHORT \
  *   -L intervals.interval_list \
- *   --contig-ploidy-calls path_to_contig_ploidy_calls
+ *   --interval-merging-rule OVERLAPPING_ONLY \
+ *   --contig-ploidy-calls path_to_contig_ploidy_calls \
  *   --input normal_1.counts.hdf5 \
  *   --input normal_2.counts.hdf5 \
  *   ... \
@@ -157,7 +158,8 @@ import java.util.stream.Collectors;
  * gatk GermlineCNVCaller \
  *   --run-mode CASE \
  *   -L intervals.interval_list \
- *   --contig-ploidy-calls path_to_contig_ploidy_calls
+ *   --interval-merging-rule OVERLAPPING_ONLY \
+ *   --contig-ploidy-calls path_to_contig_ploidy_calls \
  *   --model previous_model_path \
  *   --input normal_1.counts.hdf5 \
  *   ... \
