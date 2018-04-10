@@ -323,8 +323,8 @@ public final class CombineSegmentBreakpointsIntegrationTest extends CommandLineP
         };
     }
 
-    @Test(dataProvider = "provideOldFormats")
-    public void testCommonFormats(final String inputSegFile, final String oldFormatSegFile, final String meanColumn, final String callColumn, int numAnnotations) throws IOException {
+    @Test(dataProvider = "oldFormats")
+    public void testOldFormats(final String inputSegFile, final String oldFormatSegFile, final String meanColumn, final String callColumn, int numAnnotations) throws IOException {
         final File outputFile = File.createTempFile("combineseg_old_formats_", ".seg");
         runCombineSegmentBreakpoints(inputSegFile, oldFormatSegFile, outputFile, REFERENCE_FILE, "MEAN_LOG2_COPY_RATIO", "CALL", meanColumn, callColumn);
         final AnnotatedIntervalCollection regions = AnnotatedIntervalCollection.create(outputFile.toPath(),
