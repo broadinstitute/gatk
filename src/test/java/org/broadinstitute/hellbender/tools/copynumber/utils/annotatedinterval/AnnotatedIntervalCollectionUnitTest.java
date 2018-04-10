@@ -22,13 +22,13 @@ import java.util.*;
 public class AnnotatedIntervalCollectionUnitTest extends GATKBaseTest {
 
     private static final File TEST_FILE = new File(toolsTestDir,
-            "copynumber/utils/annotatedregion/annotated-interval-many-columns.seg");
+            "copynumber/utils/annotatedinterval/annotated-interval-many-columns.seg");
     private static final File TEST_SAM_COMMENTS_FILE = new File(toolsTestDir,
-            "copynumber/utils/annotatedregion/annotated-interval-alt-samheader.seg");
+            "copynumber/utils/annotatedinterval/annotated-interval-alt-samheader.seg");
     private static final File TEST_CONFIG = new File(toolsTestDir,
-            "copynumber/utils/annotatedregion/annotated-interval-collection-index-cols.config");
+            "copynumber/utils/annotatedinterval/annotated-interval-collection-index-cols.config");
     private static final File TEST_NAMED_CONFIG = new File(toolsTestDir,
-            "copynumber/utils/annotatedregion/annotated-interval-collection-named-cols.config");
+            "copynumber/utils/annotatedinterval/annotated-interval-collection-named-cols.config");
 
 
     @Test

@@ -16,7 +16,7 @@ import java.util.Set;
 
 public final class AnnotatedIntervalUnitTest extends GATKBaseTest {
     private static final File TEST_FILE = new File(toolsTestDir,
-            "copynumber/utils/annotatedregion/annotated-interval-many-columns.seg");
+            "copynumber/utils/annotatedinterval/annotated-interval-many-columns.seg");
 
     @Test
     public void basicTest() throws IOException {

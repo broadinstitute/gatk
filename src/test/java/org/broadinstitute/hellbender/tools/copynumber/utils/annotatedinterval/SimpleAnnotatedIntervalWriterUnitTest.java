@@ -14,9 +14,9 @@ public class SimpleAnnotatedIntervalWriterUnitTest extends GATKBaseTest {
     private static final File TEST_FILE = new File(toolsTestDir,
             "copynumber/utils/combine-segment-breakpoints.seg");
     private static final File TEST_FILE_OLD_HEADER = new File(toolsTestDir,
-            "copynumber/utils/annotatedregion/simple-annotated-interval-writer-replacement-header-comments.seg");
+            "copynumber/utils/annotatedinterval/simple-annotated-interval-writer-replacement-header-comments.seg");
     private static final File TEST_FILE_OLD_HEADER_CONFIG = new File(toolsTestDir,
-            "copynumber/utils/annotatedregion/old-header.config");
+            "copynumber/utils/annotatedinterval/old-header.config");
 
     @Test
     public void testNoSamFileHeaderWithComments() throws IOException {
