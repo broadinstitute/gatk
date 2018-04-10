@@ -1,4 +1,4 @@
-#SAMPLE_NAME=SAMPLE_GT
+# This is a comment
 CONTIG	START	END	Num_Probes	Segment_Mean	Segment_Call
 1	5000	60000	100	-0.04	0
 1	70000	100000	100	-0.8	-
