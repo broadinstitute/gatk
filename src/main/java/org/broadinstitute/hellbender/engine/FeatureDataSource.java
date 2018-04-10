@@ -387,6 +387,19 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
                     GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME + ") could not be read from GenomicsDB workspace " + workspace.getAbsolutePath(), e);
         }
 
+        final GenomicsDBExportConfiguration.ExportConfiguration exportConfigurationBuilder =
+                createExportConfiguration(reference, workspace, callsetJson, vidmapJson, vcfHeader);
+
+        try {
+            return new GenomicsDBFeatureReader<>(exportConfigurationBuilder, new BCF2Codec(), Optional.empty());
+        } catch (final IOException e) {
+            throw new UserException("Couldn't create GenomicsDBFeatureReader", e);
+        }
+    }
+
+    private static GenomicsDBExportConfiguration.ExportConfiguration createExportConfiguration(final File reference, final File workspace,
+                                                                                               final File callsetJson, final File vidmapJson,
+                                                                                               final File vcfHeader) {
         GenomicsDBExportConfiguration.ExportConfiguration.Builder exportConfigurationBuilder =
                 GenomicsDBExportConfiguration.ExportConfiguration.newBuilder()
                         .setWorkspace(workspace.getAbsolutePath())
@@ -403,11 +416,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             exportConfigurationBuilder.setGenerateArrayNameFromPartitionBounds(true);
         }
 
-        try {
-            return new GenomicsDBFeatureReader<>(exportConfigurationBuilder.build(), new BCF2Codec(), Optional.empty());
-        } catch (final IOException e) {
-            throw new UserException("Couldn't create GenomicsDBFeatureReader", e);
-        }
+        return exportConfigurationBuilder.build();
     }
 
     /**
