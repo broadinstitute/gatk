@@ -16,13 +16,13 @@ import org.testng.annotations.Test;
 
 import java.util.*;
 
-import static org.broadinstitute.hellbender.tools.walkers.annotator.NewStrandArtifact.ReadStrand.FWD;
-import static org.broadinstitute.hellbender.tools.walkers.annotator.NewStrandArtifact.ReadStrand.REV;
+import static org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifact.ReadStrand.FWD;
+import static org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifact.ReadStrand.REV;
 
 /**
  * Created by tsato on 4/6/18.
  */
-public class NewStrandArtifactUnitTest {
+public class StrandArtifactUnitTest {
     final int numChromosomes = 2; // create chromosome 0 and chromosome 1
     final int startingChromosome = 1;
     final int chromosomeSize = 1000;
@@ -47,7 +47,7 @@ public class NewStrandArtifactUnitTest {
     @DataProvider
     public Object[][] failingCases(){
         return new Object[][]{
-                {0, 50, 1, 0, NEITHER},
+                {19, 61, 10, 2, NEITHER},
         };
     }
 
@@ -72,7 +72,9 @@ public class NewStrandArtifactUnitTest {
                 {50, 20, 5, 4, NEITHER},
                 {25, 25, 1, 0, NEITHER}, // Low alt count
                 {10, 40, 1, 0, NEITHER}, // Low alt count with opposing imbalance in ref
-                {0, 50, 1, 0, NEITHER}
+                {0, 10, 1, 0, "FWD"}, // Ref and Alt biased in opposite directions - should it be filtered?
+                {53, 28, 14, 2, NEITHER}, // Gray area here...is this strand artifact?
+                {19, 61, 10, 2, NEITHER} // Another gray area
         };
     }
 
@@ -111,22 +113,21 @@ public class NewStrandArtifactUnitTest {
                 new ImmutablePair<>(numAltRev, altIndex));
         setLikelihoods(matrix, counts);
 
-        final NewStrandArtifact annotation = new NewStrandArtifact();
+        final StrandArtifact annotation = new StrandArtifact();
         final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(sampleName);
         annotation.annotate(null, vc, genotypeBuilder.make(), genotypeBuilder, likelihoods);
 
         final Genotype genotype = genotypeBuilder.make();
         final String artifact = GATKProtectedVariantContextUtils.getAttributeAsString(genotype,
-                NewStrandArtifact.STRAND_ARTIFACT_DIRECTION_KEY, NEITHER);
-        // This is more of a sanity check - make sure the lod exists and exceeds threshold
-        final double lod = GATKProtectedVariantContextUtils.getAttributeAsDouble(genotype,
-                NewStrandArtifact.STRAND_ARTIFACT_PROBABILITY_KEY, -1.0);
+                StrandArtifact.STRAND_ARTIFACT_DIRECTION_KEY, NEITHER);
+        // This is more of a sanity check - make sure the artifact probability exists and is greater than 0
+        final double artifactProbability = GATKProtectedVariantContextUtils.getAttributeAsDouble(genotype,
+                StrandArtifact.STRAND_ARTIFACT_PROBABILITY_KEY, -1.0);
+        if (! expectedArtifact.equals(NEITHER)){
+            Assert.assertTrue(artifactProbability > 0);
+        }
 
         Assert.assertEquals(artifact, expectedArtifact);
-//        final double lodThresholdForBorderLineCases = 1.0;
-//        if (! expectedArtifact.equals(NEITHER)){
-//            Assert.assertTrue(lod > lodThresholdForBorderLineCases);
-//        }
     }
 
     private void setLikelihoods(final LikelihoodMatrix<Allele> matrix, final List<Pair<Integer, Integer>> alleleCounts) {
@@ -143,7 +144,7 @@ public class NewStrandArtifactUnitTest {
 
     }
 
-    private void addReads(final int numReads, final List<GATKRead> reads, final String readBases, final NewStrandArtifact.ReadStrand strand){
+    private void addReads(final int numReads, final List<GATKRead> reads, final String readBases, final StrandArtifact.ReadStrand strand){
         Utils.nonNull(readBases);
         Utils.nonNull(reads);
 

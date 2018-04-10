@@ -207,25 +207,17 @@ public class Mutect2FilteringEngine {
         return GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, attribute, () -> null, -1);
     }
 
-    private void applyStrandArtifactFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final VariantContextBuilder vcb) {
+    private void applyStrandArtifactFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc,
+                                           final VariantContextBuilder vcb) {
         Genotype tumorGenotype = vc.getGenotype(tumorSample);
-        final double[] posteriorProbabilities = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(
-                tumorGenotype, (StrandArtifact.POSTERIOR_PROBABILITIES_KEY), () -> null, -1);
-        final double[] mapAlleleFractionEstimates = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(
-                tumorGenotype, (StrandArtifact.MAP_ALLELE_FRACTIONS_KEY), () -> null, -1);
+        final double artifactProbability = GATKProtectedVariantContextUtils.getAttributeAsDouble(
+                tumorGenotype, StrandArtifact.STRAND_ARTIFACT_PROBABILITY_KEY, -1.0);
 
-        if (posteriorProbabilities == null || mapAlleleFractionEstimates == null){
+        if (artifactProbability < 0){
             return;
         }
 
-        final int maxZIndex = MathUtils.maxElementIndex(posteriorProbabilities);
-
-        if (maxZIndex == StrandArtifact.ArtifactState.NO_ARTIFACT.ordinal()){
-            return;
-        }
-
-        if (posteriorProbabilities[maxZIndex] > MTFAC.strandArtifactPosteriorProbThreshold &&
-                mapAlleleFractionEstimates[maxZIndex] < MTFAC.strandArtifactAlleleFractionThreshold){
+        if (artifactProbability > MTFAC.strandArtifactThreshold){
             vcb.filter(GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME);
         }
     }

@@ -21,8 +21,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-import static org.broadinstitute.hellbender.tools.walkers.annotator.NewStrandArtifact.ReadStrand.FWD;
-import static org.broadinstitute.hellbender.tools.walkers.annotator.NewStrandArtifact.ReadStrand.REV;
+import static org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifact.ReadStrand.FWD;
+import static org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifact.ReadStrand.REV;
 
 /**
  * Add Docs Here
@@ -33,10 +33,8 @@ import static org.broadinstitute.hellbender.tools.walkers.annotator.NewStrandArt
  */
 
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Annotations for strand artifact filter (SA, SA_PROB)")
-public class NewStrandArtifact extends GenotypeAnnotation implements StandardMutectAnnotation {
+public class StrandArtifact extends GenotypeAnnotation implements StandardMutectAnnotation {
     protected final OneShotLogger warning = new OneShotLogger(this.getClass());
-
-    public static final double PROBABILITY_THRESHOLD = 0.9;
 
     public static final String STRAND_ARTIFACT_DIRECTION_KEY = "SA";
     public static final String STRAND_ARTIFACT_PROBABILITY_KEY = "SA_PROB";
@@ -51,6 +49,11 @@ public class NewStrandArtifact extends GenotypeAnnotation implements StandardMut
         Utils.nonNull(gb);
         Utils.nonNull(vc);
         Utils.nonNull(likelihoods);
+
+        // Do not annotate the normal sample
+        if (g.isHomRef()){
+            return;
+        }
 
         // Get the tumor lods to find the alt allele with highest LOD score
         final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY,
@@ -120,9 +123,7 @@ public class NewStrandArtifact extends GenotypeAnnotation implements StandardMut
         final double artifactProbability = artifactStrand == FWD ? posteriorOfFwdArtifact : posteriorOfRevArtifact;
 
         gb.attribute(STRAND_ARTIFACT_PROBABILITY_KEY, artifactProbability);
-        if (artifactProbability > PROBABILITY_THRESHOLD) {
-            gb.attribute(STRAND_ARTIFACT_DIRECTION_KEY, artifactStrand == FWD ? FWD : REV);
-        }
+        gb.attribute(STRAND_ARTIFACT_DIRECTION_KEY, artifactStrand == FWD ? FWD : REV);
     }
 
     @Override
