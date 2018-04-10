@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion;
+package org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval;
 
 import java.io.Closeable;
 

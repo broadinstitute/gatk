@@ -3,8 +3,8 @@ package org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpile
 import htsjdk.samtools.util.OverlapDetector;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.AnnotatedInterval;
-import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.AnnotatedIntervalCollection;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;

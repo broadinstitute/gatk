@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.copynumber.utils.germlinetagging;
 import com.google.common.collect.ImmutableSortedMap;
 import com.google.common.collect.Maps;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.AnnotatedInterval;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.testng.Assert;

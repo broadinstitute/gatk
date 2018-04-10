@@ -7,8 +7,8 @@ import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
-import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.AnnotatedInterval;
-import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.AnnotatedIntervalCollection;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.utils.germlinetagging.SimpleGermlineTagger;
 
 import java.io.File;
