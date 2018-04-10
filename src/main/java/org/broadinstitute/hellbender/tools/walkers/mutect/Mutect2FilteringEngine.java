@@ -255,6 +255,7 @@ public class Mutect2FilteringEngine {
 
     //TODO: building a list via repeated side effects is ugly
     public void applyFilters(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final VariantContextBuilder vcb) {
+        vcb.filters(new HashSet<>());
         applyInsufficientEvidenceFilter(MTFAC, vc, vcb);
         applyClusteredEventFilter(vc, vcb);
         applyDuplicatedAltReadFilter(MTFAC, vc, vcb);
