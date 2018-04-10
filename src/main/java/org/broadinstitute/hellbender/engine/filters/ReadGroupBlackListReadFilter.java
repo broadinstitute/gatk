@@ -39,14 +39,15 @@ public final class ReadGroupBlackListReadFilter extends ReadFilter implements Se
     // Command line parser requires a no-arg constructor
     public ReadGroupBlackListReadFilter() {};
 
-        /**
-         * Creates a filter using the lists of files with blacklisted read groups.
-         * Any entry can be a path to a file (ending with "list" or "txt" which
-         * will load blacklist from that file. This scheme works recursively
-         * (ie the file may contain names of further files etc).
-         */
+    /**
+     * Creates a filter using the lists of files with blacklisted read groups.
+     * Any entry can be a path to a file (ending with "list" or "txt" which
+     * will load blacklist from that file. This scheme works recursively
+     * (ie the file may contain names of further files etc).
+     */
     public ReadGroupBlackListReadFilter(final List<String> blackLists, final SAMFileHeader header) {
         super.setHeader(header);
+        this.blackList.addAll(blackLists);
         final Map<String, Collection<String>> filters = new TreeMap<>();
         for (String blackList : blackLists) {
             try {

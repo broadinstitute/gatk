@@ -25,7 +25,9 @@ public abstract class HaplotypeBAMWriter implements AutoCloseable {
      */
     private long uniqueNameCounter = 1;
 
-    private static final String DEFAULT_HAPLOTYPE_READ_GROUP_ID = "ArtificialHaplotypeRG";
+    public static final String DEFAULT_HAPLOTYPE_READ_GROUP_ID = "ArtificialHaplotypeRG";
+    // For read filters that need backwards compatibility with the GATK3 artificial haplotype
+    public static final String DEFAULT_GATK3_HAPLOTYPE_READ_GROUP_ID = "ArtificialHaplotype";
     private static final int bestHaplotypeMQ = 60;
     private static final int otherMQ = 0;
 
