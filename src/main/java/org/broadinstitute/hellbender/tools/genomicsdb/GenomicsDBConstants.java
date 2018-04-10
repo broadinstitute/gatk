@@ -9,7 +9,6 @@ public final class GenomicsDBConstants {
     public static final String DEFAULT_CALLSETMAP_FILE_NAME = "callset.json";
     public static final String DEFAULT_VCFHEADER_FILE_NAME = "vcfheader.vcf";
 
-
     /**
      * Don't instantiate a utility class
      */

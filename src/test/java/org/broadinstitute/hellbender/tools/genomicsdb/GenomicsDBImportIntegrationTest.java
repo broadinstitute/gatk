@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
-import com.intel.genomicsdb.GenomicsDBFeatureReader;
+import com.intel.genomicsdb.model.GenomicsDBExportConfiguration;
+import com.intel.genomicsdb.reader.GenomicsDBFeatureReader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.tribble.AbstractFeatureReader;
@@ -30,7 +31,6 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -590,52 +590,22 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     }
 
-    private static String getQueryJsonForGenomicsDB(String vidMappingFile, String callsetMappingFile, String tiledbWorkspace,
-                                                     String referenceGenome, boolean produceGTField) throws IOException {
-        //Produce temporary JSON query config file
-        String indentString = "    ";
-        String queryJSON = "{\n";
-        queryJSON += indentString + "\"scan_full\": true,\n";
-        queryJSON += indentString + "\"workspace\": \""+tiledbWorkspace+"\",\n";
-        queryJSON += indentString + "\"array\": \""+GenomicsDBConstants.DEFAULT_ARRAY_NAME+"\",\n";
-        queryJSON += indentString + "\"vid_mapping_file\": \""+vidMappingFile+"\",\n";
-        queryJSON += indentString + "\"callset_mapping_file\": \""+callsetMappingFile+"\",\n";
-        queryJSON += indentString + "\"produce_GT_field\": true,\n";
-        queryJSON += indentString + "\"reference_genome\": \""+referenceGenome+"\"";
-        queryJSON += "\n}\n";
-        File tmpQueryJSONFile = File.createTempFile("queryJSON", ".json");
-        tmpQueryJSONFile.deleteOnExit();
-        FileWriter fptr = new FileWriter(tmpQueryJSONFile);
-        fptr.write(queryJSON);
-        fptr.close();
-        return tmpQueryJSONFile.getAbsolutePath();
-    }
-    //Produce temporary JSON query config file
+    private static GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> getGenomicsDBFeatureReader(
+            final String workspace, final String reference, boolean produceGTField) throws IOException {
+       GenomicsDBExportConfiguration.ExportConfiguration exportConfiguration = GenomicsDBExportConfiguration.ExportConfiguration.newBuilder()
+                .setWorkspace(workspace)
+                .setReferenceGenome(reference)
+                .setVidMappingFile(new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME).getAbsolutePath())
+                .setCallsetMappingFile(new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).getAbsolutePath())
+                .setProduceGTField(produceGTField)
+                .setGenerateArrayNameFromPartitionBounds(true)
+                .build();
 
-
-    private static GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> getGenomicsDBFeatureReader(final String workspace, final String reference, boolean produceGTField) throws IOException {
-        if (produceGTField) {
-            return new GenomicsDBFeatureReader<>(
-                    "",
-                    getQueryJsonForGenomicsDB(new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME).getAbsolutePath(),
-                            new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).getAbsolutePath(),
-                            workspace,
-                            reference,
-                            produceGTField),
-                    new BCF2Codec());
-        } else {
-            return new GenomicsDBFeatureReader<>(
-                    new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME).getAbsolutePath(),
-                    new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).getAbsolutePath(),
-                    workspace,
-                    GenomicsDBConstants.DEFAULT_ARRAY_NAME,
-                    reference,
-                    new File(workspace, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME).getAbsolutePath(),
-                    new BCF2Codec());
-        }
+       return new GenomicsDBFeatureReader<>(exportConfiguration, new BCF2Codec(), Optional.empty());
     }
 
-    private static GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> getGenomicsDBFeatureReader(final String workspace, final String reference) throws IOException {
+    private static GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> getGenomicsDBFeatureReader(
+            final String workspace, final String reference) throws IOException {
         return getGenomicsDBFeatureReader(workspace, reference, false);
     }
 

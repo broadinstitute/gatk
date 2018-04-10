@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
-import com.intel.genomicsdb.GenomicsDBFeatureReader;
+import com.intel.genomicsdb.model.GenomicsDBExportConfiguration;
+import com.intel.genomicsdb.reader.GenomicsDBFeatureReader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.tribble.*;
 import htsjdk.variant.bcf2.BCF2Codec;
@@ -23,8 +24,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 
 /**
@@ -378,21 +381,30 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             IOUtils.canReadFile(callsetJson);
             IOUtils.canReadFile(vidmapJson);
             IOUtils.canReadFile(vcfHeader);
-        }
-        catch ( UserException.CouldNotReadInputFile e ) {
+        } catch ( UserException.CouldNotReadInputFile e ) {
             throw new UserException("Couldn't connect to GenomicsDB because the vidmap, callset JSON files, or gVCF Header (" +
                     GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME + "," + GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME + "," +
                     GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME + ") could not be read from GenomicsDB workspace " + workspace.getAbsolutePath(), e);
         }
 
+        GenomicsDBExportConfiguration.ExportConfiguration.Builder exportConfigurationBuilder =
+                GenomicsDBExportConfiguration.ExportConfiguration.newBuilder()
+                        .setWorkspace(workspace.getAbsolutePath())
+                        .setReferenceGenome(reference.getAbsolutePath())
+                        .setVidMappingFile(vidmapJson.getAbsolutePath())
+                        .setCallsetMappingFile(callsetJson.getAbsolutePath())
+                        .setVcfHeaderFilename(vcfHeader.getAbsolutePath());
+        File arrayFolder = new File(Paths.get(workspace.getAbsolutePath(), GenomicsDBConstants.DEFAULT_ARRAY_NAME)
+                .toAbsolutePath().toString());
+
+        if (arrayFolder.exists()) {
+            exportConfigurationBuilder.setArrayName(GenomicsDBConstants.DEFAULT_ARRAY_NAME);
+        } else {
+            exportConfigurationBuilder.setGenerateArrayNameFromPartitionBounds(true);
+        }
+
         try {
-            return new GenomicsDBFeatureReader<>(vidmapJson.getAbsolutePath(),
-                                                 callsetJson.getAbsolutePath(),
-                                                 workspace.getAbsolutePath(),
-                                                 GenomicsDBConstants.DEFAULT_ARRAY_NAME,
-                                                 reference.getAbsolutePath(),
-                                                 vcfHeader.getAbsolutePath(),
-                                                 new BCF2Codec());
+            return new GenomicsDBFeatureReader<>(exportConfigurationBuilder.build(), new BCF2Codec(), Optional.empty());
         } catch (final IOException e) {
             throw new UserException("Couldn't create GenomicsDBFeatureReader", e);
         }

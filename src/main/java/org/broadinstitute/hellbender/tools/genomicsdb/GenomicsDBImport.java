@@ -1,7 +1,12 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.intel.genomicsdb.*;
+import com.intel.genomicsdb.importer.GenomicsDBImporter;
+import com.intel.genomicsdb.importer.model.ChromosomeInterval;
+import com.intel.genomicsdb.model.Coordinates;
+import com.intel.genomicsdb.model.GenomicsDBCallsetsMapProto;
+import com.intel.genomicsdb.model.GenomicsDBImportConfiguration;
+import com.intel.genomicsdb.model.ImportConfig;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.AbstractFeatureReader;
@@ -30,7 +35,6 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
@@ -38,6 +42,7 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 
 /**
@@ -115,7 +120,7 @@ import java.util.function.Function;
  * </ul>
  *
  * <h3>Developer Note</h3>
- * To read data from GenomicsDB, use the query interface {@link com.intel.genomicsdb.GenomicsDBFeatureReader}
+ * To read data from GenomicsDB, use the query interface {@link com.intel.genomicsdb.reader.GenomicsDBFeatureReader}
  */
 @DocumentedFeature
 @CommandLineProgramProperties(
@@ -451,8 +456,6 @@ public final class GenomicsDBImport extends GATKTool {
         logger.info("Complete VCF Header will be written to " + vcfHeaderFile);
         logger.info("Importing to array - " + workspace + "/" + GenomicsDBConstants.DEFAULT_ARRAY_NAME);
 
-        //Pass in true here to use the given ordering, since sampleNameToVcfPath is already sorted
-        callsetMappingPB = GenomicsDBImporter.generateSortedCallSetMap(new ArrayList<>(sampleNameToVcfPath.keySet()), true);
         initializeInputPreloadExecutorService();
     }
 
@@ -468,6 +471,51 @@ public final class GenomicsDBImport extends GATKTool {
         }
     }
 
+    private Map<String, FeatureReader<VariantContext>> createSampleToReaderMap(
+            final Map<String, Path> sampleNameToVcfPath, final int batchSize, final int index) {
+        //TODO: fix casting since it's really ugly
+        return inputPreloadExecutorService != null ?
+                getFeatureReadersInParallel((SortedMap<String, Path>) sampleNameToVcfPath, batchSize, index)
+                : getFeatureReadersSerially(sampleNameToVcfPath, batchSize, index);
+    }
+
+    private List<GenomicsDBImportConfiguration.Partition> generatePartitionListFromIntervals(List<ChromosomeInterval> chromosomeIntevals) {
+        return chromosomeIntevals.stream().map(interval -> {
+            GenomicsDBImportConfiguration.Partition.Builder partitionBuilder = GenomicsDBImportConfiguration.Partition.newBuilder();
+            Coordinates.ContigPosition.Builder contigPositionBuilder = Coordinates.ContigPosition.newBuilder();
+            Coordinates.GenomicsDBColumn.Builder columnBuilder = Coordinates.GenomicsDBColumn.newBuilder();
+            //begin
+            contigPositionBuilder.setContig(interval.getContig()).setPosition(interval.getStart());
+            columnBuilder.setContigPosition(contigPositionBuilder.build());
+            partitionBuilder.setBegin(columnBuilder.build());
+            //end
+            contigPositionBuilder.setPosition(interval.getEnd());
+            columnBuilder.setContigPosition(contigPositionBuilder.build());
+            partitionBuilder.setEnd(columnBuilder.build());
+            partitionBuilder.setWorkspace(workspace);
+            partitionBuilder.setGenerateArrayNameFromPartitionBounds(true);
+            return partitionBuilder.build();
+        }).collect(Collectors.toList());
+    }
+
+    private ImportConfig createImportConfig(final int batchSize) {
+        final List<GenomicsDBImportConfiguration.Partition> partitions = generatePartitionListFromIntervals(intervals);
+        GenomicsDBImportConfiguration.ImportConfiguration.Builder importConfigurationBuilder =
+                GenomicsDBImportConfiguration.ImportConfiguration.newBuilder();
+        importConfigurationBuilder.addAllColumnPartitions(partitions);
+        importConfigurationBuilder.setSizePerColumnPartition(vcfBufferSizePerSample);
+        importConfigurationBuilder.setFailIfUpdating(true);
+        importConfigurationBuilder.setSegmentSize(segmentSize);
+        importConfigurationBuilder.setConsolidateTiledbArrayAfterLoad(doConsolidation);
+        ImportConfig importConfig = new ImportConfig(importConfigurationBuilder.build(), validateSampleToReaderMap, true,
+                batchSize, mergedHeaderLines, sampleNameToVcfPath, this::createSampleToReaderMap);
+        importConfig.setOutputCallsetmapJsonFile(callsetMapJSONFile.getAbsolutePath());
+        importConfig.setOutputVidmapJsonFile(vidMapJSONFile.getAbsolutePath());
+        importConfig.setOutputVcfHeaderFile(vcfHeaderFile.getAbsolutePath());
+        importConfig.setUseSamplesInOrder(true);
+        return importConfig;
+    }
+
     /**
      * A complete traversal from start to finish. This method will import all samples
      * specified in the input GVCF files.
@@ -479,75 +527,33 @@ public final class GenomicsDBImport extends GATKTool {
 
         final int sampleCount = sampleNameToVcfPath.size();
         final int updatedBatchSize = (batchSize == DEFAULT_ZERO_BATCH_SIZE) ? sampleCount : batchSize;
-        final int totalBatchCount = (sampleCount/updatedBatchSize) + (sampleCount%updatedBatchSize==0 ? 0 : 1);
-
+//        final int totalBatchCount = (sampleCount/updatedBatchSize) + (sampleCount%updatedBatchSize==0 ? 0 : 1);
+        final ImportConfig importConfig = createImportConfig(updatedBatchSize);
+        //TODO: Fix this.
+//        BiConsumer<Map<String, FeatureReader<VariantContext>>, Integer> closeReaders = (readers, batchCount) -> {
+//            progressMeter.update(intervals.get(0));
+//            logger.info("Done importing batch " + batchCount + "/" + totalBatchCount);
+//        };
         GenomicsDBImporter importer;
-
-        for (int i = 0, batchCount = 1; i < sampleCount; i += updatedBatchSize, ++batchCount) {
-
-            final SortedMap<String, FeatureReader<VariantContext>> sampleToReaderMap =
-                    inputPreloadExecutorService != null
-                            ? getFeatureReadersInParallel(sampleNameToVcfPath, updatedBatchSize, i)
-                            : getFeatureReadersSerially(sampleNameToVcfPath, updatedBatchSize, i);
-
-            logger.info("Importing batch " + batchCount + " with " + sampleToReaderMap.size() + " samples");
-            final long variantContextBufferSize = vcfBufferSizePerSample * sampleToReaderMap.size();
-            final GenomicsDBImportConfiguration.ImportConfiguration importConfiguration =
-                    createImportConfiguration(workspace, GenomicsDBConstants.DEFAULT_ARRAY_NAME,
-                                              variantContextBufferSize, segmentSize,
-                                              i, (i+updatedBatchSize-1),
-                                              (batchCount == 1)); //Fail if array exists and this is the first batch
-
-            try {
-                importer = new GenomicsDBImporter(sampleToReaderMap, mergedHeaderLines, intervals.get(0), validateSampleToReaderMap, importConfiguration);
-            } catch (final IOException e) {
-                throw new UserException("Error initializing GenomicsDBImporter in batch " + batchCount, e);
-            } catch (final IllegalArgumentException iae) {
-                throw new GATKException("Null feature reader found in sampleNameMap file: " + sampleNameMapFile, iae);
-            }
-            try {
-                importer.importBatch();
-            } catch (final IOException e) {
-                throw new UserException("GenomicsDB import failed in batch " + batchCount, e);
-            }
-            closeReaders(sampleToReaderMap);
-            progressMeter.update(intervals.get(0));
-            logger.info("Done importing batch " + batchCount + "/" + totalBatchCount);
+        try {
+            importer = new GenomicsDBImporter(importConfig);
+            importer.executeImport();
+        } catch (final IOException e) {
+            throw new UserException("Error initializing GenomicsDBImporter", e);
+        } catch (final IllegalArgumentException iae) {
+            throw new GATKException("Null feature reader found in sampleNameMap file: " + sampleNameMapFile, iae);
+        } catch (final InterruptedException ie) {
+            throw new GATKException("Error while executing a parallel import in GenomicsDBImporter", ie);
         }
     }
 
     @Override
     public Object onTraversalSuccess() {
-        if (batchSize==DEFAULT_ZERO_BATCH_SIZE) {
+        if (batchSize == DEFAULT_ZERO_BATCH_SIZE) {
             logger.info("Import completed!");
         } else {
             logger.info("Import of all batches to GenomicsDB completed!");
         }
-
-        // Write the vid and callset map JSON files
-        try {
-            GenomicsDBImporter.writeVidMapJSONFile(vidMapJSONFile.getAbsolutePath(), mergedHeaderLines);
-        } catch (final FileNotFoundException fe) {
-            throw new UserException("Unable to write vid map JSON file " + vidMapJSONFile.getAbsolutePath(), fe);
-        }
-        try {
-            GenomicsDBImporter.writeCallsetMapJSONFile(callsetMapJSONFile.getAbsolutePath(), callsetMappingPB);
-        } catch (final FileNotFoundException fe) {
-            throw new UserException("Unable to write callset map JSON file " + callsetMapJSONFile.getAbsolutePath(), fe);
-        }
-        try {
-            GenomicsDBImporter.writeVcfHeaderFile(vcfHeaderFile.getAbsolutePath(), mergedHeaderLines);
-        } catch (final FileNotFoundException fe) {
-            throw new UserException("Unable to write VCF Header file " + vcfHeaderFile.getAbsolutePath(), fe);
-        }
-
-
-        if (doConsolidation) {
-            logger.info("GenomicsDB consolidation started");
-            GenomicsDBImporter.consolidateTileDBArray(workspace, GenomicsDBConstants.DEFAULT_ARRAY_NAME);
-            logger.info("GenomicsDB consolidation completed");
-        }
-
         return true;
     }
 
@@ -560,8 +566,8 @@ public final class GenomicsDBImport extends GATKTool {
      * @param lowerSampleIndex  0-based Lower bound of sample index -- inclusive
      * @return  Feature readers to be imported in the current batch, sorted by sample name
      */
-    private SortedMap<String, FeatureReader<VariantContext>> getFeatureReadersInParallel(final SortedMap<String, Path> sampleNametoPath,
-                                                                                   final int batchSize, final int lowerSampleIndex) {
+    private SortedMap<String, FeatureReader<VariantContext>> getFeatureReadersInParallel(
+            final SortedMap<String, Path> sampleNametoPath, final int batchSize, final int lowerSampleIndex) {
         final SortedMap<String, FeatureReader<VariantContext>> sampleToReaderMap = new TreeMap<>();
         logger.info("Starting batch input file preload");
         final Map<String, Future<FeatureReader<VariantContext>>> futures = new LinkedHashMap<>();
@@ -617,75 +623,6 @@ public final class GenomicsDBImport extends GATKTool {
             return AbstractFeatureReader.getFeatureReader(variantURI, null, new VCFCodec(), true, cloudWrapper, cloudIndexWrapper);
         } catch (final TribbleException e){
             throw new UserException("Failed to create reader from " + variantURI, e);
-        }
-    }
-
-    /**
-     * Creates a GenomicsDB configuration data structure
-     * instead of sending a long list of parameters to the constructor call
-     *
-     * @param workspace  GenomicsDB workspace
-     * @param arrayName  GenomicsDB array
-     * @param variantContextBufferSize  Buffer size to store VCF records for all samples
-     * @param segmentSize  Buffer size to store columnar data to be serialized to disk
-     * @param lbSampleIndex  Lower bound of sample index -- inclusive (0-based)
-     * @param ubSampleIndex  Upper bound of sample index -- inclusive (0-based)
-     * @return  GenomicsDB import configuration object
-     */
-    private static GenomicsDBImportConfiguration.ImportConfiguration createImportConfiguration(
-            final String workspace,
-            final String arrayName,
-            final long variantContextBufferSize,
-            final long segmentSize,
-            final long lbSampleIndex,
-            final long ubSampleIndex,
-            final boolean failIfArrayExists) {
-
-        final GenomicsDBImportConfiguration.Partition.Builder pBuilder =
-            GenomicsDBImportConfiguration.Partition.newBuilder();
-
-        // Since, there is one partition for this import, the
-        // begin column partition index is 0
-        final GenomicsDBImportConfiguration.Partition partition =
-            pBuilder
-                .setWorkspace(workspace)
-                .setArray(arrayName)
-                .setBegin(0)
-                .build();
-
-        final GenomicsDBImportConfiguration.GATK4Integration.Builder gBuilder =
-            GenomicsDBImportConfiguration.GATK4Integration.newBuilder();
-
-        final GenomicsDBImportConfiguration.GATK4Integration gatk4Parameters =
-            gBuilder
-                .setLowerSampleIndex(lbSampleIndex)
-                .setUpperSampleIndex(ubSampleIndex)
-                .build();
-
-        final GenomicsDBImportConfiguration.ImportConfiguration.Builder cBuilder =
-            GenomicsDBImportConfiguration.ImportConfiguration.newBuilder();
-
-        return cBuilder
-                .addColumnPartitions(0, partition)
-                .setGatk4IntegrationParameters(gatk4Parameters)
-                .setSizePerColumnPartition(variantContextBufferSize)
-                .setSegmentSize(segmentSize)
-                .setFailIfUpdating(failIfArrayExists)
-                .build();
-    }
-
-    /**
-     * Close all readers in the current batch
-     *
-     * @param sampleToReaderMap  Map of sample names to readers
-     */
-    private static void closeReaders(final Map<String, FeatureReader<VariantContext>> sampleToReaderMap) {
-        for (final Map.Entry<String, FeatureReader<VariantContext>> reader : sampleToReaderMap.entrySet()) {
-            try {
-                reader.getValue().close();
-            } catch (final IOException e) {
-                throw new GATKException("FeatureReader close() failed for " + reader.getKey(), e);
-            }
         }
     }
 
@@ -768,7 +705,7 @@ public final class GenomicsDBImport extends GATKTool {
 
     @Override
     public void onShutdown(){
-        if( inputPreloadExecutorService != null) {
+        if(inputPreloadExecutorService != null) {
             inputPreloadExecutorService.shutdownNow();
         }
     }
