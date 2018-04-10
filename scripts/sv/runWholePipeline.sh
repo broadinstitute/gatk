@@ -5,15 +5,17 @@ set -eu
 if [[ "$#" -lt 6 ]]; then
     echo -e "Please provide:"
     echo -e "  [1] local directory of GATK build (required)"
-    echo -e "  [2] cluster name (required)"
-    echo -e "  [3] absolute path to the output directory on the cluster (HDFS,required)"
-    echo -e "  [4] absolute path to the BAM on the cluster (index assumed accompanying the bam) (HDFS,required)"
-    echo -e "  [5] absolute path to the 2 bit reference on the cluster (skip list is assumed accompanying with same basename and extension \".kill.intervals\") (HDFS,required)"
-    echo -e "  [6] absolute path to the reference index image on each worker node's local file system (required)"
+    echo -e "  [2] project name (required)"
+    echo -e "  [3] cluster name (required)"
+    echo -e "  [4] absolute path to the output directory on the cluster (HDFS,required)"
+    echo -e "  [5] absolute path to the BAM on the cluster (index assumed accompanying the bam) (HDFS,required)"
+    echo -e "  [6] absolute path to the 2 bit reference on the cluster (skip list is assumed accompanying with same basename and extension \".kill.intervals\") (HDFS,required)"
+    echo -e "  [7] absolute path to the reference index image on each worker node's local file system (required)"
     echo -e "  [*] extra command-line arguments to StructuralVariationDiscoveryPipelineSpark"
     echo -e "Example:"
-    echo -e " bash svDiscover.sh \\"
+    echo -e " bash runWholePipeline.sh \\"
     echo -e "      ~/GATK/gatk \\"
+    echo -e "      my-project \\"
     echo -e "      my-test-cluster \\"
     echo -e "      /test-sample \\"
     echo -e "      /data/NA12878_test.bam \\"
@@ -24,18 +26,19 @@ fi
 
 
 GATK_DIR="$1"
-CLUSTER_NAME="$2"
+PROJECT_NAME="$2"
+CLUSTER_NAME="$3"
 MASTER_NODE="hdfs://${CLUSTER_NAME}-m:8020"
-PROJECT_OUTPUT_DIR="${MASTER_NODE}$3"
-INPUT_BAM="${MASTER_NODE}$4"
-REF_TWOBIT="${MASTER_NODE}$5"
-REF_INDEX_IMAGE="$6"
+PROJECT_OUTPUT_DIR="${MASTER_NODE}$4"
+INPUT_BAM="${MASTER_NODE}$5"
+REF_TWOBIT="${MASTER_NODE}$6"
+REF_INDEX_IMAGE="$7"
 INTERVAL_KILL_LIST=$(echo "${REF_TWOBIT}" | sed 's/.2bit$/.kill.intervals/')
 KMER_KILL_LIST=$(echo "${REF_TWOBIT}" | sed 's/.2bit$/.kill.kmers/')
 ALTS_KILL_LIST=$(echo "${REF_TWOBIT}" | sed 's/.2bit$/.kill.alts/')
 
 # extract any extra arguments to StructuralVariationDiscoveryPipelineSpark
-shift $(($# < 6 ? $# : 6))
+shift $(($# < 7 ? $# : 7))
 SV_ARGS=${*:-${SV_ARGS:-""}}
 # expand any local variables passed as strings (e.g. PROJECT_OUTPUT_DIR)
 eval "SV_ARGS=\"${SV_ARGS}\""
@@ -43,9 +46,9 @@ eval "SV_ARGS=\"${SV_ARGS}\""
 # Choose NUM_EXECUTORS = 2 * NUM_WORKERS
 # NOTE: this would find preemptible workers, but it produces
 # (erroneous?) deprecation warnings
-#NUM_WORKERS=$(gcloud compute instances list --filter="name ~ ${CLUSTER_NAME}-[sw].*" | grep RUNNING | wc -l)
+#NUM_WORKERS=$(gcloud compute instances list --project ${PROJECT_NAME} --filter="name ~ ${CLUSTER_NAME}-[sw].*" | grep RUNNING | wc -l)
 # this works but does not see preemptible workers
-NUM_WORKERS=$(gcloud dataproc clusters list --filter "clusterName = ${CLUSTER_NAME}" | tail -n 1 | awk '{print $2}')
+NUM_WORKERS=$(gcloud dataproc clusters list --project ${PROJECT_NAME} --filter "clusterName = ${CLUSTER_NAME}" | tail -n 1 | awk '{print $2}')
 if [ -z "${NUM_WORKERS}" ]; then
     echo "Cluster \"${CLUSTER_NAME}\" not found"
     exit 1
@@ -96,6 +99,7 @@ esac
     -- \
     --spark-runner GCS \
     --cluster "${CLUSTER_NAME}" \
+    --project "${PROJECT_NAME}" \
     --num-executors ${NUM_EXECUTORS} \
     --driver-memory 30G \
     --executor-memory 30G \

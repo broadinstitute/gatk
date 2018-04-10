@@ -12,7 +12,7 @@ if [[ "$#" -lt 8 ]]; then
     echo -e "  [4] maximum life time of cluster (required)"
     echo -e "  [5] maximum idling time before cluster self-termination begins (required)"
     echo -e "  [6] GCS directory containing the correct reference & indices (required)"
-    echo -e "  [7] GCS directory containing the BAM and its index (required), and"
+    echo -e "  [7] GCS directory containing the BAM and its index (required), or the GCS url of the BAM file, and"
     echo -e "either when a local initialization script is to be uploaded to a bucket:"
     echo -e "  [8] local initialization script"
     echo -e "  [9] GCS path to upload initialization script to (required as per Google)"
@@ -49,7 +49,7 @@ CLUSTER_NAME=$3
 MAX_LIFE_HOURS=$4
 MAX_IDLE_MINUTES=$5
 REF_DIR=$6
-SAMP_DIR=$7
+SAMP_INPUT=$7
 
 INIT_ACTION=""
 if [[ "$#" -eq 8 ]]; then
@@ -93,7 +93,7 @@ gcloud beta dataproc clusters create ${CLUSTER_NAME} \
     --num-preemptible-workers ${NUM_SV_PREEMPTIBLE_WORKERS} \
     --num-worker-local-ssds 1 \
     --metadata "reference=$REF_DIR" \
-    --metadata "sample=$SAMP_DIR" \
+    --metadata "sample=$SAMP_INPUT" \
     --image-version 1.2 \
     --project ${PROJECT} \
     --initialization-actions ${INIT_ACTION} \
@@ -114,6 +114,15 @@ ${GATK_DIR}/gatk ParallelCopyGCSDirectoryIntoHDFSSpark \
     -- \
     --spark-runner GCS \
     --cluster "$CLUSTER_NAME" \
+    --project $PROJECT
+
+if [[ $SAMP_INPUT =~ .+\.bam$ ]]; then
+    SAMP_DIR=`dirname $SAMP_INPUT`
+    SAMP_GLOB_ARG="--input-file-glob `basename $SAMP_INPUT`*"
+else
+    SAMP_DIR=$SAMP_INPUT
+    SAMP_GLOB_ARG=""
+fi
 
 if [[ ! $SAMP_DIR =~ .+/$ ]]; then
     SAMP_DIR+="/"
@@ -121,7 +130,9 @@ fi
 
 ${GATK_DIR}/gatk ParallelCopyGCSDirectoryIntoHDFSSpark \
     --input-gcs-path "$SAMP_DIR" \
+    $SAMP_GLOB_ARG \
     --output-hdfs-directory "$MASTER_NODE"/data \
     -- \
     --spark-runner GCS \
     --cluster "$CLUSTER_NAME" \
+    --project $PROJECT
