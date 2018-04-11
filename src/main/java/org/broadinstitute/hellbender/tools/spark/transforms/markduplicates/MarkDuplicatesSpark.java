@@ -74,7 +74,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                 .values();
         
         return reads.zipPartitions(repartitionedReadNames, (readsIter, readNamesIter)  -> {
-            final Map<String,Integer> namesOfNonDuplicateReadsAndOpticalCounts = Utils.stream(readNamesIter).collect(Collectors.toMap(Tuple2::_1,Tuple2::_2); //TODO there is a bug here with value 0 being overloaded with entries, this is a stopgap for profiling
+            final Map<String,Integer> namesOfNonDuplicateReadsAndOpticalCounts = Utils.stream(readNamesIter).collect(Collectors.toMap(Tuple2::_1,Tuple2::_2));
             return Utils.stream(readsIter).peek(read -> {
                 // Handle read that aren't duplicates (and thus may be marked as containing opticalDuplicates)
                 if( namesOfNonDuplicateReadsAndOpticalCounts.containsKey(read.getName())) { //todo figure out if we should be marking the unmapped mates of duplicate reads as duplicates
@@ -84,7 +84,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                         ((SAMRecordToGATKReadAdapter) read).setTransientAttribute(MarkDuplicatesSparkUtils.OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, dupCount);
                     }
                     // Mark unmapped reads as non-duplicates
-                } else if (read.isUnmapped()) {
+                } else if (MarkDuplicatesSparkUtils.readAndMateAreUnmapped(read)) {
                     read.setIsDuplicate(false);
                     // Everything else is a duplicate
                 } else{

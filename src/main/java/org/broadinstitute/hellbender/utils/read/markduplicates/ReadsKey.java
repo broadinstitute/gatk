@@ -41,4 +41,11 @@ public final class ReadsKey {
     public static String keyForRead(final GATKRead read) {
         return read.getName();
     }
+
+    /**
+     * Makes a unique key for the read.
+     */
+    public static int hashKeyForRead(final GATKRead read) {
+        return read.getName().hashCode();
+    }
 }
