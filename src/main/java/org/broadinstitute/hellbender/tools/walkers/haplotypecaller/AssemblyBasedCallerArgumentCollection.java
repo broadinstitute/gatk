@@ -21,6 +21,7 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
     public static final String CAPTURE_ASSEMBLY_FAILURE_BAM_LONG_NAME = "capture-assembly-failure-bam";
     public static final String ERROR_CORRECT_READS_LONG_NAME = "error-correct-reads";
     public static final String DO_NOT_RUN_PHYSICAL_PHASING_LONG_NAME = "do-not-run-physical-phasing";
+
     public static final String MIN_BASE_QUALITY_SCORE_LONG_NAME = "min-base-quality-score";
     public static final String SMITH_WATERMAN_LONG_NAME = "smith-waterman";
 

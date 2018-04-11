@@ -96,7 +96,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
         // non-empty.  At this point any given alleles have already been injected into the haplotypes, and passing
         // givenAlleles to {@code decomposeHaplotypesIntoVariantContexts} actually overrides any non-given (discovery) alleles, which
         // is not what we want.
-        final List<Integer> startPosKeySet = decomposeHaplotypesIntoVariantContexts(haplotypes, assemblyResultSet.getFullReferenceWithPadding(), assemblyResultSet.getPaddedReferenceLoc(), Collections.emptyList()).stream()
+        final List<Integer> startPosKeySet = decomposeHaplotypesIntoVariantContexts(haplotypes, assemblyResultSet.getFullReferenceWithPadding(), assemblyResultSet.getPaddedReferenceLoc(), Collections.emptyList(), MTAC.maxMnpDistance).stream()
                 .filter(loc -> activeRegionWindow.getStart() <= loc && loc <= activeRegionWindow.getEnd())
                 .collect(Collectors.toList());
 

@@ -25,6 +25,9 @@ import java.util.List;
 public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgumentCollection implements Serializable{
     private static final long serialVersionUID = 1L;
 
+    public static final String MAX_MNP_DISTANCE_LONG_NAME = "max-mnp-distance";
+    public static final String MAX_MNP_DISTANCE_SHORT_NAME = "mnp-dist";
+
     /**
      * When HaplotypeCaller is run with -ERC GVCF or -ERC BP_RESOLUTION, some annotations are excluded from the
      * output by default because they will only be meaningful once they have been recalculated by GenotypeGVCFs. As
@@ -140,4 +143,12 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Hidden
     @Argument(fullName = "dont-genotype", doc = "Perform assembly but do not genotype variants", optional = true)
     public boolean dontGenotype = false;
+
+    /**
+     * Two or more phased substitutions separated by this distance or less are merged into MNPs.
+     */
+    @Advanced
+    @Argument(fullName = MAX_MNP_DISTANCE_LONG_NAME, shortName = MAX_MNP_DISTANCE_SHORT_NAME,
+            doc = "Two or more phased substitutions separated by this distance or less are merged into MNPs.", optional = true)
+    public int maxMnpDistance = 0;
 }

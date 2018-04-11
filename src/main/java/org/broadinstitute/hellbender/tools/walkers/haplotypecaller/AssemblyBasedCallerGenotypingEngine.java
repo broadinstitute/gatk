@@ -82,18 +82,24 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
      * @param ref the reference bases (over the same interval as the haplotypes)
      * @param refLoc the span of the reference bases
      * @param activeAllelesToGenotype alleles we want to ensure are scheduled for genotyping (GGA mode)
+     * @param maxMnpDistance Phased substitutions separated by this distance or less are merged into MNPs.  More than
+     *                       two substitutions occurring in the same alignment block (ie the same M/X/EQ CIGAR element)
+     *                       are merged until a substitution is separated from the previous one by a greater distance.
+     *                       That is, if maxMnpDistance = 1, substitutions at positions 10,11,12,14,15,17 are partitioned into a MNP
+     *                       at 10-12, a MNP at 14-15, and a SNP at 17.
      * @return never {@code null} but perhaps an empty list if there is no variants to report.
      */
     protected TreeSet<Integer> decomposeHaplotypesIntoVariantContexts(final List<Haplotype> haplotypes,
                                                                       final byte[] ref,
                                                                       final SimpleInterval refLoc,
-                                                                      final List<VariantContext> activeAllelesToGenotype) {
+                                                                      final List<VariantContext> activeAllelesToGenotype,
+                                                                      final int maxMnpDistance) {
         final boolean inGGAMode = ! activeAllelesToGenotype.isEmpty();
 
         // Using the cigar from each called haplotype figure out what events need to be written out in a VCF file
         // IMPORTANT NOTE: This needs to be done even in GGA mode, as this method call has the side effect of setting the
         // event maps in the Haplotype objects!
-        final TreeSet<Integer> startPosKeySet = EventMap.buildEventMapsForHaplotypes(haplotypes, ref, refLoc, configuration.debug);
+        final TreeSet<Integer> startPosKeySet = EventMap.buildEventMapsForHaplotypes(haplotypes, ref, refLoc, configuration.debug, maxMnpDistance);
 
         if ( inGGAMode ) {
             startPosKeySet.clear();

@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.CountSet;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -501,13 +502,18 @@ public final class AssemblyResultSet {
      *
      * <p/>
      * The result is sorted incrementally by location.
-     *
+     * @param maxMnpDistance Phased substitutions separated by this distance or less are merged into MNPs.  More than
+     *                       two substitutions occuring in the same alignment block (ie the same M/X/EQ CIGAR element)
+     *                       are merged until a substitution is separated from the previous one by a greater distance.
+     *                       That is, if maxMnpDistance = 1, substitutions at 10,11,12,14,15,17 are partitioned into a MNP
+     *                       at 10-12, a MNP at 14-15, and a SNP at 17.  May not be negative.
      * @return never {@code null}, but perhaps an empty collection.
      */
-    public SortedSet<VariantContext> getVariationEvents() {
+    public SortedSet<VariantContext> getVariationEvents(final int maxMnpDistance) {
+        ParamUtils.isPositiveOrZero(maxMnpDistance, "maxMnpDistance may not be negative.");
         if (variationEvents == null) {
             final List<Haplotype> haplotypeList = getHaplotypeList();
-            EventMap.buildEventMapsForHaplotypes(haplotypeList, fullReferenceWithPadding, paddedReferenceLoc, debug);
+            EventMap.buildEventMapsForHaplotypes(haplotypeList, fullReferenceWithPadding, paddedReferenceLoc, debug, maxMnpDistance);
             variationEvents = EventMap.getAllVariantContexts(haplotypeList);
         }
         return variationEvents;
