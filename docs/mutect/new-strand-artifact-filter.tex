@@ -58,20 +58,20 @@
 The job of the strand artifact filter model is twofold. One, the model must detect that the strand composition is different between the ref and alt reads. If it is then, two, the model should check whether the strand composition among the alt reads is heavily biased towards one read direction over the other. If both conditions are met, the variant is suspect and should be filtered. Fisher's Exact Test addresses the first criterion but not the second. 
 
 \bigbreak \noindent 
-Let $\mathrm{ref}^+$, $\mathrm{ref}^-$ denote the number of forward and reverse ref reads, respectively, and define ${\rm alt^+}$ and ${\rm alt}^-$ analogously. Under the null model, $\mathrm{alt}^+$ is a binomial distribution parameterized by $n_{\rm alt}$ and $p$, where ${\rm n_{\rm alt}} = {\rm alt^+} + {\rm alt}^-$ is the alt depth and $p \sim {\rm Beta}(p|\alpha, \beta)$.  Note that this is equivalent to $\mathrm{alt}^+ \sim {\rm BetaBinomial}(n_{\rm alt}, \alpha, \beta)$. 
+Let $\mathrm{ref}^+$, $\mathrm{ref}^-$ denote the number of forward and reverse ref reads, respectively, and define ${\rm alt^+}$ and ${\rm alt}^-$ analogously. We will calculate the likelihood two different null models and the two artifact models.
 
 \bigbreak \noindent 
-Given that the variant is real (i.e. the null model),  we use the strand composition of ref reads as pseudo-counts for the beta prior; that is, $\alpha = {\rm ref^+}$ and $\beta = {\rm ref}^-$. 
+Under the first null model ${\rm Real Variant_R}$, $\mathrm{alt}^+$ is a binomial distribution parameterized by $n_{\rm alt}$ and $p$, where ${\rm n_{\rm alt}} = {\rm alt^+} + {\rm alt}^-$ is the alt depth and $p \sim {\rm Beta}(p|\alpha, \beta)$.  Note that this is equivalent to $\mathrm{alt}^+ | {\rm Real Variant_R} \sim {\rm BetaBinomial}(n_{\rm alt}, \alpha, \beta)$. This model draws from the fact that, given that the variant is real, the strand composition of the alt reads should resemble that of the ref reads; thus we use the strand composition in ref reads as pseudo-counts for the beta prior; that is, $\alpha = {\rm ref^+}$ and $\beta = {\rm ref}^-$. 
 
 \bigbreak \noindent 
-Under the second null model ${\rm Real Variant_E}$, $\mathrm{alt}^+ \sim {\rm BetaBinomial}(n_{\rm alt},n_{\rm ref}/2, n_{\rm ref}/2)$. This model reflects the fact that the underlying strand balance is perfectly balance regardless of what we may have actually drawn in ref reads.
+We must point out, however, that the likelihood for the first null model may be penalized at a real variant site where we happen to draw a heavily strand biased set of reads in ref even though the true strand composition is balanced. This could lead to spurious artifact detections in borderline cases. To address this we introduce the second null model ${\rm Real Variant_B}$, where we use a balanced pseudo-counts $\alpha = \beta = n_{\rm ref}/2$ to the beta-binomial.
 
 \bigbreak \noindent
-Given that the site is a strand artifact, we expect the strand composition to be \emph{heavily} skewed; that is, we expect most if not all reads to be of the same strand. Thus we penalize data if we see any more than one read. 
-For this purpose, binomial is a better fit than the beta-binomial.  Hence, $\mathrm{alt}^+ | {\rm Artifact} \sim {\rm Binomial}(n_{\rm alt}, p)$ where $p = 1 - \epsilon$ for some $\epsilon \ll 1$
+The artifact models encode out belief that, given that the site is a strand artifact, we expect the strand composition to be \emph{heavily} skewed; we expect most if not all reads to be of the same strand.
+Thus we want to penalize the likelihood under the artifact model if we see, say, two or more reads that serve as evidence against the site being a strand artifact. In other words we want the distribution of $\mathrm{alt}^+$ to be have a sharp peak at $n_{\rm alt}$, a little probability mass at $n_{\rm alt} - 1$ and almost zero elsewhere.  Binomial is more sharply peaked than the bea-binomial and therefore is a better fit for the artifact model.  Thus we have $\mathrm{alt}^+ | {\rm Artifact} \sim {\rm Binomial}(n_{\rm alt}, p)$ where $p = 1 - \epsilon$ for some $\epsilon \ll 1$.
 
 \bigbreak \noindent
-Assuming a flat prior, we can normalize likelihoods to compute the posterior probability of each model. We filter the site the likelihood for the artifact exceeds a threshold.
+Finally, we normalize the likelihoods and filter if the posterior probabiliy for the artifact exceeds a threshold.
 
 
 \end{document}
