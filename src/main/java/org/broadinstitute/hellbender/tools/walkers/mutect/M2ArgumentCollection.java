@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardMutectAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -131,6 +132,9 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     @Argument(fullName = NORMAL_LOD_LONG_NAME, optional = true, doc = "LOD threshold for calling normal variant non-germline.")
     public double normalLodThreshold = 2.2;
 
+
+    @Argument(shortName = "table", fullName = "read-orientation", optional = true, doc = "the tsv table of hyperparameters for the read orientation artifact filter model (output of LearnHyperparameters)")
+    public File hyperparameterTable = null;
 
     /**
      * Set of annotation arguments to use.

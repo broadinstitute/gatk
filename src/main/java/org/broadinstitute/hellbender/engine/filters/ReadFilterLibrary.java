@@ -7,6 +7,9 @@ import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Standard ReadFilters
  */

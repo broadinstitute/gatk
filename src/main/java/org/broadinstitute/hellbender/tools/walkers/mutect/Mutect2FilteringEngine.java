@@ -12,6 +12,8 @@ import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.tools.walkers.readorientation.ArtifactType;
+
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -32,7 +34,6 @@ public class Mutect2FilteringEngine {
         contamination = MTFAC.contaminationTable == null ? 0.0 : ContaminationRecord.readFromFile(MTFAC.contaminationTable).get(0).getContamination();
         this.tumorSample = tumorSample;
         somaticPriorProb = Math.pow(10, MTFAC.log10PriorProbOfSomaticEvent);
-
         final List<MinorAlleleFractionRecord> tumorMinorAlleleFractionRecords = MTFAC.tumorSegmentationTable == null ?
                 Collections.emptyList() : MinorAlleleFractionRecord.readFromFile(MTFAC.tumorSegmentationTable);
         tumorSegments = OverlapDetector.create(tumorMinorAlleleFractionRecords);
@@ -210,9 +211,9 @@ public class Mutect2FilteringEngine {
     private void applyStrandArtifactFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final VariantContextBuilder vcb) {
         Genotype tumorGenotype = vc.getGenotype(tumorSample);
         final double[] posteriorProbabilities = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(
-                tumorGenotype, (StrandArtifact.POSTERIOR_PROBABILITIES_KEY), () -> null, -1);
+                tumorGenotype, (GATKVCFConstants.POSTERIOR_PROBABILITIES_KEY), () -> null, -1);
         final double[] mapAlleleFractionEstimates = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(
-                tumorGenotype, (StrandArtifact.MAP_ALLELE_FRACTIONS_KEY), () -> null, -1);
+                tumorGenotype, (GATKVCFConstants.MAP_ALLELE_FRACTIONS_KEY), () -> null, -1);
 
         if (posteriorProbabilities == null || mapAlleleFractionEstimates == null){
             return;
@@ -253,6 +254,32 @@ public class Mutect2FilteringEngine {
         }
     }
 
+    /***
+     * This filter requires the INFO field annotation {@code REFERENCE_CONTEXT_KEY} and {@code F1R2_KEY}
+     */
+    private void applyReadOrientationFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final VariantContextBuilder vcb){
+        final Genotype tumorGenotype = vc.getGenotype(tumorSample);
+        if (! vc.isSNP()){
+            return;
+        }
+
+        if (! tumorGenotype.hasExtendedAttribute(GATKVCFConstants.ROF_POSTERIOR_KEY) ||
+                ! tumorGenotype.hasExtendedAttribute(GATKVCFConstants.ROF_PRIOR_KEY)){
+            return;
+        }
+
+        final double artifactProbability = GATKProtectedVariantContextUtils.getAttributeAsDouble(
+                tumorGenotype, GATKVCFConstants.ROF_POSTERIOR_KEY, -1.0);
+        final ArtifactType artifactType = ArtifactType.valueOf(
+                GATKProtectedVariantContextUtils.getAttributeAsString(
+                        tumorGenotype, GATKVCFConstants.ROF_TYPE_KEY, null));
+
+        if (artifactProbability > MTFAC.readOrientationFilterThreshold){
+            vcb.filter(artifactType == ArtifactType.F1R2 ?
+                    GATKVCFConstants.F1R2_ARTIFACT_FILTER_NAME : GATKVCFConstants.F2R1_ARTIFACT_FILTER_NAME);
+        }
+    }
+
     //TODO: building a list via repeated side effects is ugly
     public void applyFilters(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final VariantContextBuilder vcb) {
         vcb.filters(new HashSet<>());
@@ -270,6 +297,7 @@ public class Mutect2FilteringEngine {
         applyMedianMappingQualityDifferenceFilter(MTFAC, vc, vcb);
         applyMedianFragmentLengthDifferenceFilter(MTFAC, vc, vcb);
         applyReadPositionFilter(MTFAC, vc, vcb);
+        applyReadOrientationFilter(MTFAC, vc, vcb);
     }
 
     private int[] getIntArrayTumorField(final VariantContext vc, final String key) {

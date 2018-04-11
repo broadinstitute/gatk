@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
@@ -75,7 +76,7 @@ public final class OxoGReadCounts extends GenotypeAnnotation implements Standard
 
         Utils.stream(likelihoods.bestAlleles(g.getSampleName()))
                 .filter(ba -> ba.isInformative() && isUsableRead(ba.read))
-                .forEach(ba -> (isF2R1(ba.read) ? f2r1Counts : f1r2Counts).get(ba.allele).increment());
+                .forEach(ba -> (ReadUtils.isF2R1(ba.read) ? f2r1Counts : f1r2Counts).get(ba.allele).increment());
 
         final int[] f1r2 = vc.getAlleles().stream().mapToInt(a -> f1r2Counts.get(a).intValue()).toArray();
 
@@ -149,7 +150,7 @@ public final class OxoGReadCounts extends GenotypeAnnotation implements Standard
                                     final Map<Allele, MutableInt> f2r1Counts, final Allele referenceAllele,
                                         final List<Allele> altAlleles, int minBaseQualityCutoff) {
 
-        final Map<Allele, MutableInt> countMap = isF2R1(pileupElement.getRead()) ? f2r1Counts : f1r2Counts;
+        final Map<Allele, MutableInt> countMap = ReadUtils.isF2R1(pileupElement.getRead()) ? f2r1Counts : f1r2Counts;
 
         final Allele pileupAllele = GATKProtectedVariantContextUtils.chooseAlleleForRead(pileupElement, referenceAllele, altAlleles, minBaseQualityCutoff);
 
@@ -164,9 +165,5 @@ public final class OxoGReadCounts extends GenotypeAnnotation implements Standard
 
     protected static boolean isUsableRead(final GATKRead read) {
         return read.getMappingQuality() != 0 && read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE;
-    }
-
-    protected static boolean isF2R1(final GATKRead read) {
-        return read.isReverseStrand() == read.isFirstOfPair();
     }
 }

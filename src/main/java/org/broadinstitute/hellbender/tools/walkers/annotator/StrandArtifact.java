@@ -58,7 +58,7 @@ public class StrandArtifact extends GenotypeAnnotation implements StandardMutect
 
     @Override
     public List<String> getKeyNames() {
-        return Arrays.asList(POSTERIOR_PROBABILITIES_KEY, MAP_ALLELE_FRACTIONS_KEY);
+        return Arrays.asList(GATKVCFConstants.POSTERIOR_PROBABILITIES_KEY, GATKVCFConstants.MAP_ALLELE_FRACTIONS_KEY);
     }
 
     @Override
@@ -164,8 +164,8 @@ public class StrandArtifact extends GenotypeAnnotation implements StandardMutect
 
     @Override
     public List<VCFFormatHeaderLine> getDescriptions() {
-        return Arrays.asList(new VCFFormatHeaderLine(POSTERIOR_PROBABILITIES_KEY, 3, VCFHeaderLineType.Float, "posterior probabilities of the presence of strand artifact"),
-                new VCFFormatHeaderLine(MAP_ALLELE_FRACTIONS_KEY, 3, VCFHeaderLineType.Float, "MAP estimates of allele fraction given z"));
+        return Arrays.asList(new VCFFormatHeaderLine(GATKVCFConstants.POSTERIOR_PROBABILITIES_KEY, 3, VCFHeaderLineType.Float, "posterior probabilities of the presence of strand artifact"),
+                new VCFFormatHeaderLine(GATKVCFConstants.MAP_ALLELE_FRACTIONS_KEY, 3, VCFHeaderLineType.Float, "MAP estimates of allele fraction given z"));
     }
 
     private double getIntegrandGivenNoArtifact(final double f, final int nPlus, final int nMinus, final int xPlus, final int xMinus){

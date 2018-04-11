@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.iterators.ByteArrayIterator;
 
+import java.util.Arrays;
 import java.util.Iterator;
 
 /**
@@ -360,10 +361,44 @@ public final class ReferenceContext implements Iterable<Byte> {
     }
 
     /**
+     * @param contig
+     * @return the length/end position of the contig
+     */
+    private int getContigLength(final String contig){
+        return dataSource.getSequenceDictionary().getSequence(contig).getSequenceLength();
+    }
+
+
+    /**
      * Get the base at the given locus.
      * @return The base at the given locus from the reference.
      */
     public byte getBase() {
         return getBases()[interval.getStart() - window.getStart()];
+    }
+
+    /**
+     * Get a kmer around a position in reference without altering the internal state of the object
+     * The position must lie within the window
+     *
+     */
+    public byte[] getKmerAround(final int position, final int k){
+        Utils.validateArg(position >= 1, () -> "start position must be positive");
+        Utils.validateArg(window.getStart() <= position && position <= window.getEnd(), "position must be smaller than end position");
+
+        final int index = position - window.getStart();
+        // Must consider the case when the position falls right on the edges of window - should we return fewer than k bases?
+        // Should the caller check for it, and should this mehtod simply fail?
+        final byte[] kmer =  Arrays.copyOfRange(getBases(), index - k/2, index + k/2 + 1);
+        return kmer;
+    }
+
+
+    // add more test cases here, especially in chr17 of ice, where the first interval is chr17:1-...
+    /** extract a kmer around a center, where = 2* {@code numBasesOnEitherSide} + 1 **/
+    public static String extractKmer(final int center, final ReferenceContext ref, final int numBasesOnEitherSide){
+        final int basesToDiscardInFront = Math.max(center - ref.getWindow().getStart() - numBasesOnEitherSide, 0);
+        final String allBases = new String(ref.getBases());
+        return allBases.substring(basesToDiscardInFront, basesToDiscardInFront + 2 * numBasesOnEitherSide + 1);
     }
 }

@@ -32,9 +32,14 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
@@ -1403,5 +1408,28 @@ public final class ReadUtils {
                 return read.getLength() - offset + CigarUtils.countRightHardClippedBases(read.getCigar());
             }
         }
+    }
+
+    /**
+     * @param read a GATK read
+     * @return true if the read is F2R1, false otherwise
+     */
+    public static boolean isF2R1(final GATKRead read) {
+        return read.isReverseStrand() == read.isFirstOfPair();
+    }
+
+    /**
+     * @param read a GATK read
+     * @return true if the read is F1R2, false otherwise
+     */
+    public static boolean isF1R2(final GATKRead read) {
+        return read.isReverseStrand() != read.isFirstOfPair();
+    }
+
+    /**
+     * Used to be called isUsableRead()
+     **/
+    public static boolean readHasReasonableMQ(final GATKRead read){
+        return read.getMappingQuality() != 0 && read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE;
     }
 }

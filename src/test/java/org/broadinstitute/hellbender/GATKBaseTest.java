@@ -95,6 +95,9 @@ public abstract class GATKBaseTest extends BaseTest {
     public static final String hg19MiniIntervalFile = publicTestDir + "hg19mini.interval_list";
     public static final String wgsIntervalFile = publicTestDir + "wgs_calling_regions.v1.interval_list";
 
+    public static final String DREAM_BAMS_DIR = publicTestDir + "large/mutect/dream_synthetic_bams";
+    public static final String DREAM_VCFS_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/dream/vcfs";
+
     public CachingIndexedFastaSequenceFile hg19ReferenceReader;
     public GenomeLocParser hg19GenomeLocParser;
 
