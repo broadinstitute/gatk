@@ -158,4 +158,24 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
             }
         }
     }
+
+    // Tests asserting that without --do_not_mark_unmapped_mates argument that unmapped mates are still duplicate marked with their partner
+    @Test
+    public void testMappedPairAndMappedFragmentAndMatePairSecondUnmapped() {
+        final AbstractMarkDuplicatesTester tester = getTester();
+        tester.addMatePair(1, 10040, 10040, false, true, true, true, "76M", null, false, false, false, false, false, DEFAULT_BASE_QUALITY); // first a duplicate,
+        // second end unmapped
+        tester.addMappedPair(1, 10189, 10040, false, false, "41S35M", "65M11S", true, false, false, ELIGIBLE_BASE_QUALITY); // mapped OK
+        tester.addMappedFragment(1, 10040, true, DEFAULT_BASE_QUALITY); // duplicate
+        tester.runTest();
+    }
+    @Test
+    public void testMappedPairAndMappedFragmentAndMatePairFirstUnmapped() {
+        final AbstractMarkDuplicatesTester tester = getTester();
+        tester.addMatePair(1, 10040, 10040, true, false, true, true, null, "76M", false, false, false, false, false, DEFAULT_BASE_QUALITY); // first a duplicate,
+        // first end unmapped
+        tester.addMappedPair(1, 10189, 10040, false, false, "41S35M", "65M11S", true, false, false, ELIGIBLE_BASE_QUALITY); // mapped OK
+        tester.addMappedFragment(1, 10040, true, DEFAULT_BASE_QUALITY); // duplicate
+        tester.runTest();
+    }
 }

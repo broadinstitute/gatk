@@ -121,6 +121,7 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
             args.add("-R");
             args.add(referenceFile.getAbsolutePath());
         }
+        args.add("--do_not_mark_unmapped_mates");
         args.add("-indels");
         args.add("--enable-baq");
         args.add("-pairHMM");

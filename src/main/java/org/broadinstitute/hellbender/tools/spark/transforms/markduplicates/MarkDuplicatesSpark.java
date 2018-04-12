@@ -54,6 +54,9 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
     @Argument(shortName = "DS", fullName = "DUPLICATE_SCORING_STRATEGY", doc = "The scoring strategy for choosing the non-duplicate among candidates.")
     public MarkDuplicatesScoringStrategy duplicatesScoringStrategy = MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES;
 
+    @Argument(fullName = "do_not_mark_unmapped_mates", doc = "Enabling this option will mean unmapped mates of duplicate marked reads will not be marked as duplicates.")
+    public boolean dontMarkUnmappedMates = false;
+
     @ArgumentCollection
     protected OpticalDuplicatesArgumentCollection opticalDuplicatesArgumentCollection = new OpticalDuplicatesArgumentCollection();
 
@@ -64,7 +67,8 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
 
     public static JavaRDD<GATKRead> mark(final JavaRDD<GATKRead> reads, final SAMFileHeader header,
                                          final MarkDuplicatesScoringStrategy scoringStrategy,
-                                         final OpticalDuplicateFinder opticalDuplicateFinder, final int numReducers) {
+                                         final OpticalDuplicateFinder opticalDuplicateFinder,
+                                         final int numReducers, final boolean dontMarkUnmappedMates) {
 
         JavaPairRDD<MarkDuplicatesSparkUtils.IndexPair<String>, Integer> namesOfNonDuplicates = MarkDuplicatesSparkUtils.transformToDuplicateNames(header, scoringStrategy, opticalDuplicateFinder, reads, numReducers);
 
@@ -79,16 +83,20 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                 // Handle read that aren't duplicates (and thus may be marked as containing opticalDuplicates)
                 if( namesOfNonDuplicateReadsAndOpticalCounts.containsKey(read.getName())) { //todo figure out if we should be marking the unmapped mates of duplicate reads as duplicates
                     read.setIsDuplicate(false);
-                    int dupCount = namesOfNonDuplicateReadsAndOpticalCounts.replace(read.getName(), -1);
-                    if (dupCount>-1) {
-                        ((SAMRecordToGATKReadAdapter) read).setTransientAttribute(MarkDuplicatesSparkUtils.OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, dupCount);
+                    if (!(dontMarkUnmappedMates && read.isUnmapped())) {
+                        int dupCount = namesOfNonDuplicateReadsAndOpticalCounts.replace(read.getName(), -1);
+                        if (dupCount > -1) {
+                            ((SAMRecordToGATKReadAdapter) read).setTransientAttribute(MarkDuplicatesSparkUtils.OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, dupCount);
+                        }
                     }
                     // Mark unmapped reads as non-duplicates
                 } else if (MarkDuplicatesSparkUtils.readAndMateAreUnmapped(read)) {
                     read.setIsDuplicate(false);
                     // Everything else is a duplicate
                 } else{
-                    read.setIsDuplicate(true);
+                    if (!(dontMarkUnmappedMates && read.isUnmapped())) {
+                        read.setIsDuplicate(true);
+                    }
                 }
             }).iterator();
         });
@@ -121,7 +129,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                 new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
 
         final SAMFileHeader header = getHeaderForReads();
-        final JavaRDD<GATKRead> finalReadsForMetrics = mark(reads, header, duplicatesScoringStrategy, finder, getRecommendedNumReducers());
+        final JavaRDD<GATKRead> finalReadsForMetrics = mark(reads, header, duplicatesScoringStrategy, finder, getRecommendedNumReducers(), dontMarkUnmappedMates);
 
         if (metricsFile != null) {
             final JavaPairRDD<String, DuplicationMetrics> metricsByLibrary = MarkDuplicatesSparkUtils.generateMetrics(

@@ -59,6 +59,10 @@ public abstract class SamFileTester implements CommandLineProgramTester {
         this.output = output;
     }
 
+    public void addArg(final String key) {
+        args.add(key);
+    }
+
     public void addArg(final String key, final String value) {
         args.add(key); args.add(value);
     }

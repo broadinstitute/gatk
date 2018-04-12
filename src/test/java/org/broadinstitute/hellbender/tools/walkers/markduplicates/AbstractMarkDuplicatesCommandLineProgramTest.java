@@ -10,6 +10,7 @@ import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.tools.spark.pipelines.MarkDuplicatesSparkIntegrationTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
@@ -283,18 +284,24 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
     @Test
     public void testMappedPairAndMatePairSecondUnmapped() {
         final AbstractMarkDuplicatesTester tester = getTester();
-        tester.addMatePair(1, 10040, 10040, false, true, true, true, "76M", null, false, false, false, false, false, DEFAULT_BASE_QUALITY); // second a duplicate,
+        tester.addMatePair(1, 10040, 10040, false, true, true, false, "76M", null, false, false, false, false, false, DEFAULT_BASE_QUALITY); // second a duplicate,
         // second end unmapped
         tester.addMappedPair(1, 10189, 10040, false, false, "41S35M", "65M11S", true, false, false, ELIGIBLE_BASE_QUALITY); // mapped OK
+        if (this instanceof MarkDuplicatesSparkIntegrationTest) {
+            tester.addArg("--do_not_mark_unmapped_mates");
+        }
         tester.runTest();
     }
 
     @Test
     public void testMappedPairAndMatePairFirstUnmapped() {
         final AbstractMarkDuplicatesTester tester = getTester();
-        tester.addMatePair(1, 10040, 10040, true, false, true, true,  null, "76M", false, false, false, false, false, DEFAULT_BASE_QUALITY); // first a duplicate,
+        tester.addMatePair(1, 10040, 10040, true, false, false, true,  null, "76M", false, false, false, false, false, DEFAULT_BASE_QUALITY); // first a duplicate,
         // first end unmapped
         tester.addMappedPair(1, 10189, 10040, false, false, "41S35M", "65M11S", true, false, false, ELIGIBLE_BASE_QUALITY); // mapped OK
+        if (this instanceof MarkDuplicatesSparkIntegrationTest) {
+            tester.addArg("--do_not_mark_unmapped_mates");
+        }
         tester.runTest();
     }
 
@@ -312,20 +319,26 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
     @Test
     public void testMappedPairAndMappedFragmentAndMatePairSecondUnmapped() {
         final AbstractMarkDuplicatesTester tester = getTester();
-        tester.addMatePair(1, 10040, 10040, false, true, true, true, "76M", null, false, false, false, false, false, DEFAULT_BASE_QUALITY); // first a duplicate,
+        tester.addMatePair(1, 10040, 10040, false, true, true, false, "76M", null, false, false, false, false, false, DEFAULT_BASE_QUALITY); // first a duplicate,
         // second end unmapped
         tester.addMappedPair(1, 10189, 10040, false, false, "41S35M", "65M11S", true, false, false, ELIGIBLE_BASE_QUALITY); // mapped OK
         tester.addMappedFragment(1, 10040, true, DEFAULT_BASE_QUALITY); // duplicate
+        if (this instanceof MarkDuplicatesSparkIntegrationTest) {
+            tester.addArg("--do_not_mark_unmapped_mates");
+        }
         tester.runTest();
     }
 
     @Test
     public void testMappedPairAndMappedFragmentAndMatePairFirstUnmapped() {
         final AbstractMarkDuplicatesTester tester = getTester();
-        tester.addMatePair(1, 10040, 10040, true, false, true, true, null, "76M", false, false, false, false, false, DEFAULT_BASE_QUALITY); // first a duplicate,
+        tester.addMatePair(1, 10040, 10040, true, false, false, true, null, "76M", false, false, false, false, false, DEFAULT_BASE_QUALITY); // first a duplicate,
         // first end unmapped
         tester.addMappedPair(1, 10189, 10040, false, false, "41S35M", "65M11S", true, false, false, ELIGIBLE_BASE_QUALITY); // mapped OK
         tester.addMappedFragment(1, 10040, true, DEFAULT_BASE_QUALITY); // duplicate
+        if (this instanceof MarkDuplicatesSparkIntegrationTest) {
+            tester.addArg("--do_not_mark_unmapped_mates");
+        }
         tester.runTest();
     }
 

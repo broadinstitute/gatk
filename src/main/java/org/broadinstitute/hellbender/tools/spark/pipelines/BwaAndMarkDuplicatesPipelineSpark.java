@@ -54,12 +54,16 @@ public final class BwaAndMarkDuplicatesPipelineSpark extends GATKSparkTool {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     protected String output;
 
+    @Argument(fullName = "do_not_mark_unmapped_mates", doc = "Enabling this option will mean unmapped mates of duplicate marked reads will not be marked as duplicates.")
+    public boolean dontMarkUnmappedMates = false;
+
+
     @Override
     protected void runTool(final JavaSparkContext ctx) {
         try (final BwaSparkEngine bwaEngine = new BwaSparkEngine(ctx, referenceArguments.getReferenceFileName(), bwaArgs.indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary())) {
             final ReadFilter filter = makeReadFilter(bwaEngine.getHeader());
             final JavaRDD<GATKRead> alignedReads = bwaEngine.alignPaired(getUnfilteredReads()).filter(filter::test);
-            final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.mark(alignedReads, bwaEngine.getHeader(), duplicatesScoringStrategy, new OpticalDuplicateFinder(), getRecommendedNumReducers());
+            final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.mark(alignedReads, bwaEngine.getHeader(), duplicatesScoringStrategy, new OpticalDuplicateFinder(), getRecommendedNumReducers(), dontMarkUnmappedMates);
             try {
                 ReadsSparkSink.writeReads(ctx, output,
                         referenceArguments.getReferencePath().toAbsolutePath().toUri().toString(),

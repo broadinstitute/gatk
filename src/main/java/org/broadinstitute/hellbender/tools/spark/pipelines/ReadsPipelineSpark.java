@@ -112,6 +112,9 @@ public class ReadsPipelineSpark extends GATKSparkTool {
     @Argument(doc = "the join strategy for reference bases and known variants", fullName = "join-strategy", optional = true)
     private JoinStrategy joinStrategy = JoinStrategy.BROADCAST;
 
+    @Argument(fullName = "do_not_mark_unmapped_mates", doc = "Enabling this option will mean unmapped mates of duplicate marked reads will not be marked as duplicates.")
+    public boolean dontMarkUnmappedMates = false;
+
     @ArgumentCollection
     public final BwaArgumentCollection bwaArgs = new BwaArgumentCollection();
 
@@ -166,7 +169,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
             header = getHeaderForReads();
         }
 
-        final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.mark(alignedReads, header, duplicatesScoringStrategy, new OpticalDuplicateFinder(), getRecommendedNumReducers());
+        final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.mark(alignedReads, header, duplicatesScoringStrategy, new OpticalDuplicateFinder(), getRecommendedNumReducers(), dontMarkUnmappedMates);
 
         // The markedReads have already had the WellformedReadFilter applied to them, which
         // is all the filtering that MarkDupes and ApplyBQSR want. BQSR itself wants additional
