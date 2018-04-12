@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
@@ -86,7 +87,7 @@ public abstract class ReducibleAnnotationBaseTest extends GATKBaseTest {
     @Test(dataProvider = "interestingSitesCombineResults")
     public void testCombineAnnotationGATK3Concordance(List<VariantContext> VCs, VariantContext result, VariantContext genotyped) throws Exception {
         VariantAnnotatorEngine annotatorEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(Collections.emptyList(), getAnnotationsToUse(), Collections.emptyList(), null, Collections.emptyList());
-        ReferenceConfidenceVariantContextMerger merger = new ReferenceConfidenceVariantContextMerger(annotatorEngine);
+        ReferenceConfidenceVariantContextMerger merger = new ReferenceConfidenceVariantContextMerger(annotatorEngine, new VCFHeader());
         VariantContext merged = merger.merge(VCs, new SimpleInterval(result.getContig(), result.getStart(), result.getStart()), result.getReference().getBases()[0], false, false);
         Assert.assertTrue(VariantContextTestUtils.alleleSpecificAnnotationEquals(merged, result, getRawKey()));
     }

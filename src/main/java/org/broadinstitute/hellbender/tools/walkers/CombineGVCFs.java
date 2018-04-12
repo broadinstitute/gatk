@@ -211,7 +211,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
         vcfWriter = getVCFWriter();
 
-        referenceConfidenceVariantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine);
+        referenceConfidenceVariantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants());
 
         //now that we have all the VCF headers, initialize the annotations (this is particularly important to turn off RankSumTest dithering in integration tests)'
         sequenceDictionary = getBestAvailableSequenceDictionary();

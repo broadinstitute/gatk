@@ -61,6 +61,9 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
                 {new File[]{getTestFile("spanningDel.many.haploid.g.vcf")}, getTestFile("testMultipleSpanningDeletionsForOneSampleHaploid.vcf"), NO_EXTRA_ARGS, b37_reference_20_21},
                 // Simple Test, spanning deletions for tetraploid data
                 {new File[]{getTestFile("spanningDel.many.tetraploid.g.vcf")}, getTestFile("testMultipleSpanningDeletionsForOneSampleTetraploid.vcf"), NO_EXTRA_ARGS, b37_reference_20_21},
+                //Test that spanning deletion alleles in mixed sites don't get extended
+                {new File[]{getTestFile("spanningDeletionBaseExtensionTest1.vcf"), getTestFile("spanningDeletionBaseExtensionTest2.vcf")},
+                        getTestFile("spanningDeletionBaseExtensionTestExpected.g.vcf"), NO_EXTRA_ARGS, b37_reference_20_21},
                 // Testing BasePairResolutionInputs
                 {new File[]{getTestFile("gvcf.basepairResolution.vcf")}, getTestFile("testBasepairResolutionInput.vcf"), Arrays.asList("-A", "ClippingRankSumTest"), b37_reference_20_21},
                 // Interval Test
