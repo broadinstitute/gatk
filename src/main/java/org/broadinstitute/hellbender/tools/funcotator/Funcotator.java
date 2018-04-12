@@ -82,7 +82,7 @@ import java.util.stream.Stream;
  *                      ...
  *               ...
  *     </pre>
- *     <b>A gzip of data source files is provided here: <a href="ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/">ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/</a>.</b>
+ *     <b>Versioned gzip archives of data source files are provided here: <a href="ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/">ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/</a>.</b>
  * </p>
  * <h4>User-Defined Data Sources</h4>
  * <p>
@@ -116,6 +116,7 @@ import java.util.stream.Stream;
  *         # locatableXSV -- Arbitrary separated value table (e.g. CSV), keyed off a genome location
  *         # gencode      -- Custom datasource class for GENCODE
  *         # cosmic       -- Custom datasource class for COSMIC
+ *         # vcf          -- Custom datasource class for Variant Call Format (VCF) files
  *         type = locatableXSV
  *
  *         # Required field for GENCODE files.
@@ -160,14 +161,15 @@ import java.util.stream.Stream;
  * <h3>Inputs</h3>
  * <ul>
  *     <li>A reference genome sequence.</li>
- *     <li>The version of the reference genome sequence being used (either <i>hg19</i> or <i>hg38</i>).</li>
+ *     <li>The version of the reference genome sequence being used (e.g. <i>hg19</i>, <i>hg38</i>, etc.).</li>
  *     <li>A VCF of variant calls to annotate.</li>
  *     <li>The path to a folder of data sources formatted for use by Funcotator.</li>
+ *     <li>The desired output format for the annotated vaiants file (either <i>MAF</i> or <i>VCF</i>)</li>
  * </ul>
  *
  * <h3>Output</h3>
  * <ul>
- *     <li>A VCF containing all variants from the input file with added annotation columns corresponding to annotations from each data source that matched a given variant according to that data source's matching criteria.</li>
+ *     <li>A MAF or VCF file containing all variants from the input file with added annotations corresponding to annotations from each data source that matched a given variant according to that data source's matching criteria.</li>
  * </ul>
  *
  * <h3>Usage example</h3>
@@ -176,6 +178,7 @@ import java.util.stream.Stream;
  *   -R reference.fasta \
  *   -V input.vcf \
  *   -O output.vcf \
+ *   --output-file-format MAF \
  *   --data-sources-path dataSourcesFolder/ \
  *   --ref-version hg19
  * </pre>
@@ -188,22 +191,10 @@ import java.util.stream.Stream;
  *
  * <h3>Known Issues</h3>
  * <p>A complete list of known open issues can be found on <a href="https://github.com/broadinstitute/gatk/issues?q=is%3Aopen+is%3Aissue+label%3AFuncotator">the GATK github entry for funcotator here.</a></p>
- *
- * <h4>Notable Issues as of 2018 Jan 3</h4>
- * <ul>
- *     <li>Only supports VCF for inputs and outputs (<a href="https://github.com/broadinstitute/gatk/issues/3922">Issue 3922</a>).</li>
- *     <li>Only supports a single GENCODE data source (<a href="https://github.com/broadinstitute/gatk/issues/3956">Issue 3956</a>).</li>
- *     <li>Non-GENCODE annotations on multiallelic variants are only rendered properly for the last allele (<a href="https://github.com/broadinstitute/gatk/issues/3896">Issue 3896</a>).</li>
- *     <li>The "other transcripts" annotation is missing for IGR variants (<a href="https://github.com/broadinstitute/gatk/issues/3849">Issue 3849</a>).</li>
- *     <li>Only the "Format" field of input VCF files is preserved in the output VCF file (<a href="https://github.com/broadinstitute/gatk/issues/3895">Issue 3895</a>).</li>
- *     <li>Codon Change and Protein Change for indels spanning splice sites are not properly rendered (<a href="https://github.com/broadinstitute/gatk/issues/3749">Issue 3749</a>).</li>
- *     <li>Does not support Structural Variants (<a href="https://github.com/broadinstitute/gatk/issues/4083">Issue 4083</a>).</li>
- * </ul>
- *
  */
 @CommandLineProgramProperties(
         summary = "Create functional annotations on given variants cross-referenced by a given set of data sources.\n" +
-                "A GATK functional annotation tool (similar functionality to Oncotator).",
+                "A GATK functional annotation tool.",
         oneLineSummary = "Functional Annotator",
         programGroup = VariantEvaluationProgramGroup.class
 )
