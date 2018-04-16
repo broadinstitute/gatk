@@ -19,6 +19,11 @@ public abstract class SimpleSVType extends SvType {
         super(id, altAllele, len, typeSpecificExtraAttributes);
     }
 
+    @Override
+    public final boolean isBreakEndOnly() {
+        return false;
+    }
+
     public enum TYPES {
         INV, DEL, INS, DUP, DUP_INV;
     }

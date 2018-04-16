@@ -150,6 +150,11 @@ public final class GATKSVVCFHeaderLines {
                             " to non-canonical reference chromosomes that could potentially offer better explanation of the assembly contig without the SV record." +
                             " One for each evidence assembly contig, if available; otherwise a \".\"." +
                             " If no evidence contig has such mapping, this annotation is omitted for the record."));
+            addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.LINK,
+                    VCFHeaderLineCount.UNBOUNDED,
+                    VCFHeaderLineType.String,
+                    "ID(s) of other variants that are linked to this record, " +
+                            "i.e. they constitute a larger more complex variant"));
         }
 
         // type specific

@@ -47,7 +47,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
     public static final ReferenceMultiSource b37_reference = new ReferenceMultiSource(
             GATKBaseTest.b37_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
     public static final SAMSequenceDictionary b37_seqDict = b37_reference.getReferenceSequenceDictionary(null);
-    public static final Set<String> canonicalChromosomes = getCanonicalChromosomes(null, b37_seqDict);
+    public static final Set<String> b37_canonicalChromosomes = getCanonicalChromosomes(null, b37_seqDict);
 
     public static final ReferenceMultiSource b38_reference = new ReferenceMultiSource(
             GATKBaseTest.b38_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
@@ -110,8 +110,12 @@ public final class SimpleSVDiscoveryTestDataProvider {
     public static final TestDataForSimpleSVs forSimpleDeletion_minus;
     public static final TestDataForSimpleSVs forSimpleInsertion_plus;
     public static final TestDataForSimpleSVs forSimpleInsertion_minus;
-    public static final TestDataForSimpleSVs forLongRangeSubstitution_plus;
-    public static final TestDataForSimpleSVs forLongRangeSubstitution_minus;
+    public static final TestDataForSimpleSVs forLongRangeSubstitution_fudgedDel_plus;
+    public static final TestDataForSimpleSVs forLongRangeSubstitution_fudgedDel_minus;
+    public static final TestDataForSimpleSVs forLongRangeSubstitution_fatIns_plus;
+    public static final TestDataForSimpleSVs forLongRangeSubstitution_fatIns_minus;
+    public static final TestDataForSimpleSVs forLongRangeSubstitution_DelAndIns_plus;
+    public static final TestDataForSimpleSVs forLongRangeSubstitution_DelAndIns_minus;
     public static final TestDataForSimpleSVs forDeletionWithHomology_plus;
     public static final TestDataForSimpleSVs forDeletionWithHomology_minus;
     public static final TestDataForSimpleSVs forSimpleTanDupContraction_plus;
@@ -149,8 +153,12 @@ public final class SimpleSVDiscoveryTestDataProvider {
             forSimpleInsertion_minus = simpleInsertion.get(1);
 
             final List<TestDataForSimpleSVs> longRangeSubstitution = forLongRangeSubstitution();
-            forLongRangeSubstitution_plus = longRangeSubstitution.get(0);
-            forLongRangeSubstitution_minus = longRangeSubstitution.get(1);
+            forLongRangeSubstitution_fudgedDel_plus = longRangeSubstitution.get(0);
+            forLongRangeSubstitution_fudgedDel_minus = longRangeSubstitution.get(1);
+            forLongRangeSubstitution_fatIns_plus = longRangeSubstitution.get(2);
+            forLongRangeSubstitution_fatIns_minus = longRangeSubstitution.get(3);
+            forLongRangeSubstitution_DelAndIns_plus = longRangeSubstitution.get(4);
+            forLongRangeSubstitution_DelAndIns_minus = longRangeSubstitution.get(5);
 
             final List<TestDataForSimpleSVs> deletionWithHomology = forDeletionWithHomology(outputStream);
             forDeletionWithHomology_plus = deletionWithHomology.get(0);
@@ -195,8 +203,8 @@ public final class SimpleSVDiscoveryTestDataProvider {
                 forSimpleDeletion_minus,
                 forSimpleInsertion_plus,
                 forSimpleInsertion_minus,
-                forLongRangeSubstitution_plus,
-                forLongRangeSubstitution_minus,
+                forLongRangeSubstitution_fudgedDel_plus,
+                forLongRangeSubstitution_fudgedDel_minus,
                 forDeletionWithHomology_plus,
                 forDeletionWithHomology_minus,
                 forSimpleTanDupContraction_plus,
@@ -224,7 +232,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
                         new Tuple2<>(forSimpleInversionWithHom_rightPlus, forSimpleInversionWithHom_rightMinus),
                         new Tuple2<>(forSimpleDeletion_plus, forSimpleDeletion_minus),
                         new Tuple2<>(forSimpleInsertion_plus, forSimpleInsertion_minus),
-                        new Tuple2<>(forLongRangeSubstitution_plus, forLongRangeSubstitution_minus),
+                        new Tuple2<>(forLongRangeSubstitution_fudgedDel_plus, forLongRangeSubstitution_fudgedDel_minus),
                         new Tuple2<>(forDeletionWithHomology_plus, forDeletionWithHomology_minus),
                         new Tuple2<>(forSimpleTanDupContraction_plus, forSimpleTanDupContraction_minus),
                         new Tuple2<>(forSimpleTanDupExpansion_plus, forSimpleTanDupExpansion_minus),
@@ -404,37 +412,98 @@ public final class SimpleSVDiscoveryTestDataProvider {
     }
 
     /**
-     * 50-'A' + 50-'C' where the middle 10-'A'+10-'C' is substituted with 10-'G' (forward strand representation)
+     * fudged deletion case:
+     * 100-'A' + 100-'G' where the middle 30-'A'+30-'G' is substituted with 10-'C' (forward strand representation)
+     * fat insertion case:
+     * 50-'A' + 50-'G' where the middle 10-'A'+10-'G' is substituted with 60-'C' (forward strand representation)
+     * Two linked variants case:
+     * 100-'A' + 100-'G' where the middle 30-'A'+30-'G' is substituted with 55-'C' (forward strand representation)
      */
     private static List<TestDataForSimpleSVs>
     forLongRangeSubstitution() {
 
         final List<TestDataForSimpleSVs> result = new ArrayList<>();
 
-        // long range substitution '+' strand representation
-        final byte[] leftRefFlank = SVTestUtils.makeDummySequence(50, (byte)'A');
-        final byte[] rightRefFlank = SVTestUtils.makeDummySequence(50, (byte)'G');
-        final byte[] substitution = SVTestUtils.makeDummySequence(10, (byte)'C');
-        byte[] contigSeq = new byte[leftRefFlank.length+rightRefFlank.length-10];
-        System.arraycopy(leftRefFlank, 0, contigSeq, 0, 40);
-        System.arraycopy(substitution, 0, contigSeq, 40, substitution.length);
-        System.arraycopy(rightRefFlank, 0, contigSeq, 50, 40);
-        AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100040), 1 ,40, TextCigarCodec.decode("40M50S"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100061, 100100), 51 ,90, TextCigarCodec.decode("50S40M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
-        result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
+        {//fudged deletion case
+            // '+' strand representation
+            final byte[] leftRefFlank = SVTestUtils.makeDummySequence(100, (byte)'A');
+            final byte[] rightRefFlank = SVTestUtils.makeDummySequence(100, (byte)'G');
+            final byte[] substitution = SVTestUtils.makeDummySequence(10, (byte)'C');
+            byte[] contigSeq = new byte[leftRefFlank.length + rightRefFlank.length - 50];
+            System.arraycopy(leftRefFlank, 0, contigSeq, 0, 70);
+            System.arraycopy(substitution, 0, contigSeq, 70, substitution.length);
+            System.arraycopy(rightRefFlank, 30, contigSeq, 70 + substitution.length, 70);
+            AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100070), 1 ,70, TextCigarCodec.decode("70M80S"), true, 60, 0, 70, ContigAlignmentsModifier.AlnModType.NONE);
+            AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100131, 100200), 81 ,150, TextCigarCodec.decode("80S70M"), true, 60, 0, 70, ContigAlignmentsModifier.AlnModType.NONE);
+            NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+            result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
-        // long range substitution '-' strand representation
-        SequenceUtil.reverseComplement(leftRefFlank);
-        SequenceUtil.reverseComplement(rightRefFlank);
-        SequenceUtil.reverseComplement(substitution);
-        System.arraycopy(rightRefFlank, 0, contigSeq, 0, 40);
-        System.arraycopy(substitution, 0, contigSeq, 40, substitution.length);
-        System.arraycopy(leftRefFlank, 0, contigSeq, 40 + substitution.length, 40);
-        region1 = new AlignmentInterval(new SimpleInterval("21", 100061, 100100), 1 ,40, TextCigarCodec.decode("40M50S"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100040), 51 ,90, TextCigarCodec.decode("50S40M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
-        result.add(new TestDataForSimpleSVs(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
+            // '-' strand representation
+            SequenceUtil.reverseComplement(leftRefFlank);
+            SequenceUtil.reverseComplement(rightRefFlank);
+            SequenceUtil.reverseComplement(substitution);
+            System.arraycopy(rightRefFlank, 0, contigSeq, 0, 70);
+            System.arraycopy(substitution, 0, contigSeq, 70, substitution.length);
+            System.arraycopy(leftRefFlank, 30, contigSeq, 70 + substitution.length, 70);
+            region1 = new AlignmentInterval(new SimpleInterval("21", 100131, 100200), 1 ,70, TextCigarCodec.decode("70M80S"), false, 60, 0, 70, ContigAlignmentsModifier.AlnModType.NONE);
+            region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100070), 81 ,150, TextCigarCodec.decode("80S70M"), false, 60, 0, 70, ContigAlignmentsModifier.AlnModType.NONE);
+            final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+            result.add(new TestDataForSimpleSVs(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
+        }
+
+        {//fat insertion case
+            // '+' strand representation
+            final byte[] leftRefFlank = SVTestUtils.makeDummySequence(50, (byte)'A');
+            final byte[] rightRefFlank = SVTestUtils.makeDummySequence(50, (byte)'G');
+            final byte[] substitution = SVTestUtils.makeDummySequence(60, (byte)'C');
+            byte[] contigSeq = new byte[leftRefFlank.length + rightRefFlank.length + 40];
+            System.arraycopy(leftRefFlank, 0, contigSeq, 0, 40);
+            System.arraycopy(substitution, 0, contigSeq, 40, substitution.length);
+            System.arraycopy(rightRefFlank, 10, contigSeq, 40 + substitution.length, 40);
+            AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100040), 1 ,40, TextCigarCodec.decode("40M100S"), true, 60, 0, 60, ContigAlignmentsModifier.AlnModType.NONE);
+            AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100061, 100100), 101 ,140, TextCigarCodec.decode("100S40M"), true, 60, 0, 60, ContigAlignmentsModifier.AlnModType.NONE);
+            NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+            result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
+
+            // '-' strand representation
+            SequenceUtil.reverseComplement(leftRefFlank);
+            SequenceUtil.reverseComplement(rightRefFlank);
+            SequenceUtil.reverseComplement(substitution);
+            System.arraycopy(rightRefFlank, 0, contigSeq, 0, 40);
+            System.arraycopy(substitution, 0, contigSeq, 40, substitution.length);
+            System.arraycopy(leftRefFlank, 10, contigSeq, 40 + substitution.length, 40);
+            region1 = new AlignmentInterval(new SimpleInterval("21", 100061, 100100), 1 ,40, TextCigarCodec.decode("40M100S"), false, 60, 0, 60, ContigAlignmentsModifier.AlnModType.NONE);
+            region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100040), 101 ,140, TextCigarCodec.decode("100S40M"), false, 60, 0, 60, ContigAlignmentsModifier.AlnModType.NONE);
+            final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+            result.add(new TestDataForSimpleSVs(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
+        }
+
+        {//two linked variants case
+            // '+' strand representation
+            final byte[] leftRefFlank = SVTestUtils.makeDummySequence(100, (byte)'A');
+            final byte[] rightRefFlank = SVTestUtils.makeDummySequence(100, (byte)'G');
+            final byte[] substitution = SVTestUtils.makeDummySequence(55, (byte)'C');
+            byte[] contigSeq = new byte[leftRefFlank.length + rightRefFlank.length - 5];
+            System.arraycopy(leftRefFlank, 0, contigSeq, 0, 70);
+            System.arraycopy(substitution, 0, contigSeq, 70, substitution.length);
+            System.arraycopy(rightRefFlank, 30, contigSeq, 70 + substitution.length, 70);
+            AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100070), 1 ,70, TextCigarCodec.decode("70M125S"), true, 60, 0, 70, ContigAlignmentsModifier.AlnModType.NONE);
+            AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100131, 100200), 126 ,195, TextCigarCodec.decode("125S70M"), true, 60, 0, 70, ContigAlignmentsModifier.AlnModType.NONE);
+            NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+            result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
+
+            // '-' strand representation
+            SequenceUtil.reverseComplement(leftRefFlank);
+            SequenceUtil.reverseComplement(rightRefFlank);
+            SequenceUtil.reverseComplement(substitution);
+            System.arraycopy(rightRefFlank, 0, contigSeq, 0, 70);
+            System.arraycopy(substitution, 0, contigSeq, 70, substitution.length);
+            System.arraycopy(leftRefFlank, 30, contigSeq, 70 + substitution.length, 70);
+            region1 = new AlignmentInterval(new SimpleInterval("21", 100131, 100200), 1 ,70, TextCigarCodec.decode("70M125S"), false, 60, 0, 70, ContigAlignmentsModifier.AlnModType.NONE);
+            region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100070), 126 ,195, TextCigarCodec.decode("125S70M"), false, 60, 0, 70, ContigAlignmentsModifier.AlnModType.NONE);
+            final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+            result.add(new TestDataForSimpleSVs(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
+        }
 
         return result;
     }

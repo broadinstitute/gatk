@@ -64,10 +64,10 @@ public class SimpleChimeraUnitTest extends GATKBaseTest {
         result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
 
         // long range substitution
-        testData = SimpleSVDiscoveryTestDataProvider.forLongRangeSubstitution_plus;
+        testData = SimpleSVDiscoveryTestDataProvider.forLongRangeSubstitution_fudgedDel_plus;
         result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
 
-        testData = SimpleSVDiscoveryTestDataProvider.forLongRangeSubstitution_minus;
+        testData = SimpleSVDiscoveryTestDataProvider.forLongRangeSubstitution_fudgedDel_minus;
         result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
 
         // simple deletion with homology
@@ -188,8 +188,8 @@ public class SimpleChimeraUnitTest extends GATKBaseTest {
         return result;
     }
 
-    @DataProvider(name = "forRepresentationAndSerialization")
-    private Object[][] forSimpleChimera() {
+    @DataProvider(name = "testRepresentationAndSerialization")
+    private Object[][] testRepresentationAndSerialization() {
         final List<Tuple3<AlignmentInterval, AlignmentInterval, SAMSequenceDictionary>> tuple3s = alignmentPairsForSimpleChimeraAndRefSeqDict();
         final List<Object[]> data = new ArrayList<>(tuple3s.size());
 
@@ -288,10 +288,10 @@ public class SimpleChimeraUnitTest extends GATKBaseTest {
         return data.toArray(new Object[data.size()][]);
     }
 
-    @Test(dataProvider = "forRepresentationAndSerialization", groups = "sv")
-    public void forRepresentationAndSerialization(Tuple3<AlignmentInterval, AlignmentInterval, SAMSequenceDictionary> chimericPairsAndRefSeqDict,
-                                                  final StrandSwitch expectedStrandSwitch,
-                                                  final boolean expectedIsForwardStrandRepresentation) {
+    @Test(dataProvider = "testRepresentationAndSerialization", groups = "sv")
+    public void testRepresentationAndSerialization(Tuple3<AlignmentInterval, AlignmentInterval, SAMSequenceDictionary> chimericPairsAndRefSeqDict,
+                                                   final StrandSwitch expectedStrandSwitch,
+                                                   final boolean expectedIsForwardStrandRepresentation) {
         final AlignmentInterval region1 = chimericPairsAndRefSeqDict._1();
         final AlignmentInterval region2 = chimericPairsAndRefSeqDict._2();
         final SAMSequenceDictionary refDict = chimericPairsAndRefSeqDict._3();

@@ -37,32 +37,34 @@ public class AnnotatedVariantProducer implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * Given novel adjacency and inferred BND variant types, produce annotated (and mate-connected) VCF BND records.
-     * @param breakendMates                     BND variants of mates to each other, assumed to be of size 2
+     * Given novel adjacency and inferred variant types that should be linked together,
+     * produce annotated, and linked VCF records.
+     * @param linkedVariants                     variants linked to each other, currently limited to size two
      * @param simpleNovelAdjacencyAndChimericAlignmentEvidence novel adjacency and contig alignment evidence that induced the novel adjacency
      * @throws IOException                      due to reference retrieval
      */
-    public static List<VariantContext> produceAnnotatedBNDmatesVcFromNovelAdjacency(final Tuple2<BreakEndVariantType, BreakEndVariantType> breakendMates,
-                                                                                    final SimpleNovelAdjacencyAndChimericAlignmentEvidence simpleNovelAdjacencyAndChimericAlignmentEvidence,
-                                                                                    final Broadcast<ReferenceMultiSource> broadcastReference,
-                                                                                    final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
-                                                                                    final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls,
-                                                                                    final String sampleId)
+    public static List<VariantContext> produceAnnotatedAndLinkedVcFromNovelAdjacency(final Tuple2<SvType, SvType> linkedVariants,
+                                                                                     final SimpleNovelAdjacencyAndChimericAlignmentEvidence simpleNovelAdjacencyAndChimericAlignmentEvidence,
+                                                                                     final Broadcast<ReferenceMultiSource> broadcastReference,
+                                                                                     final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
+                                                                                     final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls,
+                                                                                     final String sampleId,
+                                                                                     final String linkKey)
             throws IOException {
 
         final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype = simpleNovelAdjacencyAndChimericAlignmentEvidence.getNovelAdjacencyReferenceLocations();
         final List<SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring> contigEvidence = simpleNovelAdjacencyAndChimericAlignmentEvidence.getAlignmentEvidence();
 
-        final VariantContext firstMate = produceAnnotatedVcFromInferredTypeAndRefLocations(novelAdjacencyAndAltHaplotype, breakendMates._1, contigEvidence,
+        final VariantContext firstVar = produceAnnotatedVcFromInferredTypeAndRefLocations(novelAdjacencyAndAltHaplotype, linkedVariants._1, contigEvidence,
                 broadcastReference, broadcastSequenceDictionary, broadcastCNVCalls, sampleId);
-        final VariantContext secondMate = produceAnnotatedVcFromInferredTypeAndRefLocations(novelAdjacencyAndAltHaplotype, breakendMates._2, contigEvidence,
+        final VariantContext secondVar = produceAnnotatedVcFromInferredTypeAndRefLocations(novelAdjacencyAndAltHaplotype, linkedVariants._2, contigEvidence,
                 broadcastReference, broadcastSequenceDictionary, broadcastCNVCalls, sampleId);
 
-        final VariantContextBuilder builder0 = new VariantContextBuilder(firstMate);
-        builder0.attribute(GATKSVVCFConstants.BND_MATEID_STR, secondMate.getID());
+        final VariantContextBuilder builder0 = new VariantContextBuilder(firstVar);
+        builder0.attribute(linkKey, secondVar.getID());
 
-        final VariantContextBuilder builder1 = new VariantContextBuilder(secondMate);
-        builder1.attribute(GATKSVVCFConstants.BND_MATEID_STR, firstMate.getID());
+        final VariantContextBuilder builder1 = new VariantContextBuilder(secondVar);
+        builder1.attribute(linkKey, firstVar.getID());
 
         return Arrays.asList(builder0.make(), builder1.make());
     }
@@ -86,7 +88,7 @@ public class AnnotatedVariantProducer implements Serializable {
                                                                                    final String sampleId)
             throws IOException {
 
-        final boolean variantIsBND = inferredType instanceof BreakEndVariantType;
+        final boolean variantIsBND = inferredType.isBreakEndOnly();
         final int applicableStop;
         final SimpleInterval refLoc;
         if ( variantIsBND ) {

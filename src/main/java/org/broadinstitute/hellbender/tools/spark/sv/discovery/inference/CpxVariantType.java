@@ -17,6 +17,11 @@ final class CpxVariantType extends SvType {
         return CPX_SV_SYB_ALT_ALLELE_STR;
     }
 
+    @Override
+    public final boolean isBreakEndOnly() {
+        return false;
+    }
+
     CpxVariantType(final SimpleInterval affectedRefRegion, final int altHaplotypeSequenceLength,
                    final Map<String, String> typeSpecificExtraAttributes) {
         super(getIDString(affectedRefRegion),

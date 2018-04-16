@@ -4,6 +4,7 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -179,9 +180,14 @@ public class NovelAdjacencyAndAltHaplotype {
     }
 
     /**
-     * @return the inferred type could be a single entry for simple variants, or a list of two entries with BND mates.
+     * @return the inferred type could be
+     *          1) a single entry for simple variants, or
+     *          2) a list of two entries for "replacement" case where the ref- and alt- path are both >= 50 bp long, or
+     *          3) a list of two entries with BND mates.
+     *          It is safe, for now, to assume that ({@link SimpleSVType} and {@link BreakEndVariantType} are never mixed)
      */
-    List<SvType> toSimpleOrBNDTypes(final ReferenceMultiSource reference, final SAMSequenceDictionary referenceDictionary) {
+    @VisibleForTesting
+    public List<SvType> toSimpleOrBNDTypes(final ReferenceMultiSource reference, final SAMSequenceDictionary referenceDictionary) {
 
         switch (type) {
             case InterChromosome:
@@ -207,15 +213,26 @@ public class NovelAdjacencyAndAltHaplotype {
             }
             case RPL:
             {
-                final int svLength = leftJustifiedLeftRefLoc.getEnd() - leftJustifiedRightRefLoc.getStart();
-                return Collections.singletonList( new SimpleSVType.Deletion(this, svLength) );
+                final int deletedLength = leftJustifiedRightRefLoc.getStart() - leftJustifiedLeftRefLoc.getEnd();
+                final int insertionLength = complication.getInsertedSequenceForwardStrandRep().length();
+                if ( deletedLength < 50 ) { // "fat" insertion
+                    return Collections.singletonList( new SimpleSVType.Insertion(this, insertionLength) );
+                } else { // "DEL" record with insertion
+                    final SimpleSVType.Deletion deletion = new SimpleSVType.Deletion(this, - deletedLength);
+                    if ( insertionLength < 50 ){
+                        return Collections.singletonList( deletion );
+                    } else {
+                        final SimpleSVType.Insertion insertion = new SimpleSVType.Insertion(this, insertionLength);
+                        return Arrays.asList( deletion, insertion );
+                    }
+                }
             }
             case SIMPLE_INS:
             {
                 final int svLength = this.getComplication().getInsertedSequenceForwardStrandRep().length();
                 return Collections.singletonList( new SimpleSVType.Insertion(this, svLength) );
             }
-            case SMALL_DUP_EXPANSION:
+            case SMALL_DUP_EXPANSION: // TODO: 4/16/18 make adjustments based on duplicated size
             {
                 final int svLength = getLengthForDupTandem(this);
                 return Collections.singletonList( new SimpleSVType.DuplicationTandem(this, svLength) );
@@ -231,7 +248,7 @@ public class NovelAdjacencyAndAltHaplotype {
                         this.getComplication()).isDupContraction() ) {
                     final int svLength = leftJustifiedLeftRefLoc.getEnd() - leftJustifiedRightRefLoc.getStart();
                     return Collections.singletonList( new SimpleSVType.Deletion(this, svLength) );
-                } else {
+                } else { // TODO: 4/16/18 make adjustments based on duplicated size
                     final int svLength = getLengthForDupTandem(this);
                     return Collections.singletonList( new SimpleSVType.DuplicationTandem(this, svLength) );
                 }

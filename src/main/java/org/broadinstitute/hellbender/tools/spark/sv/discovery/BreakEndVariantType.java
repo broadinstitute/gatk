@@ -43,6 +43,10 @@ public abstract class BreakEndVariantType extends SvType {
                 (forUpstreamLoc ? "1" : "2");
     }
 
+    @Override
+    public final boolean isBreakEndOnly() {
+        return true;
+    }
 
     @Override
     public String toString() {

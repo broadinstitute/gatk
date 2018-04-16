@@ -93,8 +93,14 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
         // simple insertion
         data.add(new Object[]{forSimpleInsertion_plus, new String[]{"60"}, new String[]{String.valueOf(100)}});
 
-        // long range substitution
-        data.add(new Object[]{forLongRangeSubstitution_minus, new String[]{"60"}, new String[]{String.valueOf(40)}});
+        // long range substitution fudged del
+        data.add(new Object[]{forLongRangeSubstitution_fudgedDel_minus, new String[]{"60"}, new String[]{String.valueOf(70)}});
+
+        // long range substitution fat ins
+        data.add(new Object[]{forLongRangeSubstitution_fatIns_plus, new String[]{"60"}, new String[]{String.valueOf(40)}});
+
+        // long range substitution del+ins
+        data.add(new Object[]{forLongRangeSubstitution_DelAndIns_plus, new String[]{"60"}, new String[]{String.valueOf(70)}});
 
         // simple deletion with homology
         data.add(new Object[]{forDeletionWithHomology_plus, new String[]{"60"}, new String[]{String.valueOf(40)}});
@@ -185,7 +191,7 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
                 broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // long range substitution
-        data.add(new Object[]{forLongRangeSubstitution_minus,
+        data.add(new Object[]{forLongRangeSubstitution_fudgedDel_minus,
                 Stream.concat( commonAttributes.stream(), Sets.newHashSet(INSERTED_SEQUENCE, INSERTED_SEQUENCE_LENGTH).stream()).sorted().collect(Collectors.toList()),
                 broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 

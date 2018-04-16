@@ -7,6 +7,7 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
@@ -27,6 +28,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.*;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
@@ -317,25 +319,38 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
             throws IOException {
         final SimpleNovelAdjacencyAndChimericAlignmentEvidence simpleNovelAdjacencyAndChimericAlignmentEvidence = pair._1;
         final List<SvType> svTypes = pair._2;
-        if (svTypes.size() == 1) { // simple SV type
-            final SvType inferredType = svTypes.get(0);
+        if ( ! svTypes.get(0).isBreakEndOnly() ) { // simple SV type
             final NovelAdjacencyAndAltHaplotype narl = simpleNovelAdjacencyAndChimericAlignmentEvidence.getNovelAdjacencyReferenceLocations();
             final List<SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring> contigEvidence =
                     simpleNovelAdjacencyAndChimericAlignmentEvidence.getAlignmentEvidence();
-            final VariantContext variantContext = AnnotatedVariantProducer
-                    .produceAnnotatedVcFromInferredTypeAndRefLocations(
-                            narl, inferredType, contigEvidence,
-                            referenceBroadcast, referenceSequenceDictionaryBroadcast, cnvCallsBroadcast, sampleId);
-            return Collections.singletonList(variantContext).iterator();
+
+            if ( svTypes.size() == 2 ) { // RPL case with both path >= 50 bp
+                final SvType firstVar = svTypes.get(0);
+                final SvType secondVar = svTypes.get(1);
+                final Tuple2<SvType, SvType> linkedVariants = new Tuple2<>(firstVar, secondVar);
+                return AnnotatedVariantProducer.produceAnnotatedAndLinkedVcFromNovelAdjacency(linkedVariants,
+                        simpleNovelAdjacencyAndChimericAlignmentEvidence,
+                        referenceBroadcast, referenceSequenceDictionaryBroadcast, cnvCallsBroadcast, sampleId,
+                        GATKSVVCFConstants.LINK).iterator();
+            } else {
+                final SvType inferredType = svTypes.get(0);
+
+                final VariantContext variantContext = AnnotatedVariantProducer
+                        .produceAnnotatedVcFromInferredTypeAndRefLocations(
+                                narl, inferredType, contigEvidence,
+                                referenceBroadcast, referenceSequenceDictionaryBroadcast, cnvCallsBroadcast, sampleId);
+                return Collections.singletonList(variantContext).iterator();
+            }
         } else { // BND mate pair
             final BreakEndVariantType firstMate = (BreakEndVariantType) svTypes.get(0);
             final BreakEndVariantType secondMate = (BreakEndVariantType) svTypes.get(1);
 
-            final Tuple2<BreakEndVariantType, BreakEndVariantType> bndMates = new Tuple2<>(firstMate, secondMate);
+            final Tuple2<SvType, SvType> bndMates = new Tuple2<>(firstMate, secondMate);
             final List<VariantContext> variantContexts = AnnotatedVariantProducer
-                    .produceAnnotatedBNDmatesVcFromNovelAdjacency(
+                    .produceAnnotatedAndLinkedVcFromNovelAdjacency(
                             bndMates, simpleNovelAdjacencyAndChimericAlignmentEvidence,
-                            referenceBroadcast, referenceSequenceDictionaryBroadcast, cnvCallsBroadcast, sampleId);
+                            referenceBroadcast, referenceSequenceDictionaryBroadcast, cnvCallsBroadcast, sampleId,
+                            GATKSVVCFConstants.BND_MATEID_STR);
             return variantContexts.iterator();
         }
     }

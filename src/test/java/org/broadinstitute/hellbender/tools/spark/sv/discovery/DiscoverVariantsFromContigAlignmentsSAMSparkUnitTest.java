@@ -90,7 +90,7 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkUnitTest extends GATKBa
         data.add(new Object[]{forSimpleInsertion_minus.biPathBubble, INS.name(), Collections.emptySet()});
 
         // long range substitution
-        data.add(new Object[]{forLongRangeSubstitution_plus.biPathBubble, DEL.name(), Collections.emptySet()});
+        data.add(new Object[]{forLongRangeSubstitution_fudgedDel_plus.biPathBubble, DEL.name(), Collections.emptySet()});
 
         // simple deletion with homology
         data.add(new Object[]{forDeletionWithHomology_minus.biPathBubble, DEL.name(), Collections.emptySet()});

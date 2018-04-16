@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery.inference;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.google.common.collect.ImmutableSet;
 import htsjdk.samtools.TextCigarCodec;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -10,6 +11,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscovery
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVariantsFromContigAlignmentsSAMSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVTestUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryTestDataProvider;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvType;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.ContigAlignmentsModifier;
@@ -24,12 +26,12 @@ import scala.Tuple2;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryTestDataProvider.*;
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType.TYPES.*;
+import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.DUP_TAN_CONTRACTION_STRING;
+import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.DUP_TAN_EXPANSION_STRING;
 
 
 public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
@@ -253,11 +255,33 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
     @Test(groups = "sv")
     public void testGetBreakpoints_longRangeSubstitution() {
 
-        final byte[] substitution = SVTestUtils.makeDummySequence(10, (byte)'C');
-        final NovelAdjacencyAndAltHaplotype breakpoints = forLongRangeSubstitution_plus.biPathBubble;
-        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = forLongRangeSubstitution_minus.biPathBubble;
+        byte[] substitution = SVTestUtils.makeDummySequence(10, (byte)'C');
+        NovelAdjacencyAndAltHaplotype breakpoints = forLongRangeSubstitution_fudgedDel_minus.biPathBubble;
+        NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = forLongRangeSubstitution_fudgedDel_minus.biPathBubble;
 
-        seeIfItWorksForNonSimpleTranslocations(breakpoints, StrandSwitch.NO_SWITCH, new SimpleInterval("21", 100040, 100040), new SimpleInterval("21", 100060, 100060),
+        seeIfItWorksForNonSimpleTranslocations(breakpoints, StrandSwitch.NO_SWITCH,
+                new SimpleInterval("21", 100070, 100070),
+                new SimpleInterval("21", 100130, 100130),
+                null, "", new String(substitution), 0, 0, null,
+                substitution);
+        Assert.assertEquals(breakpointsDetectedFromReverseStrand, breakpoints);
+
+        substitution = SVTestUtils.makeDummySequence(60, (byte)'C');
+        breakpoints = forLongRangeSubstitution_fatIns_plus.biPathBubble;
+        breakpointsDetectedFromReverseStrand = forLongRangeSubstitution_fatIns_minus.biPathBubble;
+        seeIfItWorksForNonSimpleTranslocations(breakpoints, StrandSwitch.NO_SWITCH,
+                new SimpleInterval("21", 100040, 100040),
+                new SimpleInterval("21", 100060, 100060),
+                null, "", new String(substitution), 0, 0, null,
+                substitution);
+        Assert.assertEquals(breakpointsDetectedFromReverseStrand, breakpoints);
+
+        substitution = SVTestUtils.makeDummySequence(55, (byte)'C');
+        breakpoints = forLongRangeSubstitution_DelAndIns_plus.biPathBubble;
+        breakpointsDetectedFromReverseStrand = forLongRangeSubstitution_DelAndIns_minus.biPathBubble;
+        seeIfItWorksForNonSimpleTranslocations(breakpoints, StrandSwitch.NO_SWITCH,
+                new SimpleInterval("21", 100070, 100070),
+                new SimpleInterval("21", 100130, 100130),
                 null, "", new String(substitution), 0, 0, null,
                 substitution);
         Assert.assertEquals(breakpointsDetectedFromReverseStrand, breakpoints);
@@ -483,5 +507,84 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
         Assert.assertEquals(breakpoints.getLeftJustifiedRightRefLoc(), new SimpleInterval("chr21", 39477346, 39477346));
         Assert.assertEquals(breakpoints.getComplication().getHomologyForwardStrandRep(), "ATATATAAATATATATA");
         Assert.assertTrue(breakpoints.getComplication().getInsertedSequenceForwardStrandRep().isEmpty());
+    }
+
+    // -----------------------------------------------------------------------------------------------
+    // Tests for complication resolving and breakpoint justification with the inferred complications for insertion and deletion
+    // -----------------------------------------------------------------------------------------------
+    @Test(groups = "sv", dataProvider = "forTypeInference")
+    public void testGetType(final NovelAdjacencyAndAltHaplotype breakpoints,
+                            final List<Tuple2<String, Set<String>>> expectedTypeStringAndAttributeKeys) {
+
+        final List<SvType> variants = breakpoints.toSimpleOrBNDTypes(b37_reference, b37_seqDict);
+        Assert.assertEquals(variants.size(), expectedTypeStringAndAttributeKeys.size());
+        for (int i = 0; i < variants.size(); ++i) {
+            final SvType variant = variants.get(i);
+            Assert.assertEquals(variant.toString(), expectedTypeStringAndAttributeKeys.get(i)._1);
+            final Set<String> attributeIDs = variant.getTypeSpecificAttributes().keySet();
+            Assert.assertEquals(attributeIDs, expectedTypeStringAndAttributeKeys.get(i)._2);
+        }
+    }
+
+    @DataProvider(name = "forTypeInference")
+    private Object[][] forTypeInference() {
+        final List<Object[]> data = new ArrayList<>(20);
+
+        final Set<String> defaultKeys = Collections.emptySet();
+
+        // simple deletion
+        data.add(new Object[]{forSimpleDeletion_plus.biPathBubble,
+                Collections.singletonList( new Tuple2<>(DEL.name(), defaultKeys) )});
+
+        // simple insertion
+        data.add(new Object[]{forSimpleInsertion_minus.biPathBubble,
+                Collections.singletonList( new Tuple2<>(INS.name(), defaultKeys) )});
+
+        // long range substitution fudged del
+        data.add(new Object[]{forLongRangeSubstitution_fudgedDel_plus.biPathBubble,
+                Collections.singletonList( new Tuple2<>(DEL.name(), defaultKeys) )});
+
+        // long range substitution fat insertion
+        data.add(new Object[]{forLongRangeSubstitution_fatIns_minus.biPathBubble,
+                Collections.singletonList( new Tuple2<>(INS.name(), defaultKeys) )});
+
+        // long range substitution del+ins
+        data.add(new Object[]{forLongRangeSubstitution_DelAndIns_plus.biPathBubble,
+                Arrays.asList( new Tuple2<>(DEL.name(), defaultKeys),
+                               new Tuple2<>(INS.name(), defaultKeys))});
+
+        // simple deletion with homology
+        data.add(new Object[]{forDeletionWithHomology_minus.biPathBubble,
+                Collections.singletonList( new Tuple2<>(DEL.name(), defaultKeys) )});
+
+        // simple tandem dup contraction from 2 units to 1 unit
+        data.add(new Object[]{forSimpleTanDupContraction_plus.biPathBubble,
+                Collections.singletonList( new Tuple2<>(DEL.name(), ImmutableSet.of(DUP_TAN_CONTRACTION_STRING)) )});
+
+        // simple tandem dup expansion from 1 unit to 2 units
+        data.add(new Object[]{forSimpleTanDupExpansion_minus.biPathBubble,
+                Collections.singletonList( new Tuple2<>(DUP.name(), ImmutableSet.of(DUP_TAN_EXPANSION_STRING)) )});
+
+        // simple tandem dup expansion from 1 unit to 2 units and novel insertion
+        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_plus.biPathBubble,
+                Collections.singletonList( new Tuple2<>(DUP.name(), ImmutableSet.of(DUP_TAN_EXPANSION_STRING)) )});
+
+        // tandem dup expansion from 1 unit to 2 units with pseudo-homology
+        data.add(new Object[]{forComplexTanDup_1to2_pseudoHom_minus.biPathBubble,
+                Collections.singletonList( new Tuple2<>(DUP.name(), ImmutableSet.of(DUP_TAN_EXPANSION_STRING)) )});
+
+        // tandem dup contraction from 2 units to 1 unit with pseudo-homology
+        data.add(new Object[]{forComplexTanDup_2to1_pseudoHom_plus.biPathBubble,
+                Collections.singletonList( new Tuple2<>(DEL.name(), ImmutableSet.of(DUP_TAN_CONTRACTION_STRING)) )});
+
+        // tandem dup contraction from 3 units to 2 units
+        data.add(new Object[]{forComplexTanDup_3to2_noPseudoHom_minus.biPathBubble,
+                Collections.singletonList( new Tuple2<>(DEL.name(), ImmutableSet.of(DUP_TAN_CONTRACTION_STRING)) )});
+
+        // tandem dup expansion from 2 units to 3 units
+        data.add(new Object[]{forComplexTanDup_2to3_noPseudoHom_plus.biPathBubble,
+                Collections.singletonList( new Tuple2<>(DUP.name(), ImmutableSet.of(DUP_TAN_EXPANSION_STRING)) )});
+
+        return data.toArray(new Object[data.size()][]);
     }
 }
