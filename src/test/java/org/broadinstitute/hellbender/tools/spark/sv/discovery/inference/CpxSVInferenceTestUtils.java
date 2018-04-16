@@ -151,7 +151,7 @@ public final class CpxSVInferenceTestUtils extends GATKBaseTest {
                 .id("CPX_chr2:4452298-4452406")
                 .attribute(VCFConstants.END_KEY, 4452406)
                 .attribute(SVTYPE, GATKSVVCFConstants.CPX_SV_SYB_ALT_ALLELE_STR)
-                .attribute(SVLEN, 109)
+                .attribute(SVLEN, 783)
                 .attribute(SEQ_ALT_HAPLOTYPE, new String(manuallyCalculatedAltSeq));
         variantContextBuilder.attribute(CPX_EVENT_ALT_ARRANGEMENTS,
                 String.join(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR, manuallyCalculatedAltArrangementDescription));
@@ -233,7 +233,7 @@ public final class CpxSVInferenceTestUtils extends GATKBaseTest {
                 .id("CPX_chr2:16225125-16225237")
                 .attribute(VCFConstants.END_KEY, 16225237)
                 .attribute(SVTYPE, GATKSVVCFConstants.CPX_SV_SYB_ALT_ALLELE_STR)
-                .attribute(SVLEN, 113)
+                .attribute(SVLEN, 392)
                 .attribute(SEQ_ALT_HAPLOTYPE, new String(manuallyCalculatedAltSeq));
         variantContextBuilder.attribute(CPX_EVENT_ALT_ARRANGEMENTS,
                 String.join(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR, manuallyCalculatedAltArrangementDescription));
@@ -332,7 +332,7 @@ public final class CpxSVInferenceTestUtils extends GATKBaseTest {
                 .id("CPX_chrX:30793441-30796247")
                 .attribute(VCFConstants.END_KEY, 30796247)
                 .attribute(SVTYPE, GATKSVVCFConstants.CPX_SV_SYB_ALT_ALLELE_STR)
-                .attribute(SVLEN, 2807)
+                .attribute(SVLEN, 941)
                 .attribute(SEQ_ALT_HAPLOTYPE, new String(manuallyCalculatedAltSeq));
         variantContextBuilder.attribute(CPX_EVENT_ALT_ARRANGEMENTS,
                 String.join(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR, manuallyCalculatedAltArrangementDescription));
@@ -425,7 +425,7 @@ public final class CpxSVInferenceTestUtils extends GATKBaseTest {
                 .id("CPX_chr9:130954964-130955309")
                 .attribute(VCFConstants.END_KEY, 130955309)
                 .attribute(SVTYPE, GATKSVVCFConstants.CPX_SV_SYB_ALT_ALLELE_STR)
-                .attribute(SVLEN, 346)
+                .attribute(SVLEN, 774)
                 .attribute(SEQ_ALT_HAPLOTYPE, new String(manuallyCalculatedAltSeq));
         variantContextBuilder.attribute(CPX_EVENT_ALT_ARRANGEMENTS,
                 String.join(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR, manuallyCalculatedAltArrangementDescription));

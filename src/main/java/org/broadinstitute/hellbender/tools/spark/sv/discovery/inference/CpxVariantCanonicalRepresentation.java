@@ -382,7 +382,7 @@ final class CpxVariantCanonicalRepresentation {
     @VisibleForTesting
     VariantContextBuilder toVariantContext(final byte[] refBases) {
 
-        final CpxVariantType cpxVariant = new CpxVariantType(affectedRefRegion, typeSpecificExtraAttributes());
+        final CpxVariantType cpxVariant = new CpxVariantType(affectedRefRegion, altSeq.length, typeSpecificExtraAttributes());
 
         final VariantContextBuilder vcBuilder = new VariantContextBuilder()
                 .chr(affectedRefRegion.getContig()).start(affectedRefRegion.getStart()).stop(affectedRefRegion.getEnd())
