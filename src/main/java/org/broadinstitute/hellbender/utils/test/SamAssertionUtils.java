@@ -420,7 +420,8 @@ public final class SamAssertionUtils {
 
     /**
      * Validate/assert that the contents are CRAM if the extension is .cram
-     */    public static void assertCRAMContentsIfCRAM(final Path putativeCRAMPath) {
+     */
+    public static void assertCRAMContentsIfCRAM(final Path putativeCRAMPath) {
         if (IOUtils.isCramFile(putativeCRAMPath)) {
             assertCRAMContents(putativeCRAMPath);
         }

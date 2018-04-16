@@ -527,6 +527,9 @@ public final class Utils {
     /**
      * Calculates the MD5 for the specified file and returns it as a String
      *
+     * Warning: this loads the whole file into memory, so it's not suitable
+     * for large files.
+     *
      * @param file file whose MD5 to calculate
      * @return file's MD5 in String form
      * @throws IOException if the file could not be read
@@ -537,6 +540,9 @@ public final class Utils {
 
     /**
      * Calculates the MD5 for the specified file and returns it as a String
+     *
+     * Warning: this loads the whole file into memory, so it's not suitable
+     * for large files.
      *
      * @param path file whose MD5 to calculate
      * @return file's MD5 in String form

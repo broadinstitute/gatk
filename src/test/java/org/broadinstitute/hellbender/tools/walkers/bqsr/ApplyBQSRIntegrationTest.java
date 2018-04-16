@@ -86,6 +86,16 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
         return tests.toArray(new Object[][]{});
     }
 
+    @DataProvider(name = "MiniApplyBQSRTest")
+    public Object[][] createMiniABQSRTestData() {
+        List<Object[]> tests = new ArrayList<>();
+
+        //Note: these outputs were created using GATK3
+        tests.add(new Object[]{new ABQSRTest(hiSeqBam, null, ".bam", null, resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate.recalibrated.DIQ.bam")});
+
+        return tests.toArray(new Object[][]{});
+    }
+
     @Test(dataProvider = "ApplyBQSRTest")
     public void testApplyBQSRFile(ABQSRTest params) throws IOException {
         File outFile = GATKBaseTest.createTempFile("applyBQSRTest", params.outputExtension);
@@ -112,7 +122,7 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test(dataProvider = "ApplyBQSRTest")
+    @Test(dataProvider = "MiniApplyBQSRTest")
     public void testApplyBQSRPath(ABQSRTest params) throws IOException {
         try (FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
             final Path outPath = jimfs.getPath("applyBQSRTest"+params.outputExtension);
@@ -140,38 +150,33 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test(dataProvider = "ApplyBQSRTest", groups={"cloud", "bucket"})
+    @Test(dataProvider = "ApplyBQSRTest", groups={"bucket"})
     public void testApplyBQSRCloud(ABQSRTest params) throws IOException {
+        // getTempFilePath also deletes the file on exit.
         final String outString = BucketUtils.getTempFilePath(getGCPTestStaging() + "tmp/testApplyBQSRCloud",  params.outputExtension);
         final Path outPath = BucketUtils.getPathOnGcs(outString);
-        try {
-            final ArrayList<String> args = new ArrayList<>();
-            Path refPath = null;
+        final ArrayList<String> args = new ArrayList<>();
+        Path refPath = null;
 
-            args.add("-I");
-            args.add(new File(params.bam).getAbsolutePath());
-            args.add("--" + StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME);
-            args.add(new File(resourceDir + "HiSeq.20mb.1RG.table.gz").getAbsolutePath());
-            args.add("-O");
-            args.add(outString);
-            if (params.reference != null) {
-                File refFile = new File(params.reference);
-                args.add("-R");
-                args.add(refFile.getAbsolutePath());
-                refPath = refFile.toPath();
-            }
-            if (params.args != null) {
-                Stream.of(params.args).forEach(arg -> args.add(arg));
-            }
-
-            runCommandLine(args);
-
-            SamAssertionUtils.assertSamsEqual(outPath, new File(params.expectedFile).toPath(), refPath);
-        } finally {
-            if (Files.exists(outPath)) {
-                Files.delete(outPath);
-            }
+        args.add("-I");
+        args.add(new File(params.bam).getAbsolutePath());
+        args.add("--" + StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME);
+        args.add(new File(resourceDir + "HiSeq.20mb.1RG.table.gz").getAbsolutePath());
+        args.add("-O");
+        args.add(outString);
+        if (params.reference != null) {
+            File refFile = new File(params.reference);
+            args.add("-R");
+            args.add(refFile.getAbsolutePath());
+            refPath = refFile.toPath();
         }
+        if (params.args != null) {
+            Stream.of(params.args).forEach(arg -> args.add(arg));
+        }
+
+        runCommandLine(args);
+
+        SamAssertionUtils.assertSamsEqual(outPath, new File(params.expectedFile).toPath(), refPath);
     }
 
     @Test
