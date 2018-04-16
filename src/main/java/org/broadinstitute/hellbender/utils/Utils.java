@@ -5,6 +5,9 @@ import com.google.common.collect.Iterators;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.tribble.util.ParsingUtils;
+import java.io.FileNotFoundException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -524,12 +527,40 @@ public final class Utils {
     /**
      * Calculates the MD5 for the specified file and returns it as a String
      *
+     * Warning: this loads the whole file into memory, so it's not suitable
+     * for large files.
+     *
      * @param file file whose MD5 to calculate
      * @return file's MD5 in String form
      * @throws IOException if the file could not be read
      */
     public static String calculateFileMD5( final File file ) throws IOException{
-        return Utils.calcMD5(FileUtils.readFileToByteArray(file));
+        return calculatePathMD5(file.toPath());
+    }
+
+    /**
+     * Calculates the MD5 for the specified file and returns it as a String
+     *
+     * Warning: this loads the whole file into memory, so it's not suitable
+     * for large files.
+     *
+     * @param path file whose MD5 to calculate
+     * @return file's MD5 in String form
+     * @throws IOException if the file could not be read
+     */
+    public static String calculatePathMD5(final Path path) throws IOException{
+        // This doesn't have as nice error messages as FileUtils, but it's close.
+        String fname = path.toUri().toString();
+        if (!Files.exists(path)) {
+            throw new FileNotFoundException("File '" + fname + "' does not exist");
+        }
+        if (Files.isDirectory(path)) {
+            throw new IOException("File '" + fname + "' exists but is a directory");
+        }
+        if (!Files.isRegularFile(path)) {
+            throw new IOException("File '" + fname + "' exists but is not a regular file");
+        }
+        return Utils.calcMD5(Files.readAllBytes(path));
     }
 
     /**
