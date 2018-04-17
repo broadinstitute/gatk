@@ -22,10 +22,7 @@ import org.testng.annotations.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.*;
@@ -67,7 +64,7 @@ public class CpxVariantCanonicalRepresentationUnitTest extends GATKBaseTest {
         final CpxVariantInducingAssemblyContig analysisReadyContig = new CpxVariantInducingAssemblyContig(preprocessedTig, CpxSVInferenceTestUtils.bareBoneHg38SAMSeqDict);
         final SimpleInterval manuallyCalculatedAffectedRefRegion = new SimpleInterval("chr1", 14492666, 14492666);
         final byte[] manuallyCalculatedAltSeq = Arrays.copyOfRange(alignedContig.getContigSequence(), 1275, 1685);
-        final List<String> manuallyCalculatedAltArrangements = Arrays.asList("1", "UINS-61", "-chr4:8687087-8687132", "UINS-299", "1");
+        final List<String> manuallyCalculatedAltArrangements = Arrays.asList("1", "UINS-62", "-chr4:8687087-8687132", "UINS-300", "1");
         final List<SimpleInterval> manuallyCalculatedSegments = Collections.singletonList(manuallyCalculatedAffectedRefRegion);
 
         final CpxVariantCanonicalRepresentation cpxVariantCanonicalRepresentation = new CpxVariantCanonicalRepresentation(analysisReadyContig);
@@ -123,7 +120,8 @@ public class CpxVariantCanonicalRepresentationUnitTest extends GATKBaseTest {
         for (final CpxSVInferenceTestUtils.PreprocessedAndAnalysisReadyContigWithExpectedResults x : CpxSVInferenceTestUtils.PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS) {
             data.add(new Object[]{x.expectedCpxVariantInducingAssemblyContig.getBasicInfo(),
                                   x.expectedCpxVariantInducingAssemblyContig.getEventPrimaryChromosomeSegmentingLocations(),
-                                  x.expectedCpxVariantCanonicalRepresentation.getReferenceSegments()
+                                  x.expectedCpxVariantCanonicalRepresentation.getReferenceSegments(),
+                                  x.expectedCpxVariantInducingAssemblyContig.getTwoBaseBoundaries()
             });
         }
         return data.toArray(new Object[data.size()][]);
@@ -132,8 +130,9 @@ public class CpxVariantCanonicalRepresentationUnitTest extends GATKBaseTest {
     @Test(groups = "sv", dataProvider = "forExtractRefSegments")
     public void testExtractRefSegments(final CpxVariantInducingAssemblyContig.BasicInfo basicInfo,
                                        final List<SimpleInterval> segmentingLocations,
-                                       final List<SimpleInterval> expectedResult) {
-        Assert.assertEquals(CpxVariantCanonicalRepresentation.extractRefSegments(basicInfo, segmentingLocations), expectedResult);
+                                       final List<SimpleInterval> expectedResult,
+                                       final Set<SimpleInterval> twoBaseBoundaries) {
+        Assert.assertEquals(CpxVariantCanonicalRepresentation.extractRefSegments(basicInfo, segmentingLocations, twoBaseBoundaries), expectedResult);
     }
 
     @DataProvider(name = "forExtractAltArrangements")
@@ -143,7 +142,7 @@ public class CpxVariantCanonicalRepresentationUnitTest extends GATKBaseTest {
             final CpxVariantInducingAssemblyContig cpxVariantInducingAssemblyContig = x.expectedCpxVariantInducingAssemblyContig;
             final CpxVariantInducingAssemblyContig.BasicInfo basicInfo = cpxVariantInducingAssemblyContig.getBasicInfo();
             final List<SimpleInterval> eventPrimaryChromosomeSegmentingLocations = cpxVariantInducingAssemblyContig.getEventPrimaryChromosomeSegmentingLocations();
-            final List<SimpleInterval> segments = CpxVariantCanonicalRepresentation.extractRefSegments(basicInfo, eventPrimaryChromosomeSegmentingLocations);
+            final List<SimpleInterval> segments = CpxVariantCanonicalRepresentation.extractRefSegments(basicInfo, eventPrimaryChromosomeSegmentingLocations, cpxVariantInducingAssemblyContig.getTwoBaseBoundaries());
             data.add(new Object[]{basicInfo,
                                   cpxVariantInducingAssemblyContig.getPreprocessedTig().getAlignments(),
                                   cpxVariantInducingAssemblyContig.getJumps(),
@@ -171,7 +170,7 @@ public class CpxVariantCanonicalRepresentationUnitTest extends GATKBaseTest {
             final CpxVariantInducingAssemblyContig cpxVariantInducingAssemblyContig = x.expectedCpxVariantInducingAssemblyContig;
             final CpxVariantInducingAssemblyContig.BasicInfo basicInfo = cpxVariantInducingAssemblyContig.getBasicInfo();
             final List<SimpleInterval> eventPrimaryChromosomeSegmentingLocations = cpxVariantInducingAssemblyContig.getEventPrimaryChromosomeSegmentingLocations();
-            final List<SimpleInterval> segments = CpxVariantCanonicalRepresentation.extractRefSegments(basicInfo, eventPrimaryChromosomeSegmentingLocations);
+            final List<SimpleInterval> segments = CpxVariantCanonicalRepresentation.extractRefSegments(basicInfo, eventPrimaryChromosomeSegmentingLocations, cpxVariantInducingAssemblyContig.getTwoBaseBoundaries());
 
             data.add(new Object[]{cpxVariantInducingAssemblyContig.getPreprocessedTig(),
                                   segments,

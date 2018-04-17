@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSw
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import scala.Tuple2;
 
 import javax.annotation.Nonnull;
 import java.util.*;
@@ -70,7 +71,7 @@ final class CpxVariantInducingAssemblyContig {
     private final AssemblyContigWithFineTunedAlignments contigWithFineTunedAlignments;
     private final BasicInfo basicInfo;
     private final List<Jump> jumps;
-    private final List<SimpleInterval> eventPrimaryChromosomeSegmentingLocations;
+    private final List<SimpleInterval> eventPrimaryChromosomeSegmentingLocations;  // a list of 1bp "point" locations that will be used to segment the affected reference region
 
     @VisibleForTesting
     CpxVariantInducingAssemblyContig(final AssemblyContigWithFineTunedAlignments contigWithFineTunedAlignments,
@@ -177,6 +178,31 @@ final class CpxVariantInducingAssemblyContig {
         return jumps;
     }
     List<SimpleInterval> getEventPrimaryChromosomeSegmentingLocations() { return eventPrimaryChromosomeSegmentingLocations;}
+
+    /**
+     * @return two-base boundaries of contig alignments that are in the valid region, i.e. [alpha, omega]
+     */
+    @VisibleForTesting
+    Set<SimpleInterval> getTwoBaseBoundaries() {
+        // only look at alignments that are not disjoint from [alpha, omega]
+        final SimpleInterval validRegion = new SimpleInterval(basicInfo.eventPrimaryChromosome, basicInfo.alpha.getStart(), basicInfo.omega.getEnd());
+
+        final String chr = basicInfo.eventPrimaryChromosome;
+
+        final Set<SimpleInterval> result = new HashSet<>(2 * contigWithFineTunedAlignments.getAlignments().size());
+        for (final AlignmentInterval aln : contigWithFineTunedAlignments.getAlignments()) {
+            final SimpleInterval referenceSpan = aln.referenceSpan;
+            if (!validRegion.contains(referenceSpan))
+                continue;
+
+            final SimpleInterval left = new SimpleInterval(chr, referenceSpan.getStart(), referenceSpan.getStart()+1);
+            final SimpleInterval right = new SimpleInterval(chr, referenceSpan.getEnd()-1, referenceSpan.getEnd());
+            result.add(left);
+            result.add(right);
+        }
+
+        return result;
+    }
 
     @Override
     public String toString() {
@@ -429,7 +455,7 @@ final class CpxVariantInducingAssemblyContig {
                 default: throw new NoSuchElementException("seeing a strand switch that doesn't make sense");
             }
 
-            gapSize = Math.max(0, two.startInAssembledContig - one.endInAssembledContig - 2); // -2 because we want bases in-between
+            gapSize = Math.max(0, two.startInAssembledContig - one.endInAssembledContig - 1); // -1 because we want bases in-between
         }
 
         boolean isGapped() {
