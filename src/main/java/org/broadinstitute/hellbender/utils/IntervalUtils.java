@@ -1516,4 +1516,75 @@ public final class IntervalUtils {
     public enum IntervalBreakpointType {
         START_BREAKPOINT, END_BREAKPOINT
     }
+
+    /**
+     * Creates a {@link SimpleInterval} on a coordinate from the provided sequence dictionary.
+     *
+     * @param dictionary reference dictionary.
+     * @param contig     the new location contig name.
+     * @param start      the new location start base index.
+     * @param stop       the new location stop base index.
+     *
+     * @return never {@code null}.
+     */
+    public static SimpleInterval createInterval(final SAMSequenceDictionary dictionary, final String contig, final int start, final int stop) {
+        Utils.nonNull(dictionary, "dictionary is null");
+        if (!SimpleInterval.isValid(contig, start, stop)) {
+            throw new IllegalArgumentException(String.format("Invalid coordinate: %s:%s-%s", contig, start, stop));
+        }
+        final int contigIndex = dictionary.getSequenceIndex(contig);
+        if (contigIndex == -1) {
+            throw new IllegalArgumentException(String.format("Invalid coordinate: %s:%s-%s (contig not in dictionary)", contig, start, stop));
+        }
+        final SAMSequenceRecord record = dictionary.getSequence(contigIndex);
+        if (record.getSequenceLength() < stop) {
+            throw new IllegalArgumentException(String.format("Invalid coordinate: %s:%s-%s (stop after sequence length %s)", contig, start, stop, record.getSequenceLength()));
+        }
+        return new SimpleInterval(dictionary.getSequence(contigIndex).getSequenceName(), start, stop);
+    }
+
+    /**
+     * Creates a {@link SimpleInterval} on an entire contig from the provided sequence dictionary
+     *
+     * @param dictionary  reference dictionary.
+     * @param contigIndex the new location contig index.
+     * @return never {@code null}.
+     */
+    public static SimpleInterval createOverEntireContig(final SAMSequenceDictionary dictionary, final int contigIndex) {
+        Utils.nonNull(dictionary, "dictionary is null");
+        Utils.validIndex(contigIndex, dictionary.size());
+        final SAMSequenceRecord record = dictionary.getSequence(contigIndex);
+        return new SimpleInterval(record.getSequenceName(), 1, record.getSequenceLength());
+    }
+
+    /**
+     * Creates a {@link SimpleInterval} on an entire contig from the provided sequence dictionary
+     *
+     * @param dictionary reference dictionary.
+     * @param contig     the new location contig.
+     *
+     * @return never {@code null}.
+     */
+    public static SimpleInterval createOverEntireContig(final SAMSequenceDictionary dictionary, final String contig) {
+        Utils.nonNull(dictionary, "dictionary is null");
+        Utils.nonNull(contig, "contig is null");
+        final int contigIndex = dictionary.getSequenceIndex(contig);
+        if (contigIndex == -1) {
+            throw new IllegalArgumentException("Contig not in dictionary: " + contig);
+        }
+        return createOverEntireContig(dictionary, contigIndex);
+    }
+
+    /**
+     * Creates a {@link SimpleInterval} on a position from the provided sequence dictionary.
+     *
+     * @param dictionary reference dictionary.
+     * @param contig the contig name.
+     * @param start the start and stop position.
+     *
+     * @return never {@code null}.
+     */
+    public static SimpleInterval createInterval(final SAMSequenceDictionary dictionary, final String contig, final int start) {
+        return createInterval(dictionary, contig, start, start);
+    }
 }
