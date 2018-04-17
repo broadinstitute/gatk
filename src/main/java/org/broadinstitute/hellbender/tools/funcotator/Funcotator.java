@@ -177,7 +177,7 @@ import java.util.stream.Stream;
  *   ./gatk Funcotator \
  *   -R reference.fasta \
  *   -V input.vcf \
- *   -O output.vcf \
+ *   -O outputFile \
  *   --output-file-format MAF \
  *   --data-sources-path dataSourcesFolder/ \
  *   --ref-version hg19
