@@ -25,7 +25,9 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -87,14 +89,35 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
     @Test(dataProvider = "loadReadsBAM", groups = "spark")
     public void readsSinkTest(String inputBam, String outputFileName, String referenceFile, String outputFileExtension) throws IOException {
         final File outputFile = createTempFile(outputFileName, outputFileExtension);
-        assertSingleShardedWritingWorks(inputBam, referenceFile, outputFile.getAbsolutePath());
+        assertSingleShardedWritingWorks(inputBam, referenceFile, outputFile.getAbsolutePath(), null);
+    }
+
+    @Test(dataProvider = "loadReadsBAM", groups = "spark")
+    public void outputDirectoryTest(String inputBam, String outputFileName, String referenceFile, String outputFileExtension) throws IOException {
+        final File outputFile = createTempFile(outputFileName, outputFileExtension);
+        final File outputDir = createTempDir(outputFileName + ".someOtherPlace");
+
+        // Make a directory with unusable permissions in place of where the default file will live
+        final File defaultDir = new File(outputFile.getAbsolutePath() + ".parts/");
+        defaultDir.mkdir();
+        BufferedWriter testfile = new BufferedWriter(new FileWriter(defaultDir.getAbsolutePath() + "/test.txt"));
+        testfile.write("test");
+        testfile.close();
+        Runtime.getRuntime().exec("chmod a-w -R " + defaultDir.getAbsolutePath()+"/");
+
+        assertSingleShardedWritingWorks(inputBam, referenceFile, outputFile.getAbsolutePath(), outputDir.getAbsolutePath());
+
+        // Test that the file wasn't deleted when spark cleared its temp directory
+        Assert.assertEquals(new File(defaultDir.getAbsolutePath() + "/test.txt").exists(), true);
+        // Remove the file this time
+        Runtime.getRuntime().exec("rm -r " + outputFile.getAbsolutePath() + ".parts");
     }
 
     @Test(dataProvider = "loadReadsBAM", groups = "spark")
     public void readsSinkHDFSTest(String inputBam, String outputFileName, String referenceFileName, String outputFileExtension) throws IOException {
         final String outputHDFSPath = MiniClusterUtils.getTempPath(cluster, outputFileName, outputFileExtension).toString();
         Assert.assertTrue(BucketUtils.isHadoopUrl(outputHDFSPath));
-        assertSingleShardedWritingWorks(inputBam, referenceFileName, outputHDFSPath);
+        assertSingleShardedWritingWorks(inputBam, referenceFileName, outputHDFSPath, null);
     }
 
     @Test(dataProvider = "loadReadsBAM", groups = "spark")
@@ -103,24 +126,24 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
         final FileSystem fs = outputPath.getFileSystem(new Configuration());
         Assert.assertTrue(fs.createNewFile(outputPath));
         Assert.assertTrue(fs.exists(outputPath));
-        assertSingleShardedWritingWorks(inputBam, referenceFileName, outputPath.toString());
+        assertSingleShardedWritingWorks(inputBam, referenceFileName, outputPath.toString(), null);
     }
 
     @Test(groups = "spark")
     public void testWritingToFileURL() throws IOException {
         String inputBam = testDataDir + "tools/BQSR/HiSeq.1mb.1RG.2k_lines.bam";
         String outputUrl = "file:///" + createTempFile("ReadsSparkSinkUnitTest1", ".bam").getAbsolutePath();
-        assertSingleShardedWritingWorks(inputBam, null, outputUrl);
+        assertSingleShardedWritingWorks(inputBam, null, outputUrl, null);
     }
 
-    private void assertSingleShardedWritingWorks(String inputBam, String referenceFile, String outputPath) throws IOException {
+    private void assertSingleShardedWritingWorks(String inputBam, String referenceFile, String outputPath, String outputPartsPath) throws IOException {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
         JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam, referenceFile);
         SAMFileHeader header = readSource.getHeader(inputBam, referenceFile);
 
-        ReadsSparkSink.writeReads(ctx, outputPath, referenceFile, rddParallelReads, header, ReadsWriteFormat.SINGLE);
+        ReadsSparkSink.writeReads(ctx, outputPath, referenceFile, rddParallelReads, header, ReadsWriteFormat.SINGLE, 0, outputPartsPath);
 
         // check that a splitting bai file is created
         if (IOUtils.isBamFileName(outputPath)) {

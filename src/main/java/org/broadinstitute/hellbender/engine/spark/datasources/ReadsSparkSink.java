@@ -122,7 +122,7 @@ public final class ReadsSparkSink {
     public static void writeReads(
             final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<GATKRead> reads,
             final SAMFileHeader header, ReadsWriteFormat format) throws IOException {
-        writeReads(ctx, outputFile, referenceFile, reads, header, format, 0);
+        writeReads(ctx, outputFile, referenceFile, reads, header, format, 0, null);
     }
 
     /**
@@ -138,7 +138,7 @@ public final class ReadsSparkSink {
      */
     public static void writeReads(
             final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<GATKRead> reads,
-            final SAMFileHeader header, ReadsWriteFormat format, final int numReducers) throws IOException {
+            final SAMFileHeader header, ReadsWriteFormat format, final int numReducers, final String outputPartsDir) throws IOException {
 
         SAMFormat samOutputFormat = IOUtils.isCramFileName(outputFile) ? SAMFormat.CRAM : SAMFormat.BAM;
 
@@ -155,7 +155,7 @@ public final class ReadsSparkSink {
         final JavaRDD<SAMRecord> samReads = reads.map(read -> read.convertToSAMRecord(null));
 
         if (format == ReadsWriteFormat.SINGLE) {
-            writeReadsSingle(ctx, absoluteOutputFile, absoluteReferenceFile, samOutputFormat, samReads, header, numReducers);
+            writeReadsSingle(ctx, absoluteOutputFile, absoluteReferenceFile, samOutputFormat, samReads, header, numReducers, outputPartsDir);
         } else if (format == ReadsWriteFormat.SHARDED) {
             saveAsShardedHadoopFiles(ctx, absoluteOutputFile, absoluteReferenceFile, samOutputFormat, samReads, header, true);
         } else if (format == ReadsWriteFormat.ADAM) {
@@ -228,10 +228,10 @@ public final class ReadsSparkSink {
 
     private static void writeReadsSingle(
             final JavaSparkContext ctx, final String outputFile, final String referenceFile, final SAMFormat samOutputFormat, final JavaRDD<SAMRecord> reads,
-            final SAMFileHeader header, final int numReducers) throws IOException {
+            final SAMFileHeader header, final int numReducers, final String outputPartsDir) throws IOException {
 
         final JavaRDD<SAMRecord> sortedReads = SparkUtils.sortReads(reads, header, numReducers);
-        final String outputPartsDirectory = outputFile + ".parts/";
+        final String outputPartsDirectory = outputPartsDir==null?outputFile + ".parts/":outputPartsDir;
         saveAsShardedHadoopFiles(ctx, outputPartsDirectory, referenceFile, samOutputFormat, sortedReads,  header, false);
         logger.info("Finished sorting the bam file and dumping read shards to disk, proceeding to merge the shards into a single file using the master thread");
         SAMFileMerger.mergeParts(outputPartsDirectory, outputFile, samOutputFormat, header);
