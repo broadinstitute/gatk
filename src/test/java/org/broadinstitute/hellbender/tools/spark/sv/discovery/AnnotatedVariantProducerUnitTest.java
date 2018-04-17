@@ -109,10 +109,10 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
         data.add(new Object[]{forSimpleTanDupContraction_minus, new String[]{"60"}, new String[]{String.valueOf(40)}});
 
         // simple tandem dup expansion from 1 unit to 2 units
-        data.add(new Object[]{forSimpleTanDupExpansion_plus, new String[]{"60"}, new String[]{String.valueOf(50)}});
+        data.add(new Object[]{forSimpleTanDupExpansion_ins_plus, new String[]{"60"}, new String[]{String.valueOf(50)}});
 
         // simple tandem dup expansion from 1 unit to 2 units and novel insertion
-        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_minus, new String[]{"60"}, new String[]{String.valueOf(137)}});
+        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_dup_minus, new String[]{"60"}, new String[]{String.valueOf(137)}});
 
         // tandem dup expansion from 1 unit to 2 units with pseudo-homology
         data.add(new Object[]{forComplexTanDup_1to2_pseudoHom_plus, new String[]{"60"}, new String[]{String.valueOf(127)}});
@@ -206,12 +206,12 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
                 broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // simple tandem dup expansion from 1 unit to 2 units
-        data.add(new Object[]{forSimpleTanDupExpansion_plus,
+        data.add(new Object[]{forSimpleTanDupExpansion_ins_plus,
                 Stream.concat( commonAttributes.stream(), Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUP_SEQ_CIGARS, DUPLICATION_NUMBERS, DUP_ORIENTATIONS).stream()).sorted().collect(Collectors.toList()),
                 broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 
         // simple tandem dup expansion from 1 unit to 2 units and novel insertion
-        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_minus,
+        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_dup_minus,
                 Stream.concat( commonAttributes.stream(), Sets.newHashSet(DUP_TAN_EXPANSION_STRING, DUP_REPEAT_UNIT_REF_SPAN, DUP_SEQ_CIGARS, DUPLICATION_NUMBERS, DUP_ORIENTATIONS, INSERTED_SEQUENCE, INSERTED_SEQUENCE_LENGTH).stream()).sorted().collect(Collectors.toList()),
                 broadcastCNVCalls, referenceBroadcast, refSeqDictBroadcast});
 

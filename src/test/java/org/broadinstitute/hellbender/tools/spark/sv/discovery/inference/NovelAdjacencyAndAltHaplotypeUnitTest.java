@@ -327,8 +327,8 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
     @Test(groups = "sv")
     public void testGetBreakpoints_tandemDuplication_expansion_simple() {
 
-        final NovelAdjacencyAndAltHaplotype breakpoints = forSimpleTanDupExpansion_plus.biPathBubble;
-        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = forSimpleTanDupExpansion_minus.biPathBubble;
+        final NovelAdjacencyAndAltHaplotype breakpoints = forSimpleTanDupExpansion_ins_plus.biPathBubble;
+        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = forSimpleTanDupExpansion_ins_minus.biPathBubble;
 
         seeIfItWorksForNonSimpleTranslocations(breakpoints, StrandSwitch.NO_SWITCH, new SimpleInterval("21", 100040, 100040), new SimpleInterval("21", 100040, 100040),
                 new SimpleInterval("21", 100041, 100050),
@@ -348,8 +348,8 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
         final String dup = "AAAAGTAAATGTTATAAGAAATCTTAAGTATTATTTTCTTATGTTTCTAGCCTAATAAAGTGCTTTTATTAAAGCACTTTATTTAAAGG";    //89
         final String alt = dup + insertedSeq + dup;
 
-        final NovelAdjacencyAndAltHaplotype breakpoints = forSimpleTanDupExpansionWithNovelIns_plus.biPathBubble;
-        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = forSimpleTanDupExpansionWithNovelIns_minus.biPathBubble;
+        final NovelAdjacencyAndAltHaplotype breakpoints = forSimpleTanDupExpansionWithNovelIns_dup_plus.biPathBubble;
+        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = forSimpleTanDupExpansionWithNovelIns_dup_minus.biPathBubble;
 
         seeIfItWorksForNonSimpleTranslocations(breakpoints, StrandSwitch.NO_SWITCH, new SimpleInterval("21", 25297163, 25297163), new SimpleInterval("21", 25297163, 25297163),
                 new SimpleInterval("21", 25297164,25297252),
@@ -562,11 +562,15 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
                 Collections.singletonList( new Tuple2<>(DEL.name(), ImmutableSet.of(DUP_TAN_CONTRACTION_STRING)) )});
 
         // simple tandem dup expansion from 1 unit to 2 units
-        data.add(new Object[]{forSimpleTanDupExpansion_minus.biPathBubble,
+        data.add(new Object[]{forSimpleTanDupExpansion_ins_minus.biPathBubble,
+                Collections.singletonList( new Tuple2<>(INS.name(), defaultKeys) )});
+        data.add(new Object[]{forSimpleTanDupExpansion_dup_minus.biPathBubble,
                 Collections.singletonList( new Tuple2<>(DUP.name(), ImmutableSet.of(DUP_TAN_EXPANSION_STRING)) )});
 
         // simple tandem dup expansion from 1 unit to 2 units and novel insertion
-        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_plus.biPathBubble,
+        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_ins_plus.biPathBubble,
+                Collections.singletonList( new Tuple2<>(INS.name(), defaultKeys) )});
+        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_dup_plus.biPathBubble,
                 Collections.singletonList( new Tuple2<>(DUP.name(), ImmutableSet.of(DUP_TAN_EXPANSION_STRING)) )});
 
         // tandem dup expansion from 1 unit to 2 units with pseudo-homology
@@ -584,6 +588,13 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
         // tandem dup expansion from 2 units to 3 units
         data.add(new Object[]{forComplexTanDup_2to3_noPseudoHom_plus.biPathBubble,
                 Collections.singletonList( new Tuple2<>(DUP.name(), ImmutableSet.of(DUP_TAN_EXPANSION_STRING)) )});
+
+        // short tandem dup expansion from 1 unit to 2 units with pseudo-homology
+        data.add(new Object[]{forComplexTanDup_1to2_short_pseudoHom_plus.biPathBubble,
+                Collections.singletonList( new Tuple2<>(INS.name(), defaultKeys) )});
+        // short tandem dup expansion from 2 units to 3 units
+        data.add(new Object[]{forComplexTanDup_2to3_short_noPseudoHom_minus.biPathBubble,
+                Collections.singletonList( new Tuple2<>(INS.name(), defaultKeys) )});
 
         return data.toArray(new Object[data.size()][]);
     }

@@ -99,10 +99,10 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkUnitTest extends GATKBa
         data.add(new Object[]{forSimpleTanDupContraction_plus.biPathBubble, DEL.name(), ImmutableSet.of(DUP_TAN_CONTRACTION_STRING)});
 
         // simple tandem dup expansion from 1 unit to 2 units
-        data.add(new Object[]{forSimpleTanDupExpansion_minus.biPathBubble, DUP.name(), ImmutableSet.of(DUP_TAN_EXPANSION_STRING)});
+        data.add(new Object[]{forSimpleTanDupExpansion_ins_minus.biPathBubble, DUP.name(), ImmutableSet.of(DUP_TAN_EXPANSION_STRING)});
 
         // simple tandem dup expansion from 1 unit to 2 units and novel insertion
-        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_plus.biPathBubble, DUP.name(), ImmutableSet.of(DUP_TAN_EXPANSION_STRING)});
+        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_dup_plus.biPathBubble, DUP.name(), ImmutableSet.of(DUP_TAN_EXPANSION_STRING)});
 
         // tandem dup expansion from 1 unit to 2 units with pseudo-homology
         data.add(new Object[]{forComplexTanDup_1to2_pseudoHom_minus.biPathBubble, DUP.name(), ImmutableSet.of(DUP_TAN_EXPANSION_STRING)});

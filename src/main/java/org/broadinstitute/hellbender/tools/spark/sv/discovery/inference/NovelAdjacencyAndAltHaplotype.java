@@ -232,10 +232,16 @@ public class NovelAdjacencyAndAltHaplotype {
                 final int svLength = this.getComplication().getInsertedSequenceForwardStrandRep().length();
                 return Collections.singletonList( new SimpleSVType.Insertion(this, svLength) );
             }
-            case SMALL_DUP_EXPANSION: // TODO: 4/16/18 make adjustments based on duplicated size
+            case SMALL_DUP_EXPANSION:
             {
                 final int svLength = getLengthForDupTandem(this);
-                return Collections.singletonList( new SimpleSVType.DuplicationTandem(this, svLength) );
+                final BreakpointComplications.SmallDuplicationWithPreciseDupRangeBreakpointComplications duplicationComplication =
+                        (BreakpointComplications.SmallDuplicationWithPreciseDupRangeBreakpointComplications) this.getComplication();
+                if (duplicationComplication.getDupSeqRepeatUnitRefSpan().size() < 50) {
+                    return Collections.singletonList( new SimpleSVType.Insertion(this, svLength));
+                } else {
+                    return Collections.singletonList( new SimpleSVType.DuplicationTandem(this, svLength) );
+                }
             }
             case DEL_DUP_CONTRACTION:
             {
@@ -244,13 +250,19 @@ public class NovelAdjacencyAndAltHaplotype {
             }
             case SMALL_DUP_CPX:
             {
-                if ( ((BreakpointComplications.SmallDuplicationWithImpreciseDupRangeBreakpointComplications)
-                        this.getComplication()).isDupContraction() ) {
+                final BreakpointComplications.SmallDuplicationWithImpreciseDupRangeBreakpointComplications duplicationComplication =
+                        (BreakpointComplications.SmallDuplicationWithImpreciseDupRangeBreakpointComplications)
+                        this.getComplication();
+                if ( duplicationComplication.isDupContraction() ) {
                     final int svLength = leftJustifiedLeftRefLoc.getEnd() - leftJustifiedRightRefLoc.getStart();
                     return Collections.singletonList( new SimpleSVType.Deletion(this, svLength) );
-                } else { // TODO: 4/16/18 make adjustments based on duplicated size
+                } else {
                     final int svLength = getLengthForDupTandem(this);
-                    return Collections.singletonList( new SimpleSVType.DuplicationTandem(this, svLength) );
+                    if (duplicationComplication.getDupSeqRepeatUnitRefSpan().size() < 50) {
+                        return Collections.singletonList( new SimpleSVType.Insertion(this, svLength));
+                    } else {
+                        return Collections.singletonList( new SimpleSVType.DuplicationTandem(this, svLength) );
+                    }
                 }
             }
             default:

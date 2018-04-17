@@ -94,12 +94,12 @@ public class SimpleSVTypeUnitTest extends GATKBaseTest {
                 DUP_TAN_CONTRACTION_INTERNAL_ID_START_STRING});
 
         // simple tandem dup expansion from 1 unit to 2 units
-        data.add(new Object[]{forSimpleTanDupExpansion_minus.biPathBubble, inferSimpleTypeFromNovelAdjacency(forSimpleTanDupExpansion_minus.biPathBubble),
+        data.add(new Object[]{forSimpleTanDupExpansion_ins_minus.biPathBubble, inferSimpleTypeFromNovelAdjacency(forSimpleTanDupExpansion_ins_minus.biPathBubble),
                 SYMB_ALT_ALLELE_DUP, 10,
                 DUP_TAN_EXPANSION_INTERNAL_ID_START_STRING});
 
         // simple tandem dup expansion from 1 unit to 2 units and novel insertion
-        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_plus.biPathBubble, inferSimpleTypeFromNovelAdjacency(forSimpleTanDupExpansionWithNovelIns_plus.biPathBubble),
+        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_dup_plus.biPathBubble, inferSimpleTypeFromNovelAdjacency(forSimpleTanDupExpansionWithNovelIns_dup_plus.biPathBubble),
                 SYMB_ALT_ALLELE_DUP, 99,
                 DUP_TAN_EXPANSION_INTERNAL_ID_START_STRING});
 
@@ -195,13 +195,23 @@ public class SimpleSVTypeUnitTest extends GATKBaseTest {
                 SYMB_ALT_ALLELE_DEL, -10,
                 DUP_TAN_CONTRACTION_INTERNAL_ID_START_STRING});
 
-        // simple tandem dup expansion from 1 unit to 2 units
-        data.add(new Object[]{forSimpleTanDupExpansion_minus.biPathBubble, forSimpleTanDupExpansion_minus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
-                SYMB_ALT_ALLELE_DUP, 10,
+        // simple tandem dup expansion from 1 unit to 2 units that will be called as insertion
+        data.add(new Object[]{forSimpleTanDupExpansion_ins_minus.biPathBubble, forSimpleTanDupExpansion_ins_minus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
+                SYMB_ALT_ALLELE_INS, 10,
+                SimpleSVType.TYPES.INS.name()});
+
+        // simple tandem dup expansion from 1 unit to 2 units that will be called as duplication
+        data.add(new Object[]{forSimpleTanDupExpansion_dup_minus.biPathBubble, forSimpleTanDupExpansion_dup_minus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
+                SYMB_ALT_ALLELE_DUP, 55,
                 DUP_TAN_EXPANSION_INTERNAL_ID_START_STRING});
 
-        // simple tandem dup expansion from 1 unit to 2 units and novel insertion
-        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_plus.biPathBubble, forSimpleTanDupExpansionWithNovelIns_plus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
+        // simple tandem dup expansion from 1 unit to 2 units and novel insertion that will be called as insertion
+        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_ins_plus.biPathBubble, forSimpleTanDupExpansionWithNovelIns_ins_plus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
+                SYMB_ALT_ALLELE_INS, 326,
+                SimpleSVType.TYPES.INS.name()});
+
+        // simple tandem dup expansion from 1 unit to 2 units and novel insertion that will be called as duplication
+        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_dup_plus.biPathBubble, forSimpleTanDupExpansionWithNovelIns_dup_plus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
                 SYMB_ALT_ALLELE_DUP, 99,
                 DUP_TAN_EXPANSION_INTERNAL_ID_START_STRING});
 
@@ -225,6 +235,15 @@ public class SimpleSVTypeUnitTest extends GATKBaseTest {
         data.add(new Object[]{forComplexTanDup_2to3_noPseudoHom_plus.biPathBubble, forComplexTanDup_2to3_noPseudoHom_plus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
                 SYMB_ALT_ALLELE_DUP, 96,
                 DUP_TAN_EXPANSION_INTERNAL_ID_START_STRING});
+
+        // short tandem dup expansion from 1 unit to 2 units with pseudo-homology
+        data.add(new Object[]{forComplexTanDup_1to2_short_pseudoHom_plus.biPathBubble, forComplexTanDup_1to2_short_pseudoHom_plus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
+                SYMB_ALT_ALLELE_INS, 42,
+                SimpleSVType.TYPES.INS.name()});
+        // short tandem dup expansion from 2 units to 3 units
+        data.add(new Object[]{forComplexTanDup_2to3_short_noPseudoHom_minus.biPathBubble, forComplexTanDup_2to3_short_noPseudoHom_minus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
+                SYMB_ALT_ALLELE_INS, 42,
+                SimpleSVType.TYPES.INS.name()});
 
         return data.toArray(new Object[data.size()][]);
     }

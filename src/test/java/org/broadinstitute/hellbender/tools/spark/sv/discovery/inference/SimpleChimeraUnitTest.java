@@ -85,17 +85,17 @@ public class SimpleChimeraUnitTest extends GATKBaseTest {
         result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
 
         // tandem duplication simple expansion
-        testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansion_plus;
+        testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansion_ins_plus;
         result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
 
-        testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansion_minus;
+        testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansion_ins_minus;
         result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
 
         // tandem duplication simple expansion with novel insertion
-        testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_plus;
+        testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_dup_plus;
         result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
 
-        testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_minus;
+        testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_dup_minus;
         result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
 
 
