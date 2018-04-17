@@ -52,7 +52,7 @@ class AlignmentScore {
     }
 
     public static AlignmentScore calculate(final int sequenceLength, final List<AlignmentInterval> alignmentIntervals) {
-        final List<AlignmentInterval> intervals = alignmentIntervals.stream()
+        final List<AlignmentInterval> allIntervals = alignmentIntervals.stream()
                 .sorted(Comparator.comparing(ai -> ai.startInAssembledContig))
                 .collect(Collectors.toList());
         int totalReversals = 0;
@@ -60,9 +60,10 @@ class AlignmentScore {
         int totalMatches = 0;
         int totalMismatches = 0;
         int totalIndelLength = 0;
-        final int forwardAlignedBases = intervals.stream().filter(ai -> ai.forwardStrand && ai.mapQual > 15).mapToInt(ai -> CigarUtils.countAlignedBases(ai.cigarAlong5to3DirectionOfContig)).sum();
-        final int reverseAlignedBases = intervals.stream().filter(ai -> !ai.forwardStrand && ai.mapQual > 15).mapToInt(ai -> CigarUtils.countAlignedBases(ai.cigarAlong5to3DirectionOfContig)).sum();
+        final int forwardAlignedBases = allIntervals.stream().filter(ai -> ai.forwardStrand && ai.mapQual > 15).mapToInt(ai -> CigarUtils.countAlignedBases(ai.cigarAlong5to3DirectionOfContig)).sum();
+        final int reverseAlignedBases = allIntervals.stream().filter(ai -> !ai.forwardStrand && ai.mapQual > 15).mapToInt(ai -> CigarUtils.countAlignedBases(ai.cigarAlong5to3DirectionOfContig)).sum();
         final int direction = -Integer.compare(reverseAlignedBases, forwardAlignedBases);
+        final List<AlignmentInterval> intervals  = allIntervals.stream().filter(ai -> direction >= 0 == ai.forwardStrand).collect(Collectors.toList());
         for (int i = 0; i < intervals.size(); i++) {
             final AlignmentInterval ai = intervals.get(i);
             if (i > 0) {

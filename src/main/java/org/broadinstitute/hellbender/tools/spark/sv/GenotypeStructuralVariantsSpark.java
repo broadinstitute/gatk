@@ -4,7 +4,9 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFlag;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMProgramRecord;
+import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
@@ -34,6 +36,7 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.SparkSharder;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.ArraySVHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
@@ -41,7 +44,6 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SVHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalLocator;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.ShardPartitioner;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVContext;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
@@ -55,6 +57,7 @@ import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexCache;
+import org.broadinstitute.hellbender.utils.gcs.BamBucketIoUtils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
@@ -90,6 +93,10 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
     public static final String FASTQ_FILE_DIR_FULL_NAME = "fastqAssemblyDirectory";
     public static final String HAP_AND_CTG_FILE_SHORT_NAME = "assemblies";
     public static final String HAP_AND_CTG_FILE_FULL_NAME = "haplotypesAndContigsFile";
+    public static final String ALN_HAP_AND_CTG_FILE_SHORT_NAME = "alignedAssemblies";
+    public static final String ALN_HAP_AND_CTG_FILE_FULL_NAME = "alignedAssemblieshaplotypesAndContigsFile";
+    public static final String OUTPUT_ALIGNMENT_SHORT_NAME = "outputAlignment";
+    public static final String OUTPUT_ALIGNMENT_FULL_NAME = "outputAlignmentFile";
     public static final String SHARD_SIZE_SHORT_NAME = "shard";
     public static final String SHARD_SIZE_FULL_NAME = "shardSize";
     public static final String INSERT_SIZE_DISTR_SHORT_NAME = "insSize";
@@ -111,6 +118,18 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
             shortName = HAP_AND_CTG_FILE_SHORT_NAME,
             fullName = HAP_AND_CTG_FILE_FULL_NAME)
     private String haplotypesAndContigsFile = null;
+
+    @Argument(doc = "assemblies SAM/BAM file aligned",
+            shortName = ALN_HAP_AND_CTG_FILE_SHORT_NAME,
+            fullName = ALN_HAP_AND_CTG_FILE_FULL_NAME,
+            optional = true)
+    private String alignedHaplotypesAndContigsFile = null;
+
+    @Argument(doc = "assemblies SAM/BAM file aligned",
+            shortName = OUTPUT_ALIGNMENT_SHORT_NAME,
+            fullName = OUTPUT_ALIGNMENT_FULL_NAME,
+            optional = true)
+    private String outputAlignmentFile = null;
 
     @Argument(doc = "output VCF file",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -203,7 +222,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final JavaRDD<SVHaplotype> haplotypeAndContigs = haplotypesAndContigsSource
                 .getParallelReads(haplotypesAndContigsFile, referenceArguments.getReferenceFileName(), traversalParameters)
                 .repartition(parallelism)
-                .map(r -> r.getReadGroup().equals("CTG") ? SVAssembledContig.of(r) : ArraySVHaplotype.of(r));
+                .map(r -> r.getReadGroup().equals("CTG") ? SVContig.of(r) : ArraySVHaplotype.of(r));
         final JavaRDD<SVContext> variants = variantsSource.getParallelVariantContexts(
                 variantArguments.variantFiles.get(0).getFeaturePath(), getIntervals())
                 .repartition(parallelism)
@@ -226,7 +245,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                             if (haplotype.getName().equals("ref") || haplotype.getName().equals("alt")) {
                                 result.add(haplotype);
                             } else {
-                                final SVAssembledContig contig = (SVAssembledContig) haplotype;
+                                final SVContig contig = (SVContig) haplotype;
                                 if (contig.isPerfectAlternativeMap() || contig.isPerfectReferenceMap()) {
                                     continue;
                                 }
@@ -242,7 +261,6 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                     }
                 });
 
-        final ShardPartitioner<SVContext> partitioner = sharder.partitioner(SVContext.class, parallelism);
         final String fastqDir = this.fastqDir;
         final String fastqFileFormat = "asm%06d.fastq";
         final Broadcast<SVIntervalLocator> locatorBroadcast = ctx.broadcast(SVIntervalLocator.of(getReferenceSequenceDictionary()));
@@ -282,7 +300,8 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                             }).iterator();
                 });
 
-        final JavaRDD<SVContext> calls = processVariants(variantHaplotypesAndTemplates, ctx);
+        final SAMFileHeader outputAlignmentHeader = outputAlignmentFile == null ? null : composeOutputHeader(getReferenceSequenceDictionary());
+        final JavaRDD<Call> calls = processVariants(variantHaplotypesAndTemplates, outputAlignmentHeader, ctx);
         final VCFHeader header = composeOutputHeader();
         header.addMetaDataLine(new VCFInfoHeaderLine("READ_COUNT", 1, VCFHeaderLineType.Integer, "number of reads"));
         header.addMetaDataLine(new VCFInfoHeaderLine("CONTIG_COUNT", 1, VCFHeaderLineType.Integer, "number of contigs"));
@@ -293,9 +312,39 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         header.addMetaDataLine(new VCFFormatHeaderLine("ADI", VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "number of templates that support this allele based on insert length only"));
         header.addMetaDataLine(new VCFFormatHeaderLine("ADR", VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "number of templates that support this allele based on read-mapping likelihoods only"));
         header.addMetaDataLine(new VCFFormatHeaderLine("DPI", 1, VCFHeaderLineType.Integer, ""));
-        SVVCFWriter.writeVCF(outputFile, referenceArguments.getReferenceFileName(), calls, header, logger);
+        SVVCFWriter.writeVCF(outputFile, referenceArguments.getReferenceFileName(), calls.map(c -> c.context), header, logger);
+        if (outputAlignmentFile != null) {
+            try (final SAMFileWriter outputAlignmentWriter = BamBucketIoUtils.makeWriter(outputAlignmentFile, outputAlignmentHeader, false)) {
+                calls.flatMap(c -> c.outputAlignmentRecords.iterator()).toLocalIterator().forEachRemaining((read) -> {
+                    final SAMRecord record = read.convertToSAMRecord(outputAlignmentHeader);
+                    outputAlignmentWriter.addAlignment(record);
+                });
+            } catch (final Exception ex) {
+                throw new UserException.CouldNotCreateOutputFile(outputAlignmentFile, ex);
+            }
+        }
         tearDown(ctx);
     }
+
+    private SAMFileHeader composeOutputHeader(final SAMSequenceDictionary dictionary) {
+        final SAMFileHeader inputHeader = this.getHeaderForReads();
+        final SAMFileHeader outputHeader = inputHeader.clone();
+        final List<String> inputSamples  = inputHeader.getReadGroups().stream().map(rg -> rg.getSample()).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+        final String hapAndCtgSample = inputSamples.size() == 1 ? inputSamples.get(0) : "<Unknown>";
+        final SAMProgramRecord programRecord = new SAMProgramRecord(getProgramName());
+        programRecord.setCommandLine(getCommandLine());
+        outputHeader.setSequenceDictionary(dictionary);
+        outputHeader.addProgramRecord(programRecord);
+        outputHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
+        final SAMReadGroupRecord contigsReadGroup = new SAMReadGroupRecord(ComposeStructuralVariantHaplotypesSpark.CONTIG_READ_GROUP);
+        contigsReadGroup.setSample(hapAndCtgSample);
+        final SAMReadGroupRecord haplotypesReadGroup = new SAMReadGroupRecord(ComposeStructuralVariantHaplotypesSpark.HAPLOTYPE_READ_GROUP);
+        haplotypesReadGroup.setSample(hapAndCtgSample);
+        outputHeader.addReadGroup(haplotypesReadGroup);
+        outputHeader.addReadGroup(contigsReadGroup);
+        return outputHeader;
+    }
+
 
     private JavaPairRDD<SVContext, Tuple2<Iterable<GATKRead>, Iterable<Template>>> joinFragments(final JavaPairRDD<SVContext, Iterable<GATKRead>> variantAndHaplotypes) {
         return variantAndHaplotypes
@@ -319,7 +368,6 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         return result;
     }
 
-
     private static File createTransientImageFile(final String name, final byte[] bases) {
         try {
             final File fasta = File.createTempFile(name, ".fasta");
@@ -334,7 +382,22 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         }
     }
 
-    private JavaRDD<SVContext> processVariants(final JavaPairRDD<SVContext, Tuple3<Iterable<SVHaplotype>, Iterable<Template>, Iterable<int[]>>> input, final JavaSparkContext ctx) {
+    private static class Call implements Serializable {
+        private static final long serialVersionUID = -1L;
+        public final SVContext context;
+        public final List<GATKRead> outputAlignmentRecords;
+
+        private Call(final SVContext context, final List<GATKRead> outputAlignmentRecords) {
+            this.context = context;
+            this.outputAlignmentRecords = outputAlignmentRecords;
+        }
+
+        public static Call of(final SVContext context) {
+            return new Call(context, Collections.emptyList());
+        }
+    }
+
+    private JavaRDD<Call> processVariants(final JavaPairRDD<SVContext, Tuple3<Iterable<SVHaplotype>, Iterable<Template>, Iterable<int[]>>> input, final SAMFileHeader outputAlignmentHeader, final JavaSparkContext ctx) {
         final Broadcast<SAMSequenceDictionary> broadCastDictionary = ctx.broadcast(getReferenceSequenceDictionary());
         final SerializableBiFunction<String, byte[], File> imageCreator =  GenotypeStructuralVariantsSpark::createTransientImageFile;
         final AlignmentPenalties penalties = this.penalties;
@@ -506,7 +569,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                         sampleLikelihoods.fill(Double.NEGATIVE_INFINITY);
                 final int refIdx = likelihoods.indexOfAllele(refAllele);
                 final int altIdx = likelihoods.indexOfAllele(altAllele);
-                final List<SVAssembledContig> contigs = haplotypes.stream().filter(SVHaplotype::isNeitherReferenceNorAlternative).map(SVAssembledContig.class::cast)
+                final List<SVContig> contigs = haplotypes.stream().filter(SVHaplotype::isNeitherReferenceNorAlternative).map(SVContig.class::cast)
                         .collect(Collectors.toList());
                 for (int t = 0; t < templates.size(); t++) {
                     sampleLikelihoodsFirst.set(refIdx, t,
@@ -519,7 +582,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                             scoreTable.getMappingInfo(altHaplotypeIndex, t).secondAlignmentScore.orElse(0));
                 }
                 for (int h = 0; h < contigs.size(); h++) {
-                    final SVAssembledContig contig = contigs.get(h);
+                    final SVContig contig = contigs.get(h);
                     final int mappingInfoIndex = haplotypes.indexOf(contig);
                     double haplotypeAltScore = AlignmentScore.calculate(haplotypes.get(altHaplotypeIndex).getBases(), contig.getBases(), contig.getAlternativeAlignment()).getValue();
                     double haplotypeRefScore = AlignmentScore.calculate(haplotypes.get(refHaplotypeIndex).getBases(), contig.getBases(), contig.getReferenceAlignment()).getValue();
@@ -711,7 +774,15 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
                                 .attribute("ADI", adi)
                                 .attribute("DPI", dpi)
                                 .alleles(genotypeAlleles).make());
-                return SVContext.of(newVariantBuilder.make());
+                if (outputAlignmentHeader == null) {
+                    return Call.of(SVContext.of(newVariantBuilder.make()));
+                } else {
+                    final List<SAMRecord> outputAlignemntRecords = new ArrayList<>();
+                    for (final SVHaplotype haplotype : haplotypes) {
+
+                    }
+                    return Call.of(SVContext.of(newVariantBuilder.make()));
+                }
            }).iterator();
         });
     }
@@ -783,6 +854,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
             case INS:
             case DEL:
             case DUP:
+            case INV:
                 return true;
             default:
                 return false;

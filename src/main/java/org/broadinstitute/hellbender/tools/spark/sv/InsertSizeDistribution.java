@@ -31,12 +31,12 @@ public class InsertSizeDistribution implements Serializable {
     }
 
     public int quantile(final double prob) {
-        final double result =  Math.round(dist.inverseCumulativeProbability(prob));
+        final double result =  Math.round(dist().inverseCumulativeProbability(prob));
         return result >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) result;
     }
 
     public double logCumulativeProbability(final int value) {
-        return Math.log(dist.cumulativeProbability(value));
+        return Math.log(dist().cumulativeProbability(value));
     }
 
     public InsertSizeDistribution(final String distrString) {

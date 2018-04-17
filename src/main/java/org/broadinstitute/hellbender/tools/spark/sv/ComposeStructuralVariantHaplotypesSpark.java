@@ -616,7 +616,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                 result.addAll(haplotypesAndContigs.composeAlignedOutputAlternativeHaplotypeSAMRecords(outputHeader, variant));
                 result.addAll(haplotypesAndContigs.composeAlignedOutputReferenceHaplotypeSAMRecords(outputHeader, variant));
                 for (int i = 0; i < haplotypesAndContigs.numberOfContigs(); i++) {
-                    result.addAll(haplotypesAndContigs.composeAlignedOutputSAMRecords(outputHeader, variant, i));
+                    result.addAll(haplotypesAndContigs.composeAlignedContigOutputSAMRecords(outputHeader, variant, i));
                 }
                 final IntervalsSkipList<SimpleInterval> shards = shardBroadcast.getValue();
                 return result.stream()
@@ -769,9 +769,9 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                 this.originalAlignments[i] = originalAlignment.get(i);
                 referenceAlignments[i] = referenceAlignedContigs.get(i);
                 alternativeAlignments[i] = alternativeAlignedContigs.get(i);
-                final AlignedContigScore referenceScore = calculateAlignedContigScore(referenceAlignments[i]
+                final AlignmentScore referenceScore = calculateAlignedContigScore(referenceAlignments[i]
                         = referenceAlignedContigs.get(i));
-                final AlignedContigScore alternativeScore = calculateAlignedContigScore(alternativeAlignments[i]
+                final AlignmentScore alternativeScore = calculateAlignedContigScore(alternativeAlignments[i]
                         = alternativeAlignedContigs.get(i));
                 referenceScoreTagValue[i] = referenceScore.toString();
                 alternativeScoreTagValue[i] = alternativeScore.toString();
@@ -806,63 +806,8 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
             return referenceAlignments.length;
         }
 
-        private static AlignedContigScore calculateAlignedContigScore(final AlignedContig ctg) {
-            final List<AlignmentInterval> intervals = ctg.alignmentIntervals.stream()
-                    .sorted(Comparator.comparing(ai -> ai.startInAssembledContig))
-                    .collect(Collectors.toList());
-            int totalReversals = 0;
-            int totalIndels = 0;
-            int totalMatches = 0;
-            int totalMismatches = 0;
-            int totalIndelLength = 0;
-            for (int i = 0; i < intervals.size(); i++) {
-                final AlignmentInterval ai = intervals.get(i);
-                if (i > 0) {
-                    final AlignmentInterval prev = intervals.get(i - 1);
-                    if (prev.forwardStrand != ai.forwardStrand) {
-                        totalReversals++;
-                    } else {
-                        final AlignmentInterval left = ai.forwardStrand ? prev : ai;
-                        final AlignmentInterval right = ai.forwardStrand ? ai : prev;
-                        if (left.referenceSpan.getEnd() < right.referenceSpan.getStart()) {
-                            totalIndels++;
-                            totalIndelLength += right.referenceSpan.getStart() - left.referenceSpan.getEnd();
-                        }
-                        if (left.endInAssembledContig < right.startInAssembledContig) {
-                            totalIndels++;
-                            totalIndelLength += right.startInAssembledContig - left.endInAssembledContig - 1;
-                        }
-                    }
-                }
-                final int matches = ai.cigarAlong5to3DirectionOfContig.getCigarElements().stream()
-                        .filter(ce -> ce.getOperator().isAlignment())
-                        .mapToInt(CigarElement::getLength).sum();
-                final int misMatches = ai.mismatches;
-                final int indelCount = (int) ai.cigarAlong5to3DirectionOfContig.getCigarElements().stream()
-                        .filter(ce -> ce.getOperator().isIndel())
-                        .count();
-                final int indelLengthSum = ai.cigarAlong5to3DirectionOfContig.getCigarElements().stream()
-                        .filter(ce -> ce.getOperator().isIndel())
-                        .mapToInt(CigarElement::getLength).sum();
-                totalIndels += indelCount;
-                totalMatches += matches;
-                totalMismatches += misMatches;
-                totalIndelLength += indelLengthSum;
-            }
-            if (intervals.isEmpty()) {
-                totalIndelLength += ctg.contigSequence.length;
-                totalIndels++;
-            } else {
-                if (intervals.get(0).startInAssembledContig > 1) {
-                    totalIndelLength += intervals.get(0).startInAssembledContig - 1;
-                    totalIndels++;
-                }
-                if (intervals.get(intervals.size() - 1).endInAssembledContig < ctg.contigSequence.length) {
-                    totalIndelLength += ctg.contigSequence.length - intervals.get(intervals.size() - 1).endInAssembledContig;
-                    totalIndels++;
-                }
-            }
-            return new AlignedContigScore(totalReversals, totalIndels, totalMatches, totalMismatches, totalIndelLength);
+        private static AlignmentScore calculateAlignedContigScore(final AlignedContig ctg) {
+            return AlignmentScore.calculate(ctg.contigSequence.length, ctg.alignmentIntervals);
         }
 
         private static String calculateHPTag(final double referenceScore, final double alternativeScore) {
@@ -946,7 +891,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         }
 
         private List<SAMRecord> composeAlignedOutputReferenceHaplotypeSAMRecords(final SAMFileHeader header, final SVContext variant) {
-            return composeAlignedOutputSAMRecords(header, referenceHaplotype.toAlignedContig(),
+            return composeAlignedContigOutputSAMRecords(header, referenceHaplotype.toAlignedContig(),
                     HAPLOTYPE_READ_GROUP,
                     variant.getUniqueID(),
                     referenceHaplotype.getName(),
@@ -958,7 +903,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         }
 
         private List<SAMRecord> composeAlignedOutputAlternativeHaplotypeSAMRecords(final SAMFileHeader header, final SVContext variant) {
-            return composeAlignedOutputSAMRecords(header, alternativeHaplotype.toAlignedContig(),
+            return composeAlignedContigOutputSAMRecords(header, alternativeHaplotype.toAlignedContig(),
                   HAPLOTYPE_READ_GROUP,
                   variant.getUniqueID(),
                   alternativeHaplotype.getName(),
@@ -1003,16 +948,16 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         }
 
 
-        private List<SAMRecord> composeAlignedOutputSAMRecords(final SAMFileHeader header,
-                                                               final AlignedContig alignment,
-                                                               final String readGroup,
-                                                               final String vcUID,
-                                                               final String hpTagValue,
-                                                               final Double hpQualValue,
-                                                               final String referenceScoreTagValue,
-                                                               final String alternativeScoreTagValue,
-                                                               final AlignedContig referenceAlignment,
-                                                               final AlignedContig alternativeAlignment) {
+        private List<SAMRecord> composeAlignedContigOutputSAMRecords(final SAMFileHeader header,
+                                                                     final AlignedContig alignment,
+                                                                     final String readGroup,
+                                                                     final String vcUID,
+                                                                     final String hpTagValue,
+                                                                     final Double hpQualValue,
+                                                                     final String referenceScoreTagValue,
+                                                                     final String alternativeScoreTagValue,
+                                                                     final AlignedContig referenceAlignment,
+                                                                     final AlignedContig alternativeAlignment) {
             final List<AlignmentInterval> intervals = alignment.alignmentIntervals;
 
             final List<SAMRecord> result = new ArrayList<>(intervals.size());
@@ -1052,9 +997,9 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
             }
             return result;
         }
-        private List<SAMRecord> composeAlignedOutputSAMRecords(final SAMFileHeader header,
-                                                           final SVContext vc, final int index) {
-            return composeAlignedOutputSAMRecords(header, originalAlignments[index], CONTIG_READ_GROUP, vc.getUniqueID(),
+        private List<SAMRecord> composeAlignedContigOutputSAMRecords(final SAMFileHeader header,
+                                                                     final SVContext vc, final int index) {
+            return composeAlignedContigOutputSAMRecords(header, originalAlignments[index], CONTIG_READ_GROUP, vc.getUniqueID(),
                     hpTagValue[index], hpQualTagValue[index], referenceScoreTagValue[index], alternativeScoreTagValue[index], referenceAlignments[index], alternativeAlignments[index]);
         }
 

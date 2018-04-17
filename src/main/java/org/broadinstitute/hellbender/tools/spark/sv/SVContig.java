@@ -4,6 +4,8 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -21,10 +23,11 @@ import java.util.Optional;
 /**
  * Created by valentin on 9/16/17.
  */
-@DefaultSerializer(SVAssembledContig.Serializer.class)
-public class SVAssembledContig extends ArraySVHaplotype {
+@DefaultSerializer(SVContig.Serializer.class)
+public class SVContig extends ArraySVHaplotype {
 
     private static final long serialVersionUID = 1L;
+
 
     public double getReferenceScore() {
         if (isReference()) {
@@ -56,15 +59,17 @@ public class SVAssembledContig extends ArraySVHaplotype {
     private final AlignmentScore alternativeAlignmentScore;
     private final double callQuality;
     private final Call call;
+    private List<GATKRead> reads;
 
-    public static SVAssembledContig of(final GATKRead read) {
+
+    public static SVContig of(final GATKRead read) {
         final String variantId = getMandatoryAttribute(read, ComposeStructuralVariantHaplotypesSpark.VARIANT_CONTEXT_TAG);
         final List<AlignmentInterval> refAln = getAlignmentIntervalsAttribute(read, ComposeStructuralVariantHaplotypesSpark.REFERENCE_ALIGNMENT_TAG);
         final List<AlignmentInterval> altAln = getAlignmentIntervalsAttribute(read, ComposeStructuralVariantHaplotypesSpark.ALTERNATIVE_ALIGNMENT_TAG);
         final AlignmentScore refScore = getOptionalAlignmentScore(read, ComposeStructuralVariantHaplotypesSpark.REFERENCE_SCORE_TAG);
         final AlignmentScore altScore = getOptionalAlignmentScore(read, ComposeStructuralVariantHaplotypesSpark.ALTERNATIVE_SCORE_TAG);
         final SimpleInterval location = new SimpleInterval(read.getAssignedContig(), read.getAssignedStart(), read.getAssignedStart());
-        return new SVAssembledContig(read.getName(), location, variantId, read.getBases(), refAln, refScore, altAln, altScore);
+        return new SVContig(read.getName(), location, variantId, read.getBases(), refAln, refScore, altAln, altScore);
     }
 
     public List<AlignmentInterval> getReferenceAlignment() {
@@ -90,9 +95,9 @@ public class SVAssembledContig extends ArraySVHaplotype {
         return str.isPresent() ? AlignmentInterval.decodeList(str.get()) : null;
     }
 
-    public SVAssembledContig(final String name, final Locatable loc, final String variantId,
-                             final byte[] bases, final List<AlignmentInterval> refAln, final AlignmentScore refScore,
-                             final List<AlignmentInterval> altAln, final AlignmentScore altScore) {
+    public SVContig(final String name, final Locatable loc, final String variantId,
+                    final byte[] bases, final List<AlignmentInterval> refAln, final AlignmentScore refScore,
+                    final List<AlignmentInterval> altAln, final AlignmentScore altScore) {
         super(name, refAln, bases, variantId, SimpleInterval.of(loc), true);
         if (isReference() || isAlternative()) {
             throw new IllegalArgumentException("invalid assembled contig name, must not be reference or alternative like: " + name);
@@ -115,7 +120,7 @@ public class SVAssembledContig extends ArraySVHaplotype {
         }
     }
 
-    private SVAssembledContig(final Kryo kryo, final Input input) {
+    private SVContig(final Kryo kryo, final Input input) {
         super(kryo, input);
         this.referenceAlignment = Serializer.readAlignment(kryo, input);
         this.alternativeAlignment = Serializer.readAlignment(kryo, input);
@@ -125,10 +130,10 @@ public class SVAssembledContig extends ArraySVHaplotype {
         this.callQuality = input.readDouble();
     }
 
-    public static class Serializer extends ArraySVHaplotype.Serializer<SVAssembledContig> {
+    public static class Serializer extends ArraySVHaplotype.Serializer<SVContig> {
 
         @Override
-        public void write(Kryo kryo, Output output, SVAssembledContig object) {
+        public void write(Kryo kryo, Output output, SVContig object) {
             super.write(kryo, output, object);
             writeAlignment(kryo, output, object.referenceAlignment);
             writeAlignment(kryo, output, object.alternativeAlignment);
@@ -139,8 +144,8 @@ public class SVAssembledContig extends ArraySVHaplotype {
         }
 
         @Override
-        public SVAssembledContig read(Kryo kryo, Input input, Class<SVAssembledContig> type) {
-            return new SVAssembledContig(kryo, input);
+        public SVContig read(Kryo kryo, Input input, Class<SVContig> type) {
+            return new SVContig(kryo, input);
         }
 
         private void writeAlignment(final Kryo kryo, final Output output, final List<AlignmentInterval> alignment) {
