@@ -26,8 +26,8 @@ public class BreakpointComplicationsUnitTest extends GATKBaseTest {
 
         Assert.assertEquals(BreakpointComplications.inferHomology(region1, region2, contigSequence), "AAAA");
 
-        final AlignmentInterval region3 = new AlignmentInterval(new SimpleInterval("1", 1, 12), 1, 8, TextCigarCodec.decode("8M"), true, 60, 1, 100, ContigAlignmentsModifier.AlnModType.NONE);            // dummy test data, almost guaranteed to be non-factual
-        final AlignmentInterval region4 = new AlignmentInterval(new SimpleInterval("1", 101, 112), 13, 20, TextCigarCodec.decode("8M"), false, 60, 1, 100, ContigAlignmentsModifier.AlnModType.NONE);    // dummy test data, almost guaranteed to be non-factual
+        final AlignmentInterval region3 = new AlignmentInterval(new SimpleInterval("1", 1, 8), 1, 8, TextCigarCodec.decode("8M"), true, 60, 1, 100, ContigAlignmentsModifier.AlnModType.NONE);            // dummy test data, almost guaranteed to be non-factual
+        final AlignmentInterval region4 = new AlignmentInterval(new SimpleInterval("1", 101, 108), 13, 20, TextCigarCodec.decode("8M"), false, 60, 1, 100, ContigAlignmentsModifier.AlnModType.NONE);    // dummy test data, almost guaranteed to be non-factual
 
         Assert.assertTrue(BreakpointComplications.inferHomology(region3, region4, contigSequence).isEmpty());
     }
@@ -35,9 +35,9 @@ public class BreakpointComplicationsUnitTest extends GATKBaseTest {
     @Test(groups = "sv")
     public void testGetInsertedSequence() {
         final byte[] contigSequence = "GACGAACGATTTGACTTTAATATGAAATGTTTTATGTGGGCTATAAAATTATCCAAACTCGACACAGGACATTTTGAGCTTATTTCCAAATCATCTGGCCTTCATCTACCCACTGGAACTATTACTCTGCTGGGTCCTCATGGAAACATATCTTTCAGCCCTAACAATGAGACTACAGACATCTACGTCCCCAACACAACAGCTAAAAAGCAGTAGAATGTCAGAAAGGCTATCCACTTAGCCCTTGGCTGACAGGCCCCACTGAGCATCCTTTGCGAAGTCCATTTACTAGCTAATTCATAATTTACACAAGGCATTCAGACATAGCAGCTAAGATATAAAACATTTATCAACACAGGGACTAGTTTGTCATTTTAAAATAATTATGTTTAAGTAAGCCAATAAAGTCTATCTTCTCCAATTTACTTATTGAGCTTTATGAGGCAATTTAAGTCCCGATTTTGGGGGGTATGTATGAAAGGAGAGCATGGAAATGCCATTTGCTCCCTGAAGTTTTTATCTTTTTTTTTTTGAGATAGAGTCTTGTGTTTTCTGTGGAGTACATGAGTATGCATCAAAGCTAACAACGCCCACTGCCCTGTTAGTCAAATACCTTTGA".getBytes();
-        final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("8", 118873207, 118873739), 1, 532, TextCigarCodec.decode("532M87S"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("1", 175705642, 175705671), 519, 547, TextCigarCodec.decode("518S29M72S"), false, 3, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        final AlignmentInterval region3 = new AlignmentInterval(new SimpleInterval("1", 118875262, 118875338), 544, 619, TextCigarCodec.decode("543S76M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
+        final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("8", 118873207, 118873738), 1, 532, TextCigarCodec.decode("532M87S"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
+        final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("1", 175705642, 175705670), 519, 547, TextCigarCodec.decode("518S29M72S"), false, 3, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
+        final AlignmentInterval region3 = new AlignmentInterval(new SimpleInterval("1", 118875262, 118875337), 544, 619, TextCigarCodec.decode("543S76M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
 
         Assert.assertTrue(BreakpointComplications.inferInsertedSequence(region3, region1, contigSequence).isEmpty());
         Assert.assertEquals(BreakpointComplications.inferInsertedSequence(region1, region3, contigSequence), "GAGATAGAGTC");
@@ -54,10 +54,10 @@ public class BreakpointComplicationsUnitTest extends GATKBaseTest {
         final int contigTotalLength = 355;
 
         // forward strand
-        final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("1", 1000001, 1000125), 16, 75,
+        final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("1", 1000001, 1000125), 16, 90,
                 TextCigarCodec.decode("5H10S15M20D25M30D35M260S5H"),
                 true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("1", 1000041, 1000145), 191, 340,
+        final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("1", 1000041, 1000145), 191, 345,
                 TextCigarCodec.decode("5H185S45M30I55M20I5M10S5H"),
                 true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
 

@@ -43,7 +43,7 @@ public class AssemblyContigAlignmentsConfigPickerUnitTest extends GATKBaseTest {
 
         intervalOne = new AlignmentInterval(new SimpleInterval("chr2", 1422222, 1422435),
                 1, 270,  TextCigarCodec.decode("75M56I139M"), false, 60, 56, 142, ContigAlignmentsModifier.AlnModType.NONE);
-        intervalTwo = new AlignmentInterval(new SimpleInterval("chr2_KI270774v1_alt", 105288, 105557),
+        intervalTwo = new AlignmentInterval(new SimpleInterval("chr2_KI270774v1_alt", 105288, 105555),
                 1, 270,  TextCigarCodec.decode("114M1I27M1I127M"), false, 56, 13, 179, ContigAlignmentsModifier.AlnModType.NONE);
         contig = new AlignedContig("asm002608:tig00001", "ATGCTGGGGAATTTGTGTGCTCCTTGGGTGGGGACGAGCATGGAAGGCGCGTGGGACTGAAGCCTTGAAGACCCCGCAGGCGCCTCTCCTGGACAGACCTCGTGCAGGCGCCTCTCCTGGACCGACCTCGTGCAGGCGCCTCTCCTGGACAGACCTCGTGCAGGCGCCTCTCCTGGACCGACCTCGTGCAGGCGCCGCGCTGGACCGACCTCGTGCAGGCGCCGCGCTGGGCCATGGGGAGAGCGAGAGCCTGGTGTGCCCCTCAGGGAC".getBytes(),
                 Arrays.asList(intervalOne, intervalTwo)/*, true*/);
@@ -130,7 +130,7 @@ public class AssemblyContigAlignmentsConfigPickerUnitTest extends GATKBaseTest {
         final List<Object[]> data = new ArrayList<>(20);
 
         AlignmentInterval intervalOne = new AlignmentInterval(
-                new SimpleInterval("chr21", 100000, 100100),
+                new SimpleInterval("chr21", 100001, 100100),
                 1, 100, TextCigarCodec.decode("100M220S"),
                 true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         AlignmentInterval intervalTwo = new AlignmentInterval(
@@ -138,8 +138,8 @@ public class AssemblyContigAlignmentsConfigPickerUnitTest extends GATKBaseTest {
                 99, 122, TextCigarCodec.decode("98S24M78S"),
                 true, 10, 3, 241, ContigAlignmentsModifier.AlnModType.NONE);
         AlignmentInterval intervalThree = new AlignmentInterval(
-                new SimpleInterval("chr21", 100121, 100200),
-                122, 200,  TextCigarCodec.decode("222S78M"),
+                new SimpleInterval("chr21", 100123, 100200),
+                223, 300,  TextCigarCodec.decode("222S78M"),
                 true, 60, 0, 78, ContigAlignmentsModifier.AlnModType.NONE);
         final GoodAndBadMappings rep1 =
                 new GoodAndBadMappings(Arrays.asList(intervalOne, intervalThree),
@@ -188,7 +188,7 @@ public class AssemblyContigAlignmentsConfigPickerUnitTest extends GATKBaseTest {
         data.add(new Object[]{outForSingleBadMapping, false});
 
         final AlignmentInterval intervalOne = new AlignmentInterval(
-                new SimpleInterval("chr21", 100000, 100100),
+                new SimpleInterval("chr21", 100001, 100100),
                 1, 100, TextCigarCodec.decode("100M220S"),
                 true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         final AlignmentInterval intervalTwo = new AlignmentInterval(
@@ -349,7 +349,7 @@ public class AssemblyContigAlignmentsConfigPickerUnitTest extends GATKBaseTest {
         AlignmentInterval gapped;
         // case one: gapped alignment provides worse coverage
         noGap = new AlignmentInterval(new SimpleInterval("chr1", 1_000_001, 1_000_950),
-                1, 1150, TextCigarCodec.decode("950M50S"),
+                1, 950, TextCigarCodec.decode("950M50S"),
                 true, 60, 0, 950, ContigAlignmentsModifier.AlnModType.NONE);
         gapped = new AlignmentInterval(new SimpleInterval("chr1", 1_000_101, 1_001_200),
                 101, 1000, TextCigarCodec.decode("100S300M200D600M"),
@@ -377,13 +377,13 @@ public class AssemblyContigAlignmentsConfigPickerUnitTest extends GATKBaseTest {
         });
 
         // case three: gapped alignment provides better coverage with a I-gap
-        gapped = new AlignmentInterval(new SimpleInterval("chr1", 1_000_101, 1_001_850),
+        gapped = new AlignmentInterval(new SimpleInterval("chr1", 1_000_101, 1_000_850),
                 101, 1000, TextCigarCodec.decode("100S300M150I450M"),
                 true, 60, 150, 750, ContigAlignmentsModifier.AlnModType.NONE);
         data.add(new Object[]{new Tuple2<>(noGap, gapped),
                 true,
                 new GoodAndBadMappings(Arrays.asList(new AlignmentInterval(new SimpleInterval("chr1", 1_000_101, 1_000_400), 101, 400, TextCigarCodec.decode("100S300M600S"), true, 60, AlignmentInterval.NO_NM, AlignmentInterval.NO_AS, ContigAlignmentsModifier.AlnModType.FROM_SPLIT_GAPPED_ALIGNMENT),
-                                                     new AlignmentInterval(new SimpleInterval("chr1", 1_000_401, 1_001_850), 551, 1000, TextCigarCodec.decode("550S450M"), true, 60, AlignmentInterval.NO_NM, AlignmentInterval.NO_AS, ContigAlignmentsModifier.AlnModType.FROM_SPLIT_GAPPED_ALIGNMENT)),
+                                                     new AlignmentInterval(new SimpleInterval("chr1", 1_000_401, 1_000_850), 551, 1000, TextCigarCodec.decode("550S450M"), true, 60, AlignmentInterval.NO_NM, AlignmentInterval.NO_AS, ContigAlignmentsModifier.AlnModType.FROM_SPLIT_GAPPED_ALIGNMENT)),
                         Collections.singletonList(noGap))
         });
 

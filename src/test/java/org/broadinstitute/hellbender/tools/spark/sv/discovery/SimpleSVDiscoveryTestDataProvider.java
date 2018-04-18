@@ -441,7 +441,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         System.arraycopy(rightRefFlank, 0, contigSeq, 50, 40);
 
         AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100050), 1 ,50, TextCigarCodec.decode("50M40S"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100051, 100100), 41 ,100, TextCigarCodec.decode("40S50M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
+        AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100051, 100100), 41 ,90, TextCigarCodec.decode("40S50M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
         result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -453,7 +453,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         System.arraycopy(doubleDup, 0, contigSeq, 40, 10);
         System.arraycopy(leftRefFlank, 0, contigSeq, 50, 40);
         region1 = new AlignmentInterval(new SimpleInterval("21", 100051, 100100), 1 ,50, TextCigarCodec.decode("50M40S"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100050), 41 ,100, TextCigarCodec.decode("40S50M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
+        region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100050), 41 ,90, TextCigarCodec.decode("40S50M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new ChimericAlignment(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
         result.add(new TestDataForSimpleSVs(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
 

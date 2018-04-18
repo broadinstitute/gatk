@@ -137,7 +137,7 @@ public class CpxVariantInterpreterUnitTest extends GATKBaseTest {
     private Object[][] forOverlapYieldingStrategy() {
         final List<Object[]> data = new ArrayList<>(20);
 
-        final AlignmentInterval one = new AlignmentInterval(new SimpleInterval("chr1", 100000, 100100), 1, 100, TextCigarCodec.decode("100M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
+        final AlignmentInterval one = new AlignmentInterval(new SimpleInterval("chr1", 100001, 100100), 1, 100, TextCigarCodec.decode("100M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         final AlignmentInterval two = new AlignmentInterval(new SimpleInterval("chr1", 100041, 100070), 33, 62, TextCigarCodec.decode("30M"), true, 30, 5, 26, ContigAlignmentsModifier.AlnModType.NONE);
         data.add(new Object[]{one, two, true, CpxSVInferenceTestUtils.bareBoneHg38SAMSeqDict, IllegalArgumentException.class});
 
@@ -190,7 +190,7 @@ public class CpxVariantInterpreterUnitTest extends GATKBaseTest {
         final List<Object[]> data = new ArrayList<>(20);
 
         // containment
-        final AlignmentInterval one = new AlignmentInterval(new SimpleInterval("chr1", 100000, 100100), 1, 100, TextCigarCodec.decode("100M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
+        final AlignmentInterval one = new AlignmentInterval(new SimpleInterval("chr1", 100001, 100100), 1, 100, TextCigarCodec.decode("100M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         final AlignmentInterval two = new AlignmentInterval(new SimpleInterval("chr1", 100041, 100070), 33, 62, TextCigarCodec.decode("30M"), true, 30, 5, 26, ContigAlignmentsModifier.AlnModType.NONE);
         data.add(new Object[]{one, two, 30, CpxSVInferenceTestUtils.bareBoneHg38SAMSeqDict, false, false, null, IllegalArgumentException.class});
 
