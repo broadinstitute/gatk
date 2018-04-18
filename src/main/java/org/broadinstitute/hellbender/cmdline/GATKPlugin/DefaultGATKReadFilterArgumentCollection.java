@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.cmdline.GATKPlugin;
 
+import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 
@@ -27,9 +28,10 @@ public class DefaultGATKReadFilterArgumentCollection extends GATKReadFilterArgum
             doc="Read filters to be disabled before analysis", optional=true, common = true)
     public final List<String> userDisabledReadFilterNames = new ArrayList<>();
 
+    @Advanced
     @Argument(fullName = ReadFilterArgumentDefinitions.DISABLE_TOOL_DEFAULT_READ_FILTERS,
             shortName = ReadFilterArgumentDefinitions.DISABLE_TOOL_DEFAULT_READ_FILTERS,
-            doc = "Disable all tool default read filters", common = true, optional = true)
+            doc = "Disable all tool default read filters (WARNING: many tools will not function correctly without their default read filters on)", common = true, optional = true)
     public boolean disableToolDefaultReadFilters = false;
 
     /** Returns the list with the read filters provided by the user, preserving the order. */
