@@ -43,7 +43,7 @@ public abstract class MarkDuplicatesSparkData {
      * Dummy class used for preserving reads that need to be marked as non-duplicate despite not wanting to perform any
      * processing on the reads. (eg. unmapped reads we don't want to process but must be non-duplicate marked)
      */
-    private static final class Passthrough extends MarkDuplicatesSparkData {
+    public static final class Passthrough extends MarkDuplicatesSparkData {
         private final transient GATKRead read;
 
         Passthrough(GATKRead read, int partitionIndex) {
