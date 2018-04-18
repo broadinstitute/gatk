@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
 import htsjdk.variant.variantcontext.*;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.BeforeSuite;
@@ -19,8 +20,8 @@ import static org.testng.Assert.*;
 public class AS_InbreedingCoeffUnitTest extends ReducibleAnnotationBaseTest {
 
     @Override
-    protected List<String> getAnnotationsToUse() {
-        return Collections.singletonList(AS_InbreedingCoeff.class.getSimpleName());
+    protected List<Annotation> getAnnotationsToUse() {
+        return Collections.singletonList(new AS_InbreedingCoeff());
     }
 
     @Override

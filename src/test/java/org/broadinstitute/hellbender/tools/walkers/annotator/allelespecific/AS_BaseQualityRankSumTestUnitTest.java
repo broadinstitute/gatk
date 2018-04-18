@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 import com.google.common.primitives.Doubles;
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.BaseQualityRankSumTestUnitTest;
 import org.broadinstitute.hellbender.utils.MannWhitneyU;
@@ -41,8 +42,8 @@ public class AS_BaseQualityRankSumTestUnitTest extends ReducibleAnnotationBaseTe
 
 
     @Override
-    protected List<String> getAnnotationsToUse() {
-        return Collections.singletonList(AS_BaseQualityRankSumTest.class.getSimpleName());
+    protected List<Annotation> getAnnotationsToUse() {
+        return Collections.singletonList(new AS_BaseQualityRankSumTest());
     }
 
     @Override

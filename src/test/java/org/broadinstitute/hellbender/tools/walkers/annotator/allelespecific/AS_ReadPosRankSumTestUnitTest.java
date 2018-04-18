@@ -4,6 +4,7 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
 import org.broadinstitute.hellbender.utils.MannWhitneyU;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -132,8 +133,8 @@ public class AS_ReadPosRankSumTestUnitTest extends ReducibleAnnotationBaseTest {
     }
     
     @Override
-    protected List<String> getAnnotationsToUse() {
-        return Collections.singletonList(AS_ReadPosRankSumTest.class.getSimpleName());
+    protected List<Annotation> getAnnotationsToUse() {
+        return Collections.singletonList(new AS_ReadPosRankSumTest());
     }
 
     @Override

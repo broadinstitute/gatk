@@ -6,8 +6,6 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 import org.broadinstitute.barclay.argparser.*;
-import org.broadinstitute.hellbender.cmdline.GATKPlugin.DefaultGATKVariantAnnotationArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.engine.*;
@@ -134,15 +132,6 @@ public class VariantAnnotator extends VariantWalker {
     protected File outputFile;
 
     /**
-     * See the --list argument to view available annotations.
-     */
-    @ArgumentCollection
-    public GATKAnnotationArgumentCollection variantAnnotationArgumentCollection = new DefaultGATKVariantAnnotationArgumentCollection(
-            Collections.emptyList(),
-            Collections.emptyList(),
-            Collections.emptyList());
-
-    /**
      * This option enables you to add annotations from one VCF to another.
      *
      * For example, if you want to annotate your callset with the AC field value from a VCF file named
@@ -164,18 +153,8 @@ public class VariantAnnotator extends VariantWalker {
     @Argument(fullName="resource-allele-concordance", shortName="rac", doc="Check for allele concordances when using an external resource VCF file", optional=true)
     protected Boolean expressionAlleleConcordance = false;
 
-    /**
-     * You can use the -XA argument in combination with this one to exclude specific annotations.Note that some
-     * annotations may not be actually applied if they are not applicable to the data provided or if they are
-     * unavailable to the tool (e.g. there are several annotations that are currently not hooked up to
-     * HaplotypeCaller). At present no error or warning message will be provided, the annotation will simply be
-     * skipped silently. You can check the output VCF header to see which annotations were actually applied (although
-     * this does not guarantee that the annotation was applied to all records in the VCF, since some annotations have
-     * additional requirements, e.g. minimum number of samples or heterozygous sites only -- see the documentation
-     * for individual annotations' requirements).
-     */
-    @Argument(fullName="use-all-annotations", shortName="all", doc="Use all possible annotations (not for the faint of heart)", optional=true)
-    protected Boolean USE_ALL_ANNOTATIONS = false;
+    @Override
+    public boolean useAnnotationArguments() { return true;}
 
     private VariantAnnotatorEngine annotatorEngine;
     private SampleList variantSamples;
@@ -188,11 +167,8 @@ public class VariantAnnotator extends VariantWalker {
         final  List<String> samples = getHeaderForVariants().getGenotypeSamples();
         variantSamples = new IndexedSampleList(samples);
 
-        if ( USE_ALL_ANNOTATIONS ) {
-            annotatorEngine = VariantAnnotatorEngine.ofAllMinusExcluded(variantAnnotationArgumentCollection.getUserDisabledAnnotationNames(), dbsnp.dbsnp, comps, false);
-        } else {
-            annotatorEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(variantAnnotationArgumentCollection, dbsnp.dbsnp, comps, false);
-        }
+        annotatorEngine = new VariantAnnotatorEngine(getAnnotationsToUse(), dbsnp.dbsnp, comps, false);
+        //TODO add expressions?
         annotatorEngine.addExpressions(expressionsToUse, resources, expressionAlleleConcordance );
 
         // setup the header fields

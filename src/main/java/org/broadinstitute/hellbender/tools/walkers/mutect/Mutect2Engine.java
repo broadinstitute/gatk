@@ -10,6 +10,8 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.StandardMutectAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingGivenAllelesUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingOutputMode;
@@ -82,7 +84,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
      * @param header header for the reads
      * @param reference path to the reference
      */
-    public Mutect2Engine(final M2ArgumentCollection MTAC, final boolean createBamOutIndex, final boolean createBamOutMD5, final SAMFileHeader header, final String reference ) {
+    public Mutect2Engine(final M2ArgumentCollection MTAC, final boolean createBamOutIndex, final boolean createBamOutMD5, final SAMFileHeader header, final String reference, final VariantAnnotatorEngine annotatorEngine) {
         this.MTAC = Utils.nonNull(MTAC);
         this.header = Utils.nonNull(header);
         referenceReader = AssemblyBasedCallerUtils.createReferenceReader(Utils.nonNull(reference));
@@ -93,7 +95,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         checkSampleInBamHeader(tumorSample);
         checkSampleInBamHeader(normalSample);
 
-        annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(MTAC.defaultGATKVariantAnnotationArgumentCollection, null, Collections.emptyList(), false);
+        annotationEngine = annotatorEngine;
         assemblyEngine = AssemblyBasedCallerUtils.createReadThreadingAssembler(MTAC);
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs);
         genotypingEngine = new SomaticGenotypingEngine(samplesList, MTAC, tumorSample, normalSample);
@@ -118,8 +120,15 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
                 new WellformedReadFilter());
     }
 
+    /**
+     * @return the default set of read filters for use with Mutect2
+     */
+    public static List<Class<? extends Annotation>> getStandardMutect2AnnotationGroups() {
+        return Collections.singletonList(StandardMutectAnnotation.class);
+    }
+
     public void writeHeader(final VariantContextWriter vcfWriter, final Set<VCFHeaderLine> defaultToolHeaderLines) {
-        final Set<VCFHeaderLine> headerInfo = new HashSet<>();
+            final Set<VCFHeaderLine> headerInfo = new HashSet<>();
         headerInfo.add(new VCFHeaderLine("Mutect Version", MUTECT_VERSION));
         headerInfo.add(new VCFHeaderLine(Mutect2FilteringEngine.FILTERING_STATUS_VCF_KEY, "Warning: unfiltered Mutect 2 calls.  Please run " + FilterMutectCalls.class.getSimpleName() + " to remove false positives."));
         headerInfo.addAll(annotationEngine.getVCFAnnotationDescriptions(false));

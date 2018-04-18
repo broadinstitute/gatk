@@ -7,15 +7,10 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.GATKPlugin.DefaultGATKVariantAnnotationArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureInput;
-import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
-import org.broadinstitute.hellbender.tools.walkers.annotator.StandardHCAnnotation;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -26,18 +21,16 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     private static final long serialVersionUID = 1L;
 
     public static final String MAX_MNP_DISTANCE_LONG_NAME = "max-mnp-distance";
-    public static final String MAX_MNP_DISTANCE_SHORT_NAME = "mnp-dist";
-
-    /**
-     * When HaplotypeCaller is run with -ERC GVCF or -ERC BP_RESOLUTION, some annotations are excluded from the
-     * output by default because they will only be meaningful once they have been recalculated by GenotypeGVCFs. As
-     * of version 3.3 this concerns ChromosomeCounts, FisherStrand, StrandOddsRatio and QualByDepth.
-     */
-    @ArgumentCollection
-    public GATKAnnotationArgumentCollection defaultGATKVariantAnnotationArgumentCollection = new DefaultGATKVariantAnnotationArgumentCollection(
-            Arrays.asList(StandardAnnotation.class.getSimpleName(), StandardHCAnnotation.class.getSimpleName()),
-            Collections.emptyList(),
-            Collections.emptyList());
+    public static final String MAX_MNP_DISTANCE_SHORT_NAME = "mnp-dist";//    /**
+//     * When HaplotypeCaller is run with -ERC GVCF or -ERC BP_RESOLUTION, some annotations are excluded from the
+//     * output by default because they will only be meaningful once they have been recalculated by GenotypeGVCFs. As
+//     * of version 3.3 this concerns ChromosomeCounts, FisherStrand, StrandOddsRatio and QualByDepth.
+//     */
+//    @ArgumentCollection
+//    public VariantAnnotationArgumentCollection variantAnnotationArgumentCollection = new VariantAnnotationArgumentCollection(
+//            Arrays.asList(StandardAnnotation.class.getSimpleName(), StandardHCAnnotation.class.getSimpleName()),
+//            Collections.emptyList(),
+//            Collections.emptyList());
 
     /**
      * You can use this argument to specify that HC should process a single sample out of a multisample BAM file. This

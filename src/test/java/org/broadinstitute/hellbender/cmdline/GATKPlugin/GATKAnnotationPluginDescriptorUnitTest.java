@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.cmdline.GATKPlugin;
 
 import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.commons.io.output.NullOutputStream;
 import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -8,6 +11,7 @@ import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
@@ -32,7 +36,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
     private static final PrintStream nullMessageStream = new PrintStream(new NullOutputStream());
 
     private GATKAnnotationArgumentCollection getEmptyArgs() {
-        return new DefaultGATKVariantAnnotationArgumentCollection(Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
+        return new DefaultGATKVariantAnnotationArgumentCollection();
     }
 
 //======================================================================================================================
@@ -564,7 +568,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
     private interface ChildAnnotationGroup extends ParentAnnotationGroup { }
     static class testChildAnnotation extends InfoFieldAnnotation implements ChildAnnotationGroup  {
         public int argument = 5;
-        
+
         @Override
         public Map<String, Object> annotate(ReferenceContext ref, VariantContext vc, ReadLikelihoods<Allele> likelihoods) {
             return Collections.singletonMap("Child",Integer.toString(argument));
@@ -595,5 +599,49 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         public List<String> getKeyNames() {
             return Collections.singletonList("Test");
         }
+    }
+
+    @Test
+    public void testAll(){
+        CommandLineParser clp = new CommandLineArgumentParser(
+                new Object(),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(),null, null)),
+                Collections.emptySet());
+        String[] args = {"--use-all-annotations"};
+        clp.parseArguments(nullMessageStream, args);
+        List<Annotation> annots = instantiateAnnotations(clp);
+
+        final FeatureInput<VariantContext> dbSNPBinding = null;
+        final List<FeatureInput<VariantContext>> features = Collections.emptyList();
+        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(annots, dbSNPBinding, features, false);
+
+        final Set<VCFHeaderLine> vcfAnnotationDescriptions = vae.getVCFAnnotationDescriptions(false);
+        Assert.assertFalse(vcfAnnotationDescriptions.isEmpty());
+
+        Assert.assertFalse(vcfAnnotationDescriptions.contains(VCFStandardHeaderLines.getInfoLine(VCFConstants.DBSNP_KEY)));
+        Assert.assertTrue(vcfAnnotationDescriptions.contains(VCFStandardHeaderLines.getInfoLine(VCFConstants.DEPTH_KEY)));          //yes DP
+        Assert.assertTrue(vcfAnnotationDescriptions.contains(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_COUNT_KEY)));   //yes AC
+    }
+
+    @Test
+    public void testAllMinusCoverage(){
+        CommandLineParser clp = new CommandLineArgumentParser(
+                new Object(),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(),null, null)),
+                Collections.emptySet());
+        String[] args = {"--use-all-annotations", "-AX", "Coverage"};
+        clp.parseArguments(nullMessageStream, args);
+        List<Annotation> annots = instantiateAnnotations(clp);
+
+        final FeatureInput<VariantContext> dbSNPBinding = null;
+        final List<FeatureInput<VariantContext>> features = Collections.emptyList();
+        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(annots, dbSNPBinding, features, false);
+
+        final Set<VCFHeaderLine> vcfAnnotationDescriptions = vae.getVCFAnnotationDescriptions(false);
+        Assert.assertFalse(vcfAnnotationDescriptions.isEmpty());
+
+        Assert.assertFalse(vcfAnnotationDescriptions.contains(VCFStandardHeaderLines.getInfoLine(VCFConstants.DBSNP_KEY)));
+        Assert.assertFalse(vcfAnnotationDescriptions.contains(VCFStandardHeaderLines.getInfoLine(VCFConstants.DEPTH_KEY))); //no DP
+        Assert.assertTrue(vcfAnnotationDescriptions.contains(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_COUNT_KEY)));  //yes AC
     }
 }

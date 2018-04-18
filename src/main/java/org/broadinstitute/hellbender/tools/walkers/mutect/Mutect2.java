@@ -10,10 +10,13 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.downsampling.MutectDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
 
 import java.io.File;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -131,7 +134,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
     private VariantContextWriter vcfWriter;
 
     private Mutect2Engine m2Engine;
-    
+
     @Override
     protected int defaultMinAssemblyRegionSize() { return 50; }
 
@@ -154,8 +157,16 @@ public final class Mutect2 extends AssemblyRegionWalker {
     protected boolean includeReadsWithDeletionsInIsActivePileups() { return true; }
 
     @Override
+    public boolean useAnnotationArguments() { return true;}
+
+    @Override
     public List<ReadFilter> getDefaultReadFilters() {
         return Mutect2Engine.makeStandardMutect2ReadFilters();
+    }
+
+    @Override
+    public List<Class<? extends Annotation>> getDefaultAnnotationGroups() {
+        return Mutect2Engine.getStandardMutect2AnnotationGroups();
     }
 
     @Override
@@ -168,7 +179,8 @@ public final class Mutect2 extends AssemblyRegionWalker {
 
     @Override
     public void onTraversalStart() {
-        m2Engine = new Mutect2Engine(MTAC, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), referenceArguments.getReferenceFileName());
+        VariantAnnotatorEngine annotatorEngine = new VariantAnnotatorEngine(getAnnotationsToUse(), null, Collections.emptyList(), false);
+        m2Engine = new Mutect2Engine(MTAC, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), referenceArguments.getReferenceFileName(), annotatorEngine);
         vcfWriter = createVCFWriter(outputVCF);
         m2Engine.writeHeader(vcfWriter, getDefaultToolVCFHeaderLines());
     }

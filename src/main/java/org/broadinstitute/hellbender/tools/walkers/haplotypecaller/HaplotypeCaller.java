@@ -15,16 +15,17 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscovery
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.FileNotFoundException;
+import java.util.*;
 import java.util.ArrayList;
 import java.util.List;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import java.nio.file.Path;
-import java.util.List;
 
 
 /**
@@ -190,6 +191,34 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     }
 
     @Override
+    public List<Class<? extends Annotation>> getDefaultAnnotationGroups() { return Arrays.asList(StandardAnnotation.class, StandardHCAnnotation.class);}
+
+    @Override
+    public boolean useAnnotationArguments() { return true;}
+
+    /**
+     * If we are in GVCF mode we want to tailor the annotations as there are certain annotations in the standard
+     * haplotype caller set which are no longer relevant, thus we filter them out before constructing the
+     * VariantAnnotationEngine because the user args will have been parsed by that point.
+     *
+     * @see GATKTool#getAnnotationsToUse()
+     * @return a collection of annotation arguments with alterations depending on hcArgs.emitReferenceConfidence
+     */
+    @Override
+    public Collection<Annotation> getAnnotationsToUse() {
+        final boolean confidenceMode = hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE;
+        final Collection<Annotation> annotations = super.getAnnotationsToUse();
+        return Stream.concat(annotations.stream(),
+                (!annotations.contains(new StrandBiasBySample()) && confidenceMode ? Arrays.asList(new StrandBiasBySample()) : new ArrayList<Annotation>()).stream())
+                .filter(c -> !((confidenceMode)
+                        && (c.getClass() == (ChromosomeCounts.class) ||
+                            c.getClass() == (FisherStrand.class) ||
+                            c.getClass() == (StrandOddsRatio.class) ||
+                            c.getClass() == (QualByDepth.class)))
+                ).collect(Collectors.toList());
+    }
+
+    @Override
     public AssemblyRegionEvaluator assemblyRegionEvaluator() {
         return hcEngine;
     }
@@ -200,7 +229,9 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
             throw new CommandLineException.BadArgumentValue("Non-zero maxMnpDistance is incompatible with GVCF mode.");
         }
         final ReferenceSequenceFile referenceReader = getReferenceReader(referenceArguments);
-        hcEngine = new HaplotypeCallerEngine(hcArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), referenceReader);
+        final VariantAnnotatorEngine variantAnnotatorEngine = new VariantAnnotatorEngine(getAnnotationsToUse(),
+                hcArgs.dbsnp.dbsnp, hcArgs.comps,  hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE);
+        hcEngine = new HaplotypeCallerEngine(hcArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), referenceReader, variantAnnotatorEngine);
 
         // The HC engine will make the right kind (VCF or GVCF) of writer for us
         final SAMSequenceDictionary sequenceDictionary = getHeaderForReads().getSequenceDictionary();

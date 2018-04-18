@@ -5,7 +5,7 @@ import java.util.List;
 /**
  * Superclass of all variant annotations.
  */
-public abstract class VariantAnnotation implements Annotation {
+public abstract class VariantAnnotation implements Annotation{
 
     /**
      * Return the keys
