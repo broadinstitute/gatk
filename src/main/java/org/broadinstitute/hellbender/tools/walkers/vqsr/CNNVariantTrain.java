@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
-import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
+import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 
 import java.util.ArrayList;

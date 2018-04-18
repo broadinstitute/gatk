@@ -20,7 +20,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.runtime.AsynchronousStreamWriterService;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
-import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
+import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 import java.io.*;
 import java.util.*;
