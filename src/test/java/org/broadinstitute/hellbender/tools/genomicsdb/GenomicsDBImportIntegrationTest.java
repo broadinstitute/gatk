@@ -54,18 +54,18 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String COMBINED = largeFileTestDir + "gvcfs/combined.gatk3.7.g.vcf.gz";
     private static final String COMBINED_WITHSPACES = largeFileTestDir + "gvcfs/combined.gatk3.7.smaller_interval.g.vcf";
     private static final ArrayList<SimpleInterval> INTERVAL =
-            new ArrayList() {{ add(new SimpleInterval("chr20", 17960187, 17981445)); }};
-    private static final ArrayList<SimpleInterval> MULTIPLE_INTERVALS = new ArrayList() {{
-        add(new SimpleInterval("chr20", 17960187, 17970000));
-        add(new SimpleInterval("chr20", 17970001, 17980000));
-        add(new SimpleInterval("chr20", 17980001, 17981445));
-    }};
-    private static final ArrayList INTERVAL_3736 =
-            new ArrayList() {{ add(new SimpleInterval("chr6",130365070,146544250)); }};
-    private static final ArrayList INTERVAL_NONDIPLOID =
-            new ArrayList() {{ add(new SimpleInterval("20", 10000000, 10100000)); }};
+            new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("chr20", 17960187, 17981445)));
+    private static final ArrayList<SimpleInterval> MULTIPLE_INTERVALS = new ArrayList<SimpleInterval>(Arrays.asList(
+        new SimpleInterval("chr20", 17960187, 17970000),
+        new SimpleInterval("chr20", 17970001, 17980000),
+        new SimpleInterval("chr20", 17980001, 17981445)
+    ));
+    private static final ArrayList<SimpleInterval> INTERVAL_3736 =
+            new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("chr6",130365070,146544250)));
+    private static final ArrayList<SimpleInterval> INTERVAL_NONDIPLOID =
+            new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("20", 10000000, 10100000)));
     private static final ArrayList<SimpleInterval> SMALLER_INTERVAL =
-            new ArrayList() {{ add(new SimpleInterval("chr20", 17960187, 17961973)); }};
+            new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("chr20", 17960187, 17961973)));
     private static final VCFHeader VCF_HEADER = VariantContextTestUtils.getCompleteHeader();
     private static final String SAMPLE_NAME_KEY = "SN";
     private static final String ANOTHER_ATTRIBUTE_KEY = "AA";
@@ -123,7 +123,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     @Test
     public void testGenomicsDBImportArtificialPhasedData() throws IOException {
-        ArrayList intervals = new ArrayList() {{ add(new SimpleInterval("1", 10109, 10297)); }};
+        ArrayList<SimpleInterval> intervals = new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("1", 10109, 10297)));
         testGenomicsDBImporterWithGenotypes(Arrays.asList(ARTIFICIAL_PHASED), intervals, ARTIFICIAL_PHASED, b37_reference_20_21);
     }
 
@@ -159,8 +159,11 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
         writeToGenomicsDB(vcfInputs, intervals, workspace, 0, false, 0, 1);
         checkJSONFilesAreWritten(workspace);
-        File expectedCombinedVCF = runCombineGVCFs(vcfInputs, intervals, referenceFile, CombineGVCFArgs);
-        checkGenomicsDBAgainstExpected(workspace, intervals, expectedCombinedVCF.getAbsolutePath(), referenceFile, true);
+        for(SimpleInterval currInterval : intervals) {
+            List<SimpleInterval> tmpList = new ArrayList<SimpleInterval>(Arrays.asList(currInterval));
+            File expectedCombinedVCF = runCombineGVCFs(vcfInputs, tmpList, referenceFile, CombineGVCFArgs);
+            checkGenomicsDBAgainstExpected(workspace, tmpList, expectedCombinedVCF.getAbsolutePath(), referenceFile, true);
+        }
     }
 
     @Test(groups = {"bucket"})
@@ -182,7 +185,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     @Test (enabled = true)
     public void testGenomicsDBAlleleSpecificAnnotations() throws IOException {
         testGenomicsDBAgainstCombineGVCFs(Arrays.asList(COMBINEGVCFS_TEST_DIR+"NA12878.AS.chr20snippet.g.vcf", COMBINEGVCFS_TEST_DIR+"NA12892.AS.chr20snippet.g.vcf"),
-                new ArrayList() {{ add(new SimpleInterval("20", 10433000, 10700000)); }},
+                new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("20", 10433000, 10700000))),
                 b37_reference_20_21,
                 new String[]{"-G", "StandardAnnotation", "-G", "AS_StandardAnnotation"});
     }
@@ -310,6 +313,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
         final AbstractFeatureReader<VariantContext, LineIterator> combinedVCFReader =
                 AbstractFeatureReader.getFeatureReader(expectedCombinedVCF, new VCFCodec(), true);
+
 
         intervals.forEach(interval -> {
             try (CloseableTribbleIterator<VariantContext> actualVcs =
@@ -611,7 +615,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     @Test
     public void testPreserveContigOrderingInHeader() throws IOException {
         final String workspace = createTempDir("testPreserveContigOrderingInHeader-").getAbsolutePath() + "/workspace";
-        ArrayList intervals = new ArrayList() {{ add (new SimpleInterval("chr20", 17959479, 17959479)); }};
+        ArrayList<SimpleInterval> intervals = new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("chr20", 17959479, 17959479)));
         writeToGenomicsDB(Arrays.asList(GENOMICSDB_TEST_DIR + "testHeaderContigLineSorting1.g.vcf",
                 GENOMICSDB_TEST_DIR + "testHeaderContigLineSorting2.g.vcf"), intervals, workspace, 0, false, 0, 1);
 
@@ -636,6 +640,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                 .setReferenceGenome(reference)
                 .setVidMappingFile(new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME).getAbsolutePath())
                 .setCallsetMappingFile(new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).getAbsolutePath())
+                .setVcfHeaderFilename(new File(workspace, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME).getAbsolutePath())
                 .setProduceGTField(produceGTField)
                 .setGenerateArrayNameFromPartitionBounds(true)
                 .build();
