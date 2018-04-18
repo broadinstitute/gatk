@@ -450,28 +450,4 @@ public class GATKAnnotationPluginDescriptor  extends CommandLinePluginDescriptor
         return allDiscoveredAnnotations.containsKey(pluginName) ? allDiscoveredAnnotations.get(pluginName).getClass() : null;
     }
 
-//======================================================================================================================
-// Methods to be used for testing purposes
-//======================================================================================================================
-    /**
-     * To be used primarily for testing purposes, this allows one to retrieve annotations
-     * @param annotationsToExclude list of annotations to exclude (pass an empty list to indicate that there are no exclusions)
-     * @param dbSNPInput input for variants from a known set from DbSNP or null if not provided.
-     *                   The annotation engine will mark variants overlapping anything in this set using {@link htsjdk.variant.vcf.VCFConstants#DBSNP_KEY}.
-     * @param comparisonFeatureInputs list of inputs with known variants.
-     *                   The annotation engine will mark variants overlapping anything in those sets using the name given by {@link FeatureInput#getName()}.
-     *                   Note: the DBSNP FeatureInput should be passed in separately, and not as part of this List - an GATKException will be thrown otherwise.
-     *                   Note: there are no non-DBSNP comparison FeatureInputs an empty List should be passed in here, rather than null.
-     */
-    public static VariantAnnotatorEngine ofAllMinusExcluded(final List<String> annotationsToExclude,
-                                                            final FeatureInput<VariantContext> dbSNPInput,
-                                                            final List<FeatureInput<VariantContext>> comparisonFeatureInputs,
-                                                            final Boolean useRawAnnotations) {
-        Utils.nonNull(annotationsToExclude, "annotationsToExclude is null");
-        Utils.nonNull(comparisonFeatureInputs, "comparisonFeatureInputs is null");
-       // new GATKAnnotationPluginDescriptor(, Collections.singletonList("all"));
-
-
-        return null; ///new VariantAnnotatorEngine(AnnotationManager.ofAllMinusExcluded(annotationsToExclude), dbSNPInput, comparisonFeatureInputs, useRawAnnotations);
-    }
 }
