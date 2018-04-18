@@ -52,6 +52,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String GENOMICSDB_TEST_DIR = toolsTestDir + "GenomicsDBImport/";
     private static final String COMBINEGVCFS_TEST_DIR = toolsTestDir + "walkers/CombineGVCFs/";
     private static final String COMBINED = largeFileTestDir + "gvcfs/combined.gatk3.7.g.vcf.gz";
+    private static final String COMBINED_MULTI_INTERVAL = largeFileTestDir + "gvcfs/combined_multi_interval.gatk3.7.g.vcf.gz";
     private static final String COMBINED_WITHSPACES = largeFileTestDir + "gvcfs/combined.gatk3.7.smaller_interval.g.vcf";
     private static final ArrayList<SimpleInterval> INTERVAL =
             new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("chr20", 17960187, 17981445)));
@@ -93,7 +94,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     @Test
     public void testGenomicsDBImportFileInputsWithMultipleIntervals() throws IOException {
-        testGenomicsDBImporter(LOCAL_GVCFS, MULTIPLE_INTERVALS, COMBINED, b38_reference_20_21, true);
+        testGenomicsDBImporter(LOCAL_GVCFS, MULTIPLE_INTERVALS, COMBINED_MULTI_INTERVAL, b38_reference_20_21, true);
     }
 
     @Test
@@ -212,7 +213,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     @Test(dataProvider = "batchSizes")
     public void testGenomicsDBImportFileInputsInBatchesWithMultipleIntervals(final int batchSize) throws IOException {
-        testGenomicsDBImporterWithBatchSize(LOCAL_GVCFS, MULTIPLE_INTERVALS, COMBINED, batchSize);
+        testGenomicsDBImporterWithBatchSize(LOCAL_GVCFS, MULTIPLE_INTERVALS, COMBINED_MULTI_INTERVAL, batchSize);
     }
 
     @Test(groups = {"bucket"}, dataProvider = "batchSizes")
