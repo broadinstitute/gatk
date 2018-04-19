@@ -12,6 +12,9 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
     public static final String NORMAL_ARTIFACT_LOD_LONG_NAME = "normal-artifact-lod";
     public static final String MAX_GERMLINE_POSTERIOR_LONG_NAME = "max-germline-posterior";
     public static final String MAX_ALT_ALLELE_COUNT_LONG_NAME = "max-alt-allele-count";
+    public static final String MIN_BASES_TO_SUSPECT_PCR_SLIPPAGE_LONG_NAME = "min-pcr-slippage-size";
+    public static final String PCR_SLIPPAGE_RATE_LONG_NAME = "pcr-slippage-rate";
+    public static final String PCR_SLIPPAGE_P_VALUE_LONG_NAME = "pcr-slippage-p-value";
     public static final String MIN_MEDIAN_MAPPING_QUALITY_LONG_NAME = "min-median-mapping-quality";
     public static final String MIN_MEDIAN_BASE_QUALITY_LONG_NAME = "min-median-base-quality";
     public static final String MAX_MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_LONG_NAME = "max-median-fragment-length-difference";
@@ -63,6 +66,15 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
 
     @Argument(fullName = MAX_ALT_ALLELE_COUNT_LONG_NAME, optional = true, doc = "filter variants with too many alt alleles")
     public int numAltAllelesThreshold = 1;
+
+    @Argument(fullName = MIN_BASES_TO_SUSPECT_PCR_SLIPPAGE_LONG_NAME, optional = true, doc = "Minimum number of reference bases in an STR to suspect PCR slippage")
+    public int minPcrSlippageBases = 8;
+
+    @Argument(fullName = PCR_SLIPPAGE_RATE_LONG_NAME, optional = true, doc = "In contexts where PCR slippage is suspected, the rough fraction of reads in which slippage occurs")
+    public double pcrSlippageRate = 0.1;
+
+    @Argument(fullName = PCR_SLIPPAGE_P_VALUE_LONG_NAME, optional = true, doc = "P-value threshold for PCR slippage")
+    public double pcrSlippagePValueThreshold = 0.001;
 
     @Argument(fullName = MIN_MEDIAN_MAPPING_QUALITY_LONG_NAME, optional = true, doc="filter variants for which alt reads' median mapping quality is too low.")
     public int minMedianMappingQuality = 30;

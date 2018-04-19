@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
+import org.apache.commons.math3.distribution.BinomialDistribution;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.contamination.ContaminationRecord;
 import org.broadinstitute.hellbender.tools.walkers.contamination.MinorAlleleFractionRecord;
@@ -74,17 +75,25 @@ public class Mutect2FilteringEngine {
         }
     }
 
-    private static void applySTRFilter(final VariantContext vc, final VariantContextBuilder vcb) {
+    private void applySTRFilter(final VariantContext vc, final VariantContextBuilder vcb) {
         // STR contractions, such as ACTACTACT -> ACTACT, are overwhelmingly false positives so we hard filter by default
         if (vc.isIndel()) {
             final int[] rpa = vc.getAttributeAsList(GATKVCFConstants.REPEATS_PER_ALLELE_KEY).stream()
                     .mapToInt(o -> Integer.parseInt(String.valueOf(o))).toArray();
             final String ru = vc.getAttributeAsString(GATKVCFConstants.REPEAT_UNIT_KEY, "");
-            if (rpa != null && rpa.length > 1 && ru.length() > 1) {
-                final int refCount = rpa[0];
-                final int altCount = rpa[1];
-
-                if (refCount - altCount == 1) {
+            if (rpa == null || rpa.length < 2 || ru.length() == 0) {
+                return;
+            }
+            final int referenceSTRBaseCount = ru.length() * rpa[0];
+            final int numPCRSlips = rpa[0] - rpa[1];
+            if (referenceSTRBaseCount >= MTFAC.minPcrSlippageBases && numPCRSlips == 1) {
+                // calculate the p-value that out of n reads we would have at least k slippage reads
+                // if this p-value is small we keep the variant (reject the PCR slippage hypothesis)
+                final int[] ADs = vc.getGenotype(tumorSample).getAD();
+                final int depth = ADs == null ? 0 : (int) MathUtils.sum(ADs);
+                final double oneSidedPValueOfSlippage = (ADs == null || ADs.length < 2) ? 1.0 :
+                        new BinomialDistribution(null, depth, MTFAC.pcrSlippageRate).cumulativeProbability(ADs[1] - 1, depth);
+                if (oneSidedPValueOfSlippage > MTFAC.pcrSlippagePValueThreshold) {
                     vcb.filter(GATKVCFConstants.STR_CONTRACTION_FILTER_NAME);
                 }
             }
@@ -253,7 +262,6 @@ public class Mutect2FilteringEngine {
         }
     }
 
-    //TODO: building a list via repeated side effects is ugly
     public void applyFilters(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final VariantContextBuilder vcb) {
         vcb.filters(new HashSet<>());
         applyInsufficientEvidenceFilter(MTFAC, vc, vcb);
