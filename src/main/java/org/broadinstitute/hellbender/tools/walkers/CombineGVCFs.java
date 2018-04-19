@@ -152,15 +152,15 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
      */
     @VisibleForTesting
     void createIntermediateVariants(SimpleInterval intervalToClose) {
-        Set<Integer> sitesToStop = new HashSet<>();
         resizeReferenceIfNeeded(intervalToClose);
 
         // Break up the GVCF according to the provided reference blocking scheme
-        if ( multipleAtWhichToBreakBands > 0) {
-            for (int i = ((intervalToClose.getStart())/multipleAtWhichToBreakBands)*multipleAtWhichToBreakBands; i <= intervalToClose.getEnd(); i+=multipleAtWhichToBreakBands) {
-                sitesToStop.add(i-1); // Subtract 1 here because we want to split before this base
-            }
-        }
+        // The values returned from getIntermediateStopSites represent a proposed set of stop sites that may include
+        // intervals that are outside the actual interval being closed. These sites are filtered out below.
+        // Note: Precomputing these is really inefficient when large reference blocks are closed with
+        // fine band resolution because it results in very large collections of stop sites (tens or hundreds of millions)
+        // that must subsequently be sorted.
+        final Set<Integer> sitesToStop = getIntermediateStopSites(intervalToClose, multipleAtWhichToBreakBands);
 
         // If any variant contexts ended (or were spanning deletions) the last context compute where we should stop them
         for (VariantContext vc : variantContextsOverlappingCurrentMerge) {
@@ -181,7 +181,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
         List<Integer> stoppedLocs = new ArrayList<>(sitesToStop);
         stoppedLocs.sort(Comparator.naturalOrder());
 
-        // For each stopped loc, create a fake QueuedContextState and pass it to endPreviousStats
+        // For each stopped loc that is within the interval being closed, create a fake QueuedContextState and pass it to endPreviousStats
         for (int stoppedLoc : stoppedLocs) {
             SimpleInterval loc = new SimpleInterval(intervalToClose.getContig(), stoppedLoc, stoppedLoc);
             if (( stoppedLoc <= intervalToClose.getEnd() && stoppedLoc>= intervalToClose.getStart()) && isWithinInterval(loc)) {
@@ -190,6 +190,25 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
             }
         }
 
+    }
+
+    // Get any intermediate stop sites based on the break band multiple.
+    @VisibleForTesting
+    protected final static Set<Integer> getIntermediateStopSites(final SimpleInterval intervalToClose, final int breakBandMultiple) {
+        final Set<Integer> sitesToStop = new HashSet<>();
+
+        if ( breakBandMultiple > 0) {
+            // if the intermediate interval to close starts before the end of the first band multiple,
+            // create the first stop position at the end of the band multiple
+            for (int blockEndPosition = intervalToClose.getStart() < (breakBandMultiple + 1) ?
+                    Math.max(2, breakBandMultiple) :
+                    (intervalToClose.getStart() / breakBandMultiple) * breakBandMultiple;
+                 blockEndPosition <= intervalToClose.getEnd();
+                 blockEndPosition += breakBandMultiple) {
+                sitesToStop.add(blockEndPosition - 1); // Subtract 1 here because we want to split before this base
+            }
+        }
+        return sitesToStop;
     }
 
     /**
