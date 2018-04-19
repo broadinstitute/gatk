@@ -58,7 +58,6 @@ public final class AlignedContig {
             this.alignmentIntervals = Collections.unmodifiableList(intervals);
             this.contigSequence = bases;
             this.contigName = read.getName();
-            this.hasEquallyGoodAlnConfigurations = false;
         }
     }
 
@@ -139,7 +138,7 @@ public final class AlignedContig {
                 if (basesDefined < length) {
                     throw new IllegalArgumentException("missing bases when looking across all the record provided: " + name + " " + basesDefined + " " + length + " " + AlignmentInterval.encode(alignmentIntervals));
                 }
-                return new AlignedContig(name, bases, alignmentIntervals, false);
+                return new AlignedContig(name, bases, alignmentIntervals);
             }
         }
     }
@@ -193,11 +192,9 @@ public final class AlignedContig {
         this.contigName = name;
         this.contigSequence = haplotype.getBases();
         this.alignmentIntervals = haplotype.getReferenceAlignmentIntervals();
-        this.hasEquallyGoodAlnConfigurations = false;
     }
 
-    public AlignedContig(final String contigName, final byte[] contigSequence, final List<AlignmentInterval> alignmentIntervals,
-                         final boolean hasEquallyGoodAlnConfigurations) {
+    public AlignedContig(final String contigName, final byte[] contigSequence, final List<AlignmentInterval> alignmentIntervals) {
         this.contigName = contigName;
         this.contigSequence = contigSequence;
         this.alignmentIntervals = alignmentIntervals.stream().sorted(getAlignmentIntervalComparator()).collect(Collectors.toList());

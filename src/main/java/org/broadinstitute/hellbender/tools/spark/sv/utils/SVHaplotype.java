@@ -129,11 +129,11 @@ public interface SVHaplotype {
     <T> List<List<AlignmentInterval>> align(final Iterable<T> input, Function<T, byte[]> basesOf);
 
     default <T> List<AlignedContig> alignContigs(final Iterable<AlignedContig> contigs) {
-        final List<String> names = Utils.stream(contigs).map(c -> c.contigName).collect(Collectors.toList());
-        final List<byte[]> bases = Utils.stream(contigs).map(c -> c.contigSequence).collect(Collectors.toList());
+        final List<String> names = Utils.stream(contigs).map(c -> c.getContigName()).collect(Collectors.toList());
+        final List<byte[]> bases = Utils.stream(contigs).map(c -> c.getContigSequence()).collect(Collectors.toList());
         final List<List<AlignmentInterval>> intervals = align(bases, Function.identity());
         final List<AlignedContig> realignedContigs = IntStream.range(0, names.size())
-                .mapToObj(i -> new AlignedContig(names.get(i), bases.get(i), intervals.get(i), false))
+                .mapToObj(i -> new AlignedContig(names.get(i), bases.get(i), intervals.get(i)))
                 .collect(Collectors.toList());
         final List<AlignedContig> result = new ArrayList<>(intervals.size());
         final Set<String> haplotypeName = Collections.singleton(getName());
@@ -146,11 +146,10 @@ public interface SVHaplotype {
                 final AssemblyContigAlignmentsConfigPicker.GoodAndBadMappings topMapping = mappings.get(0);
                 if (topMapping.getGoodMappings().isEmpty()) {
                     result.add(realignedContigs.get(i));
-                } else if (topMapping.getGoodMappings().size() == realignedContigs.get(i).alignmentIntervals.size()) {
+                } else if (topMapping.getGoodMappings().size() == realignedContigs.get(i).getAlignments().size()) {
                     result.add(realignedContigs.get(i));
                 } else {
-                    result.add(new AlignedContig(realignedContigs.get(i).contigName, realignedContigs.get(i).contigSequence, topMapping.getGoodMappings(),
-                            mappings.size() > 1));
+                    result.add(new AlignedContig(realignedContigs.get(i).getContigName(), realignedContigs.get(i).getContigSequence(), topMapping.getGoodMappings()));
                 }
             }
         }

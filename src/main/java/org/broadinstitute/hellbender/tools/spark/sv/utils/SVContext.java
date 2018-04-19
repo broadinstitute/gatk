@@ -405,8 +405,8 @@ public final class SVContext extends VariantContext {
         final List<SimpleInterval> breakPoints = getBreakPointIntervals(padding, dictionary, true);
         SVIntervalLocator locator = SVIntervalLocator.of(dictionary);
         final SVIntervalTree<SVInterval> tree = new SVIntervalTree<>();
-        Stream.concat(breakPoints.stream().map(locator::toSVInterval),
-                contigs.stream().flatMap(ctg -> ctg.alignmentIntervals.stream())
+        Stream.concat(breakPoints.stream().map(bp -> locator.toSVInterval(bp, 1)),
+                contigs.stream().flatMap(ctg -> ctg.getAlignments().stream())
                         .map(ai -> locator.toSVInterval(ai.referenceSpan, padding + 1)))
                 .forEach(svIntervalPlus -> {
                     final Iterator<SVIntervalTree.Entry<SVInterval>> overlappers = tree.overlappers(svIntervalPlus);
@@ -590,8 +590,8 @@ public final class SVContext extends VariantContext {
             final int end = getEnd();
             final int homologyPadding = (padForHomology ? getAttributeAsInt(GATKSVVCFConstants.HOMOLOGY_LENGTH, 0) : 0);
             return Arrays.asList(
-                    composePaddedInterval(contigName, contigLength, start + 1,
-                            start + 1 + homologyPadding, padding),
+                    composePaddedInterval(contigName, contigLength, start,
+                            start + homologyPadding, padding),
                     composePaddedInterval(contigName, contigLength, end,
                             end + homologyPadding, padding));
         } else {
@@ -603,7 +603,7 @@ public final class SVContext extends VariantContext {
     private static SimpleInterval composePaddedInterval(final String contig, final int contigSize, final int start,
                                                         final int end, final int padding) {
         return new SimpleInterval(contig,
-                Math.max(1, padding > 0 ? start - padding + 1 : start),
+                Math.max(1, padding > 0 ? start - padding : start),
                 Math.min(contigSize, end + padding));
 
     }

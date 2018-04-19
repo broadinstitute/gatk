@@ -807,7 +807,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         }
 
         private static AlignmentScore calculateAlignedContigScore(final AlignedContig ctg) {
-            return AlignmentScore.calculate(ctg.contigSequence.length, ctg.alignmentIntervals);
+            return AlignmentScore.calculate(ctg.getContigSequence().length, ctg.getAlignments());
         }
 
         private static String calculateHPTag(final double referenceScore, final double alternativeScore) {
@@ -857,13 +857,13 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
             outputRecord.setAttribute(REFERENCE_ALIGNMENT_TAG, composeSupplementaryLikeString(referenceAlignments[index]) + ';');
             outputRecord.setAttribute(ALTERNATIVE_ALIGNMENT_TAG, composeSupplementaryLikeString(alternativeAlignments[index]) + ';');
             outputRecord.setAttribute(VARIANT_CONTEXT_TAG, vc.getUniqueID());
-            outputRecord.setReadName(originalContig.contigName);
+            outputRecord.setReadName(originalContig.getContigName());
             outputRecord.setReadPairedFlag(false);
             outputRecord.setDuplicateReadFlag(false);
             outputRecord.setSecondOfPairFlag(false);
             outputRecord.setCigarString(SAMRecord.NO_ALIGNMENT_CIGAR);
             outputRecord.setReadNegativeStrandFlag(false);
-            final byte[] bases = originalContig.contigSequence;
+            final byte[] bases = originalContig.getContigSequence();
             outputRecord.setReadBases(bases);
             outputRecord.setReferenceName(vc.getContig());
             outputRecord.setAlignmentStart(vc.getStart());
@@ -873,7 +873,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
         }
 
         private static String composeSupplementaryLikeString(final AlignedContig referenceAlignment) {
-            return composeSupplementaryLikeString(referenceAlignment.alignmentIntervals);
+            return composeSupplementaryLikeString(referenceAlignment.getAlignments());
         }
 
         private static String composeSupplementaryLikeString(final AlignmentInterval interval) {
@@ -958,20 +958,20 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                                                                      final String alternativeScoreTagValue,
                                                                      final AlignedContig referenceAlignment,
                                                                      final AlignedContig alternativeAlignment) {
-            final List<AlignmentInterval> intervals = alignment.alignmentIntervals;
+            final List<AlignmentInterval> intervals = alignment.getAlignments();
 
             final List<SAMRecord> result = new ArrayList<>(intervals.size());
-            result.add(intervals.get(0).toSAMRecord(header, alignment.contigName, alignment.contigSequence,
+            result.add(intervals.get(0).toSAMRecord(header, alignment.getContigName(), alignment.getContigSequence(),
                     false, 0, Collections.emptyList()));
             for (int i = 1; i < intervals.size(); i++) {
-                result.add(alignment.alignmentIntervals.get(i)
-                        .toSAMRecord(header, alignment.contigName,
-                                alignment.contigSequence, false,
+                result.add(alignment.getAlignments().get(i)
+                        .toSAMRecord(header, alignment.getContigName(),
+                                alignment.getContigSequence(), false,
                                 SAMFlag.SUPPLEMENTARY_ALIGNMENT.intValue(),
                                 Collections.emptyList()));
             }
             for (final SAMRecord record : result) {
-                record.setReadName(alignment.contigName);
+                record.setReadName(alignment.getContigName());
                 if (readGroup != null) record.setAttribute(SAMTag.RG.name(), readGroup);
                 if (hpTagValue != null) record.setAttribute(HAPLOTYPE_CALL_TAG, hpTagValue);
                 if (hpQualValue != null) record.setAttribute(HAPLOTYPE_QUAL_TAG, "" + hpQualValue);
@@ -981,7 +981,7 @@ public class ComposeStructuralVariantHaplotypesSpark extends GATKSparkTool {
                 if (referenceAlignment != null) record.setAttribute(REFERENCE_ALIGNMENT_TAG, composeSupplementaryLikeString(referenceAlignment) + ';');
                 if (alternativeAlignment != null) record.setAttribute(ALTERNATIVE_ALIGNMENT_TAG, composeSupplementaryLikeString(alternativeAlignment) + ';');
             }
-            final List<String> saTagValues = alignment.alignmentIntervals.stream()
+            final List<String> saTagValues = alignment.getAlignments().stream()
                     .map(AlignmentInterval::toSumpplementaryAlignmentString)
                     .collect(Collectors.toList());
 
