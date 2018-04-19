@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine.spark;
 
+import org.apache.logging.log4j.Level;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
@@ -26,11 +27,30 @@ public abstract class SparkCommandLineProgram extends CommandLineProgram impleme
     @Override
     protected Object doWork() {
         final JavaSparkContext ctx = SparkContextFactory.getSparkContext(getProgramName(), sparkArgs.getSparkProperties(), sparkArgs.getSparkMaster());
+
+        // Log the spark arguments for the config here:
+        logSparkConfiguration(ctx);
+
         try{
             runPipeline(ctx);
             return null;
         } finally {
             afterPipeline(ctx);
+        }
+    }
+
+    // ---------------------------------------------------
+    // Private utility methods:
+    private void logSparkConfiguration(final JavaSparkContext ctx) {
+
+        // Only log if we would log a debug message:
+        if ( logger.getLevel().isMoreSpecificThan(Level.DEBUG) ) {
+            logger.debug("Spark Configuration:");
+            // I apologize for this use of scala.
+            // Apparently Spark is all about the scala and this seems unavoidable...
+            for ( final scala.Tuple2<String,String> confArg : ctx.getConf().getAll() ) {
+                logger.debug("  " + confArg._1() + " = " + confArg._2());
+            }
         }
     }
 
