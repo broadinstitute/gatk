@@ -21,8 +21,6 @@ import scala.Tuple2;
 
 import java.util.*;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY;
-
 /**
  * Each assembled contig should have at least one such accompanying structure, or 0 when it is unmapped.
  */
@@ -308,6 +306,8 @@ public final class AlignmentInterval {
     public AlignmentInterval(final SimpleInterval referenceSpan, final int startInAssembledContig, final int endInAssembledContig,
                              final Cigar cigarAlong5to3DirectionOfContig, final boolean forwardStrand,
                              final int mapQual, final int mismatches, final int alignerScore, final ContigAlignmentsModifier.AlnModType modType) {
+        checkValidArgument(cigarAlong5to3DirectionOfContig, referenceSpan, startInAssembledContig, endInAssembledContig);
+
         this.referenceSpan = referenceSpan;
         this.startInAssembledContig = startInAssembledContig;
         this.endInAssembledContig = endInAssembledContig;
@@ -319,6 +319,20 @@ public final class AlignmentInterval {
         this.mismatches = mismatches;
         this.alnScore = alignerScore;
         this.alnModType = modType;
+    }
+
+    @VisibleForTesting
+    static final void checkValidArgument(final Cigar cigar, final SimpleInterval referenceSpan,
+                                         final int readStart, final int readEnd) {
+
+        final int softClippedBases = SvCigarUtils.checkCigarAndConvertTerminalInsertionToSoftClip(cigar).stream().filter(ce -> ce.getOperator().equals(CigarOperator.S)).mapToInt(CigarElement::getLength).sum();
+        final int readLength = cigar.getReadLength() - softClippedBases;
+        final int referenceLength = cigar.getReferenceLength();
+        final boolean validState = referenceLength == referenceSpan.size() && readLength == (readEnd - readStart + 1);
+        if ( ! validState) {
+            throw new IllegalArgumentException("Encountering invalid arguments for constructing alignment,\t" +
+                    "cigar: " + cigar.toString() + " ref.span: " + referenceSpan.toString() + " read span: " + readStart + "-" + readEnd);
+        }
     }
 
     public boolean containsGapOfEqualOrLargerSize(final int gapSize) {
