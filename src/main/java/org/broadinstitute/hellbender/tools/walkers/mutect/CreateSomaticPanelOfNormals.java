@@ -175,22 +175,22 @@ public class CreateSomaticPanelOfNormals extends CommandLineProgram {
         while (mergingIterator.hasNext()) {
             final VariantContext vc = mergingIterator.next();
             if (!currentPosition.overlaps(vc)) {
-                processVariantsAtSamePosition(variantsAtThisPosition, writer);
+                processVariantsAtSamePosition(currentPosition, variantsAtThisPosition, writer);
                 variantsAtThisPosition.clear();
                 currentPosition = new SimpleInterval(vc.getContig(), vc.getStart(), vc.getStart());
             }
             variantsAtThisPosition.add(vc);
         }
-        processVariantsAtSamePosition(variantsAtThisPosition, writer);
+        processVariantsAtSamePosition(currentPosition, variantsAtThisPosition, writer);
         mergingIterator.close();
         writer.close();
 
         return "SUCCESS";
     }
 
-    private void processVariantsAtSamePosition(final List<VariantContext> variants, final VariantContextWriter writer) {
+    private void processVariantsAtSamePosition(final SimpleInterval currentPosition, final List<VariantContext> variants, final VariantContextWriter writer) {
         if (variants.size() >= minSampleCount){
-            final VariantContext mergedVc = AssemblyBasedCallerUtils.makeMergedVariantContext(variants);
+            final VariantContext mergedVc = AssemblyBasedCallerUtils.makeMergedVariantContext( variants, currentPosition);
             final VariantContext outputVc = new VariantContextBuilder()
                     .source(mergedVc.getSource())
                     .loc(mergedVc.getContig(), mergedVc.getStart(), mergedVc.getEnd())

@@ -131,16 +131,29 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
         final List<Allele> noCallAlleles = GATKVariantContextUtils.noCallAlleles(ploidy);
 
         for( final int loc : startPosKeySet ) {
+            if (loc == 10004094) {
+                int foo = loc;
+            }
             if( loc < activeRegionWindow.getStart() || loc > activeRegionWindow.getEnd() ) {
                 continue;
             }
-            final List<VariantContext> eventsAtThisLoc = getVCsAtThisLocation(haplotypes, loc, activeAllelesToGenotype);
-            VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLoc);
+
+            final List<VariantContext> eventsAtThisLocWithSpanDelsReplaced =
+                    replaceSpanDels(getVCsAtThisLocation(haplotypes, loc, activeAllelesToGenotype),
+                            Allele.create(ref[loc - refLoc.getStart()], true),
+                            loc);
+
+            if (eventsAtThisLocWithSpanDelsReplaced.size() > 1) {
+                logger.info("merging multiple events");
+            }
+
+            VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLocWithSpanDelsReplaced, new SimpleInterval(refLoc.getContig(), loc, loc));
+
             if( mergedVC == null ) {
                 continue;
             }
 
-            final Map<Allele, List<Haplotype>> alleleMapper = createAlleleMapper(eventsAtThisLoc, mergedVC, loc, haplotypes);
+            final Map<Allele, List<Haplotype>> alleleMapper = createAlleleMapper(eventsAtThisLocWithSpanDelsReplaced, mergedVC, loc, haplotypes, activeAllelesToGenotype);
 
             if( configuration.debug && logger != null ) {
                 logger.info("Genotyping event at " + loc + " with alleles = " + mergedVC.getAlleles());
@@ -175,6 +188,23 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
 
         final List<VariantContext> phasedCalls = doPhysicalPhasing ? phaseCalls(returnCalls, calledHaplotypes) : returnCalls;
         return new CalledHaplotypes(phasedCalls, calledHaplotypes);
+    }
+
+    private List<VariantContext> replaceSpanDels(final List<VariantContext> eventsAtThisLoc, final Allele refAllele, final int loc) {
+        return eventsAtThisLoc.stream().map(vc -> replaceWithSpanDelVC(vc, refAllele, loc)).collect(Collectors.toList());
+    }
+
+    private VariantContext replaceWithSpanDelVC(final VariantContext variantContext, final Allele refAllele, final int loc) {
+        if (variantContext.getStart() == loc) {
+            return variantContext;
+        } else {
+            VariantContextBuilder builder = new VariantContextBuilder(variantContext)
+                    .start(loc)
+                    .stop(loc)
+                    .alleles(Arrays.asList(refAllele, Allele.SPAN_DEL));
+            return builder.make();
+        }
+
     }
 
     /**

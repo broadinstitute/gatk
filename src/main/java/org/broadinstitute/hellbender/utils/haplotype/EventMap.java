@@ -21,6 +21,7 @@ import java.util.*;
 import java.util.function.IntPredicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Extract simple VariantContext events from a single haplotype
@@ -393,6 +394,10 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
         }
 
         return startPosKeySet;
+    }
+
+    public Iterator<VariantContext> getSpanningEvents(final int loc) {
+        return headMap(loc, true).values().stream().filter(v -> v.getEnd() >= loc).iterator();
     }
 
     private static class VariantContextComparator implements Comparator<VariantContext>, Serializable {

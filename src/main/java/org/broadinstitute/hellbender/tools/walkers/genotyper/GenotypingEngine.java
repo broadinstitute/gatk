@@ -269,7 +269,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         // Add 0.0 removes -0.0 occurrences.
         final double phredScaledConfidence = (-10.0 * log10Confidence) + 0.0;
 
-        // return a null call if we don't pass the confidence cutoff or the most likely allele frequency is zero
+        // return a null call if we don't pass the confidence cutoff or the most likely allele frequency is zero,
         // skip this if we are already looking at a vc with NON_REF as the first alt allele i.e. if we are in GenotypeGVCFs
         if ( !passesEmitThreshold(phredScaledConfidence, outputAlternativeAlleles.siteIsMonomorphic)
                 && !forceSiteEmission()
@@ -279,6 +279,13 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             final double[] AFpriors = getAlleleFrequencyPriors(vc, defaultPloidy, model);
             final int INDEX_FOR_AC_EQUALS_1 = 1;
             return limitedContext ? null : estimateReferenceConfidence(vc, stratifiedContexts, AFpriors[INDEX_FOR_AC_EQUALS_1], true, probOfAtLeastOneAltAllele);
+        }
+
+        // return a null call if we aren't forcing site emission and the only alt allele is a spanning deletion
+        if (! forceSiteEmission()
+                && outputAlternativeAlleles.alleles.size() == 1
+                && Allele.SPAN_DEL.equals(outputAlternativeAlleles.alleles.get(0))) {
+            return null;
         }
 
         // start constructing the resulting VC
