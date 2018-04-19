@@ -99,7 +99,8 @@ def resolveLargeResourceStubFiles(largeResourcesFolder, buildPrerequisitesMessag
         try {
             def retCode = gitLFSExecCommand.execute().waitFor()
             if (retCode.intValue() != 0) {
-                throw new GradleException("Execution of \"$gitLFSExecCommand\" failed with exit code: $retCode");
+                throw new GradleException("Execution of \"$gitLFSExecCommand\" failed with exit code: $retCode. " +
+                        " git-lfs is required to build GATK but may not be installed. $buildPrerequisitesMessage");
             }
             return retCode
         } catch (IOException e) {
