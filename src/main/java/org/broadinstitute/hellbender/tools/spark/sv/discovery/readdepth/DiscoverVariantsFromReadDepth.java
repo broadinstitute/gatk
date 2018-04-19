@@ -1,7 +1,11 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.readdepth;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFFileReader;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
@@ -12,12 +16,21 @@ import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.ModelSegments;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CalledCopyRatioSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatioSegment;
+import org.broadinstitute.hellbender.tools.copynumber.gcnv.GermlineCNVPostprocessingEngine;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.LargeSimpleSV;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
+import org.broadinstitute.hellbender.utils.GenomeLocParser;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -122,10 +135,11 @@ public class DiscoverVariantsFromReadDepth extends GATKTool {
     public static final String SV_CALLS_LONG_NAME = "sv-calls-vcf";
     public static final String BREAKPOINTS_LONG_NAME = "breakpoint-vcf";
     public static final String EVIDENCE_TARGET_LINKS_LONG_NAME = "evidence-target-links-file";
-    public static final String SEGMENT_CALLS_LONG_NAME = "model-segments-file";
+    public static final String CNV_CALLS_LONG_NAME = "cnv-segments-file";
     public static final String COPY_RATIOS_LONG_NAME = "copy-ratio-file";
     public static final String ASSEMBLY_CONTIGS_LONG_NAME = "assembly-bam";
     public static final String FILTERED_CALLS_LONG_NAME = "filtered-calls";
+    public static final String HIGH_COVERAGE_INTERVALS_LONG_NAME = "high-coverage-intervals";
 
     @Argument(doc = "Breakpoints list (.vcf)", fullName = BREAKPOINTS_LONG_NAME)
     private String breakpointVCFPath;
@@ -133,7 +147,7 @@ public class DiscoverVariantsFromReadDepth extends GATKTool {
     private String svCallVCFPath;
     @Argument(doc = "Evidence target links file (.bedpe)", fullName = EVIDENCE_TARGET_LINKS_LONG_NAME)
     private String evidenceTargetLinksFilePath;
-    @Argument(doc = "Model segments pipeline calls", fullName = SEGMENT_CALLS_LONG_NAME)
+    @Argument(doc = "CNV segments calls (gCNV .vcf or ModelSegments .seg)", fullName = CNV_CALLS_LONG_NAME)
     private String segmentCallsFilePath;
     @Argument(doc = "Copy number ratio file (.tsv or .hdf5)", fullName = COPY_RATIOS_LONG_NAME)
     private String copyRatioFilePath;
@@ -143,6 +157,8 @@ public class DiscoverVariantsFromReadDepth extends GATKTool {
     private String outputPath;
     @Argument(doc = "Output filtered calls path (.vcf)",fullName = FILTERED_CALLS_LONG_NAME)
     private String filteredCallsPath;
+    @Argument(doc = "High coverage intervals file path",fullName = HIGH_COVERAGE_INTERVALS_LONG_NAME)
+    private String highCoverageIntervalsPath;
 
     private final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments = new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection();
     private LargeSimpleSVCaller largeSimpleSVCaller;
@@ -155,18 +171,20 @@ public class DiscoverVariantsFromReadDepth extends GATKTool {
         dictionary = getBestAvailableSequenceDictionary();
         logger.info("Loading assembly...");
         final Collection<GATKRead> assembly = getReads(assemblyBamPath);
+        logger.info("Loading high coverage intervals...");
+        final List<SVInterval> highCoverageIntervals = getHighCoverageIntervals(highCoverageIntervalsPath, dictionary);
         logger.info("Loading breakpoints...");
         final Collection<VariantContext> breakpointCalls = readVCF(breakpointVCFPath, dictionary);
         logger.info("Loading SV calls...");
         final Collection<VariantContext> svCalls = readVCF(svCallVCFPath, dictionary);
         logger.info("Loading copy ratio segment calls...");
-        final CalledCopyRatioSegmentCollection copyRatioSegments = getCalledCopyRatioSegments(segmentCallsFilePath);
+        final CalledCopyRatioSegmentCollection copyRatioSegments = getCalledCopyRatioSegments(segmentCallsFilePath, dictionary);
         logger.info("Loading evidence target links...");
         final Collection<EvidenceTargetLink> evidenceTargetLinks = getEvidenceTargetLinks(evidenceTargetLinksFilePath, dictionary);
         logger.info("Loading copy ratio bins...");
         final CopyRatioCollection copyRatios = getCopyRatios(copyRatioFilePath);
 
-        largeSimpleSVCaller = new LargeSimpleSVCaller(breakpointCalls, svCalls, assembly, evidenceTargetLinks, copyRatios, copyRatioSegments, dictionary, arguments);
+        largeSimpleSVCaller = new LargeSimpleSVCaller(breakpointCalls, svCalls, assembly, evidenceTargetLinks, copyRatios, copyRatioSegments, highCoverageIntervals, dictionary, arguments);
     }
 
     @Override
@@ -208,6 +226,16 @@ public class DiscoverVariantsFromReadDepth extends GATKTool {
         }
     }
 
+    private static List<SVInterval> getHighCoverageIntervals(final String path, final SAMSequenceDictionary dictionary) {
+        if (path != null) {
+            final GenomeLocParser genomeLocParser = new GenomeLocParser(dictionary);
+            return IntervalUtils.parseIntervalArguments(genomeLocParser, path).stream()
+                    .map(genomeLoc -> new SVInterval(genomeLoc.getContigIndex(), genomeLoc.getStart(), genomeLoc.getEnd()))
+                    .collect(Collectors.toList());
+        }
+        return Collections.emptyList();
+    }
+
     private static Collection<GATKRead> getReads(final String bamPath) {
         if (bamPath != null) {
             final ReadsDataSource reads = new ReadsDataSource(IOUtils.getPath(bamPath));
@@ -221,9 +249,42 @@ public class DiscoverVariantsFromReadDepth extends GATKTool {
         return new CopyRatioCollection(copyRatioFile);
     }
 
-    private static CalledCopyRatioSegmentCollection getCalledCopyRatioSegments(final String path) {
-        final File modelSegmentsCallsFile = new File(path);
-        return new CalledCopyRatioSegmentCollection(modelSegmentsCallsFile);
+    private static CalledCopyRatioSegmentCollection getCalledCopyRatioSegments(final String path, final SAMSequenceDictionary dictionary) {
+        final File file = new File(path);
+        if (path.toLowerCase().endsWith(ModelSegments.SEGMENTS_FILE_SUFFIX.toLowerCase())) {
+            return new CalledCopyRatioSegmentCollection(file);
+        } else if (path.toLowerCase().endsWith(IOUtil.VCF_FILE_EXTENSION.toLowerCase())) {
+            final VCFFileReader reader = new VCFFileReader(file, false);
+            final List<CalledCopyRatioSegment> segments = Utils.stream(reader.iterator()).map(variantContext ->  {
+                final SimpleInterval interval = new SimpleInterval(variantContext.getContig(), variantContext.getStart(), variantContext.getEnd());
+                final GenotypesContext genotypesContext = variantContext.getGenotypes();
+                if (genotypesContext.isEmpty()) {
+                    throw new UserException.BadInput("No genotypes found in variant context " + variantContext.getID());
+                }
+                final Genotype genotype = genotypesContext.get(0);
+                if (!genotype.hasExtendedAttribute("NP")) {
+                    throw new UserException.BadInput("Number of points genotype not found in variant context " + variantContext.getID());
+                }
+                if (!genotype.hasExtendedAttribute(GermlineCNVPostprocessingEngine.CN)) {
+                    throw new UserException.BadInput("Copy number genotype not found in variant context " + variantContext.getID());
+                }
+                final int copyNumber = Integer.valueOf((String) genotype.getExtendedAttribute(GermlineCNVPostprocessingEngine.CN));
+                final int numPoints = Integer.valueOf((String) genotype.getExtendedAttribute("NP"));
+                final CopyRatioSegment segment = new CopyRatioSegment(interval, numPoints, Math.log(copyNumber) / Math.log(2.0));
+                final CalledCopyRatioSegment.Call call;
+                if (copyNumber == 2) {
+                    call = CalledCopyRatioSegment.Call.NEUTRAL;
+                } else if (copyNumber > 2) {
+                    call = CalledCopyRatioSegment.Call.AMPLIFICATION;
+                } else {
+                    call = CalledCopyRatioSegment.Call.DELETION;
+                }
+                return new CalledCopyRatioSegment(segment, call);
+            }).collect(Collectors.toList());
+            final String sampleName = reader.getFileHeader().getSampleNamesInOrder().get(0);
+            return new CalledCopyRatioSegmentCollection(new SimpleSampleLocatableMetadata(sampleName, dictionary), segments);
+        }
+        throw new UserException.BadInput("CNV segments file must be " + ModelSegments.SEGMENTS_FILE_SUFFIX + " or " + IOUtil.VCF_FILE_EXTENSION);
     }
 
     private static Collection<EvidenceTargetLink> getEvidenceTargetLinks(final String path, final SAMSequenceDictionary dictionary) {

@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery.readdepth;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.OverlapDetector;
+import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.antlr.v4.runtime.misc.Utils;
 import org.apache.spark.api.java.JavaRDD;
@@ -27,6 +28,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.evidence.SVReadFilter;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
@@ -47,6 +49,8 @@ public class CNVIntervalSubset extends GATKSparkTool {
     private static final int MIN_INTERVAL_SIZE = 500;
     @Argument(doc = "breakpoint VCF", fullName = "breakpoint-vcf")
     private String breakpointVCFPath;
+    @Argument(doc = "Structural variant calls list (.vcf)", fullName = "sv-calls-vcf")
+    private String svCallVCFPath;
     @Argument(doc = "evidence target links file", fullName = "evidence-target-links-file")
     private String evidenceTargetLinksFilePath;
     @Argument(doc = "Read depth file (hdf5 or tsv)", fullName = "read-depth-file")
@@ -60,6 +64,7 @@ public class CNVIntervalSubset extends GATKSparkTool {
 
         final SAMSequenceDictionary contigDict = ReferenceUtils.loadFastaDictionary(new File(contigDictPath));
         final List<VariantContext> breakpoints = readVCF(breakpointVCFPath, contigDict);
+        final List<VariantContext> structuralVariantCalls = readVCF(svCallVCFPath, contigDict);
 
         final SAMFileHeader header = new SAMFileHeader(contigDict);
         final List<EvidenceTargetLink> evidenceTargetLinks = new ArrayList<>();
@@ -104,6 +109,20 @@ public class CNVIntervalSubset extends GATKSparkTool {
         }
 
         final List<GenomeLoc> intervals = new ArrayList<>(evidenceTargetLinks.size() + breakpoints.size());
+        for (final VariantContext variantContext : structuralVariantCalls) {
+            if (variantContext.getStructuralVariantType() == StructuralVariantType.DUP || variantContext.getStructuralVariantType() == StructuralVariantType.DEL
+                    || variantContext.getStructuralVariantType() == StructuralVariantType.CNV) {
+                final int contig = contigDict.getSequence(variantContext.getContig()).getSequenceIndex();
+                final int start = variantContext.getStart();
+                final int end = variantContext.getEnd();
+                final int length = end - start;
+                if (length <= MAX_INTERVAL_SIZE && length >= MIN_INTERVAL_SIZE) {
+                    final int paddedStart = Math.max(0, start - INTERVAL_PADDING);
+                    final int paddedEnd = Math.min(contigDict.getSequence(contig).getSequenceLength(), end + INTERVAL_PADDING);
+                    intervals.add(new GenomeLoc(variantContext.getContig(), contig, paddedStart, paddedEnd));
+                }
+            }
+        }
         for (final Tuple2<VariantContext,Integer> breakpoint : pairedBreakpoints) {
             final VariantContext vc = breakpoint._1;
             final int contig = contigDict.getSequence(vc.getContig()).getSequenceIndex();
@@ -121,7 +140,7 @@ public class CNVIntervalSubset extends GATKSparkTool {
             final int rightContig = link.getPairedStrandedIntervals().getRight().getInterval().getContig();
             final boolean leftStrand = link.getPairedStrandedIntervals().getLeft().getStrand();
             final boolean rightStrand = link.getPairedStrandedIntervals().getRight().getStrand();
-            if (leftContig == rightContig && !leftStrand && rightStrand) {
+            if (leftContig == rightContig && leftStrand != rightStrand) { //Only intrachromosomal outies/innies
                 final int start = link.getPairedStrandedIntervals().getLeft().getInterval().getStart();
                 final int end = link.getPairedStrandedIntervals().getRight().getInterval().getEnd();
                 final int length = end - start;
@@ -155,6 +174,9 @@ public class CNVIntervalSubset extends GATKSparkTool {
             final OverlapDetector<CopyRatio> overlapDetector = readDepthData.getOverlapDetector();
             final List<CopyRatio> countsList = new ArrayList<>(mergedIntervals.size());
             for (final GenomeLoc loc : mergedIntervals) {
+                if (loc.overlaps(new SimpleInterval("chr1", 86404101, 86404200))) {
+                    int x = 0;
+                }
                 final Set<CopyRatio> countSet = overlapDetector.getOverlaps(loc);
                 countsList.addAll(countSet);
             }

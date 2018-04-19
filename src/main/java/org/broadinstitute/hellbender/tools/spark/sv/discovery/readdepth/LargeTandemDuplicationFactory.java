@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.readdepth;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
@@ -9,7 +8,10 @@ import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscovery
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.LargeSimpleSV;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.IntrachromosomalBreakpointPair;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Collection;
@@ -28,10 +30,8 @@ public class LargeTandemDuplicationFactory extends LargeSimpleSVFactory {
                                          final SVIntervalTree<VariantContext> structuralVariantCallTree,
                                          final SVIntervalTree<GATKRead> contigTree,
                                          final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments,
-                                         final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector,
-                                         final OverlapDetector<CopyRatio> copyRatioOverlapDetector,
                                          final SAMSequenceDictionary dictionary) {
-        super(intrachromosomalLinkTree, interchromosomalLinkTree, structuralVariantCallTree, contigTree, arguments, copyRatioSegmentOverlapDetector, copyRatioOverlapDetector, dictionary);
+        super(intrachromosomalLinkTree, interchromosomalLinkTree, structuralVariantCallTree, contigTree, arguments, dictionary);
     }
 
     @Override
@@ -63,8 +63,12 @@ public class LargeTandemDuplicationFactory extends LargeSimpleSVFactory {
      */
     @Override
     protected boolean hasSupportingEvidenceOrientation(final EvidenceTargetLink link) {
-        final PairedStrandedIntervals intervals = link.getPairedStrandedIntervals();
-        return !intervals.getLeft().getStrand() && intervals.getRight().getStrand();
+        return hasOutieOrientation(link);
+    }
+
+    @Override
+    protected boolean isCounterEvidenceOrientation(final EvidenceTargetLink link) {
+        return !hasInnieOrientation(link) && !hasOutieOrientation(link);
     }
 
     /**

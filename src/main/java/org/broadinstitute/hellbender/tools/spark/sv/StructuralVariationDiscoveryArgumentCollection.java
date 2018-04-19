@@ -251,7 +251,7 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         private static final long serialVersionUID = 1L;
 
         public final int DEFAULT_MIN_EVENT_SIZE = 1000;
-        public final double DEFAULT_MIN_SCORE = 0.5;
+        public final double DEFAULT_MIN_SCORE = 0;
 
         public final double DEFAULT_COUNTEREVIDENCE_PSEUDOCOUNT = 1;
         public final int DEFAULT_BREAKPOINT_PADDING = 500;
@@ -260,7 +260,7 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         public final int DEFAULT_MIN_COUNTERVIDENCE_CLUSTER_SIZE = 1;
 
         public final int DEFAULT_HMM_PADDING = 0;
-        public final double DEFAULT_HMM_VALID_STATES_MIN_FRACTION = 0.90;
+        public final double DEFAULT_HMM_VALID_STATES_MIN_FRACTION = 1;
         public final double DEFAULT_HMM_TRANSITION_PROB = 0.01;
         public final int DEFAULT_HMM_MAX_STATES = 14;
 

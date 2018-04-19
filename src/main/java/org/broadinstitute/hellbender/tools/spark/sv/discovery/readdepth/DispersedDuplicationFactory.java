@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.readdepth;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
@@ -12,7 +11,9 @@ import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -26,10 +27,8 @@ public class DispersedDuplicationFactory extends LargeSimpleSVFactory {
                                        final SVIntervalTree<VariantContext> structuralVariantCallTree,
                                        final SVIntervalTree<GATKRead> contigTree,
                                        final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments,
-                                       final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector,
-                                       final OverlapDetector<CopyRatio> copyRatioOverlapDetector,
                                        final SAMSequenceDictionary dictionary) {
-        super(intrachromosomalLinkTree, interchromosomalLinkTree, structuralVariantCallTree, contigTree, arguments, copyRatioSegmentOverlapDetector, copyRatioOverlapDetector, dictionary);
+        super(intrachromosomalLinkTree, interchromosomalLinkTree, structuralVariantCallTree, contigTree, arguments, dictionary);
     }
 
     @Override
@@ -46,6 +45,10 @@ public class DispersedDuplicationFactory extends LargeSimpleSVFactory {
         return new LargeSimpleSV(SimpleSVType.TYPES.DUP_DISP, start, end, contigId, readPairEvidence, splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, breakpoints, supportingEvidence);
     }
 
+    @Override
+    protected boolean isCounterEvidenceOrientation(final EvidenceTargetLink link) {
+        return !hasInnieOrientation(link) && !hasOutieOrientation(link);
+    }
 
     @Override
     protected int countSupportingEvidenceReadPairs(final Collection<EvidenceTargetLink> links) {
