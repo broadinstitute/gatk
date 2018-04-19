@@ -151,7 +151,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             final Optional<LikelihoodMatrix<Allele>> subsettedLog10NormalMatrix =
                     getForNormal(() -> new SubsettedLikelihoodMatrix<>(log10NormalMatrix.get(), allSomaticAlleles));
 
-            final Map<String, Object> populationAlleleFreqeuncyAnnotation = GermlineProbabilityCalculator.getPopulationAlleleFrequencyAnnotation(featureContext.getValues(MTAC.germlineResource, loc), somaticAltAlleles, MTAC.afOfAllelesNotInGermlineResource);
+            final Map<String, Object> populationAlleleFreqeuncyAnnotation = GermlineProbabilityCalculator.getPopulationAlleleFrequencyAnnotation(featureContext.getValues(MTAC.germlineResource, loc), somaticAltAlleles, MTAC.getDefaultAlleleFrequency());
 
             final VariantContextBuilder callVcb = new VariantContextBuilder(mergedVC)
                     .alleles(allSomaticAlleles)
