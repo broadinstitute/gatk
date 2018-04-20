@@ -412,14 +412,17 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
             return null;
         }
 
-        SimpleInterval interval = prevPos != null ? new SimpleInterval(prevPos.getContig(), prevPos.getStart(), variantContextsOverlappingCurrentMerge.stream().map(VariantContext::getEnd).max(Comparator.naturalOrder()).get()) :
-                storedReferenceContext.getInterval();
-
-        createIntermediateVariants(interval);
-
-        // there shouldn't be any state left unless the user cut in the middle of a gVCF block
         if ( !variantContextsOverlappingCurrentMerge.isEmpty() ) {
-            logger.warn("You have asked for an interval that cuts in the middle of one or more gVCF blocks. Please note that this will cause you to lose records that don't end within your interval.");
+            // finish off the last blocks
+            final SimpleInterval lastInterval = new SimpleInterval(
+                    variantContextsOverlappingCurrentMerge.get(0).getContig(),
+                    variantContextsOverlappingCurrentMerge.get(0).getStart(),
+                    variantContextsOverlappingCurrentMerge.stream().map(VariantContext::getEnd).max(Comparator.naturalOrder()).get());
+                createIntermediateVariants(lastInterval);
+            // there shouldn't be any state left unless the user cut in the middle of a gVCF block
+            if ( !variantContextsOverlappingCurrentMerge.isEmpty() ) {
+                logger.warn("You have asked for an interval that cuts in the middle of one or more gVCF blocks. Please note that this will cause you to lose records that don't end within your interval.");
+            }
         }
 
         return null;
