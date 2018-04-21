@@ -25,8 +25,6 @@ public class LargeSimpleSV {
     protected final int splitReadCounterEvidence;
     protected final Collection<EvidenceTargetLink> supportingEvidence;
     protected final IntrachromosomalBreakpointPair breakpoints;
-    protected String readDepthSupportType;
-    public int id;
 
     public LargeSimpleSV(final SimpleSVType.TYPES type,
                          final int start,
@@ -48,15 +46,6 @@ public class LargeSimpleSV {
         this.splitReadCounterEvidence = splitReadCounterEvidence;
         this.breakpoints = breakpoints;
         this.supportingEvidence = supportingEvidence;
-        this.readDepthSupportType = "NONE";
-    }
-
-    public void setReadDepthSupportType(final String readDepthSupportType) {
-        this.readDepthSupportType = readDepthSupportType;
-    }
-
-    public String getReadDepthSupportType() {
-        return readDepthSupportType;
     }
 
     public double getScore(final double counterEvidencePseudocount) {
@@ -103,13 +92,18 @@ public class LargeSimpleSV {
         return type;
     }
 
+    public LargeSimpleSV copy() {
+        final LargeSimpleSV copy = new LargeSimpleSV(type, start, end, contigId, readPairEvidence, splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, breakpoints, supportingEvidence);
+        return copy;
+    }
+
     public static String getBedHeader() {
-        return "#CONTIG\tSTART\tEND\tLEN\tTYPE\tE_RP\tE_SR\tCE_RP\tCE_SR\tSCORE\tBRKPTS\tRD_SUPP\tID";
+        return "CONTIG\tSTART\tEND\tLEN\tTYPE\tE_RP\tE_SR\tCE_RP\tCE_SR\tSCORE\tBRKPTS";
     }
 
     public String toBedString(final SAMSequenceDictionary dictionary, final double counterEvidencePseudocount) {
         return dictionary.getSequence(contigId).getSequenceName() + "\t" + start + "\t" + end + "\t" + (end-start) + "\t" + type + "\t" + readPairEvidence + "\t" + splitReadEvidence +
-                "\t" + readPairCounterEvidence + "\t" + splitReadCounterEvidence + "\t" + getScore(counterEvidencePseudocount) + "\t" + (breakpoints == null ? "NONE" : breakpoints.getString(dictionary)) + "\t" + readDepthSupportType + "\t" + id;
+                "\t" + readPairCounterEvidence + "\t" + splitReadCounterEvidence + "\t" + getScore(counterEvidencePseudocount) + "\t" + (breakpoints == null ? "NONE" : breakpoints.getString(dictionary));
     }
 
     @Override

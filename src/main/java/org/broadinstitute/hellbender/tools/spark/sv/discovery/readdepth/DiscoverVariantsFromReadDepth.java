@@ -163,7 +163,7 @@ public class DiscoverVariantsFromReadDepth extends GATKTool {
     private final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments = new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection();
     private LargeSimpleSVCaller largeSimpleSVCaller;
     private SAMSequenceDictionary dictionary;
-    private Collection<LargeSimpleSV> events;
+    private Collection<ReadDepthEvent> events;
     private List<VariantContext> filteredCalls;
 
     @Override
@@ -189,7 +189,7 @@ public class DiscoverVariantsFromReadDepth extends GATKTool {
 
     @Override
     public void traverse() {
-        final Tuple2<Collection<LargeSimpleSV>,List<VariantContext>> result = largeSimpleSVCaller.callEvents(progressMeter);
+        final Tuple2<Collection<ReadDepthEvent>,List<VariantContext>> result = largeSimpleSVCaller.callEvents(progressMeter);
         events = result._1;
         filteredCalls = result._2;
     }
@@ -204,10 +204,10 @@ public class DiscoverVariantsFromReadDepth extends GATKTool {
     /**
      * Writes events collection to BED file
      */
-    private void writeEvents(final String outputPath, final Collection<LargeSimpleSV> events, final SAMSequenceDictionary dictionary) {
+    private void writeEvents(final String outputPath, final Collection<ReadDepthEvent> events, final SAMSequenceDictionary dictionary) {
         try (final OutputStream outputStream = BucketUtils.createFile(outputPath)) {
-            outputStream.write((LargeSimpleSV.getBedHeader() + "\n").getBytes());
-            for (final LargeSimpleSV event : events) {
+            outputStream.write(("#" + ReadDepthEvent.getBedHeader() + "\n").getBytes());
+            for (final ReadDepthEvent event : events) {
                 outputStream.write((event.toBedString(dictionary, arguments.counterEvidencePseudocount) + "\n").getBytes());
             }
         } catch (final IOException e) {

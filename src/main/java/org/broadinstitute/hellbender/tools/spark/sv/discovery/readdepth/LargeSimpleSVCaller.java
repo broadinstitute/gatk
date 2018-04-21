@@ -356,7 +356,7 @@ public class LargeSimpleSVCaller {
     /**
      * Returns all events. Searches by iterating over the breakpoint pairs and then the evidence target links.
      */
-    public Tuple2<Collection<LargeSimpleSV>, List<VariantContext>> callEvents(final ProgressMeter progressMeter) {
+    public Tuple2<Collection<ReadDepthEvent>, List<VariantContext>> callEvents(final ProgressMeter progressMeter) {
 
         if (progressMeter != null) {
             progressMeter.setRecordLabel("intervals");
@@ -391,10 +391,10 @@ public class LargeSimpleSVCaller {
             //final Optional<LargeSimpleSV> event = getHighestScoringEventOnInterval(leftBreakpointInterval, rightBreakpointInterval, breakpoints.getInterval(), calledEventTree, breakpoints, arguments.breakpointPadding);
             final Collection<LargeSimpleSV> events = getEventsOnInterval(leftInterval, rightInterval, breakpoints.getInterval(), breakpoints, arguments.breakpointPadding);
             for (final LargeSimpleSV event : events) {
-                final boolean hasOverlappingDeletion = Utils.stream(calledEventTree.overlappers(event.getInterval())).map(SVIntervalTree.Entry::getValue).anyMatch(overlapper -> overlapper.getType() == SimpleSVType.TYPES.DEL);
-                if (!hasOverlappingDeletion && event.getType() == SimpleSVType.TYPES.DUP_TAND) {
+                final boolean hasOverlappingDeletion = false; //Utils.stream(calledEventTree.overlappers(event.getInterval())).map(SVIntervalTree.Entry::getValue).anyMatch(overlapper -> overlapper.getType() == SimpleSVType.TYPES.DEL);
+                //if (!hasOverlappingDeletion && event.getType() == SimpleSVType.TYPES.DUP_TAND) {
                     calledEventTree.put(event.getInterval(), event);
-                }
+                //}
             }
             if (progressMeter != null) {
                 progressMeter.update(SVIntervalUtils.convertToSimpleInterval(breakpoints.getInterval(), dictionary));
@@ -412,10 +412,10 @@ public class LargeSimpleSVCaller {
                 //final Optional<LargeSimpleSV> event = getHighestScoringEventOnInterval(leftInterval, rightInterval, callInterval, calledEventTree, null, arguments.evidenceTargetLinkPadding);
                 final Collection<LargeSimpleSV> events = getEventsOnInterval(leftInterval, rightInterval, callInterval, null, arguments.evidenceTargetLinkPadding);
                 for (final LargeSimpleSV event : events) {
-                    final boolean hasOverlappingDeletion = Utils.stream(calledEventTree.overlappers(event.getInterval())).map(SVIntervalTree.Entry::getValue).anyMatch(overlapper -> overlapper.getType() == SimpleSVType.TYPES.DEL);
-                    if (!hasOverlappingDeletion && event.getType() == SimpleSVType.TYPES.DUP_TAND) {
+                    final boolean hasOverlappingDeletion = false; // Utils.stream(calledEventTree.overlappers(event.getInterval())).map(SVIntervalTree.Entry::getValue).anyMatch(overlapper -> overlapper.getType() == SimpleSVType.TYPES.DEL);
+                    //if (!hasOverlappingDeletion && event.getType() == SimpleSVType.TYPES.DUP_TAND) {
                         calledEventTree.put(event.getInterval(), event);
-                    }
+                    //}
                 }
                 if (progressMeter != null) {
                     progressMeter.update(SVIntervalUtils.convertToSimpleInterval(callInterval, dictionary));
@@ -455,319 +455,158 @@ public class LargeSimpleSVCaller {
         final Iterator<SVIntervalTree.Entry<LargeSimpleSV>> iterator2 = calledEventTree.iterator();
         while (iterator2.hasNext()) {
             final SVIntervalTree.Entry<LargeSimpleSV> entry = iterator2.next();
-            if (!callsToRemove.contains(entry.getValue()) && entry.getValue().getContigId() == 0) {
-                if (entry.getValue().getType() == SimpleSVType.TYPES.DEL) {
-                    deletionCalls.put(entry.getInterval(), entry.getValue());
-                } else if (entry.getValue().getType() == SimpleSVType.TYPES.DUP_TAND) {
-                    duplicationCalls.put(entry.getInterval(), entry.getValue());
+            if (!callsToRemove.contains(entry.getValue()) && entry.getValue().getContigId() >= 0) { //TODO
+                final Set<CalledCopyRatioSegment> overlappingSegments = copyRatioSegmentOverlapDetector.getOverlaps(SVIntervalUtils.convertToSimpleInterval(entry.getInterval(), dictionary));
+                final CalledCopyRatioSegment.Call expectedCall = entry.getValue().getType() == SimpleSVType.TYPES.DEL ? CalledCopyRatioSegment.Call.DELETION : CalledCopyRatioSegment.Call.AMPLIFICATION;
+                final int callOverlap = overlappingSegments.stream().filter(segment -> segment.getCall() == expectedCall).mapToInt(segment -> SVIntervalUtils.convertToSVInterval(segment.getInterval(), dictionary).overlapLen(entry.getInterval())).sum();
+                final double fractionOverlap = callOverlap / (double) entry.getInterval().getLength();
+                if (fractionOverlap > 0.5) {
+                    if (entry.getValue().getType() == SimpleSVType.TYPES.DEL) {
+                        deletionCalls.put(entry.getInterval(), entry.getValue());
+                    } else if (entry.getValue().getType() == SimpleSVType.TYPES.DUP_TAND
+                            && overlappingSegments.stream().anyMatch(segment -> segment.getCall() == CalledCopyRatioSegment.Call.AMPLIFICATION)) {
+                        duplicationCalls.put(entry.getInterval(), entry.getValue());
+                    }
                 }
             }
         }
-        final Collection<LargeSimpleSV> finalResult = clusterAndModelReadDepth(deletionCalls);
-        finalResult.addAll(clusterAndModelReadDepth(duplicationCalls));
+
+        final ReadDepthModel deletionModel = new ReadDepthModel(deletionCalls, copyRatioSegmentOverlapDetector, dictionary);
+        final Collection<ReadDepthEvent> finalResult = deletionModel.solve();
+        final ReadDepthModel duplicationModel = new ReadDepthModel(duplicationCalls, copyRatioSegmentOverlapDetector, dictionary);
+        finalResult.addAll(duplicationModel.solve());
         return new Tuple2<>(finalResult, filteredCalls);
     }
 
-    private Collection<LargeSimpleSV> clusterAndModelReadDepth(final SVIntervalTree<LargeSimpleSV> callTree) {
-        final Set<LargeSimpleSV> visited = new HashSet<>(SVUtils.hashMapCapacity(callTree.size()));
-        final List<Collection<LargeSimpleSV>> clusters = new ArrayList<>(callTree.size());
-        final Iterator<SVIntervalTree.Entry<LargeSimpleSV>> iter = callTree.iterator();
-        final Set<LargeSimpleSV> cluster = new HashSet<>(SVUtils.hashMapCapacity(callTree.size()));
-        while (iter.hasNext()) {
-            final SVIntervalTree.Entry<LargeSimpleSV> entry = iter.next();
-            final LargeSimpleSV event = entry.getValue();
-            if (visited.contains(event)) continue;
-            cluster.clear();
-            cluster.add(event);
-            int oldClusterSize;
-            do {
-                final List<LargeSimpleSV> oldCluster = new ArrayList<>(cluster); //Have to copy the set to avoid ConcurrentModificationException
-                oldClusterSize = cluster.size();
-                for (final LargeSimpleSV clusterEvent : oldCluster) {
-                    cluster.addAll(Utils.stream(callTree.overlappers(clusterEvent.getInterval())).map(SVIntervalTree.Entry::getValue).collect(Collectors.toList()));
-                }
-            } while (cluster.size() > oldClusterSize);
-            if (cluster.stream().anyMatch(visited::contains)) {
-                throw new IllegalStateException("There's a bug somewhere here");
-            }
-            visited.addAll(cluster);
-            clusters.add(new ArrayList<>(cluster));
+/*
+    private final static class GradientDescentSolver {
+        public final double[] gradientR;
+        public final double[] deltaR;
+        public final double[] mtR;
+        public final double[] vtR;
+        public final double[] r; //prob exists
+
+        public final double[] gradientQ;
+        public final double[] deltaQ;
+        public final double[] mtQ;
+        public final double[] vtQ;
+        public final double[] q; //zygosity
+
+        private final ReadDepthModelParameters modelParameters;
+
+        public GradientDescentSolver(final ReadDepthModelParameters modelParameters, final int size) {
+            this.modelParameters = modelParameters;
+            gradientQ = new double[size];
+            deltaQ = new double[size];
+            mtQ = new double[size];
+            vtQ = new double[size];
+            q = new double[size];
+            Arrays.fill(q, 1e-3);
+            gradientR = new double[size];
+            deltaR = new double[size];
+            mtR = new double[size];
+            vtR = new double[size];
+            r = new double[size];
+            Arrays.fill(r, 1e-3);
         }
 
-        final Collection<LargeSimpleSV> result = new ArrayList<>(callTree.size());
-        for (final Collection<LargeSimpleSV> callGroup : clusters) {
-            result.addAll(modelReadDepth(callGroup));
-        }
-        return result;
-    }
-
-    static final double searchDelta = 1e-3;
-    static final double learningRate = 1e-3;
-    static final double absoluteTolerance = 1e-6;
-    static final int maxIter = 50;
-    static final double maxStepSize = 0.1;
-    static final double rMax = 2;
-    static final double ploidy = 2;
-    static final double copyNeutralDepth = 30;
-
-    private Collection<LargeSimpleSV> modelReadDepth(final Collection<LargeSimpleSV> calls) {
-
-        final SVIntervalTree<LargeSimpleSV> callTree = new SVIntervalTree<>();
-        for (final LargeSimpleSV call : calls) {
-            callTree.put(call.getInterval(), call);
-        }
-
-        logger.info("Computing read depth scores on " + callTree.size() + " events...");
-        final ArrayList<Tuple2<Integer,List<Integer>>> eventOverlapMatrix = new ArrayList<>(callTree.size());
-        int entryIndex = 0;
-        for (final SVIntervalTree.Entry<LargeSimpleSV> entry : callTree) {
-            entry.getValue().id = entryIndex;
-            final SVInterval interval = entry.getInterval();
-            final SVInterval startPoint = new SVInterval(interval.getContig(), interval.getStart(), interval.getStart());
-            final Collection<SVIntervalTree.Entry<LargeSimpleSV>> overlappingEvents = Utils.stream(callTree.overlappers(startPoint)).collect(Collectors.toList());
-            if (overlappingEvents.size() > 2) {
-                final int size = overlappingEvents.stream()
-                        .map(SVIntervalTree.Entry::getInterval)
-                        .reduce((a, b) -> new SVInterval(a.getContig(), Math.max(a.getStart(), b.getStart()), Math.min(a.getEnd(), b.getEnd())))
-                        .get().getLength();
-                final List<Integer> overlapperIds = overlappingEvents.stream().map(event -> event.getValue().id).collect(Collectors.toList());
-                Collections.sort(overlapperIds);
-                eventOverlapMatrix.add(new Tuple2<>(size, overlapperIds));
-            } else {
-                eventOverlapMatrix.add(new Tuple2<>(0, Collections.emptyList()));
-            }
-            entryIndex++;
-        }
-        eventOverlapMatrix.trimToSize();
-
-        final ArrayList<Tuple2<List<OverlapInfo>,Double>> copyNumberInfo = new ArrayList<>(copyRatioSegmentOverlapDetector.getAll().size());
-        for (final CalledCopyRatioSegment copyRatioSegment : copyRatioSegmentOverlapDetector.getAll()) {
-            final SVInterval interval = SVIntervalUtils.convertToSVInterval(copyRatioSegment.getInterval(), dictionary);
-            final Iterator<SVIntervalTree.Entry<LargeSimpleSV>> iter = callTree.overlappers(interval);
-            if (iter.hasNext()) {
-                final double copyNumberCall = Math.pow(2.0, copyRatioSegment.getMeanLog2CopyRatio()) * 2;
-                final List<OverlapInfo> overlapInfo = getOverlapInfo(copyRatioSegment, Utils.stream(iter).map(SVIntervalTree.Entry::getValue).collect(Collectors.toList()));
-                copyNumberInfo.add(new Tuple2<>(overlapInfo, copyNumberCall));
-            }
-        }
-        copyNumberInfo.trimToSize();
-
-        final List<LargeSimpleSV> eventsList = Utils.stream(callTree.iterator()).map(SVIntervalTree.Entry::getValue).collect(Collectors.toList());
-
-        double[] r = new double[callTree.size()];
-        /*if (r.length > 90) {
-            int x = 0;
-        }
-        for (int i = 0; i < r.length; i++) {
-            double bestPosterior = computeNegativeLogPosterior(r, eventOverlapMatrix, copyNumberInfo, eventsList);
-            double bestValue = r[i];
-            for (int j = 1; j < 10; j++) {
-                r[i] += 0.2;
-                final double posterior = computeNegativeLogPosterior(r, eventOverlapMatrix, copyNumberInfo, eventsList);
-                if (posterior < bestPosterior) {
-                    bestPosterior = posterior;
-                    bestValue = r[i];
-                }
-            }
-            r[i] = bestValue;
-        }*/
-
-        double delta = absoluteTolerance * 2;
-        double logPosterior;
-        double lastLogPosterior = computeNegativeLogPosterior(r, eventOverlapMatrix, copyNumberInfo, eventsList);
-        int numIter = 0;
-        //logger.info("posterior = " + logPosterior);
-        final double[] mt = new double[r.length];
-        final double[] vt = new double[r.length];
-        while (delta > absoluteTolerance && numIter < maxIter) {
-            if (r.length > 90) {
-                int x = 0;
-            }
-            double deltaRiTotal = 0;
+        public void initialize(final double[] initR, final double[] initQ) {
             for (int i = 0; i < r.length; i++) {
-                double rTemp = r[i];
+                r[i] = initR[i];
+            }
+            for (int i = 0; i < q.length; i++) {
+                q[i] = initQ[i];
+            }
+        }
 
-                r[i] += searchDelta;
-                final double testLogPosterior1 = computeNegativeLogPosterior(r, eventOverlapMatrix, copyNumberInfo, eventsList);
+        public double computeGradient(final List<LargeSimpleSV> eventsList,
+                                    final List<Tuple2<Integer,Integer>> nearestCallDistances,
+                                    final ArrayList<Tuple2<List<OverlapInfo>,Double>> copyNumberInfo) {
+            return computeGradient(q, gradientQ, mtQ, eventsList, nearestCallDistances, copyNumberInfo);
+                //+ computeGradient(r, gradientR, mtR, eventsList, nearestCallDistances, copyNumberInfo);
+        }
 
-                r[i] = rTemp - searchDelta;
-                final double testLogPosterior2 = computeNegativeLogPosterior(r, eventOverlapMatrix, copyNumberInfo, eventsList);
-                r[i] = rTemp;
+        private double computeGradient(final double[] x,
+                                     final double[] gradientX,
+                                     final double[] mtX,
+                                     final List<LargeSimpleSV> eventsList,
+                                     final List<Tuple2<Integer,Integer>> nearestCallDistances,
+                                     final ArrayList<Tuple2<List<OverlapInfo>,Double>> copyNumberInfo) {
+            double total = 0;
+            for (int i = 0; i < x.length; i++) {
+                double xTemp = x[i];
+                x[i] += modelParameters.gradientDelta; //mtX[i]*0.9 +
+                final double testLogPosterior1 = computeLogPosterior(eventsList, nearestCallDistances, copyNumberInfo);
+                x[i] = xTemp - modelParameters.gradientDelta; //+ mtX[i]*0.9
+                final double testLogPosterior2 = computeLogPosterior(eventsList, nearestCallDistances, copyNumberInfo);
+                x[i] = xTemp;
+                gradientX[i] = (testLogPosterior1 - testLogPosterior2) / (2 * modelParameters.gradientDelta);
+                total += gradientX[i]*gradientX[i];
+            }
+            return total;
+        }
 
-                final double gradient = (testLogPosterior1 - testLogPosterior2) / (2 * searchDelta);
-                double deltaRi = learningRate * gradient; // + mt[i] * 0.9
-                //mt[i] = deltaRi;
+        public void computeDelta(final int numIter) {
+            //computeDelta(gradientR, mtR, vtR, deltaR, numIter);
+            computeDelta(gradientQ, mtQ, vtQ, deltaQ, numIter);
+        }
 
-                /*
-                final double beta1 = 0.9;
-                final double beta2 = 0.999;
-                mt[i] = (beta1 * mt[i] +  (1 - beta1) * gradient) / (1 - Math.pow(beta1, numIter + 1));
-                vt[i] = Math.max(beta2 * vt[i], Math.abs(gradient)); //(beta2 * vt[i] +  (1 - beta2) * gradient * gradient) / (1 - Math.pow(beta2, numIter + 1));
-                double deltaRi = mt[i] * learningRate / (vt[i] + 1e-8); // (Math.sqrt(vt[i]) + 1e-8);
-                */
+        private void computeDelta(final double[] gradientX, final double[] mtX, final double[] vtX, final double[] deltaX, final int numIter) {
+            for (int i = 0; i < gradientX.length; i++) {
 
-                if (Math.abs(deltaRi) > maxStepSize) {
-                    deltaRi = maxStepSize * Math.signum(deltaRi);
+                final double beta1 = 0.9; //0.99;
+                final double beta2 = 0.999; //0.9999;
+                if (numIter == 0) {
+                    //mtX[i] = gradientX[i];
+                    //vtX[i] = gradientX[i] * gradientX[i];
                 }
 
-                r[i] = Math.min(rMax, Math.max(0, r[i] - deltaRi));
+                //Basic
+                //deltaX[i] = gradientX[i] * learningRate;
+                //if (Math.abs(deltaX[i]) > maxStepSize) {
+                //    deltaX[i] = maxStepSize * Math.signum(deltaX[i]);
+                //}
 
-                for (final Tuple2<Integer,List<Integer>> entry : eventOverlapMatrix) {
-                    if (entry._2.contains(i)) {
-                        final double total = computeEntryPrior(entry, r);
-                        if (total > ploidy) {
-                            //logger.warn("Enforcing ploidy constraint at event " + i + ".");
-                            r[i] = Math.max(0, r[i] + (ploidy - total));
-                        }
-                    }
-                }
-                deltaRiTotal += (r[i] - rTemp)*(r[i] - rTemp);
-            }
-            logPosterior = computeNegativeLogPosterior(r, eventOverlapMatrix, copyNumberInfo, eventsList);
-            if (deltaRiTotal == 0) {
-                delta = 0;
-            } else {
-                delta = Math.abs(lastLogPosterior - logPosterior) / Math.sqrt(deltaRiTotal);
-            }
-            lastLogPosterior = logPosterior;
-            numIter++;
-            //logger.info("Iteration " + numIter + ": posterior = " + logPosterior + "; delta = " + delta);
-        }
-        final List<LargeSimpleSV> finalCalls = Utils.stream(callTree.iterator()).map(SVIntervalTree.Entry::getValue).collect(Collectors.toList());
-        for (final LargeSimpleSV call : finalCalls) {
-            call.setReadDepthSupportType(String.valueOf(r[call.id]));
-        }
-        logger.info("Finished after " + numIter + " iterations with log posterior " + lastLogPosterior + " and delta " + delta);
-        return finalCalls;
-    }
+                //Simple momentum
+                //deltaX[i] = mtX[i] * 0.99 + gradientX[i] * learningRate;
+                //if (Math.abs(deltaX[i]) > maxStepSize) {
+                //    deltaX[i] = maxStepSize * Math.signum(deltaX[i]);
+                //}
+                //mtX[i] = deltaX[i];
 
-    private static final class OverlapInfo {
-        public List<Tuple2<Integer,Integer>> idsAndCoefficients;
-        public double scalingFactor;
+                //ADAM
+                mtX[i] = (beta1 * mtX[i] +  (1 - beta1) * gradientX[i]); // / (1 - Math.pow(beta1, numIter + 1));
+                vtX[i] = (beta2 * vtX[i] +  (1 - beta2) * gradientX[i] * gradientX[i]); // / (1 - Math.pow(beta2, numIter + 1));
+                deltaX[i] = mtX[i] * modelParameters.learningRate / (Math.sqrt(vtX[i]) + 1e-8);
 
-        public OverlapInfo(List<Tuple2<Integer, Integer>> idsAndCoefficients, double scalingFactor) {
-            this.idsAndCoefficients = idsAndCoefficients;
-            this.scalingFactor = scalingFactor;
-        }
-    }
+                //ADAMAX
+                //mtX[i] = (beta1 * mtX[i] +  (1 - beta1) * gradientX[i]) / (1 - Math.pow(beta1, numIter + 1));
+                //vtX[i] = Math.max(beta2 * vtX[i], Math.abs(gradientX[i]));
+                //deltaX[i] = mtX[i] * learningRate / (vtX[i] + 1e-8);
 
-    private static List<OverlapInfo> getOverlapInfo(final CalledCopyRatioSegment segment, final List<LargeSimpleSV> overlappers) {
-
-        final Map<Integer,LargeSimpleSV> overlapperMap = overlappers.stream().collect(Collectors.toMap(event -> event.id, event -> event));
-        final SimpleInterval interval = segment.getInterval();
-        final List<LargeSimpleSV> startSortedOverlappers = new ArrayList<>(overlappers);
-        Collections.sort(startSortedOverlappers, Comparator.comparingInt(LargeSimpleSV::getStart));
-
-        final List<LargeSimpleSV> endSortedOverlappers = new ArrayList<>(overlappers);
-        Collections.sort(endSortedOverlappers, Comparator.comparingInt(LargeSimpleSV::getEnd));
-
-        int lastStart = interval.getStart();
-        int startIndex = 0;
-        int endIndex = 0;
-        final ArrayList<OverlapInfo> overlapInfoList = new ArrayList<>();
-        final List<Integer> openEvents = new ArrayList<>();
-        while (startIndex < overlappers.size() || endIndex < overlappers.size()) {
-            int nextStart;
-            if (startIndex < overlappers.size()) {
-                nextStart = startSortedOverlappers.get(startIndex).getStart();
-                if (nextStart <= interval.getStart()) {
-                    openEvents.add(startSortedOverlappers.get(startIndex).id);
-                    startIndex++;
-                    continue;
-                }
-            } else {
-                nextStart = interval.getEnd();
-            }
-            int nextEnd;
-            if (endIndex < overlappers.size()) {
-                nextEnd = endSortedOverlappers.get(endIndex).getEnd();
-            } else {
-                nextEnd = interval.getEnd();
-            }
-            final List<Tuple2<Integer, Integer>> idsAndCoefficients = openEvents.stream()
-                    .map(id -> new Tuple2<>(id, overlapperMap.get(id).getType() == SimpleSVType.TYPES.DEL ? -1 : 1))
-                    .collect(Collectors.toList());
-            final int subIntervalLength;
-            if (startIndex < overlappers.size() && nextStart < nextEnd) {
-                subIntervalLength = nextStart - lastStart;
-                lastStart = nextStart;
-                openEvents.add(startSortedOverlappers.get(startIndex).id);
-                startIndex++;
-            } else if (nextEnd >= interval.getEnd()) {
-                subIntervalLength = interval.getEnd() - lastStart;
-                lastStart = interval.getEnd();
-            } else {
-                subIntervalLength = nextEnd - lastStart;
-                lastStart = nextEnd;
-                openEvents.remove(Integer.valueOf(endSortedOverlappers.get(endIndex).id));
-                endIndex++;
-            }
-            if (!idsAndCoefficients.isEmpty()) {
-                final double scalingFactor =  openEvents.stream()
-                        .mapToDouble(id -> subIntervalLength / (double) overlapperMap.get(id).getSize())
-                        .sum();
-                overlapInfoList.add(new OverlapInfo(idsAndCoefficients, scalingFactor));
-            }
-            if (lastStart == interval.getEnd()) {
-                break;
             }
         }
-        overlapInfoList.trimToSize();
-        return overlapInfoList;
-    }
+        public double step() {
+            return Math.sqrt(step(r, deltaR) + step(q, deltaQ));
+        }
 
-    private double computeNegativeLogPosterior(final double[] r, List<Tuple2<Integer,List<Integer>>> eventOverlapMatrix, final List<Tuple2<List<OverlapInfo>,Double>> copyNumberInfo, final List<LargeSimpleSV> events) {
-        return -computeLogLikelihood(r, copyNumberInfo, events) - computeLogPrior(r, eventOverlapMatrix);
-    }
+        private double step(final double[] x, final double[] deltaX) {
+            double deltaRiTotal = 0;
+            for (int i = 0; i < x.length; i++) {
+                x[i] = x[i] + deltaX[i];
+                deltaRiTotal += deltaX[i]*deltaX[i];
+            }
+            return deltaRiTotal;
+        }
 
-    private double computeLogPrior(final double[] r, List<Tuple2<Integer,List<Integer>>> eventOverlapMatrix) {
-        double logP = 0; //eventOverlapMatrix.stream().mapToDouble(entry -> computeEntryPrior(entry, r)).sum();
-        //logP += Arrays.stream(r).map(val -> Math.log(unscaledNormal(val,1, 0.5) + unscaledNormal(val, 0, 0.5))).sum();
-        return logP;
+        public double computeLogPosterior(final List<LargeSimpleSV> eventsList,
+                                        final List<Tuple2<Integer,Integer>> nearestCallDistances,
+                                        final ArrayList<Tuple2<List<OverlapInfo>,Double>> copyNumberInfo) {
+            return LargeSimpleSVCaller.computeLogPosterior(r, q, modelParameters, copyNumberInfo, eventsList, nearestCallDistances);
+        }
     }
+*/
 
-    private static double computeEntryPrior(final Tuple2<Integer,List<Integer>> entry, final double[] r) {
-        //final Integer size = entry._1;
-        final List<Integer> overlapperIds = entry._2;
-        double rTotal = overlapperIds.stream().mapToDouble(id -> r[id]).sum();
-        return rTotal; //rTotal > 2 ? - 1e-4 * (rTotal - 2) * size : 0;
-    }
-
-    private double computeLogLikelihood(final double[] r, final List<Tuple2<List<OverlapInfo>,Double>> copyNumberInfo, final List<LargeSimpleSV> events) {
-        return copyNumberInfo.stream().mapToDouble(entry -> computeCopyNumberLikelihood(entry, r)).sum()
-                + events.stream().mapToDouble(event -> computeEvidenceLikelihood(event, r)).sum();
-    }
-
-    private static double computeEvidenceLikelihood(final LargeSimpleSV event, final double[] r) {
-        return 0;
-        /*
-        final double expectedEvidence = r[event.id] * copyNeutralDepth / 2.0;
-        final double sigma = 0.25 * copyNeutralDepth;
-        final int size = event.getEnd() - event.getStart();
-        return size * (unscaledLogNormal(event.getReadPairEvidence(), expectedEvidence, sigma)
-                + unscaledLogNormal(event.getSplitReadEvidence(), expectedEvidence, sigma));
-                */
-    }
-
-    private static double computeCopyNumberLikelihood(final Tuple2<List<OverlapInfo>,Double> entry, final double[] r) {
-        final List<OverlapInfo> overlapInfoList = entry._1;
-        final double calledCopyNumber = entry._2;
-        return overlapInfoList.stream()
-                .mapToDouble(info -> {
-                    final double estimatedCopyNumber = 2 + info.idsAndCoefficients.stream().mapToDouble(tuple -> tuple._2 * r[tuple._1]).sum();
-                    return unscaledLogNormal(calledCopyNumber, estimatedCopyNumber, 0.5) * info.scalingFactor;
-                }).sum();
-    }
-
-    private static double unscaledNormal(final double x, final double mu, final double sigma) {
-        final double diff = (x-mu)/sigma;
-        return Math.exp(-0.5*diff*diff)/sigma;
-    }
-
-    private static double unscaledLogNormal(final double x, final double mu, final double sigma) {
-        final double diff = (x-mu)/sigma;
-        return -0.5*diff*diff - Math.log(sigma);
-    }
 
     private Collection<LargeSimpleSV> testReadDepth(final SVIntervalTree<LargeSimpleSV> callTree, final ProgressMeter progressMeter) {
         logger.info("Evaluating calls for read depth...");
@@ -915,18 +754,18 @@ public class LargeSimpleSVCaller {
                     && Math.abs(segment.getInterval().getEnd() - eventSVInterval.getEnd()) < 10000)
                     .collect(Collectors.toList());
             if (expectedCallMap.containsKey(eventType) && !supportingSegments.isEmpty()) {
-                largeSimpleSV.setReadDepthSupportType("SEGMENTS");
+                //largeSimpleSV.setReadDepthSupportType("SEGMENTS");
                 supportedCalls.add(largeSimpleSV);
             } else if (eventSVInterval.getLength() < 10000) {
                 final List<SVCopyRatio> eventBins = getCopyRatiosOnInterval(eventSVInterval, copyRatioTree, arguments.copyRatioBinTrimming, dictionary);
                 if (validHMMStatesMap.containsKey(eventType) && supportedByHMM(eventBins, validHMMStatesMap.get(eventType))) {
-                    largeSimpleSV.setReadDepthSupportType("HMM");
+                    //largeSimpleSV.setReadDepthSupportType("HMM");
                     supportedCalls.add(largeSimpleSV);
                 }
             } else if (eventType == SimpleSVType.TYPES.DEL && largeSimpleSV.getSupportingEvidence().size() >= 3) {
                 final List<SVCopyRatio> eventBins = getCopyRatiosOnInterval(eventSVInterval, copyRatioTree, arguments.copyRatioBinTrimming, dictionary);
                 if (fractionEmpty(eventSVInterval, eventBins) > 0.8) {
-                    largeSimpleSV.setReadDepthSupportType("DEL_RESCUE");
+                    //largeSimpleSV.setReadDepthSupportType("DEL_RESCUE");
                     supportedCalls.add(largeSimpleSV);
                 }
             }
