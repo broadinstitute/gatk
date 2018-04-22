@@ -452,7 +452,7 @@ public class LargeSimpleSVCaller {
 
         final SVIntervalTree<LargeSimpleSV> filteredCalls = new SVIntervalTree<>();
         Utils.stream(calledEventTree.iterator())
-                .filter(entry -> entry.getInterval().getContig() == 0)  //TODO
+                .filter(entry -> entry.getInterval().getContig() >= 0)  //TODO
                 .filter(entry -> {
                     final Set<CalledCopyRatioSegment> overlappingSegments = copyRatioSegmentOverlapDetector.getOverlaps(SVIntervalUtils.convertToSimpleInterval(entry.getInterval(), dictionary));
                     final CalledCopyRatioSegment.Call expectedCall = entry.getValue().getType() == SimpleSVType.TYPES.DEL ? CalledCopyRatioSegment.Call.DELETION : CalledCopyRatioSegment.Call.AMPLIFICATION;
@@ -460,6 +460,8 @@ public class LargeSimpleSVCaller {
                     final double fractionOverlap = callOverlap / (double) entry.getInterval().getLength();
                     return fractionOverlap > 0.5;
                 }).forEach(event -> filteredCalls.put(event.getInterval(), event.getValue()));
+
+        logger.info("Running read depth model on " + filteredCalls.size() + " events");
         final ReadDepthModel readDepthModel = new ReadDepthModel(filteredCalls, copyRatioSegmentOverlapDetector, dictionary);
         readDepthModel.solve(10);
         final Collection<ReadDepthEvent> finalResult = readDepthModel.getEvents();

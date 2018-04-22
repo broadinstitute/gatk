@@ -18,6 +18,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public final class ReadDepthModel {
 
@@ -118,7 +119,10 @@ public final class ReadDepthModel {
     }
 
     private double solveStateMaximumPosterior() {
-        return clusteredEvents.values().stream().flatMap(List::stream).mapToDouble(cluster -> solveStateMaximumPosterior(cluster)).sum();
+        return StreamSupport.stream(clusteredEvents.values().spliterator(), true) //TODO use Spark
+                .flatMap(List::stream)
+                .mapToDouble(cluster -> solveStateMaximumPosterior(cluster))
+                .sum();
     }
 
     private double[] stateStepSampler(final int size) {
@@ -317,11 +321,11 @@ public final class ReadDepthModel {
         public static final double DEFAULT_MAX_PLOIDY = 2;
         public static final double DEFAULT_COPY_NEUTRAL_DEPTH = 30;
         public static final double DEFAULT_MEAN_INSERT_SIZE = 500;
-        public static final double DEFAULT_PARAMETER_CONSTRAINT_STD = 0.01;
-        public static final double DEFAULT_EXPECTED_READ_EVIDENCE_FRACTION = 1.0;
-        public static final double DEFAULT_EXPECTED_READ_EVIDENCE_STD = 0.1;
-        public static final double DEFAULT_COPY_NUMBER_STD = 0.1;
-        public static final double DEFAULT_CALL_DISTANCE_PSEUDOCOUNT = 1e-3;
+        public static final double DEFAULT_PARAMETER_CONSTRAINT_STD = 0.001;
+        public static final double DEFAULT_EXPECTED_READ_EVIDENCE_FRACTION = 0.4;
+        public static final double DEFAULT_EXPECTED_READ_EVIDENCE_STD = 0.25;
+        public static final double DEFAULT_COPY_NUMBER_STD = 0.9;
+        public static final double DEFAULT_CALL_DISTANCE_PSEUDOCOUNT = 0.01;
 
         private double[] parameters;
 
