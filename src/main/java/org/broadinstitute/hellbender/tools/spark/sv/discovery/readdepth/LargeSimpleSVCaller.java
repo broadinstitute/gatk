@@ -102,7 +102,7 @@ public class LargeSimpleSVCaller {
         final List<CalledCopyRatioSegment> emptySegments = new ArrayList<>(segments.size());
         for (int i = 0; i < segments.size() - 1; i++) {
             final CalledCopyRatioSegment currentSegment = segments.get(i);
-            final CalledCopyRatioSegment nextSegment = segments.get(i+1);
+            final CalledCopyRatioSegment nextSegment = segments.get(i + 1);
             if (currentSegment.getContig().equals(nextSegment.getContig())
                     && currentSegment.getEnd() + 1 < nextSegment.getStart()) {
                 final SimpleInterval newInterval = new SimpleInterval(currentSegment.getContig(), currentSegment.getEnd() + 1, nextSegment.getStart() - 1);
@@ -366,7 +366,6 @@ public class LargeSimpleSVCaller {
         final SVIntervalTree<LargeSimpleSV> calledEventTree = new SVIntervalTree<>();
 
         //Filter unsupported existing calls
-        final List<VariantContext> filteredCalls = new ArrayList<>();
         for (final SVIntervalTree.Entry<VariantContext> entry : structuralVariantCallTree) {
             final VariantContext variantContext = entry.getValue();
             final SVInterval interval = entry.getInterval();
@@ -376,7 +375,9 @@ public class LargeSimpleSVCaller {
                 final SVInterval rightInterval = new SVInterval(interval.getContig(), interval.getEnd(), interval.getEnd());
                 final Collection<LargeSimpleSV> events = getEventsOnInterval(leftInterval, rightInterval, interval, null, arguments.breakpointPadding);
                 for (final LargeSimpleSV event : events) {
-                    calledEventTree.put(event.getInterval(), event);
+                    if (event.getType() == SimpleSVType.TYPES.DEL) {
+                        calledEventTree.put(event.getInterval(), event);
+                    }
                 }
                 if (progressMeter != null) {
                     progressMeter.update(SVIntervalUtils.convertToSimpleInterval(interval, dictionary));
@@ -388,13 +389,11 @@ public class LargeSimpleSVCaller {
         for (final IntrachromosomalBreakpointPair breakpoints : pairedBreakpoints) {
             final SVInterval leftInterval = new SVInterval(breakpoints.getContig(), breakpoints.getInterval().getStart(), breakpoints.getInterval().getStart());
             final SVInterval rightInterval = new SVInterval(breakpoints.getContig(), breakpoints.getInterval().getEnd(), breakpoints.getInterval().getEnd());
-            //final Optional<LargeSimpleSV> event = getHighestScoringEventOnInterval(leftBreakpointInterval, rightBreakpointInterval, breakpoints.getInterval(), calledEventTree, breakpoints, arguments.breakpointPadding);
             final Collection<LargeSimpleSV> events = getEventsOnInterval(leftInterval, rightInterval, breakpoints.getInterval(), breakpoints, arguments.breakpointPadding);
             for (final LargeSimpleSV event : events) {
-                final boolean hasOverlappingDeletion = false; //Utils.stream(calledEventTree.overlappers(event.getInterval())).map(SVIntervalTree.Entry::getValue).anyMatch(overlapper -> overlapper.getType() == SimpleSVType.TYPES.DEL);
-                //if (!hasOverlappingDeletion && event.getType() == SimpleSVType.TYPES.DUP_TAND) {
+                if (event.getType() == SimpleSVType.TYPES.DUP_TAND) {
                     calledEventTree.put(event.getInterval(), event);
-                //}
+                }
             }
             if (progressMeter != null) {
                 progressMeter.update(SVIntervalUtils.convertToSimpleInterval(breakpoints.getInterval(), dictionary));
@@ -409,13 +408,11 @@ public class LargeSimpleSVCaller {
             final SVInterval rightInterval = link.getPairedStrandedIntervals().getRight().getInterval();
             if (leftInterval.getEnd() < rightInterval.getStart()) {
                 final SVInterval callInterval = new SVInterval(leftInterval.getContig(), leftInterval.getEnd(), rightInterval.getStart());
-                //final Optional<LargeSimpleSV> event = getHighestScoringEventOnInterval(leftInterval, rightInterval, callInterval, calledEventTree, null, arguments.evidenceTargetLinkPadding);
                 final Collection<LargeSimpleSV> events = getEventsOnInterval(leftInterval, rightInterval, callInterval, null, arguments.evidenceTargetLinkPadding);
                 for (final LargeSimpleSV event : events) {
-                    final boolean hasOverlappingDeletion = false; // Utils.stream(calledEventTree.overlappers(event.getInterval())).map(SVIntervalTree.Entry::getValue).anyMatch(overlapper -> overlapper.getType() == SimpleSVType.TYPES.DEL);
-                    //if (!hasOverlappingDeletion && event.getType() == SimpleSVType.TYPES.DUP_TAND) {
+                    if (event.getType() == SimpleSVType.TYPES.DUP_TAND) {
                         calledEventTree.put(event.getInterval(), event);
-                    //}
+                    }
                 }
                 if (progressMeter != null) {
                     progressMeter.update(SVIntervalUtils.convertToSimpleInterval(callInterval, dictionary));
@@ -423,6 +420,7 @@ public class LargeSimpleSVCaller {
             }
         }
 
+        /*
         final Set<LargeSimpleSV> callsToRemove = new HashSet<>();
         final Iterator<SVIntervalTree.Entry<LargeSimpleSV>> iterator = calledEventTree.iterator();
         while (iterator.hasNext()) {
@@ -450,32 +448,22 @@ public class LargeSimpleSVCaller {
                 }
             }
         }
-        final SVIntervalTree<LargeSimpleSV> deletionCalls = new SVIntervalTree<>();
-        final SVIntervalTree<LargeSimpleSV> duplicationCalls = new SVIntervalTree<>();
-        final Iterator<SVIntervalTree.Entry<LargeSimpleSV>> iterator2 = calledEventTree.iterator();
-        while (iterator2.hasNext()) {
-            final SVIntervalTree.Entry<LargeSimpleSV> entry = iterator2.next();
-            if (!callsToRemove.contains(entry.getValue()) && entry.getValue().getContigId() >= 0) { //TODO
-                final Set<CalledCopyRatioSegment> overlappingSegments = copyRatioSegmentOverlapDetector.getOverlaps(SVIntervalUtils.convertToSimpleInterval(entry.getInterval(), dictionary));
-                final CalledCopyRatioSegment.Call expectedCall = entry.getValue().getType() == SimpleSVType.TYPES.DEL ? CalledCopyRatioSegment.Call.DELETION : CalledCopyRatioSegment.Call.AMPLIFICATION;
-                final int callOverlap = overlappingSegments.stream().filter(segment -> segment.getCall() == expectedCall).mapToInt(segment -> SVIntervalUtils.convertToSVInterval(segment.getInterval(), dictionary).overlapLen(entry.getInterval())).sum();
-                final double fractionOverlap = callOverlap / (double) entry.getInterval().getLength();
-                if (fractionOverlap > 0.5) {
-                    if (entry.getValue().getType() == SimpleSVType.TYPES.DEL) {
-                        deletionCalls.put(entry.getInterval(), entry.getValue());
-                    } else if (entry.getValue().getType() == SimpleSVType.TYPES.DUP_TAND
-                            && overlappingSegments.stream().anyMatch(segment -> segment.getCall() == CalledCopyRatioSegment.Call.AMPLIFICATION)) {
-                        duplicationCalls.put(entry.getInterval(), entry.getValue());
-                    }
-                }
-            }
-        }
+        */
 
-        final ReadDepthModel deletionModel = new ReadDepthModel(deletionCalls, copyRatioSegmentOverlapDetector, dictionary);
-        final Collection<ReadDepthEvent> finalResult = deletionModel.solve();
-        final ReadDepthModel duplicationModel = new ReadDepthModel(duplicationCalls, copyRatioSegmentOverlapDetector, dictionary);
-        finalResult.addAll(duplicationModel.solve());
-        return new Tuple2<>(finalResult, filteredCalls);
+        final SVIntervalTree<LargeSimpleSV> filteredCalls = new SVIntervalTree<>();
+        Utils.stream(calledEventTree.iterator())
+                .filter(entry -> entry.getInterval().getContig() == 0)  //TODO
+                .filter(entry -> {
+                    final Set<CalledCopyRatioSegment> overlappingSegments = copyRatioSegmentOverlapDetector.getOverlaps(SVIntervalUtils.convertToSimpleInterval(entry.getInterval(), dictionary));
+                    final CalledCopyRatioSegment.Call expectedCall = entry.getValue().getType() == SimpleSVType.TYPES.DEL ? CalledCopyRatioSegment.Call.DELETION : CalledCopyRatioSegment.Call.AMPLIFICATION;
+                    final int callOverlap = overlappingSegments.stream().filter(segment -> segment.getCall() == expectedCall).mapToInt(segment -> SVIntervalUtils.convertToSVInterval(segment.getInterval(), dictionary).overlapLen(entry.getInterval())).sum();
+                    final double fractionOverlap = callOverlap / (double) entry.getInterval().getLength();
+                    return fractionOverlap > 0.5;
+                }).forEach(event -> filteredCalls.put(event.getInterval(), event.getValue()));
+        final ReadDepthModel readDepthModel = new ReadDepthModel(filteredCalls, copyRatioSegmentOverlapDetector, dictionary);
+        readDepthModel.solve(10);
+        final Collection<ReadDepthEvent> finalResult = readDepthModel.getEvents();
+        return new Tuple2<>(finalResult, Collections.emptyList());
     }
 
 /*

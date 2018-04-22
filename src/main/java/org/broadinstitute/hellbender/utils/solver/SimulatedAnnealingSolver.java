@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.utils.solver;
 
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.apache.logging.log4j.Logger;
 
 import java.util.Random;
 import java.util.function.Function;
@@ -9,12 +11,13 @@ import java.util.stream.IntStream;
 
 public class SimulatedAnnealingSolver {
     private final int size;
-    private final Random random;
+    private final Random random = new Random();
     private final Function<double[], Double> energyFunction;
     private final Supplier<double[]> stepSampler;
     private final double[] lowerBound;
     private final double[] upperBound;
     private double[] lastSolution;
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     public SimulatedAnnealingSolver(final int size,
                                     final Function<double[], Double> energyFunction,
@@ -32,7 +35,6 @@ public class SimulatedAnnealingSolver {
         this.stepSampler = stepSampler;
         this.lowerBound = lowerBound;
         this.upperBound = upperBound;
-        this.random = new Random();
         seed(0L);
     }
 
@@ -57,7 +59,7 @@ public class SimulatedAnnealingSolver {
         return lastSolution;
     }
 
-    public double solve(final double[] x0, final double T0, final int numSteps) {
+    public double solve(final double[] x0, final double T0, final int numSteps, final int loggingInterval) {
         double[] x = x0;
         double[] neighborX = new double[size];
         final double[] minX = new double[size];
@@ -65,6 +67,9 @@ public class SimulatedAnnealingSolver {
         double minEnergy = currentEnergy;
         copyStates(x, minX);
         for (int step = 0; step < numSteps; step++) {
+            if (loggingInterval > 0 && step % loggingInterval == 0) {
+                logger.info("Iteration " + step + " : f = " + currentEnergy + ", fmin = " + minEnergy);
+            }
             final double T = T0 * (1 - (step / (double) numSteps));
             updateNeighbor(x, neighborX);
             final double neighborEnergy = computeEnergy(neighborX);

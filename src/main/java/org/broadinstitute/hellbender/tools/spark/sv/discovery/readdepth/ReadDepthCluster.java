@@ -154,6 +154,10 @@ final class ReadDepthCluster {
         return result;
     }
 
+    public double[] getStates() {
+        return eventsList.stream().mapToDouble(event -> event.getState()).toArray();
+    }
+
     public List<ReadDepthEvent> getEventsList() {
         return eventsList;
     }
