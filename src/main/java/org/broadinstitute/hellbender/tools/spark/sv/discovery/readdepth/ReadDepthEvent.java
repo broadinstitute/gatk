@@ -7,6 +7,8 @@ final class ReadDepthEvent {
     private final int id;
     private final LargeSimpleSV event;
     private double state;
+    public int leftDistance;
+    public int rightDistance;
 
     public ReadDepthEvent(final int id, final LargeSimpleSV event) {
         this.event = event;
@@ -31,10 +33,10 @@ final class ReadDepthEvent {
     }
 
     public static String getBedHeader() {
-        return LargeSimpleSV.getBedHeader() + "\tID\tSTATE";
+        return LargeSimpleSV.getBedHeader() + "\tID\tSTATE\tDIST1\tDIST2";
     }
 
     public String toBedString(final SAMSequenceDictionary dictionary, final double counterEvidencePseudocount) {
-        return event.toBedString(dictionary, counterEvidencePseudocount) + "\t" + id + "\t" + state;
+        return event.toBedString(dictionary, counterEvidencePseudocount) + "\t" + id + "\t" + state + "\t" + leftDistance + "\t" + rightDistance;
     }
 }

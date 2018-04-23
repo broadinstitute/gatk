@@ -148,6 +148,8 @@ final class ReadDepthCluster {
                         rightDistance = rightDistanceTest;
                     }
                 }
+                event.leftDistance = leftDistance;
+                event.rightDistance = rightDistance;
                 result.add(new Tuple2<>(leftDistance, rightDistance));
             }
         }

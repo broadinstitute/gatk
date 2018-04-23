@@ -463,7 +463,7 @@ public class LargeSimpleSVCaller {
 
         logger.info("Running read depth model on " + filteredCalls.size() + " events");
         final ReadDepthModel readDepthModel = new ReadDepthModel(filteredCalls, copyRatioSegmentOverlapDetector, dictionary);
-        readDepthModel.solve(10);
+        readDepthModel.solve(2);
         final Collection<ReadDepthEvent> finalResult = readDepthModel.getEvents();
         return new Tuple2<>(finalResult, Collections.emptyList());
     }
