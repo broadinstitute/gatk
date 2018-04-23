@@ -13,7 +13,7 @@ if [[ "$#" -lt 6 ]]; then
     echo -e "  [7] absolute path to the reference index image on each worker node's local file system (required)"
     echo -e "  [*] extra command-line arguments to StructuralVariationDiscoveryPipelineSpark"
     echo -e "Example:"
-    echo -e " bash runWholePipeline.sh \\"
+    echo -e " bash run_whole_pipeline.sh \\"
     echo -e "      ~/GATK/gatk \\"
     echo -e "      my-project \\"
     echo -e "      my-test-cluster \\"
