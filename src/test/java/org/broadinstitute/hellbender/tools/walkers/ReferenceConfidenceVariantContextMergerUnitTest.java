@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers;
 
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -9,6 +10,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -16,8 +18,12 @@ import org.testng.annotations.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+
+import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.MAP_QUAL_RANK_SUM_KEY;
 
 /**
  * Tests {@link ReferenceConfidenceVariantContextMerger}.
@@ -40,7 +46,7 @@ public class ReferenceConfidenceVariantContextMergerUnitTest extends GATKBaseTes
     @Test(dataProvider = "referenceConfidenceMergeData")
     public void testReferenceConfidenceMerge(final String testID, final List<VariantContext> toMerge, final Locatable loc,
                                              final boolean returnSiteEvenIfMonomorphic, final boolean uniquifySamples, final VariantContext expectedResult) {
-        ReferenceConfidenceVariantContextMerger merger = new ReferenceConfidenceVariantContextMerger(getAnnotationEngine());
+        ReferenceConfidenceVariantContextMerger merger = new ReferenceConfidenceVariantContextMerger(getAnnotationEngine(), new VCFHeader());
         final VariantContext result = merger.merge(toMerge, loc, returnSiteEvenIfMonomorphic ? (byte) 'A' : null, true, uniquifySamples);
         if ( result == null ) {
             Assert.assertTrue(expectedResult == null);
@@ -84,7 +90,7 @@ public class ReferenceConfidenceVariantContextMergerUnitTest extends GATKBaseTes
 
     @Test(expectedExceptions = UserException.class)
     public void testGetIndexesOfRelevantAllelesWithNoALT() {
-        ReferenceConfidenceVariantContextMerger merger = new ReferenceConfidenceVariantContextMerger(getAnnotationEngine());
+        ReferenceConfidenceVariantContextMerger merger = new ReferenceConfidenceVariantContextMerger(getAnnotationEngine(), new VCFHeader());
 
         final List<Allele> alleles1 = new ArrayList<>(1);
         alleles1.add(Allele.create("A", true));
@@ -98,7 +104,7 @@ public class ReferenceConfidenceVariantContextMergerUnitTest extends GATKBaseTes
     @Test(dataProvider = "getIndexesOfRelevantAllelesData")
     public void testGetIndexesOfRelevantAlleles(final int allelesIndex, final List<Allele> allAlleles) {
         final List<Allele> myAlleles = new ArrayList<>(3);
-        ReferenceConfidenceVariantContextMerger merger = new ReferenceConfidenceVariantContextMerger(getAnnotationEngine());
+        ReferenceConfidenceVariantContextMerger merger = new ReferenceConfidenceVariantContextMerger(getAnnotationEngine(), new VCFHeader());
 
         // always add the reference and <ALT> alleles
         myAlleles.add(allAlleles.get(0));
@@ -129,7 +135,7 @@ public class ReferenceConfidenceVariantContextMergerUnitTest extends GATKBaseTes
     // referenceConfidenceVariantContextMerger.
     @Test (dataProvider = "getIndexesOfRelevantAllelesDataSpanningDels")
     public void testGetIndexesOfRelevantAllelesMultiSpanningDel(final List<Allele> allelesToFind, final List<Allele> allAlleles, final Genotype g, final int expectedIndex) {
-        ReferenceConfidenceVariantContextMerger merger = new ReferenceConfidenceVariantContextMerger(getAnnotationEngine());
+        ReferenceConfidenceVariantContextMerger merger = new ReferenceConfidenceVariantContextMerger(getAnnotationEngine(), new VCFHeader());
 
         final int[] indexes = merger.getIndexesOfRelevantAlleles(allAlleles, allelesToFind,-1, g);
 
@@ -374,5 +380,46 @@ public class ReferenceConfidenceVariantContextMergerUnitTest extends GATKBaseTes
     @Test(dataProvider = "getSpanningDeletionCases")
     public void testVCWithNewAllelesIsSpanningDeletion(ReferenceConfidenceVariantContextMerger.VCWithNewAlleles vcWithNewAlleles, boolean expected){
         Assert.assertEquals(vcWithNewAlleles.isSpanningDeletion(), expected);
+    }
+
+    @Test
+    public void testMedianCalculationOnMixedSerializedTypes() {
+        // Merging attributes by median calculation requires sorting the values, which in turn requires a list
+        // of values with homogeneous boxed representations. Make sure that FLOAT attributes with a serialized
+        // representation that looks like an integer (with no decimal point, i.e. "0") get boxed into the same
+        // type as other floating point values for that attribute to ensure successful sorting.
+        final double medianRankSum = 1.46;
+        final VCFHeader vcfHeader = new VCFHeader();
+        vcfHeader.addMetaDataLine(GATKVCFHeaderLines.getInfoLine(MAP_QUAL_RANK_SUM_KEY));
+
+        final VariantContextBuilder vcBuilder = new VariantContextBuilder("vc1", "20", 10, 10, Arrays.asList(Aref));
+
+        // create 3 VCs with one each of a small value, the median value, and a large value for MQ_RankSum
+        final List<VariantContext> toMergeVCs = new ArrayList<>(3);
+
+        // use a literal string for this one to ensure that we have at least one test value that
+        // has no embedded decimal point to emulate conditions found in the wild
+        Map<String, Object> attributes1 = new HashMap<>();
+        attributes1.put(MAP_QUAL_RANK_SUM_KEY, "0");
+        toMergeVCs.add(vcBuilder.attributes(attributes1).make());
+
+        Map<String, Object> attributes2 = new HashMap<>();
+        attributes2.put(MAP_QUAL_RANK_SUM_KEY, Double.toString(medianRankSum));
+        toMergeVCs.add(vcBuilder.attributes(attributes2).make());
+
+        Map<String, Object> attributes3 = new HashMap<>();
+        attributes3.put(MAP_QUAL_RANK_SUM_KEY, "2.46");
+        toMergeVCs.add(vcBuilder.attributes(attributes3).make());
+
+        // merge and make sure we get the median value
+        final ReferenceConfidenceVariantContextMerger merger = new ReferenceConfidenceVariantContextMerger(getAnnotationEngine(), vcfHeader);
+        final VariantContext mergedVC = merger.merge(
+                toMergeVCs,
+                new SimpleInterval("20", 10, 10),
+                (byte) 'A',
+                true,
+                false);
+
+        Assert.assertEquals(mergedVC.getAttributeAsDouble(MAP_QUAL_RANK_SUM_KEY,-1.0), medianRankSum);
     }
 }
