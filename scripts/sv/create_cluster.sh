@@ -128,6 +128,7 @@ if [[ ! $SAMP_DIR =~ .+/$ ]]; then
     SAMP_DIR+="/"
 fi
 
+set -f
 ${GATK_DIR}/gatk ParallelCopyGCSDirectoryIntoHDFSSpark \
     --input-gcs-path "$SAMP_DIR" \
     $SAMP_GLOB_ARG \
