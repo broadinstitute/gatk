@@ -5,7 +5,6 @@ import htsjdk.samtools.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
@@ -52,7 +51,7 @@ import java.io.File;
 public final class LeftAlignIndels extends ReadWalker {
 
     @Argument(doc="Output BAM")
-    private String OUTPUT;
+    private File OUTPUT;
 
     private SAMFileGATKReadWriter outputWriter = null;
 
@@ -63,7 +62,7 @@ public final class LeftAlignIndels extends ReadWalker {
 
     @Override
     public void onTraversalStart() {
-        outputWriter = createSAMWriter(IOUtils.getPath(OUTPUT), true);
+        outputWriter = createSAMWriter(OUTPUT, true);
     }
 
     @Override

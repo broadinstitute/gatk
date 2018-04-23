@@ -6,7 +6,6 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -75,7 +74,7 @@ public final class SplitNCigarReads extends TwoPassReadWalker {
     static final String MATE_CIGAR_TAG = "MC";
 
     @Argument(fullName = OUTPUT_LONG_NAME, shortName = OUTPUT_SHORT_NAME, doc="Write output to this BAM filename")
-    String OUTPUT;
+    File OUTPUT;
 
     /**
      * This flag tells GATK to refactor cigar string with NDN elements to one element. It intended primarily for use in
@@ -167,7 +166,7 @@ public final class SplitNCigarReads extends TwoPassReadWalker {
         try {
             referenceReader = new CachingIndexedFastaSequenceFile(referenceArguments.getReferencePath());
             GenomeLocParser genomeLocParser = new GenomeLocParser(getBestAvailableSequenceDictionary());
-            outputWriter = createSAMWriter(IOUtils.getPath(OUTPUT), false);
+            outputWriter = createSAMWriter(OUTPUT, false);
             overhangManager = new OverhangFixingManager(header, outputWriter, genomeLocParser, referenceReader, MAX_RECORDS_IN_MEMORY, MAX_MISMATCHES_IN_OVERHANG, MAX_BASES_TO_CLIP, doNotFixOverhangs, processSecondaryAlignments);
 
         } catch (FileNotFoundException ex) {
