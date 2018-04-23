@@ -285,7 +285,8 @@ done
 ########################################################################################################################
 # call runWholePipeline
 # set output directory to datetime-git branch-git hash stamped folder
-OUTPUT_DIR="/results/$(date "+%Y-%m-%d_%H.%M.%S")-${CLUSTER_NAME}-${GIT_BRANCH}-${GATK_JAR_HASH}${UNTRACKED_COMMIT}"
+OUTPUT_DIR="/results/${SV_OUTPUT_DIR:-"$(date "+%Y-%m-%d_%H.%M.%S")-${SANITIZED_BAM}-${GIT_BRANCH}-${GATK_JAR_HASH}${UNTRACKED_COMMIT}"}"
+
 while true; do
     echo "#############################################################" 2>&1 | tee -a ${LOCAL_LOG_FILE}
     if [ "${QUIET}" == "Y" ]; then
