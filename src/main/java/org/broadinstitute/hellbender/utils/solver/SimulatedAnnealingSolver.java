@@ -65,6 +65,7 @@ public class SimulatedAnnealingSolver {
         final double[] minX = new double[size];
         double currentEnergy = computeEnergy(x);
         double minEnergy = currentEnergy;
+        int tMin = 0;
         copyStates(x, minX);
         for (int step = 0; step < numSteps; step++) {
             if (loggingInterval > 0 && step % loggingInterval == 0) {
@@ -79,7 +80,7 @@ public class SimulatedAnnealingSolver {
             } else {
                 acceptanceProbability = Math.exp(-(neighborEnergy - currentEnergy) / T);
             }
-            if (random.nextDouble() <= acceptanceProbability) {
+            if (acceptanceProbability == 1 || random.nextDouble() <= acceptanceProbability) {
                 final double[] tempX = x;
                 x = neighborX;
                 neighborX = tempX;
@@ -87,9 +88,11 @@ public class SimulatedAnnealingSolver {
                 if (currentEnergy < minEnergy) {
                     minEnergy = currentEnergy;
                     copyStates(x, minX);
+                    tMin = step;
                 }
             }
         }
+        //logger.info("Solved after " + numSteps + " : f = " + currentEnergy + ", fmin = " + minEnergy + ", tmin = " + tMin);
         lastSolution = minX;
         return minEnergy;
     }

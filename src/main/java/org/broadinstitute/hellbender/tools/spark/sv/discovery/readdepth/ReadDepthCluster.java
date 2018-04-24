@@ -22,6 +22,7 @@ final class ReadDepthCluster {
     private final SVIntervalTree<ReadDepthEvent> eventsTree;
     private final List<Tuple2<List<ReadDepthModel.OverlapInfo>, Double>> copyNumberInfo;
     private final List<Tuple2<Integer, Integer>> nearestCallDistances;
+    private final SimpleSVType.TYPES type;
 
     public ReadDepthCluster(final List<ReadDepthEvent> events, final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector, final SAMSequenceDictionary dictionary) {
         this.eventsList = events;
@@ -29,6 +30,7 @@ final class ReadDepthCluster {
         final List<CalledCopyRatioSegment> overlappingSegments = getOverlappingSegments(eventsList, copyRatioSegmentOverlapDetector, dictionary);
         this.copyNumberInfo = getCopyNumberInfo(overlappingSegments, eventsTree, dictionary);
         this.nearestCallDistances = getNearestCallDistances(eventsList, copyRatioSegmentOverlapDetector, dictionary);
+        this.type = events.isEmpty() ? null : events.iterator().next().getEvent().getType();
     }
 
     private static List<ReadDepthModel.OverlapInfo> getOverlapInfo(final CalledCopyRatioSegment segment, final List<ReadDepthEvent> overlappers) {
@@ -174,5 +176,9 @@ final class ReadDepthCluster {
 
     public List<Tuple2<Integer, Integer>> getNearestCallDistances() {
         return nearestCallDistances;
+    }
+
+    public SimpleSVType.TYPES getType() {
+        return type;
     }
 }
