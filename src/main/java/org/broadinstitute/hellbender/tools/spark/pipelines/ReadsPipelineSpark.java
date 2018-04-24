@@ -112,7 +112,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
     @Argument(doc = "the join strategy for reference bases and known variants", fullName = "join-strategy", optional = true)
     private JoinStrategy joinStrategy = JoinStrategy.BROADCAST;
 
-    @Argument(fullName = "do_not_mark_unmapped_mates", doc = "Enabling this option will mean unmapped mates of duplicate marked reads will not be marked as duplicates.")
+    @Argument(fullName = MarkDuplicatesSpark.DO_NOT_MARK_UNMAPPED_MATES, doc = "Enabling this option will mean unmapped mates of duplicate marked reads will not be marked as duplicates.")
     public boolean dontMarkUnmappedMates = false;
 
     @ArgumentCollection

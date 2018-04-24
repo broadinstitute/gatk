@@ -2,23 +2,28 @@ package org.broadinstitute.hellbender.tools.spark.transforms.markduplicates;
 
 import com.google.api.client.util.Lists;
 import com.google.common.collect.ImmutableList;
-import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.*;
+import org.apache.spark.SparkContext;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
-import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
+import org.broadinstitute.hellbender.utils.read.*;
+import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import scala.Tuple2;
+import scala.collection.Seq;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class MarkDuplicatesSparkUtilsUnitTest extends GATKBaseTest {
     @Test(groups = "spark")
@@ -91,6 +96,53 @@ public class MarkDuplicatesSparkUtilsUnitTest extends GATKBaseTest {
 
     private static Tuple2<String, Iterable<GATKRead>> pairIterable(String key, GATKRead... reads) {
         return new Tuple2<>(key, ImmutableList.copyOf(reads));
+    }
+
+    @Test (enabled = false)
+    public void testSortOrderParitioningCorrectness() throws IOException {
+        File unsortedOutput = createTempFile("unsorted.marked", ".bam");
+        File sortedOutput = createTempFile("sorte.marked", ".bam");
+
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        JavaRDD<GATKRead> unsortedReads = generateUnsortedReads(10000,3, ctx, 100, true);
+        JavaRDD<GATKRead> pariedEndsQueryGrouped = generateUnsortedReads(10000,3, ctx,1, false);
+
+        SAMFileHeader unsortedHeader = hg19Header.clone();
+        unsortedHeader.setSortOrder(SAMFileHeader.SortOrder.unsorted);
+        SAMFileHeader sortedHeader = hg19Header.clone();
+        sortedHeader.setSortOrder(SAMFileHeader.SortOrder.queryname);
+
+        // Using the header flagged as unsorted will result in the reads being sorted again
+        JavaRDD<GATKRead> unsortedReadsMarked = MarkDuplicatesSpark.mark(unsortedReads,unsortedHeader, MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES,null,100,true);
+        JavaRDD<GATKRead> sortedReadsMarked = MarkDuplicatesSpark.mark(pariedEndsQueryGrouped,sortedHeader, MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES,null,1,true);
+
+        // Writing out the files so they will be sorted and can be compared
+        ReadsSparkSink.writeReads(ctx, sortedOutput.getAbsolutePath(), null, sortedReadsMarked, sortedHeader, ReadsWriteFormat.SINGLE, 1);
+        ReadsSparkSink.writeReads(ctx, unsortedOutput.getAbsolutePath(), null, unsortedReadsMarked, sortedHeader, ReadsWriteFormat.SINGLE, 1);
+
+        SamAssertionUtils.assertEqualBamFiles(unsortedOutput, sortedOutput, true, ValidationStringency.DEFAULT_STRINGENCY);
+    }
+
+    private JavaRDD<GATKRead> generateUnsortedReads(int numReadGroups, int numDuplicatesPerGroup, JavaSparkContext ctx, int numPartitions, boolean coordinate) {
+        int readNameCounter = 0;
+        SAMRecordSetBuilder samRecordSetBuilder = new SAMRecordSetBuilder(true, SAMFileHeader.SortOrder.coordinate,
+                true, SAMRecordSetBuilder.DEFAULT_CHROMOSOME_LENGTH, SAMRecordSetBuilder.DEFAULT_DUPLICATE_SCORING_STRATEGY);
+
+        Random rand = new Random(10);
+        for (int i = 0; i < numReadGroups; i++ ) {
+            int start1 = rand.nextInt(SAMRecordSetBuilder.DEFAULT_CHROMOSOME_LENGTH);
+            int start2 = rand.nextInt(SAMRecordSetBuilder.DEFAULT_CHROMOSOME_LENGTH);
+            for (int j = 0; j < numDuplicatesPerGroup; j++) {
+                samRecordSetBuilder.addPair("READ" + readNameCounter++, 0, start1, start2);
+            }
+        }
+        final ReadCoordinateComparator coordinateComparitor = new ReadCoordinateComparator(hg19Header);
+        List<SAMRecord> records = Lists.newArrayList(samRecordSetBuilder.getRecords());
+        if (coordinate) {
+            records.sort(new SAMRecordCoordinateComparator());
+        }
+
+        return ctx.parallelize(records, numPartitions).map(SAMRecordToGATKReadAdapter::new);
     }
 
 }

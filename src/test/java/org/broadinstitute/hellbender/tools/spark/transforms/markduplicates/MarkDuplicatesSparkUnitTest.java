@@ -48,16 +48,4 @@ public class MarkDuplicatesSparkUnitTest extends GATKBaseTest {
         Assert.assertEquals(dupes.count(), dupsExpected);
     }
 
-    @Test
-    public void testOfParitioningRules() {
-        String input = new File("src/test/resources/org/broadinstitute/hellbender/tools/walkers/MarkDuplicatesGATK/").getAbsolutePath() + "/example.chr1.1-1K.unmarkedDups.noDups.bam";
-        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-
-        ReadsSparkSource readSource = new ReadsSparkSource(ctx);
-        JavaRDD<GATKRead> reads = readSource.getParallelReads(input, null);
-        reads.repartition(10);
-        //reads.mapPartitionsWithIndex()
-        System.out.println(reads.partitioner());
-    }
-
 }

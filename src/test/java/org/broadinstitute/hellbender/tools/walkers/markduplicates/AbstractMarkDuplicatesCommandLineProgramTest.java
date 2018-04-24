@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.spark.pipelines.MarkDuplicatesSparkIntegrationTest;
+import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSpark;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
@@ -287,9 +288,6 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         tester.addMatePair(1, 10040, 10040, false, true, true, false, "76M", null, false, false, false, false, false, DEFAULT_BASE_QUALITY); // second a duplicate,
         // second end unmapped
         tester.addMappedPair(1, 10189, 10040, false, false, "41S35M", "65M11S", true, false, false, ELIGIBLE_BASE_QUALITY); // mapped OK
-        if (this instanceof MarkDuplicatesSparkIntegrationTest) {
-            tester.addArg("--do_not_mark_unmapped_mates");
-        }
         tester.runTest();
     }
 
@@ -299,9 +297,6 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         tester.addMatePair(1, 10040, 10040, true, false, false, true,  null, "76M", false, false, false, false, false, DEFAULT_BASE_QUALITY); // first a duplicate,
         // first end unmapped
         tester.addMappedPair(1, 10189, 10040, false, false, "41S35M", "65M11S", true, false, false, ELIGIBLE_BASE_QUALITY); // mapped OK
-        if (this instanceof MarkDuplicatesSparkIntegrationTest) {
-            tester.addArg("--do_not_mark_unmapped_mates");
-        }
         tester.runTest();
     }
 
@@ -395,9 +390,6 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
 
     @Test
     public void testTwoMappedPairWithSamePositionDifferentStrands() {
-//        this test is failing and it's probably because of the recent change I made to how R1R and R2R are set ( which I thought was a bug fix)
-//                either that or it's due to the recent change to pass R1R as the fragment strand key instead of passing in first and calling isReverseStrand on it, which is subtly different if first is not firstofpair
-//                or maybe it's something else, or it never worked in the first place, we should check that'
         final AbstractMarkDuplicatesTester tester = getTester();
         tester.addMappedPair(0, 5604914, 5604914, false, false, "50M", "50M", true, false, false, ELIGIBLE_BASE_QUALITY); // +/-
         tester.addMappedPair(0, 5604914, 5604914, true, true, "50M", "50M", false, true, false, DEFAULT_BASE_QUALITY); // -/+

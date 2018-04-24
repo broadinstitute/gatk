@@ -47,7 +47,7 @@ public final class BwaAndMarkDuplicatesPipelineSpark extends GATKSparkTool {
     @ArgumentCollection
     public final BwaArgumentCollection bwaArgs = new BwaArgumentCollection();
 
-    @Argument(shortName = "DS", fullName ="duplicates_scoring_strategy", doc = "The scoring strategy for choosing the non-duplicate among candidates.")
+    @Argument(shortName = "DS", fullName =MarkDuplicatesSpark.DO_NOT_MARK_UNMAPPED_MATES, doc = "The scoring strategy for choosing the non-duplicate among candidates.")
     public MarkDuplicatesScoringStrategy duplicatesScoringStrategy = MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES;
 
     @Argument(doc = "the output bam", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,

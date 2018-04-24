@@ -39,6 +39,7 @@ import java.util.stream.Collectors;
 @BetaFeature
 public final class MarkDuplicatesSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
+    public static final String DO_NOT_MARK_UNMAPPED_MATES = "do-not-mark-unmapped-mates";
 
     @Override
     public boolean requiresReads() { return true; }
@@ -54,7 +55,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
     @Argument(shortName = "DS", fullName = "DUPLICATE_SCORING_STRATEGY", doc = "The scoring strategy for choosing the non-duplicate among candidates.")
     public MarkDuplicatesScoringStrategy duplicatesScoringStrategy = MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES;
 
-    @Argument(fullName = "do_not_mark_unmapped_mates", doc = "Enabling this option will mean unmapped mates of duplicate marked reads will not be marked as duplicates.")
+    @Argument(fullName = DO_NOT_MARK_UNMAPPED_MATES, doc = "Enabling this option will mean unmapped mates of duplicate marked reads will not be marked as duplicates.")
     public boolean dontMarkUnmappedMates = false;
 
     @ArgumentCollection
@@ -80,7 +81,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         return reads.zipPartitions(repartitionedReadNames, (readsIter, readNamesIter)  -> {
             final Map<String,Integer> namesOfNonDuplicateReadsAndOpticalCounts = Utils.stream(readNamesIter).collect(Collectors.toMap(Tuple2::_1,Tuple2::_2));
             return Utils.stream(readsIter).peek(read -> {
-                // Handle read that aren't duplicates (and thus may be marked as containing opticalDuplicates)
+                // Handle reads that have been marked as non-duplicates (which also get tagged with optical duplicate summary statistics)
                 if( namesOfNonDuplicateReadsAndOpticalCounts.containsKey(read.getName())) { //todo figure out if we should be marking the unmapped mates of duplicate reads as duplicates
                     read.setIsDuplicate(false);
                     if (!(dontMarkUnmappedMates && read.isUnmapped())) {
@@ -89,7 +90,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                             ((SAMRecordToGATKReadAdapter) read).setTransientAttribute(MarkDuplicatesSparkUtils.OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, dupCount);
                         }
                     }
-                    // Mark unmapped reads as non-duplicates
+                    // Mark unmapped read pairs as non-duplicates
                 } else if (MarkDuplicatesSparkUtils.readAndMateAreUnmapped(read)) {
                     read.setIsDuplicate(false);
                     // Everything else is a duplicate
@@ -102,7 +103,11 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         });
     }
 
-    public static class KnownIndexPartitioner extends Partitioner {
+    /**
+     * A custom partitioner designed to cut down on spark shuffle costs.
+     * This is designed such that getPartition(key) is called on a key which corresponds to the already known target partition
+     */
+    private static class KnownIndexPartitioner extends Partitioner {
         private static final long serialVersionUID = 1L;
         private final int numPartitions;
 

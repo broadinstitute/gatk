@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 public final class ReadsKey {
 
     /**
-     * Makes a unique key for the fragment.
+     * Makes a hash key for the fragment.
      */
     public static int hashKeyForFragment(int strandedUnclippedStart, boolean reverseStrand, int referenceIndex, String library) {
 
@@ -21,7 +21,7 @@ public final class ReadsKey {
     }
 
     /**
-     * Makes a unique key for the paired reads.
+     * Makes a hash key for the paired reads.
      */
     public static int hashKeyForPair(final SAMFileHeader header, final GATKRead first, final GATKRead second) {
         int key = hashKeyForFragment(ReadUtils.getStrandedUnclippedStart(first), first.isReverseStrand(),
@@ -43,7 +43,7 @@ public final class ReadsKey {
     }
 
     /**
-     * Makes a unique key for the read.
+     * Makes a hash key for the read.
      */
     public static int hashKeyForRead(final GATKRead read) {
         return read.getName().hashCode();

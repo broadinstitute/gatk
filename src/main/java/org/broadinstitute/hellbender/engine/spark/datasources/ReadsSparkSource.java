@@ -214,7 +214,7 @@ public final class ReadsSparkSource implements Serializable {
      * so they are processed together. No shuffle is needed.
      */
     JavaRDD<GATKRead> putPairsInSamePartition(final SAMFileHeader header, final JavaRDD<GATKRead> reads) {
-        if (!header.getSortOrder().equals(SAMFileHeader.SortOrder.queryname)) {
+        if (!header.getSortOrder().equals(SAMFileHeader.SortOrder.queryname) && !SAMFileHeader.GroupOrder.query.equals(header.getGroupOrder())) {
             return reads;
         }
         int numPartitions = reads.getNumPartitions();
