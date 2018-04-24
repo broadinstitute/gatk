@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
+import com.google.common.primitives.Doubles;
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
@@ -13,6 +14,7 @@ import org.testng.annotations.Test;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Created by emeryj on 8/11/17.
@@ -85,8 +87,12 @@ public class AS_BaseQualityRankSumTestUnitTest extends ReducibleAnnotationBaseTe
 
         // Note, when we output the raw annotated RankSum score, we output the MannWhitneyU test Z value as a histogram for each alt allele
         final String expectedAnnotation = AS_RankSumTest.PRINT_DELIM + firstExpected + ",1" + AS_RankSumTest.PRINT_DELIM + secondExpected + ",1";
+
+        final MannWhitneyU.Result annotateResult = mannWhitneyU.test(Stream.concat(Arrays.stream(alt1BaseQuals).boxed(), Arrays.stream(alt2BaseQuals).boxed()).mapToDouble(i->(double)i).toArray(), Arrays.stream(refBaseQuals).asDoubleStream().toArray(), MannWhitneyU.TestType.FIRST_DOMINATES);
+        final double annotateZScore = annotateResult.getZ();
+
         Assert.assertEquals(annotateRaw.get(key1),    expectedAnnotation);
-        Assert.assertEquals(annotateNonRaw.get(key1), expectedAnnotation);
+        Assert.assertEquals(annotateNonRaw.get(key2), String.format("%.3f",annotateZScore));
 
         Assert.assertEquals(ann.getRawDescriptions().size(), 1);
         Assert.assertEquals(ann.getRawDescriptions().get(0).getID(), key1);

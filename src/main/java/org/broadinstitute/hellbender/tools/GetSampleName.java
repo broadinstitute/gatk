@@ -4,8 +4,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
@@ -15,14 +17,42 @@ import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@CommandLineProgramProperties(
-        oneLineSummary = "(EXPERIMENTAL) Emit a single sample name from the bam header into an output file.",
-        summary = "If the bam has zero or more than one sample names in the header, this tool will error, by design.\n" +
-                "  This tool has not been tested extensively.  Most options supported by the GATK are irrelevant for this tool.",
-        programGroup = QCProgramGroup.class
-)
+/**
+ * Emit a single sample name from the bam header into an output file. The sample name is that in the read group (RG) sample (SM) field
+ *
+ * <p>
+ *     Note: If the bam has zero or more than one sample names in the header, this tool will error, by design.
+ *     This tool has not been tested extensively.  Most options supported by the GATK are irrelevant for this tool.
+ * </p>
+ *
+ * <h3>Input</h3>
+ * <ul>
+ *     <li>A BAM file with a single sample name in the header</li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ * <ul>
+ *     <li>A file with a single sample name in it</li>
+ * </ul>
+ *
+ * <h3>Example Usage</h3>
+ * <pre>
+ *   gatk GetSampleName /
+ *     -I input.bam /
+ *     -O sample_name.txt
+ * </pre>
+ */
 @BetaFeature
-final public class GetSampleName extends GATKTool{
+@DocumentedFeature
+@CommandLineProgramProperties(
+        summary = "Emit a single sample name from the bam header into an output file. " +
+                "The sample name is that in the read group (RG) sample (SM) field",
+        oneLineSummary = "Emit a single sample name",
+        programGroup = DiagnosticsAndQCProgramGroup.class
+)
+final public class GetSampleName extends GATKTool {
+
+    public static final String STANDARD_ENCODING = "UTF-8";
 
     @Argument(
             doc = "Output file with only the sample name in it.",
@@ -30,6 +60,16 @@ final public class GetSampleName extends GATKTool{
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
     protected File outputSampleNameFile;
+
+    public static final String URL_ENCODING_LONG_NAME = "use-url-encoding";
+    public static final String URL_ENCODING_SHORT_NAME = "encode";
+
+    @Argument(
+            doc = "Apply URL encoding to convert spaces and other special characters in sample name.",
+            fullName = URL_ENCODING_LONG_NAME,
+            shortName = URL_ENCODING_SHORT_NAME
+    )
+    protected boolean urlEncode;
 
     @Override
     public void traverse() {
@@ -57,9 +97,12 @@ final public class GetSampleName extends GATKTool{
         }
 
         try (final FileWriter fileWriter = new FileWriter(outputSampleNameFile, false)) {
-            fileWriter.write(sampleNames.get(0));
+            final String rawSample = sampleNames.get(0);
+            final String outputSample = urlEncode ? IOUtils.urlEncode(rawSample) : rawSample;
+            fileWriter.write(outputSample);
         } catch (final IOException ioe) {
             throw new UserException("Could not write file.", ioe);
         }
     }
+
 }

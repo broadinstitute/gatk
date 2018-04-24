@@ -393,7 +393,7 @@ public class OverhangFixingManager {
             if ( ! read.isEmpty() ) {
                 this.read = read;
                 if ( ! read.isUnmapped() ) {
-                    unclippedLoc = genomeLocParser.createGenomeLoc(read.getContig(), ReadUtils.getSoftStart(read), ReadUtils.getSoftEnd(read));
+                    unclippedLoc = genomeLocParser.createGenomeLoc(read.getContig(), read.getSoftStart(), read.getSoftEnd());
                 }
             }
         }

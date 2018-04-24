@@ -127,7 +127,9 @@ public final class AlignedAssemblyOrExcuse {
     private static void writeContig( final Contig contig, final Output output ) {
         output.writeInt(contig.getSequence().length);
         output.writeBytes(contig.getSequence());
-        output.writeBytes(contig.getPerBaseCoverage());
+        final boolean hasCoverage = contig.getPerBaseCoverage() != null;
+        output.writeBoolean(hasCoverage);
+        if ( hasCoverage ) output.writeBytes(contig.getPerBaseCoverage());
         output.writeInt(contig.getNSupportingReads());
     }
 
@@ -135,8 +137,11 @@ public final class AlignedAssemblyOrExcuse {
         final int sequenceLen = input.readInt();
         final byte[] sequence = new byte[sequenceLen];
         input.readBytes(sequence);
-        final byte[] perBaseCoverage = new byte[sequenceLen];
-        input.readBytes(perBaseCoverage);
+        byte[] perBaseCoverage = null;
+        if ( input.readBoolean() ) {
+            perBaseCoverage = new byte[sequenceLen];
+            input.readBytes(perBaseCoverage);
+        }
         final int nSupportingReads = input.readInt();
         return new Contig(sequence, perBaseCoverage, nSupportingReads);
     }
@@ -243,8 +248,8 @@ public final class AlignedAssemblyOrExcuse {
 
     // =================================================================================================================
 
-    private Stream<SAMRecord> toSAMStreamForAlignmentsOfThisAssembly(final SAMFileHeader header, final List<String> refNames,
-                                                                     final SAMReadGroupRecord contigAlignmentsReadGroup) {
+    public Stream<SAMRecord> toSAMStreamForAlignmentsOfThisAssembly(final SAMFileHeader header, final List<String> refNames,
+                                                                    final SAMReadGroupRecord contigAlignmentsReadGroup) {
         return IntStream.range(0, contigAlignments.size()).boxed()
                 .flatMap(contigIdx ->
                         BwaMemAlignmentUtils.toSAMStreamForRead(formatContigName(assemblyId, contigIdx),

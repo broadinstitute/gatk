@@ -4,7 +4,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 
 /**
- * Copy Number tool group.
+ * Tools that analyze read coverage to detect copy number variants
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */

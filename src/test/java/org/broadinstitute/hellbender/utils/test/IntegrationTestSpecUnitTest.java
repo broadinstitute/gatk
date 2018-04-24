@@ -55,7 +55,7 @@ public final class IntegrationTestSpecUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = GATKException.class)
     public void testSpec_misspecified() throws IOException {
-        final File getTestDataDir = new File("src/test/resources/org/broadinstitute/hellbender/tools/");
+        final File getTestDataDir = new File(toolsTestDir);
         final File samWithOneMalformedRead = new File(getTestDataDir, "print_reads_one_malformed_read.sam");
         final File outBam = createTempFile("print_reads_testReadFiltering", ".bam");
 

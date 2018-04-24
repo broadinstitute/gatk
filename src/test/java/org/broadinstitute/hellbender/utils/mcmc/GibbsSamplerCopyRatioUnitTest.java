@@ -11,6 +11,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -92,7 +93,7 @@ public final class GibbsSamplerCopyRatioUnitTest extends GATKBaseTest {
     //Loads test data from file
     private static <T> List<T> loadList(final File file, final Function<String, T> parse) {
         try {
-            return FileUtils.readLines(file).stream().map(parse).collect(Collectors.toList());
+            return FileUtils.readLines(file, StandardCharsets.UTF_8).stream().map(parse).collect(Collectors.toList());
         } catch (final IOException e) {
             throw new UserException.CouldNotReadInputFile(file, e);
         }

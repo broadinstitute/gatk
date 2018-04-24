@@ -8,12 +8,14 @@ import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import org.apache.commons.collections.ListUtils;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
+import org.broadinstitute.hellbender.tools.walkers.qc.Pileup;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.AlleleBiasedDownsamplingUtils;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
+import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -28,7 +30,7 @@ import java.util.stream.IntStream;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList<A> {
+public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList<A> {
 
     /**
      * Index indicaintg that the reference allele is missing.
@@ -38,7 +40,7 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
     /**
      * Reads by sample index. Each sub array contains reference to the reads of the ith sample.
      */
-    private final GATKRead[][] readsBySampleIndex;
+    protected final GATKRead[][] readsBySampleIndex;
 
     /**
      * Indexed per sample, allele and finally read (within sample).
@@ -46,17 +48,17 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
      *     valuesBySampleIndex[s][a][r] == lnLk(R_r | A_a) where R_r comes from Sample s.
      * </p>
      */
-    private final double[][][] valuesBySampleIndex;
+    protected final double[][][] valuesBySampleIndex;
 
     /**
      * Sample list
      */
-    private final SampleList samples;
+    protected final SampleList samples;
 
     /**
      * Allele list
      */
-    private AlleleList<A> alleles;
+    protected AlleleList<A> alleles;
 
     /**
      * Cached allele list.
@@ -90,6 +92,13 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
      * Sample matrices lazily initialized (the elements not the array) by invoking {@link #sampleMatrix(int)}.
      */
     private final LikelihoodMatrix<A>[] sampleMatrices;
+
+    /**
+     * Is this container expected to have the per-allele liklihoods calculations filled in.
+     */
+    public boolean hasFilledLikelihoods() {
+        return true;
+    }
 
     /**
      * Constructs a new read-likelihood collection.
@@ -136,7 +145,7 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
 
     // Internally used constructor.
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private ReadLikelihoods(final AlleleList alleles,
+    ReadLikelihoods(final AlleleList alleles,
                             final SampleList samples,
                             final GATKRead[][] readsBySampleIndex,
                             final Object2IntMap<GATKRead>[] readIndex,
@@ -179,7 +188,8 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
     /**
      * Create an independent copy of this read-likelihoods collection
      */
-    public ReadLikelihoods<A> copy() {
+    @VisibleForTesting
+    ReadLikelihoods<A> copy() {
 
         final int sampleCount = samples.numberOfSamples();
         final int alleleCount = alleles.numberOfAlleles();
@@ -881,11 +891,11 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
      * @param nonRefAllele the non-ref allele.
      *
      * @throws IllegalArgumentException if {@code nonRefAllele} is anything but the designated &lt;NON_REF&gt;
-     * symbolic allele {@link org.broadinstitute.hellbender.utils.variant.GATKVCFConstants#NON_REF_SYMBOLIC_ALLELE}.
+     * symbolic allele {@link Allele#NON_REF_ALLELE}.
      */
     public void addNonReferenceAllele(final A nonRefAllele) {
         Utils.nonNull(nonRefAllele, "non-ref allele cannot be null");
-        if (!nonRefAllele.equals(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE)) {
+        if (!nonRefAllele.equals(Allele.NON_REF_ALLELE)) {
             throw new IllegalArgumentException("the non-ref allele is not valid");
         } else if (alleles.containsAllele(nonRefAllele)) {
             return;
@@ -910,9 +920,9 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
      *
      * @param allelesToConsider
      */
-    @SuppressWarnings("unchecked")  // for the cast (A) GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE below
+    @SuppressWarnings("unchecked")  // for the cast (A) Allele.NON_REF_ALLELE below
     public void updateNonRefAlleleLikelihoods(final AlleleList<A> allelesToConsider) {
-        final int nonRefAlleleIndex = indexOfAllele((A) GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+        final int nonRefAlleleIndex = indexOfAllele((A) Allele.NON_REF_ALLELE);
         if ( nonRefAlleleIndex < 0) {
             return;
         }
@@ -1295,6 +1305,18 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
             }
         }
         return readIndexBySampleIndex[sampleIndex];
+    }
+
+
+    /**
+     * Collect a map stratified per-sample of the base pileups at the provided Location
+     * NOTE: Since we shouldn't need to use the pileup if we have more reliable liklihoods, we want to discourage their use
+     *
+     * @param loc reference location to construct pileups for
+     * @return
+     */
+    public Map<String, List<PileupElement>> getStratifiedPileups(final Locatable loc) {
+        return null;
     }
 
     /**

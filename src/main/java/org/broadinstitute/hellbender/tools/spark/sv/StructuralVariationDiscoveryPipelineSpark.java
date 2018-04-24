@@ -4,67 +4,128 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFlag;
 import htsjdk.samtools.SAMReadGroupRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.BetaFeature;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.*;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.AnnotatedVariantProducer;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoverFromLocalAssemblyContigAlignmentsSpark;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryInputData;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.AssemblyContigAlignmentSignatureClassifier;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ImpreciseVariantDetector;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.FindBreakpointEvidenceSpark;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervalTree;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import scala.Serializable;
 
+import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
-
 /**
- * Tool to run the sv pipeline up to and including variant discovery.
- * Expected input is a BAM with around 30x coverage.  Coverage much lower than that probably won't work well.
+ * Runs the structural variation discovery workflow on a single sample
+ *
+ * <p>This tool packages the algorithms described in {@link FindBreakpointEvidenceSpark} and
+ * {@link org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVariantsFromContigAlignmentsSAMSpark}
+ * as an integrated workflow.  Please consult the
+ * descriptions of those tools for more details about the algorithms employed.  In brief, input reads are examined
+ * for evidence of structural variation in a genomic region, regions so identified are locally assembled, and
+ * the local assemblies are called for structural variation.</p>
+ *
+ * <h3>Inputs</h3>
+ * <ul>
+ *     <li>An input file of aligned reads.</li>
+ *     <li>The reference to which the reads have been aligned.</li>
+ *     <li>A BWA index image for the reference.
+ *         You can use BwaMemIndexImageCreator to create the index image file.</li>
+ *     <li>A list of ubiquitous kmers to ignore.
+ *         You can use FindBadGenomicGenomicKmersSpark to create the list of kmers to ignore.</li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ * <ul>
+ *     <li>A vcf file describing the discovered structural variants.</li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ *   gatk StructuralVariationDiscoveryPipelineSpark \
+ *     -I input_reads.bam \
+ *     -R reference.2bit \
+ *     --aligner-index-image reference.img \
+ *     --kmers-to-ignore ignored_kmers.txt \
+ *     -O structural_variants.vcf
+ * </pre>
+ * <p>This tool can be run without explicitly specifying Spark options. That is to say, the given example command
+ * without Spark options will run locally. See
+ * <a href ="https://software.broadinstitute.org/gatk/documentation/article?id=10060">Tutorial#10060</a>
+ * for an example of how to set up and run a Spark tool on a cloud Spark cluster.</p>
+ *
+ * <h3>Caveats</h3>
+ * <p>Expected input is a paired-end, coordinate-sorted BAM with around 30x coverage.
+ * Coverage much lower than that probably won't work well.</p>
+ * <p>The reference is broadcast by Spark, and must therefore be a .2bit file due to current restrictions.</p>
  */
-@CommandLineProgramProperties(summary="Master tool to run the structural variation discovery pipeline",
-        oneLineSummary="Master tool to run the structural variation discovery pipeline",
-        programGroup = StructuralVariationSparkProgramGroup.class)
+@DocumentedFeature
 @BetaFeature
+@CommandLineProgramProperties(
+        oneLineSummary = "Runs the structural variation discovery workflow on a single sample",
+        summary =
+        "This tool packages the algorithms described in FindBreakpointEvidenceSpark and" +
+        " DiscoverVariantsFromContigAlignmentsSAMSpark as an integrated workflow.  Please consult the" +
+        " descriptions of those tools for more details about the algorithms employed.  In brief, input reads are examined" +
+        " for evidence of structural variation in a genomic region, regions so identified are locally assembled, and" +
+        " the local assemblies are called for structural variation.",
+        programGroup = StructuralVariantDiscoveryProgramGroup.class)
 public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
     private final Logger localLogger = LogManager.getLogger(StructuralVariationDiscoveryPipelineSpark.class);
-
-    @Argument(doc = "sam file for aligned contigs", shortName = "contigSAMFile",
-            fullName = "contigSAMFile")
-    private String outputAssemblyAlignments;
-
-    @Argument(doc = "filename for output vcf", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
-    private String vcfOutputFileName;
-
     @ArgumentCollection
     private final FindBreakpointEvidenceSparkArgumentCollection evidenceAndAssemblyArgs
             = new FindBreakpointEvidenceSparkArgumentCollection();
-
     @ArgumentCollection
     private final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs
             = new DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection();
+
+    @Argument(doc = "sam file for aligned contigs", fullName = "contig-sam-file")
+    private String outputAssemblyAlignments;
+
+    @Argument(doc = "directory for VCF output, including those from experimental interpretation tool if so requested, " +
+            "will be created if not present; sample name will be appended after the provided argument",
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
+    private String variantsOutDir;
+
+    @Advanced
+    @Argument(doc = "flag to signal that user wants to run experimental interpretation tool as well",
+            fullName = "exp-interpret", optional = true)
+    private Boolean expInterpret = false;
 
     @Override
     public boolean requiresReads()
@@ -85,17 +146,16 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
             evidenceAndAssemblyArgs.externalEvidenceFile = discoverStageArgs.cnvCallsFile;
         }
 
-        final SAMFileHeader header = getHeaderForReads();
-
-        final String sampleId = SVUtils.getSampleId(header);
+        JavaRDD<GATKRead> unfilteredReads = getUnfilteredReads();
+        final SAMFileHeader headerForReads = getHeaderForReads();
 
         // gather evidence, run assembly, and align
         final FindBreakpointEvidenceSpark.AssembledEvidenceResults assembledEvidenceResults =
                 FindBreakpointEvidenceSpark
                         .gatherEvidenceAndWriteContigSamFile(ctx,
                                 evidenceAndAssemblyArgs,
-                                header,
-                                getUnfilteredReads(),
+                                headerForReads,
+                                unfilteredReads,
                                 outputAssemblyAlignments,
                                 localLogger);
 
@@ -104,30 +164,139 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
 
         // parse the contig alignments and extract necessary information
         final JavaRDD<AlignedContig> parsedAlignments =
-                new InMemoryAlignmentParser(ctx, assembledEvidenceResults.getAlignedAssemblyOrExcuseList(), header).getAlignedContigs();
+                new InMemoryAlignmentParser(ctx, assembledEvidenceResults.getAlignedAssemblyOrExcuseList(), headerForReads)
+                        .getAlignedContigs();
+
         // todo: when we call imprecise variants don't return here
         if(parsedAlignments.isEmpty()) return;
 
-        final List<EvidenceTargetLink> evidenceTargetLinks = assembledEvidenceResults.getEvidenceTargetLinks();
-        final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceLinkTree = makeEvidenceLinkTree(evidenceTargetLinks);
+        final SvDiscoveryInputData svDiscoveryInputData = getSvDiscoveryInputData(ctx, headerForReads, assembledEvidenceResults);
 
-        final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls = DiscoverVariantsFromContigAlignmentsSAMSpark.broadcastCNVCalls(ctx, header, sampleId, discoverStageArgs);
+        // TODO: 1/14/18 this is to be phased-out: old way of calling precise variants
+        // assembled breakpoints
+        @SuppressWarnings("deprecation")
+        List<VariantContext> assemblyBasedVariants =
+                org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVariantsFromContigAlignmentsSAMSpark
+                        .discoverVariantsFromChimeras(svDiscoveryInputData, parsedAlignments);
 
-        // discover variants and write to vcf
-        DiscoverVariantsFromContigAlignmentsSAMSpark
-                .discoverVariantsAndWriteVCF(
-                        parsedAlignments,
-                        assembledEvidenceResults.getAssembledIntervals(),
-                        discoverStageArgs,
-                        ctx.broadcast(getReference()),
-                        ctx.broadcast(header.getSequenceDictionary()),
-                        vcfOutputFileName,
-                        localLogger,
-                        evidenceLinkTree,
-                        assembledEvidenceResults.getReadMetadata(),
-                        broadcastCNVCalls,
-                        sampleId
-                );
+        final List<VariantContext> annotatedVariants = processEvidenceTargetLinks(assemblyBasedVariants, svDiscoveryInputData);
+
+        final String outputPath = svDiscoveryInputData.outputPath;
+        final SAMSequenceDictionary refSeqDictionary = svDiscoveryInputData.referenceSequenceDictionaryBroadcast.getValue();
+        final Logger toolLogger = svDiscoveryInputData.toolLogger;
+        SVVCFWriter.writeVCF(annotatedVariants, outputPath + "inv_del_ins.vcf", refSeqDictionary, toolLogger);
+
+        if ( expInterpret != null ) {
+            experimentalInterpretation(ctx, assembledEvidenceResults, svDiscoveryInputData, evidenceAndAssemblyArgs.crossContigsToIgnoreFile);
+        }
+    }
+
+    private SvDiscoveryInputData getSvDiscoveryInputData(final JavaSparkContext ctx,
+                                                         final SAMFileHeader headerForReads,
+                                                         final FindBreakpointEvidenceSpark.AssembledEvidenceResults assembledEvidenceResults) {
+        final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast =
+                broadcastCNVCalls(ctx, headerForReads, discoverStageArgs.cnvCallsFile);
+        try {
+            if ( !java.nio.file.Files.exists(Paths.get(variantsOutDir)) ) {
+                IOUtils.createDirectory(variantsOutDir);
+            }
+        } catch (final IOException ioex) {
+            throw new GATKException("Failed to create output directory " + variantsOutDir + " though it does not yet exist", ioex);
+        }
+
+        final String outputPrefixWithSampleName = variantsOutDir + (variantsOutDir.endsWith("/") ? "" : "/")
+                                                    + SVUtils.getSampleId(headerForReads) + "_";
+
+        return new SvDiscoveryInputData(ctx, discoverStageArgs, outputPrefixWithSampleName,
+                assembledEvidenceResults.getReadMetadata(), assembledEvidenceResults.getAssembledIntervals(),
+                makeEvidenceLinkTree(assembledEvidenceResults.getEvidenceTargetLinks()),
+                cnvCallsBroadcast,
+                getReads(), getHeaderForReads(), getReference(), localLogger);
+    }
+
+    /**
+     * Uses the input EvidenceTargetLinks to
+     *  <ul>
+     *      <li>
+     *          either annotate the variants called from assembly discovery with split read and read pair evidence, or
+     *      </li>
+     *      <li>
+     *          to call new imprecise variants if the number of pieces of evidence exceeds a given threshold.
+     *      </li>
+     *  </ul>
+     *
+     */
+    private static List<VariantContext> processEvidenceTargetLinks(List<VariantContext> assemblyBasedVariants,
+                                                                   final SvDiscoveryInputData svDiscoveryInputData) {
+
+        final List<VariantContext> annotatedVariants;
+        if (svDiscoveryInputData.evidenceTargetLinks != null) {
+            final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks = svDiscoveryInputData.evidenceTargetLinks;
+            final ReadMetadata metadata = svDiscoveryInputData.metadata;
+            final ReferenceMultiSource reference = svDiscoveryInputData.referenceBroadcast.getValue();
+            final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs = svDiscoveryInputData.discoverStageArgs;
+            final Logger toolLogger = svDiscoveryInputData.toolLogger;
+
+            // annotate with evidence links
+            annotatedVariants = AnnotatedVariantProducer.
+                    annotateBreakpointBasedCallsWithImpreciseEvidenceLinks(assemblyBasedVariants,
+                            evidenceTargetLinks, metadata, reference, discoverStageArgs, toolLogger);
+
+            // then also imprecise deletion
+            final List<VariantContext> impreciseVariants = ImpreciseVariantDetector.
+                    callImpreciseDeletionFromEvidenceLinks(evidenceTargetLinks, metadata, reference,
+                            discoverStageArgs.impreciseVariantEvidenceThreshold,
+                            discoverStageArgs.maxCallableImpreciseVariantDeletionSize,
+                            toolLogger);
+
+            annotatedVariants.addAll(impreciseVariants);
+        } else {
+            annotatedVariants = assemblyBasedVariants;
+        }
+
+        return annotatedVariants;
+    }
+
+    // hook up prototyping breakpoint and type inference tool
+    private void experimentalInterpretation(final JavaSparkContext ctx,
+                                            final FindBreakpointEvidenceSpark.AssembledEvidenceResults assembledEvidenceResults,
+                                            final SvDiscoveryInputData svDiscoveryInputData,
+                                            final String nonCanonicalChromosomeNamesFile) {
+
+        if ( ! expInterpret )
+            return;
+
+        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceSequenceDictionaryBroadcast;
+        final Broadcast<SAMFileHeader> headerBroadcast = svDiscoveryInputData.headerBroadcast;
+        final SAMFileHeader headerForReads = headerBroadcast.getValue();
+        final SAMReadGroupRecord contigAlignmentsReadGroup = new SAMReadGroupRecord(SVUtils.GATKSV_CONTIG_ALIGNMENTS_READ_GROUP_ID);
+        final List<String> refNames = SequenceDictionaryUtils.getContigNamesList(referenceSequenceDictionaryBroadcast.getValue());
+
+        List<GATKRead> readsList =
+                assembledEvidenceResults
+                        .getAlignedAssemblyOrExcuseList().stream()
+                        .filter(AlignedAssemblyOrExcuse::isNotFailure)
+                        .flatMap(aa -> aa.toSAMStreamForAlignmentsOfThisAssembly(headerForReads, refNames, contigAlignmentsReadGroup))
+                        .map(SAMRecordToGATKReadAdapter::new)
+                        .collect(Collectors.toList());
+        JavaRDD<GATKRead> reads = ctx.parallelize(readsList);
+
+        final String sampleId = svDiscoveryInputData.sampleId;
+        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputData.referenceBroadcast;
+        final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast = svDiscoveryInputData.cnvCallsBroadcast;
+
+        final SvDiscoveryInputData updatedSvDiscoveryInputData =
+                new SvDiscoveryInputData(sampleId, svDiscoveryInputData.discoverStageArgs,
+                        svDiscoveryInputData.outputPath + "experimentalInterpretation_",
+                        svDiscoveryInputData.metadata, svDiscoveryInputData.assembledIntervals,
+                        svDiscoveryInputData.evidenceTargetLinks, reads, svDiscoveryInputData.toolLogger,
+                        referenceBroadcast, referenceSequenceDictionaryBroadcast, headerBroadcast, cnvCallsBroadcast);
+
+        EnumMap<AssemblyContigAlignmentSignatureClassifier.RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>>
+                contigsByPossibleRawTypes =
+                SvDiscoverFromLocalAssemblyContigAlignmentsSpark.preprocess(updatedSvDiscoveryInputData, nonCanonicalChromosomeNamesFile,true);
+
+        SvDiscoverFromLocalAssemblyContigAlignmentsSpark.dispatchJobs(contigsByPossibleRawTypes, updatedSvDiscoveryInputData);
     }
 
     /**
@@ -160,16 +329,6 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
             this.ctx = ctx;
             this.alignedAssemblyOrExcuseList = alignedAssemblyOrExcuseList;
             this.header = header;
-        }
-
-        @Override
-        public JavaRDD<AlignedContig> getAlignedContigs() {
-
-            // here we have two options, one is going through the route "BwaMemAlignment -> SAM -> GATKRead -> SAM -> AlignmentInterval"
-            //                           which is the route if the discovery pipeline is run by "FindBreakpointEvidenceSpark -> write sam file -> load sam file -> DiscoverVariantsFromContigAlignmentsSAMSpark"
-            //                         , the other is to go directly "BwaMemAlignment -> AlignmentInterval" by calling into {@code filterAndConvertToAlignedContigDirect()}, which is faster but not used here.
-            //                         ; the two routes are tested to be generating the same output via {@code AlignedContigGeneratorUnitTest#testConvertAlignedAssemblyOrExcuseToAlignedContigsDirectAndConcordanceWithSAMRoute()}
-            return filterAndConvertToAlignedContigViaSAM(alignedAssemblyOrExcuseList, header, ctx);
         }
 
         /**
@@ -206,11 +365,11 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                             }
                     )
                     .map(forOneContig ->
-                            forOneContig.filter(sam -> !sam.getReadUnmappedFlag() && !sam.getNotPrimaryAlignmentFlag())
+                            forOneContig.filter(sam -> !sam.getReadUnmappedFlag() && !sam.isSecondaryAlignment())
                                     .collect(Collectors.toList()))
                     .filter(list -> !list.isEmpty())
                     .map(forOneContig ->
-                            DiscoverVariantsFromContigAlignmentsSAMSpark.
+                            SvDiscoverFromLocalAssemblyContigAlignmentsSpark.
                                     SAMFormattedContigAlignmentParser.
                                     parseReadsAndOptionallySplitGappedAlignments(forOneContig,
                                             StructuralVariationDiscoveryArgumentCollection
@@ -233,7 +392,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                     .filter(AlignedAssemblyOrExcuse::isNotFailure)
                     .map(alignedAssembly -> getAlignedContigsInOneAssembly(alignedAssembly, refNames, header))
                     .flatMap(Utils::stream)                                     // size == total # of contigs' from all successful assemblies
-                    .filter(contig -> !contig.alignmentIntervals.isEmpty())     // filter out unmapped and contigs without primary alignments
+                    .filter(contig -> !contig.getAlignments().isEmpty())     // filter out unmapped and contigs without primary alignments
                     .collect(Collectors.toList());
         }
 
@@ -253,9 +412,9 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                     .mapToObj( contigIdx -> {
                         final byte[] contigSequence = assembly.getContig(contigIdx).getSequence();
                         final String contigName = AlignedAssemblyOrExcuse.formatContigName(alignedAssembly.getAssemblyId(), contigIdx);
-                        final List<AlignmentInterval> arOfAContig
+                        final List<AlignmentInterval> alignmentsForOneContig
                                 = getAlignmentsForOneContig(contigName, contigSequence, allAlignments.get(contigIdx), refNames, header);
-                        return new AlignedContig(contigName, contigSequence, arOfAContig, false);
+                        return new AlignedContig(contigName, contigSequence, alignmentsForOneContig);
                     } ).collect(Collectors.toList());
         }
 
@@ -272,15 +431,44 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
 
             return contigAlignments.stream()
                     .filter( bwaMemAlignment ->  bwaMemAlignment.getRefId() >= 0
-                            && SAMFlag.NOT_PRIMARY_ALIGNMENT.isUnset(bwaMemAlignment.getSamFlag())) // mapped and not XA (i.e. not secondary)
+                            && SAMFlag.SECONDARY_ALIGNMENT.isUnset(bwaMemAlignment.getSamFlag())) // mapped and not XA (i.e. not secondary)
                     .map(bwaMemAlignment -> BwaMemAlignmentUtils.applyAlignment(contigName, contigSequence, null,
                             null, bwaMemAlignment, refNames, header, false, false))
                     .map(AlignmentInterval::new)
-                    .map(ar -> GappedAlignmentSplitter.split(ar, StructuralVariationDiscoveryArgumentCollection
+                    .map(ar -> ContigAlignmentsModifier.splitGappedAlignment(ar, StructuralVariationDiscoveryArgumentCollection
                             .DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection
                             .GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, contigSequence.length))
                     .flatMap(Utils::stream).collect(Collectors.toList());
         }
+
+        @Override
+        public JavaRDD<AlignedContig> getAlignedContigs() {
+
+            // here we have two options, one is going through the route "BwaMemAlignment -> SAM -> GATKRead -> SAM -> AlignmentInterval"
+            //                           which is the route if the discovery pipeline is run by "FindBreakpointEvidenceSpark -> write sam file -> load sam file -> DiscoverVariantsFromContigAlignmentsSAMSpark"
+            //                         , the other is to go directly "BwaMemAlignment -> AlignmentInterval" by calling into {@code filterAndConvertToAlignedContigDirect()}, which is faster but not used here.
+            //                         ; the two routes are tested to be generating the same output via {@code AlignedContigGeneratorUnitTest#testConvertAlignedAssemblyOrExcuseToAlignedContigsDirectAndConcordanceWithSAMRoute()}
+            return filterAndConvertToAlignedContigViaSAM(alignedAssemblyOrExcuseList, header, ctx);
+        }
+    }
+
+    public static Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls(final JavaSparkContext ctx,
+                                                                              final SAMFileHeader header,
+                                                                              final String cnvCallsFile) {
+        final SVIntervalTree<VariantContext> cnvCalls;
+        if (cnvCallsFile != null) {
+            cnvCalls = CNVInputReader.loadCNVCalls(cnvCallsFile, header);
+        } else {
+            cnvCalls = null;
+        }
+
+        final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls;
+        if (cnvCalls != null) {
+            broadcastCNVCalls = ctx.broadcast(cnvCalls);
+        } else {
+            broadcastCNVCalls = null;
+        }
+        return broadcastCNVCalls;
     }
 
 }

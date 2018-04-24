@@ -33,11 +33,11 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest extends
             this.cnvCallsLoc = cnvCallsLoc;
         }
 
-        String getCommandLineNoApiKey() {
+        String getCommandLine() {
             return  " -R " + SVIntegrationTestDataProvider.reference_2bit +
                     " -I " + SVIntegrationTestDataProvider.TEST_CONTIG_SAM +
-                    " -O " + outputDir + "/variants.vcf" +
-                    (cnvCallsLoc == null ? "" : " --cnvCalls " + cnvCallsLoc);
+                    " -O " + outputDir + "/DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest" +
+                    (cnvCallsLoc == null ? "" : " --cnv-calls " + cnvCallsLoc);
         }
 
     }
@@ -56,10 +56,11 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest extends
     @Test(dataProvider = "discoverVariantsFromContigAlignmentsSparkIntegrationTest", groups = "sv")
     public void testDiscoverVariantsRunnableLocal(final DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTestArgs params) throws Exception {
 
-        final List<String> args = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLineNoApiKey()).getArgsArray() );
+        final List<String> args = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLine()).getArgsArray() );
         runCommandLine(args);
-        StructuralVariationDiscoveryPipelineSparkIntegrationTest.svDiscoveryVCFEquivalenceTest(args.get(args.indexOf("-O")+1),
-                SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, annotationsToIgnoreWhenComparingVariants, false);
+        final String newVCF = args.get(args.indexOf("-O") + 1) + "_sample_inv_del_ins.vcf";
+        StructuralVariationDiscoveryPipelineSparkIntegrationTest.svDiscoveryVCFEquivalenceTest(newVCF,
+                SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, null, annotationsToIgnoreWhenComparingVariants, false);
     }
 
     @Test(dataProvider = "discoverVariantsFromContigAlignmentsSparkIntegrationTest", groups = "sv")
@@ -67,7 +68,7 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest extends
 
         MiniClusterUtils.runOnIsolatedMiniCluster(cluster -> {
 
-            final List<String> argsToBeModified = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLineNoApiKey()).getArgsArray() );
+            final List<String> argsToBeModified = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLine()).getArgsArray() );
             final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
 
             int idx = 0;
@@ -86,13 +87,17 @@ public class DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest extends
 
             // outputs, prefix with hdfs address
             idx = argsToBeModified.indexOf("-O");
-            path = new Path(workingDirectory, "variants.vcf");
-            final String vcfOnHDFS = path.toUri().toString();
-            argsToBeModified.set(idx+1, vcfOnHDFS);
+            path = new Path(workingDirectory, "test");
+            final String vcfOnHDFS = path.toUri().toString() + "_sample_inv_del_ins.vcf";
+            argsToBeModified.set(idx+1, path.toUri().toString());
 
             runCommandLine(argsToBeModified);
-            StructuralVariationDiscoveryPipelineSparkIntegrationTest.svDiscoveryVCFEquivalenceTest(vcfOnHDFS,
-                    SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF, annotationsToIgnoreWhenComparingVariants, true);
+            StructuralVariationDiscoveryPipelineSparkIntegrationTest.svDiscoveryVCFEquivalenceTest(
+                    vcfOnHDFS,
+                    SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF,
+                    null,
+                    annotationsToIgnoreWhenComparingVariants,
+                    true);
         });
     }
 }

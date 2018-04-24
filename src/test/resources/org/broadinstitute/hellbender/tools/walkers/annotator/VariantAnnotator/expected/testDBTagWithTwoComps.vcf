@@ -1,0 +1,37 @@
+##fileformat=VCFv4.2
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=RD,Number=1,Type=Integer,Description="Read Depth (only filtered reads used for calling)">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=ExcessHet,Number=1,Type=Float,Description="Phred-scaled p-value for exact test of excess heterozygosity">
+##INFO=<ID=FS,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher's exact test to detect strand bias">
+##INFO=<ID=H3,Number=0,Type=Flag,Description="H3 Membership">
+##INFO=<ID=InbreedingCoeff,Number=1,Type=Float,Description="Inbreeding coefficient as estimated from the genotype likelihoods per-sample when compared against the Hardy-Weinberg expectation">
+##INFO=<ID=MQ,Number=1,Type=Float,Description="RMS Mapping Quality">
+##INFO=<ID=MQRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref read mapping qualities">
+##INFO=<ID=QD,Number=1,Type=Float,Description="Variant Confidence/Quality by Depth">
+##INFO=<ID=RAW_MQ,Number=1,Type=Float,Description="Raw data for RMS Mapping Quality">
+##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
+##INFO=<ID=SOR,Number=1,Type=Float,Description="Symmetric Odds Ratio of 2x2 contingency table to detect strand bias">
+##INFO=<ID=foo,Number=0,Type=Flag,Description="foo Membership">
+##contig=<ID=20,length=63025520,assembly=b37>
+##contig=<ID=21,length=48129895,assembly=b37>
+##reference=file:///Users/emeryj/hellbender/gatk/src/test/resources/large/human_g1k_v37.20.21.fasta
+##source=UnifiedGenotyper
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878
+20	10001292	.	G	A	42.22	.	AC=1;AF=0.500;AN=2;H3;foo	GT:GQ:RD	1/0:19:23
+20	10002963	.	C	G	42.22	.	AC=1;AF=0.500;AN=2	GT:GQ:RD	0/1:33:30
+20	10005008	.	A	T	123.78	.	AC=2;AF=1.00;AN=2	GT:GQ:RD	1/1:8:30
+20	10006296	.	C	T	42.23	.	AC=1;AF=0.500;AN=2;H3;foo	GT:GQ:RD	0/1:3:7
+20	10023478	.	G	C	84.23	.	AC=2;AF=1.00;AN=2	GT:GQ:RD	1/1:4:27
+20	10029362	.	T	C	42.22	.	AC=1;AF=0.500;AN=2	GT:GQ:RD	1/0:37:44
+20	10042312	.	G	C	31.81	.	AC=1;AF=0.500;AN=2	GT:GQ:RD	1/0:6:24
+20	10044557	.	C	T	42.22	.	AC=1;AF=0.500;AN=2	GT:GQ:RD	0/1:15:31
+20	10045603	.	A	G	40.26	.	AC=1;AF=0.500;AN=2	GT:GQ:RD	0/1:8:15
+20	10048142	.	A	G	126.81	.	AC=2;AF=1.00;AN=2;H3;foo	GT:GQ:RD	1/1:9:36
+20	10048580	.	T	A	42.22	.	AC=1;AF=0.500;AN=2	GT:GQ:RD	1/0:23:33

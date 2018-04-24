@@ -399,8 +399,12 @@ public final class ReadFilterLibraryUnitTest {
         header.getReadGroup(read.getReadGroup()).setLibrary(foo);
 
         Assert.assertFalse(f.test(read), read.toString());//fail
-        f.libraryToKeep = foo;
+        f.libraryToKeep = Collections.singleton(foo);
         Assert.assertTrue(f.test(read), read.toString());//pass
+        f.libraryToKeep = new HashSet<>(Arrays.asList("A", "B"));
+        Assert.assertFalse(f.test(read), read.toString());
+        f.libraryToKeep.add(foo);
+        Assert.assertTrue(f.test(read), read.toString());
     }
 
     @Test
@@ -780,22 +784,22 @@ public final class ReadFilterLibraryUnitTest {
     public void testPrimaryAlignmentReadFilter() {
         // simple primary read (pass)
         final GATKRead read = simpleGoodRead(createHeaderWithReadGroups());
-        Assert.assertTrue(ReadFilterLibrary.PRIMARY_ALIGNMENT.test(read));
+        Assert.assertTrue(ReadFilterLibrary.PRIMARY_LINE.test(read));
 
         // supplementary read (filter out)
         read.setIsSupplementaryAlignment(true);
         read.setIsSecondaryAlignment(false);
-        Assert.assertFalse(ReadFilterLibrary.PRIMARY_ALIGNMENT.test(read));
+        Assert.assertFalse(ReadFilterLibrary.PRIMARY_LINE.test(read));
 
         // only secondary (filter out)
         read.setIsSupplementaryAlignment(false);
         read.setIsSecondaryAlignment(true);
-        Assert.assertFalse(ReadFilterLibrary.PRIMARY_ALIGNMENT.test(read));
+        Assert.assertFalse(ReadFilterLibrary.PRIMARY_LINE.test(read));
 
         // both supplementary and secondary (filter out)
         read.setIsSupplementaryAlignment(true);
         read.setIsSecondaryAlignment(true);
-        Assert.assertFalse(ReadFilterLibrary.PRIMARY_ALIGNMENT.test(read));
+        Assert.assertFalse(ReadFilterLibrary.PRIMARY_LINE.test(read));
 
     }
 

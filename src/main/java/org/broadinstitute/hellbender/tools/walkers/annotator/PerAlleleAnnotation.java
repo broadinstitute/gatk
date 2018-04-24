@@ -23,14 +23,13 @@ import java.util.stream.Collectors;
 
 /**
  * Apply an annotation based on aggregation data from all reads supporting each allele.
- *
- * Created by David Benjamin on 4/13/17.
  */
 public abstract class PerAlleleAnnotation extends GenotypeAnnotation {
 
     /**
-     * Calculate annotations for eah allele based on given VariantContext and likelihoods for a given genotype's sample
-     * and add the annotations to the GenotypeBuilder.  See parent class docs in {@link GenotypeAnnotation}.
+     * Calculate annotations for each allele based on given VariantContext and likelihoods for a given genotype's sample
+     * and add the annotations to the GenotypeBuilder.  By default annotations are only calculated for alt alleles but
+     * implementations may override the {@code includeRefAllele()} method.  See parent class docs in {@link GenotypeAnnotation}.
      */
     public void annotate(final ReferenceContext ref,
                          final VariantContext vc,
@@ -67,7 +66,7 @@ public abstract class PerAlleleAnnotation extends GenotypeAnnotation {
 
     @Override
     public List<VCFFormatHeaderLine> getDescriptions() {
-        return Arrays.asList(new VCFFormatHeaderLine(getVcfKey(), includeRefAllele() ? VCFHeaderLineCount.R : VCFHeaderLineCount.A, VCFHeaderLineType.Float, getDescription()));
+        return Arrays.asList(new VCFFormatHeaderLine(getVcfKey(), includeRefAllele() ? VCFHeaderLineCount.R : VCFHeaderLineCount.A, VCFHeaderLineType.Integer, getDescription()));
     }
 
     @Override

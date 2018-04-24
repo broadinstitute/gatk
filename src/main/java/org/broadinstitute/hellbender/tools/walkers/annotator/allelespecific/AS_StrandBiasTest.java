@@ -3,14 +3,13 @@ package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasTest;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
 
@@ -35,13 +34,6 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
 
     @Override
     public String getRawKeyName() { return GATKVCFConstants.AS_SB_TABLE_KEY; }
-
-    @Override
-    public Map<String, Object> annotate(final ReferenceContext ref,
-                                        final VariantContext vc,
-                                        final ReadLikelihoods<Allele> likelihoods) {
-        return annotateRawData(ref, vc, likelihoods);
-    }
 
     /**
      * Method which determines how the Strand Bias read direction allele data must be combined into a final annotation
@@ -68,14 +60,14 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
                                                final ReadLikelihoods<Allele> likelihoods ) {
 
         //for allele-specific annotations we only call from HC and we only use likelihoods
-        if ( likelihoods == null) {
+        if ( likelihoods == null || !likelihoods.hasFilledLikelihoods()) {
             return Collections.emptyMap();
         }
         // calculate the annotation from the likelihoods
         // likelihoods can come from HaplotypeCaller call to VariantAnnotatorEngine
         final Map<String, Object> annotations = new HashMap<>();
         final ReducibleAnnotationData<List<Integer>> myData = new AlleleSpecificAnnotationData<>(vc.getAlleles(),null);
-        calculateRawData(vc, likelihoods, myData);
+        getStrandCountsFromLikelihoodMap(vc, likelihoods, myData, MIN_COUNT);
         final Map<Allele, List<Integer>> perAlleleValues = myData.getAttributeMap();
         final String annotationString = makeRawAnnotationString(vc.getAlleles(), perAlleleValues);
         annotations.put(getRawKeyName(), annotationString);
@@ -201,18 +193,6 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
         myData.setAttributeMap(perAlleleValues);
     }
 
-
-    @SuppressWarnings({"unchecked", "rawtypes"})//FIXME
-    public void calculateRawData(final VariantContext vc,
-                                 final ReadLikelihoods<Allele> likelihoods,
-                                 final ReducibleAnnotationData rawAnnotations) {
-        if(likelihoods == null) {
-            return;
-        }
-
-        getStrandCountsFromLikelihoodMap(vc, likelihoods, rawAnnotations, MIN_COUNT);
-    }
-
     /**
      Allocate and fill a 2x2 strand contingency table.  In the end, it'll look something like this:
      *             fw      rc
@@ -306,6 +286,13 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
     //Allele-specific annotations cannot be called from walkers other than HaplotypeCaller
     protected Map<String, Object> calculateAnnotationFromGTfield(final GenotypesContext genotypes){
         return Collections.emptyMap();
+    }
+
+    @Override
+    //Allele-specific annotations cannot be called from walkers other than HaplotypeCaller
+    protected Map<String, Object> calculateAnnotationFromStratifiedContexts(final Map<String, List<PileupElement>> stratifiedContexts,
+                                                                            final VariantContext vc){
+        return new HashMap<>();
     }
 
     public static String rawValueAsString(int[][] table) {

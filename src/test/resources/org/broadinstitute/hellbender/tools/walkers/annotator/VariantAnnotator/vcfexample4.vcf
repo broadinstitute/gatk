@@ -1,0 +1,6 @@
+##fileformat=VCFv4.1
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##source=UnifiedGenotyper
+##reference=human_b36_both.fasta
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878	
+20	10001292	.	G	A	42.22	PASS	.	GT	1/0

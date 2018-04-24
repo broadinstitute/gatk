@@ -2,11 +2,11 @@ package org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter;
 
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.commons.math3.linear.RealMatrix;
-import picard.analysis.artifacts.SequencingArtifactMetrics;
-import org.broadinstitute.hellbender.utils.artifacts.Transition;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.artifacts.Transition;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import picard.analysis.artifacts.SequencingArtifactMetrics;
 
 import java.io.FileReader;
 import java.io.IOException;

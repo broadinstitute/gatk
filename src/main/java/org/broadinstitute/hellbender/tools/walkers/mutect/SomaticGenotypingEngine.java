@@ -44,21 +44,19 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
     private final String matchedNormalSampleName;
     final boolean hasNormal;
 
-    //Mutect2 does not run in GGA mode
-    private static final List<VariantContext> NO_GIVEN_ALLELES = Collections.emptyList();
-
     // {@link GenotypingEngine} requires a non-null {@link AFCalculatorProvider} but this class doesn't need it.  Thus we make a dummy
     private static final AFCalculatorProvider DUMMY_AF_CALCULATOR_PROVIDER = new AFCalculatorProvider() {
         @Override
         public AFCalculator getInstance(final int ploidy, final int maximumAltAlleles) { return null; }
     };
 
-    private static final Logger logger = Logger.getLogger(SomaticGenotypingEngine.class);
-
     @Override
     protected String callSourceString() {
         return "M2_call";
     }
+
+    @Override
+    protected boolean forceKeepAllele(final Allele allele) { return false; }
 
     public SomaticGenotypingEngine(final SampleList samples,
                                    final M2ArgumentCollection MTAC,
@@ -87,6 +85,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             final ReferenceContext referenceContext,
             final SimpleInterval activeRegionWindow,
             final FeatureContext featureContext,
+            final List<VariantContext> givenAlleles,
             final SAMFileHeader header) {
         Utils.nonNull(log10ReadLikelihoods, "likelihoods are null");
         Utils.validateArg(log10ReadLikelihoods.numberOfSamples() > 0, "likelihoods have no samples");
@@ -95,9 +94,11 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
         final List<Haplotype> haplotypes = log10ReadLikelihoods.alleles();
 
-        // update the haplotypes so we're ready to call, getting the ordered list of positions on the reference
-        // that carry events among the haplotypes
-        final List<Integer> startPosKeySet = decomposeHaplotypesIntoVariantContexts(haplotypes, assemblyResultSet.getFullReferenceWithPadding(), assemblyResultSet.getPaddedReferenceLoc(), NO_GIVEN_ALLELES).stream()
+        // Note: passing an empty list of activeAllelesToGenotype is the correct behavior even when givenAlleles is
+        // non-empty.  At this point any given alleles have already been injected into the haplotypes, and passing
+        // givenAlleles to {@code decomposeHaplotypesIntoVariantContexts} actually overrides any non-given (discovery) alleles, which
+        // is not what we want.
+        final List<Integer> startPosKeySet = decomposeHaplotypesIntoVariantContexts(haplotypes, assemblyResultSet.getFullReferenceWithPadding(), assemblyResultSet.getPaddedReferenceLoc(), Collections.emptyList()).stream()
                 .filter(loc -> activeRegionWindow.getStart() <= loc && loc <= activeRegionWindow.getEnd())
                 .collect(Collectors.toList());
 
@@ -105,7 +106,9 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
         final List<VariantContext> returnCalls = new ArrayList<>();
 
         for( final int loc : startPosKeySet ) {
-            final List<VariantContext> eventsAtThisLoc = getVCsAtThisLocation(haplotypes, loc, NO_GIVEN_ALLELES);
+            // Note: as above, passing an empty list of activeAllelesToGenotype is the correct behavior even when givenAlleles is
+            // non-empty, for the same reason.  If you don't believe this, check {@code testGivenAllelesMode} in {@link Mutect2IntegrationTest}.
+            final List<VariantContext> eventsAtThisLoc = getVCsAtThisLocation(haplotypes, loc, Collections.emptyList());
             final VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLoc);
             if( mergedVC == null ) {
                 continue;
@@ -125,9 +128,19 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             final Optional<PerAlleleCollection<Double>> normalLog10Odds = getForNormal(() -> diploidAltLog10Odds(log10NormalMatrix.get()));
             final Optional<PerAlleleCollection<Double>> normalArtifactLog10Odds = getForNormal(() -> somaticLog10Odds(log10NormalMatrix.get()));
 
+            final List<Pair<Allele, Allele>> givenAltAndRefAllelesInOriginalContext =  getVCsAtThisLocation(Collections.emptyList(), loc, givenAlleles).stream()
+                    .flatMap(vc -> vc.getAlternateAlleles().stream().map(allele -> ImmutablePair.of(allele, vc.getReference()))).collect(Collectors.toList());
+
+            final Set<Allele> allelesConsistentWithGivenAlleles = mergedVC.getAlternateAlleles().stream()
+                    .map(allele -> ImmutablePair.of(allele, mergedVC.getReference()))
+                    .filter(altAndRef -> givenAltAndRefAllelesInOriginalContext.stream().anyMatch(givenAltAndRef -> allelesAreConsistent(givenAltAndRef, altAndRef)))
+                    .map(altAndRefPair -> altAndRefPair.getLeft())
+                    .collect(Collectors.toSet());
+
             final List<Allele> somaticAltAlleles = mergedVC.getAlternateAlleles().stream()
-                    .filter(allele -> tumorLog10Odds.getAlt(allele) > MTAC.emissionLodThreshold)
-                    .filter(allele -> !hasNormal || normalLog10Odds.get().getAlt(allele) > MTAC.NORMAL_LOD_THRESHOLD)
+                    .filter(allele -> allelesConsistentWithGivenAlleles.contains(allele) ||
+                            ((tumorLog10Odds.getAlt(allele) > MTAC.emissionLodThreshold) &&
+                            (!hasNormal || MTAC.genotypeGermlineSites || normalLog10Odds.get().getAlt(allele) > MTAC.normalLodThreshold)))
                     .collect(Collectors.toList());
             final List<Allele> allSomaticAlleles = ListUtils.union(Arrays.asList(mergedVC.getReference()), somaticAltAlleles);
             if (somaticAltAlleles.isEmpty()) {
@@ -138,12 +151,11 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             final Optional<LikelihoodMatrix<Allele>> subsettedLog10NormalMatrix =
                     getForNormal(() -> new SubsettedLikelihoodMatrix<>(log10NormalMatrix.get(), allSomaticAlleles));
 
-            final Map<String, Object> germlineAnnotations = GermlineProbabilityCalculator.calculateAnnotations(featureContext.getValues(MTAC.germlineResource, loc), somaticAltAlleles,
-                    tumorLog10Odds.asDoubleArray(somaticAltAlleles), normalLog10Odds.isPresent() ? Optional.of(normalLog10Odds.get().asDoubleArray(somaticAltAlleles)) : Optional.empty(), MTAC.afOfAllelesNotInGermlineResource, MTAC.log10PriorProbOfSomaticEvent);
+            final Map<String, Object> populationAlleleFreqeuncyAnnotation = GermlineProbabilityCalculator.getPopulationAlleleFrequencyAnnotation(featureContext.getValues(MTAC.germlineResource, loc), somaticAltAlleles, MTAC.afOfAllelesNotInGermlineResource);
 
             final VariantContextBuilder callVcb = new VariantContextBuilder(mergedVC)
                     .alleles(allSomaticAlleles)
-                    .attributes(germlineAnnotations)
+                    .attributes(populationAlleleFreqeuncyAnnotation)
                     .attribute(GATKVCFConstants.TUMOR_LOD_KEY, somaticAltAlleles.stream().mapToDouble(tumorLog10Odds::getAlt).toArray());
 
             normalLog10Odds.ifPresent(values -> callVcb.attribute(GATKVCFConstants.NORMAL_LOD_KEY, values.asDoubleArray(somaticAltAlleles)));
@@ -155,10 +167,17 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
             addGenotypes(subsettedLog10TumorMatrix, subsettedLog10NormalMatrix, callVcb);
             final VariantContext call = callVcb.make();
-            final VariantContext annotatedCall =  annotationEngine.annotateContext(call, featureContext, referenceContext, log10Likelihoods, a -> true);
-            final VariantContext trimmedCall = GATKVariantContextUtils.trimAlleles(annotatedCall, true, true);
+            final VariantContext trimmedCall = GATKVariantContextUtils.trimAlleles(call, true, true);
+            final List<Allele> trimmedAlleles = trimmedCall.getAlleles();
+            final List<Allele> untrimmedAlleles = call.getAlleles();
+            final Map<Allele, List<Allele>> trimmedToUntrimmedAlleleMap = IntStream.range(0, trimmedCall.getNAlleles()).boxed()
+                    .collect(Collectors.toMap(n -> trimmedAlleles.get(n), n -> Arrays.asList(untrimmedAlleles.get(n))));
+            final ReadLikelihoods<Allele> trimmedLikelihoods = log10Likelihoods.marginalize(trimmedToUntrimmedAlleleMap);
+
+            final VariantContext annotatedCall =  annotationEngine.annotateContext(trimmedCall, featureContext, referenceContext, trimmedLikelihoods, a -> true);
+
             call.getAlleles().stream().map(alleleMapper::get).filter(Objects::nonNull).forEach(calledHaplotypes::addAll);
-            returnCalls.add( trimmedCall );
+            returnCalls.add( annotatedCall );
         }
 
         final List<VariantContext> outputCalls = doPhysicalPhasing ? phaseCalls(returnCalls, calledHaplotypes) : returnCalls;
@@ -167,6 +186,22 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
                 .map(vc -> new VariantContextBuilder(vc).attribute(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, eventCount).make())
                 .collect(Collectors.toList());
         return new CalledHaplotypes(outputCallsWithEventCountAnnotation, calledHaplotypes);
+    }
+
+    // check whether two alleles coming from different variant contexts and with possibly different reference alleles
+    // could in fact be the same.  The condition is that one is a prefix of the other
+    private boolean allelesAreConsistent(final Pair<Allele,Allele> altAndRef1, final Pair<Allele,Allele> altAndRef2) {
+        final Allele alt1 = altAndRef1.getLeft();
+        final Allele alt2 = altAndRef2.getLeft();
+        if (alt1.isSymbolic() || alt2.isSymbolic()) {
+            return false;
+        } else {
+            final int sizeDiff1 = alt1.length() - altAndRef1.getRight().length();
+            final int sizeDiff2 = alt2.length() - altAndRef2.getRight().length();
+            return (sizeDiff1 == sizeDiff2) && (alt1.length() < alt2.length() ?
+                    alt1.basesMatch(Arrays.copyOf(alt2.getBases(), alt1.length())) :
+                    alt2.basesMatch(Arrays.copyOf(alt1.getBases(), alt2.length())));
+        }
     }
 
     // compute the likelihoods that each allele is contained at some allele fraction in the sample
@@ -189,7 +224,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
     private void addGenotypes(final LikelihoodMatrix<Allele> tumorLog10Matrix,
                                         final Optional<LikelihoodMatrix<Allele>> normalLog10Matrix,
                                         final VariantContextBuilder callVcb) {
-        final double[] tumorAlleleCounts = SomaticLikelihoodsEngine.getEffectiveCounts(getAsRealMatrix(tumorLog10Matrix));
+        final double[] tumorAlleleCounts = getEffectiveCounts(tumorLog10Matrix);
         final Genotype tumorGenotype = new GenotypeBuilder(tumorSampleName, tumorLog10Matrix.alleles())
                 .AD(Arrays.stream(tumorAlleleCounts).mapToInt(x -> (int) FastMath.round(x)).toArray())
                 .attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, getAltAlleleFractions(tumorAlleleCounts))
@@ -202,7 +237,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
         // if we are calling with a normal, build the genotype for the sample to appear in vcf
         if (hasNormal) {
-            final double[] normalAlleleCounts = SomaticLikelihoodsEngine.getEffectiveCounts(getAsRealMatrix(normalLog10Matrix.get()));
+            final double[] normalAlleleCounts = getEffectiveCounts(normalLog10Matrix.get());
             final Genotype normalGenotype = new GenotypeBuilder(matchedNormalSampleName, homRefAllelesforNormalGenotype)
                     .AD(Arrays.stream(normalAlleleCounts).mapToInt(x -> (int) FastMath.round(x)).toArray())
                     .attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, getAltAlleleFractions(normalAlleleCounts))
@@ -213,6 +248,14 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
         callVcb.genotypes(genotypes);
     }
 
+    public static double[] getEffectiveCounts(final LikelihoodMatrix<Allele> log10LikelihoodMatrix) {
+        if (log10LikelihoodMatrix.numberOfReads() == 0) {
+            return new double[log10LikelihoodMatrix.numberOfAlleles()]; // zero counts for each allele
+        }
+        final RealMatrix log10Likelihoods = getAsRealMatrix(log10LikelihoodMatrix);
+        return MathUtils.sumArrayFunction(0, log10Likelihoods.getColumnDimension(),
+                read -> MathUtils.normalizeFromLog10ToLinearSpace(log10Likelihoods.getColumn(read)));
+    }
 
     private static double[] getAltAlleleFractions(final double[] alleleCounts) {
         final double[] allAlleleFractions = MathUtils.normalizeFromRealSpace(alleleCounts);

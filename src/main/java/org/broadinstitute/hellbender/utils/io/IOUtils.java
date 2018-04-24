@@ -13,27 +13,16 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.GetSampleName;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.PrintStream;
-import java.io.Reader;
+import java.io.*;
 import java.net.URI;
-import java.nio.file.FileSystemNotFoundException;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.zip.GZIPInputStream;
@@ -132,7 +121,7 @@ public final class IOUtils {
     public static File writeTempFile(String content, String prefix, String suffix, File directory) {
         try {
             File tempFile = absolute(File.createTempFile(prefix, suffix, directory));
-            FileUtils.writeStringToFile(tempFile, content);
+            FileUtils.writeStringToFile(tempFile, content, StandardCharsets.UTF_8);
             return tempFile;
         } catch (IOException e) {
             throw new UserException.BadTmpDir(e.getMessage());
@@ -176,7 +165,7 @@ public final class IOUtils {
      * @return the absolute path to the file.
      */
     public static File absolute(File file) {
-        return replacePath(file, absolutePath(file));
+        return new File(absolutePath(file));
     }
 
     private static String absolutePath(File file) {
@@ -214,16 +203,8 @@ public final class IOUtils {
         return ("/" + StringUtils.join(names, "/"));
     }
 
-    private static File replacePath(File file, String path) {
-        if (file instanceof FileExtension)
-            return ((FileExtension)file).withPath(path);
-        if (!File.class.equals(file.getClass()))
-            throw new GATKException("Sub classes of java.io.File must also implement FileExtension");
-        return new File(path);
-    }
-
     /**
-     * Writes the an embedded resource to a temp file.
+     * Writes an embedded resource to a temp file.
      * File is not scheduled for deletion and must be cleaned up by the caller.
      * @param resource Embedded resource.
      * @return Path to the temp file with the contents of the resource.
@@ -237,6 +218,20 @@ public final class IOUtils {
         }
         writeResource(resource, temp);
         return temp;
+    }
+
+    /**
+     * Create a resource from a path and a relative class, and write it to a temporary file.
+     * If the relative class is null then the system classloader will be used and the path must be absolute.
+     * @param resourcePath Relative or absolute path to the class.
+     * @param relativeClass Relative class to use as a class loader and for a relative package.
+     * @return a temporary file containing the contents of the resource. the File is not automatically scheduled
+     * for deletion and must be cleaned up by the caller.
+     */
+    public static File writeTempResourceFromPath(final String resourcePath, final Class<?> relativeClass) {
+        Utils.nonNull(resourcePath, "A resource path must be provided");
+        final Resource resource = new Resource(resourcePath, relativeClass);
+        return writeTempResource(resource);
     }
 
     /**
@@ -469,6 +464,11 @@ public final class IOUtils {
      */
     public static File createTempFile(String name, String extension) {
         try {
+
+            if ( !extension.startsWith(".") ) {
+                extension = "." + extension;
+            }
+
             final File file = File.createTempFile(name, extension);
             file.deleteOnExit();
 
@@ -523,13 +523,21 @@ public final class IOUtils {
      * to load the filesystem provider using the thread context classloader. This is needed when the filesystem
      * provider is loaded using a URL classloader (e.g. in spark-submit).
      *
-     * @param uriString the URI to convert
+     * Also makes an attempt to interpret the argument as a file name if it's not a URI.
+     *
+     * @param uriString the URI to convert.
      * @return the resulting {@code Path}
      * @throws UserException if an I/O error occurs when creating the file system
      */
     public static Path getPath(String uriString) {
         Utils.nonNull(uriString);
-        URI uri = URI.create(uriString);
+        URI uri;
+        try {
+            uri = URI.create(uriString);
+        } catch (IllegalArgumentException x) {
+            // not a valid URI. Caller probably just gave us a file name.
+            return Paths.get(uriString);
+        }
         try {
             // special case GCS, in case the filesystem provider wasn't installed properly but is available.
             if (CloudStorageFileSystem.URI_SCHEME.equals(uri.getScheme())) {
@@ -543,6 +551,10 @@ public final class IOUtils {
                     throw e;
                 }
                 return FileSystems.newFileSystem(uri, new HashMap<>(), cl).provider().getPath(uri);
+            }
+            catch (ProviderNotFoundException x) {
+                // not a valid URI. Caller probably just gave us a file name or "chr1:1-2".
+                return Paths.get(uriString);
             }
             catch ( IOException io ) {
                 throw new UserException(uriString + " is not a supported path", io);
@@ -611,5 +623,21 @@ public final class IOUtils {
         Utils.nonNull(pathString);
 
         Files.createDirectory(getPath(pathString));
+    }
+
+    public static final String urlEncode(final String string) {
+        try {
+            return URLEncoder.encode(string, GetSampleName.STANDARD_ENCODING);
+        } catch (final UnsupportedEncodingException ex) {
+            throw new UserException("Could not encode sample name", ex);
+        }
+    }
+
+    public static final String urlDecode(final String string) {
+        try {
+            return URLDecoder.decode(string, GetSampleName.STANDARD_ENCODING);
+        } catch (final UnsupportedEncodingException ex) {
+            throw new UserException("Could not decode sample name", ex);
+        }
     }
 }

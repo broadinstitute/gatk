@@ -7,125 +7,123 @@
 import "mutect2_multi_sample.wdl" as m2_multi
 
 workflow Mutect2_Multi_Concordance {
-    # gatk4_jar needs to be a String input to the workflow in order to work in a Docker image
-	String gatk4_jar
+    # inputs
+	File? intervals
+    File ref_fasta
+    File ref_fai
+    File ref_dict
 	Int scatter_count
 	File pair_list
-	File? intervals
-	File ref_fasta
-	File ref_fasta_index
-	File ref_dict
 	File? pon
 	File? pon_index
 	File? gnomad
 	File? gnomad_index
 	File? variants_for_contamination
     File? variants_for_contamination_index
-	Boolean is_run_orientation_bias_filter
-    String gatk_docker
-    File? gatk4_jar_override
-    Int? preemptible_attempts
-    Array[String] artifact_modes
-    File picard_jar
-    String? m2_args
-    String? m2_filtering_args
-
+	Boolean? run_orientation_bias_filter
+	Array[String]? artifact_modes
+    String? m2_extra_args
+    String? m2_extra_filtering_args
     File truth_list
     Array[Array[String]] truth = read_tsv(truth_list)
 
+    File? gatk_override
+
+    # runtime
+    String gatk_docker
+    Int? preemptible_attempts
+
     call m2_multi.Mutect2_Multi {
-      input:
-            gatk4_jar = gatk4_jar,
+        input:
+            ref_fasta = ref_fasta,
+            ref_fai = ref_fai,
+            ref_dict = ref_dict,
         	scatter_count = scatter_count,
         	pair_list = pair_list,
         	intervals = intervals,
-        	ref_fasta = ref_fasta,
-        	ref_fasta_index = ref_fasta_index,
-        	ref_dict = ref_dict,
         	pon = pon,
         	pon_index = pon_index,
         	gnomad = gnomad,
         	gnomad_index = gnomad_index,
         	variants_for_contamination = variants_for_contamination,
             variants_for_contamination_index = variants_for_contamination_index,
-        	is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-        	is_run_oncotator = false,
-            gatk_docker = gatk_docker,
-            oncotator_docker = "NO_ONCOTATOR",
-            gatk4_jar_override = gatk4_jar_override,
+        	run_orientation_bias_filter = run_orientation_bias_filter,
             preemptible_attempts = preemptible_attempts,
             artifact_modes = artifact_modes,
-            picard_jar = picard_jar,
-            m2_args = m2_args,
-            m2_filtering_args = m2_filtering_args
+            m2_extra_args = m2_extra_args,
+            m2_extra_filtering_args = m2_extra_filtering_args,
+            gatk_override = gatk_override,
+            gatk_docker = gatk_docker,
+c    }
+
+    scatter (n in range(length(truth))) {
+        call Concordance {
+            input:
+                intervals = intervals,
+                truth_vcf = truth[n][0],
+                truth_vcf_idx = truth[n][1],
+                eval_vcf = Mutect2_Multi.filtered_vcf[n],
+                eval_vcf_idx = Mutect2_Multi.filtered_vcf_idx[n],
+                preemptible_attempts = preemptible_attempts,
+                gatk_override = gatk_override,
+                gatk_docker = gatk_docker
+        }
     }
 
-       scatter (n in range(length(truth))) {
-            call Concordance {
-                input:
-                    gatk4_jar = gatk4_jar,
-                    gatk4_jar_override = gatk4_jar_override,
-                    intervals = intervals,
-                    truth_vcf = truth[n][0],
-                    truth_vcf_idx = truth[n][1],
-                    eval_vcf = Mutect2_Multi.filtered_vcf_files[n],
-                    eval_vcf_idx = Mutect2_Multi.filtered_vcf_index_files[n],
-                    gatk_docker = gatk_docker,
-                    preemptible_attempts = preemptible_attempts
-            }
-         }
-
     output {
-      Array[File] tpfn = Concordance.tpfn
-      Array[File] tpfn_idx = Concordance.tpfn_idx
-      Array[File] tpfp = Concordance.tpfp
-      Array[File] tpfp_idx = Concordance.tpfp_idx
-      Array[File] ftnfn = Concordance.ftnfn
-      Array[File] ftnfn_idx = Concordance.ftnfn_idx
-      Array[File] summary = Concordance.summary
+        Array[File] tpfn = Concordance.tpfn
+        Array[File] tpfn_idx = Concordance.tpfn_idx
+        Array[File] tpfp = Concordance.tpfp
+        Array[File] tpfp_idx = Concordance.tpfp_idx
+        Array[File] ftnfn = Concordance.ftnfn
+        Array[File] ftnfn_idx = Concordance.ftnfn_idx
+        Array[File] filter_analysis = Concordance.filter_analysis
+        Array[File] summary = Concordance.summary
     }
 }
 
-    task Concordance {
-      String gatk4_jar
-      File? gatk4_jar_override
-      File? intervals
-      File truth_vcf
-      File truth_vcf_idx
-      File eval_vcf
-      File eval_vcf_idx
-      String gatk_docker
-      Int preemptible_attempts
+task Concordance {
+    # inputs
+    File? intervals
+    File truth_vcf
+    File truth_vcf_idx
+    File eval_vcf
+    File eval_vcf_idx
 
-      command {
-        # Use GATK Jar override if specified
-          GATK_JAR=${gatk4_jar}
-          if [[ "${gatk4_jar_override}" == *.jar ]]; then
-              GATK_JAR=${gatk4_jar_override}
-          fi
+    File? gatk_override
 
-          java -jar $GATK_JAR Concordance ${"-L " + intervals} \
+    # runtime
+    String gatk_docker
+    Int? preemptible_attempts
+
+    command {
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+
+        gatk --java-options "-Xmx2g" Concordance \
+            ${"-L " + intervals} \
             -truth ${truth_vcf} -eval ${eval_vcf} \
             -tpfn "tpfn.vcf" \
             -tpfp "tpfp.vcf" \
             -ftnfn "ftnfn.vcf" \
+            --filter-analysis "filter-analysis.txt" \
             -summary summary.tsv
-      }
+    }
 
-        runtime {
-            memory: "5 GB"
-            docker: "${gatk_docker}"
-            disks: "local-disk " + 400 + " HDD"
-             preemptible: "${preemptible_attempts}"
-        }
+    runtime {
+        memory: "5 GB"
+        docker: "${gatk_docker}"
+        disks: "local-disk " + 100 + " HDD"
+        preemptible: select_first([preemptible_attempts, 2])
+    }
 
-      output {
-            File tpfn = "tpfn.vcf"
-            File tpfn_idx = "tpfn.vcf.idx"
-            File tpfp = "tpfp.vcf"
-            File tpfp_idx = "tpfp.vcf.idx"
-            File ftnfn = "ftnfn.vcf"
-            File ftnfn_idx = "ftnfn.vcf.idx"
-            File summary = "summary.tsv"
-      }
+    output {
+        File tpfn = "tpfn.vcf"
+        File tpfn_idx = "tpfn.vcf.idx"
+        File tpfp = "tpfp.vcf"
+        File tpfp_idx = "tpfp.vcf.idx"
+        File ftnfn = "ftnfn.vcf"
+        File ftnfn_idx = "ftnfn.vcf.idx"
+        File filter_analysis = "filter-analysis.txt"
+        File summary = "summary.tsv"
+    }
 }

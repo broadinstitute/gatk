@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.testng.Assert;
@@ -28,17 +29,17 @@ public final class ClipReadsIntegrationTest extends CommandLineProgramTest {
 
         final List<String> args = new ArrayList<>();
         args.addAll(Arrays.<String>asList(
-                "--input", new File(localTestData, inBam + extension).getAbsolutePath(),
-                "--output", tmpBAMOutName
+                "--" + StandardArgumentDefinitions.INPUT_LONG_NAME, new File(localTestData, inBam + extension).getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME, tmpBAMOutName
         ));
         if (doStats) {
-            args.addAll(Arrays.<String>asList("-os", tmpStatOutName));
+            args.addAll(Arrays.<String>asList("-" + ClipReads.OUTPUT_STATISTICS_SHORT_NAME, tmpStatOutName));
         }
 
         File referenceFile = null;
         if (reference != null) {
             referenceFile = new File(getTestDataDir(),reference);
-            args.add("-R");
+            args.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
             args.add(referenceFile.getAbsolutePath());
         }
         args.addAll(Arrays.asList(option.split("\\s+")));
@@ -69,22 +70,22 @@ public final class ClipReadsIntegrationTest extends CommandLineProgramTest {
         final String cramFile = "clippingReadsTestCRAM";
         final String referenceFile = "valid.fasta"; // lives in tools test folder
         return new Object[][]{
-                {b1, null, ".bam", "-QT 0", "QT_0", true},
-                {b1, null, ".bam", "-QT 0", "QT_0", false},
-                {b1, null, ".bam", "-QT 2", "QT_2", true},
-                {b1, null, ".bam", "-QT 10", "QT_10", true},
-                {b1, null, ".bam", "-QT 20", "QT_20", true},
-                {b1, null, ".bam", "-CT 1-5", "CT_15", true},
-                {b1, null, ".bam", "-CT 1-5,11-15", "CT_15_1115", true},
-                {b1, null, ".bam", "-X CCCCC", "X_CCCCC", true},
-                {b1, null, ".bam", "-X CCCCC", "X_CCCCC", false},
-                {b1, null, ".bam", "-QT 10 -CR WRITE_NS", "QT_10_CR_WRITE_NS", true},
-                {b1, null, ".bam", "-QT 10 -CR WRITE_Q0S", "QT_10_CR_WRITE_Q0S", true},
-                {b1, null, ".bam", "-QT 10 -CR SOFTCLIP_BASES","QT_10_CR_SOFTCLIP_BASES", true} ,
-                {b1, null, ".bam", "-XF " + GATKBaseTest.publicTestDir + "seqsToClip.fasta", "XF", true},
-                {b1, null, ".bam", "-QT 10 -CT 1-5 -X CCCCC -XF " + GATKBaseTest.publicTestDir + "seqsToClip.fasta", "QT_10_CT_15_X_CCCCC_XF", true},
-                {cramFile, referenceFile, ".cram", "-QT 10", "QT_10", true},
-                {cramFile, referenceFile, ".cram", "-QT 10", "QT_10", false},
+                {b1, null, ".bam", "-" + ClipReads.Q_TRIMMING_THRESHOLD_SHORT_NAME + " 0", "QT_0", true},
+                {b1, null, ".bam", "-" + ClipReads.Q_TRIMMING_THRESHOLD_SHORT_NAME + " 0", "QT_0", false},
+                {b1, null, ".bam", "-" + ClipReads.Q_TRIMMING_THRESHOLD_SHORT_NAME + " 2", "QT_2", true},
+                {b1, null, ".bam", "-" + ClipReads.Q_TRIMMING_THRESHOLD_SHORT_NAME + " 10", "QT_10", true},
+                {b1, null, ".bam", "-" + ClipReads.Q_TRIMMING_THRESHOLD_SHORT_NAME + " 20", "QT_20", true},
+                {b1, null, ".bam", "-" + ClipReads.CYCLES_TO_TRIM_SHORT_NAME + " 1-5", "CT_15", true},
+                {b1, null, ".bam", "-" + ClipReads.CYCLES_TO_TRIM_SHORT_NAME + " 1-5,11-15", "CT_15_1115", true},
+                {b1, null, ".bam", "-" + ClipReads.CLIP_SEQUENCE_SHORT_NAME + " CCCCC", "X_CCCCC", true},
+                {b1, null, ".bam", "-" + ClipReads.CLIP_SEQUENCE_SHORT_NAME + " CCCCC", "X_CCCCC", false},
+                {b1, null, ".bam", "-" + ClipReads.Q_TRIMMING_THRESHOLD_SHORT_NAME + " 10 -" + ClipReads.CLIP_REPRESENTATION_SHORT_NAME + " WRITE_NS", "QT_10_CR_WRITE_NS", true},
+                {b1, null, ".bam", "-" + ClipReads.Q_TRIMMING_THRESHOLD_SHORT_NAME + " 10 -" + ClipReads.CLIP_REPRESENTATION_SHORT_NAME + " WRITE_Q0S", "QT_10_CR_WRITE_Q0S", true},
+                {b1, null, ".bam", "-" + ClipReads.Q_TRIMMING_THRESHOLD_SHORT_NAME + " 10 -" + ClipReads.CLIP_REPRESENTATION_SHORT_NAME + " SOFTCLIP_BASES","QT_10_CR_SOFTCLIP_BASES", true} ,
+                {b1, null, ".bam", "-" + ClipReads.CLIP_SEQUENCES_FILE_SHORT_NAME + " " + GATKBaseTest.publicTestDir + "seqsToClip.fasta", ClipReads.CLIP_SEQUENCES_FILE_SHORT_NAME, true},
+                {b1, null, ".bam", "-" + ClipReads.Q_TRIMMING_THRESHOLD_SHORT_NAME + " 10 -" + ClipReads.CYCLES_TO_TRIM_SHORT_NAME + " 1-5 -" + ClipReads.CLIP_SEQUENCE_SHORT_NAME + " CCCCC -" + ClipReads.CLIP_SEQUENCES_FILE_SHORT_NAME + " " + GATKBaseTest.publicTestDir + "seqsToClip.fasta", "QT_10_CT_15_X_CCCCC_XF", true},
+                {cramFile, referenceFile, ".cram", "-" + ClipReads.Q_TRIMMING_THRESHOLD_SHORT_NAME + " 10", "QT_10", true},
+                {cramFile, referenceFile, ".cram", "-" + ClipReads.Q_TRIMMING_THRESHOLD_SHORT_NAME + " 10", "QT_10", false},
         };
     }
 }

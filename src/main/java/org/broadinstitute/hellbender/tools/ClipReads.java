@@ -13,7 +13,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -33,72 +33,70 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Read clipping based on quality, position or sequence matching
+ * Read clipping based on quality, position or sequence matching. This tool provides simple, powerful read clipping
+ * capabilities that allow you to remove low quality strings of bases, sections of reads, and reads containing
+ * user-provided sequences.
  *
- * <p>This tool provides simple, powerful read clipping capabilities that allow you to remove low quality strings of bases, sections of reads, and reads containing user-provided sequences.</p> 
+ * <p>There are three arguments for clipping (quality, position and sequence), which can be used alone or in
+ * combination. In addition, you can also specify a clipping representation, which determines exactly how ClipReads
+ * applies clips to the reads (soft clips, writing Q0 base quality scores, etc.). Please note that you MUST specify at
+ * least one of the three clipping arguments, and specifying a clipping representation is not sufficient. If you do not
+ * specify a clipping argument, the program will run but it will not do anything to your reads.</p>
  *
- * <p>There are three arguments for clipping (quality, position and sequence), which can be used alone or in combination. In addition, you can also specify a clipping representation, which determines exactly how ClipReads applies clips to the reads (soft clips, writing Q0 base quality scores, etc.). Please note that you MUST specify at least one of the three clipping arguments, and specifying a clipping representation is not sufficient. If you do not specify a clipping argument, the program will run but it will not do anything to your reads.</p>
+ * <h4>Quality score based clipping</h4>
  *
- * <dl>
- *     <dt>Quality score based clipping</dt>
- *     <dd>
- *         Clip bases from the read in clipper from
- *         <pre>argmax_x{ \sum{i = x + 1}^l (qTrimmingThreshold - qual)</pre>
- *         to the end of the read.  This is copied from BWA.
+ * <p>Clip bases from the read in clipper from</p>
  *
- *         Walk through the read from the end (in machine cycle order) to the beginning, calculating the
- *         running sum of qTrimmingThreshold - qual.  While we do this, we track the maximum value of this
- *         sum where the delta > 0.  After the loop, clipPoint is either -1 (don't do anything) or the
- *         clipping index in the read (from the end).
- *     </dd><br />
- *     <dt>Cycle based clipping</dt>
- *     <dd>Clips machine cycles from the read. Accepts a string of ranges of the form start1-end1,start2-end2, etc.
- *     For each start/end pair, removes bases in machine cycles from start to end, inclusive. These are 1-based values (positions).
- *     For example, 1-5,10-12 clips the first 5 bases, and then three bases at cycles 10, 11, and 12.
- *     </dd><br />
- *     <dt>Sequence matching</dt>
- *     <dd>Clips bases from that exactly match one of a number of base sequences. This employs an exact match algorithm,
- *     filtering only bases whose sequence exactly matches SEQ.</dd>
- * </dl>
+ * <pre>argmax_x{ \sum{i = x + 1}^l (qTrimmingThreshold - qual)</pre>
+ *
+ * <p>to the end of the read.  This is copied from BWA.</p>
+ *
+ * <p>Walk through the read from the end (in machine cycle order) to the beginning, calculating the
+ * running sum of qTrimmingThreshold - qual.  While we do this, we track the maximum value of this
+ * sum where the delta > 0.  After the loop, clipPoint is either -1 (don't do anything) or the
+ * clipping index in the read (from the end).</p>
+ *
+ * <h4>Cycle based clipping</h4>
+ *
+ * <p>Clips machine cycles from the read. Accepts a string of ranges of the form start1-end1,start2-end2, etc.
+ * For each start/end pair, removes bases in machine cycles from start to end, inclusive. These are 1-based values (positions).
+ * For example, 1-5,10-12 clips the first 5 bases, and then three bases at cycles 10, 11, and 12.</p>
+ *
+ * <h4>Sequence matching</h4>
+ *
+ * <p>Clips bases that exactly match one of a number of base sequences. This employs an exact match algorithm,
+ * filtering only bases whose sequence exactly matches SEQ.</p>
  *
  *
  * <h3>Input</h3>
- * <p>
- *     Any number of SAM/BAM/CRAM files.
- * </p>
+ * <p>Any number of SAM/BAM/CRAM files.</p>
  *
  * <h3>Output</h3>
- * <p>
- *     A new SAM/BAM/CRAM file containing all of the reads from the input SAM/BAM/CRAMs with the user-specified clipping
- *     operation applied to each read.
- * </p>
- * <p>
- *     <h4>Summary output (console)</h4>
- *     <pre>
- *     Number of examined reads              13
- *     Number of clipped reads               13
- *     Percent of clipped reads              100.00
- *     Number of examined bases              988
- *     Number of clipped bases               126
- *     Percent of clipped bases              12.75
- *     Number of quality-score clipped bases 126
- *     Number of range clipped bases         0
- *     Number of sequence clipped bases      0
- *     </pre>
- * </p>
+ * <p>A new SAM/BAM/CRAM file containing all of the reads from the input SAM/BAM/CRAMs with the user-specified clipping
+ * operation applied to each read.</p>
  *
- * <h3>Example</h3>
+ * <h4>Summary output (console)</h4>
  * <pre>
- *   gatk-launch \
- *     ClipReads \
- *     -R reference.fasta \
- *     -I original.bam \
- *     -O clipped.bam \
- *     -XF seqsToClip.fasta \
- *     -X CCCCC \
- *     -CT "1-5,11-15" \
- *     -QT 10
+ * Number of examined reads              13
+ * Number of clipped reads               13
+ * Percent of clipped reads              100.00
+ * Number of examined bases              988
+ * Number of clipped bases               126
+ * Percent of clipped bases              12.75
+ * Number of quality-score clipped bases 126
+ * Number of range clipped bases         0
+ * Number of sequence clipped bases      0
  * </pre>
+ *
+ * <h3>Example usage</h3>
+ * <pre>gatk ClipReads \
+ *   -I input_reads.bam \
+ *   -O output_reads.bam \
+ *   -XF sequences.fasta \
+ *   -X CCCCC \
+ *   -CT "1-5,11-15" \
+ *   -QT 10</pre>
+ *
  * <p>The command line shown above will apply all three arguments in combination. See the detailed examples below to see how the choice of clipping representation affects the output.</p>
  *
  *     <h4>Detailed clipping examples</h4>
@@ -133,14 +131,31 @@ import java.util.regex.Pattern;
  *
  */
 @CommandLineProgramProperties(
-        summary = "Read clipping based on quality, position or sequence matching.",
+        summary = "Read clipping based on quality, position or sequence matching. This tool provides simple, powerful read clipping " +
+                "capabilities that allow you to remove low quality strings of bases, sections of reads, and reads containing " +
+                "user-provided sequences.",
         oneLineSummary = "Clip reads in a SAM/BAM/CRAM file",
-        programGroup = ReadProgramGroup.class
+        programGroup = ReadDataManipulationProgramGroup.class
 )
 @DocumentedFeature
 public final class ClipReads extends ReadWalker {
 
     private final Logger logger = LogManager.getLogger(ClipReads.class);
+
+    public static final String OUTPUT_STATISTICS_LONG_NAME = "output-statistics";
+    public static final String OUTPUT_STATISTICS_SHORT_NAME = "os";
+    public static final String Q_TRIMMING_THRESHOLD_LONG_NAME = "q-trimming-threshold";
+    public static final String Q_TRIMMING_THRESHOLD_SHORT_NAME = "QT";
+    public static final String CYCLES_TO_TRIM_LONG_NAME = "cycles-to-trim";
+    public static final String CYCLES_TO_TRIM_SHORT_NAME = "CT";
+    public static final String CLIP_SEQUENCES_FILE_LONG_NAME = "clip-sequences-file";
+    public static final String CLIP_SEQUENCES_FILE_SHORT_NAME = "XF";
+    public static final String CLIP_SEQUENCE_LONG_NAME = "clip-sequence";
+    public static final String CLIP_SEQUENCE_SHORT_NAME = "X";
+    public static final String CLIP_REPRESENTATION_LONG_NAME = "clip-representation";
+    public static final String CLIP_REPRESENTATION_SHORT_NAME = "CR";
+    public static final String READ_LONG_NAME = "read";
+    public static final String READ_SHORT_NAME = READ_LONG_NAME;
 
     /**
      * The output SAM/BAM/CRAM file will be written here
@@ -151,14 +166,14 @@ public final class ClipReads extends ReadWalker {
     /**
      * If provided, ClipReads will write summary statistics about the clipping operations applied to the reads in this file.
      */
-    @Argument(fullName = "outputStatistics", shortName = "os", doc = "File to output statistics", optional = true)
+    @Argument(fullName = OUTPUT_STATISTICS_LONG_NAME, shortName = OUTPUT_STATISTICS_SHORT_NAME, doc = "File to output statistics", optional = true)
     File STATSOUTPUT = null;
 
     /**
      * If a value > 0 is provided, then the quality score based read clipper will be applied to the reads using this
      * quality score threshold.
      */
-    @Argument(fullName = "qTrimmingThreshold", shortName = "QT", doc = "If provided, the Q-score clipper will be applied", optional = true)
+    @Argument(fullName = Q_TRIMMING_THRESHOLD_LONG_NAME, shortName = Q_TRIMMING_THRESHOLD_SHORT_NAME, doc = "If provided, the Q-score clipper will be applied", optional = true)
     int qTrimmingThreshold = -1;
 
     /**
@@ -167,30 +182,30 @@ public final class ClipReads extends ReadWalker {
      * values (positions). For example, 1-5,10-12 clips the first 5 bases, and then three bases at cycles 10, 11,
      * and 12.
      */
-    @Argument(fullName = "cyclesToTrim", shortName = "CT", doc = "String indicating machine cycles to clip from the reads", optional = true)
+    @Argument(fullName = CYCLES_TO_TRIM_LONG_NAME, shortName = CYCLES_TO_TRIM_SHORT_NAME, doc = "String indicating machine cycles to clip from the reads", optional = true)
     String cyclesToClipArg = null;
 
     /**
      * Reads the sequences in the provided FASTA file, and clip any bases that exactly match any of the
      * sequences in the file.
      */
-    @Argument(fullName = "clipSequencesFile", shortName = "XF", doc = "Remove sequences within reads matching the sequences in this FASTA file", optional = true)
+    @Argument(fullName = CLIP_SEQUENCES_FILE_LONG_NAME, shortName = CLIP_SEQUENCES_FILE_SHORT_NAME, doc = "Remove sequences within reads matching the sequences in this FASTA file", optional = true)
     String clipSequenceFile = null;
 
     /**
      * Clips bases from the reads matching the provided SEQ.
      */
-    @Argument(fullName = "clipSequence", shortName = "X", doc = "Remove sequences within reads matching this sequence", optional = true)
+    @Argument(fullName = CLIP_SEQUENCE_LONG_NAME, shortName = CLIP_SEQUENCE_SHORT_NAME, doc = "Remove sequences within reads matching this sequence", optional = true)
     List<String> clipSequencesArgs = null;
 
     /**
      * The different values for this argument determines how ClipReads applies clips to the reads.  This can range
      * from writing Ns over the clipped bases to hard clipping away the bases from the BAM.
      */
-    @Argument(fullName = "clipRepresentation", shortName = "CR", doc = "How should we actually clip the bases?", optional = true)
+    @Argument(fullName = CLIP_REPRESENTATION_LONG_NAME, shortName = CLIP_REPRESENTATION_SHORT_NAME, doc = "How should we actually clip the bases?", optional = true)
     ClippingRepresentation clippingRepresentation = ClippingRepresentation.WRITE_NS;
 
-    @Argument(fullName="read", doc="", optional = true)
+    @Argument(fullName=READ_LONG_NAME, shortName = READ_SHORT_NAME, doc="", optional = true)
     String onlyDoRead = null;
 
     /**

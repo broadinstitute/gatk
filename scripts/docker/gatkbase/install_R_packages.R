@@ -1,7 +1,13 @@
-source("http://bioconductor.org/biocLite.R")
-biocLite("DNAcopy")
+###############################################################################
+# If you edit this file you MUST release a new version of the gatkbase docker #
+# built with the updated r dependencies                                       #
+#                                                                             #
+# you MUST also manually clear the travis cache for master before running the #
+# pull request tests in order to make sure it's still working                 #
+###############################################################################
+
 #Make sure to use http not https as this will give an "unsupported URL scheme" error
-getoptUrl="http://cran.r-project.org/src/contrib/getopt_1.20.0.tar.gz"
+getoptUrl="http://cran.r-project.org/src/contrib/Archive/getopt/getopt_1.20.0.tar.gz"
 if (!("getopt" %in% rownames(installed.packages()))) {
   install.packages(getoptUrl, repos=NULL, type="source")
 }
@@ -13,9 +19,9 @@ datatableUrl="http://cran.r-project.org/src/contrib/Archive/data.table/data.tabl
 if (!("data.table" %in% rownames(installed.packages()))) {
     install.packages(datatableUrl, repos=NULL, type="source")
 }
-dependencies = c("naturalsort","ggplot2","gplots","reshape","gsalib")
-repos <- c("http://cran.cnr.Berkeley.edu", 
-           "https://cran.mtu.edu", 
+dependencies = c("ggplot2","gplots","gsalib")
+repos <- c("http://cran.cnr.Berkeley.edu",
+           "https://cran.mtu.edu",
            "http://lib.stat.cmu.edu/R/CRAN/")
 missing <- which(!(dependencies %in% rownames(installed.packages())))
 try <- 1

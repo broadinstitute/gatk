@@ -21,6 +21,7 @@ import java.util.List;
  * Implementations of a {@link SmithWatermanAligner} can be tested by subclassing this test and overriding
  * {@link #getAligner()} to return an instance of the class to be tested
  */
+@Test
 public abstract class SmithWatermanAlignerAbstractUnitTest extends GATKBaseTest {
 
     /**

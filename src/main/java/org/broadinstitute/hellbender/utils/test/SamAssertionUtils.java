@@ -14,6 +14,7 @@ import htsjdk.samtools.ValidationStringency;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -36,7 +37,9 @@ public final class SamAssertionUtils {
     private static SamReader getReader(final File sam, final ValidationStringency validationStringency, final File reference) {
         return SamReaderFactory.makeDefault().validationStringency(validationStringency).referenceSequence(reference).open(sam);
     }
-
+    private static SamReader getReader(final Path sam, final ValidationStringency validationStringency, final Path reference) {
+        return SamReaderFactory.makeDefault().validationStringency(validationStringency).referenceSequence(reference).open(sam);
+    }
     /**
      *  causes an exception if the given sam files aren't equal
      *  @param actualSam the actual file
@@ -45,8 +48,12 @@ public final class SamAssertionUtils {
      *  @param reference is allowed to be null
      */
     public static void assertSamsEqual(final File actualSam, final File expectedSam, final ValidationStringency validationStringency, final File reference) throws IOException {
+        assertSamsEqual(actualSam.toPath(), expectedSam.toPath(), validationStringency,
+                (null==reference?null:reference.toPath()));
+    }
+    public static void assertSamsEqual(final Path actualSam, final Path expectedSam, final ValidationStringency validationStringency, final Path reference) throws IOException {
         final String equalStringent = samsEqualStringent(actualSam, expectedSam, validationStringency, reference);
-        Assert.assertNull(equalStringent, "SAM file " + actualSam.getPath() + " differs from expected output:" + expectedSam.getPath() + " " + equalStringent);
+        Assert.assertNull(equalStringent, "SAM file " + actualSam.toUri().toString() + " differs from expected output:" + expectedSam.toUri().toString() + " " + equalStringent);
     }
 
     /**
@@ -66,6 +73,9 @@ public final class SamAssertionUtils {
      *  @param reference is allowed to be null
      */
     public static void assertSamsEqual(final File actualSam, final File expectedSam, final File reference) throws IOException {
+        assertSamsEqual(actualSam, expectedSam, ValidationStringency.DEFAULT_STRINGENCY, reference);
+    }
+    public static void assertSamsEqual(final Path actualSam, final Path expectedSam, final Path reference) throws IOException {
         assertSamsEqual(actualSam, expectedSam, ValidationStringency.DEFAULT_STRINGENCY, reference);
     }
 
@@ -145,6 +155,19 @@ public final class SamAssertionUtils {
      * @return null if equal or message string if not equal.
      */
     public static String samsEqualStringent(final File actualSam, final File expectedSam, final ValidationStringency validation, final File reference) throws IOException {
+        return samsEqualStringent(actualSam.toPath(), expectedSam.toPath(), validation, (null==reference?null:reference.toPath()));
+    }
+
+    /**
+     * Compares SAM/BAM files in a stringent way but not by byte identity (allow reorder of attributes)
+     * Comparing by MD5s is too strict and comparing by SamComparison is too lenient. So we need this method.
+     *
+     * This differs from a byte-to-byte comparison:
+     * - @PG and @CO lines in headers are ignored in the comparison.
+     * - each read in the actual file are allowed to have a superset of the attributes of the corresponding read in the expected set
+     * @return null if equal or message string if not equal.
+     */
+    public static String samsEqualStringent(final Path actualSam, final Path expectedSam, final ValidationStringency validation, final Path reference) throws IOException {
         if (sameMD5s(actualSam, expectedSam)) {
             return null;
         }
@@ -168,7 +191,22 @@ public final class SamAssertionUtils {
         return fileMD5_1.equals(fileMD5_2);
     }
 
+
+    private static boolean sameMD5s(final Path actualSam, final Path expectedSam) throws IOException {
+        final String fileMD5_1 = Utils.calculatePathMD5(actualSam);
+        final String fileMD5_2 = Utils.calculatePathMD5(expectedSam);
+        return fileMD5_1.equals(fileMD5_2);
+    }
+
     private static String compareReads(final File actualSam, final File expectedSam, final ValidationStringency validation, final File reference) throws IOException {
+        return compareReads(
+                actualSam.toPath(),
+                expectedSam.toPath(),
+                validation,
+                (null==reference?null:reference.toPath()));
+    }
+
+    private static String compareReads(final Path actualSam, final Path expectedSam, final ValidationStringency validation, final Path reference) throws IOException {
         try(final SamReader reader1 = getReader(actualSam, validation, reference);
             final SamReader reader2 = getReader(expectedSam, validation, reference)) {
             final SAMRecordIterator it1 = reader1.iterator();
@@ -189,9 +227,9 @@ public final class SamAssertionUtils {
         }
     }
 
-    private static String equalHeadersIgnoreCOandPG(final File actualSam, final File expectedSam, final ValidationStringency validation, final File reference) throws IOException {
+    private static String equalHeadersIgnoreCOandPG(final Path actualSam, final Path expectedSam, final ValidationStringency validation, final Path reference) throws IOException {
         try(final SamReader reader1 = getReader(actualSam, validation, reference);
-            final SamReader reader2 = getReader(expectedSam, validation, reference)){
+                final SamReader reader2 = getReader(expectedSam, validation, reference)){
 
             final SAMFileHeader h1 = reader1.getFileHeader();
             final SAMFileHeader h2 = reader2.getFileHeader();
@@ -376,16 +414,24 @@ public final class SamAssertionUtils {
      * Validate/assert that the contents are CRAM if the extension is .cram
      */
     public static void assertCRAMContentsIfCRAM(final File putativeCRAMFile) {
-        if (IOUtils.isCramFile(putativeCRAMFile)) {
-            assertCRAMContents(putativeCRAMFile);
+        Path path = (null==putativeCRAMFile?null:putativeCRAMFile.toPath());
+        assertCRAMContentsIfCRAM(path);
+    }
+
+    /**
+     * Validate/assert that the contents are CRAM if the extension is .cram
+     */
+    public static void assertCRAMContentsIfCRAM(final Path putativeCRAMPath) {
+        if (IOUtils.isCramFile(putativeCRAMPath)) {
+            assertCRAMContents(putativeCRAMPath);
         }
     }
 
     /**
      * Unconditionally validate/assert that the contents are CRAM
      */
-    public static void assertCRAMContents(final File putativeCRAMFile) {
-        Assert.assertTrue(ReadUtils.hasCRAMFileContents(putativeCRAMFile), "should have had CRAM contents: " + putativeCRAMFile.getName());
+    public static void assertCRAMContents(final Path putativeCRAMPath) {
+        Assert.assertTrue(ReadUtils.hasCRAMFileContents(putativeCRAMPath), "should have had CRAM contents: " + putativeCRAMPath.toUri().toString());
     }
 
     private static void sortSam(final File input, final File output, final File reference, final ValidationStringency stringency) {

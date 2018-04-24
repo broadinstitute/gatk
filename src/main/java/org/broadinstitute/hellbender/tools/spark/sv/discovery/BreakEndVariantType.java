@@ -6,6 +6,9 @@ import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVContext;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import scala.Tuple2;
@@ -27,22 +30,22 @@ public abstract class BreakEndVariantType extends SvType {
         return isTheUpstreamMate;
     }
 
-    protected static SimpleInterval getMateRefLoc(final NovelAdjacencyReferenceLocations narl, final boolean forUpstreamLoc) {
-        return forUpstreamLoc ? narl.leftJustifiedRightRefLoc : narl.leftJustifiedLeftRefLoc;
+    protected static SimpleInterval getMateRefLoc(final NovelAdjacencyAndAltHaplotype narl, final boolean forUpstreamLoc) {
+        return forUpstreamLoc ? narl.getLeftJustifiedRightRefLoc() : narl.getLeftJustifiedLeftRefLoc();
     }
 
-    protected static String getIDString(final NovelAdjacencyReferenceLocations narl, final boolean forUpstreamLoc) {
+    protected static String getIDString(final NovelAdjacencyAndAltHaplotype narl, final boolean forUpstreamLoc) {
         return BREAKEND_STR + INTERVAL_VARIANT_ID_FIELD_SEPARATOR +
-                narl.leftJustifiedLeftRefLoc.getContig() + INTERVAL_VARIANT_ID_FIELD_SEPARATOR +
-                narl.leftJustifiedLeftRefLoc.getEnd() + INTERVAL_VARIANT_ID_FIELD_SEPARATOR +
-                narl.leftJustifiedRightRefLoc.getContig() + INTERVAL_VARIANT_ID_FIELD_SEPARATOR +
-                narl.leftJustifiedRightRefLoc.getStart() + INTERVAL_VARIANT_ID_FIELD_SEPARATOR +
+                narl.getLeftJustifiedLeftRefLoc().getContig() + INTERVAL_VARIANT_ID_FIELD_SEPARATOR +
+                narl.getLeftJustifiedLeftRefLoc().getEnd() + INTERVAL_VARIANT_ID_FIELD_SEPARATOR +
+                narl.getLeftJustifiedRightRefLoc().getContig() + INTERVAL_VARIANT_ID_FIELD_SEPARATOR +
+                narl.getLeftJustifiedRightRefLoc().getStart() + INTERVAL_VARIANT_ID_FIELD_SEPARATOR +
                 (forUpstreamLoc ? "1" : "2");
     }
 
 
     @Override
-    public final String toString() {
+    public String toString() {
         return BREAKEND_STR;
     }
 
@@ -57,7 +60,7 @@ public abstract class BreakEndVariantType extends SvType {
     BreakEndVariantType(final String id, final Map<String, String> typeSpecificExtraAttributes,
                         final byte[] bases, final boolean bracketPointsLeft, final SimpleInterval novelAdjRefLoc,
                         final boolean basesFirst, final boolean isTheUpstreamMate) {
-        super(id, constructAltAllele(bases, bracketPointsLeft, novelAdjRefLoc, basesFirst), INAPPLICABLE_LENGTH, typeSpecificExtraAttributes);
+        super(id, constructAltAllele(bases, bracketPointsLeft, novelAdjRefLoc, basesFirst), SVContext.NO_LENGTH, typeSpecificExtraAttributes);
         this.isTheUpstreamMate = isTheUpstreamMate;
     }
 
@@ -78,20 +81,35 @@ public abstract class BreakEndVariantType extends SvType {
         private static final Map<String, String> INV55_FLAG = Collections.singletonMap(INV55, "");
         private static final Map<String, String> INV33_FLAG = Collections.singletonMap(INV33, "");
 
-        private InvSuspectBND(final String id, final byte[] bases, final SimpleInterval novelAdjRefLoc,
-                              final boolean bracketPointsLeft, final boolean basesFirst, boolean isTheUpstreamMate) {
-            super(id, (bracketPointsLeft && basesFirst) ? INV55_FLAG: INV33_FLAG,
-                    bases, bracketPointsLeft, novelAdjRefLoc, basesFirst, isTheUpstreamMate);
+        public static final String INV55_BND = BREAKEND_STR + "_" + INV55;
+        public static final String INV33_BND = BREAKEND_STR + "_" + INV33;
+
+        private final boolean indicatesInv55;
+
+        private static boolean indicatesInv55(boolean bracketPointsLeft, boolean basesFirst) {
+            return (bracketPointsLeft && basesFirst);
         }
 
-        public static Tuple2<BreakEndVariantType, BreakEndVariantType> getOrderedMates(final NovelAdjacencyReferenceLocations narl,
+        @Override
+        public String toString() {
+            return indicatesInv55 ? INV55_BND : INV33_BND;
+        }
+
+        private InvSuspectBND(final String id, final byte[] bases, final SimpleInterval novelAdjRefLoc,
+                              final boolean bracketPointsLeft, final boolean basesFirst, boolean isTheUpstreamMate) {
+            super(id, indicatesInv55(bracketPointsLeft, basesFirst) ? INV55_FLAG: INV33_FLAG,
+                    bases, bracketPointsLeft, novelAdjRefLoc, basesFirst, isTheUpstreamMate);
+            indicatesInv55 = indicatesInv55(bracketPointsLeft, basesFirst);
+        }
+
+        public static Tuple2<BreakEndVariantType, BreakEndVariantType> getOrderedMates(final NovelAdjacencyAndAltHaplotype narl,
                                                                                        final ReferenceMultiSource reference) {
 
             // inversion breakend formatted records have "bracketPointsLeft" "basesFirst" taking the same value (see spec)
             final boolean isInv55Suspect;
-            if (narl.strandSwitch == StrandSwitch.FORWARD_TO_REVERSE) { // INV55, leftHalfInPartnerPair
+            if (narl.getStrandSwitch() == StrandSwitch.FORWARD_TO_REVERSE) { // INV55, leftHalfInPartnerPair
                 isInv55Suspect = true;
-            } else if (narl.strandSwitch == StrandSwitch.REVERSE_TO_FORWARD){
+            } else if (narl.getStrandSwitch() == StrandSwitch.REVERSE_TO_FORWARD){
                 isInv55Suspect = false;
             } else {
                 throw new GATKException("Wrong type of novel adjacency sent to wrong analysis pathway: " +
@@ -108,14 +126,14 @@ public abstract class BreakEndVariantType extends SvType {
             return new Tuple2<>(upstreamBreakpoint, downstreamBreakpoint);
         }
 
-        static byte[] extractBasesForAltAllele(final NovelAdjacencyReferenceLocations narl, final boolean forUpstreamLoc,
+        static byte[] extractBasesForAltAllele(final NovelAdjacencyAndAltHaplotype narl, final boolean forUpstreamLoc,
                                                final ReferenceMultiSource reference) {
             try {
                 final byte[] ref = reference
-                        .getReferenceBases(null, forUpstreamLoc ? narl.leftJustifiedLeftRefLoc :
-                                                                                narl.leftJustifiedRightRefLoc)
+                        .getReferenceBases(forUpstreamLoc ? narl.getLeftJustifiedLeftRefLoc() :
+                                narl.getLeftJustifiedRightRefLoc())
                         .getBases();
-                final String ins = narl.complication.getInsertedSequenceForwardStrandRep();
+                final String ins = narl.getComplication().getInsertedSequenceForwardStrandRep();
                 if (ins.isEmpty()) {
                     return ref;
                 } else {
@@ -136,7 +154,14 @@ public abstract class BreakEndVariantType extends SvType {
     public static final class TransLocBND extends BreakEndVariantType {
         private static Map<String, String> emptyMap = Collections.emptyMap();
 
-        private TransLocBND(final NovelAdjacencyReferenceLocations narl, final boolean forUpstreamLoc,
+        public static final String STRANDSWITCHLESS_BND = BREAKEND_STR + "_NOSS";
+
+        @Override
+        public String toString() {
+            return STRANDSWITCHLESS_BND;
+        }
+
+        private TransLocBND(final NovelAdjacencyAndAltHaplotype narl, final boolean forUpstreamLoc,
                             final ReferenceMultiSource reference, final SAMSequenceDictionary referenceDictionary,
                             final boolean basesFirst, final boolean bracketPointsLeft) {
             super(getIDString(narl, forUpstreamLoc), emptyMap,
@@ -144,44 +169,44 @@ public abstract class BreakEndVariantType extends SvType {
                     getMateRefLoc(narl, forUpstreamLoc), basesFirst, forUpstreamLoc);
         }
 
-        public static Tuple2<BreakEndVariantType, BreakEndVariantType> getOrderedMates(final NovelAdjacencyReferenceLocations narl,
+        public static Tuple2<BreakEndVariantType, BreakEndVariantType> getOrderedMates(final NovelAdjacencyAndAltHaplotype narl,
                                                                                        final ReferenceMultiSource reference,
                                                                                        final SAMSequenceDictionary referenceDictionary) {
-            final boolean isSameChr = narl.leftJustifiedLeftRefLoc.getContig().equals(narl.leftJustifiedRightRefLoc.getContig());
+            final boolean isSameChr = narl.getLeftJustifiedLeftRefLoc().getContig().equals(narl.getLeftJustifiedRightRefLoc().getContig());
             final BreakEndVariantType bkpt_1, bkpt_2;
             if (isSameChr) {
                 bkpt_1 = new BreakEndVariantType.TransLocBND(narl, true, reference, referenceDictionary, false, true);
                 bkpt_2 = new BreakEndVariantType.TransLocBND(narl, false, reference, referenceDictionary, true, false);
             } else {
-                if (narl.strandSwitch == StrandSwitch.NO_SWITCH) {
-                    final boolean isFirstOfPartner = IntervalUtils.compareContigs(narl.leftJustifiedLeftRefLoc,
-                                                                                  narl.leftJustifiedRightRefLoc, referenceDictionary) < 0;
+                if (narl.getStrandSwitch() == StrandSwitch.NO_SWITCH) {
+                    final boolean isFirstOfPartner = IntervalUtils.compareContigs(narl.getLeftJustifiedLeftRefLoc(),
+                            narl.getLeftJustifiedRightRefLoc(), referenceDictionary) < 0;
                     bkpt_1 = new BreakEndVariantType.TransLocBND(narl, true, reference, referenceDictionary,
                             isFirstOfPartner, !isFirstOfPartner);
                     bkpt_2 = new BreakEndVariantType.TransLocBND(narl, false, reference, referenceDictionary,
                             !isFirstOfPartner, isFirstOfPartner);
                 } else {
                     bkpt_1 = new BreakEndVariantType.TransLocBND(narl, true, reference, referenceDictionary,
-                            narl.strandSwitch == StrandSwitch.FORWARD_TO_REVERSE, narl.strandSwitch == StrandSwitch.FORWARD_TO_REVERSE);
+                            narl.getStrandSwitch() == StrandSwitch.FORWARD_TO_REVERSE, narl.getStrandSwitch() == StrandSwitch.FORWARD_TO_REVERSE);
                     bkpt_2 = new BreakEndVariantType.TransLocBND(narl, false, reference, referenceDictionary,
-                            narl.strandSwitch != StrandSwitch.FORWARD_TO_REVERSE, narl.strandSwitch != StrandSwitch.FORWARD_TO_REVERSE);
+                            narl.getStrandSwitch() != StrandSwitch.FORWARD_TO_REVERSE, narl.getStrandSwitch() != StrandSwitch.FORWARD_TO_REVERSE);
                 }
             }
             return new Tuple2<>(bkpt_1, bkpt_2);
         }
 
-        static byte[] extractBasesForAltAllele(final NovelAdjacencyReferenceLocations narl, final boolean forUpstreamLoc,
+        static byte[] extractBasesForAltAllele(final NovelAdjacencyAndAltHaplotype narl, final boolean forUpstreamLoc,
                                                final ReferenceMultiSource reference, final SAMSequenceDictionary referenceDictionary) {
             try {
-                final SimpleInterval refLoc = forUpstreamLoc ? narl.leftJustifiedLeftRefLoc : narl.leftJustifiedRightRefLoc;
-                final byte[] ref = reference.getReferenceBases(null, refLoc).getBases();
-                final String ins = narl.complication.getInsertedSequenceForwardStrandRep();
+                final SimpleInterval refLoc = forUpstreamLoc ? narl.getLeftJustifiedLeftRefLoc() : narl.getLeftJustifiedRightRefLoc();
+                final byte[] ref = reference.getReferenceBases(refLoc).getBases();
+                final String ins = narl.getComplication().getInsertedSequenceForwardStrandRep();
                 if (ins.isEmpty()) {
                     return ref;
                 } else {
-                    if (narl.leftJustifiedLeftRefLoc.getContig().equals(narl.leftJustifiedRightRefLoc.getContig())
-                            || (narl.strandSwitch == StrandSwitch.NO_SWITCH && IntervalUtils.compareContigs(narl.leftJustifiedLeftRefLoc, narl.leftJustifiedRightRefLoc, referenceDictionary) > 0)
-                            || narl.strandSwitch == StrandSwitch.REVERSE_TO_FORWARD) {
+                    if (narl.getLeftJustifiedLeftRefLoc().getContig().equals(narl.getLeftJustifiedRightRefLoc().getContig())
+                            || (narl.getStrandSwitch() == StrandSwitch.NO_SWITCH && IntervalUtils.compareContigs(narl.getLeftJustifiedLeftRefLoc(), narl.getLeftJustifiedRightRefLoc(), referenceDictionary) > 0)
+                            || narl.getStrandSwitch() == StrandSwitch.REVERSE_TO_FORWARD) {
                         return forUpstreamLoc ? ArrayUtils.addAll(ins.getBytes(), ref) : ArrayUtils.addAll(ref, ins.getBytes());
                     } else {
                         return forUpstreamLoc ? ArrayUtils.addAll(ref, ins.getBytes()) : ArrayUtils.addAll(ins.getBytes(), ref);

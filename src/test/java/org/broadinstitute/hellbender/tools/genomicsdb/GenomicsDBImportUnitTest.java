@@ -28,7 +28,7 @@ public class GenomicsDBImportUnitTest extends GATKBaseTest {
                                                         "Sample1\tfile1\n";
 
     @DataProvider
-    public Object[][] getBadTestFiles(){
+    public Object[][] getBadSampleNameMapFiles(){
         return new Object[][]{
                 {"Sample1\tsamplePath\n"
                 +"Sample1\tsamplePath"},        // duplicate sample name
@@ -41,15 +41,38 @@ public class GenomicsDBImportUnitTest extends GATKBaseTest {
                 {"Sample1\tfile1\t"},           // extra tab
                 {"Sample1\nfile"},              // newline instead of tab
                 {"\t"},                         // only tab
-                {"Sample1 file1"},              // non-tab whitespace
-                {"Sample 1\tfile1"},            // white space in a token
+                {"Sample1 file1"},              // 1 column
+                {" name name\tfile1"},          // preceding whitespace
+                {"name name \tfile1"},          // trailing whitespace
         };
     }
 
-    @Test(dataProvider = "getBadTestFiles", expectedExceptions = UserException.BadInput.class)
+    @Test(dataProvider = "getBadSampleNameMapFiles", expectedExceptions = UserException.BadInput.class)
     public void testBadInputFiles(final String text){
         final File sampleFile = IOUtils.writeTempFile(text, "badSampleMapping", ".txt");
         GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath()  );
+    }
+
+    @DataProvider
+    public Object[][] getGoodSampleNameMapFileSyntax(){
+        return new Object[][]{
+                // Note: none of these files are real, these are just valid files syntactically
+                {"Sample1\tsamplePath1 \n"
+                +"Sample2\tsamplePath2", new String[][] {{"Sample1","samplePath1"},{"Sample2","samplePath2"}}},     // normal sample names
+                {"Sample1 001\tFile", new String[][] {{"Sample1 001","File"}}},          // sample names with whitespace
+                {"name name\tfile1 ", new String[][] {{"name name","file1"}}},          // trailing whitespace second column
+                {"name name\t file1 ", new String[][] {{"name name","file1"}}}        // leading and trailing whitespace second colum
+                };
+    }
+
+    @Test(dataProvider = "getGoodSampleNameMapFileSyntax")
+    public void testValidSampleFiles(final String text, final String[][] expectedEntries){
+        final File sampleFile = IOUtils.writeTempFile(text, "goodSampleMapping", ".txt");
+        final LinkedHashMap<String, Path> outputMap = GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath());
+        Assert.assertEquals(outputMap.size(),expectedEntries.length);
+
+        Arrays.stream(expectedEntries).forEach(s -> { Assert.assertTrue(outputMap.containsKey(s[0]));
+                                                      Assert.assertEquals(outputMap.get(s[0]).toString(),s[1]);});
     }
 
     @Test

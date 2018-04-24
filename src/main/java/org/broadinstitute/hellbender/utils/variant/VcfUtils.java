@@ -7,6 +7,7 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -54,14 +55,14 @@ public final class VcfUtils {
      * Given a set of VCF header lines, update the set with contig
      * lines from the provided reference dictionary.
      * @param oldLines
-     * @param referenceFile
+     * @param referencePath
      * @param refDict
      * @param referenceNameOnly
      * @return Updated list of VCF header lines.
      */
     public static Set<VCFHeaderLine> updateHeaderContigLines(
             final Set<VCFHeaderLine> oldLines,
-            final File referenceFile,
+            final Path referencePath,
             final SAMSequenceDictionary refDict,
             final boolean referenceNameOnly) {
         final Set<VCFHeaderLine> lines = new LinkedHashSet<>(oldLines.size());
@@ -76,16 +77,16 @@ public final class VcfUtils {
             lines.add(line);
         }
 
-        lines.addAll(makeContigHeaderLines(refDict, referenceFile).stream().collect(Collectors.toList()));
+        lines.addAll(makeContigHeaderLines(refDict, referencePath).stream().collect(Collectors.toList()));
 
-        if (referenceFile != null) {
+        if (referencePath != null) {
             final String referenceValue;
             if (referenceNameOnly) {
-                final int extensionStart = referenceFile.getName().lastIndexOf(".");
-                referenceValue = extensionStart == -1 ? referenceFile.getName() : referenceFile.getName().substring(0, extensionStart);
+                final int extensionStart = referencePath.getFileName().toString().lastIndexOf(".");
+                referenceValue = extensionStart == -1 ? referencePath.getFileName().toString() : referencePath.getFileName().toString().substring(0, extensionStart);
             }
             else {
-                referenceValue = "file://" + referenceFile.getAbsolutePath();
+                referenceValue = referencePath.toUri().toString();
             }
             lines.add(new VCFHeaderLine(VCFHeader.REFERENCE_KEY, referenceValue));
         }
@@ -93,9 +94,9 @@ public final class VcfUtils {
     }
 
     private static List<VCFContigHeaderLine> makeContigHeaderLines(final SAMSequenceDictionary refDict,
-                                                                   final File referenceFile) {
+                                                                   final Path referencePath) {
         final List<VCFContigHeaderLine> lines = new ArrayList<>();
-        final String assembly = referenceFile != null ? referenceFile.getName() : null;
+        final String assembly = referencePath != null ? referencePath.getFileName().toString() : null;
         lines.addAll(refDict.getSequences().stream().map(contig -> makeContigHeaderLine(contig, assembly)).collect(Collectors.toList()));
         return lines;
     }

@@ -137,6 +137,17 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     }
 
     /**
+     * Creates a FeatureDataSource backed by the provided path. The data source will have an automatically
+     * generated name, and will look ahead the default number of bases ({@link #DEFAULT_QUERY_LOOKAHEAD_BASES})
+     * during queries that produce cache misses.
+     *
+     * @param featurePath path or URI to source of Features
+     */
+    public FeatureDataSource(final String featurePath) {
+        this(featurePath, null, DEFAULT_QUERY_LOOKAHEAD_BASES, null);
+    }
+
+    /**
      * Creates a FeatureDataSource backed by the provided File and assigns this data source the specified logical
      * name. We will look ahead the default number of bases ({@link #DEFAULT_QUERY_LOOKAHEAD_BASES}) during queries
      * that produce cache misses.
@@ -253,6 +264,11 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         } else {
             throw new GATKException("Found a feature input that was neither GenomicsDB or a Tribble AbstractFeatureReader.  Input was " + featureInput.toString() + ".");
         }
+        // Due to a bug in HTSJDK, unindexed block compressed input files may fail to parse completely. For safety,
+        // these files have been disabled. See https://github.com/broadinstitute/gatk/issues/4224 for discussion
+        if (!hasIndex && TribbleIndexedFeatureReader.hasBlockCompressedExtension(featureInput.getFeaturePath())) {
+            throw new UserException.MissingIndex(featureInput.toString(),"Support for unindexed block-compressed files has been temporarily disabled. Try running IndexFeatureFile on the input.");
+        }
 
         this.currentIterator = null;
         this.intervalsForTraversal = null;
@@ -351,6 +367,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         final File workspace = new File(noheader);
         final File callsetJson = new File(noheader, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
         final File vidmapJson = new File(noheader, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
+        final File vcfHeader = new File(noheader, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
 
         if ( ! workspace.exists() || ! workspace.canRead() || ! workspace.isDirectory() ) {
             throw new UserException("GenomicsDB workspace " + workspace.getAbsolutePath() + " does not exist, " +
@@ -360,11 +377,12 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         try {
             IOUtils.canReadFile(callsetJson);
             IOUtils.canReadFile(vidmapJson);
+            IOUtils.canReadFile(vcfHeader);
         }
         catch ( UserException.CouldNotReadInputFile e ) {
-            throw new UserException("Couldn't connect to GenomicsDB because the vidmap and/or callset JSON files (" +
-                    GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME + " and " + GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME +
-                    ") could not be read from GenomicsDB workspace " + workspace.getAbsolutePath(), e);
+            throw new UserException("Couldn't connect to GenomicsDB because the vidmap, callset JSON files, or gVCF Header (" +
+                    GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME + "," + GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME + "," +
+                    GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME + ") could not be read from GenomicsDB workspace " + workspace.getAbsolutePath(), e);
         }
 
         try {
@@ -373,7 +391,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
                                                  workspace.getAbsolutePath(),
                                                  GenomicsDBConstants.DEFAULT_ARRAY_NAME,
                                                  reference.getAbsolutePath(),
-                                                 null,
+                                                 vcfHeader.getAbsolutePath(),
                                                  new BCF2Codec());
         } catch (final IOException e) {
             throw new UserException("Couldn't create GenomicsDBFeatureReader", e);

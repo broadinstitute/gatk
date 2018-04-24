@@ -20,23 +20,24 @@
 import "hapmap_sensitivity.wdl" as single_plex
 
 workflow HapmapSensitivityAllPlexes {
+    File? intervals
+  	File ref_fasta
+  	File ref_fai
+  	File ref_dict
+
     Int max_depth
+    Array[Int] depth_bins
+    Int depth_bin_width
   	Int scatter_count
 
   	File five_plex_bam_list
   	File ten_plex_bam_list
   	File twenty_plex_bam_list
 
-  	File ref_fasta
-  	File ref_fasta_index
-  	File ref_dict
   	File? pon
   	File? pon_index
-  	Boolean is_run_orientation_bias_filter
-    File gatk
-    Array[String] artifact_modes
-    File picard_jar
-
+  	Boolean run_orientation_bias_filter
+    Array[String]? artifact_modes
     File five_plex_preprocessed
     File five_plex_preprocessed_idx
     File ten_plex_preprocessed
@@ -46,78 +47,85 @@ workflow HapmapSensitivityAllPlexes {
 
     String? m2_extra_args
     String? m2_extra_filtering_args
-
-    File? intervals
-
     File python_script
+
+    File? gatk_override
+
+    String gatk_docker
 
   call single_plex.HapmapSensitivity as FivePlex {
       input:
+          gatk_override = gatk_override,
+          gatk_docker = gatk_docker,
+          intervals = intervals,
+          ref_fasta = ref_fasta,
+          ref_fai = ref_fai,
+          ref_dict = ref_dict,
           max_depth = max_depth,
+          depth_bins = depth_bins,
+          depth_bin_width = depth_bin_width,
           scatter_count = scatter_count,
           bam_list = five_plex_bam_list,
-          ref_fasta = ref_fasta,
-          ref_fasta_index = ref_fasta_index,
-          ref_dict = ref_dict,
           pon = pon,
           pon_index = pon_index,
-          is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-          gatk = gatk,
+          run_orientation_bias_filter = run_orientation_bias_filter,
           artifact_modes = artifact_modes,
-          picard_jar = picard_jar,
           preprocessed_hapmap = five_plex_preprocessed,
           preprocessed_hapmap_idx = five_plex_preprocessed_idx,
           m2_extra_args = m2_extra_args,
           m2_extra_filtering_args = m2_extra_filtering_args,
           prefix = "5plex",
-          python_script = python_script,
-          intervals = intervals
+          python_script = python_script
   }
 
   call single_plex.HapmapSensitivity as TenPlex {
       input:
+          gatk_override = gatk_override,
+          gatk_docker = gatk_docker,
+          intervals = intervals,
+          ref_fasta = ref_fasta,
+          ref_fai = ref_fai,
+          ref_dict = ref_dict,
           max_depth = max_depth,
+          depth_bins = depth_bins,
+          depth_bin_width = depth_bin_width,
           scatter_count = scatter_count,
           bam_list = ten_plex_bam_list,
-          ref_fasta = ref_fasta,
-          ref_fasta_index = ref_fasta_index,
-          ref_dict = ref_dict,
           pon = pon,
           pon_index = pon_index,
-          is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-          gatk = gatk,
+          run_orientation_bias_filter = run_orientation_bias_filter,
           artifact_modes = artifact_modes,
-          picard_jar = picard_jar,
           preprocessed_hapmap = ten_plex_preprocessed,
           preprocessed_hapmap_idx = ten_plex_preprocessed_idx,
           m2_extra_args = m2_extra_args,
           m2_extra_filtering_args = m2_extra_filtering_args,
           prefix = "10plex",
-          python_script = python_script,
-          intervals = intervals
+          python_script = python_script
   }
 
   call single_plex.HapmapSensitivity as TwentyPlex {
       input:
+          gatk_override = gatk_override,
+          gatk_docker = gatk_docker,
+          intervals = intervals,
+          ref_fasta = ref_fasta,
+          ref_fai = ref_fai,
+          ref_dict = ref_dict,
           max_depth = max_depth,
+          depth_bins = depth_bins,
+          depth_bin_width = depth_bin_width,
           scatter_count = scatter_count,
           bam_list = twenty_plex_bam_list,
-          ref_fasta = ref_fasta,
-          ref_fasta_index = ref_fasta_index,
-          ref_dict = ref_dict,
           pon = pon,
           pon_index = pon_index,
-          is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-          gatk = gatk,
+          run_orientation_bias_filter = run_orientation_bias_filter,
           artifact_modes = artifact_modes,
-          picard_jar = picard_jar,
           preprocessed_hapmap = twenty_plex_preprocessed,
           preprocessed_hapmap_idx = twenty_plex_preprocessed_idx,
           m2_extra_args = m2_extra_args,
           m2_extra_filtering_args = m2_extra_filtering_args,
           prefix = "20plex",
-          python_script = python_script,
-          intervals = intervals
+          python_script = python_script
   }
 
   Array[File] all_plex_sensitivity_tables = [FivePlex.raw_table, TenPlex.raw_table, TwentyPlex.raw_table]
@@ -125,7 +133,7 @@ workflow HapmapSensitivityAllPlexes {
   call single_plex.CombineTables as AllPlexTable { input: input_tables = all_plex_sensitivity_tables, prefix = "all_plex" }
 
   call single_plex.AnalyzeSensitivity as AllPlex {
-    input: input_table = AllPlexTable.table, python_script = python_script, prefix = "all_plex"
+      input: input_table = AllPlexTable.table, python_script = python_script, prefix = "all_plex", depth_bins = depth_bins, depth_bin_width = depth_bin_width
   }
 
   output {
@@ -140,6 +148,7 @@ workflow HapmapSensitivityAllPlexes {
       Array[File] tpfn_idx_5_plex = FivePlex.tpfn_idx
       Array[File] ftnfn_5_plex = FivePlex.ftnfn
       Array[File] ftnfn_idx_5_plex = FivePlex.ftnfn_idx
+      Array[File] filter_analysis_5_plex = FivePlex.filter_analysis
       File snp_table_10_plex = TenPlex.snp_table
       File snp_plot_10_plex = TenPlex.snp_plot
       File indel_table_10_plex = TenPlex.indel_table
@@ -151,6 +160,7 @@ workflow HapmapSensitivityAllPlexes {
       Array[File] tpfn_idx_10_plex = TenPlex.tpfn_idx
       Array[File] ftnfn_10_plex = TenPlex.ftnfn
       Array[File] ftnfn_idx_10_plex = TenPlex.ftnfn_idx
+      Array[File] filter_analysis_10_plex = TenPlex.filter_analysis
       File snp_table_20_plex = TwentyPlex.snp_table
       File snp_plot_20_plex = TwentyPlex.snp_plot
       File indel_table_20_plex = TwentyPlex.indel_table
@@ -162,6 +172,7 @@ workflow HapmapSensitivityAllPlexes {
       Array[File] tpfn_idx_20_plex = TwentyPlex.tpfn_idx
       Array[File] ftnfn_20_plex = TwentyPlex.ftnfn
       Array[File] ftnfn_idx_20_plex = TwentyPlex.ftnfn_idx
+      Array[File] filter_analysis_20_plex = TwentyPlex.filter_analysis
 
       File snp_table_all_plex = AllPlex.snp_table
       File snp_plot_all_plex = AllPlex.snp_plot

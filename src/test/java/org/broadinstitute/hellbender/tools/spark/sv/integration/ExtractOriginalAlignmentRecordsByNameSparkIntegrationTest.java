@@ -39,7 +39,7 @@ public final class ExtractOriginalAlignmentRecordsByNameSparkIntegrationTest ext
 
         final List<String> args = Arrays.asList("-I", SVIntegrationTestDataProvider.TEST_CONTIG_SAM,
                 "-O", tempWorkingDir.getAbsolutePath() + "/names.bam",
-                "--readNameFile", tempWorkingDir.getAbsolutePath() + "/names.txt");
+                "--read-name-file", tempWorkingDir.getAbsolutePath() + "/names.txt");
 
         runCommandLine(args);
 

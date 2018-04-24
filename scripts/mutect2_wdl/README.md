@@ -118,6 +118,7 @@ Recommended default values (where possible) are found in ``mutect2_template.json
 - ``Mutect2.sequencing_center`` -- Please see parameter description above in the mutect2_multi_sample.   
 - ``Mutect2.sequence_source`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.default_config_file`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2.filter_oncotator_maf`` -- (optional, default true) Whether Oncotator should remove filtered variants when rendering the MAF.  Ignored if `run_oncotator` is false. 
 
 #### mutect2-replicate-validation
 

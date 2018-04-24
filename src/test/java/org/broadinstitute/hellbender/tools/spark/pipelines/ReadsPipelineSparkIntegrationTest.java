@@ -37,17 +37,12 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
             this.expectedVcfFileName = expectedVcfFileName;
         }
 
-        public String getCommandLineNoApiKey() {
+        public String getCommandLine() {
             return  " -R " + referenceURL +
                     " -I " + bam +
                     " " + args +
-                    (knownSites.isEmpty() ? "": " --knownSites " + knownSites) +
+                    (knownSites.isEmpty() ? "": " --known-sites " + knownSites) +
                     " -O %s";
-        }
-
-        public String getCommandLine() {
-            return  getCommandLineNoApiKey() +
-                    " --apiKey " + getGCPTestApiKey();
         }
 
         @Override
@@ -64,10 +59,12 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
     public Object[][] createReadsPipelineSparkTestData() {
         final String GRCh37Ref_2021 = GATKBaseTest.b37_reference_20_21;
         final String GRCh37Ref2bit_chr2021 = GATKBaseTest.b37_2bit_reference_20_21;
+        final String GRCh37Ref_2021_img = GATKBaseTest.b37_reference_20_21_img;
         final String hiSeqBam_chr20 = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.noMD.noBQSR.bam";
         final String hiSeqBam_chr20_queryNameSorted = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.noMD.noBQSR.queryNameSorted.bam";
         final String hiSeqCram_chr20 = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.noMD.noBQSR.cram";
-        final String dbSNPb37_20 = getResourceDir() + GATKBaseTest.DBSNP_138_B37_CH20_1M_1M1K_VCF;
+        final String unalignedBam = largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.tiny.unaligned.bam";
+        final String dbSNPb37_20 = getResourceDir() + DBSNP_138_B37_CH20_1M_1M1K_VCF;
         final String more20Sites = getResourceDir() + "dbsnp_138.b37.20.10m-10m100.vcf"; //for testing 2 input files
 
         final String expectedSingleKnownSites = "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.noMD.noBQSR.md.bqsr.bam";
@@ -75,27 +72,31 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
         final String expectedMultipleKnownSites = "expected.MultiSite.reads.pipeline.bam";
         final String expectedMultipleKnownSitesCram = "expected.MultiSite.reads.pipeline.cram";
         final String expectedMultipleKnownSitesVcf = "expected.MultiSite.reads.pipeline.vcf";
+        final String expectedMultipleKnownSitesFromUnalignedVcf = "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.tiny.vcf";
 
         return new Object[][]{
                 // input local, computation local.
                 // Note: these output files were created by running Picard 1.130 and GATK3.46.
                 // VCF files were generated using GATK4 with a command like:
-                // ./gatk-launch HaplotypeCaller \
+                // gatk HaplotypeCaller \
                 //        -I src/test/resources/org/broadinstitute/hellbender/tools/BQSR/expected.MultiSite.reads.pipeline.bam \
                 //        -R src/test/resources/large/human_g1k_v37.20.21.fasta \
                 //        -O src/test/resources/org/broadinstitute/hellbender/tools/BQSR/expected.MultiSite.reads.pipeline.vcf \
                 //        -pairHMM AVX_LOGLESS_CACHING \
                 //        -stand_call_conf 30.0
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--joinStrategy BROADCAST", null, getResourceDir() + expectedSingleKnownSitesVcf)}, // don't write intermediate BAM
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--joinStrategy BROADCAST", getResourceDir() + expectedSingleKnownSites, getResourceDir() + expectedSingleKnownSitesVcf)},
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--joinStrategy OVERLAPS_PARTITIONER --readShardPadding 1000", getResourceDir() + expectedSingleKnownSites, getResourceDir() + expectedSingleKnownSitesVcf)},
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20_queryNameSorted, ".bam", dbSNPb37_20, "--joinStrategy BROADCAST", getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedSingleKnownSitesVcf)},
+                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--join-strategy BROADCAST", null, getResourceDir() + expectedSingleKnownSitesVcf)}, // don't write intermediate BAM
+                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--join-strategy BROADCAST", getResourceDir() + expectedSingleKnownSites, getResourceDir() + expectedSingleKnownSitesVcf)},
+                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--join-strategy OVERLAPS_PARTITIONER --read-shard-padding 1000", getResourceDir() + expectedSingleKnownSites, getResourceDir() + expectedSingleKnownSitesVcf)},
+                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20_queryNameSorted, ".bam", dbSNPb37_20, "--join-strategy BROADCAST", getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedSingleKnownSitesVcf)},
 
                 // Output generated with GATK4
                 // CRAM test fails since can't use 2bit with CRAM, can only use 2bit with HC.
 //                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqCram_chr20, ".cram", dbSNPb37_20, "--joinStrategy BROADCAST --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSitesCram, getResourceDir() + expectedMultipleKnownSitesVcf)},
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--joinStrategy BROADCAST --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedMultipleKnownSitesVcf)},
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--joinStrategy OVERLAPS_PARTITIONER --readShardPadding 1000 --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedMultipleKnownSitesVcf)},
+                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--join-strategy BROADCAST --known-sites " + more20Sites, getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedMultipleKnownSitesVcf)},
+                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--join-strategy OVERLAPS_PARTITIONER --read-shard-padding 1000 --known-sites " + more20Sites, getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedMultipleKnownSitesVcf)},
+
+                // BWA-MEM
+                {new PipelineTest(GRCh37Ref2bit_chr2021, unalignedBam, ".bam", dbSNPb37_20, "--align --bwa-mem-index-image " + GRCh37Ref_2021_img + " --disable-sequence-dictionary-validation true --join-strategy BROADCAST --known-sites " + more20Sites, null, largeFileTestDir + expectedMultipleKnownSitesFromUnalignedVcf)},
         };
     }
 
@@ -110,7 +111,7 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
         args.add("-O");
         args.add(outFile.getAbsolutePath());
         if (params.expectedBamFileName != null) {
-            args.add("--outputBam");
+            args.add("--output-bam");
             args.add(outFileBam.getAbsolutePath());
         }
 
@@ -120,13 +121,13 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
             args.add("-R");
             args.add(referenceFile.getAbsolutePath());
         }
-        args.add("-indelBQSR");
-        args.add("-enableBAQ");
+        args.add("-indels");
+        args.add("--enable-baq");
         args.add("-pairHMM");
         args.add("AVX_LOGLESS_CACHING");
-        args.add("-stand_call_conf");
+        args.add("-stand-call-conf");
         args.add("30.0");
-        args.add("--knownSites");
+        args.add("--known-sites");
         args.add(params.knownSites);
         if (params.args != null) {
             Stream.of(params.args.trim().split(" ")).forEach(args::add);

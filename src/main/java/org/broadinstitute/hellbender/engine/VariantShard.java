@@ -1,10 +1,5 @@
 package org.broadinstitute.hellbender.engine;
 
-import com.google.cloud.dataflow.sdk.coders.DelegateCoder;
-import com.google.cloud.dataflow.sdk.coders.KvCoder;
-import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
-import com.google.cloud.dataflow.sdk.coders.VarIntCoder;
-import com.google.cloud.dataflow.sdk.values.KV;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -81,23 +76,4 @@ public final class VariantShard {
                 ", contig='" + contig + '\'' +
                 '}';
     }
-
-    public static final DelegateCoder<VariantShard, KV<Integer, String>> CODER =
-            DelegateCoder.of(
-                    KvCoder.of(VarIntCoder.of(), StringUtf8Coder.of()),
-                    new DelegateCoder.CodingFunction<VariantShard, KV<Integer, String>>() {
-                        private static final long serialVersionUID = 1L;
-                        @Override
-                        public KV<Integer, String> apply(VariantShard ref) throws Exception {
-                            return KV.of(ref.getShardNumber(), ref.getContig());
-                        }
-                    },
-                    new DelegateCoder.CodingFunction<KV<Integer, String>, VariantShard>() {
-                        private static final long serialVersionUID = 1L;
-                        @Override
-                        public VariantShard apply(KV<Integer, String> kv) throws Exception {
-                            return new VariantShard(kv.getKey(), kv.getValue());
-                        }
-                    }
-            );
 }

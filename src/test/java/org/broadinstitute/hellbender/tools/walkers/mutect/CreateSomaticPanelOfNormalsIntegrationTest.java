@@ -22,7 +22,7 @@ import static org.testng.Assert.*;
  */
 public class CreateSomaticPanelOfNormalsIntegrationTest extends CommandLineProgramTest {
 
-    private static final File PON_VCFS_DIR = new File(publicTestDir, "org/broadinstitute/hellbender/tools/mutect/createpon/");
+    private static final File PON_VCFS_DIR = new File(toolsTestDir, "mutect/createpon/");
 
     /**
      * In the following test, we have sample1.vcf:
@@ -62,7 +62,8 @@ public class CreateSomaticPanelOfNormalsIntegrationTest extends CommandLineProgr
         final File outputVcf = createTempFile("pon", ".vcf");
         final String[] args = {
                 "-" + CreateSomaticPanelOfNormals.INPUT_VCFS_LIST_SHORT_NAME, vcfInputFile.getAbsolutePath(),
-                "-O", outputVcf.getAbsolutePath()
+                "-O", outputVcf.getAbsolutePath(),
+                "--duplicate-sample-strategy", "ALLOW_ALL",
         };
 
         runCommandLine(args);
@@ -81,5 +82,4 @@ public class CreateSomaticPanelOfNormalsIntegrationTest extends CommandLineProgr
         Assert.assertEquals(vc5.getNAlleles(), 2);
         Assert.assertTrue(vc5.getAlternateAllele(0).basesMatch("C"));
     }
-
 }

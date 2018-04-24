@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequence;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -167,6 +169,51 @@ public final class ReferenceContext implements Iterable<Byte> {
     }
 
     /**
+     * Get all reference bases in this context with the given window.
+     * Does not cache results or modify this {@link ReferenceContext} at all.
+     * Will always return an empty array if there is no backing data source and/or interval to query.
+     *
+     * @return reference bases in this context, as a byte array
+     */
+    public byte[] getBases(final SimpleInterval window) {
+        if ( dataSource == null || window == null ) {
+            return new byte[0];
+        }
+
+        // Trim to the contig start/end:
+        final SimpleInterval trimmedWindow = new SimpleInterval(
+                window.getContig(),
+                trimToContigStart(window.getStart()),
+                trimToContigLength(window.getContig(), window.getEnd())
+        );
+
+        return dataSource.queryAndPrefetch(trimmedWindow).getBases();
+    }
+
+    /**
+     * Get all reference bases in this context with the given leading / trailing bases as the window.
+     * Uses the current {@link ReferenceContext#window} as a basis for the position.
+     * Does not cache results or modify this {@link ReferenceContext} at all.
+     * Will always return an empty array if there is no backing data source and/or interval to query.
+     *
+     * @return reference bases in this context, as a byte array
+     */
+    public byte[] getBases(final int windowLeadingBases, final int windowTrailingBases) {
+        if ( dataSource == null || window == null ) {
+            return new byte[0];
+        }
+
+        // Trim to the contig start/end:
+        final SimpleInterval trimmedWindow = new SimpleInterval(
+                window.getContig(),
+                trimToContigStart(window.getStart() - windowLeadingBases),
+                trimToContigLength(window.getContig(), window.getEnd() + windowTrailingBases)
+        );
+
+        return dataSource.queryAndPrefetch(trimmedWindow).getBases();
+    }
+
+    /**
      * Get the bases in this context, from the beginning of the interval to the end of the window.
      */
     public byte[] getForwardBases() {
@@ -302,6 +349,12 @@ public final class ReferenceContext implements Iterable<Byte> {
      * @return The end, potentially trimmed to the contig's length
      */
     private int trimToContigLength(final String contig, final int end){
+
+        final SAMSequenceRecord sequence = dataSource.getSequenceDictionary().getSequence(contig);
+        if ( sequence == null ) {
+            throw new UserException("Given reference file does not have data at the requested contig(" + contig + ")!");
+        }
+
         final int sequenceLength = dataSource.getSequenceDictionary().getSequence(contig).getSequenceLength();
         return Math.min(end, sequenceLength);
     }

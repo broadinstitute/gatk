@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -25,7 +27,7 @@ public class HaplotypeCallerEngineUnitTest extends GATKBaseTest {
     @Test
     public void testIsActive() throws IOException {
         final File testBam = new File(NA12878_20_21_WGS_bam);
-        final File reference = new File(b37_reference_20_21);
+        final Path reference = Paths.get(b37_reference_20_21);
         final SimpleInterval shardInterval = new SimpleInterval("20", 10000000, 10001000);
         final SimpleInterval paddedShardInterval = new SimpleInterval(shardInterval.getContig(), shardInterval.getStart() - 100, shardInterval.getEnd() + 100);
         final HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();

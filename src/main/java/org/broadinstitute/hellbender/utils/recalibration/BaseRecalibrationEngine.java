@@ -330,8 +330,8 @@ public final class BaseRecalibrationEngine implements Serializable {
         final int readLength = read.getLength();
         final boolean[] knownSitesArray = new boolean[readLength];//initializes to all false
         final Cigar cigar = read.getCigar();
-        final int softStart = ReadUtils.getSoftStart(read);
-        final int softEnd = ReadUtils.getSoftEnd(read);
+        final int softStart = read.getSoftStart();
+        final int softEnd = read.getSoftEnd();
         for ( final Locatable knownSite : knownSites ) {
             if (knownSite.getEnd() < softStart || knownSite.getStart() > softEnd) {
                 // knownSite is outside clipping window for the read, ignore

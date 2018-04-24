@@ -25,7 +25,7 @@ public class CompareBaseQualitiesIntegrationTest extends CommandLineProgramTest 
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add(firstBam.getCanonicalPath());
         args.add(secondBam.getCanonicalPath());
-        args.add("--throwOnDiff true");
+        args.add("--throw-on-diff true");
         args.add("--VALIDATION_STRINGENCY SILENT");
         final Object result = this.runCommandLine(args);
         Assert.assertEquals(result, 0);
@@ -67,7 +67,7 @@ public class CompareBaseQualitiesIntegrationTest extends CommandLineProgramTest 
         }
         if (staticQuantizationQuals != null && !staticQuantizationQuals.isEmpty()){
             for (int sq : staticQuantizationQuals){
-                args.add("-SQQ");
+                args.add("--" + CompareBaseQualities.STATIC_QUANTIZED_QUALS_LONG_NAME);
                 args.add(sq);
             }
         }

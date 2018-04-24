@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
@@ -299,7 +300,8 @@ public final class GenomeLocSortedSetUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "GetOverlapping")
     public Object[][] makeGetOverlappingTest() throws Exception {
-        final GenomeLocParser genomeLocParser = new GenomeLocParser(new CachingIndexedFastaSequenceFile(new File(exampleReference)));
+        final GenomeLocParser genomeLocParser = new GenomeLocParser(new CachingIndexedFastaSequenceFile(
+                IOUtils.getPath(exampleReference)));
 
         List<Object[]> tests = new ArrayList<>();
 

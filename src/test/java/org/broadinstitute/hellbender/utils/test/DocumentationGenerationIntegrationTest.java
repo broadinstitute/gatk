@@ -32,6 +32,8 @@ public class DocumentationGenerationIntegrationTest extends CommandLineProgramTe
             "org.broadinstitute.hellbender.tools.walkers.bqsr",
             "org.broadinstitute.hellbender.tools.walkers.vqsr",
             "org.broadinstitute.hellbender.tools.walkers.variantutils",
+            "picard.fingerprint",
+            "picard.analysis"
     };
 
     @Test

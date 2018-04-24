@@ -88,6 +88,10 @@ public class UserException extends RuntimeException {
             this(file, getMessage(e), e);
         }
 
+        public CouldNotReadInputFile(Path path, Exception e) {
+            this(path, getMessage(e), e);
+        }
+
         public CouldNotReadInputFile(String message) {
             super(message);
         }
@@ -97,6 +101,14 @@ public class UserException extends RuntimeException {
         private static final long serialVersionUID = 0L;
 
         public MissingReference(String message) { super(message); }
+    }
+
+    public static class MissingIndex extends UserException {
+        private static final long serialVersionUID = 0L;
+
+        public MissingIndex(String file, String message) {
+            super(String.format("An index is required but was not found for file %s. %s", file, message));
+        }
     }
 
     public static class CannotHandleGzippedRef extends UserException {
@@ -211,28 +223,36 @@ public class UserException extends RuntimeException {
         public MalformedFile(File f, String message, Exception e) {
             super(String.format("File %s is malformed: %s caused by %s", f.getAbsolutePath(), message, getMessage(e)), e);
         }
+
+        public MalformedFile(Path p, String message) {
+            super(String.format("File %s is malformed: %s", p.toUri(), message));
+        }
+
+        public MalformedFile(Path p, String message, Exception e) {
+            super(String.format("File %s is malformed: %s caused by %s", p.toUri(), message, getMessage(e)), e);
+        }
     }
 
     public static class MissingReferenceFaiFile extends UserException {
         private static final long serialVersionUID = 0L;
-        public MissingReferenceFaiFile( final File indexFile, final File fastaFile ) {
+        public MissingReferenceFaiFile( final Path indexPath, final Path fastaPath ) {
             super(String.format("Fasta index file %s for reference %s does not exist. Please see %s for help creating it.",
-                    indexFile.getAbsolutePath(), fastaFile.getAbsolutePath(),
+                    indexPath.toUri(), fastaPath.toUri(),
                     HelpConstants.forumPost("discussion/1601/how-can-i-prepare-a-fasta-file-to-use-as-reference")));
         }
     }
 
     public static class MissingReferenceDictFile extends UserException {
         private static final long serialVersionUID = 0L;
-        public MissingReferenceDictFile( final File dictFile, final File fastaFile ) {
+        public MissingReferenceDictFile( final Path dictFile, final Path fastaFile ) {
             super(String.format("Fasta dict file %s for reference %s does not exist. Please see %s for help creating it.",
-                    dictFile.getAbsolutePath(), fastaFile.getAbsolutePath(),
+                    dictFile.toUri(), fastaFile.toUri(),
                     HelpConstants.forumPost("discussion/1601/how-can-i-prepare-a-fasta-file-to-use-as-reference")));
         }
 
-        public MissingReferenceDictFile( final String fastaFile ) {
+        public MissingReferenceDictFile( final String fastaFileName ) {
             super(String.format("Fasta dict file for reference %s does not exist. Please see %s for help creating it.",
-                    fastaFile,
+                    fastaFileName,
                     HelpConstants.forumPost("discussion/1601/how-can-i-prepare-a-fasta-file-to-use-as-reference")));
         }
     }
@@ -327,29 +347,6 @@ public class UserException extends RuntimeException {
         }
     }
 
-    public static final class ReferenceAPIReturnedUnexpectedNumberOfBytes extends UserException {
-        private static final long serialVersionUID = 0L;
-        public ReferenceAPIReturnedUnexpectedNumberOfBytes(final SimpleInterval interval, final byte[] bases) {
-            super("Query to genomics service failed for reference interval " + interval + ". Requested " + interval.size() + " bytes but got " + bases.length + ". Perhaps you're querying outside the edge of the contig.");
-        }
-    }
-
-    public static final class MultipleReferenceSets extends UserException {
-        private static final long serialVersionUID = 0L;
-
-        public MultipleReferenceSets(final String referenceSetAssemblyID, final Set<String> referenceSetIds) {
-            super("Multiple reference sets found for " + referenceSetAssemblyID + " : " + referenceSetIds + ". Please use a reference set ID that uniquely identifies a reference set.");
-        }
-    }
-
-    public static final class UnknownReferenceSet extends UserException {
-        private static final long serialVersionUID = 0L;
-
-        public UnknownReferenceSet(final String referenceSetAssemblyID) {
-            super("There are no known reference set for ID " + referenceSetAssemblyID);
-        }
-    }
-
     public static final class Require2BitReferenceForBroadcast extends BadInput {
         private static final long serialVersionUID = 0L;
         public Require2BitReferenceForBroadcast() {
@@ -396,6 +393,23 @@ public class UserException extends RuntimeException {
 
         public HardwareFeatureException(String message, Exception e){
             super(message, e);
+        }
+    }
+
+    public static final class CouldNotIndexFile extends UserException {
+        private static final long serialVersionUID = 0L;
+
+        public CouldNotIndexFile(final File file, final Exception e) {
+            super(String.format("Error while trying to create index for %s. Error was: %s: %s",
+                    file.getAbsolutePath(), e.getClass().getCanonicalName(), e.getMessage()), e);
+        }
+    }
+
+    public static final class UnimplementedFeature extends UserException {
+        private static final long serialVersionUID = 0L;
+
+        public UnimplementedFeature(String message){
+            super(message);
         }
     }
 }

@@ -29,9 +29,10 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -46,23 +47,62 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+
 /**
- * Simple little class that combines multiple VCFs that have exactly the same set of samples
- * and totally discrete sets of loci.
+ * This tool combines together rows of variant calls from multiple VCFs, e.g. those produced by scattering calling
+ * across genomic intervals, into a single VCF. This tool enables scattering operations, e.g. in the cloud, and is
+ * preferred for such contexts over Picard MergeVcfs or Picard GatherVCfs. The tool also runs locally.
+ *
+ * <p>The input files need to have the same set of samples but completely different sets of loci.
+ * These input files must be supplied in genomic order and must not have events at overlapping positions.</p>
+ *
+ * <h3>Input</h3>
+ * <p>
+ * A set of VCF files, each specified in genomic order with the -I option, or a .list text file listing the set of VCFs
+ * to be merged, one file per line.
+ * </p>
+ *
+ * <h3>Output</h3>
+ * <p>
+ * A single VCF file containing the variant call records from the multiple VCFs.
+ * </p>
+ *
+ * <h3>Usage examples</h3>
+ * Specify each VCF file within the command.
+ * <pre>
+ * gatk GatherVcfsCloud \
+ *     -I cohortA_chr1.vcf.gz \
+ *     -I cohortA_chr2.vcf.gz \
+ *     -O cohortA_chr1chr2.vcf.gz
+ * </pre>
+ *
+ * Specify the VCF files using the following input.list:
+ * <pre>
+ *     cohortA_chr1.vcf.gz
+ *     cohortA_chr2.vcf.gz
+ * </pre>
+ *
+ * <pre>
+ * gatk GatherVcfsCloud \
+ *     -I input.list
+ *     -O cohortA_chr1chr2.vcf.gz
+ * </pre>
  *
  * @author Tim Fennell
  */
+
+@DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Gathers multiple VCF files from a scatter operation into a single VCF file. Input files " +
-                "must be supplied in genomic order and must not have events at overlapping positions.",
+                  "must be supplied in genomic order and must not have events at overlapping positions.",
         oneLineSummary = "Gathers multiple VCF files from a scatter operation into a single VCF file",
-        programGroup = VariantProgramGroup.class
+        programGroup = VariantManipulationProgramGroup.class
 )
 @BetaFeature
 public final class GatherVcfsCloud extends CommandLineProgram {
 
-    public static final String IGNORE_SAFETY_CHECKS_LONG_NAME = "ignoreSafetyChecks";
-    public static final String GATHER_TYPE_LONG_NAME = "gatherType";
+    public static final String IGNORE_SAFETY_CHECKS_LONG_NAME = "ignore-safety-checks";
+    public static final String GATHER_TYPE_LONG_NAME = "gather-type";
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,  doc = "Input VCF file(s).")
@@ -90,7 +130,7 @@ public final class GatherVcfsCloud extends CommandLineProgram {
     public boolean ignoreSafetyChecks = false;
 
     @Advanced
-    @Argument(fullName = "disableContigOrderingCheck", doc = "Don't check relative ordering of contigs when doing a conventional gather")
+    @Argument(fullName = "disable-contig-ordering-check", doc = "Don't check relative ordering of contigs when doing a conventional gather")
     public boolean disableContigOrderingCheck = false;
 
     private static final Logger log = LogManager.getLogger();
@@ -113,7 +153,7 @@ public final class GatherVcfsCloud extends CommandLineProgram {
         final SAMSequenceDictionary sequenceDictionary = getHeader(inputPaths.get(0)).getSequenceDictionary();
 
         if (createIndex && sequenceDictionary == null) {
-            throw new UserException("In order to index the resulting VCF input VCFs must contain ##contig lines.");
+            throw new UserException("In order to index the resulting VCF, the input VCFs must contain ##contig lines.");
         }
 
         if( !ignoreSafetyChecks) {

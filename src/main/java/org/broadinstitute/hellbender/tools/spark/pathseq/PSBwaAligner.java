@@ -34,7 +34,7 @@ public final class PSBwaAligner {
         final List<String> saTags = new ArrayList<>(alignmentList.size());
         for (final BwaMemAlignment alignment : alignmentList) {
             //Only get primary alignments
-            if (SAMFlag.NOT_PRIMARY_ALIGNMENT.isUnset(alignment.getSamFlag())
+            if (SAMFlag.SECONDARY_ALIGNMENT.isUnset(alignment.getSamFlag())
                     && SAMFlag.SUPPLEMENTARY_ALIGNMENT.isUnset(alignment.getSamFlag())) {
                 if (read.isUnmapped()) {
                     //Record is currently unmapped, so apply first alignment

@@ -7,10 +7,10 @@ import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.SortingCollection;
 import htsjdk.samtools.util.SortingLongCollection;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.*;
 import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * A better duplication marking algorithm that handles all cases including clipped
@@ -28,13 +29,13 @@ import java.util.Map;
  *
  * @author Tim Fennell
  */
-@BetaFeature
+@ExperimentalFeature
 @DocumentedFeature
 @CommandLineProgramProperties(
         summary = "(Experimental) Examines aligned records in the supplied SAM/BAM/CRAM file to locate duplicate molecules. " +
                 "All records are then written to the output file with the duplicate records flagged.",
-        oneLineSummary = "(Experimental) Examines aligned records in the supplied SAM/BAM/CRAM file to locate duplicate molecules.",
-        programGroup = ReadProgramGroup.class
+        oneLineSummary = "Examines aligned records in the supplied SAM/BAM/CRAM file to locate duplicate molecules.",
+        programGroup = ReadDataManipulationProgramGroup.class
 )
 public final class MarkDuplicatesGATK extends AbstractMarkDuplicatesCommandLineProgram {
     /**
@@ -203,17 +204,17 @@ public final class MarkDuplicatesGATK extends AbstractMarkDuplicatesCommandLineP
         final int maxInMemory = (int) ((Runtime.getRuntime().maxMemory() * SORTING_COLLECTION_SIZE_RATIO) / ReadEndsForMarkDuplicates.SIZE_OF);
         logger.info("Will retain up to " + maxInMemory + " data points before spilling to disk.");
 
-        this.pairSort = SortingCollection.newInstance(ReadEndsForMarkDuplicates.class,
+        this.pairSort = SortingCollection.newInstanceFromPaths(ReadEndsForMarkDuplicates.class,
                 new ReadEndsForMarkDuplicatesCodec(),
                 new ReadEndsMDComparator(),
                 maxInMemory,
-                TMP_DIR);
+                TMP_DIR.stream().map(File::toPath).collect(Collectors.toList()));
 
-        this.fragSort = SortingCollection.newInstance(ReadEndsForMarkDuplicates.class,
+        this.fragSort = SortingCollection.newInstanceFromPaths(ReadEndsForMarkDuplicates.class,
                 new ReadEndsForMarkDuplicatesCodec(),
                 new ReadEndsMDComparator(),
                 maxInMemory,
-                TMP_DIR);
+                TMP_DIR.stream().map(File::toPath).collect(Collectors.toList()));
 
         try(final SamHeaderAndIterator headerAndIterator = openInputs()) {
             final SAMFileHeader header = headerAndIterator.header;

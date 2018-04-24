@@ -14,10 +14,8 @@ import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SAMUtils;
 import htsjdk.samtools.SamStreams;
 import htsjdk.samtools.cram.build.CramIO;
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -628,8 +626,8 @@ public final class ReadUtils {
     }
 
     public static int getReadCoordinateForReferenceCoordinateUpToEndOfRead(final GATKRead read, final int refCoord, final ClippingTail tail) {
-        final int leftmostSafeVariantPosition = Math.max(getSoftStart(read), refCoord);
-        return getReadCoordinateForReferenceCoordinate(getSoftStart(read), read.getCigar(), leftmostSafeVariantPosition, tail, false);
+        final int leftmostSafeVariantPosition = Math.max(read.getSoftStart(), refCoord);
+        return getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), leftmostSafeVariantPosition, tail, false);
     }
 
     /**
@@ -647,7 +645,7 @@ public final class ReadUtils {
      * @return the read coordinate corresponding to the requested reference coordinate for clipping.
      */
     public static int getReadCoordinateForReferenceCoordinate(final GATKRead read, final int refCoord, final ClippingTail tail) {
-        return getReadCoordinateForReferenceCoordinate(getSoftStart(read), read.getCigar(), refCoord, tail, false);
+        return getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), refCoord, tail, false);
     }
 
     /**
@@ -667,7 +665,7 @@ public final class ReadUtils {
      * @return the read coordinate corresponding to the requested reference coordinate. (see warning!)
      */
     public static Pair<Integer, Boolean> getReadCoordinateForReferenceCoordinate(GATKRead read, int refCoord) {
-        return getReadCoordinateForReferenceCoordinate(getSoftStart(read), read.getCigar(), refCoord, false);
+        return getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), refCoord, false);
     }
 
     public static int getReadCoordinateForReferenceCoordinate(final int alignmentStart, final Cigar cigar, final int refCoord, final ClippingTail tail, final boolean allowGoalNotReached) {
@@ -704,7 +702,8 @@ public final class ReadUtils {
             if (allowGoalNotReached) {
                 return new MutablePair<>(CLIPPING_GOAL_NOT_REACHED, false);
             } else {
-                throw new GATKException("Somehow the requested coordinate is not covered by the read. Too many deletions?");
+                throw new GATKException(String.format("Somehow the requested coordinate is not covered by the read. Too many deletions? alignment Start: %d, Cigar: %s, refCoord: %s ",
+                        alignmentStart, cigar.toString(), refCoord));
             }
         }
         boolean goalReached = refBases == goal;
@@ -881,7 +880,7 @@ public final class ReadUtils {
     }
 
     /**
-     * Creates an "empty" read with the provided read's read group and mate
+     * Creates an "empty", unmapped read with the provided read's read group and mate
      * information, but empty (not-null) fields:
      *  - Cigar String
      *  - Read Bases
@@ -896,6 +895,8 @@ public final class ReadUtils {
     public static GATKRead emptyRead( final GATKRead read ) {
         final GATKRead emptyRead = read.copy();
 
+        emptyRead.setIsUnmapped();
+        emptyRead.setMappingQuality(0);
         emptyRead.setCigar("");
         emptyRead.setBases(new byte[0]);
         emptyRead.setBaseQualities(new byte[0]);
@@ -1129,17 +1130,29 @@ public final class ReadUtils {
      * Validate that a file has CRAM contents by checking that it has a valid CRAM file header
      * (no matter what the extension).
      *
-     * @param putativeCRAMFile File to check.
+     * @param putativeCRAMPath File to check.
      * @return true if the file has a valid CRAM file header, otherwise false
      */
-    public static boolean hasCRAMFileContents(final File putativeCRAMFile) {
-        try (final FileInputStream fileStream = new FileInputStream(putativeCRAMFile);
-             final BufferedInputStream bis = new BufferedInputStream(fileStream)) {
-            return SamStreams.isCRAMFile(bis);
+    public static boolean hasCRAMFileContents(final Path putativeCRAMPath) {
+        try (final InputStream fileStream = Files.newInputStream(putativeCRAMPath)) {
+            try (final BufferedInputStream bis = new BufferedInputStream(fileStream)) {
+                return SamStreams.isCRAMFile(bis);
+            }
         }
         catch (IOException e) {
             throw new UserException.CouldNotReadInputFile(e.getMessage());
         }
+    }
+
+    /**
+     * Validate that a file has CRAM contents by checking that it has a valid CRAM file header
+     * (no matter what the extension).
+     *
+     * @param putativeCRAMFile File to check.
+     * @return true if the file has a valid CRAM file header, otherwise false
+     */
+    public static boolean hasCRAMFileContents(final File putativeCRAMFile) {
+        return hasCRAMFileContents(putativeCRAMFile.toPath());
     }
 
     public static boolean isNonPrimary(GATKRead read) {
@@ -1161,7 +1174,7 @@ public final class ReadUtils {
      * @return whether or not the base is in the adaptor
      */
     public static boolean isBaseInsideAdaptor(final GATKRead read, long basePos) {
-        final int adaptorBoundary = ReadUtils.getAdaptorBoundary(read);
+        final int adaptorBoundary = read.getAdaptorBoundary();
         if (adaptorBoundary == CANNOT_COMPUTE_ADAPTOR_BOUNDARY || read.getFragmentLength() > DEFAULT_ADAPTOR_SIZE)
             return false;
 

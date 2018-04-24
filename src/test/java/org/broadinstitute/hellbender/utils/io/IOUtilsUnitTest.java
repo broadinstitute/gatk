@@ -11,10 +11,7 @@ import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -180,6 +177,16 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         innerTestGetPath(NA12878_20_21_WGS_bam);
     }
 
+    @Test
+    public void testGetPathHandlesIntervals() throws IOException {
+        // Make sure we don't crash if passing intervals to getPath.
+        // Also, it shouldn't crash when we check whether the file exists.
+        Assert.assertFalse(Files.exists(IOUtils.getPath("chr1:10-11")));
+        Assert.assertFalse(Files.exists(IOUtils.getPath("chr1:10")));
+        Assert.assertFalse(Files.exists(IOUtils.getPath("1:10-11")));
+        Assert.assertFalse(Files.exists(IOUtils.getPath("1:10")));
+    }
+
     private void innerTestGetPath(String s) throws IOException {
         Path p = IOUtils.getPath(s);
         long size = Files.size(p);
@@ -241,4 +248,63 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         IOUtils.createDirectory(tempPath.toUri().toString());
         Assert.assertTrue(java.nio.file.Files.exists(tempPath));
     }
+
+    @DataProvider(name="urlEncodeDecode")
+    public Object[][] urlEncodeDecode() {
+        return new Object[][]{
+                // string, url encoding
+                { "string", "string"},
+                { "string.", "string."},
+                { "string1", "string1"},
+                { "string with space", "string+with+space"},
+                { "string://", "string%3A%2F%2F"},
+        };
+    }
+
+    @Test(dataProvider = "urlEncodeDecode")
+    public void testUrlEncodeDecode(final String string, final String encoded) {
+        Assert.assertEquals(IOUtils.urlEncode(string), encoded);
+        Assert.assertEquals(string, IOUtils.urlDecode(encoded));
+    }
+
+    @DataProvider(name="resourcePaths")
+    public Object[][] getResourcePaths() {
+        final String testResourceContents = "this is a test resource file";
+        return new Object[][] {
+                { Resource.LARGE_RUNTIME_RESOURCES_PATH + "/testResourceFile.txt", null , testResourceContents},
+                { "testResourceFile.txt", IOUtils.class , testResourceContents},
+        };
+    }
+
+    @Test(dataProvider = "resourcePaths")
+    public void testWriteTempResource(
+            final String resourcePath, final Class<?> relativeClass, final String expectedFirstLine) throws IOException
+    {
+        final Resource largeResource = new Resource(resourcePath, relativeClass);
+        final File resourceFile = IOUtils.writeTempResource(largeResource);
+        final String resourceContentsFirstLine = getFirstLineAndDeleteTempFile(resourceFile);
+        Assert.assertEquals(resourceContentsFirstLine, expectedFirstLine);
+    }
+
+    @Test(dataProvider = "resourcePaths")
+    public void testWriteTempResourceFromPath(
+            final String resourcePath, final Class<?> relativeClass, final String expectedFirstLine) throws IOException
+    {
+        final File resourceFile = IOUtils.writeTempResourceFromPath(resourcePath, relativeClass);
+        final String resourceContentsFirstLine = getFirstLineAndDeleteTempFile(resourceFile);
+        Assert.assertEquals(resourceContentsFirstLine, expectedFirstLine);
+    }
+
+    private String getFirstLineAndDeleteTempFile(final File tempResourceFile) throws IOException {
+        String resourceContentsFirstLine = "";
+        try (final FileReader fr = new FileReader(tempResourceFile);
+             final BufferedReader br = new BufferedReader(fr)) {
+            resourceContentsFirstLine = br.readLine();
+        }
+        finally {
+            tempResourceFile.delete();
+        }
+        return resourceContentsFirstLine;
+    }
+
 }

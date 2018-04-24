@@ -2,11 +2,12 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import picard.cmdline.programgroups.OtherProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.File;
@@ -19,8 +20,9 @@ import java.util.*;
         summary = "Gathers scattered VQSLOD tranches into a single file. For use when running VariantRecalibrator on " +
                 "scattered input using the -scatterTranches mode.",
         oneLineSummary = "Gathers scattered VQSLOD tranches into a single file",
-        programGroup = VariantProgramGroup.class
+        programGroup = OtherProgramGroup.class
 )
+@BetaFeature
 @DocumentedFeature
 public class GatherTranches extends CommandLineProgram {
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
@@ -32,7 +34,7 @@ public class GatherTranches extends CommandLineProgram {
      * which will result in 4 estimated tranches in the final call set: the full set of calls (100% sensitivity at the accessible
      * sites in the truth set), a 99.9% truth sensitivity tranche, along with progressively smaller tranches at 99% and 90%.
      */
-    @Argument(fullName="TStranche",
+    @Argument(fullName="truth-sensitivity-tranche",
             shortName="tranche",
             doc="The levels of truth sensitivity at which to slice the data. (in percent, that is 1.0 for 1 percent)",
             optional=true)
@@ -61,7 +63,7 @@ public class GatherTranches extends CommandLineProgram {
         }
 
         //use a data structure to hold the tranches from each scatter shard in a format that's easy to merge
-        final Map<Double, List<VQSLODTranche>> scatteredTranches = new HashMap<>();
+        final TreeMap<Double, List<VQSLODTranche>> scatteredTranches = new TreeMap<>();
         for (final File trancheFile : inputReports) {
             try {
                 for (final VQSLODTranche currentTranche : VQSLODTranche.readTranches(trancheFile)) {

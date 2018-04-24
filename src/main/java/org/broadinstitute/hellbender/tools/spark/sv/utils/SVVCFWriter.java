@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.Options;
@@ -10,18 +11,20 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
+import org.apache.commons.lang3.EnumUtils;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.BreakEndVariantType;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * A utility class that writes out variants to a VCF file.
@@ -43,13 +46,21 @@ public class SVVCFWriter {
         writeVariants(vcfFileName, sortedVariantsList, referenceSequenceDictionary);
     }
 
-    private static void logNumOfVarByTypes(final List<VariantContext> sortedVariantsList, final Logger logger) {
+    private static void logNumOfVarByTypes(final List<VariantContext> variants, final Logger logger) {
 
-        logger.info("Discovered " + sortedVariantsList.size() + " variants.");
+        logger.info("Discovered " + variants.size() + " variants.");
 
-        sortedVariantsList.stream()
-                .collect(Collectors.groupingBy(vc -> (String)vc.getAttribute(GATKSVVCFConstants.SVTYPE), Collectors.counting()))
-                .forEach((key, value) -> logger.info(key + ": " + value));
+        final Map<String, Long> variantsCountByType = variants.stream()
+                .collect(Collectors.groupingBy(vc -> (String) vc.getAttribute(GATKSVVCFConstants.SVTYPE), Collectors.counting()));
+
+        variantsCountByType.forEach((key, value) -> logger.info(key + ": " + value));
+
+        final Set<String> knownTypes = new HashSet<>( EnumUtils.getEnumMap(SimpleSVType.TYPES.class).keySet() );
+        knownTypes.add(BreakEndVariantType.InvSuspectBND.INV33_BND);
+        knownTypes.add(BreakEndVariantType.InvSuspectBND.INV55_BND);
+        knownTypes.add(BreakEndVariantType.TransLocBND.STRANDSWITCHLESS_BND);
+        knownTypes.add(GATKSVVCFConstants.CPX_SV_SYB_ALT_ALLELE_STR);
+        Sets.difference(knownTypes, variantsCountByType.keySet()).forEach(key -> logger.info(key + ": " + 0));
     }
 
     // TODO: right now there's an edge case that the "same" inversion events would be called three times on a test sample

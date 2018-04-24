@@ -61,12 +61,12 @@ public final class SamAssertionUtilsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "testCRAMContentsSucceed")
     public void testAssertCRAMContentsSucceed(File putativeCRAMFile) {
-        SamAssertionUtils.assertCRAMContents(putativeCRAMFile);
+        SamAssertionUtils.assertCRAMContents(putativeCRAMFile.toPath());
     }
 
     @Test(dataProvider = "testCRAMContentsFail", expectedExceptions=AssertionError.class)
     public void testAssertCRAMContentsFail(File putativeCRAMFile) {
-        SamAssertionUtils.assertCRAMContents(putativeCRAMFile);
+        SamAssertionUtils.assertCRAMContents(putativeCRAMFile.toPath());
     }
 
     @DataProvider(name="testCRAMContentsIfCRAMSucceed")

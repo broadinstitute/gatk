@@ -212,7 +212,7 @@ public final class FeatureInput<T extends Feature> implements Serializable {
     public FeatureInput(final String featureFile, final String name, final Map<String, String> keyValueMap) {
         Utils.nonNull(name, "name");
         Utils.nonNull(keyValueMap, "kevValueMap");
-        Utils.nonNull(featureFile, "featureFile");
+        Utils.nonNull(featureFile, "feature-file");
         this.name = name;
         this.keyValueMap = Collections.unmodifiableMap(new LinkedHashMap<>(keyValueMap));   //make a unmodifiable copy
         this.featureFile = featureFile;

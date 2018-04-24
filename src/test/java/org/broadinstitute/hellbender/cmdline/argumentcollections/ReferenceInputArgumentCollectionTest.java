@@ -38,22 +38,11 @@ public final class ReferenceInputArgumentCollectionTest {
         clp.parseArguments(System.out, args);
     }
 
-    @Test
-    public void testGetReferencePath(){
-       final ReferenceInputArgumentCollection nonNullPath = new ReferenceInputArgumentCollection(){
-            private static final long serialVersionUID = 0L;
-            @Override public File getReferenceFile() { return new File("someFilePath"); }
-            @Override public String getReferenceFileName() { return "someFilePath";}
-        };
-
-        Assert.assertEquals(nonNullPath.getReferencePath().toFile(), nonNullPath.getReferenceFile());
-    }
 
     @Test
     public void testGetNullPath(){
         final ReferenceInputArgumentCollection nullPath = new ReferenceInputArgumentCollection(){
             private static final long serialVersionUID = 0L;
-            @Override public File getReferenceFile() { return null; }
             @Override public String getReferenceFileName() { return null;}
         };
 

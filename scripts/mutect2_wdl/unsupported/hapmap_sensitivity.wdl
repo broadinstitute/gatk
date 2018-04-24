@@ -21,29 +21,32 @@
 import "mutect2.wdl" as MutectSingleSample
 
 workflow HapmapSensitivity {
-    File gatk
+    File? intervals
+  	File ref_fasta
+  	File ref_fai
+  	File ref_dict
   	Int scatter_count
   	File bam_list
   	Array[Array[String]] replicates = read_tsv(bam_list)
-  	File ref_fasta
-  	File ref_fasta_index
-  	File ref_dict
-  	File? intervals
   	File? pon
   	File? pon_index
-  	Boolean is_run_orientation_bias_filter
-    Array[String] artifact_modes
-    File picard_jar
+  	Boolean? run_orientation_bias_filter
+    Array[String]? artifact_modes
     String? m2_extra_args
     String? m2_extra_filtering_args
     String prefix   #a prefix string like "5plex"
     File python_script
     Int max_depth
+    Array[Int] depth_bins
+    Int depth_bin_width
     File preprocessed_hapmap
     File preprocessed_hapmap_idx
 
+    File? gatk_override
+    String gatk_docker
+
     call RestrictIntervals {
-        input: gatk = gatk, vcf = preprocessed_hapmap, vcf_idx = preprocessed_hapmap_idx, intervals = intervals
+        input: gatk_override = gatk_override, gatk_docker = gatk_docker, vcf = preprocessed_hapmap, vcf_idx = preprocessed_hapmap_idx, intervals = intervals
     }
 
     scatter (row in replicates) {
@@ -51,51 +54,49 @@ workflow HapmapSensitivity {
         File index = row[1]
 
         call MixingFractions {
-            input: gatk = gatk, vcf = RestrictIntervals.output_vcf, vcf_idx = RestrictIntervals.output_vcf_idx, bam = bam, bam_idx = index
+            input: gatk_override = gatk_override, gatk_docker = gatk_docker, vcf = RestrictIntervals.output_vcf, vcf_idx = RestrictIntervals.output_vcf_idx, bam = bam, bam_idx = index
         }
 
         call ExpectedAlleleFraction {
-            input: gatk = gatk, vcf = RestrictIntervals.output_vcf, vcf_idx = RestrictIntervals.output_vcf_idx, mixing_fractions = MixingFractions.mixing
+            input: gatk_override = gatk_override, gatk_docker = gatk_docker, vcf = RestrictIntervals.output_vcf, vcf_idx = RestrictIntervals.output_vcf_idx, mixing_fractions = MixingFractions.mixing
         }
 
         call BamDepth {
-            input: gatk = gatk, vcf = ExpectedAlleleFraction.output_vcf, vcf_idx = ExpectedAlleleFraction.output_vcf_idx,
+            input: gatk_override = gatk_override, gatk_docker = gatk_docker, vcf = ExpectedAlleleFraction.output_vcf, vcf_idx = ExpectedAlleleFraction.output_vcf_idx,
                 bam = bam, bam_idx = index, max_depth = max_depth
         }
 
         call MutectSingleSample.Mutect2 {
             input:
-                gatk4_jar = "OVERRIDDEN",
-                scatter_count = scatter_count,
-                tumor_bam = bam,
-                tumor_bam_index = index,
+                gatk_override = gatk_override,
+                gatk_docker = gatk_docker,
                 intervals = intervals,
                 ref_fasta = ref_fasta,
-                ref_fasta_index = ref_fasta_index,
+                ref_fai = ref_fai,
                 ref_dict = ref_dict,
+                scatter_count = scatter_count,
+                tumor_bam = bam,
+                tumor_bai = index,
                 pon = pon,
                 pon_index = pon_index,
-                is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-                is_run_oncotator = false,
-		        gatk_docker = "ubuntu:16.04",
-                oncotator_docker = "ubuntu:16.04",
-		        gatk4_jar_override = gatk,
+                run_orientation_bias_filter = run_orientation_bias_filter,
                 artifact_modes = artifact_modes,
-                picard_jar = picard_jar,
                 m2_extra_args = m2_extra_args,
                 m2_extra_filtering_args = m2_extra_filtering_args
         }
 
         call Concordance {
-            input: gatk = gatk, intervals = intervals,
-                  truth = BamDepth.output_vcf,
-                  truth_idx = BamDepth.output_vcf_idx,
-                  eval = Mutect2.filtered_vcf,
-                  eval_idx = Mutect2.filtered_vcf_index
+            input:
+                gatk_override = gatk_override, intervals = intervals,
+                gatk_docker = gatk_docker,
+                truth = BamDepth.output_vcf,
+                truth_idx = BamDepth.output_vcf_idx,
+                eval = Mutect2.filtered_vcf,
+                eval_idx = Mutect2.filtered_vcf_index
         }
 
         call ConvertToTable {
-            input: gatk = gatk, input_vcf = Concordance.tpfn, input_vcf_idx = Concordance.tpfn_idx
+            input: gatk_override = gatk_override, gatk_docker = gatk_docker, input_vcf = Concordance.tpfn, input_vcf_idx = Concordance.tpfn_idx
         }
     } #done with scatter over replicates
 
@@ -104,7 +105,7 @@ workflow HapmapSensitivity {
     }
 
     call AnalyzeSensitivity {
-        input: input_table = SensitivityTables.table, python_script = python_script, prefix = prefix
+        input: input_table = SensitivityTables.table, python_script = python_script, prefix = prefix, depth_bins = depth_bins, depth_bin_width = depth_bin_width
     }
 
     call CombineTables as SummaryTables {
@@ -112,11 +113,11 @@ workflow HapmapSensitivity {
     }
 
     call Jaccard as JaccardSNP {
-        input: gatk = gatk, calls = Mutect2.filtered_vcf, calls_idx = Mutect2.filtered_vcf_index, prefix = prefix, type = "SNP"
+        input: gatk_override = gatk_override, gatk_docker = gatk_docker, calls = Mutect2.filtered_vcf, calls_idx = Mutect2.filtered_vcf_index, prefix = prefix, type = "SNP"
     }
 
     call Jaccard as JaccardINDEL {
-        input: gatk = gatk, calls = Mutect2.filtered_vcf, calls_idx = Mutect2.filtered_vcf_index, prefix = prefix, type = "INDEL"
+        input: gatk_override = gatk_override, gatk_docker = gatk_docker, calls = Mutect2.filtered_vcf, calls_idx = Mutect2.filtered_vcf_index, prefix = prefix, type = "INDEL"
     }
 
     output {
@@ -132,20 +133,32 @@ workflow HapmapSensitivity {
         Array[File] tpfn_idx = Concordance.tpfn_idx
         Array[File] ftnfn = Concordance.ftnfn
         Array[File] ftnfn_idx = Concordance.ftnfn_idx
+        Array[File] filter_analysis = Concordance.filter_analysis
     }
 } #end of workflow
 
 #### Tasks for making truth
 task RestrictIntervals {
-    File gatk
+    File? gatk_override
+    String gatk_docker
     File vcf
     File vcf_idx
     File? intervals
 
     command {
-        # subsampling and restriction to biallelics and intervals
-        java -jar ${gatk} SelectVariants -V ${vcf} -O restricted.vcf \
-            ${"-L " + intervals} \
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+
+        # only restricting intervals here
+        # subsamplign and restricting to biallelics done in preprocess_hapmap.wdl
+        gatk --java-options "-Xmx4g" SelectVariants \
+            -V ${vcf} \
+            -O restricted.vcf \
+            ${"-L " + intervals}
+    }
+
+    runtime {
+        docker: "${gatk_docker}"
+        preemptible: 2
     }
 
     output {
@@ -155,7 +168,8 @@ task RestrictIntervals {
 }
 
 task BamDepth {
-    File gatk
+    File? gatk_override
+    String gatk_docker
     File vcf
     File vcf_idx
     File bam
@@ -163,8 +177,14 @@ task BamDepth {
     Int  max_depth   #ignore sites with depth greater than this because they are alignment artifacts
 
     command {
-        java -jar ${gatk} AnnotateVcfWithBamDepth -V ${vcf} -I ${bam} -O "bam_depth.vcf"
-        java -jar ${gatk} SelectVariants -V bam_depth.vcf --select "BAM_DEPTH < ${max_depth}" -O truth.vcf
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        gatk --java-options "-Xmx4g" AnnotateVcfWithBamDepth -V ${vcf} -I ${bam} -O "bam_depth.vcf"
+        gatk --java-options "-Xmx4g" SelectVariants -V bam_depth.vcf --select "BAM_DEPTH < ${max_depth}" -O truth.vcf
+    }
+
+    runtime {
+        docker: "${gatk_docker}"
+        preemptible: 2
     }
 
     output {
@@ -174,27 +194,41 @@ task BamDepth {
 }
 
 task MixingFractions {
-    File gatk
+    File? gatk_override
+    String gatk_docker
     File vcf
     File vcf_idx
     File bam
     File bam_idx
 
     command {
-        java -jar ${gatk} CalculateMixingFractions -V ${vcf} -I ${bam} -O "mixing.table"
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        gatk --java-options "-Xmx4g" CalculateMixingFractions -V ${vcf} -I ${bam} -O "mixing.table"
+    }
+
+    runtime {
+        docker: "${gatk_docker}"
+        preemptible: 2
     }
 
     output { File mixing = "mixing.table" }
 }
 
 task ExpectedAlleleFraction {
-    File gatk
+    File? gatk_override
+    String gatk_docker
     File vcf
     File vcf_idx
     File mixing_fractions
 
     command {
-        java -jar ${gatk} AnnotateVcfWithExpectedAlleleFraction -V ${vcf} -O af_exp.vcf --mixing-fractions  ${mixing_fractions}
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+        gatk --java-options "-Xmx4g" AnnotateVcfWithExpectedAlleleFraction -V ${vcf} -O af_exp.vcf --mixing-fractions  ${mixing_fractions}
+    }
+
+    runtime {
+        docker: "${gatk_docker}"
+        preemptible: 2
     }
 
     output {
@@ -206,15 +240,20 @@ task ExpectedAlleleFraction {
 ### Tasks for analysing sensitivity
 
 task ConvertToTable {
-  File gatk
+  File? gatk_override
+  String gatk_docker
   File input_vcf
   File input_vcf_idx
 
   command {
-      java -jar ${gatk} VariantsToTable -V ${input_vcf} -F STATUS -F BAM_DEPTH -F AF_EXP -F TYPE -O "result.table"
+      export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+      gatk --java-options "-Xmx4g" VariantsToTable -V ${input_vcf} -F STATUS -F BAM_DEPTH -F AF_EXP -F TYPE -O "result.table"
   }
 
-  runtime { memory: "5 GB" }
+  runtime {
+      docker: "${gatk_docker}"
+      preemptible: 2
+  }
 
   output { File table = "result.table" }
 }
@@ -241,11 +280,15 @@ task AnalyzeSensitivity {
     File input_table
     File python_script
     String prefix
+    Array[Int] depth_bins
+    Int depth_bin_width
 
     command {
         . /broad/software/scripts/useuse
         use Python-2.7
-	python ${python_script} ${input_table}
+	    python ${python_script} --input_file ${input_table} \
+	        --depth_bins ${sep = ' ' depth_bins} \
+	        --depth_bin_width ${depth_bin_width}
         mv "SNP_sensitivity.tsv" "${prefix}_SNP_sensitivity.tsv"
         mv "SNP_sensitivity.png" "${prefix}_SNP_sensitivity.png"
         mv "Indel_sensitivity.tsv" "${prefix}_Indel_sensitivity.tsv"
@@ -253,8 +296,8 @@ task AnalyzeSensitivity {
     }
 
     runtime {
-            continueOnReturnCode: [0,1]
-            memory: "5 GB"
+        continueOnReturnCode: [0,1]
+        preemptible: 2
     }
 
     output {
@@ -267,20 +310,23 @@ task AnalyzeSensitivity {
 
 #Make Jaccard index table for SNVs or indels from an array of called vcfs
 task Jaccard {
-    File gatk
+    File? gatk_override
+    String gatk_docker
     Array[File] calls
     Array[File] calls_idx
     String prefix
     String type #SNP or INDEL
 
     command {
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+
         result="${prefix}_${type}_jaccard.txt"
         touch $result
 
         count=0
         for vcf in ${sep = ' ' calls}; do
             ((count++))
-            java -jar ${gatk} SelectVariants -V $vcf -selectType ${type} -O ${type}_only_$count.vcf
+            gatk --java-options "-Xmx4g" SelectVariants -V $vcf --select-type-to-include ${type} -O ${type}_only_$count.vcf
         done
 
         for file1 in ${type}_only*.vcf; do
@@ -294,7 +340,7 @@ task Jaccard {
             if [ $file1 == $file2 ]; then
                 printf 1.0000 >> $result
             else
-                java -jar ${gatk} SelectVariants -V $file1 --concordance $file2 -O overlap.vcf
+                gatk --java-options "-Xmx4g" SelectVariants -V $file1 --concordance $file2 -O overlap.vcf
                 overlap=`grep -v '#' overlap.vcf | wc -l`
 
                 num1=`grep -v '#' $file1 | wc -l`
@@ -313,13 +359,17 @@ task Jaccard {
 
     }
 
-    runtime { memory: "5 GB" }
+    runtime {
+        docker: "${gatk_docker}"
+        preemptible: 2
+    }
 
     output { File table = "${prefix}_${type}_jaccard.txt" }
 }
 
 task Concordance {
-      File gatk
+      File? gatk_override
+      String gatk_docker
       File? intervals
       File truth
       File truth_idx
@@ -327,20 +377,26 @@ task Concordance {
       File eval_idx
 
       command {
-          java -jar ${gatk} Concordance ${"-L " + intervals} \
+          export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+          gatk --java-options "-Xmx4g" Concordance ${"-L " + intervals} \
             -truth ${truth} -eval ${eval} \
             -tpfn "tpfn.vcf" \
             -ftnfn "ftnfn.vcf" \
+            --filter-analysis "filter-analysis.txt" \
             -summary summary.tsv
       }
 
-      runtime { memory: "5 GB" }
+      runtime {
+          docker: "${gatk_docker}"
+          preemptible: 2
+      }
 
       output {
             File tpfn = "tpfn.vcf"
             File tpfn_idx = "tpfn.vcf.idx"
             File ftnfn = "ftnfn.vcf"
             File ftnfn_idx = "ftnfn.vcf.idx"
+            File filter_analysis = "filter-analysis.txt"
             File summary = "summary.tsv"
       }
 }

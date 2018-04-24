@@ -3,10 +3,14 @@ package org.broadinstitute.hellbender.tools.spark.bwa;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -14,36 +18,25 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 
+@DocumentedFeature
 @CommandLineProgramProperties(summary = "Runs BWA",
         oneLineSummary = "BWA on Spark",
-        programGroup = SparkProgramGroup.class)
+        programGroup = ReadDataManipulationProgramGroup.class)
 @BetaFeature
 public final class BwaSpark extends GATKSparkTool {
 
     private static final long serialVersionUID = 1L;
-
-    public static final String SINGLE_END_ALIGNMENT_FULL_NAME = "singleEndAlignment";
-    public static final String SINGLE_END_ALIGNMENT_SHORT_NAME = "SE";
-    public static final String BWA_MEM_INDEX_IMAGE_FULL_NAME = "bwaMemIndexImage";
-    public static final String BWA_MEM_INDEX_IMAGE_SHORT_NAME = "image";
 
     @Argument(doc = "the output bam",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String output;
 
-    @Argument(doc = "the bwa mem index image file name that you've distributed to each executor",
-            fullName = BWA_MEM_INDEX_IMAGE_FULL_NAME,
-            shortName = BWA_MEM_INDEX_IMAGE_SHORT_NAME,
-            optional = true)
-    private String indexImageFile;
-
-    @Argument(doc = "run single end instead of paired-end alignment",
-              fullName = SINGLE_END_ALIGNMENT_FULL_NAME,
-              shortName = SINGLE_END_ALIGNMENT_SHORT_NAME,
-              optional = true)
-    private boolean singleEndAlignment = false;
+    @ArgumentCollection
+    public final BwaArgumentCollection bwaArgs = new BwaArgumentCollection();
 
     @Override
     public boolean requiresReference() {
@@ -56,13 +49,25 @@ public final class BwaSpark extends GATKSparkTool {
     }
 
     @Override
-    protected void runTool(final JavaSparkContext ctx) {
-        try ( final BwaSparkEngine engine =
-                      new BwaSparkEngine(ctx, referenceArguments.getReferenceFileName(), indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary()) ) {
-            final JavaRDD<GATKRead> reads = !singleEndAlignment ? engine.alignPaired(getReads()) : engine.alignUnpaired(getReads());
+    public List<ReadFilter> getDefaultReadFilters() {
+        // 1) unmapped or neither secondary nor supplementary and 2) has some sequence
+        return Arrays.asList(ReadFilterLibrary.PRIMARY_LINE, ReadFilterLibrary.SEQ_IS_STORED);
+    }
 
+    @Override
+    protected void runTool(final JavaSparkContext ctx) {
+        try ( final BwaSparkEngine bwaEngine =
+                      new BwaSparkEngine(ctx, referenceArguments.getReferenceFileName(), bwaArgs.indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary()) ) {
+            final JavaRDD<GATKRead> reads;
+            if (bwaArgs.singleEndAlignment) {
+                reads = bwaEngine.alignUnpaired(getReads());
+            } else {
+                // filter reads after alignment in the case of paired reads since filtering does not know about pairs
+                final ReadFilter filter = makeReadFilter(bwaEngine.getHeader());
+                reads = bwaEngine.alignPaired(getUnfilteredReads()).filter(filter::test);
+            }
             try {
-                ReadsSparkSink.writeReads(ctx, output, null, reads, engine.getHeader(),
+                ReadsSparkSink.writeReads(ctx, output, null, reads, bwaEngine.getHeader(),
                                             shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE);
             } catch (final IOException e) {
                 throw new GATKException("Unable to write aligned reads", e);

@@ -2,8 +2,9 @@ package org.broadinstitute.hellbender.tools.walkers;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -18,11 +19,12 @@ import java.io.File;
 import java.util.Collections;
 import java.util.List;
 
+@DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Simple tool to revert the quality scores in a SAM/BAM/CRAM file. Copies the scores from the OQ tag to the quality scores.",
         oneLineSummary = "Revert Quality Scores in a SAM/BAM/CRAM file",
         usageExample = "hellbender RevertQualityScores -I input.bam -O output.bam",
-        programGroup = ReadProgramGroup.class
+        programGroup = ReadDataManipulationProgramGroup.class
 )
 
 public class RevertBaseQualityScores extends ReadWalker {

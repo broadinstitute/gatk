@@ -146,33 +146,6 @@ public final class ReadPileupUnitTest extends GATKBaseTest {
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testNullConstructorParametersReads() {
-        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 1000);
-
-        ArtificialReadUtils.createArtificialRead(header,"read1",0,1,10);
-
-        new ReadPileup(loc, null, Arrays.asList(1));
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testNullConstructorParametersOffsets() {
-        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 1000);
-
-        final GATKRead read1 = ArtificialReadUtils.createArtificialRead(header, "read1", 0, 1, 10);
-
-        new ReadPileup(loc, Arrays.asList(read1), null);
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testNullConstructorParametersLoc() {
-        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 1000);
-
-        final GATKRead read1 = ArtificialReadUtils.createArtificialRead(header,"read1",0,1,10);
-
-        new ReadPileup(null, Arrays.asList(read1), Arrays.asList(1));
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
     public void testInvalidConstructorParametersReadsAndOffsetsLists() {
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 1000);
 

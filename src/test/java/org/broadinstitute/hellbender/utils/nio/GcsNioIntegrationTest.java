@@ -68,7 +68,7 @@ public final class GcsNioIntegrationTest extends GATKBaseTest {
      * - the code is running on a Google Cloud Compute machine.
      * (see http://gcloud-python.readthedocs.org/en/latest/gcloud-auth.html)
      */
-    @Test(groups = {"cloud"})
+    @Test(groups = {"bucket"})
     public void openPrivateFileUsingDefaultCredentials() throws IOException {
         // this file, potentially unlike the others in the set, is not marked as "Public link".
         final String privateFile = getGCPTestInputPath() + privateFilePath;
@@ -88,7 +88,7 @@ public final class GcsNioIntegrationTest extends GATKBaseTest {
      * Opening the private file even when the user is not logged in on gcloud should work
      * when we provide explicit credentials.
      *
-    @Test(groups = {"cloud"})
+    @Test(groups = {"bucket"})
     public void openPrivateFileWithExplicitCredentials() throws IOException {
         // this file, potentially unlike the others in the set, is not marked as "Public link".
         final String privateFile = getGCPTestInputPath() + privateFilePath;
@@ -113,7 +113,7 @@ public final class GcsNioIntegrationTest extends GATKBaseTest {
      * Yet you must set getGoogleServiceAccountKeyPath() (you may have to switch it to a different
      * environment variable).
      **/
-    @Test(enabled = false, groups = {"cloud"}, expectedExceptions = {StorageException.class})
+    @Test(enabled = false, groups = {"bucket"}, expectedExceptions = {StorageException.class})
     public void explicitCredentialsAreNotKept() throws IOException {
         // this file, potentially unlike the others in the set, is not marked as "Public link".
         final String privateFile = getGCPTestInputPath() + privateFilePath;
@@ -131,7 +131,7 @@ public final class GcsNioIntegrationTest extends GATKBaseTest {
     }
 
 
-    @Test(groups = {"cloud"})
+    @Test(groups = {"bucket"})
     public void testCloseWhilePrefetching() throws Exception {
         final String large = getGCPTestInputPath() + largeFilePath;
         SeekableByteChannel chan = new SeekableByteChannelPrefetcher(

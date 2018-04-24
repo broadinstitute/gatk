@@ -1,179 +1,315 @@
-# Tasks common to both the CNV somatic panel and case workflows.
-#
-#############
-
-# Pad targets in the target file by the specified amount (this was found to improve sensitivity and specificity)
-task PadTargets {
-    File targets
-    Int? padding
-    String gatk_jar
-
-    # Runtime parameters
-    Int? mem
-    String gatk_docker
-    Int? preemptible_attempts
-    Int? disk_space_gb
-
-    # Determine output filename
-    String filename = select_first([targets, ""])
-    String base_filename = basename(filename, ".tsv")
-
-    command <<<
-        echo ${filename}; \
-        java -Xmx${default="1" mem}g -jar ${gatk_jar} PadTargets \
-            --targets ${targets} \
-            --padding ${default="250" padding} \
-            --output ${base_filename}.padded.tsv
-    >>>
-
-    runtime {
-        docker: "${gatk_docker}"
-        memory: select_first([mem, 2]) + " GB"
-        disks: "local-disk " + select_first([disk_space_gb, 40]) + " HDD"
-        preemptible: select_first([preemptible_attempts, 2])
-    }
-
-    output {
-        File padded_targets = "${base_filename}.padded.tsv"
-    }
-}
-
-# Collect proportional coverage
-task CollectCoverage {
-    File? padded_targets
-    File bam
-    File bam_idx
-    String? transform
-    Boolean? keep_non_autosomes
-    Boolean? disable_all_read_filters
-    Boolean? disable_sequence_dictionary_validation
-    Boolean? keep_duplicate_reads
-    Int? wgs_bin_size
+task PreprocessIntervals {
+    File? intervals
     File ref_fasta
     File ref_fasta_fai
     File ref_fasta_dict
-    String gatk_jar
+    Int? padding
+    Int? bin_length
+    File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem
     String gatk_docker
-    Int? preemptible_attempts
+    Int? mem_gb
     Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
+    Int? preemptible_attempts
 
-    # If no padded target file is input, then do WGS workflow
-    Boolean is_wgs = !defined(padded_targets)
+    Int machine_mem_mb = select_first([mem_gb, 2]) * 1000
+    Int command_mem_mb = machine_mem_mb - 500
 
-    # Sample name is derived from the bam filename
-    String base_filename = basename(bam, ".bam")
- 
-    # Output file name depending on type of coverage
-    String cov_output_name = if (is_wgs && (select_first([transform, ""])  == "RAW")) then "${base_filename}.coverage.tsv.raw_cov" else "${base_filename}.coverage.tsv"
-  
+    # Determine output filename
+    String filename = select_first([intervals, "wgs"])
+    String base_filename = basename(filename, ".interval_list")
+
     command <<<
-        if [ ${is_wgs} = true ]
-            then
-                java -Xmx${default=4 mem}g -jar ${gatk_jar} SparkGenomeReadCounts \
-                    --input ${bam} \
-                    --reference ${ref_fasta} \
-                    --binsize ${default=10000 wgs_bin_size} \
-                    --keepXYMT ${default="false" keep_non_autosomes} \
-                    --disableToolDefaultReadFilters ${default="false" disable_all_read_filters} \
-                    --disableSequenceDictionaryValidation ${default="true" disable_sequence_dictionary_validation} \
-                    $(if [ ${default="true" keep_duplicate_reads} = true ]; then echo " --disableReadFilter NotDuplicateReadFilter "; else echo ""; fi) \
-                    --outputFile ${base_filename}.coverage.tsv
-            else
-                java -Xmx${default=4 mem}g -jar ${gatk_jar} CalculateTargetCoverage \
-                    --input ${bam} \
-                    --reference ${ref_fasta} \
-                    --targets ${padded_targets} \
-                    --groupBy SAMPLE \
-                    --transform ${default="PCOV" transform} \
-                    --targetInformationColumns FULL \
-                    --interval_set_rule UNION \
-                    --interval_padding 0 \
-                    --secondsBetweenProgressUpdates 10.0 \
-                    --disableToolDefaultReadFilters ${default="false" disable_all_read_filters} \
-                    --disableSequenceDictionaryValidation ${default="true" disable_sequence_dictionary_validation} \
-                    $(if [ ${default="true" keep_duplicate_reads} = true ]; then echo " --disableReadFilter NotDuplicateReadFilter "; else echo ""; fi) \
-                    --output ${base_filename}.coverage.tsv
-        fi
+        set -e
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+
+        gatk --java-options "-Xmx${command_mem_mb}m" PreprocessIntervals \
+            ${"-L " + intervals} \
+            --sequence-dictionary ${ref_fasta_dict} \
+            --reference ${ref_fasta} \
+            --padding ${default="250" padding} \
+            --bin-length ${default="1000" bin_length} \
+            --interval-merging-rule OVERLAPPING_ONLY \
+            --output ${base_filename}.preprocessed.interval_list
     >>>
 
     runtime {
         docker: "${gatk_docker}"
-        memory: select_first([mem, 5]) + " GB"
-        disks: "local-disk " + select_first([disk_space_gb, ceil(size(bam, "GB"))+50]) + " HDD"
-        preemptible: select_first([preemptible_attempts, 2])
+        memory: machine_mem_mb + " MB"
+        disks: "local-disk " + select_first([disk_space_gb, 40]) + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
+        preemptible: select_first([preemptible_attempts, 5])
+    }
+
+    output {
+        File preprocessed_intervals = "${base_filename}.preprocessed.interval_list"
+    }
+}
+
+task AnnotateIntervals {
+    File intervals
+    File ref_fasta
+    File ref_fasta_fai
+    File ref_fasta_dict
+    File? gatk4_jar_override
+
+    # Runtime parameters
+    String gatk_docker
+    Int? mem_gb
+    Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
+    Int? preemptible_attempts
+
+    Int machine_mem_mb = select_first([mem_gb, 2]) * 1000
+    Int command_mem_mb = machine_mem_mb - 500
+
+    command <<<
+        set -e
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+
+        gatk --java-options "-Xmx${command_mem_mb}m" AnnotateIntervals \
+            -L ${intervals} \
+            --reference ${ref_fasta} \
+            --interval-merging-rule OVERLAPPING_ONLY \
+            --output annotated_intervals.tsv
+    >>>
+
+    runtime {
+        docker: "${gatk_docker}"
+        memory: machine_mem_mb + " MB"
+        disks: "local-disk " + select_first([disk_space_gb, ceil(size(ref_fasta, "GB")) + 50]) + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
+        preemptible: select_first([preemptible_attempts, 5])
+    }
+
+    output {
+        File annotated_intervals = "annotated_intervals.tsv"
+    }
+}
+
+task CollectCounts {
+    File intervals
+    File bam
+    File bam_idx
+    File ref_fasta
+    File ref_fasta_fai
+    File ref_fasta_dict
+    String? format
+    File? gatk4_jar_override
+
+    # Runtime parameters
+    String gatk_docker
+    Int? mem_gb
+    Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
+    Int? preemptible_attempts
+
+    Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
+    Int command_mem_mb = machine_mem_mb - 1000
+
+    # Sample name is derived from the bam filename
+    String base_filename = basename(bam, ".bam")
+    String counts_filename = if !defined(format) then "${base_filename}.counts.hdf5" else "${base_filename}.counts.tsv"
+
+    command <<<
+        set -e
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+
+        gatk --java-options "-Xmx${command_mem_mb}m" CollectReadCounts \
+            -L ${intervals} \
+            --input ${bam} \
+            --reference ${ref_fasta} \
+            --format ${default="HDF5" format} \
+            --interval-merging-rule OVERLAPPING_ONLY \
+            --output ${counts_filename}
+    >>>
+
+    runtime {
+        docker: "${gatk_docker}"
+        memory: machine_mem_mb + " MB"
+        disks: "local-disk " + select_first([disk_space_gb, ceil(size(bam, "GB")) + 50]) + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
+        preemptible: select_first([preemptible_attempts, 5])
     }
 
     output {
         String entity_id = base_filename
-        File coverage = cov_output_name 
+        File counts = counts_filename
     }
 }
 
-# Create a target file with GC annotations
-task AnnotateTargets {
-    String entity_id
-    File targets
+task CollectAllelicCounts {
+    File common_sites
+    File bam
+    File bam_idx
     File ref_fasta
     File ref_fasta_fai
     File ref_fasta_dict
-    String gatk_jar
+    Int? minimum_base_quality
+    File? gatk4_jar_override
 
     # Runtime parameters
-    Int? mem
     String gatk_docker
-    Int? preemptible_attempts
+    Int? mem_gb
     Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
+    Int? preemptible_attempts
 
-    command {
-        java -Xmx${default=4 mem}g -jar ${gatk_jar} AnnotateTargets \
-            --targets ${targets} \
+    Int machine_mem_mb = select_first([mem_gb, 13]) * 1000
+    Int command_mem_mb = machine_mem_mb - 1000
+
+    # Sample name is derived from the bam filename
+    String base_filename = basename(bam, ".bam")
+
+    String allelic_counts_filename = "${base_filename}.allelicCounts.tsv"
+
+    command <<<
+        set -e
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+
+        gatk --java-options "-Xmx${command_mem_mb}m" CollectAllelicCounts \
+            -L ${common_sites} \
+            --input ${bam} \
             --reference ${ref_fasta} \
-            --output ${entity_id}.annotated.tsv
-    }
+            --minimum-base-quality ${default="20" minimum_base_quality} \
+            --output ${allelic_counts_filename}
+    >>>
 
     runtime {
         docker: "${gatk_docker}"
-        memory: select_first([mem, 5]) + " GB"
-        disks: "local-disk " + select_first([disk_space_gb, ceil(size(ref_fasta, "GB"))+50]) + " HDD"
-        preemptible: select_first([preemptible_attempts, 2])
+        memory: machine_mem_mb + " MB"
+        disks: "local-disk " + select_first([disk_space_gb, ceil(size(bam, "GB")) + 50]) + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
+        preemptible: select_first([preemptible_attempts, 5])
     }
 
     output {
-        File annotated_targets = "${entity_id}.annotated.tsv"
+        String entity_id = base_filename
+        File allelic_counts = allelic_counts_filename
     }
 }
 
-# Correct coverage profile(s) for sample-specific GC bias
-task CorrectGCBias {
-    String entity_id
-    File coverage   # This can be either single-sample or multi-sample
-    File annotated_targets
-    String gatk_jar
+task ScatterIntervals {
+    File interval_list
+    Int num_intervals_per_scatter
 
     # Runtime parameters
-    Int? mem
     String gatk_docker
-    Int? preemptible_attempts
+    Int? mem_gb
     Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
+    Int? preemptible_attempts
 
-    command {
-        java -Xmx${default=4 mem}g -jar ${gatk_jar} CorrectGCBias \
-          --input ${coverage} \
-          --targets ${annotated_targets} \
-          --output ${entity_id}.gc_corrected.tsv
-    }
+    Int machine_mem_mb = select_first([mem_gb, 2]) * 1000
+
+    String base_filename = basename(interval_list, ".interval_list")
+
+    command <<<
+        set -e
+
+        grep @ ${interval_list} > header.txt
+        grep -v @ ${interval_list} > all_intervals.txt
+        split -l ${num_intervals_per_scatter} --numeric-suffixes all_intervals.txt ${base_filename}.scattered.
+        for i in ${base_filename}.scattered.*; do cat header.txt $i > $i.interval_list; done
+    >>>
 
     runtime {
         docker: "${gatk_docker}"
-        memory: select_first([mem, 5]) + " GB"
-        disks: "local-disk " + select_first([disk_space_gb, ceil(size(coverage, "GB"))+50]) + " HDD"
-        preemptible: select_first([preemptible_attempts, 2])
+        memory: machine_mem_mb + " MB"
+        disks: "local-disk " + select_first([disk_space_gb, 40]) + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
+        preemptible: select_first([preemptible_attempts, 5])
     }
 
     output {
-        File corrected_coverage = "${entity_id}.gc_corrected.tsv"
+        Array[File] scattered_interval_lists = glob("${base_filename}.scattered.*.interval_list")
+    }
+}
+
+task PostprocessGermlineCNVCalls {
+    String entity_id
+    Array[File] gcnv_calls_tars
+    Array[File] gcnv_model_tars
+    File contig_ploidy_calls_tar
+    Array[String]? allosomal_contigs
+    Int ref_copy_number_autosomal_contigs
+    Int sample_index
+    File? gatk4_jar_override
+
+    # Runtime parameters
+    String gatk_docker
+    Int? mem_gb
+    Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
+    Int? preemptible_attempts
+
+    Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
+    Int command_mem_mb = machine_mem_mb - 1000
+
+    String genotyped_intervals_vcf_filename = "genotyped-intervals-${entity_id}.vcf.gz"
+    String genotyped_segments_vcf_filename = "genotyped-segments-${entity_id}.vcf.gz"
+    Boolean allosomal_contigs_specified = defined(allosomal_contigs) && length(select_first([allosomal_contigs, []])) > 0
+
+    String dollar = "$" #WDL workaround for using array[@], see https://github.com/broadinstitute/cromwell/issues/1819
+
+    command <<<
+        set -e
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+
+        # untar calls to CALLS_0, CALLS_1, etc directories and build the command line
+        gcnv_calls_tar_array=(${sep=" " gcnv_calls_tars})
+        calls_args=""
+        for index in ${dollar}{!gcnv_calls_tar_array[@]}; do
+            gcnv_calls_tar=${dollar}{gcnv_calls_tar_array[$index]}
+            mkdir CALLS_$index
+            tar xzf $gcnv_calls_tar -C CALLS_$index
+            calls_args="$calls_args --calls-shard-path CALLS_$index"
+        done
+
+        # untar models to MODEL_0, MODEL_1, etc directories and build the command line
+        gcnv_model_tar_array=(${sep=" " gcnv_model_tars})
+        model_args=""
+        for index in ${dollar}{!gcnv_model_tar_array[@]}; do
+            gcnv_model_tar=${dollar}{gcnv_model_tar_array[$index]}
+            mkdir MODEL_$index
+            tar xzf $gcnv_model_tar -C MODEL_$index
+            model_args="$model_args --model-shard-path MODEL_$index"
+        done
+
+        mkdir extracted-contig-ploidy-calls
+        tar xzf ${contig_ploidy_calls_tar} -C extracted-contig-ploidy-calls
+
+        allosomal_contigs_args="--allosomal-contig ${sep=" --allosomal-contig " allosomal_contigs}"
+
+        gatk --java-options "-Xmx${command_mem_mb}m" PostprocessGermlineCNVCalls \
+            $calls_args \
+            $model_args \
+            ${true="$allosomal_contigs_args" false="" allosomal_contigs_specified} \
+            --autosomal-ref-copy-number ${ref_copy_number_autosomal_contigs} \
+            --contig-ploidy-calls extracted-contig-ploidy-calls \
+            --sample-index ${sample_index} \
+            --output-genotyped-intervals ${genotyped_intervals_vcf_filename} \
+            --output-genotyped-segments ${genotyped_segments_vcf_filename}
+    >>>
+
+    runtime {
+        docker: "${gatk_docker}"
+        memory: machine_mem_mb + " MB"
+        disks: "local-disk " + select_first([disk_space_gb, 40]) + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
+        preemptible: select_first([preemptible_attempts, 5])
+    }
+
+    output {
+        File genotyped_intervals_vcf = genotyped_intervals_vcf_filename
+        File genotyped_segments_vcf = genotyped_segments_vcf_filename
     }
 }

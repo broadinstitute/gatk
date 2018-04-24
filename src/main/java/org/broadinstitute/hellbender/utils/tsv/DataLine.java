@@ -428,7 +428,7 @@ public final class DataLine {
     private int columnIndex(final String columnName) {
         final int index = columns.indexOf(columnName);
         if (index < 0) {
-            throw new IllegalArgumentException("there is no such a column: " + columnName);
+            throw new IllegalArgumentException("there is no such column: " + columnName);
         }
         return index;
     }

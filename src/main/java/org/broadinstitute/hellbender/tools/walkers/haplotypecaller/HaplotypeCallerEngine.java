@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
@@ -36,7 +37,6 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -171,7 +171,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         initializeActiveRegionEvaluationGenotyperEngine();
 
         if (annotationEngine == null) {
-            annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(hcArgs.variantAnnotationArgumentCollection, hcArgs.dbsnp.dbsnp, hcArgs.comps);
+            annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(hcArgs.defaultGATKVariantAnnotationArgumentCollection, hcArgs.dbsnp.dbsnp, hcArgs.comps, emitReferenceConfidence());
 
         }
 
@@ -225,13 +225,13 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             hcArgs.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING = -0.0;
 
             // also, we don't need to output several of the annotations
-            hcArgs.variantAnnotationArgumentCollection.annotationsToExclude.add(ChromosomeCounts.class.getSimpleName());
-            hcArgs.variantAnnotationArgumentCollection.annotationsToExclude.add(FisherStrand.class.getSimpleName());
-            hcArgs.variantAnnotationArgumentCollection.annotationsToExclude.add(StrandOddsRatio.class.getSimpleName());
-            hcArgs.variantAnnotationArgumentCollection.annotationsToExclude.add(QualByDepth.class.getSimpleName());
+            hcArgs.defaultGATKVariantAnnotationArgumentCollection.getUserDisabledAnnotationNames().add(ChromosomeCounts.class.getSimpleName());
+            hcArgs.defaultGATKVariantAnnotationArgumentCollection.getUserDisabledAnnotationNames().add(FisherStrand.class.getSimpleName());
+            hcArgs.defaultGATKVariantAnnotationArgumentCollection.getUserDisabledAnnotationNames().add(StrandOddsRatio.class.getSimpleName());
+            hcArgs.defaultGATKVariantAnnotationArgumentCollection.getUserDisabledAnnotationNames().add(QualByDepth.class.getSimpleName());
 
             // but we definitely want certain other ones
-            hcArgs.variantAnnotationArgumentCollection.annotationsToUse.add(StrandBiasBySample.class.getSimpleName());
+            hcArgs.defaultGATKVariantAnnotationArgumentCollection.getUserEnabledAnnotationNames().add(StrandBiasBySample.class.getSimpleName());
             logger.info("Standard Emitting and Calling confidence set to 0.0 for reference-model confidence output");
             if ( ! hcArgs.annotateAllSitesWithPLs ) {
                 logger.info("All sites annotated with PLs forced to true for reference-model confidence output");
@@ -321,11 +321,19 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @param readsDictionary sequence dictionary for the reads
      * @return a VCF or GVCF writer as appropriate, ready to use
      */
-    public VariantContextWriter makeVCFWriter( final String outputVCF, final SAMSequenceDictionary readsDictionary ) {
+    public VariantContextWriter makeVCFWriter( final String outputVCF, final SAMSequenceDictionary readsDictionary,
+                                               final boolean createOutputVariantIndex, final boolean  createOutputVariantMD5 ) {
         Utils.nonNull(outputVCF);
         Utils.nonNull(readsDictionary);
 
-        VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(new File(outputVCF), readsDictionary, false);
+        VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(
+                new File(outputVCF),
+                readsDictionary,
+                createOutputVariantMD5,
+                createOutputVariantIndex ?
+                        new Options[]{Options.INDEX_ON_THE_FLY} :
+                        new Options[0]
+        );
 
         if ( hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF ) {
             try {
@@ -408,7 +416,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     public ActivityProfileState isActive( final AlignmentContext context, final ReferenceContext ref, final FeatureContext features ) {
 
         if ( hcArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
-            final VariantContext vcFromAllelesRod = GenotypingGivenAllelesUtils.composeGivenAllelesVariantContextFromRod(features, ref.getInterval(), false, logger, hcArgs.alleles);
+            final VariantContext vcFromAllelesRod = GenotypingGivenAllelesUtils.composeGivenAllelesVariantContextFromRod(features, ref.getInterval(), false, hcArgs.genotypeFilteredAlleles, logger, hcArgs.alleles);
             if( vcFromAllelesRod != null ) {
                 return new ActivityProfileState(ref.getInterval(), 1.0);
             }
@@ -439,7 +447,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         for( final Map.Entry<String, AlignmentContext> sample : splitContexts.entrySet() ) {
             // The ploidy here is not dictated by the sample but by the simple genotyping-engine used to determine whether regions are active or not.
             final int activeRegionDetectionHackishSamplePloidy = activeRegionEvaluationGenotyperEngine.getConfiguration().genotypeArgs.samplePloidy;
-            final double[] genotypeLikelihoods = referenceConfidenceModel.calcGenotypeLikelihoodsOfRefVsAny(activeRegionDetectionHackishSamplePloidy,sample.getValue().getBasePileup(), ref.getBase(), hcArgs.minBaseQualityScore, averageHQSoftClips).getGenotypeLikelihoods();
+            final double[] genotypeLikelihoods = referenceConfidenceModel.calcGenotypeLikelihoodsOfRefVsAny(activeRegionDetectionHackishSamplePloidy,sample.getValue().getBasePileup(), ref.getBase(), hcArgs.minBaseQualityScore, averageHQSoftClips).genotypeLikelihoods;
             genotypes.add( new GenotypeBuilder(sample.getKey()).alleles(noCall).PL(genotypeLikelihoods).make() );
         }
 
@@ -481,7 +489,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         final List<VariantContext> givenAlleles = new ArrayList<>();
         if ( hcArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
-            features.getValues(hcArgs.alleles).stream().filter(VariantContext::isNotFiltered).forEach(givenAlleles::add);
+            features.getValues(hcArgs.alleles).stream().filter(vc -> hcArgs.genotypeFilteredAlleles || vc.isNotFiltered()).forEach(givenAlleles::add);
 
             // No alleles found in this region so nothing to do!
             if ( givenAlleles.isEmpty() ) {

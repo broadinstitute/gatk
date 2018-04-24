@@ -38,23 +38,23 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
             this.outputDir = outputDir;
         }
 
-        String getCommandLineNoApiKey() {
+        String getCommandLine() {
             return  " -I " + bamLoc +
                     " -O "                    + "%s" +
-                    " --alignerIndexImage " + alignerRefIndexImgLoc +
-                    " --kmersToIgnore " + kmerIgnoreListLoc +
-                    " --breakpointIntervals " + outputDir + "/intervals" +
-                    " --fastqDir "            + outputDir + "/fastq" +
-                    " --targetLinkFile "      + outputDir + "/targetLinks.bedpe";
+                    " --aligner-index-image " + alignerRefIndexImgLoc +
+                    " --kmers-to-ignore " + kmerIgnoreListLoc +
+                    " --breakpoint-intervals " + outputDir + "/intervals" +
+                    " --fastq-dir "            + outputDir + "/fastq" +
+                    " --target-link-file "      + outputDir + "/targetLinks.bedpe";
         }
 
         @Override
         public String toString() {
             return "FindBreakpointEvidenceSparkIntegrationTestArgs{" +
-                    "bamLoc='" + bamLoc + '\'' +
-                    ", kmerIgnoreListLoc='" + kmerIgnoreListLoc + '\'' +
-                    ", alignerRefIndexImgLoc='" + alignerRefIndexImgLoc + '\'' +
-                    ", outputDir='" + outputDir + '\'' +
+                    "bam-loc='" + bamLoc + '\'' +
+                    ", kmer-ignore-list-loc='" + kmerIgnoreListLoc + '\'' +
+                    ", aligner-ref-index-img-loc='" + alignerRefIndexImgLoc + '\'' +
+                    ", output-dir='" + outputDir + '\'' +
                     '}';
         }
     }
@@ -79,7 +79,7 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
         final ArrayList<String> expectedFiles = new ArrayList<>();
         expectedFiles.add(SVIntegrationTestDataProvider.EXPECTED_ALIGNED_CONTIGS);
         new IntegrationTestSpec(
-                new ArgumentsBuilder().add(params.getCommandLineNoApiKey()).getString(),
+                new ArgumentsBuilder().add(params.getCommandLine()).getString(),
                 expectedFiles)
                 .executeTest("testFindBreakpointEvidenceSparkRunnableLocal-", this);
     }
@@ -89,7 +89,7 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
 
         MiniClusterUtils.runOnIsolatedMiniCluster(cluster -> {
 
-            final List<String> argsToBeModified = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLineNoApiKey()).getArgsArray() );
+            final List<String> argsToBeModified = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLine()).getArgsArray() );
             final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
 
             int idx = 0;
@@ -100,7 +100,7 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
             cluster.getFileSystem().copyFromLocalFile(new Path(file.toURI()), path);
             argsToBeModified.set(idx+1, path.toUri().toString());
 
-            idx = argsToBeModified.indexOf("--kmersToIgnore");
+            idx = argsToBeModified.indexOf("--kmers-to-ignore");
             path = new Path(workingDirectory, "dummy.kill.kmers");
             file = new File(argsToBeModified.get(idx+1));
             cluster.getFileSystem().copyFromLocalFile(new Path(file.toURI()), path);
@@ -111,11 +111,11 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
             path = new Path(workingDirectory, "assemblies.sam");
             argsToBeModified.set(idx+1, path.toUri().toString());
 
-            idx = argsToBeModified.indexOf("--breakpointIntervals");
+            idx = argsToBeModified.indexOf("--breakpoint-intervals");
             path = new Path(workingDirectory, "intervals");
             argsToBeModified.set(idx+1, path.toUri().toString());
 
-            idx = argsToBeModified.indexOf("--fastqDir");
+            idx = argsToBeModified.indexOf("--fastq-dir");
             path = new Path(workingDirectory, "fastq");
             argsToBeModified.set(idx+1, path.toUri().toString());
 

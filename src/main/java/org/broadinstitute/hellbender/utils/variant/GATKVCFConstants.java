@@ -94,6 +94,8 @@ public final class GATKVCFConstants {
     public static final String TRANSMISSION_DISEQUILIBRIUM_KEY =    "TDT";
     public static final String VARIANT_TYPE_KEY =                   "VariantType";
     public static final String VQS_LOD_KEY =                        "VQSLOD";
+    public static final String CNN_1D_KEY =                         "CNN_1D";
+    public static final String CNN_2D_KEY =                         "CNN_2D";
     public static final String F1R2_KEY =                           "F1R2";
     public static final String F2R1_KEY =                           "F2R1";
 
@@ -104,8 +106,9 @@ public final class GATKVCFConstants {
     public static final String NORMAL_ARTIFACT_LOD_ATTRIBUTE =      "N_ART_LOD";
     public static final String POPULATION_AF_VCF_ATTRIBUTE =        "POP_AF";
     public static final String GERMLINE_POSTERIORS_VCF_ATTRIBUTE =  "P_GERMLINE";
+    public static final String POSTERIOR_PROB_OF_CONTAMINATION_ATTRIBUTE =  "P_CONTAM";
     public static final List<String> STANDARD_MUTECT_INFO_FIELDS = Arrays.asList(NORMAL_LOD_KEY, TUMOR_LOD_KEY, NORMAL_ARTIFACT_LOD_ATTRIBUTE,
-            EVENT_COUNT_IN_HAPLOTYPE_KEY, IN_PON_VCF_ATTRIBUTE, POPULATION_AF_VCF_ATTRIBUTE, GERMLINE_POSTERIORS_VCF_ATTRIBUTE);
+            EVENT_COUNT_IN_HAPLOTYPE_KEY, IN_PON_VCF_ATTRIBUTE, POPULATION_AF_VCF_ATTRIBUTE, GERMLINE_POSTERIORS_VCF_ATTRIBUTE, POSTERIOR_PROB_OF_CONTAMINATION_ATTRIBUTE);
 
     //FORMAT keys
     public static final String ALLELE_BALANCE_KEY =                 "AB";
@@ -157,7 +160,6 @@ public final class GATKVCFConstants {
     // Symbolic alleles
     public final static String SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG = "ALT";
     public final static String NON_REF_SYMBOLIC_ALLELE_NAME = "NON_REF";
-    public final static Allele NON_REF_SYMBOLIC_ALLELE = Allele.create("<" + NON_REF_SYMBOLIC_ALLELE_NAME + ">", false); // represents any possible non-ref allele at this site
     public final static String SPANNING_DELETION_SYMBOLIC_ALLELE_NAME_DEPRECATED = "*:DEL";
     public final static Allele SPANNING_DELETION_SYMBOLIC_ALLELE_DEPRECATED = Allele.create("<" + SPANNING_DELETION_SYMBOLIC_ALLELE_NAME_DEPRECATED + ">", false); // represents any possible spanning deletion allele at this si
 

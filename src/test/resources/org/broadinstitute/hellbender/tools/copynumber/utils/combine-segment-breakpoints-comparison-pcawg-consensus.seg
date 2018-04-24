@@ -1,0 +1,4 @@
+chromosome	start	end	final_total_cn	final_major_cn	final_minor_cn	consensus_total_cn	consensus_major_cn	consensus_minor_cn	star	level	absolute_broad_major_cn	absolute_broad_minor_cn	battenberg_major_cn	battenberg_minor_cn	sclust_major_cn	sclust_minor_cn
+1	10001	51173	1	1	0	1	1	0	3	a	1	0	1.0	0.0	1.0	0.0
+1	51174	51436	1.0	1.0	0.0	1	1	0	2	d	1	0	1.0	0.0	1.0	0.0
+1	51437	121477	1	1	0	1	1	0	3	a	1	0	1.0	0.0	1.0	0.0

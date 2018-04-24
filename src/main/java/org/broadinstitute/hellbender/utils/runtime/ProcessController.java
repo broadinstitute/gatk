@@ -2,18 +2,17 @@ package org.broadinstitute.hellbender.utils.runtime;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Facade to Runtime.exec() and java.lang.Process.  Handles
@@ -27,49 +26,8 @@ import java.util.*;
  * Supposedly NIO has better ways of interrupting a blocked stream but will
  * require a little bit of refactoring.
  */
-public final class ProcessController {
+public final class ProcessController extends ProcessControllerBase<CapturedStreamOutput> {
     private static final Logger logger = LogManager.getLogger(ProcessController.class);
-
-    private static enum ProcessStream {Stdout, Stderr}
-
-    // Tracks running processes.
-    private static final Set<ProcessController> running = Collections.synchronizedSet(new LinkedHashSet<>());
-
-    // Tracks this running process.
-    private Process process;
-
-    // Threads that capture stdout and stderr
-    private final OutputCapture stdoutCapture;
-    private final OutputCapture stderrCapture;
-
-    // When a caller destroys a controller a new thread local version will be created
-    private boolean destroyed = false;
-
-    // Communication channels with output capture threads
-
-    // Holds the stdout and stderr sent to the background capture threads
-    private final Map<ProcessStream, CapturedStreamOutput> toCapture =
-            new EnumMap<>(ProcessStream.class);
-
-    // Holds the results of the capture from the background capture threads.
-    // May be the content via toCapture or an StreamOutput.EMPTY if the capture was interrupted.
-    private final Map<ProcessStream, StreamOutput> fromCapture =
-            new EnumMap<>(ProcessStream.class);
-
-    // Useful for debugging if background threads have shut down correctly
-    private static int nextControllerId = 0;
-    private final int controllerId;
-
-    public ProcessController() {
-        // Start the background threads for this controller.
-        synchronized (running) {
-            controllerId = nextControllerId++;
-        }
-        stdoutCapture = new OutputCapture(ProcessStream.Stdout, controllerId);
-        stderrCapture = new OutputCapture(ProcessStream.Stderr, controllerId);
-        stdoutCapture.start();
-        stderrCapture.start();
-    }
 
     /**
      * Returns a thread local ProcessController.
@@ -114,47 +72,25 @@ public final class ProcessController {
      * @return The output of the command.
      */
     public ProcessOutput exec(ProcessSettings settings) {
-        Utils.validate(!destroyed, "This controller was destroyed");
-        ProcessBuilder builder = new ProcessBuilder(settings.getCommand());
-        builder.directory(settings.getDirectory());
-
-        Map<String, String> settingsEnvironment = settings.getEnvironment();
-        if (settingsEnvironment != null) {
-            Map<String, String> builderEnvironment = builder.environment();
-            builderEnvironment.clear();
-            builderEnvironment.putAll(settingsEnvironment);
-        }
-
-        builder.redirectErrorStream(settings.isRedirectErrorStream());
-
-        StreamOutput stdout = null;
-        StreamOutput stderr = null;
-
-        // Start the process running.
-
-        try {
-            synchronized (toCapture) {
-                process = builder.start();
-            }
-            running.add(this);
-        } catch (IOException e) {
-            String message = String.format("Unable to start command: %s\nReason: %s",
-                    StringUtils.join(builder.command(), " "),
-                    e.getMessage());
-            throw new GATKException(message);
-        }
-
+        StreamOutput stdout;
+        StreamOutput stderr;
         int exitCode;
 
+        launchProcess(settings);
+
         try {
-            // Notify the background threads to start capturing.
-            synchronized (toCapture) {
-                toCapture.put(ProcessStream.Stdout,
-                        new CapturedStreamOutput(settings.getStdoutSettings(), process.getInputStream(), System.out));
-                toCapture.put(ProcessStream.Stderr,
-                        new CapturedStreamOutput(settings.getStderrSettings(), process.getErrorStream(), System.err));
-                toCapture.notifyAll();
-            }
+            stdOutFuture = executorService.submit(
+                    new OutputCapture(
+                            new CapturedStreamOutput(settings.getStdoutSettings(), process.getInputStream(), System.out),
+                            ProcessStream.STDOUT,
+                            this.getClass().getSimpleName(),
+                            controllerId));
+            stdErrFuture = executorService.submit(
+                    new OutputCapture(
+                            new CapturedStreamOutput(settings.getStderrSettings(), process.getErrorStream(), System.err),
+                            ProcessStream.STDERR,
+                            this.getClass().getSimpleName(),
+                            controllerId));
 
             // Write stdin content
             InputStreamSettings stdinSettings = settings.getStdinSettings();
@@ -190,7 +126,7 @@ public final class ProcessController {
                     }
                     stdinStream.flush();
                 } catch (IOException e) {
-                    throw new GATKException("Error writing to stdin on command: " + StringUtils.join(builder.command(), " "), e);
+                    throw new GATKException("Error writing to stdin on command: " + settings.getCommandString(), e);
                 }
             }
 
@@ -198,54 +134,24 @@ public final class ProcessController {
             try {
                 process.getOutputStream().close();
                 process.waitFor();
+                stdout = stdOutFuture.get();
+                stdOutFuture = null;
+                stderr = stdErrFuture.get();
+                stdErrFuture = null;
+            } catch (ExecutionException e) {
+                throw new GATKException("Execution exception during process output retrieval", e);
             } catch (IOException e) {
-                throw new GATKException("Unable to close stdin on command: " + StringUtils.join(builder.command(), " "), e);
+                throw new GATKException("Unable to close stdin on command: " + settings.getCommandString(), e);
             } catch (InterruptedException e) {
                 throw new GATKException("Process interrupted", e);
-            } finally {
-                while (!destroyed && stdout == null || stderr == null) {
-                    synchronized (fromCapture) {
-                        if (fromCapture.containsKey(ProcessStream.Stdout))
-                            stdout = fromCapture.remove(ProcessStream.Stdout);
-                        if (fromCapture.containsKey(ProcessStream.Stderr))
-                            stderr = fromCapture.remove(ProcessStream.Stderr);
-                        try {
-                            if (stdout == null || stderr == null)
-                                fromCapture.wait();
-                        } catch (InterruptedException e) {
-                            // Log the error, ignore the interrupt and wait patiently
-                            // for the OutputCaptures to (via finally) return their
-                            // stdout and stderr.
-                            logger.error(e);
-                        }
-                    }
-                }
-
-                if (destroyed) {
-                    if (stdout == null)
-                        stdout = StreamOutput.EMPTY;
-                    if (stderr == null)
-                        stderr = StreamOutput.EMPTY;
-                }
             }
         } finally {
-            synchronized (toCapture) {
-                exitCode = process.exitValue();
-                process = null;
-            }
+            exitCode = process.exitValue();
+            process = null;
             running.remove(this);
         }
-
         return new ProcessOutput(exitCode, stdout, stderr);
-    }
 
-    /**
-     * @return The set of still running processes.
-     */
-    public static Set<ProcessController> getRunning() {
-        synchronized (running) {
-            return new LinkedHashSet<>(running);
-        }
     }
 
     /**
@@ -254,86 +160,27 @@ public final class ProcessController {
      * NOTE: capture threads may block on read.
      * TODO: Try to use NIO to interrupt streams.
      */
-    public void tryDestroy() {
-        destroyed = true;
-        synchronized (toCapture) {
-            if (process != null) {
-                process.destroy();
-                IOUtils.closeQuietly(process.getInputStream());
-                IOUtils.closeQuietly(process.getErrorStream());
-            }
-            stdoutCapture.interrupt();
-            stderrCapture.interrupt();
-            toCapture.notifyAll();
-        }
-    }
-
     @Override
-    protected void finalize() throws Throwable {
-        try {
-            tryDestroy();
-        } catch (Exception e) {
-            logger.error(e);
-        }
-        super.finalize();
-    }
+    protected void tryCleanShutdown() {
+        destroyed = true;
 
-    private class OutputCapture extends Thread {
-        private final int controllerId;
-        private final ProcessStream key;
-
-        /**
-         * Reads in the output of a stream on a background thread to keep the output pipe from backing up and freezing the called process.
-         *
-         * @param key The stdout or stderr key for this output capture.
-         * @param controllerId Unique id of the controller.
-         */
-        public OutputCapture(ProcessStream key, int controllerId) {
-            super(String.format("OutputCapture-%d-%s-%s-%d", controllerId, key.name().toLowerCase(),
-                    Thread.currentThread().getName(), Thread.currentThread().getId()));
-            this.controllerId = controllerId;
-            this.key = key;
-            setDaemon(true);
-        }
-
-        /**
-         * Runs the capture.
-         */
-        @Override
-        public void run() {
-            while (!destroyed) {
-                StreamOutput processStream = StreamOutput.EMPTY;
-                try {
-                    // Wait for a new input stream to be passed from this process controller.
-                    CapturedStreamOutput capturedProcessStream = null;
-                    while (!destroyed && capturedProcessStream == null) {
-                        synchronized (toCapture) {
-                            if (toCapture.containsKey(key)) {
-                                capturedProcessStream = toCapture.remove(key);
-                            } else {
-                                toCapture.wait();
-                            }
-                        }
-                    }
-
-                    if (!destroyed) {
-                        // Read in the input stream
-                        processStream = capturedProcessStream;
-                        capturedProcessStream.readAndClose();
-                    }
-                } catch (InterruptedException e) {
-                    logger.info("OutputCapture interrupted, exiting");
-                    break;
-                } catch (IOException e) {
-                    logger.error("Error reading process output", e);
-                } finally {
-                    // Send the string back to the process controller.
-                    synchronized (fromCapture) {
-                        fromCapture.put(key, processStream);
-                        fromCapture.notify();
-                    }
-                }
+        if (stdErrFuture != null) {
+            boolean isCancelled = stdErrFuture.cancel(true);
+            if (!isCancelled) {
+                logger.error("Failure cancelling stderr task");
             }
         }
+        if (stdOutFuture != null) {
+            boolean isCancelled = stdOutFuture.cancel(true);
+            if (!isCancelled) {
+                logger.error("Failure cancelling stdout task");
+            }
+        }
+        if (process != null) {
+            process.destroy();
+            IOUtils.closeQuietly(process.getInputStream());
+            IOUtils.closeQuietly(process.getErrorStream());
+        }
     }
+
 }

@@ -10,32 +10,13 @@ import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFSimpleHeaderLine;
-import java.io.File;
-import java.nio.file.Path;
-import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Stream;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalReadInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalReferenceInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.ReadInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredIntervalArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReadInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
@@ -45,12 +26,20 @@ import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.config.ConfigFactory;
+import org.broadinstitute.hellbender.utils.config.GATKConfig;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+
+import java.io.File;
+import java.nio.file.Path;
+import java.time.ZonedDateTime;
+import java.util.*;
+import java.util.stream.Stream;
 
 /**
  * Base class for all GATK tools. Tool authors that wish to write a "GATK" tool but not use one of
@@ -73,7 +62,7 @@ public abstract class GATKTool extends CommandLineProgram {
             doc = "Use the given sequence dictionary as the master/canonical sequence dictionary.  Must be a .dict file.", optional = true, common = true)
     private String masterSequenceDictionaryFilename = null;
 
-    public static final String SECONDS_BETWEEN_PROGRESS_UPDATES_NAME = "secondsBetweenProgressUpdates";
+    public static final String SECONDS_BETWEEN_PROGRESS_UPDATES_NAME = "seconds-between-progress-updates";
     @Argument(fullName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, shortName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, doc = "Output traversal statistics every time this many seconds elapse", optional = true, common = true)
     private double secondsBetweenProgressUpdates = ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES;
 
@@ -83,7 +72,7 @@ public abstract class GATKTool extends CommandLineProgram {
     @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME,
             shortName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_SHORT_NAME,
             doc = "If true, create a BAM/CRAM index when writing a coordinate-sorted BAM/CRAM file.", optional=true, common = true)
-    public boolean createOutputBamIndex = true;
+    public boolean createOutputBamIndex = ConfigFactory.getInstance().getGATKConfig().createOutputBamIndex();
 
     @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_LONG_NAME,
             shortName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_SHORT_NAME,
@@ -273,18 +262,20 @@ public abstract class GATKTool extends CommandLineProgram {
      *         The default implementation returns a value (40 MB) that is suitable for tools with a small
      *         number of large cloud inputs. Tools with large numbers of cloud inputs will likely want to
      *         override to specify a smaller size.
+     *         This value is maintained in the {@link GATKConfig} file.
      */
     public int getDefaultCloudPrefetchBufferSize() {
-        return 40;
+        return ConfigFactory.getInstance().getGATKConfig().cloudPrefetchBuffer();
     }
 
     /**
      * @return Default size in MB of the cloud index prefetch buffer. May be overridden by individual tools.
      *         A return value of -1 means to use the same value as returned by {@link #getDefaultCloudPrefetchBufferSize()}.
      *         The default implementation returns -1.
+     *         This value is maintained in the {@link GATKConfig} file.
      */
     public int getDefaultCloudIndexPrefetchBufferSize() {
-        return -1;
+        return ConfigFactory.getInstance().getGATKConfig().cloudIndexPrefetchBuffer();
     }
 
     /**
@@ -300,7 +291,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * May be overridden by traversals that require custom initialization of the reference data source.
      */
     void initializeReference() {
-        reference = referenceArguments.getReferenceFile() != null ? ReferenceDataSource.of(referenceArguments.getReferenceFile()) : null;
+        reference = referenceArguments.getReferencePath() != null ? ReferenceDataSource.of(referenceArguments.getReferencePath()) : null;
     }
 
     /**
@@ -313,7 +304,7 @@ public abstract class GATKTool extends CommandLineProgram {
         if (! readArguments.getReadFiles().isEmpty()) {
             SamReaderFactory factory = SamReaderFactory.makeDefault().validationStringency(readArguments.getReadValidationStringency());
             if (hasReference()) { // pass in reference if available, because CRAM files need it
-                factory = factory.referenceSequence(referenceArguments.getReferenceFile());
+                factory = factory.referenceSequence(referenceArguments.getReferencePath());
             }
             else if (hasCramInput()) {
                 throw new UserException.MissingReference("A reference file is required when using CRAM files.");
@@ -681,14 +672,27 @@ public abstract class GATKTool extends CommandLineProgram {
      * @return SAMFileWriter
      */
     public final SAMFileGATKReadWriter createSAMWriter(final Path outputPath, final boolean preSorted) {
-        if (!hasReference() && IOUtils.isCramFile(outputPath)) {
+        final boolean isCramFile = IOUtils.isCramFile(outputPath);
+        if (!hasReference() && isCramFile) {
             throw new UserException.MissingReference("A reference file is required for writing CRAM files");
+        }
+
+        //TODO this is a workaround until #4039 is resolved
+        final File reference;
+        if ( isCramFile ){
+            try{
+                reference = referenceArguments.getReferencePath().toFile();
+            } catch ( final UnsupportedOperationException e){
+                throw new UserException("When writing a cram File a local reference file must be used", e);
+            }
+        } else {
+            reference = null;
         }
 
         return new SAMFileGATKReadWriter(
             ReadUtils.createCommonSAMWriter(
                 outputPath,
-                referenceArguments.getReferenceFile(),
+                reference,
                 getHeaderForSAMWriter(),
                 preSorted,
                 createOutputBamIndex,
@@ -767,7 +771,7 @@ public abstract class GATKTool extends CommandLineProgram {
             simpleHeaderLineMap.put("Date", Utils.getDateTimeForDisplay((ZonedDateTime.now())));
             simpleHeaderLineMap.put("CommandLine", getCommandLine());
             gatkToolHeaderLines.add(new VCFHeaderLine("source", this.getClass().getSimpleName()));
-            gatkToolHeaderLines.add(new VCFSimpleHeaderLine(String.format("%sCommandLine", getToolkitName()), simpleHeaderLineMap));
+            gatkToolHeaderLines.add(new VCFSimpleHeaderLine(String.format("%sCommandLine", getToolkitShortName()), simpleHeaderLineMap));
         }
         return gatkToolHeaderLines;
     }
@@ -790,17 +794,46 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
-     * @return The name of toolkit for this tool. Subclasses may override to provide a custom toolkit name.
+     * @return An abbreviated name of the toolkit for this tool. Subclasses may override to provide
+     *         a custom toolkit name.
+     *
+     * TODO: This should be refactored and moved up into CommandLineProgram, with this value
+     * TODO: stored in the jar manifest, like {@link CommandLineProgram#getToolkitName}
      */
-    protected String getToolkitName() { return "GATK"; }
+    protected String getToolkitShortName() { return "GATK"; }
+
+    /**
+     * A method to allow a user to inject data sources after initialization that were not specified as command-line
+     * arguments.
+     * @return The {@link FeatureInput} used as the key for this data source.
+     */
+    protected FeatureInput<? extends Feature> addFeatureInputsAfterInitialization(final String filePath,
+                                                                                  final String name,
+                                                                                  final Class<? extends Feature> featureType) {
+
+        final FeatureInput<? extends Feature> featureInput = new FeatureInput<>(name + FeatureInput.FEATURE_ARGUMENT_TAG_DELIMITER + filePath);
+
+        //Add datasource to the feature manager too so that it can be queried. Setting lookahead to 0 to avoid caching.
+        //Note: we are disabling lookahead here because of windowed queries that need to "look behind" as well.
+        features.addToFeatureSources(
+                0,
+                featureInput,
+                featureType,
+                cloudPrefetchBuffer,
+                cloudIndexPrefetchBuffer,
+                referenceArguments.getReferencePath()
+        );
+
+        return featureInput;
+    }
 
     /**
      * Returns the name of this tool.
-     * The default implementation returns the result of calling {@link# getToolkitName} followed by the simple
+     * The default implementation returns the result of calling {@link #getToolkitShortName} followed by the simple
      * name of the class. Subclasses may override.
      */
     public String getToolName() {
-        return String.format("%s %s", getToolkitName(), getClass().getSimpleName());
+        return String.format("%s %s", getToolkitShortName(), getClass().getSimpleName());
     }
 
     /**

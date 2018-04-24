@@ -10,6 +10,8 @@ import com.google.common.collect.HashBiMap;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
@@ -27,6 +29,34 @@ import java.util.stream.Collectors;
 public final class VariantContextTestUtils {
 
     private VariantContextTestUtils() {}
+
+    /**
+     * Reads an entire VCF into memory, returning both its VCFHeader and all VariantContext records in
+     * the vcf. Supports both local files and NIO-supported remote filesystems such as GCS.
+     *
+     * For unit/integration testing purposes only! Do not call this method from actual tools!
+     *
+     * @param vcfPath path or URI to a VCF, as a String
+     * @return A Pair with the VCFHeader as the first element, and a List of all VariantContexts from the VCF
+     *         as the second element
+     */
+    public static Pair<VCFHeader, List<VariantContext>> readEntireVCFIntoMemory(final String vcfPath) {
+        Utils.nonNull(vcfPath);
+
+        try ( final FeatureDataSource<VariantContext> vcfReader = new FeatureDataSource<>(vcfPath) ) {
+            final Object header = vcfReader.getHeader();
+            if ( ! (header instanceof VCFHeader) ) {
+                throw new IllegalArgumentException(vcfPath + " does not have a valid VCF header");
+            }
+
+            final List<VariantContext> vcfRecords = new ArrayList<>();
+            for ( final VariantContext vcfRecord : vcfReader ) {
+                vcfRecords.add(vcfRecord);
+            }
+
+            return Pair.of((VCFHeader)header, vcfRecords);
+        }
+    }
 
     private static void assertAttributeEquals(final String key, final Object actual, final Object expected) {
         final Object notationCorrectedActual = normalizeScientificNotation(actual);
@@ -76,7 +106,19 @@ public final class VariantContextTestUtils {
     static Object normalizeScientificNotation(final Object attribute){
         if (attribute instanceof String){
             try {
-                return Double.parseDouble((String) attribute);
+                if (((String) attribute).contains("|")) {
+                    // If the attribute is an allele specific attribute separated by '|', then we want to remap
+                    // each of its contained values (which could be comma separated lists) separately
+                    String[] split = ((String) attribute).split("\\|",-1);
+                    return Arrays.stream(split).map(
+                            s -> {return Arrays.stream(s.split(",",-1))
+                                    .map(d -> {if (d.equals("")) return d;
+                                               else return Double.toString(Double.parseDouble(d));})
+                                    .collect(Collectors.joining(","));})
+                            .collect(Collectors.joining("|"));
+                } else {
+                    return Double.parseDouble((String) attribute);
+                }
             } catch ( final NumberFormatException e) {
                 return attribute;
             }
@@ -144,11 +186,12 @@ public final class VariantContextTestUtils {
 
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private static Object updateAttribute(final String key, final Object value,
                                           final List<Allele> originalAlleles, final List<Allele> sortedAlleles,
                                           final VCFHeaderLineCount count, int ploidy) {
         if (key.startsWith("AS_")) {
-            return remapASValues((String) value, createAlleleIndexMap(originalAlleles, sortedAlleles));
+            return remapASValues(value instanceof List? String.join(",", ((List<String>) value)) : (String) value, createAlleleIndexMap(originalAlleles, sortedAlleles));
         }else {
             switch (count) {
                 case INTEGER:
@@ -229,7 +272,6 @@ public final class VariantContextTestUtils {
         }
         return Collections.singletonList(attribute);
     }
-
 
     public static void assertGenotypesAreEqual(final Genotype actual, final Genotype expected) {
         Assert.assertEquals(actual.getSampleName(), expected.getSampleName(), "Genotype names");

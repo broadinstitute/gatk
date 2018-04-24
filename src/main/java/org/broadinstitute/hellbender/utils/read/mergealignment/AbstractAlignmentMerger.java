@@ -385,7 +385,7 @@ public abstract class AbstractAlignmentMerger {
      * Add record if it is primary or optionally secondary.
      */
     private void addIfNotFiltered(final SortingCollection<SAMRecord> sorted, final SAMRecord rec) {
-        if (includeSecondaryAlignments || !rec.getNotPrimaryAlignmentFlag()) {
+        if (includeSecondaryAlignments || !rec.isSecondaryAlignment()) {
             sorted.add(rec);
             this.progress.record(rec);
         }
@@ -496,7 +496,7 @@ public abstract class AbstractAlignmentMerger {
 
         rec.setAlignmentStart(alignment.getAlignmentStart());
         rec.setReadNegativeStrandFlag(alignment.getReadNegativeStrandFlag());
-        rec.setNotPrimaryAlignmentFlag(alignment.getNotPrimaryAlignmentFlag());
+        rec.setSecondaryAlignment(alignment.isSecondaryAlignment());
         rec.setSupplementaryAlignmentFlag(alignment.getSupplementaryAlignmentFlag());
         if (!alignment.getReadUnmappedFlag()) {
             // only aligned reads should have cigar and mapping quality set

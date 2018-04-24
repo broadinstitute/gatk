@@ -3,16 +3,16 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifact;
-import org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifact.StrandArtifactZ;
+import org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifact.ArtifactState;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;
-
 
 import java.io.IOException;
 import java.util.*;
@@ -106,11 +106,11 @@ public class StrandArtifactUnitTest {
 
         final double epsilon = 1e-3;
         // Check that we correctly detect the artifact in reverse strands
-        Assert.assertEquals(MathUtils.maxElementIndex(posteriorProbabilities), StrandArtifactZ.ART_REV.ordinal());
-        Assert.assertEquals(posteriorProbabilities[StrandArtifactZ.ART_REV.ordinal()], 1.0, epsilon);
+        Assert.assertEquals(MathUtils.maxElementIndex(posteriorProbabilities), ArtifactState.ART_REV.ordinal());
+        Assert.assertEquals(posteriorProbabilities[ArtifactState.ART_REV.ordinal()], 1.0, epsilon);
 
         // Check that, having taken strand artifact into consideration, we estimate that the true allele fraction is 0
-        Assert.assertEquals(mapAlleleFractionEstimates[StrandArtifactZ.ART_REV.ordinal()], 0.0, epsilon);
+        Assert.assertEquals(mapAlleleFractionEstimates[ArtifactState.ART_REV.ordinal()], 0.0, epsilon);
     }
 
     // the underlying true allele fraction is non-zero
@@ -191,8 +191,29 @@ public class StrandArtifactUnitTest {
 
         final double epsilon = 0.1;
         // Check that, having taken strand artifact into consideration, we estimate that the true allele fraction is 0.2
-        Assert.assertEquals(mapAlleleFractionEstimates[StrandArtifactZ.ART_FWD.ordinal()], 0.2, epsilon);
+        Assert.assertEquals(mapAlleleFractionEstimates[ArtifactState.ART_FWD.ordinal()], 0.2, epsilon);
 
     }
 
+    @Test
+    // Asserting that when the annotation is run without the "TLOD" key on the vc then the annotation does nothing
+    public void testMissingTumorLod() throws IOException {
+        final ReadLikelihoods<Allele> likelihoods = ArtificialAnnotationUtils.makeLikelihoods(sampleName, Collections.singletonList(ArtificialAnnotationUtils.makeRead(100, 100)), 100, Allele.create((byte) 'C', true),   Allele.create((byte) 'A', false));
+        
+        VariantContext variantContextNoTLOD = new VariantContextBuilder(vc).rmAttribute(GATKVCFConstants.TUMOR_LOD_KEY).make();
+
+        final StrandArtifact strandArtifactAnnotation = new StrandArtifact();
+        final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(sampleName);
+        strandArtifactAnnotation.annotate(null, variantContextNoTLOD, genotypeBuilder.make(), genotypeBuilder, likelihoods);
+
+        final Genotype genotype = genotypeBuilder.make();
+        final double[] posteriorProbabilities =
+                GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(genotype, StrandArtifact.POSTERIOR_PROBABILITIES_KEY, () -> null, -1);
+        final double[] mapAlleleFractionEstimates =
+                GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(genotype, StrandArtifact.MAP_ALLELE_FRACTIONS_KEY, () -> null, -1);
+
+        // Asserting that the tool passed through without annotating
+        Assert.assertNull(posteriorProbabilities);
+        Assert.assertNull(mapAlleleFractionEstimates);
+    }
 }

@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingGivenAllelesUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingOutputMode;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
@@ -27,6 +28,7 @@ import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -36,13 +38,14 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Created by davidben on 9/15/16.
  */
 public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
-    private static final String MUTECT_VERSION = "2.1-beta";
+    private static final String MUTECT_VERSION = "2.1";
 
     public static final String TUMOR_SAMPLE_KEY_IN_VCF_HEADER = "tumor_sample";
     public static final String NORMAL_SAMPLE_KEY_IN_VCF_HEADER = "normal_sample";
@@ -62,7 +65,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     private static final int READ_QUALITY_FILTER_THRESHOLD = 20;
     public static final int MINIMUM_BASE_QUALITY = 6;   // for active region determination
 
-    private SampleList samplesList;
+    private final SampleList samplesList;
 
     private CachingIndexedFastaSequenceFile referenceReader;
     private ReadThreadingAssembler assemblyEngine;
@@ -71,6 +74,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     private Optional<HaplotypeBAMWriter> haplotypeBAMWriter;
     private VariantAnnotatorEngine annotationEngine;
     private final SmithWatermanAligner aligner;
+
+    private final String tumorSampleName;
+    private final String normalSampleName;
 
     private AssemblyRegionTrimmer trimmer = new AssemblyRegionTrimmer();
 
@@ -98,27 +104,29 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         Utils.nonNull(reference);
         referenceReader = AssemblyBasedCallerUtils.createReferenceReader(reference);
         aligner = SmithWatermanAligner.getAligner(MTAC.smithWatermanImplementation);
+        samplesList = new IndexedSampleList(new ArrayList<>(ReadUtils.getSamplesFromHeader(header)));
+        // If sample name is encoded from {@link GetSampleName}, decode it
+        tumorSampleName = samplesList.asListOfSamples().contains(MTAC.tumorSampleName) ?
+                MTAC.tumorSampleName : IOUtils.urlDecode(MTAC.tumorSampleName);
+        normalSampleName = MTAC.normalSampleName == null || samplesList.asListOfSamples().contains(MTAC.normalSampleName) ?
+                MTAC.normalSampleName : IOUtils.urlDecode(MTAC.normalSampleName);
         initialize(createBamOutIndex, createBamOutMD5);
     }
 
     private void initialize(final boolean createBamOutIndex, final boolean createBamOutBamMD5) {
-
-        samplesList = new IndexedSampleList(new ArrayList<>(ReadUtils.getSamplesFromHeader(header)));
-        if (!samplesList.asListOfSamples().contains(MTAC.tumorSampleName)) {
+        if (!samplesList.asListOfSamples().contains(tumorSampleName)) {
             throw new UserException.BadInput("BAM header sample names " + samplesList.asListOfSamples() + "does not contain given tumor" +
-                    " sample name " + MTAC.tumorSampleName);
-        } else if (MTAC.normalSampleName != null && !samplesList.asListOfSamples().contains(MTAC.normalSampleName)) {
+                    " sample name " + tumorSampleName);
+        } else if (normalSampleName != null && !samplesList.asListOfSamples().contains(normalSampleName)) {
             throw new UserException.BadInput("BAM header sample names " + samplesList.asListOfSamples() + "does not contain given normal" +
-                    " sample name " + MTAC.normalSampleName);
+                    " sample name " + normalSampleName);
         }
 
-        annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(MTAC.variantAnnotationArgumentCollection,
-                MTAC.dbsnp.dbsnp,
-                MTAC.comps);
+        annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(MTAC.defaultGATKVariantAnnotationArgumentCollection, null, Collections.emptyList(), false);
 
         assemblyEngine = AssemblyBasedCallerUtils.createReadThreadingAssembler(MTAC);
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs);
-        genotypingEngine = new SomaticGenotypingEngine(samplesList, MTAC, MTAC.tumorSampleName, MTAC.normalSampleName);
+        genotypingEngine = new SomaticGenotypingEngine(samplesList, MTAC, tumorSampleName, normalSampleName);
         genotypingEngine.setAnnotationEngine(annotationEngine);
         haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(MTAC, createBamOutIndex, createBamOutBamMD5, header);
 
@@ -145,7 +153,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         filters.add(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
         filters.add(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
         filters.add(GOOD_READ_LENGTH_FILTER);
-        filters.add(ReadFilterLibrary.MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE);
         filters.add(ReadFilterLibrary.GOOD_CIGAR);
         filters.add(new WellformedReadFilter());
 
@@ -196,19 +203,23 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     private Set<VCFHeaderLine> getSampleHeaderLines(){
         final Set<VCFHeaderLine> sampleLines = new HashSet<>();
         if (hasNormal()) {
-            sampleLines.add(new VCFHeaderLine(NORMAL_SAMPLE_KEY_IN_VCF_HEADER, MTAC.normalSampleName));
+            sampleLines.add(new VCFHeaderLine(NORMAL_SAMPLE_KEY_IN_VCF_HEADER, normalSampleName));
         }
-        sampleLines.add(new VCFHeaderLine(TUMOR_SAMPLE_KEY_IN_VCF_HEADER, MTAC.tumorSampleName));
+        sampleLines.add(new VCFHeaderLine(TUMOR_SAMPLE_KEY_IN_VCF_HEADER, tumorSampleName));
         return sampleLines;
     }
 
     public List<VariantContext> callRegion(final AssemblyRegion originalAssemblyRegion, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
-        if ( MTAC.justDetermineActiveRegions || !originalAssemblyRegion.isActive() || originalAssemblyRegion.size() == 0 ) {
+        if ( !originalAssemblyRegion.isActive() || originalAssemblyRegion.size() == 0 ) {
             return NO_CALLS;
         }
 
+        final List<VariantContext> givenAlleles = MTAC.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ?
+                featureContext.getValues(MTAC.alleles).stream().filter(vc -> MTAC.genotypeFilteredAlleles || vc.isNotFiltered()).collect(Collectors.toList()) :
+                Collections.emptyList();
+
         final AssemblyRegion assemblyActiveRegion = AssemblyBasedCallerUtils.assemblyRegionWithWellMappedReads(originalAssemblyRegion, READ_QUALITY_FILTER_THRESHOLD, header);
-        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyActiveRegion, Collections.emptyList(), MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner);
+        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyActiveRegion, givenAlleles, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner);
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents();
         final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(originalAssemblyRegion,allVariationEvents);
         if (!trimmingResult.isVariationPresent()) {
@@ -237,6 +248,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
                 referenceContext,
                 regionForGenotyping.getSpan(),
                 featureContext,
+                givenAlleles,
                 header);
 
         writeBamOutput(assemblyResult, readLikelihoods, calledHaplotypes);
@@ -248,9 +260,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     private void writeBamOutput(AssemblyResultSet assemblyResult, ReadLikelihoods<Haplotype> readLikelihoods, HaplotypeCallerGenotypingEngine.CalledHaplotypes calledHaplotypes) {
         if ( haplotypeBAMWriter.isPresent() ) {
             final Set<Haplotype> calledHaplotypeSet = new HashSet<>(calledHaplotypes.getCalledHaplotypes());
-            if (MTAC.disableOptimizations) {
-                calledHaplotypeSet.add(assemblyResult.getReferenceHaplotype());
-            }
             haplotypeBAMWriter.get().writeReadsAlignedToHaplotypes(
                     assemblyResult.getHaplotypeList(),
                     assemblyResult.getPaddedReferenceLoc(),
@@ -262,7 +271,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
     //TODO: should be a variable, not a function
     private boolean hasNormal() {
-        return (MTAC.normalSampleName != null);
+        return (normalSampleName != null);
     }
 
     protected Map<String, List<GATKRead>> splitReadsBySample( final Collection<GATKRead> reads ) {
@@ -283,6 +292,13 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
     @Override
     public ActivityProfileState isActive(final AlignmentContext context, final ReferenceContext ref, final FeatureContext featureContext) {
+        if ( MTAC.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
+            final VariantContext vcFromAllelesRod = GenotypingGivenAllelesUtils.composeGivenAllelesVariantContextFromRod(featureContext, ref.getInterval(), false, MTAC.genotypeFilteredAlleles, logger, MTAC.alleles);
+            if( vcFromAllelesRod != null ) {
+                return new ActivityProfileState(ref.getInterval(), 1.0);
+            }
+        }
+
         final byte refBase = ref.getBase();
         final SimpleInterval refInterval = ref.getInterval();
 
@@ -291,7 +307,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         }
 
         final ReadPileup pileup = context.getBasePileup();
-        final ReadPileup tumorPileup = pileup.getPileupForSample(MTAC.tumorSampleName, header);
+        final ReadPileup tumorPileup = pileup.getPileupForSample(tumorSampleName, header);
         final Pair<Integer, Double> tumorAltCountAndQualSum = altCountAndQualSum(tumorPileup, refBase);
         final int tumorAltCount = tumorAltCountAndQualSum.getFirst();
         final int tumorRefCount = tumorPileup.size() - tumorAltCount;
@@ -301,18 +317,21 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         if (tumorLog10Odds < MTAC.initialTumorLodThreshold) {
             return new ActivityProfileState(refInterval, 0.0);
-        } else if (hasNormal()) {
-            final ReadPileup normalPileup = pileup.getPileupForSample(MTAC.normalSampleName, header);
+        } else if (hasNormal() && !MTAC.genotypeGermlineSites) {
+            final ReadPileup normalPileup = pileup.getPileupForSample(normalSampleName, header);
             final Pair<Integer, Double> normalAltCountAndQualSum = altCountAndQualSum(normalPileup, refBase);
             final int normalAltCount = normalAltCountAndQualSum.getFirst();
             final double normalQualSum = normalAltCountAndQualSum.getSecond();
             if (normalAltCount > normalPileup.size() * MAX_ALT_FRACTION_IN_NORMAL && normalQualSum > MAX_NORMAL_QUAL_SUM) {
                 return new ActivityProfileState(refInterval, 0.0);
             }
-        } else {
+        } else if (!MTAC.genotypeGermlineSites) {
             final List<VariantContext> germline = featureContext.getValues(MTAC.germlineResource, refInterval);
-            if (!germline.isEmpty() && germline.get(0).getAttributeAsDoubleList(VCFConstants.ALLELE_FREQUENCY_KEY, 0.0).get(0) > MTAC.maxPopulationAlleleFrequency) {
-                return new ActivityProfileState(refInterval, 0.0);
+            if (!germline.isEmpty()){
+                final List<Double> germlineAlleleFrequencies = germline.get(0).getAttributeAsDoubleList(VCFConstants.ALLELE_FREQUENCY_KEY, 0.0);
+                if (! germlineAlleleFrequencies.isEmpty() && germlineAlleleFrequencies.get(0) > MTAC.maxPopulationAlleleFrequency) {
+                    return new ActivityProfileState(refInterval, 0.0);
+                }
             }
         }
 

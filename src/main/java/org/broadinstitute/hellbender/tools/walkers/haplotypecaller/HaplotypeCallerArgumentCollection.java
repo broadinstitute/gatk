@@ -1,9 +1,15 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.VariantAnnotationArgumentCollection;
+import org.broadinstitute.barclay.argparser.Hidden;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.DefaultGATKVariantAnnotationArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationArgumentCollection;
+import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardHCAnnotation;
 
@@ -25,7 +31,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
      * of version 3.3 this concerns ChromosomeCounts, FisherStrand, StrandOddsRatio and QualByDepth.
      */
     @ArgumentCollection
-    public VariantAnnotationArgumentCollection variantAnnotationArgumentCollection = new VariantAnnotationArgumentCollection(
+    public GATKAnnotationArgumentCollection defaultGATKVariantAnnotationArgumentCollection = new DefaultGATKVariantAnnotationArgumentCollection(
             Arrays.asList(StandardAnnotation.class.getSimpleName(), StandardHCAnnotation.class.getSimpleName()),
             Collections.emptyList(),
             Collections.emptyList());
@@ -35,12 +41,36 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
      * is especially useful if your samples are all in the same file but you need to run them individually through HC
      * in -ERC GVC mode (which is the recommended usage). Note that the name is case-sensitive.
      */
-    @Argument(fullName = "sample_name", shortName = "sn", doc = "Name of single sample to use from a multi-sample bam", optional = true)
+    @Argument(fullName = StandardArgumentDefinitions.SAMPLE_NAME_LONG_NAME, shortName = StandardArgumentDefinitions.SAMPLE_ALIAS_SHORT_NAME, doc = "Name of single sample to use from a multi-sample bam", optional = true)
     public String sampleNameToUse = null;
+
+    /**
+     * rsIDs from this file are used to populate the ID column of the output. Also, the DB INFO flag will be set when appropriate.
+     * dbSNP is not used in any way for the calculations themselves.
+     */
+    @ArgumentCollection
+    public DbsnpArgumentCollection dbsnp = new DbsnpArgumentCollection();
 
     // -----------------------------------------------------------------------------------------------
     // general advanced arguments to control haplotype caller behavior
     // -----------------------------------------------------------------------------------------------
+
+    /**
+     * If a call overlaps with a record from the provided comp track, the INFO field will be annotated
+     * as such in the output with the track name (e.g. -comp:FOO will have 'FOO' in the INFO field). Records that are
+     * filtered in the comp track will be ignored. Note that 'dbSNP' has been special-cased (see the --dbsnp argument).
+     */
+    @Advanced
+    @Argument(fullName = "comp", shortName = "comp", doc = "Comparison VCF file(s)", optional = true)
+    public List<FeatureInput<VariantContext>> comps = Collections.emptyList();
+
+    /**
+     * The reference confidence mode makes it possible to emit a per-bp or summarized confidence estimate for a site being strictly homozygous-reference.
+     * See http://www.broadinstitute.org/gatk/guide/article?id=2940 for more details of how this works.
+     */
+    @Advanced
+    @Argument(fullName="emit-ref-confidence", shortName="ERC", doc="Mode for emitting reference confidence scores", optional = true)
+    public ReferenceConfidenceMode emitReferenceConfidence = ReferenceConfidenceMode.NONE;
 
     /**
      * When HC is run in reference confidence mode with banding compression enabled (-ERC GVCF), homozygous-reference
@@ -56,7 +86,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
      * and end at 100 (exclusive).
      */
     @Advanced
-    @Argument(fullName = "GVCFGQBands", shortName = "GQB", doc= "Exclusive upper bounds for reference confidence GQ bands " +
+    @Argument(fullName = "gvcf-gq-bands", shortName = "GQB", doc= "Exclusive upper bounds for reference confidence GQ bands " +
             "(must be in [1, 100] and specified in increasing order)", optional = true)
     public List<Integer> GVCFGQBands = new ArrayList<>(70);
     {
@@ -74,11 +104,40 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
      * position in the genome, given its alignment to the reference.
      */
     @Advanced
-    @Argument(fullName = "indelSizeToEliminateInRefModel", shortName = "ERCIS", doc = "The size of an indel to check for in the reference model", optional = true)
+    @Argument(fullName = "indel-size-to-eliminate-in-ref-model", doc = "The size of an indel to check for in the reference model", optional = true)
     public int indelSizeToEliminateInRefModel = 10;
 
 
     @Advanced
-    @Argument(fullName = "useAllelesTrigger", shortName = "allelesTrigger", doc = "Use additional trigger on variants found in an external alleles file", optional = true)
+    @Argument(fullName = "use-alleles-trigger", doc = "Use additional trigger on variants found in an external alleles file", optional = true)
     public boolean USE_ALLELES_TRIGGER = false;
+
+    /**
+     * If set, certain "early exit" optimizations in HaplotypeCaller, which aim to save compute and time by skipping
+     * calculations if an ActiveRegion is determined to contain no variants, will be disabled. This is most likely to be useful if
+     * you're using the -bamout argument to examine the placement of reads following reassembly and are interested in seeing the mapping of
+     * reads in regions with no variations. Setting the -forceActive and -dontTrimActiveRegions flags may also be necessary.
+     */
+    @Advanced
+    @Argument(fullName = "disable-optimizations", doc="Don't skip calculations in ActiveRegions with no variants",
+            optional = true)
+    public boolean disableOptimizations = false;
+
+    @Hidden
+    @Argument(fullName = "keep-rg", doc = "Only use reads from this read group when making calls (but use all reads to build the assembly)", optional = true)
+    public String keepRG = null;
+
+    /**
+     * This argument is intended for benchmarking and scalability testing.
+     */
+    @Hidden
+    @Argument(fullName = "just-determine-active-regions", doc = "Just determine ActiveRegions, don't perform assembly or calling", optional = true)
+    public boolean justDetermineActiveRegions = false;
+
+    /**
+     * This argument is intended for benchmarking and scalability testing.
+     */
+    @Hidden
+    @Argument(fullName = "dont-genotype", doc = "Perform assembly but do not genotype variants", optional = true)
+    public boolean dontGenotype = false;
 }

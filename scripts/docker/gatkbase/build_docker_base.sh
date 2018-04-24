@@ -6,7 +6,7 @@ set -e
 
 REPO=broadinstitute
 PROJECT=gatk
-VERSION=1.2
+VERSION=1.2.3
 FULL_PATH=${REPO}/${PROJECT}:gatkbase-${VERSION}
 
 #################################################
@@ -26,13 +26,6 @@ Optional arguments:  \n \
 -p \t push image to docker hub once complete. \n \n" $0
 	exit 1
 fi
-
-# Make sure sudo or root was used.
-if [ "$(whoami)" != "root" ]; then
-	echo "You must have superuser privileges (through sudo or root user) to run this script"
-	exit 1
-fi
-
 
 # Output the parameters
 echo -e "\n"

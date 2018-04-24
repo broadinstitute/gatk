@@ -6,7 +6,6 @@ import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -30,7 +29,7 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
                                                                                            Allele.create("TCTTTCCTTCCCTCCCTCCCTCCCTCCCTTCCTTCCCTCCCTCCCTC"),
                                                                                            Allele.create("TCCCTCCCTCCCTTCCTTCCCTCCCTCCCTC"),
                                                                                            altT,
-                                                                                           GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE));
+                                                                                              Allele.NON_REF_ALLELE));
 
     private static final List<Allele> gtAlleles = GATKVariantContextUtils.noCallAlleles(2);
     private static final SampleList SAMPLES = new IndexedSampleList("test");
@@ -84,7 +83,8 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
 
         // Make sure the spanning deletion is removed since the deletion was removed
         final Allele refAlleleSpanDel = Allele.create("C", true);
-        final List<Allele> vcAllelesSpanDel = new ArrayList<>(Arrays.asList(refAlleleSpanDel, Allele.SPAN_DEL, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE));
+        final List<Allele> vcAllelesSpanDel = new ArrayList<>(Arrays.asList(refAlleleSpanDel, Allele.SPAN_DEL,
+                                                                            Allele.NON_REF_ALLELE));
         final List<Genotype> genotypesSpanDel = Arrays.asList(
                 new GenotypeBuilder("sample1").alleles(gtAlleles).PL(new double[]{0, 0, 100, 0, 0, 0}).make(), // first alt
                 new GenotypeBuilder("sample2").alleles(gtAlleles).PL(new double[]{0, 0, 0, 0, 0, 0}).make());
@@ -103,8 +103,9 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
 
     @Test
     public void testGenotypesWithNonRefSymbolicAllelesAreNotNulled(){
-        final VariantContext vc = new VariantContextBuilder(null, "1", 100, 100, Arrays.asList(refA, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE))
-                .genotypes(GenotypeBuilder.create(SAMPLES.getSample(0), Arrays.asList(refA, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE))).make();
+        final VariantContext vc = new VariantContextBuilder(null, "1", 100, 100, Arrays.asList(refA,
+                                                                                               Allele.NON_REF_ALLELE))
+                .genotypes(GenotypeBuilder.create(SAMPLES.getSample(0), Arrays.asList(refA, Allele.NON_REF_ALLELE))).make();
         Assert.assertNotNull(getGenotypingEngine().calculateGenotypes(vc, GenotypeLikelihoodsCalculationModel.SNP, null));
     }
 
@@ -113,10 +114,10 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
         return new Object[][]{
                 {Collections.emptyList(), true},
                 {Collections.singletonList((Allele) null), true},
-                {Collections.singletonList(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE), false},
+                {Collections.singletonList(Allele.NON_REF_ALLELE), false},
                 {Collections.singletonList(altT), true},
-                {Arrays.asList(altT, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE), true},
-                {Arrays.asList(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE, altT), false},
+                {Arrays.asList(altT, Allele.NON_REF_ALLELE), true},
+                {Arrays.asList(Allele.NON_REF_ALLELE, altT), false},
         };
     }
 

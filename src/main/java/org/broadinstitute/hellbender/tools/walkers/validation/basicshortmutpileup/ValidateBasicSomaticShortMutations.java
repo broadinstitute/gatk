@@ -6,10 +6,10 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -17,13 +17,13 @@ import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedregion.SimpleAnnotatedGenomicRegion;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
+import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,27 +33,24 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
-
-        summary = "(Experimental) Bare-bones implementation heavily inspired by MutationValidator from Broad CGA group.\n" +
+        summary = "Bare-bones implementation heavily inspired by MutationValidator from Broad CGA group.\n" +
                 "The algorithm is not the same.\n" +
                 "This tool can only handle exactly one validation PAIR at a time and this should not be RNA.\n" +
                 "Multiallelics in a VCF are not supported and will be skipped.\n" +
                 "This tool will validate germline mutations as true positives.\n",
-        oneLineSummary = "(Experimental) Check the variants in a VCF against a tumor-normal pair of bams representing the same samples, though not the ones from the actual calls.",
-        programGroup = VariantProgramGroup.class
+        oneLineSummary = "Check the variants in a VCF against a tumor-normal pair of bams representing the same samples, though not the ones from the actual calls.",
+        programGroup = VariantEvaluationProgramGroup.class
 )
-@BetaFeature
+@ExperimentalFeature
+@DocumentedFeature
 public class ValidateBasicSomaticShortMutations extends VariantWalker {
-    public static final String SAMPLE_NAME_DISCOVERY_VCF_SHORT_NAME = "discv";
-    public static final String SAMPLE_NAME_DISCOVERY_VCF_LONG_NAME = "discoveryVariants";
-    public static final String SAMPLE_NAME_VALIDATION_CASE = "valcase";
-    public static final String SAMPLE_NAME_VALIDATION_CONTROL = "valcontrol";
+    public static final String SAMPLE_NAME_DISCOVERY_VCF_LONG_NAME = "discovery-sample-name";
+    public static final String SAMPLE_NAME_VALIDATION_CASE = "val-case-sample-name";
+    public static final String SAMPLE_NAME_VALIDATION_CONTROL = "val-control-sample-name";
     public final static int DEFAULT_MIN_BQ_CUTOFF = 20;
-    public final static String CUTOFF_SHORT_NAME = "bqcutoff";
     public final static String CUTOFF_LONG_NAME = "min-base-quality-cutoff";
 
-    @Argument(shortName = SAMPLE_NAME_DISCOVERY_VCF_SHORT_NAME,
-            fullName = SAMPLE_NAME_DISCOVERY_VCF_LONG_NAME,
+    @Argument(fullName = SAMPLE_NAME_DISCOVERY_VCF_LONG_NAME,
             doc = "sample name for discovery in VCF.")
     protected String discoverySampleInVcf;
 
@@ -62,16 +59,15 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
             doc = "The output file, which will be a validation table (tsv).")
     protected String outputFile;
 
-    @Argument(shortName = SAMPLE_NAME_VALIDATION_CASE,
+    @Argument(fullName = SAMPLE_NAME_VALIDATION_CASE,
             doc = "validation case sample name (in the bam)")
     protected String validationCaseName;
 
-    @Argument(shortName = SAMPLE_NAME_VALIDATION_CONTROL,
+    @Argument(fullName = SAMPLE_NAME_VALIDATION_CONTROL,
             doc = "validation control sample name (in the bam)")
     protected String validationControlName;
 
-    @Argument(shortName = CUTOFF_SHORT_NAME,
-            fullName = CUTOFF_LONG_NAME,
+    @Argument(fullName = CUTOFF_LONG_NAME,
             doc = "minimum base quality to count a read toward validation.",
             optional = true)
     public int minBqCutoff = DEFAULT_MIN_BQ_CUTOFF;
@@ -81,9 +77,9 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
         return true;
     }
 
-    public final static String CONTIG = SimpleAnnotatedGenomicRegion.CONTIG_HEADER;
-    public final static String START = SimpleAnnotatedGenomicRegion.START_HEADER;
-    public final static String END = SimpleAnnotatedGenomicRegion.END_HEADER;
+    public final static String CONTIG = "CONTIG";
+    public final static String START = "START";
+    public final static String END = "END";
     public final static String REF = "ref_allele";
     public final static String ALT = "alt_allele";
     public final static String DISCOVERY_ALT_COVERAGE = "t_alt_count";

@@ -361,6 +361,15 @@ public class ReadMetadata {
                                 "+" + stats.getPositiveMAD() + "\t" + stats.getCoverage() + "\t" +
                                 stats.getMeanBaseQuality() + "\t" +
                                 stats.getNReads() + "\t" + stats.getReadStartFrequency() + "\n");
+                final IntHistogram.CDF templateSizeCDF = stats.getCDF();
+                final int cdfSize = templateSizeCDF.size();
+                final long totalObservations = templateSizeCDF.getTotalObservations();
+                writer.write("template size cumulative counts:");
+                for(int idx = 0; idx < cdfSize; ++idx) {
+                    final long cumulativeCounts = Math.round(templateSizeCDF.getFraction(idx) * totalObservations);
+                    writer.write("\t" + cumulativeCounts);
+                }
+                writer.write("\n");
             }
             final PartitionBounds[] partitionBounds = readMetadata.partitionBounds;
             writer.write("\nPartition Boundaries\n");

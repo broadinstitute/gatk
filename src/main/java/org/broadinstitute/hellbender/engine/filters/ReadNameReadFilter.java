@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine.filters;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -16,7 +17,7 @@ import java.io.Serializable;
 public final class ReadNameReadFilter extends ReadFilter implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @Argument(fullName = "readName", shortName = "readName", doc="Keep only reads with this read name", optional=false)
+    @Argument(fullName = ReadFilterArgumentDefinitions.READ_NAME_LONG_NAME, doc="Keep only reads with this read name", optional=false)
     public String readName = null;
 
     @Override

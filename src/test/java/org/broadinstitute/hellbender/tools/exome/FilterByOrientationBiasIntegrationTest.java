@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class FilterByOrientationBiasIntegrationTest extends CommandLineProgramTest {
-    private static final File TEST_RESOURCE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/orientationbiasvariantfilter/");
+    private static final File TEST_RESOURCE_DIR = new File(toolsTestDir, "exome/orientationbiasvariantfilter/");
     public static final String emptyVcf = TEST_RESOURCE_DIR.getAbsolutePath() + "/empty.vcf";
     public static final String emptyVcfNoSamples = TEST_RESOURCE_DIR.getAbsolutePath() + "/empty_and_no_samples.vcf";
     public static final String smallM2VcfMore = TEST_RESOURCE_DIR.getAbsolutePath() + "/small_m2_more_variants.vcf";

@@ -58,7 +58,7 @@ public final class NativeUtils {
         Utils.validateArg(libraryPathInJar.startsWith("/"), "library path in jar must be absolute");
 
         try {
-            final File extractedLibrary = IOUtils.writeTempResource(new Resource(libraryPathInJar, NativeUtils.class));
+            final File extractedLibrary = IOUtils.writeTempResourceFromPath(libraryPathInJar, NativeUtils.class);
             extractedLibrary.deleteOnExit();
             System.load(extractedLibrary.getAbsolutePath());
         }

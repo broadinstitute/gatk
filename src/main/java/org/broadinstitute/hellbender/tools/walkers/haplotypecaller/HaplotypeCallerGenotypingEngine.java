@@ -2,10 +2,8 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import org.apache.commons.collections4.ListUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -20,15 +18,12 @@ import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
-import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -42,6 +37,7 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
     private final IndependentSampleGenotypesModel genotypingModel;
 
     private final PloidyModel ploidyModel;
+    private final ReferenceConfidenceMode referenceConfidenceMode;
 
     private final int maxGenotypeCountToEnumerate;
     private final Map<Integer, Integer> practicalAlleleCountForPloidy = new HashMap<>();
@@ -52,17 +48,24 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
      * @param samples {@inheritDoc}
      * @param doPhysicalPhasing whether to try physical phasing.
      */
-    public HaplotypeCallerGenotypingEngine(final AssemblyBasedCallerArgumentCollection configuration, final SampleList samples,
+    public HaplotypeCallerGenotypingEngine(final HaplotypeCallerArgumentCollection configuration, final SampleList samples,
                                            final AFCalculatorProvider afCalculatorProvider, final boolean doPhysicalPhasing) {
         super(configuration, samples, afCalculatorProvider, doPhysicalPhasing);
         ploidyModel = new HomogeneousPloidyModel(samples,configuration.genotypeArgs.samplePloidy);
         genotypingModel = new IndependentSampleGenotypesModel();
         maxGenotypeCountToEnumerate = configuration.genotypeArgs.MAX_GENOTYPE_COUNT;
+        referenceConfidenceMode = configuration.emitReferenceConfidence;
     }
 
     @Override
     protected String callSourceString() {
         return "HC_call";
+    }
+
+    @Override
+    protected boolean forceKeepAllele(final Allele allele) {
+        return allele == Allele.NON_REF_ALLELE || referenceConfidenceMode != ReferenceConfidenceMode.NONE
+                || configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES;
     }
 
 
@@ -140,7 +143,7 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
 
             if (emitReferenceConfidence) {
                 mergedVC = addNonRefSymbolicAllele(mergedVC);
-                readAlleleLikelihoods.addNonReferenceAllele(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+                readAlleleLikelihoods.addNonReferenceAllele(Allele.NON_REF_ALLELE);
             }
 
             final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles);
@@ -306,7 +309,7 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
     }
 
     private VariantContext addNonRefSymbolicAllele(final VariantContext mergedVC) {
-        final List<Allele> alleleList = ListUtils.union(mergedVC.getAlleles(), Arrays.asList(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE));
+        final List<Allele> alleleList = ListUtils.union(mergedVC.getAlleles(), Arrays.asList(Allele.NON_REF_ALLELE));
         return new VariantContextBuilder(mergedVC).alleles(alleleList).make();
     }
 

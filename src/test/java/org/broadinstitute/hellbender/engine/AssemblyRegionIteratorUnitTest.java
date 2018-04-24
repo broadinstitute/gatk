@@ -24,6 +24,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -32,12 +33,19 @@ public class AssemblyRegionIteratorUnitTest extends GATKBaseTest {
     @DataProvider
     public Object[][] testCorrectRegionsHaveCorrectReadsAndSizeData() {
         return new Object[][] {
-                { NA12878_20_21_WGS_bam, b37_reference_20_21, new SimpleInterval("20", 10000000, 10100000), 50, 300, 100 }
+                // One large interval in the shard
+                { NA12878_20_21_WGS_bam, b37_reference_20_21, Arrays.asList(new SimpleInterval("20", 10000000, 10100000)), 50, 300, 100 },
+                // Multiple intervals in the shard, same contig, no overlap
+                { NA12878_20_21_WGS_bam, b37_reference_20_21, Arrays.asList(new SimpleInterval("20", 10000000, 10010000), new SimpleInterval("20", 10040000, 10050000), new SimpleInterval("20", 10060000, 10070000)), 50, 300, 100 },
+                // Multiple intervals in the shard that overlap when padded
+                { NA12878_20_21_WGS_bam, b37_reference_20_21, Arrays.asList(new SimpleInterval("20", 10000000, 10020000), new SimpleInterval("20", 10020050, 10030000)), 50, 300, 100 },
+                // Multiple intervals in the shard, on multiple contigs
+                { NA12878_20_21_WGS_bam, b37_reference_20_21, Arrays.asList(new SimpleInterval("20", 10000000, 10010000), new SimpleInterval("21", 10013000, 10015000)), 50, 300, 100 },
         };
     }
 
     /*
-     * This test checks that over a 100,000 base interval, all assembly regions created by the AssemblyRegionIterator
+     * This test checks that over various intervals, all assembly regions created by the AssemblyRegionIterator
      * have the correct reads, that the reads are stored in the correct order, and that region padding and other
      * settings are respected.
      *
@@ -45,12 +53,12 @@ public class AssemblyRegionIteratorUnitTest extends GATKBaseTest {
      * the query results match the reads actually in the region.
      */
     @Test(dataProvider = "testCorrectRegionsHaveCorrectReadsAndSizeData")
-    public void testRegionsHaveCorrectReadsAndSize( final String reads, final String reference, final SimpleInterval shardInterval, final int minRegionSize, final int maxRegionSize, final int assemblyRegionPadding ) throws IOException {
+    public void testRegionsHaveCorrectReadsAndSize( final String reads, final String reference, final List<SimpleInterval> shardIntervals, final int minRegionSize, final int maxRegionSize, final int assemblyRegionPadding ) throws IOException {
         try ( final ReadsDataSource readsSource = new ReadsDataSource(IOUtils.getPath(reads));
-              final ReferenceDataSource refSource = ReferenceDataSource.of(new File(reference)) ) {
+              final ReferenceDataSource refSource = ReferenceDataSource.of(IOUtils.getPath(reference)) ) {
             final SAMSequenceDictionary readsDictionary = readsSource.getSequenceDictionary();
-            final LocalReadShard readShard = new LocalReadShard(shardInterval, shardInterval.expandWithinContig(assemblyRegionPadding, readsDictionary), readsSource);
-            final AssemblyRegionEvaluator evaluator = new HaplotypeCallerEngine(new HaplotypeCallerArgumentCollection(), false, false, readsSource.getHeader(), new CachingIndexedFastaSequenceFile(new File(b37_reference_20_21)));
+            final MultiIntervalLocalReadShard readShard = new MultiIntervalLocalReadShard(shardIntervals, assemblyRegionPadding, readsSource);
+            final AssemblyRegionEvaluator evaluator = new HaplotypeCallerEngine(new HaplotypeCallerArgumentCollection(), false, false, readsSource.getHeader(), new CachingIndexedFastaSequenceFile(IOUtils.getPath(b37_reference_20_21)));
             final ReadCoordinateComparator readComparator = new ReadCoordinateComparator(readsSource.getHeader());
 
             final List<ReadFilter> readFilters = new ArrayList<>(2);
@@ -161,10 +169,10 @@ public class AssemblyRegionIteratorUnitTest extends GATKBaseTest {
     @Test(dataProvider = "testIncludeReadsWithDeletionsInIsActivePileupsData")
     public void testIncludeReadsWithDeletionsInIsActivePileups(final String reads, final String reference, final SimpleInterval deletionInterval, final boolean includeReadsWithDeletionsInIsActivePileups, final int expectedNumDeletions) {
         try ( final ReadsDataSource readsSource = new ReadsDataSource(IOUtils.getPath(reads));
-              final ReferenceDataSource refSource = ReferenceDataSource.of(new File(reference)) ) {
+              final ReferenceDataSource refSource = ReferenceDataSource.of(IOUtils.getPath(reference)) ) {
             final SAMSequenceDictionary readsDictionary = readsSource.getSequenceDictionary();
             final SimpleInterval shardInterval = deletionInterval.expandWithinContig(50, readsDictionary);
-            final LocalReadShard readShard = new LocalReadShard(shardInterval, shardInterval.expandWithinContig(50, readsDictionary), readsSource);
+            final MultiIntervalLocalReadShard readShard = new MultiIntervalLocalReadShard(Arrays.asList(shardInterval), 50, readsSource);
 
             // Set up our fake AssemblyRegionEvaluator to check that the deletionInterval locus contains
             // expectedNumDeletions reads with deletions in its pileup during the call to isActive()

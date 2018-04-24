@@ -9,9 +9,10 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicatesArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -24,10 +25,11 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateF
 import java.util.Collections;
 import java.util.List;
 
+@DocumentedFeature
 @CommandLineProgramProperties(
         summary ="Marks duplicates on spark",
         oneLineSummary ="MarkDuplicates on Spark",
-        programGroup = SparkProgramGroup.class)
+        programGroup = ReadDataManipulationProgramGroup.class)
 @BetaFeature
 public final class MarkDuplicatesSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
@@ -76,7 +78,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         if (metricsFile != null) {
             final JavaPairRDD<String, DuplicationMetrics> metricsByLibrary = MarkDuplicatesSparkUtils.generateMetrics(getHeaderForReads(), finalReadsForMetrics);
             final MetricsFile<DuplicationMetrics, Double> resultMetrics = getMetricsFile();
-            MarkDuplicatesSparkUtils.saveMetricsRDD(resultMetrics, getHeaderForReads(), metricsByLibrary, metricsFile, getAuthHolder());
+            MarkDuplicatesSparkUtils.saveMetricsRDD(resultMetrics, getHeaderForReads(), metricsByLibrary, metricsFile);
         }
 
         final JavaRDD<GATKRead> finalReads = cleanupTemporaryAttributes(finalReadsForMetrics);

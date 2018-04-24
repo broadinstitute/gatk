@@ -3,10 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import com.google.common.base.Strings;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypeLikelihoods;
-import htsjdk.variant.variantcontext.GenotypeType;
-import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFSimpleHeaderLine;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
@@ -378,7 +375,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
                                 refModel.getStart() - call.getStart() + 1), refModel.getReference().getBaseString(), "" + data.getRefHap()); // the reference must be the same.
                     Assert.assertTrue(refModel.getGenotype(0).getGQ() <= 0); // No confidence in the reference hom-ref call across the deletion
                     Assert.assertEquals(refModel.getAlleles().size(),2); // the reference and the lonelly <NON_REF>
-                    Assert.assertEquals(refModel.getAlleles().get(1), GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+                    Assert.assertEquals(refModel.getAlleles().get(1), Allele.NON_REF_ALLELE);
                 } else {
                     Assert.assertEquals(refModel, call, "Should have found call " + call + " but found " + refModel + " instead");
                 }
@@ -389,7 +386,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
                 Assert.assertEquals(refModel.getEnd(), loc.getStart() + i);
                 Assert.assertFalse(refModel.hasLog10PError());
                 Assert.assertEquals(refModel.getAlternateAlleles().size(), 1);
-                Assert.assertEquals(refModel.getAlternateAllele(0), GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+                Assert.assertEquals(refModel.getAlternateAllele(0), Allele.NON_REF_ALLELE);
                 Assert.assertTrue(refModel.hasGenotype(sample));
 
                 final Genotype g = refModel.getGenotype(sample);
@@ -414,4 +411,53 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
             Assert.assertEquals((boolean)seenBP.get(i), true);
         }
     }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testRefVsAnyResultNotNegative() throws Exception {
+        new ReferenceConfidenceModel.RefVsAnyResult(-1);
+    }
+    @Test
+    public void testRefVsAnyResultConstructor() throws Exception {
+        final ReferenceConfidenceModel.RefVsAnyResult res = new ReferenceConfidenceModel.RefVsAnyResult(3);
+        Assert.assertEquals(res.getAD().length, 2);
+        Assert.assertEquals(res.getGenotypeLikelihoodsCappedByHomRefLikelihood().length, 3);
+        Assert.assertEquals(res.getDP(), 0);
+        Assert.assertEquals(res.getAD(), new int[]{0, 0});
+        Assert.assertEquals(res.getGenotypeLikelihoodsCappedByHomRefLikelihood(), new double[]{0.0, 0.0, 0.0});
+    }
+
+    @Test
+    public void testRefVsAnyResultADInc() throws Exception {
+        final ReferenceConfidenceModel.RefVsAnyResult res = new ReferenceConfidenceModel.RefVsAnyResult(3);
+        res.refDepth += 2;
+        res.nonRefDepth += 3;
+        Assert.assertEquals(res.getAD(), new int[]{2, 3});
+    }
+
+    @Test
+    public void testRefVsAnyResultCapByHomRefLikelihood() throws Exception {
+        final ReferenceConfidenceModel.RefVsAnyResult res = new ReferenceConfidenceModel.RefVsAnyResult(3);
+        res.genotypeLikelihoods[0] += 100;
+        res.genotypeLikelihoods[1] += 200;
+        res.genotypeLikelihoods[2] += 60;
+        Assert.assertEquals(res.getGenotypeLikelihoodsCappedByHomRefLikelihood(), new double[]{100.0, 100.0, 60.0});
+    }
+
+    @Test
+    public void testRefVsAnyResultArrays() throws Exception {
+        final ReferenceConfidenceModel.RefVsAnyResult res = new ReferenceConfidenceModel.RefVsAnyResult(3);
+        res.refDepth += 2;
+        res.nonRefDepth += 3;
+        final int[] adArray = res.getAD();
+        Assert.assertEquals(adArray, new int[]{2, 3});
+
+        adArray[0] = 17;
+        Assert.assertEquals(res.getAD(), new int[]{2, 3}); //verify that the ad array is a copy
+
+        Assert.assertEquals(res.getGenotypeLikelihoodsCappedByHomRefLikelihood(), new double[]{0, 0, 0});
+        double[] liks = res.getGenotypeLikelihoodsCappedByHomRefLikelihood();
+        liks[0] = 19;
+        Assert.assertEquals(res.getGenotypeLikelihoodsCappedByHomRefLikelihood(), new double[]{0, 0, 0}); //verify that the GL array is a copy
+    }
+
 }

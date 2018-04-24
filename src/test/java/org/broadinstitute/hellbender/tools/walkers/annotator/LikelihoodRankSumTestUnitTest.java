@@ -82,11 +82,4 @@ public final class LikelihoodRankSumTestUnitTest extends GATKBaseTest {
         Assert.assertEquals(annotate.get(GATKVCFConstants.LIKELIHOOD_RANK_SUM_KEY), zScoreStr);
     }
 
-    @Test(expectedExceptions = IllegalStateException.class)
-    public void testBlowupOnCallWithoutAllele(){
-        final LikelihoodRankSumTest ann = new LikelihoodRankSumTest();
-        final GATKRead read1 = makeRead();
-        ann.getElementForRead(read1, read1.getStart());
-    }
-
 }

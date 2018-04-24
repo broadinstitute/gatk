@@ -13,10 +13,12 @@ import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.SimpleFeature;
 import htsjdk.variant.utils.SAMSequenceDictionaryExtractor;
+import htsjdk.variant.vcf.VCFFileReader;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -24,6 +26,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -424,7 +427,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void testGetContigLengths() {
-        Map<String, Integer> lengths = IntervalUtils.getContigSizes(new File(GATKBaseTest.exampleReference));
+        Map<String, Integer> lengths = IntervalUtils.getContigSizes(IOUtils.getPath(GATKBaseTest.exampleReference));
         Assert.assertEquals((long)lengths.get("1"), 16000);
         Assert.assertEquals((long)lengths.get("2"), 16000);
         Assert.assertEquals((long) lengths.get("3"), 16000);
@@ -436,6 +439,203 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(hg19ReferenceLocs.size(), 4);
         Assert.assertEquals(intervalStringsToGenomeLocs("1", "2", "3").size(), 3);
         Assert.assertEquals(intervalStringsToGenomeLocs("1:1-2", "1:4-5", "2:1-1", "3:2-2").size(), 4);
+    }
+
+    private SAMSequenceDictionary getAmbiguousSequenceDictionary() {
+        // The following strings represent a set of valid contig names, each of which can also be interpreted
+        // as a valid interval query against some *other* contig in the same list (except the last one). That
+        // is, each is comprised of a prefix that appears as another contig in the list, followed by a suffix
+        // that is a valid query against that prefix.
+        //
+        // Given a sequence dictionary containing all of these contigs, each contig name, when used as an
+        // interval query, should be rejected as ambiguous.
+        List<String> ambiguousContigNames = Arrays.asList(
+                "HLA-A*01:02:03:04",    // prefix: HLA-A*01:02:03       suffix: :04
+                "HLA-A*01:02:03:04+",   // prefix: HLA-A*01:02:03       suffix: :04+
+                "HLA-A*01:02:03:04:99", // prefix: HLA-A*01:02:03:04    suffix: :99
+                "HLA-A*01:02:03:04-99", // prefix: HLA-A*01:02:03       suffix: :04-99
+                "HLA-A*01:02:03",       // prefix: HLA-A*01:02          suffix: :03
+                "HLA-A*01:02",          // prefix: HLA-A*01             suffix: :02
+
+                "HLA-A*01"              // no valid prefix
+        );
+
+        final SAMSequenceDictionary ambiguousContigDictionary = new SAMSequenceDictionary();
+        ambiguousContigNames.forEach(s -> ambiguousContigDictionary.addSequence(new SAMSequenceRecord(s, 99)));
+        return ambiguousContigDictionary;
+    }
+
+    @DataProvider(name = "ambiguousIntervalQueries")
+    public Object[][] getAmbiguousIntervalQueries() {
+        return new Object[][]{
+                // query interval string, expected ambiguous intervals
+
+                // query intervals with more than one interpretation
+                { "HLA-A*01:02:03:04",
+                        Arrays.asList(
+                            new SimpleInterval("HLA-A*01:02:03:04", 1, 99),
+                            new SimpleInterval("HLA-A*01:02:03", 4, 4)) },
+                { "HLA-A*01:02:03:04+",
+                        Arrays.asList(
+                                new SimpleInterval("HLA-A*01:02:03:04+", 1, 99),
+                                new SimpleInterval("HLA-A*01:02:03", 4, 99)) },
+                { "HLA-A*01:02:03:04:99",
+                        Arrays.asList(
+                                new SimpleInterval("HLA-A*01:02:03:04:99", 1, 99),
+                                new SimpleInterval("HLA-A*01:02:03:04", 99, 99)) },
+                { "HLA-A*01:02:03:04-99",
+                        Arrays.asList(
+                                new SimpleInterval("HLA-A*01:02:03:04-99", 1, 99),
+                                new SimpleInterval("HLA-A*01:02:03", 4, 99)) },
+                { "HLA-A*01:02:03",
+                        Arrays.asList(
+                                new SimpleInterval("HLA-A*01:02:03", 1, 99),
+                                new SimpleInterval("HLA-A*01:02", 3, 3)) },
+                { "HLA-A*01:02",
+                        Arrays.asList(
+                                new SimpleInterval("HLA-A*01:02", 1, 99),
+                                new SimpleInterval("HLA-A*01", 2, 2)) },
+
+                { "HLA:02", Collections.EMPTY_LIST},  // embedded :, but no valid prefix
+                { "HLA-A*01",
+                        Arrays.asList(new SimpleInterval("HLA-A*01", 1, 99)) }
+        };
+    }
+
+    @Test(dataProvider = "ambiguousIntervalQueries")
+    public void testAmbiguousIntervalQueries(final String ambiguousQuery, final List<String> expectedAmbiguousContigs) {
+        final SAMSequenceDictionary sd = getAmbiguousSequenceDictionary();
+        Assert.assertEquals(new HashSet<>(IntervalUtils.getResolvedIntervals(ambiguousQuery, sd)), new HashSet<>(expectedAmbiguousContigs));
+    }
+
+    @Test(expectedExceptions = NumberFormatException.class)
+    public void testMalformedQueryFail() {
+        final SAMSequenceDictionary sd = getAmbiguousSequenceDictionary();
+        sd.addSequence(new SAMSequenceRecord("contig:1-10", 99));
+        sd.addSequence(new SAMSequenceRecord("contig", 99));
+        IntervalUtils.getResolvedIntervals("contig:abc-dce", sd);
+    }
+
+    @Test
+    public void testMalformedAmbiguousQuerySucceeds() {
+        final SAMSequenceDictionary sd = getAmbiguousSequenceDictionary();
+        final String queryString = "contig:abc-dce";
+
+        sd.addSequence(new SAMSequenceRecord("contig", 99));
+        sd.addSequence(new SAMSequenceRecord(queryString, 99));
+
+        // the query string matches as a full contig, but also has a prefix that matches the contig "contig". When
+        // viewed as the latter, however, the start-end positions fail to parse as numbers. This resolves as a query
+        // against the longer contig "contig:abc-dce", and logs a warning
+        HashSet<SimpleInterval> expectedIntervals = new HashSet<>();
+        expectedIntervals.add(new SimpleInterval(queryString, 1, 99));
+        Assert.assertEquals(
+                new HashSet<>(IntervalUtils.getResolvedIntervals(queryString, sd)),
+                new HashSet<>(expectedIntervals));
+    }
+
+    @Test
+    public void testUseAllHG38ContigsInIntervalQuery() {
+        SAMSequenceDictionary sd;
+
+        final File testFile = new File ("src/test/resources/org/broadinstitute/hellbender/engine/Homo_sapiens_assembly38.headerOnly.vcf.gz");
+        try (VCFFileReader vcfReader = new VCFFileReader(testFile, false)) {
+            sd = vcfReader.getFileHeader().getSequenceDictionary();
+        }
+
+        // Pull each contig from hg38 and validate that it can be used as a interval string without
+        // being rejected as ambiguous.
+        sd.getSequences().stream().forEach(
+                hg38Contig -> {
+                    // query using just the raw contig name
+                    assertValidUniqueInterval(
+                            sd,
+                            hg38Contig.getSequenceName(),
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength())
+                    );
+
+                    // query using the format "name:1"
+                    assertValidUniqueInterval(
+                            sd,
+                            hg38Contig.getSequenceName() + ":1",
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, 1)
+                    );
+
+                    // query using the format "name:1+"
+                    assertValidUniqueInterval(
+                            sd,
+                            hg38Contig.getSequenceName() + ":1+",
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength())
+                    );
+
+                    // query using the format "name:1-end"
+                    assertValidUniqueInterval(
+                            sd,
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength()).toString(),
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength())
+                    );
+                }
+        );
+    }
+
+    @Test
+    public void testResolveAmbiguousIntervalQueryUsingBEDFormat() throws IOException {
+        // For the rare case where an interval query is ambiguous, make sure it can be resolved by using a bed file.
+        final SAMSequenceDictionary ambiguousSequenceDictionary = getAmbiguousSequenceDictionary();
+
+        // use a test interval that has more than one interpretation
+        // "HLA-A*01:02:03:04",
+        //      -> new SimpleInterval("HLA-A*01:02:03:04", 1, 99)
+        //      -> new SimpleInterval("HLA-A*01:02:03", 4, 4)
+        final File bedFile = createTempFile("testAmbiguousInterval", ".bed");
+
+        final int BED_START = 1;
+        final int BED_END = 99;
+        final String TARGET_CONTIG = "HLA-A*01:02:03:04";
+        try (FileWriter bedWriter = new FileWriter(bedFile)) {
+            bedWriter.write(String.format("%s\t%d\t%d", TARGET_CONTIG, BED_START, BED_END));
+        }
+        final GenomeLocParser genomeLocParser = new GenomeLocParser(ambiguousSequenceDictionary);
+
+        // first, make sure we're using a query that is actually ambiguous
+        Assert.assertThrows(UserException.MalformedGenomeLoc.class, () -> IntervalUtils.parseIntervalArguments(genomeLocParser, TARGET_CONTIG));
+
+        // now use the bed file
+        final List<GenomeLoc> intervalList = IntervalUtils.parseIntervalArguments(genomeLocParser, bedFile.getAbsolutePath());
+
+        // validate the (translated from Bed) interval coordinates
+        Assert.assertEquals(intervalList.size(), 1);
+        Assert.assertEquals(intervalList.get(0).getContig(), TARGET_CONTIG);
+        Assert.assertEquals(intervalList.get(0).getStart(), BED_START + 1);
+        Assert.assertEquals(intervalList.get(0).getEnd(), BED_END);
+    }
+
+    private void assertValidUniqueInterval(
+            final SAMSequenceDictionary sequenceDictionary,
+            final String queryString,
+            final SimpleInterval expectedInterval) {
+        final List<SimpleInterval> ambiguousIntervals = IntervalUtils.getResolvedIntervals(queryString, sequenceDictionary);
+        Assert.assertNotNull(ambiguousIntervals);
+        Assert.assertEquals(ambiguousIntervals.size(), 1);
+        Assert.assertEquals(ambiguousIntervals.get(0), expectedInterval);
+    }
+
+    @Test
+    public void testTerminatingPlusSign() {
+        // special case test for a query "prefix:+", where "prefix:" is a valid contig
+        final SAMSequenceDictionary sd = getAmbiguousSequenceDictionary();
+        final String contigPrefix = "prefix:";
+        sd.addSequence(new SAMSequenceRecord(contigPrefix, 99));
+        Assert.assertEquals(
+                new HashSet<>(IntervalUtils.getResolvedIntervals(contigPrefix + "+", sd)),
+                new HashSet<>());
+
+        sd.addSequence(new SAMSequenceRecord(contigPrefix + "+", 99));
+        HashSet<SimpleInterval> expectedIntervals = new HashSet<>();
+        expectedIntervals.add(new SimpleInterval("prefix:+", 1, 99));
+        Assert.assertEquals(
+                new HashSet<>(IntervalUtils.getResolvedIntervals(contigPrefix + "+", sd)),
+                expectedIntervals);
     }
 
     @Test
@@ -1806,7 +2006,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
     @Test(dataProvider = "genomicSortingTests")
     public void testBasicGenomicSortOfLocatable(final List<Locatable> testList, final List<Locatable> gtList) throws IOException {
 
-        final SAMSequenceDictionary dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(FULL_HG19_DICT));
+        final SAMSequenceDictionary dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(FULL_HG19_DICT).toPath());
         testList.sort(IntervalUtils.getDictionaryOrderComparator(dictionary));
         Assert.assertEquals(testList, gtList);
     }
@@ -1829,7 +2029,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
                new SimpleInterval("GL1234.123NOT_IN_DICT", 3500, 4000)
         );
 
-        final SAMSequenceDictionary dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(FULL_HG19_DICT));
+        final SAMSequenceDictionary dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(FULL_HG19_DICT).toPath());
         testList.sort(IntervalUtils.getDictionaryOrderComparator(dictionary));
     }
 
@@ -1864,5 +2064,61 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
                 {list1, gtList1},
                 {list2, gtList2}
         };
+    }
+
+    @DataProvider
+    public Object[][] createGetIntervalsWithFlanksData() {
+        final SAMSequenceDictionary dictionary = ArtificialReadUtils.createArtificialSamHeader().getSequenceDictionary();
+
+        return new Object[][] {
+                // input intervals, padding, dictionary, expected output intervals
+                { Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200), new SimpleInterval("1", 300, 400), new SimpleInterval("2", 50, 150), new SimpleInterval("2", 175, 250)),
+                  0, dictionary,
+                  Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200), new SimpleInterval("1", 300, 400), new SimpleInterval("2", 50, 150), new SimpleInterval("2", 175, 250))
+                },
+                { Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200), new SimpleInterval("1", 300, 400), new SimpleInterval("2", 50, 150), new SimpleInterval("2", 175, 250)),
+                  20, dictionary,
+                  Arrays.asList(new SimpleInterval("1", 1, 120), new SimpleInterval("1", 130, 220), new SimpleInterval("1", 280, 420), new SimpleInterval("2", 30, 270))
+                },
+                { Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200), new SimpleInterval("1", 300, 400), new SimpleInterval("2", 50, 150), new SimpleInterval("2", 175, 250)),
+                  25, dictionary,
+                  Arrays.asList(new SimpleInterval("1", 1, 225), new SimpleInterval("1", 275, 425), new SimpleInterval("2", 25, 275))
+                },
+                { Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200), new SimpleInterval("1", 300, 400), new SimpleInterval("2", 50, 150), new SimpleInterval("2", 175, 250)),
+                  50, dictionary,
+                  Arrays.asList(new SimpleInterval("1", 1, 450), new SimpleInterval("2", 1, 300))
+                }
+        };
+    }
+
+    @Test(dataProvider = "createGetIntervalsWithFlanksData")
+    public void testGetIntervalsWithFlanks(final List<SimpleInterval> inputIntervals, final int padding, final SAMSequenceDictionary dictionary, final List<SimpleInterval> expectedIntervals) {
+        final List<SimpleInterval> result = IntervalUtils.getIntervalsWithFlanks(inputIntervals, padding, dictionary);
+        Assert.assertEquals(result, expectedIntervals);
+    }
+
+    @DataProvider
+    public Object[][] createGroupIntervalsByContigTestData() {
+        return new Object[][] {
+                // input intervals, expected output
+                { Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200), new SimpleInterval("1", 300, 400), new SimpleInterval("2", 50, 150), new SimpleInterval("2", 175, 250)),
+                  Arrays.asList(Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200), new SimpleInterval("1", 300, 400)), Arrays.asList(new SimpleInterval("2", 50, 150), new SimpleInterval("2", 175, 250)))
+                },
+                { Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("2", 150, 200), new SimpleInterval("3", 300, 400), new SimpleInterval("5", 50, 150), new SimpleInterval("6", 175, 250)),
+                  Arrays.asList(Arrays.asList(new SimpleInterval("1", 1, 100)), Arrays.asList(new SimpleInterval("2", 150, 200)), Arrays.asList(new SimpleInterval("3", 300, 400)), Arrays.asList(new SimpleInterval("5", 50, 150)), Arrays.asList(new SimpleInterval("6", 175, 250)))
+                },
+                { Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200)),
+                  Arrays.asList(Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200)))
+                },
+                { Arrays.asList(new SimpleInterval("1", 1, 100)),
+                  Arrays.asList(Arrays.asList(new SimpleInterval("1", 1, 100)))
+                },
+        };
+    }
+
+    @Test(dataProvider = "createGroupIntervalsByContigTestData")
+    public void testGroupIntervalsByContig(final List<SimpleInterval> inputIntervals, final List<List<SimpleInterval>> expectedResult) {
+        final List<List<SimpleInterval>> result = IntervalUtils.groupIntervalsByContig(inputIntervals);
+        Assert.assertEquals(result, expectedResult);
     }
 }

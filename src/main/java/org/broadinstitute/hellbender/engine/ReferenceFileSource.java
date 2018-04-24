@@ -3,13 +3,11 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequence;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.iterators.ByteArrayIterator;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Iterator;
 
 /**
@@ -32,11 +30,27 @@ public final class ReferenceFileSource implements ReferenceDataSource {
      *
      * The provided fasta file must have companion .fai and .dict files.
      *
-     * @param fastaFile reference fasta file
+     * @param fastaPath reference fasta file
      */
-    public ReferenceFileSource(final File fastaFile) {
+    public ReferenceFileSource(final Path fastaPath) {
         // Will throw a UserException if the .fai and/or .dict are missing
-        reference = CachingIndexedFastaSequenceFile.checkAndCreate(Utils.nonNull(fastaFile));
+        reference = CachingIndexedFastaSequenceFile.checkAndCreate(Utils.nonNull(fastaPath));
+    }
+
+    /**
+     * Initialize this data source using a fasta file.
+     *
+     * The provided fasta file must have companion .fai and .dict files.
+     *
+     * If {@code preserveFileBases} is {@code true}, will NOT convert IUPAC bases in the file to `N` and will NOT capitalize lower-case bases.
+     * NOTE: Most GATK tools do not support data created by setting {@code preserveFileBases} to {@code true}.
+     *
+     * @param fastaPath reference fasta file
+     * @param preserveFileBases Whether to preserve the original bases in the given reference file path.
+     */
+    public ReferenceFileSource(final Path fastaPath, final boolean preserveFileBases) {
+        // Will throw a UserException if the .fai and/or .dict are missing
+        reference = CachingIndexedFastaSequenceFile.checkAndCreate(Utils.nonNull(fastaPath), preserveFileBases);
     }
 
     /**

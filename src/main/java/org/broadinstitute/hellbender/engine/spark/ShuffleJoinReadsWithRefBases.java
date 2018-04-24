@@ -15,7 +15,6 @@ import scala.Tuple2;
 
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 /**
  * RefBasesForReads queries the Google Genomics API for reference bases overlapping all of the reads.
@@ -83,7 +82,7 @@ public final class ShuffleJoinReadsWithRefBases {
             final List<SimpleInterval> readWindows = Utils.stream(iReads).map(read -> windowFunction.apply(read)).collect(Collectors.toList());
 
             SimpleInterval interval = IntervalUtils.getSpanningInterval(readWindows);
-            ReferenceBases bases = referenceDataflowSource.getReferenceBases(null, interval);
+            ReferenceBases bases = referenceDataflowSource.getReferenceBases(interval);
             for (GATKRead r : iReads) {
                 final ReferenceBases subset = bases.getSubset(windowFunction.apply(r));
                 out.add(new Tuple2<>(r, subset));
@@ -120,7 +119,7 @@ public final class ShuffleJoinReadsWithRefBases {
 
             SimpleInterval interval = IntervalUtils.getSpanningInterval(readWindows);
             // TODO: don't we need to support GCS PipelineOptions?
-            ReferenceBases bases = referenceDataflowSource.getReferenceBases(null, interval);
+            ReferenceBases bases = referenceDataflowSource.getReferenceBases(interval);
             for (Tuple2<GATKRead, T> p : iReads) {
                 final ReferenceBases subset = bases.getSubset(windowFunction.apply(p._1()));
                 out.add(new Tuple2<>(p._1(), new Tuple2<>(p._2(), subset)));

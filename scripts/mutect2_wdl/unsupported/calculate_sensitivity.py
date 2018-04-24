@@ -27,9 +27,6 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 
-DEPTH_BINS = [0,50,100,150,200,250,300,350,400,450,500,550,600,650,700,750,800]
-DEPTH_JITTER = 25
-
 SNP_AF_BINS = [0.05, 0.1, 0.2, 0.4, 0.8, 1.0]
 INDEL_AF_BINS = [0.1, 0.2, 1]
 AF_JITTER = 0.05
@@ -42,7 +39,7 @@ STATUS_COLUMN = 'STATUS' # 1 if called, 0 otherwise
 def flatten(x):
     return list(chain.from_iterable(x))
 
-def generate_sensitivity_table(df, snp_or_indel):
+def generate_sensitivity_table(df, snp_or_indel, depth_bins, depth_bin_width):
 
     def assign_bin(x, bins, jitter):
         """ Assigns 'x' into a bin +/- jitter. """
@@ -53,7 +50,7 @@ def generate_sensitivity_table(df, snp_or_indel):
         return np.NaN
 
     def assign_depth_bin(depth):
-        return assign_bin(depth, DEPTH_BINS, DEPTH_JITTER)
+        return assign_bin(depth, depth_bins, depth_bin_width)
 
     def assign_snp_af_bin(af):
         return assign_bin(af, SNP_AF_BINS, AF_JITTER)
@@ -132,7 +129,9 @@ def draw_sensitivity_graph(df, af_bins, snp_or_indel):
 
 def run():
     parser = argparse.ArgumentParser()
-    parser.add_argument("input_file")
+    parser.add_argument("--input_file")
+    parser.add_argument("--depth_bins", nargs='+', type=int)
+    parser.add_argument("--depth_bin_width", type=int)
     args = parser.parse_args()
 
     df = pd.read_table(args.input_file, sep = '\t', dtype = {'CHROM': str, 'TYPE': str, 'STATUS': str})
@@ -140,8 +139,8 @@ def run():
     snps_df = df.loc[df['TYPE'] == 'SNP']
     indels_df = df.loc[df['TYPE'] == 'INDEL']
 
-    snp_df, snp_af_bins = generate_sensitivity_table(snps_df, "SNP")
-    indel_df, indel_af_bins = generate_sensitivity_table(indels_df, "Indel")
+    snp_df, snp_af_bins = generate_sensitivity_table(snps_df, "SNP", args.depth_bins, args.depth_bin_width)
+    indel_df, indel_af_bins = generate_sensitivity_table(indels_df, "Indel", args.depth_bins, args.depth_bin_width)
 
     draw_sensitivity_graph(snp_df, snp_af_bins, "SNP")
     draw_sensitivity_graph(indel_df, indel_af_bins, "Indel")

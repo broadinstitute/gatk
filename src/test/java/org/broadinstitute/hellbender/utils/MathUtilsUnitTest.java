@@ -1,17 +1,24 @@
 package org.broadinstitute.hellbender.utils;
 
+import com.google.common.primitives.Doubles;
 import org.apache.commons.math3.distribution.NormalDistribution;
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.random.RandomGenerator;
+import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import org.testng.internal.junit.ArrayAsserts;
 
 import java.util.*;
 import java.util.function.DoublePredicate;
 import java.util.function.DoubleUnaryOperator;
 import java.util.function.IntPredicate;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static java.lang.Math.exp;
 import static java.lang.Math.log10;
@@ -393,14 +400,6 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testMean() {
-        double[] test = {0,1,101};
-        Assert.assertEquals(MathUtils.mean(test, 0, 0), Double.NaN);
-        Assert.assertEquals(MathUtils.mean(test, 0, 1), 0.0);
-        Assert.assertEquals(MathUtils.mean(test, 0, 3), 34.0);
-    }
-
-    @Test
     public void testPromote() {
         int[] test = {0, 100, (int)1e10, (int)1e20};
         double[] prom = MathUtils.promote(test);
@@ -601,7 +600,7 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testMedianOfNullList(){
-        MathUtils.median(null);
+        MathUtils.median((List<Integer>) null);
     }
 
     @Test
@@ -1062,5 +1061,307 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
     public void testDistanceSquaredDifferentLengths(final double[] v1, final double[] v2, final double expected) {
         MathUtils.distanceSquared(v1, v2);
         Assert.fail("Vectors with unequal lengths should throw");
+    }
+
+    @Test
+    public void naturalLogSumNaturalLogTest() {
+        final double[] realSpaceValues = {0.1, 0.2, 1.4, 5.9};
+        final double[] logSpaceValues= Arrays.stream(realSpaceValues).map(Math::log).toArray();
+
+        final double expected = Math.log(Arrays.stream(realSpaceValues).sum());
+        final double actual = MathUtils.logSumExp(logSpaceValues);
+        Assert.assertEquals(actual, expected, 1e-10);
+    }
+
+    @Test
+    public void meanTest() {
+        Assert.assertEquals(MathUtils.mean(1,2,3), 2, 1e-10);
+        Assert.assertEquals(MathUtils.mean(1,2), 1.5, 1e-10);
+        Assert.assertEquals(MathUtils.mean(new double[] {1,2}), 1.5, 1e-10);
+    }
+
+    @Test
+    public void testMean() {
+        Assert.assertEquals (MathUtils.mean(0, 1, 2), 1, 1e-10);
+        Assert.assertEquals (MathUtils.mean(0, 1), 0.5, 1e-10);
+        double[] test = {0,1,101};
+        Assert.assertEquals(MathUtils.mean(test, 0, 0), Double.NaN);
+        Assert.assertEquals(MathUtils.mean(test, 0, 1), 0.0);
+        Assert.assertEquals(MathUtils.mean(test, 0, 3), 34.0);
+    }
+
+    @Test
+    public void testRowMeans() {
+        final double[][] array = { {1,2,3}, {4,5,6}, {7,8,9}};
+        final double[] rowMeans = MathUtils.rowMeans(new Array2DRowRealMatrix(array));
+        Assert.assertEquals(rowMeans, new double[] {2,5,8});
+    }
+
+    @Test
+    public void testRowVariances() {
+        final double[][] array = { {1,2,3}, {5,5,5}, {7,8,9}};
+        final double[] rowVariances = MathUtils.rowVariances(new Array2DRowRealMatrix(array));
+        Assert.assertEquals(rowVariances[0], 1, 1e-8);
+        Assert.assertEquals(rowVariances[1], 0, 1e-8);
+        Assert.assertEquals(rowVariances[2], 1, 1e-8);
+    }
+
+    @Test
+    public void testRowStdDevs() {
+        final double[][] array = { {1,2,3}, {5,5,5}, {7,8,9}, {-15, 2, 12}};
+        final double[] rowStdDevs = MathUtils.rowStdDevs(new Array2DRowRealMatrix(array));
+        Assert.assertEquals(rowStdDevs[0], 1, 1e-8);
+        Assert.assertEquals(rowStdDevs[1], 0, 1e-8);
+        Assert.assertEquals(rowStdDevs[2], 1, 1e-8);
+        Assert.assertEquals(rowStdDevs[3], 13.65039682, 1e-8);
+    }
+
+    @Test
+    public void testStdDevsOnAList() {
+        Assert.assertEquals(MathUtils.stdDev(Arrays.asList(1, 2, 3)), 1, 1e-8);
+        Assert.assertEquals(MathUtils.stdDev(Arrays.asList(5, 5, 5)), 0, 1e-8);
+        Assert.assertEquals(MathUtils.stdDev(Arrays.asList(7, 8, 9)), 1, 1e-8);
+        Assert.assertEquals(MathUtils.stdDev(Arrays.asList(-15, 2, 12)), 13.65039682, 1e-8);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testStdDevsOnAListWithNull() {
+        MathUtils.stdDev(Arrays.asList(1, null, 3));
+    }
+
+    @Test
+    public void testStdDevsOnAnArray() {
+        Assert.assertEquals(MathUtils.stdDev(1, 2, 3), 1, 1e-8);
+        Assert.assertEquals(MathUtils.stdDev(5, 5, 5), 0, 1e-8);
+        Assert.assertEquals(MathUtils.stdDev(7, 8, 9), 1, 1e-8);
+        Assert.assertEquals(MathUtils.stdDev(-15, 2, 12), 13.65039682, 1e-8);
+    }
+
+    @Test
+    public void testColumnMeans() {
+        final double[][] array = { {1,2,3}, {4,5,6}, {7,8,9}};
+        final double[] columnMeans = MathUtils.columnMeans(new Array2DRowRealMatrix(array).transpose());
+        Assert.assertEquals(columnMeans, new double[]{2, 5, 8});
+    }
+
+    @Test
+    public void testColumnStdDevs() {
+        final double[][] array = { {1,2,3}, {5,5,5}, {7,8,9}, {-15, 2, 12}};
+        final double[] columnStdDevs = MathUtils.columnStdDevs(new Array2DRowRealMatrix(array).transpose());
+        Assert.assertEquals(columnStdDevs[0], 1, 1e-8);
+        Assert.assertEquals(columnStdDevs[1], 0, 1e-8);
+        Assert.assertEquals(columnStdDevs[2], 1, 1e-8);
+        Assert.assertEquals(columnStdDevs[3], 13.65039682, 1e-8);
+    }
+
+    @Test
+    public void testLinspace() {
+        Assert.assertEquals(MathUtils.createEvenlySpacedPoints(-5, 1, 5), new double[] {-5.0000, -3.5000, -2.0000, -0.5000, 1.0000});
+        Assert.assertEquals(MathUtils.createEvenlySpacedPoints(-5, 1, 0), new double[] {});
+        Assert.assertEquals(MathUtils.createEvenlySpacedPoints(-5, 1, 1), new double[] {1.0});
+        Assert.assertEquals(MathUtils.createEvenlySpacedPoints(-5, 1, 2), new double[] {-5.0, 1.0});
+        Assert.assertEquals(MathUtils.createEvenlySpacedPoints(-5, -5, 2), new double[] {-5.0, -5.0});
+        Assert.assertEquals(MathUtils.createEvenlySpacedPoints(1e-10, 1, 2), new double[] {1e-10, 1});
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testLinspaceWithNegativePoints() {
+        MathUtils.createEvenlySpacedPoints(-5, 1, -2);
+    }
+
+
+
+    @Test
+    public void testRandomSelectFlatProbability() {
+        final RandomGenerator rg = RandomGeneratorFactory.createRandomGenerator(new Random(13));
+        final int NUM_SAMPLES = 1000;
+        final List<Integer> choices = Arrays.asList(0,1,2);
+        final List<Integer> result = IntStream.range(0, NUM_SAMPLES)
+                .map(n -> MathUtils.randomSelect(choices, j -> 1.0 / choices.size(), rg))
+                .boxed()
+                .collect(Collectors.toList());
+        Assert.assertEquals(result.stream().filter(n -> n == 0).count(), NUM_SAMPLES / choices.size(), 50);
+    }
+
+    @Test
+    public void testRandomSelect() {
+        final RandomGenerator rg = RandomGeneratorFactory.createRandomGenerator(new Random(13));
+        final int NUM_SAMPLES = 1000;
+        final List<Integer> choices = Arrays.asList(-1,0,1);
+        final List<Integer> result = IntStream.range(0, NUM_SAMPLES)
+                .map(n -> MathUtils.randomSelect(choices, j -> j*j/2.0, rg))
+                .boxed()
+                .collect(Collectors.toList());
+        Assert.assertEquals(result.stream().filter(n -> n==0).count(), 0);
+        Assert.assertEquals(result.stream().filter(n -> n == 1).count(), NUM_SAMPLES / 2, 50);
+    }
+
+    @Test
+    public void testColumnSum() {
+        final double[][] array = { {1,2,3}, {5,5,5}, {7,8,9}, {-15, 2, 12}};
+        final double[] guess = MathUtils.columnSums(new Array2DRowRealMatrix(array));
+        final double[] gt = {-2, 17, 29};
+        Assert.assertEquals(guess.length, 3);
+        Assert.assertEquals(guess, gt);
+    }
+
+    @Test
+    public void testColumnNaN() {
+        final double[][] array = { {1,2, Double.NaN}, {5,5,5}, {7,8,9}, {-15, 2, 12}};
+        final double[] guess = MathUtils.columnSums(new Array2DRowRealMatrix(array));
+        final double[] gt = {-2, 17, Double.NaN};
+        Assert.assertEquals(guess.length, 3);
+        Assert.assertEquals(guess[0], gt[0]);
+        Assert.assertEquals(guess[1], gt[1]);
+        Assert.assertTrue(Double.isNaN(guess[2]));
+    }
+
+    @Test
+    public void testColumnInf() {
+        final double[][] array = { {1,2, Double.POSITIVE_INFINITY}, {5,5,5}, {7,8,9}, {-15, 2, 12}};
+        final double[] guess = MathUtils.columnSums(new Array2DRowRealMatrix(array));
+        final double[] gt = {-2, 17, Double.POSITIVE_INFINITY};
+        Assert.assertEquals(guess.length, 3);
+        Assert.assertEquals(guess[0], gt[0]);
+        Assert.assertEquals(guess[1], gt[1]);
+        Assert.assertTrue(Double.isInfinite(guess[2]));
+    }
+
+    @Test
+    public void testColumnNegInf() {
+        final double[][] array = { {1,2, Double.NEGATIVE_INFINITY}, {5,5,5}, {7,8,9}, {-15, 2, 12}};
+        final double[] guess = MathUtils.columnSums(new Array2DRowRealMatrix(array));
+        final double[] gt = {-2, 17, Double.NEGATIVE_INFINITY};
+        Assert.assertEquals(guess.length, 3);
+        Assert.assertEquals(guess[0], gt[0]);
+        Assert.assertEquals(guess[1], gt[1]);
+        Assert.assertTrue(Double.isInfinite(guess[2]));
+    }
+
+    @Test
+    public void testRowSum() {
+        final double[][] array = { {1,2,3}, {5,5,5}, {7,8,9}, {-15, 2, 12}};
+        final double[] guess = MathUtils.rowSums(new Array2DRowRealMatrix(array));
+        final double[] gt = {6, 15, 24, -1};
+        Assert.assertEquals(guess.length, 4);
+        Assert.assertEquals(guess, gt);
+    }
+
+    @Test
+    public void testRowNaN() {
+        final double[][] array = { {1,2, Double.NaN}, {5,5,5}, {7,8,9}, {-15, 2, 12}};
+        final double[] guess = MathUtils.rowSums(new Array2DRowRealMatrix(array));
+        final double[] gt = {Double.NaN, 15, 24, -1};
+        Assert.assertEquals(guess.length, 4);
+        Assert.assertEquals(guess[1], gt[1]);
+        Assert.assertEquals(guess[2], gt[2]);
+        Assert.assertEquals(guess[3], gt[3]);
+        Assert.assertTrue(Double.isNaN(guess[0]));
+    }
+
+    @Test
+    public void testRowInf() {
+        final double[][] array = { {1,2, Double.POSITIVE_INFINITY}, {5,5,5}, {7,8,9}, {-15, 2, 12}};
+        final double[] guess = MathUtils.rowSums(new Array2DRowRealMatrix(array));
+        final double[] gt = {Double.POSITIVE_INFINITY, 15, 24, -1};
+        Assert.assertEquals(guess.length, 4);
+        Assert.assertEquals(guess[1], gt[1]);
+        Assert.assertEquals(guess[2], gt[2]);
+        Assert.assertEquals(guess[3], gt[3]);
+        Assert.assertTrue(Double.isInfinite(guess[0]));
+    }
+
+    @Test
+    public void testRowNegInf() {
+        final double[][] array = { {1,2, Double.NEGATIVE_INFINITY}, {5,5,5}, {7,8,9}, {-15, 2, 12}};
+        final double[] guess = MathUtils.rowSums(new Array2DRowRealMatrix(array));
+        final double[] gt = {Double.NEGATIVE_INFINITY, 15, 24, -1};
+        Assert.assertEquals(guess.length, 4);
+        Assert.assertEquals(guess[1], gt[1]);
+        Assert.assertEquals(guess[2], gt[2]);
+        Assert.assertEquals(guess[3], gt[3]);
+        Assert.assertTrue(Double.isInfinite(guess[0]));
+    }
+
+    @Test
+    public void testSum3d() {
+        final double[][][] array = {{{-2, 17}, {1, 1}}, {{1, 1}, {-2, 17}}, {{1, 1}, {1, 1}}, {{1, 1}, {1, 1}}};
+        final double gt = 42;
+        final double guess = MathUtils.sum(array);
+        Assert.assertEquals(guess, gt);
+    }
+
+    @Test
+    public void testSum3dInf() {
+        final double[][][] array = {{{Double.POSITIVE_INFINITY, 17}, {1, 1}}, {{1, 1}, {-2, 17}}, {{1, 1}, {1, 1}}, {{1, 1}, {1, 1}}};
+        final double guess = MathUtils.sum(array);
+        Assert.assertTrue(Double.isInfinite(guess));
+    }
+
+    @Test
+    public void testSum3dNaN() {
+        final double[][][] array = {{{Double.NaN, 17}, {1, 1}}, {{1, 1}, {-2, 17}}, {{1, 1}, {1, 1}}, {{1, 1}, {1, 1}}};
+        final double guess = MathUtils.sum(array);
+        Assert.assertTrue(Double.isNaN(guess));
+    }
+
+    @Test
+    public void testSecondSmallestMinusSmallest() {
+        Assert.assertEquals(MathUtils.secondSmallestMinusSmallest(new int[0], -1), -1);
+        Assert.assertEquals(MathUtils.secondSmallestMinusSmallest(new int[] { 10 }, 3), 3);
+        Assert.assertEquals(MathUtils.secondSmallestMinusSmallest(new int[] { -10, -23, 3}, -1), 13);
+        Assert.assertEquals(MathUtils.secondSmallestMinusSmallest(new int[] { -10, -23, 3}, -1), 13);
+    }
+
+    @Test
+    public void testSmallestPowerOfTwoGreaterThan() {
+        Assert.assertEquals(MathUtils.smallestPowerOfTwoGreaterThan(0), 1);
+        Assert.assertEquals(MathUtils.smallestPowerOfTwoGreaterThan(1), 1);
+        Assert.assertEquals(MathUtils.smallestPowerOfTwoGreaterThan(8), 8);
+        Assert.assertEquals(MathUtils.smallestPowerOfTwoGreaterThan(10), 16);
+        Assert.assertEquals(MathUtils.smallestPowerOfTwoGreaterThan(1023), 1024);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testSmallestPowerOfTwoGreaterThanExceptions_0() {
+        MathUtils.smallestPowerOfTwoGreaterThan(-1);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testSmallestPowerOfTwoGreaterThanExceptions_1() {
+        MathUtils.smallestPowerOfTwoGreaterThan(Integer.MAX_VALUE/2 + 1);
+    }
+
+    @Test
+    public void testNearestNeighborUniform1DInterpolate() {
+        ArrayAsserts.assertArrayEquals(new double[]{0.0, 1.0, 2.0},
+                MathUtils.nearestNeighborUniform1DInterpolate(new double[]{0.0, 1.0, 2.0}, 3), 1e-6);
+        ArrayAsserts.assertArrayEquals(new double[]{0.0, 1.0, 1.0, 2.0},
+                MathUtils.nearestNeighborUniform1DInterpolate(new double[]{0.0, 1.0, 2.0}, 4), 1e-6);
+        ArrayAsserts.assertArrayEquals(new double[]{0.0, 0.0, 1.0, 1.0, 2.0, 2.0},
+                MathUtils.nearestNeighborUniform1DInterpolate(new double[]{0.0, 1.0, 2.0}, 6), 1e-6);
+    }
+
+
+    @Test
+    public void testMaxDifference() {
+        final double[] array1 = {0.0, 1.0, 2.0};
+        final double[] array2 = {-0.1, 1.05, 2.0};
+        Assert.assertEquals(MathUtils.maxDifference(Doubles.asList(array1), Doubles.asList(array2)), 0.1, 1e-10);
+
+        final double[] array3 = {0.0, 1.0, 2.0, 3.0};
+        final double[] array4 = {0.0, 1.0, 2.0, 0.0};
+        Assert.assertEquals(MathUtils.maxDifference(Doubles.asList(array3), Doubles.asList(array4)), 3.0, 1e-10);
+    }
+
+    @Test
+    public void testSumArrayFunction(){
+        final int min = 0;
+        final int max = 5;
+
+        // use 1 + 2 + ... + n = n(n+1)/2
+        // [0,1,2] + [1,2,3] + ... + [4,5,6] = [0 + 1 + ... + 4, 1 + ... + 5, 2 + ... + 6] = [10, 15, 21 - 1] = [10, 15, 20]
+        final double[] array1 = { 10, 15, 20 };
+        ArrayAsserts.assertArrayEquals(MathUtils.sumArrayFunction(min, max, i -> new double[]{ (double)i, i + 1.0, i + 2.0 }), array1, 1e-8);
     }
 }

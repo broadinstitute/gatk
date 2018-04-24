@@ -4,13 +4,14 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AlleleSpecificAnnotationData;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotationData;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
-import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -29,12 +30,17 @@ import java.util.stream.Stream;
 public final class ReferenceConfidenceVariantContextMerger {
 
     private final GenotypeLikelihoodCalculators calculators;
+    private final VCFHeader vcfInputHeader;
     protected final VariantAnnotatorEngine annotatorEngine;
-    protected final OneShotLogger warning = new OneShotLogger(this.getClass());
+    protected final OneShotLogger oneShotAnnotationLogger = new OneShotLogger(this.getClass());
+    protected final OneShotLogger oneShotHeaderLineLogger = new OneShotLogger(this.getClass());
 
-    public ReferenceConfidenceVariantContextMerger(VariantAnnotatorEngine engine){
+    public ReferenceConfidenceVariantContextMerger(VariantAnnotatorEngine engine, final VCFHeader inputHeader) {
+        Utils.nonNull(inputHeader, "A VCF header must be provided");
+
         calculators = new GenotypeLikelihoodCalculators();
         annotatorEngine = engine;
+        vcfInputHeader = inputHeader;
     }
 
     /**
@@ -134,7 +140,7 @@ public final class ReferenceConfidenceVariantContextMerger {
         // handle the alternate alleles
         for ( final Allele allele : vc.getAlternateAlleles() ) {
             final Allele replacement;
-            if ( allele.equals(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE) ) {
+            if ( allele.equals(Allele.NON_REF_ALLELE) ) {
                 replacement = allele;
             } else if ( allele.length() < vc.getReference().length() ) {
                 replacement = Allele.SPAN_DEL;
@@ -175,6 +181,9 @@ public final class ReferenceConfidenceVariantContextMerger {
         for (final Allele a : vc.getAlternateAlleles()) {
             if (a.isSymbolic()) {
                 result.add(a);
+            } else if ( a == Allele.SPAN_DEL ) {
+                // add SPAN_DEL directly so we don't try to extend the bases
+                result.add(a);
             } else if (a.isCalled()) {
                 result.add(extendAllele(a, extraBaseCount, refBases));
             } else { // NO_CALL and strange miscellanea
@@ -197,7 +206,7 @@ public final class ReferenceConfidenceVariantContextMerger {
         }
 
         private Stream<Allele> filterAllelesForFinalSet() {
-            return newAlleles.stream().filter(a -> !a.equals(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE))
+            return newAlleles.stream().filter(a -> !a.equals(Allele.NON_REF_ALLELE))
                     .filter(a -> !a.isReference())
                     .filter(a -> !(a.isSymbolic() && vc.isSymbolic())) // skip <*DEL> if there isn't a real alternate allele.
                     .filter(Allele::isCalled) ; // skip NO_CALL
@@ -243,7 +252,7 @@ public final class ReferenceConfidenceVariantContextMerger {
             finalAlleleSet.add(Allele.SPAN_DEL);
         }
         if (!removeNonRefSymbolicAllele) {
-            finalAlleleSet.add(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+            finalAlleleSet.add(Allele.NON_REF_ALLELE);
         }
 
         return new ArrayList<>(finalAlleleSet);
@@ -311,7 +320,7 @@ public final class ReferenceConfidenceVariantContextMerger {
     /**
      * Determines the ref allele given the provided reference base at this position
      *
-     * @param VCs     collection of unsorted genomic VCs
+     * @param VCs     collection of unsorted genomic VariantContexts
      * @param loc     the current location
      * @param refBase the reference allele to use if all contexts in the VC are spanning
      * @return new Allele or null if no reference allele/base is available
@@ -380,19 +389,41 @@ public final class ReferenceConfidenceVariantContextMerger {
                     annotationMap.put(key, values);
                 }
                 try {
-                    values.add(parseNumber(value.toString()));
+                    values.add(parseNumericInfoAttributeValue(vcfInputHeader, key, value.toString()));
                 } catch (final NumberFormatException e) {
-                    warning.warn(String.format("Detected invalid annotations: When trying to merge variant contexts at location %s:%d the annotation %s was not a numerical value and was ignored",vcPair.getVc().getContig(),vcPair.getVc().getStart(),p.toString()));
+                    oneShotAnnotationLogger.warn(String.format("Detected invalid annotations: When trying to merge variant contexts at location %s:%d the annotation %s was not a numerical value and was ignored",vcPair.getVc().getContig(),vcPair.getVc().getStart(),p.toString()));
                 }
             }
         }
     }
 
-    private Comparable<?> parseNumber(String stringValue) {
-        if (stringValue.contains(".")) {
-            return Double.parseDouble(stringValue);
-        } else {
-            return Integer.parseInt(stringValue);
+    // Use the VCF header's declared type for the given attribute to ensure that all the values for that attribute
+    // across all the VCs being merged have the same boxed representation. Some VCs have a serialized value of "0"
+    // for FLOAT attributes, with no embedded decimal point, but we still need to box those into Doubles, or the
+    // subsequent sorting required to obtain the median will fail due to the list having a mix of Comparable<Integer>
+    // and Comparable<Double>.
+    private Comparable<?> parseNumericInfoAttributeValue(final VCFHeader vcfHeader, final String key, final String stringValue) {
+        final VCFInfoHeaderLine infoLine = vcfHeader.getInfoHeaderLine(key);
+        if (infoLine == null) {
+            oneShotHeaderLineLogger.warn(String.format("At least one attribute was found (%s) for which there is no corresponding header line", key));
+            if (stringValue.contains(".")) {
+                return Double.parseDouble(stringValue);
+            } else {
+                return Integer.parseInt(stringValue);
+            }
+        }
+        switch (infoLine.getType()) {
+            case Integer:
+                return Integer.parseInt(stringValue);
+            case Float:
+                return Double.parseDouble(stringValue);
+            default:
+                throw new NumberFormatException(
+                        String.format(
+                                "The VCF header specifies type %s type for INFO attribute key %s, but a numeric value is required",
+                                infoLine.getType().name(),
+                                key)
+                );
         }
     }
 
@@ -496,11 +527,11 @@ public final class ReferenceConfidenceVariantContextMerger {
         Utils.nonEmpty(remappedAlleles);
         Utils.nonEmpty(targetAlleles);
 
-        if ( !remappedAlleles.contains(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE) ) {
-            throw new UserException("The list of input alleles must contain " + GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE + " as an allele but that is not the case at position " + position + "; please use the Haplotype Caller with gVCF output to generate appropriate records");
+        if ( !remappedAlleles.contains(Allele.NON_REF_ALLELE) ) {
+            throw new UserException("The list of input alleles must contain " + Allele.NON_REF_ALLELE + " as an allele but that is not the case at position " + position + "; please use the Haplotype Caller with gVCF output to generate appropriate records");
         }
 
-        final int indexOfNonRef = remappedAlleles.indexOf(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+        final int indexOfNonRef = remappedAlleles.indexOf(Allele.NON_REF_ALLELE);
         final int[] indexMapping = new int[targetAlleles.size()];
 
         // the reference likelihoods should always map to each other (even if the alleles don't)

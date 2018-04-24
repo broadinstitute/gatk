@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -26,9 +26,10 @@ public class GATKSVVCFUtilsUnitTest extends GATKBaseTest {
                 Stream.of(SVTYPE, SVLEN, IMPRECISE, CIPOS, CIEND, BND_MATEID_STR, SYMB_ALT_ALLELE_INV, READ_PAIR_SUPPORT,
                         SPLIT_READ_SUPPORT, SYMB_ALT_ALLELE_DEL, SYMB_ALT_ALLELE_INS, SYMB_ALT_ALLELE_DUP, SYMB_ALT_ALLELE_INVDUP,
                         CONTIG_NAMES, TOTAL_MAPPINGS, MAPPING_QUALITIES, HQ_MAPPINGS, ALIGN_LENGTHS, MAX_ALIGN_LENGTH,
-                        SEQ_ALT_HAPLOTYPE, INSERTED_SEQUENCE, INSERTED_SEQUENCE_MAPPINGS, HOMOLOGY, HOMOLOGY_LENGTH,
-                        DUP_REPEAT_UNIT_REF_SPAN, DUP_SEQ_CIGARS, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE,
-                        DUP_TAN_CONTRACTION_STRING, DUP_TAN_EXPANSION_STRING, DUP_INV_ORIENTATIONS, INV33, INV55, EXTERNAL_CNV_CALLS)
+                        SEQ_ALT_HAPLOTYPE, INSERTED_SEQUENCE, INSERTED_SEQUENCE_LENGTH, INSERTED_SEQUENCE_MAPPINGS, HOMOLOGY, HOMOLOGY_LENGTH,
+                        DUP_REPEAT_UNIT_REF_SPAN, DUP_SEQ_CIGARS, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_IMPRECISE_AFFECTED_RANGE,
+                        DUP_TAN_CONTRACTION_STRING, DUP_TAN_EXPANSION_STRING, DUP_ORIENTATIONS, INV33, INV55, EXTERNAL_CNV_CALLS,
+                        CTG_GOOD_NONCANONICAL_MAPPING)
                         .sorted().collect(Collectors.toList()));
     }
 
@@ -48,6 +49,9 @@ public class GATKSVVCFUtilsUnitTest extends GATKBaseTest {
         final List<Path> vcfFiles = Files.walk(Paths.get(toolsTestDir + "spark/sv/integration/outputs"))
                 .filter(filePath -> filePath.toString().endsWith(".vcf") || filePath.toString().endsWith(".vcf.gz"))
                 .collect(Collectors.toList());
+        vcfFiles.addAll( Files.walk(Paths.get(toolsTestDir + "spark/sv/utils"))
+                .filter(filePath -> filePath.toString().endsWith(".vcf") || filePath.toString().endsWith(".vcf.gz"))
+                .collect(Collectors.toList()));
         vcfFiles.forEach(p -> data.add( new Object[]{p}));
         return data.toArray(new Object[data.size()][]);
     }
@@ -64,7 +68,7 @@ public class GATKSVVCFUtilsUnitTest extends GATKBaseTest {
             final List<String> headerKeys = fileHeader.getIDHeaderLines().stream().map(VCFIDHeaderLine::getID).sorted().collect(Collectors.toList());
             Assert.assertTrue(headerKeys.remove(VCFConstants.END_KEY));
             Assert.assertTrue(headerKeys.removeAll(refContigs));
-            Assert.assertEquals(GATKSVVCFConstants.expectedHeaderLinesInVCF, headerKeys);
+            Assert.assertEquals(headerKeys, GATKSVVCFConstants.expectedHeaderLinesInVCF);
         }
     }
 }

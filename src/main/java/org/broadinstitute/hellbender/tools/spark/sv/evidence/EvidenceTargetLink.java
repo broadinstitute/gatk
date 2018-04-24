@@ -108,9 +108,22 @@ public final class EvidenceTargetLink {
         return new PairedStrandedIntervals(source, target);
     }
 
-    public static boolean isImpreciseDeletion(EvidenceTargetLink e) {
-        return e.getPairedStrandedIntervals().getLeft().getInterval().getContig() == e.getPairedStrandedIntervals().getRight().getInterval().getContig()
-                && e.getPairedStrandedIntervals().getLeft().getStrand() && !e.getPairedStrandedIntervals().getRight().getStrand();
+    public boolean isImpreciseDeletion() {
+        return getPairedStrandedIntervals().getLeft().getInterval().getContig() == getPairedStrandedIntervals().getRight().getInterval().getContig()
+                && getPairedStrandedIntervals().getLeft().getStrand() && !getPairedStrandedIntervals().getRight().getStrand();
+    }
+
+    /**
+     * Distance between the two intervals. Defined to be -1 if the intervals are on different contigs. Otherwise, returns the
+     * inner distance: the distance between the right boundary of the left interval and the left boundary of the right interval
+     */
+    public int getDistance() {
+        if (getPairedStrandedIntervals().getLeft().getInterval().getContig() != getPairedStrandedIntervals().getRight().getInterval().getContig()) {
+            return -1;
+        } else {
+            return getPairedStrandedIntervals().getRight().getInterval().getStart() - getPairedStrandedIntervals().getLeft().getInterval().getEnd();
+        }
+
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<EvidenceTargetLink> {
