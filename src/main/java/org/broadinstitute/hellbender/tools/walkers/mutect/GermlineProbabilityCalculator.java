@@ -19,9 +19,9 @@ import java.util.stream.IntStream;
  */
 public class GermlineProbabilityCalculator {
 
-    public static Map<String, Object> getPopulationAlleleFrequencyAnnotation(List<VariantContext> germlineResourceVariants,
-                                                           final List<Allele> altAlleles,
-                                                           final double afOfAllelesNotInGermlineResource) {
+    public static Map<String, Object> getPopulationAFAnnotation(List<VariantContext> germlineResourceVariants,
+                                                                final List<Allele> altAlleles,
+                                                                final double afOfAllelesNotInGermlineResource) {
         final Optional<VariantContext> germlineVC = germlineResourceVariants.isEmpty() ? Optional.empty()
                 : Optional.of(germlineResourceVariants.get(0));  // assume only one VC per site
         final double[] populationAlleleFrequencies = getGermlineAltAlleleFrequencies(altAlleles, germlineVC, afOfAllelesNotInGermlineResource);

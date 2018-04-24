@@ -4,7 +4,6 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -170,9 +169,8 @@ public final class Mutect2 extends AssemblyRegionWalker {
     @Override
     public void onTraversalStart() {
         m2Engine = new Mutect2Engine(MTAC, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), referenceArguments.getReferenceFileName());
-        final SAMSequenceDictionary sequenceDictionary = getHeaderForReads().getSequenceDictionary();
         vcfWriter = createVCFWriter(outputVCF);
-        m2Engine.writeHeader(vcfWriter, sequenceDictionary, getDefaultToolVCFHeaderLines());
+        m2Engine.writeHeader(vcfWriter, getDefaultToolVCFHeaderLines());
     }
 
     @Override
@@ -187,11 +185,10 @@ public final class Mutect2 extends AssemblyRegionWalker {
 
     @Override
     public void closeTool() {
-        if ( vcfWriter != null ) {
+        if (vcfWriter != null) {
             vcfWriter.close();
         }
-
-        if ( m2Engine != null ) {
+        if (m2Engine != null) {
             m2Engine.shutdown();
         }
     }

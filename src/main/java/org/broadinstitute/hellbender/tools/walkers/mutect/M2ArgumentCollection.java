@@ -47,10 +47,10 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     //TODO: *and* as sample names e.g. -tumor <tumor sample> -normal <normal sample>
 
     @Argument(fullName = TUMOR_SAMPLE_LONG_NAME, shortName = TUMOR_SAMPLE_SHORT_NAME, doc = "BAM sample name of tumor.  May be URL-encoded as output by GetSampleName with -encode argument.", optional = false)
-    protected String tumorSampleName = null;
+    protected String tumorSample = null;
 
     @Argument(fullName = NORMAL_SAMPLE_LONG_NAME, shortName = NORMAL_SAMPLE_SHORT_NAME, doc = "BAM sample name of normal.  May be URL-encoded as output by GetSampleName with -encode argument.", optional = true)
-    protected String normalSampleName = null;
+    protected String normalSample = null;
 
     //TODO: END OF HACK ALERT
 
@@ -94,7 +94,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
 
     public double getDefaultAlleleFrequency() {
         return afOfAllelesNotInGermlineResource >= 0 ? afOfAllelesNotInGermlineResource :
-                (normalSampleName == null ? DEFAULT_AF_FOR_TUMOR_ONLY_CALLING : DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING);
+                (normalSample == null ? DEFAULT_AF_FOR_TUMOR_ONLY_CALLING : DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING);
     }
 
     /**
