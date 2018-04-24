@@ -37,6 +37,10 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String MAX_SUSPICIOUS_READS_PER_ALIGNMENT_START_LONG_NAME = "max-suspicious-reads-per-alignment-start";
     public static final String NORMAL_LOD_LONG_NAME = "normal-lod";
 
+
+    public static final double DEFAULT_AF_FOR_TUMOR_ONLY_CALLING = 5e-8;
+    public static final double DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING = 1e-5;
+
     //TODO: HACK ALERT HACK ALERT HACK ALERT
     //TODO: GATK4 does not yet have a way to tag inputs, eg -I:tumor tumor.bam -I:normal normal.bam,
     //TODO: so for now we require the user to specify bams *both* as inputs, with -I tumor.bam -I normal.bam
@@ -86,7 +90,12 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     @Argument(fullName= DEFAULT_AF_LONG_NAME, shortName = DEFAULT_AF_SHORT_NAME,
             doc="Population allele fraction assigned to alleles not found in germline resource.  Please see docs/mutect/mutect2.pdf for" +
                     "a derivation of the default value.", optional = true)
-    public double afOfAllelesNotInGermlineResource = 5e-8;
+    public double afOfAllelesNotInGermlineResource = -1;
+
+    public double getDefaultAlleleFrequency() {
+        return afOfAllelesNotInGermlineResource >= 0 ? afOfAllelesNotInGermlineResource :
+                (normalSampleName == null ? DEFAULT_AF_FOR_TUMOR_ONLY_CALLING : DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING);
+    }
 
     /**
      * Only variants with tumor LODs exceeding this threshold will be written to the VCF, regardless of filter status.
