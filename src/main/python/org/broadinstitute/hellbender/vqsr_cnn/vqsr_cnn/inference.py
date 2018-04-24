@@ -43,14 +43,14 @@ def score_and_write_batch(args, model, file_out, fifo, batch_size, python_batch_
     variant_data = []
     read_batch = []
 
-    for i in range(batch_size):
+    for _ in range(batch_size):
         fifo_line = fifo.readline()
         fifo_data = fifo_line.split(defines.SEPARATOR_CHAR)
 
         variant_data.append(fifo_data[0] + '\t' + fifo_data[1] + '\t' + fifo_data[2] + '\t' + fifo_data[3])
         reference_batch.append(reference_string_to_tensor(fifo_data[4]))
         annotation_batch.append(annotation_string_to_tensor(args, fifo_data[5]))
-        variant_types.append(fifo_data[6])
+        variant_types.append(fifo_data[6].strip())
 
         fidx = 7 # 7 Because above we parsed: contig pos ref alt reference_string annotation variant_type
         if args.tensor_name in defines.TENSOR_MAPS_2D and len(fifo_data) > fidx:
@@ -69,7 +69,7 @@ def score_and_write_batch(args, model, file_out, fifo, batch_size, python_batch_
             _, ref_start, _ = get_variant_window(args, var)
             insert_dict = get_inserts(args, read_tuples, var)
             tensor = read_tuples_to_read_tensor(args, read_tuples, ref_start, insert_dict)
-            reference_sequence_into_tensor(args, fifo_data[4], tensor)
+            reference_sequence_into_tensor(args, fifo_data[4], tensor, insert_dict)
             if os.path.exists(tensor_dir):
                 _write_tensor_to_hd5(args, tensor, annotation_batch[-1], fifo_data[0], fifo_data[1], fifo_data[6])
             read_batch.append(tensor)
@@ -201,8 +201,8 @@ def cigar_string_to_tuples(cigar):
 
 def get_variant_window(args, variant):
     index_offset = (args.window_size//2)
-    reference_start = variant.pos-(index_offset+1)
-    reference_end = variant.pos+index_offset
+    reference_start = variant.pos-index_offset
+    reference_end = variant.pos + index_offset + (args.window_size%2)
     return index_offset, reference_start, reference_end
 
 
@@ -245,6 +245,7 @@ def read_tuples_to_read_tensor(args, read_tuples, ref_start, insert_dict):
 
             if i == args.window_size:
                 break
+
             if b == defines.SKIP_CHAR:
                 continue
             elif flag_start == -1:
@@ -290,8 +291,6 @@ def read_tuples_to_read_tensor(args, read_tuples, ref_start, insert_dict):
             else:
                 tensor[channel_map['mapping_quality'], j, flag_start:flag_end] = mq
 
-
-
     return tensor
 
 
@@ -335,8 +334,14 @@ def sequence_and_qualities_from_read(args, read, ref_start, insert_dict):
     return rseq, rqual
 
 
-def reference_sequence_into_tensor(args, reference_seq, tensor):
+def reference_sequence_into_tensor(args, reference_seq, tensor, insert_dict):
     ref_offset = len(set(args.input_symbols.values()))
+
+    for i in sorted(insert_dict.keys(), key=int, reverse=True):
+        if i < 0:
+            reference_seq = defines.INDEL_CHAR*insert_dict[i] + reference_seq
+        else:
+            reference_seq = reference_seq[:i] + defines.INDEL_CHAR*insert_dict[i] + reference_seq[i:]
 
     for i,b in enumerate(reference_seq):
         if i == args.window_size:

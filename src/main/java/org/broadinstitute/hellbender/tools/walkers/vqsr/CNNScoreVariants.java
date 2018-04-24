@@ -10,9 +10,9 @@ import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.engine.filters.VariantFilter;
-import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
+import org.broadinstitute.hellbender.engine.filters.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.python.StreamingPythonScriptExecutor;
@@ -170,7 +170,7 @@ public class CNNScoreVariants extends VariantWalker {
 
     private int curBatchSize = 0;
     private int windowEnd = windowSize / 2;
-    private int windowStart = (windowSize / 2) - 1;
+    private int windowStart = windowSize / 2;
     private boolean waitforBatchCompletion = false;
     private File scoreFile;
 
@@ -190,7 +190,6 @@ public class CNNScoreVariants extends VariantWalker {
                 return new String[]{"No default architecture for tensor type:" + tensorType.name()};
             }
         }
-
         return null;
     }
 
@@ -206,6 +205,17 @@ public class CNNScoreVariants extends VariantWalker {
         } else {
             return VariantFilterLibrary.ALLOW_ALL_VARIANTS;
         }
+    }
+
+    @Override
+    public List<ReadFilter> getDefaultReadFilters() {
+        List<ReadFilter> readFilters = new ArrayList<>();
+        readFilters.addAll(super.getDefaultReadFilters());
+        List<String> filterList = new ArrayList<>();
+        filterList.add("ID:" + HaplotypeBAMWriter.DEFAULT_HAPLOTYPE_READ_GROUP_ID);
+        filterList.add("ID:" + HaplotypeBAMWriter.DEFAULT_GATK3_HAPLOTYPE_READ_GROUP_ID);
+        readFilters.add(new ReadGroupBlackListReadFilter(filterList, null));
+        return readFilters;
     }
 
     @Override
@@ -319,7 +329,7 @@ public class CNNScoreVariants extends VariantWalker {
         }
         Iterator<GATKRead> readIt = readsContext.iterator();
         if (!readIt.hasNext()) {
-            logger.warn("No reads at contig:" + variant.getContig() + "site:" + String.valueOf(variant.getStart()));
+            logger.warn("No reads at contig:" + variant.getContig() + " site:" + String.valueOf(variant.getStart()));
         }
         while (readIt.hasNext()) {
             sb.append(GATKReadToString(readIt.next()));

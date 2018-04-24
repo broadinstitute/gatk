@@ -607,11 +607,11 @@ def reference_sequence_into_tensor(args, reference_seq, tensor):
             else:
                 tensor[ref_offset+args.input_symbols[b], :, i] = 1.0
         elif b in vqsr_cnn.AMBIGUITY_CODES:
-            ambiguous_vector = np.transpose(np.tile(vqsr_cnn.AMBIGUITY_CODES[b], (args.read_limit, 1)))
+            ambiguous_vector = np.tile(vqsr_cnn.AMBIGUITY_CODES[b], (args.read_limit, 1))
             if K.image_data_format() == 'channels_last':
                 tensor[:, i, ref_offset:ref_offset+4] = ambiguous_vector
             else:
-                tensor[ref_offset:ref_offset+4, :, i] = ambiguous_vector
+                tensor[ref_offset:ref_offset+4, :, i] = np.transpose(ambiguous_vector)
 
 
 def flag_to_array(flag):
