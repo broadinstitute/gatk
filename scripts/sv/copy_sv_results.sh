@@ -40,8 +40,9 @@ SV_ARGS=${*:-${SV_ARGS:-""}}
 
 # get appropriate ZONE for cluster
 echo "CLUSTER_INFO=\$(gcloud dataproc clusters list --project=${PROJECT_NAME} --filter='clusterName=${CLUSTER_NAME}')"
-CLUSTER_INFO=$(gcloud dataproc clusters list --project=${PROJECT_NAME} --filter="clusterName=${CLUSTER_NAME}" | tail -n 1 | tr -s ' ')
-ZONE=$(echo "${CLUSTER_INFO}" | cut -d' ' -f 4)
+CLUSTER_INFO=$(gcloud dataproc clusters list --project=${PROJECT_NAME} --filter="clusterName=${CLUSTER_NAME}")
+ZONE=$(echo "${CLUSTER_INFO}" | awk 'NR==1 { for (i=1; i<=NF; i++) { f[$i] = i } } { print $(f["ZONE"]) }' | tail -1)
+echo "Zone = $ZONE"
 if [ -z "${ZONE}" ]; then
     # cluster is down.
     echo "Cluster \"${CLUSTER_NAME}\" is down. Only log and command args will be uploaded"
@@ -51,7 +52,7 @@ else
     # (may not be current date stamp if multiple jobs run on same cluster)
     MASTER="${CLUSTER_NAME}-m"
     RESULTS_DIR="$(dirname ${OUTPUT_DIR})"
-    RESULTS_DIR=$(gcloud compute ssh ${MASTER} --zone ${ZONE} --command="hadoop fs -ls ${RESULTS_DIR} | tail -n 1")
+    RESULTS_DIR=$(gcloud compute ssh ${MASTER} --project ${PROJECT_NAME} --zone ${ZONE} --command="hadoop fs -ls ${RESULTS_DIR} | tail -n 1")
     RESULTS_DIR=$(echo "${RESULTS_DIR}" | awk '{print $NF}' | sed -e 's/^\///')
 fi
 
@@ -69,9 +70,10 @@ else
     # chose semi-optimal parallel args for distcp
     # 1) count number of files to copy
     COUNT_FILES_CMD="hadoop fs -count /${RESULTS_DIR}/ | tr -s ' ' | cut -d ' ' -f 3"
-    NUM_FILES=$(gcloud compute ssh ${MASTER} --zone ${ZONE} --command="${COUNT_FILES_CMD}")
+    NUM_FILES=$(gcloud compute ssh ${MASTER} --zone ${ZONE} --project ${PROJECT_NAME} --command="${COUNT_FILES_CMD}")
     # 2) get the number of instances
-    NUM_INSTANCES=$(echo "${CLUSTER_INFO}" | cut -d' ' -f 2)
+    NUM_INSTANCES=$(echo "${CLUSTER_INFO}" | awk 'NR==1 { for (i=1; i<=NF; i++) { f[$i] = i } } { print $(f["WORKER_COUNT"]) + $(f["PREEMPTIBLE_WORKER_COUNT"]) }' | tail -1)
+    echo "Num Instances: $NUM_INSTANCES"
     # 3) choose number of maps as min of NUM_FILES or NUM_INSTANCES * MAPS_PER_INSTANCE
     MAPS_PER_INSTANCE=10
     NUM_MAPS=$((${NUM_INSTANCES} * ${MAPS_PER_INSTANCE}))
@@ -90,8 +92,8 @@ else
             ;;
     esac
     CPY_CMD="hadoop distcp ${DIST_CP_ARGS} -m ${NUM_MAPS} -strategy dynamic /${RESULTS_DIR}/* ${GCS_RESULTS_DIR}/"
-    echo "gcloud compute ssh ${MASTER} --zone ${ZONE} --command=\"${CPY_CMD}\" 2>&1 | tee -a ${LOCAL_LOG_FILE}" | tee -a ${LOCAL_LOG_FILE}
-    gcloud compute ssh ${MASTER} --zone ${ZONE} --command="${CPY_CMD}" 2>&1 | tee -a ${LOCAL_LOG_FILE}
+    echo "gcloud compute ssh ${MASTER} --zone ${ZONE} --project ${PROJECT_NAME} --command=\"${CPY_CMD}\" 2>&1 | tee -a ${LOCAL_LOG_FILE}" | tee -a ${LOCAL_LOG_FILE}
+    gcloud compute ssh ${MASTER} --zone ${ZONE} --project ${PROJECT_NAME} --command="${CPY_CMD}" 2>&1 | tee -a ${LOCAL_LOG_FILE}
 fi
 
 # create file with command-line args. Always create (even if empty) so
