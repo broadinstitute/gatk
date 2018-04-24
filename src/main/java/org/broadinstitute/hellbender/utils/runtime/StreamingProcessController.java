@@ -530,7 +530,7 @@ public final class StreamingProcessController extends ProcessControllerBase<Capt
                         commandString,
                         journalingFile.getAbsolutePath()), e);
             }
-            System.err.println(String.format("Enabling streaming process journaling file %s", journalingFileName));
+            logger.info(String.format("Enabling streaming process journaling file %s", journalingFileName));
         }
 
         /**
