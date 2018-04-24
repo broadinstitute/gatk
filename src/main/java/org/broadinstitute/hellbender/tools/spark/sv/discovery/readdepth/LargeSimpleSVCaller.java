@@ -8,6 +8,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.math3.linear.RealVector;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CalledCopyRatioSegmentCollection;
@@ -356,7 +357,7 @@ public class LargeSimpleSVCaller {
     /**
      * Returns all events. Searches by iterating over the breakpoint pairs and then the evidence target links.
      */
-    public Tuple2<Collection<ReadDepthEvent>, List<VariantContext>> callEvents(final ProgressMeter progressMeter) {
+    public Tuple2<Collection<ReadDepthEvent>, List<VariantContext>> callEvents(final JavaSparkContext ctx, final ProgressMeter progressMeter) {
 
         if (progressMeter != null) {
             progressMeter.setRecordLabel("intervals");
@@ -452,7 +453,7 @@ public class LargeSimpleSVCaller {
 
         final SVIntervalTree<LargeSimpleSV> filteredCalls = new SVIntervalTree<>();
         Utils.stream(calledEventTree.iterator())
-                .filter(entry -> entry.getInterval().getContig() < 3)  //TODO
+                .filter(entry -> entry.getInterval().getContig() == 0)  //TODO
                 .filter(entry -> {
                     final Set<CalledCopyRatioSegment> overlappingSegments = copyRatioSegmentOverlapDetector.getOverlaps(SVIntervalUtils.convertToSimpleInterval(entry.getInterval(), dictionary));
                     final CalledCopyRatioSegment.Call expectedCall = entry.getValue().getType() == SimpleSVType.TYPES.DEL ? CalledCopyRatioSegment.Call.DELETION : CalledCopyRatioSegment.Call.AMPLIFICATION;
@@ -463,8 +464,8 @@ public class LargeSimpleSVCaller {
 
         logger.info("Running read depth model on " + filteredCalls.size() + " events");
         final ReadDepthModel readDepthModel = new ReadDepthModel(filteredCalls, copyRatioSegmentOverlapDetector, dictionary);
-        readDepthModel.solve(1000, 1e-3);
-        final Collection<ReadDepthEvent> finalResult = readDepthModel.getEvents();
+        final Tuple2<Double,List<ReadDepthEvent>> result = readDepthModel.solve(ctx, 1, 1e-3);
+        final Collection<ReadDepthEvent> finalResult = result._2;
         return new Tuple2<>(finalResult, Collections.emptyList());
     }
 

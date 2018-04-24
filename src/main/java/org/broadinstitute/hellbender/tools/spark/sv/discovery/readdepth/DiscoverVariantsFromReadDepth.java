@@ -6,14 +6,15 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFileReader;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.ModelSegments;
@@ -24,7 +25,6 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopy
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatioSegment;
 import org.broadinstitute.hellbender.tools.copynumber.gcnv.GermlineCNVPostprocessingEngine;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.LargeSimpleSV;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
@@ -35,6 +35,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import scala.Tuple2;
 
 import java.io.File;
@@ -128,7 +129,7 @@ import java.util.stream.Collectors;
         summary = "This tool uses the output from StructuralVariationDiscoveryPipelineSpark and the Model Segments CNV pipeline " +
                 "to call large tandem duplications.",
         programGroup = StructuralVariantDiscoveryProgramGroup.class)
-public class DiscoverVariantsFromReadDepth extends GATKTool {
+public class DiscoverVariantsFromReadDepth extends GATKSparkTool {
 
     private static final long serialVersionUID = 1L;
 
@@ -159,6 +160,8 @@ public class DiscoverVariantsFromReadDepth extends GATKTool {
     private String filteredCallsPath;
     @Argument(doc = "High coverage intervals file path",fullName = HIGH_COVERAGE_INTERVALS_LONG_NAME)
     private String highCoverageIntervalsPath;
+    @Argument(doc = "Sequence dictionary",fullName = "sequence-dictionary")
+    private String sequenceDictionaryPath;
 
     private final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments = new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection();
     private LargeSimpleSVCaller largeSimpleSVCaller;
@@ -167,8 +170,8 @@ public class DiscoverVariantsFromReadDepth extends GATKTool {
     private List<VariantContext> filteredCalls;
 
     @Override
-    public void onTraversalStart() {
-        dictionary = getBestAvailableSequenceDictionary();
+    public void runTool(final JavaSparkContext ctx) {
+        dictionary = ReferenceUtils.loadFastaDictionary(BucketUtils.openFile(sequenceDictionaryPath));
         logger.info("Loading assembly...");
         final Collection<GATKRead> assembly = getReads(assemblyBamPath);
         logger.info("Loading high coverage intervals...");
@@ -185,20 +188,13 @@ public class DiscoverVariantsFromReadDepth extends GATKTool {
         final CopyRatioCollection copyRatios = getCopyRatios(copyRatioFilePath);
 
         largeSimpleSVCaller = new LargeSimpleSVCaller(breakpointCalls, svCalls, assembly, evidenceTargetLinks, copyRatios, copyRatioSegments, highCoverageIntervals, dictionary, arguments);
-    }
 
-    @Override
-    public void traverse() {
-        final Tuple2<Collection<ReadDepthEvent>,List<VariantContext>> result = largeSimpleSVCaller.callEvents(progressMeter);
+        final Tuple2<Collection<ReadDepthEvent>,List<VariantContext>> result = largeSimpleSVCaller.callEvents(ctx, null);
         events = result._1;
         filteredCalls = result._2;
-    }
 
-    @Override
-    public Object onTraversalSuccess() {
         writeEvents(outputPath, events, dictionary);
         SVVCFWriter.writeVCF(filteredCalls, filteredCallsPath, dictionary, logger);
-        return null;
     }
 
     /**

@@ -8,13 +8,16 @@ import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 
+import java.io.Serializable;
+
 /**
  * Naturally collating, simple interval.
  * Some methods assume that the interval is half-open.
  */
 @DefaultSerializer(SVInterval.Serializer.class)
 @VisibleForTesting
-public final class SVInterval implements Comparable<SVInterval> {
+public final class SVInterval implements Comparable<SVInterval>, Serializable {
+    public static final long serialVersionUID = 1L;
     private final int contig;
     private final int start;
     private final int end;

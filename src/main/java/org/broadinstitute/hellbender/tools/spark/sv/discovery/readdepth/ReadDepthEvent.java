@@ -3,7 +3,11 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery.readdepth;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.LargeSimpleSV;
 
-final class ReadDepthEvent {
+import java.io.Serializable;
+
+final class ReadDepthEvent implements Serializable {
+
+    public static final long serialVersionUID = 1L;
     private final int id;
     private final LargeSimpleSV event;
     private double state;

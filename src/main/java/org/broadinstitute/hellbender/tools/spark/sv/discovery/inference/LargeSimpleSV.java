@@ -6,14 +6,16 @@ import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.IntrachromosomalBreakpointPair;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.Objects;
 
 /**
  * Represents a simple structural variant (e.g. deletion, duplication, etc.) and associated evidence
  */
-public class LargeSimpleSV {
+public class LargeSimpleSV implements Serializable {
 
+    public static final long serialVersionUID = 1L;
     protected final SimpleSVType.TYPES type;
     protected final int start;
     protected final int end;

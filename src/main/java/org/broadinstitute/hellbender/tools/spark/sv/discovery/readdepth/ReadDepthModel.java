@@ -5,6 +5,8 @@ import htsjdk.samtools.util.OverlapDetector;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
@@ -15,14 +17,15 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.solver.SimulatedAnnealingSolver;
 import scala.Tuple2;
 
+import java.io.Serializable;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
-public final class ReadDepthModel {
+public final class ReadDepthModel implements Serializable {
 
+    public static final long serialVersionUID = 1L;
     private final Map<SimpleSVType.TYPES,List<ReadDepthCluster>> clusteredEvents;
     private final NormalDistribution standardNormal;
     private final Random random;
@@ -97,20 +100,23 @@ public final class ReadDepthModel {
         return clusteredEvents.values().stream().flatMap(List::stream).flatMap(entry -> entry.getEventsList().stream()).collect(Collectors.toList());
     }
 
-    public double solve(final int maxIter, final double absoluteTolerance) {
+    private static double metropolisHastingsTemperatureSchedule(final int step) {
+        return 1.0;
+    }
+
+    public Tuple2<Double,List<ReadDepthEvent>> solve(final JavaSparkContext ctx, final int maxIter, final double absoluteTolerance) {
         double lastEnergy = Double.MAX_VALUE;
         double delta;
         int iter = 1;
-        do {
-            solveStateMaximumPosterior();
-            final double energy = solveParameterMaximumPosterior();
-            delta = Math.abs(energy - lastEnergy);
-            lastEnergy = energy;
-            logger.info("Iteration " + iter + ": f = " + energy + ", delta = " + delta);
-            iter++;
-        } while (iter < maxIter && delta > absoluteTolerance);
-        System.out.println(parameters.toString());
-        return lastEnergy;
+        final JavaRDD<ReadDepthCluster> clusterRdd = ctx.parallelize(clusteredEvents.values().stream().flatMap(List::stream).collect(Collectors.toList()));
+        final List<Tuple2<ReadDepthCluster,Double>> result = solveStateMaximumPosterior(clusterRdd);
+        final double energy = result.stream().mapToDouble(Tuple2::_2).sum();
+        final List<ReadDepthEvent> events = result.stream().map(Tuple2::_1).map(ReadDepthCluster::getEventsList).flatMap(List::stream).collect(Collectors.toList());
+        //final double energy = solveParameterMaximumPosterior();
+        delta = Math.abs(energy - lastEnergy);
+        lastEnergy = energy;
+        logger.info("Iteration " + iter + ": f = " + energy + ", delta = " + delta);
+        return new Tuple2<>(energy,events);
     }
 
     public double solveParameterMaximumPosterior() {
@@ -122,16 +128,13 @@ public final class ReadDepthModel {
         final SimulatedAnnealingSolver parameterSolver = new SimulatedAnnealingSolver(size, energyFunction, sampler, lowerBound, upperBound);
 
         final double[] x0 = parameters.getParameters();
-        final double finalEnergy = parameterSolver.solve(x0, 10000, 10000, 0);
+        final double finalEnergy = parameterSolver.solve(x0, 10000, 0);
         parameters.setParameters(parameterSolver.getSolution());
         return finalEnergy;
     }
 
-    private double solveStateMaximumPosterior() {
-        return StreamSupport.stream(clusteredEvents.values().spliterator(), false) //TODO use Spark
-                .flatMap(List::stream)
-                .mapToDouble(cluster -> solveStateMaximumPosterior(cluster))
-                .sum();
+    private List<Tuple2<ReadDepthCluster,Double>> solveStateMaximumPosterior(final JavaRDD<ReadDepthCluster> clusters) {
+        return clusters.map(cluster -> solveStateMaximumPosterior(cluster)).collect();
     }
 
     private double[] stateStepSampler(final int size) {
@@ -153,14 +156,14 @@ public final class ReadDepthModel {
         return sample;
     }
 
-    public double solveStateMaximumPosterior(final ReadDepthCluster cluster) {
+    public Tuple2<ReadDepthCluster,Double> solveStateMaximumPosterior(final ReadDepthCluster cluster) {
         if (cluster.getEventsList().size() == 1) {
             return solveStateMaximumPosteriorBF(cluster);
         }
         return solveStateMaximumPosteriorSA(cluster);
     }
 
-    private double solveStateMaximumPosteriorBF(final ReadDepthCluster cluster) {
+    private Tuple2<ReadDepthCluster,Double> solveStateMaximumPosteriorBF(final ReadDepthCluster cluster) {
         final int numEvents = cluster.getEventsTree().size();
         if (numEvents != 1) {
             throw new GATKException("Brute force only supports one event");
@@ -168,7 +171,8 @@ public final class ReadDepthModel {
         final double[] x = new double[numEvents];
         double minX = 0;
         double minEnergy = -computeCallDistanceLikelihood(x, cluster);
-        for (int i = 1; i <= parameters.getParameter(ReadDepthModelParameters.ParameterEnum.MAX_PLOIDY); i++) {
+        final int maxPloidy = (int) parameters.getParameter(ReadDepthModelParameters.ParameterEnum.MAX_PLOIDY);
+        for (int i = 1; i <= maxPloidy; i++) {
             x[0] = i;
             final double energy = -computeCallDistanceLikelihood(x, cluster);
             if (i == 0 || energy < minEnergy) {
@@ -177,10 +181,10 @@ public final class ReadDepthModel {
             }
         }
         cluster.getEventsList().get(0).setState(minX);
-        return minEnergy;
+        return new Tuple2<>(cluster, minEnergy);
     }
 
-    private double solveStateMaximumPosteriorSA(final ReadDepthCluster cluster) {
+    private Tuple2<ReadDepthCluster,Double> solveStateMaximumPosteriorSA(final ReadDepthCluster cluster) {
         final List<ReadDepthEvent> events = cluster.getEventsList();
         final Function<double[], Double> energyFunction = x -> -computeLogPosterior(x, cluster);
         final int size = events.size();
@@ -196,17 +200,15 @@ public final class ReadDepthModel {
         for (int i = 0; i < events.size(); i++) {
             x0[i] = events.get(i).getState();
         }
-        final double T0 = 100 * size;
-
-        final int numSteps = (int) Math.min(10000, Math.pow(10, size));
-        //logger.info("Solving state posterior for " + size + " events...");
-        final double finalEnergy = sa.solve(x0, T0, numSteps, 0);
+        final int numSteps = (int) Math.min(100000, Math.pow(10, size));
+        logger.info("Solving state posterior for " + size + " events...");
+        final double finalEnergy = sa.solve(x0, numSteps, ReadDepthModel::metropolisHastingsTemperatureSchedule, 1000);
 
         final double[] minEnergyState = sa.getSolution();
         for (int i = 0; i < events.size(); i++) {
             events.get(i).setState(minEnergyState[i]);
         }
-        return finalEnergy;
+        return new Tuple2<>(cluster, finalEnergy);
     }
 
     private double computeLogPosterior(final double[] x, final ReadDepthCluster cluster) {
@@ -284,8 +286,9 @@ public final class ReadDepthModel {
         return type == SimpleSVType.TYPES.DUP ? Math.min(val, 1) : val;
     }
 
-    private final static class ReadDepthModelParameters {
+    private final static class ReadDepthModelParameters implements Serializable {
 
+        public static final long serialVersionUID = 1L;
         public enum ParameterEnum {
             SA_STEPS,
             SA_T0,
@@ -307,7 +310,7 @@ public final class ReadDepthModel {
         public static final double DEFAULT_PARAMETER_CONSTRAINT_STD = 0.001;
         public static final double DEFAULT_EXPECTED_READ_EVIDENCE_FRACTION = 1.0;
         public static final double DEFAULT_EXPECTED_READ_EVIDENCE_STD = 0.5;
-        public static final double DEFAULT_COPY_NUMBER_STD = 0.9;
+        public static final double DEFAULT_COPY_NUMBER_STD = 2;
         public static final double DEFAULT_CALL_DISTANCE_PSEUDOCOUNT = 0.01;
 
         private double[] parameters;
@@ -403,7 +406,8 @@ public final class ReadDepthModel {
         return sample;
     }
 
-    static final class OverlapInfo {
+    static final class OverlapInfo implements Serializable {
+        public static final long serialVersionUID = 1L;
         public List<Tuple2<Integer, Integer>> idsAndCoefficients;
         public double size;
 

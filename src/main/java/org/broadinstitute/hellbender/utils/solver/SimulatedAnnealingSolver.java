@@ -1,12 +1,14 @@
 package org.broadinstitute.hellbender.utils.solver;
 
 import org.apache.logging.log4j.LogManager;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.utils.Utils;
 
+import java.util.Arrays;
 import java.util.Random;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class SimulatedAnnealingSolver {
@@ -59,26 +61,56 @@ public class SimulatedAnnealingSolver {
         return lastSolution;
     }
 
-    public double solve(final double[] x0, final double T0, final int numSteps, final int loggingInterval) {
+    public double solve(final double[] x0,final int numSteps, final int loggingInterval) {
+        double[] neighborX = new double[size];
+        final double initialEnergy = computeEnergy(x0);
+        double meanEnergyChange = 0;
+        final int numTestPoints = 100;
+        for (int i = 0; i < numTestPoints; i++) {
+            updateNeighbor(x0, neighborX);
+            final double neighborEnergy = computeEnergy(neighborX);
+            meanEnergyChange += Math.abs(neighborEnergy - initialEnergy) / numTestPoints;
+        }
+        final double T0 = meanEnergyChange;
+        final Function<Integer,Double> temperatureSchedule = step -> T0 * (1 - (step / (double) numSteps));
+        return solve(x0, numSteps, temperatureSchedule, loggingInterval);
+    }
+
+    final String stateString(final double[] x) {
+        return "[" + String.join(", ", Arrays.stream(x).boxed().map(String::valueOf).collect(Collectors.toList())) + "]";
+    }
+
+    public double solve(final double[] x0, final int numSteps, final Function<Integer,Double> temperatureSchedule, final int loggingInterval) {
         double[] x = x0;
         double[] neighborX = new double[size];
         final double[] minX = new double[size];
         double currentEnergy = computeEnergy(x);
+
+        double meanEnergyChange = 0;
+        final int numTestPoints = 100;
+        for (int i = 0; i < numTestPoints; i++) {
+            updateNeighbor(x, neighborX);
+            final double neighborEnergy = computeEnergy(neighborX);
+            meanEnergyChange += Math.abs(neighborEnergy - currentEnergy) / numTestPoints;
+        }
+        final double T0 = meanEnergyChange;
+
         double minEnergy = currentEnergy;
         int tMin = 0;
         copyStates(x, minX);
         for (int step = 0; step < numSteps; step++) {
+            final double T = temperatureSchedule.apply(step);
             if (loggingInterval > 0 && step % loggingInterval == 0) {
-                logger.info("Iteration " + step + " : f = " + currentEnergy + ", fmin = " + minEnergy);
+                logger.info("Iteration " + step + " : T = " + T + ", f = " + currentEnergy + ", fmin = " + minEnergy);
+                logger.info("\tx = " + stateString(x));
             }
-            final double T = T0 * (1 - (step / (double) numSteps));
             updateNeighbor(x, neighborX);
             final double neighborEnergy = computeEnergy(neighborX);
             final double acceptanceProbability;
             if (neighborEnergy < currentEnergy) {
                 acceptanceProbability = 1;
             } else {
-                acceptanceProbability = Math.exp(-(neighborEnergy - currentEnergy) / T);
+                acceptanceProbability = Math.exp((currentEnergy - neighborEnergy) / T);
             }
             if (acceptanceProbability == 1 || random.nextDouble() <= acceptanceProbability) {
                 final double[] tempX = x;
@@ -92,7 +124,8 @@ public class SimulatedAnnealingSolver {
                 }
             }
         }
-        //logger.info("Solved after " + numSteps + " : f = " + currentEnergy + ", fmin = " + minEnergy + ", tmin = " + tMin);
+        logger.info("Solved after " + numSteps + " : f = " + currentEnergy + ", fmin = " + minEnergy + ", tmin = " + tMin);
+        logger.info("\tx_min = " + stateString(minX));
         lastSolution = minX;
         return minEnergy;
     }

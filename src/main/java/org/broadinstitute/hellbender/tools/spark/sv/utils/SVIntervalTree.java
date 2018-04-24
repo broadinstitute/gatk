@@ -6,6 +6,7 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
+import java.io.Serializable;
 import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -33,7 +34,8 @@ import java.util.Objects;
  * to if you're not worrying about this stuff:  they'll return null for novel insertions and failed deletions.
  */
 @DefaultSerializer(SVIntervalTree.Serializer.class)
-public final class SVIntervalTree<V> implements Iterable<SVIntervalTree.Entry<V>> {
+public final class SVIntervalTree<V> implements Iterable<SVIntervalTree.Entry<V>>, Serializable {
+    public static final long serialVersionUID = 1L;
     private Node<V> root;
     private V sentinel;
 
@@ -440,7 +442,8 @@ public final class SVIntervalTree<V> implements Iterable<SVIntervalTree.Entry<V>
         V1 setValue( final V1 value );
     }
 
-    static final class Node<V1> implements Entry<V1> {
+    static final class Node<V1> implements Entry<V1>, Serializable {
+        public static final long serialVersionUID = 1L;
         private final SVInterval interval;
         private V1 value;
         private Node<V1> parent;

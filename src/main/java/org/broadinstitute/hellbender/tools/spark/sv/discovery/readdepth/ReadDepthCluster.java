@@ -13,11 +13,13 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
 
+import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 
-final class ReadDepthCluster {
+final class ReadDepthCluster implements Serializable {
 
+    public static final long serialVersionUID = 1L;
     private final List<ReadDepthEvent> eventsList;
     private final SVIntervalTree<ReadDepthEvent> eventsTree;
     private final List<Tuple2<List<ReadDepthModel.OverlapInfo>, Double>> copyNumberInfo;

@@ -4,10 +4,12 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.Objects;
 
-public final class IntrachromosomalBreakpointPair {
+public final class IntrachromosomalBreakpointPair implements Serializable {
+    public static final long serialVersionUID = 1L;
     private final int contig;
     private final int first;
     private final int second;
