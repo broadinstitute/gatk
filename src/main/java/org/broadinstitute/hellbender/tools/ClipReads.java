@@ -13,6 +13,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
@@ -161,7 +162,7 @@ public final class ClipReads extends ReadWalker {
      * The output SAM/BAM/CRAM file will be written here
      */
     @Argument(doc = "BAM output file", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
-    File OUTPUT;
+    String OUTPUT;
 
     /**
      * If provided, ClipReads will write summary statistics about the clipping operations applied to the reads in this file.
@@ -291,7 +292,7 @@ public final class ClipReads extends ReadWalker {
         }
 
         final boolean presorted = EnumSet.of(ClippingRepresentation.WRITE_NS, ClippingRepresentation.WRITE_NS_Q0S, ClippingRepresentation.WRITE_Q0S).contains(clippingRepresentation);
-        outputBam = createSAMWriter(OUTPUT, presorted);
+        outputBam = createSAMWriter(IOUtils.getPath(OUTPUT), presorted);
         
         accumulator = new ClippingData(sequencesToClip);
         try {
