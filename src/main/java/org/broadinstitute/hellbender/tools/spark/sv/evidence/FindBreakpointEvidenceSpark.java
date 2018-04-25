@@ -179,7 +179,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                 new FermiLiteAssemblyHandler(params.alignerIndexImageFile, params.maxFASTQSize,
                                                 params.fastqDir, params.writeGFAs,
                                                 params.popVariantBubbles, params.removeShadowedContigs,
-                                                params.expandAssemblyGraph);
+                                                params.expandAssemblyGraph, params.zDropoff);
         alignedAssemblyOrExcuseList.addAll(
                 handleAssemblies(ctx, qNamesMultiMap, unfilteredReads, filter, intervals.size(),
                         params.includeMappingLocation, fermiLiteAssemblyHandler));

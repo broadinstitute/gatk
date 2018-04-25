@@ -29,11 +29,12 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
     private final boolean popVariantBubbles;
     private final boolean removeShadowedContigs;
     private final boolean expandAssemblyGraph;
+    private final int zDropoff;
 
     public FermiLiteAssemblyHandler( final String alignerIndexFile, final int maxFastqSize,
                                      final String fastqDir, final boolean writeGFAs,
                                      final boolean popVariantBubbles, final boolean removeShadowedContigs,
-                                     final boolean expandAssemblyGraph ) {
+                                     final boolean expandAssemblyGraph, final int zDropoff ) {
         this.alignerIndexFile = alignerIndexFile;
         this.maxFastqSize = maxFastqSize;
         this.fastqDir = fastqDir;
@@ -41,6 +42,7 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
         this.popVariantBubbles = popVariantBubbles;
         this.removeShadowedContigs = removeShadowedContigs;
         this.expandAssemblyGraph = expandAssemblyGraph;
+        this.zDropoff = zDropoff;
     }
 
     /** This method creates an assembly with FermiLite, and uses the graph information returned by that
@@ -99,6 +101,7 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
         // align the assembled contigs to the genomic reference
         try ( final BwaMemAligner aligner = new BwaMemAligner(BwaMemIndexCache.getInstance(alignerIndexFile)) ) {
             aligner.setIntraCtgOptions();
+            aligner.setZDropOption(zDropoff);
             final List<byte[]> sequences =
                     assembly.getContigs().stream()
                             .map(Contig::getSequence)
