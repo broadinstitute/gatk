@@ -99,7 +99,7 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
 
         // Make a directory with unusable permissions in place of where the default file will live
         final File defaultDir = new File(outputFile.getAbsolutePath() + ".parts/");
-        defaultDir.mkdir();
+        Assert.assertTrue(defaultDir.mkdir());
         BufferedWriter testfile = new BufferedWriter(new FileWriter(defaultDir.getAbsolutePath() + "/test.txt"));
         testfile.write("test");
         testfile.close();
@@ -108,7 +108,7 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
         assertSingleShardedWritingWorks(inputBam, referenceFile, outputFile.getAbsolutePath(), outputDir.getAbsolutePath());
 
         // Test that the file wasn't deleted when spark cleared its temp directory
-        Assert.assertEquals(new File(defaultDir.getAbsolutePath() + "/test.txt").exists(), true);
+        Assert.assertTrue(new File(defaultDir.getAbsolutePath() + "/test.txt").exists());
         // Remove the file this time
         Runtime.getRuntime().exec("rm -r " + outputFile.getAbsolutePath() + ".parts");
     }

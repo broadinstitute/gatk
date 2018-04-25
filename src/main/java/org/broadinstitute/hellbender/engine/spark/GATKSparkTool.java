@@ -66,7 +66,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     public static final String BAM_PARTITION_SIZE_LONG_NAME = "bam-partition-size";
     public static final String NUM_REDUCERS_LONG_NAME = "num-reducers";
     public static final String SHARDED_OUTPUT_LONG_NAME = "sharded-output";
-    public static final String OUTPUT_SHARD_DIR_LONG_NAME = "output-shard-dir";
+    public static final String OUTPUT_SHARD_DIR_LONG_NAME = "output-shard-tmp-dir";
 
     @ArgumentCollection
     public final ReferenceInputArgumentCollection referenceArguments = requiresReference() ? new RequiredReferenceInputArgumentCollection() :  new OptionalReferenceInputArgumentCollection();
@@ -89,12 +89,14 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
 
     @Argument(doc = "For tools that write an output, write the output in multiple pieces (shards)",
             fullName = SHARDED_OUTPUT_LONG_NAME,
-            optional = true)
+            optional = true,
+            mutex = {OUTPUT_SHARD_DIR_LONG_NAME})
     protected boolean shardedOutput = false;
 
-    @Argument(doc = "For tools that write an output, directory for writing sharded chunks before being combined",
+    @Argument(doc = "when writing a bam, in single sharded mode this directory to write the temporary intermediate output shards, if not specified .parts/ will be used",
             fullName = OUTPUT_SHARD_DIR_LONG_NAME,
-            optional = true)
+            optional = true,
+            mutex = {SHARDED_OUTPUT_LONG_NAME})
     protected String shardedPartsDir = null;
 
     @Argument(doc="For tools that shuffle data or write an output, sets the number of reducers. Defaults to 0, which gives one partition per 10MB of input.",
