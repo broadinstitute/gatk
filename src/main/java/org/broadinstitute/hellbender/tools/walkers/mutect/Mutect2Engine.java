@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
@@ -9,10 +8,7 @@ import org.apache.commons.math3.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
-import org.broadinstitute.hellbender.engine.filters.ReadFilter;
-import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
-import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.engine.filters.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingGivenAllelesUtils;
@@ -21,7 +17,6 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
-import org.broadinstitute.hellbender.utils.downsampling.AlleleBiasedDownsamplingUtils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
@@ -57,7 +52,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     public static final double MAX_ALT_FRACTION_IN_NORMAL = 0.3;
     public static final int MAX_NORMAL_QUAL_SUM = 100;
 
-
     private M2ArgumentCollection MTAC;
     private SAMFileHeader header;
 
@@ -66,6 +60,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     public static final int MINIMUM_BASE_QUALITY = 6;   // for active region determination
 
     private final SampleList samplesList;
+    private final String tumorSample;
+    private final String normalSample;
 
     private CachingIndexedFastaSequenceFile referenceReader;
     private ReadThreadingAssembler assemblyEngine;
@@ -74,19 +70,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     private Optional<HaplotypeBAMWriter> haplotypeBAMWriter;
     private VariantAnnotatorEngine annotationEngine;
     private final SmithWatermanAligner aligner;
-
-    private final String tumorSampleName;
-    private final String normalSampleName;
-
     private AssemblyRegionTrimmer trimmer = new AssemblyRegionTrimmer();
-
-    private static ReadFilter GOOD_READ_LENGTH_FILTER = new ReadFilter() {
-        private static final long serialVersionUID = 985763L;
-        @Override
-        public boolean test(final GATKRead read) {
-            return read.getLength() >= MIN_READ_LENGTH;
-        }
-    };
 
     /**
      * Create and initialize a new HaplotypeCallerEngine given a collection of HaplotypeCaller arguments, a reads header,
@@ -101,112 +85,65 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     public Mutect2Engine(final M2ArgumentCollection MTAC, final boolean createBamOutIndex, final boolean createBamOutMD5, final SAMFileHeader header, final String reference ) {
         this.MTAC = Utils.nonNull(MTAC);
         this.header = Utils.nonNull(header);
-        Utils.nonNull(reference);
-        referenceReader = AssemblyBasedCallerUtils.createReferenceReader(reference);
+        referenceReader = AssemblyBasedCallerUtils.createReferenceReader(Utils.nonNull(reference));
         aligner = SmithWatermanAligner.getAligner(MTAC.smithWatermanImplementation);
         samplesList = new IndexedSampleList(new ArrayList<>(ReadUtils.getSamplesFromHeader(header)));
-        // If sample name is encoded from {@link GetSampleName}, decode it
-        tumorSampleName = samplesList.asListOfSamples().contains(MTAC.tumorSampleName) ?
-                MTAC.tumorSampleName : IOUtils.urlDecode(MTAC.tumorSampleName);
-        normalSampleName = MTAC.normalSampleName == null || samplesList.asListOfSamples().contains(MTAC.normalSampleName) ?
-                MTAC.normalSampleName : IOUtils.urlDecode(MTAC.normalSampleName);
-        initialize(createBamOutIndex, createBamOutMD5);
-    }
-
-    private void initialize(final boolean createBamOutIndex, final boolean createBamOutBamMD5) {
-        if (!samplesList.asListOfSamples().contains(tumorSampleName)) {
-            throw new UserException.BadInput("BAM header sample names " + samplesList.asListOfSamples() + "does not contain given tumor" +
-                    " sample name " + tumorSampleName);
-        } else if (normalSampleName != null && !samplesList.asListOfSamples().contains(normalSampleName)) {
-            throw new UserException.BadInput("BAM header sample names " + samplesList.asListOfSamples() + "does not contain given normal" +
-                    " sample name " + normalSampleName);
-        }
+        tumorSample = decodeSampleNameIfNecessary(MTAC.tumorSample);
+        normalSample = MTAC.normalSample == null ? null : decodeSampleNameIfNecessary(MTAC.normalSample);
+        checkSampleInBamHeader(tumorSample);
+        checkSampleInBamHeader(normalSample);
 
         annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(MTAC.defaultGATKVariantAnnotationArgumentCollection, null, Collections.emptyList(), false);
-
         assemblyEngine = AssemblyBasedCallerUtils.createReadThreadingAssembler(MTAC);
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs);
-        genotypingEngine = new SomaticGenotypingEngine(samplesList, MTAC, tumorSampleName, normalSampleName);
+        genotypingEngine = new SomaticGenotypingEngine(samplesList, MTAC, tumorSample, normalSample);
         genotypingEngine.setAnnotationEngine(annotationEngine);
-        haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(MTAC, createBamOutIndex, createBamOutBamMD5, header);
-
+        haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(MTAC, createBamOutIndex, createBamOutMD5, header);
         trimmer.initialize(MTAC.assemblyRegionTrimmerArgs, header.getSequenceDictionary(), MTAC.debug,
                 MTAC.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES, false);
-
-        if( MTAC.CONTAMINATION_FRACTION_FILE != null ) {
-            MTAC.setSampleContamination(AlleleBiasedDownsamplingUtils.loadContaminationFile(MTAC.CONTAMINATION_FRACTION_FILE, MTAC.CONTAMINATION_FRACTION, samplesList.asSetOfSamples(), logger));
-        }
     }
 
-    /**
-     * @return the default set of read filters for use with Mutect2
-     */
+    //default M2 read filters.  Cheap ones come first in order to fail fast.
     public static List<ReadFilter> makeStandardMutect2ReadFilters() {
-        // The order in which we apply filters is important. Cheap filters come first so we fail fast
-        List<ReadFilter> filters = new ArrayList<>();
-        filters.add(new MappingQualityReadFilter(READ_QUALITY_FILTER_THRESHOLD));
-        filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
-        filters.add(ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO);
-        filters.add(ReadFilterLibrary.MAPPED);
-        filters.add(ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT);
-        filters.add(ReadFilterLibrary.NOT_DUPLICATE);
-        filters.add(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
-        filters.add(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
-        filters.add(GOOD_READ_LENGTH_FILTER);
-        filters.add(ReadFilterLibrary.GOOD_CIGAR);
-        filters.add(new WellformedReadFilter());
-
-        return filters;
+        return Arrays.asList(new MappingQualityReadFilter(READ_QUALITY_FILTER_THRESHOLD),
+                ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE,
+                ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO,
+                ReadFilterLibrary.MAPPED,
+                ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT,
+                ReadFilterLibrary.NOT_DUPLICATE,
+                ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK,
+                ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT,
+                new ReadLengthReadFilter(MIN_READ_LENGTH, Integer.MAX_VALUE),
+                ReadFilterLibrary.GOOD_CIGAR,
+                new WellformedReadFilter());
     }
 
-    public void writeHeader(final VariantContextWriter vcfWriter, final SAMSequenceDictionary sequenceDictionary,
-                            final Set<VCFHeaderLine>  defaultToolHeaderLines) {
+    public void writeHeader(final VariantContextWriter vcfWriter, final Set<VCFHeaderLine> defaultToolHeaderLines) {
         final Set<VCFHeaderLine> headerInfo = new HashSet<>();
+        headerInfo.add(new VCFHeaderLine("Mutect Version", MUTECT_VERSION));
         headerInfo.add(new VCFHeaderLine(Mutect2FilteringEngine.FILTERING_STATUS_VCF_KEY, "Warning: unfiltered Mutect 2 calls.  Please run " + FilterMutectCalls.class.getSimpleName() + " to remove false positives."));
-
-        // all annotation fields from VariantAnnotatorEngine
         headerInfo.addAll(annotationEngine.getVCFAnnotationDescriptions(false));
         headerInfo.addAll(defaultToolHeaderLines);
+        GATKVCFConstants.STANDARD_MUTECT_INFO_FIELDS.stream().map(GATKVCFHeaderLines::getInfoLine).forEach(headerInfo::add);
 
-        // all callers need to add these standard FORMAT field header lines
         VCFStandardHeaderLines.addStandardFormatLines(headerInfo, true,
                 VCFConstants.GENOTYPE_KEY,
                 VCFConstants.GENOTYPE_ALLELE_DEPTHS,
                 VCFConstants.GENOTYPE_QUALITY_KEY,
                 VCFConstants.DEPTH_KEY,
                 VCFConstants.GENOTYPE_PL_KEY);
+        headerInfo.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.ALLELE_FRACTION_KEY));
+        headerInfo.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY));
+        headerInfo.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
 
-        headerInfo.addAll(getM2HeaderLines());
-        headerInfo.addAll(getSampleHeaderLines());
+        headerInfo.add(new VCFHeaderLine(TUMOR_SAMPLE_KEY_IN_VCF_HEADER, tumorSample));
+        if (hasNormal()) {
+            headerInfo.add(new VCFHeaderLine(NORMAL_SAMPLE_KEY_IN_VCF_HEADER, normalSample));
+        }
 
         final VCFHeader vcfHeader = new VCFHeader(headerInfo, samplesList.asListOfSamples());
-        vcfHeader.setSequenceDictionary(sequenceDictionary);
+        vcfHeader.setSequenceDictionary(header.getSequenceDictionary());
         vcfWriter.writeHeader(vcfHeader);
-    }
-
-    private Set<VCFHeaderLine> getM2HeaderLines(){
-        final Set<VCFHeaderLine> headerInfo = new HashSet<>();
-
-        headerInfo.add(new VCFHeaderLine("Mutect Version", MUTECT_VERSION));
-
-        GATKVCFConstants.STANDARD_MUTECT_INFO_FIELDS.stream().map(GATKVCFHeaderLines::getInfoLine).forEach(headerInfo::add);
-
-        headerInfo.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.ALLELE_FRACTION_KEY));
-
-        if ( ! MTAC.doNotRunPhysicalPhasing ) {
-            headerInfo.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY));
-            headerInfo.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
-        }
-        return headerInfo;
-    }
-
-    private Set<VCFHeaderLine> getSampleHeaderLines(){
-        final Set<VCFHeaderLine> sampleLines = new HashSet<>();
-        if (hasNormal()) {
-            sampleLines.add(new VCFHeaderLine(NORMAL_SAMPLE_KEY_IN_VCF_HEADER, normalSampleName));
-        }
-        sampleLines.add(new VCFHeaderLine(TUMOR_SAMPLE_KEY_IN_VCF_HEADER, tumorSampleName));
-        return sampleLines;
     }
 
     public List<VariantContext> callRegion(final AssemblyRegion originalAssemblyRegion, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
@@ -243,17 +180,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         readLikelihoods.changeReads(readRealignments);
 
         final HaplotypeCallerGenotypingEngine.CalledHaplotypes calledHaplotypes = genotypingEngine.callMutations(
-                readLikelihoods,
-                assemblyResult,
-                referenceContext,
-                regionForGenotyping.getSpan(),
-                featureContext,
-                givenAlleles,
-                header);
-
+                readLikelihoods, assemblyResult, referenceContext, regionForGenotyping.getSpan(), featureContext, givenAlleles, header);
         writeBamOutput(assemblyResult, readLikelihoods, calledHaplotypes);
-
-        if( MTAC.debug) { logger.info("----------------------------------------------------------------------------------"); }
         return calledHaplotypes.getCalls();
     }
 
@@ -271,23 +199,17 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
     //TODO: should be a variable, not a function
     private boolean hasNormal() {
-        return (normalSampleName != null);
+        return (normalSample != null);
     }
 
     protected Map<String, List<GATKRead>> splitReadsBySample( final Collection<GATKRead> reads ) {
         return AssemblyBasedCallerUtils.splitReadsBySample(samplesList, header, reads);
     }
 
-    /**
-     * Shutdown this M2 engine, closing resources as appropriate
-     */
     public void shutdown() {
         likelihoodCalculationEngine.close();
         aligner.close();
-
-        if ( haplotypeBAMWriter.isPresent() ) {
-            haplotypeBAMWriter.get().close();
-        }
+        haplotypeBAMWriter.ifPresent(writer -> writer.close());
     }
 
     @Override
@@ -307,7 +229,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         }
 
         final ReadPileup pileup = context.getBasePileup();
-        final ReadPileup tumorPileup = pileup.getPileupForSample(tumorSampleName, header);
+        final ReadPileup tumorPileup = pileup.getPileupForSample(tumorSample, header);
         final Pair<Integer, Double> tumorAltCountAndQualSum = altCountAndQualSum(tumorPileup, refBase);
         final int tumorAltCount = tumorAltCountAndQualSum.getFirst();
         final int tumorRefCount = tumorPileup.size() - tumorAltCount;
@@ -318,7 +240,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         if (tumorLog10Odds < MTAC.initialTumorLodThreshold) {
             return new ActivityProfileState(refInterval, 0.0);
         } else if (hasNormal() && !MTAC.genotypeGermlineSites) {
-            final ReadPileup normalPileup = pileup.getPileupForSample(normalSampleName, header);
+            final ReadPileup normalPileup = pileup.getPileupForSample(normalSample, header);
             final Pair<Integer, Double> normalAltCountAndQualSum = altCountAndQualSum(normalPileup, refBase);
             final int normalAltCount = normalAltCountAndQualSum.getFirst();
             final double normalQualSum = normalAltCountAndQualSum.getSecond();
@@ -378,5 +300,15 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         return pe.getQual() > MINIMUM_BASE_QUALITY &&
                 ((pe.isBeforeSoftClip() && pe.getRead().getBaseQuality(offset + 1) > MINIMUM_BASE_QUALITY)
                         || (pe.isAfterSoftClip() && pe.getRead().getBaseQuality(offset - 1) > MINIMUM_BASE_QUALITY));
+    }
+
+    private void checkSampleInBamHeader(final String sample) {
+        if (sample != null && !samplesList.asListOfSamples().contains(sample)) {
+            throw new UserException.BadInput("Sample " + sample + " is not in BAM header: " + samplesList.asListOfSamples());
+        }
+    }
+
+    private String decodeSampleNameIfNecessary(final String name) {
+        return samplesList.asListOfSamples().contains(name) ? name : IOUtils.urlDecode(name);
     }
 }
