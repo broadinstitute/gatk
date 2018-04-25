@@ -99,7 +99,7 @@ import java.util.stream.StreamSupport;
 @CommandLineProgramProperties(
         summary = CNNScoreVariants.USAGE_SUMMARY,
         oneLineSummary = CNNScoreVariants.USAGE_ONE_LINE_SUMMARY,
-        programGroup = VariantEvaluationProgramGroup.class
+        programGroup = VariantFilteringProgramGroup.class
 )
 
 public class CNNScoreVariants extends VariantWalker {

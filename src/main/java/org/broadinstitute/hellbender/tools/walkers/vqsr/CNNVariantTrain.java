@@ -54,7 +54,7 @@ import java.util.List;
 @CommandLineProgramProperties(
         summary = "Train a CNN model for filtering variants",
         oneLineSummary = "Train a CNN model for filtering variants",
-        programGroup = VariantEvaluationProgramGroup.class
+        programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
 @ExperimentalFeature
