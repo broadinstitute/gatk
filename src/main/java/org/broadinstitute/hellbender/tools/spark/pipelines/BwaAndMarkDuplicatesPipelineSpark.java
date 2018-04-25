@@ -47,14 +47,14 @@ public final class BwaAndMarkDuplicatesPipelineSpark extends GATKSparkTool {
     @ArgumentCollection
     public final BwaArgumentCollection bwaArgs = new BwaArgumentCollection();
 
-    @Argument(shortName = "DS", fullName =MarkDuplicatesSpark.DO_NOT_MARK_UNMAPPED_MATES, doc = "The scoring strategy for choosing the non-duplicate among candidates.")
+    @Argument(shortName = "DS", fullName ="duplicates_scoring_strategy", doc = "The scoring strategy for choosing the non-duplicate among candidates.")
     public MarkDuplicatesScoringStrategy duplicatesScoringStrategy = MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES;
 
     @Argument(doc = "the output bam", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     protected String output;
 
-    @Argument(fullName = "do_not_mark_unmapped_mates", doc = "Enabling this option will mean unmapped mates of duplicate marked reads will not be marked as duplicates.")
+    @Argument(fullName = MarkDuplicatesSpark.DO_NOT_MARK_UNMAPPED_MATES, doc = "Enabling this option will mean unmapped mates of duplicate marked reads will not be marked as duplicates.")
     public boolean dontMarkUnmappedMates = false;
 
 
