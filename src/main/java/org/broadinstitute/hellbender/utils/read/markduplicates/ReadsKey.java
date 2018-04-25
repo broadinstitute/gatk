@@ -6,6 +6,9 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 /**
  * Encodes a unique key for read, read pairs and fragments. Used to identify duplicates for MarkDuplicatesGATK.
+ *
+ * This class was changed to primarily operate on key hashing instead of generating long string keys as it was discovered
+ * that it had performance implications for serialization in MarkDuplicatesSpark. 
  */
 public final class ReadsKey {
 

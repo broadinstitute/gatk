@@ -625,7 +625,7 @@ public final class Utils {
      * @param collection any Collection
      * @return true if the collection exists and has elements
      */
-    public static boolean hasElements(Collection<?> collection){
+    public static boolean isNonEmpty(Collection<?> collection){
         return collection != null && !collection.isEmpty();
     }
 

@@ -20,7 +20,8 @@ public abstract class MarkDuplicatesSparkRecord {
 
     // Required abstract methods
     public abstract Type getType();
-    public abstract int key(final SAMFileHeader header);
+    // NOTE: these keys are typically stored as a transient field to prevent serialization for performances purposes, this is only guaranteed to give the correct result right after construction
+    public abstract int key();
 
 
     // A fragment containing only one read without a mapped mate

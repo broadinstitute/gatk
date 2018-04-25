@@ -21,8 +21,7 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
  */
 @DefaultSerializer(Pair.Serializer.class)
 public final class Pair extends PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
-    protected transient GATKRead first;
-    protected transient GATKRead second;
+    protected transient int key;
 
     private final int firstStartPosition;
     private final int firstUnclippedStartPosition;
@@ -41,7 +40,6 @@ public final class Pair extends PairedEnds implements OpticalDuplicateFinder.Phy
     private transient short y = -1;
     private transient short libraryId = -1;
 
-    // Constructor for serialization purposes
     public Pair(final GATKRead read1, final GATKRead read2, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
         super(partitionIndex, read1.getName());
 
@@ -51,7 +49,9 @@ public final class Pair extends PairedEnds implements OpticalDuplicateFinder.Phy
 
         this.score = scoringStrategy.score(read1) + scoringStrategy.score(read2);
 
-        this.first = read1;
+        GATKRead first = read1;
+        GATKRead second;
+
         final int read1UnclippedStart = ReadUtils.getStrandedUnclippedStart(read1);
         final int read2UnclippedStart = ReadUtils.getStrandedUnclippedStart(read2);
 
@@ -83,13 +83,13 @@ public final class Pair extends PairedEnds implements OpticalDuplicateFinder.Phy
 
         R1R = firstOfPair.isReverseStrand();
         R2R = secondOfPair.isReverseStrand();
+
+        this.key = ReadsKey.hashKeyForPair(header, first, second);
     }
 
     // Constructor for serialization purposes
     private Pair(Kryo kryo, Input input){
         super(input.readInt(true), input.readString());
-        first = null;
-        second = null;
 
         // Information used to detect optical dupes
         readGroup = -1;
@@ -132,8 +132,9 @@ public final class Pair extends PairedEnds implements OpticalDuplicateFinder.Phy
         return Type.PAIR;
     }
     @Override
-    public int key(SAMFileHeader header) {
-        return ReadsKey.hashKeyForPair(header, first, second);
+    // NOTE: This is transient and thus may not exist if the object gets serialized
+    public int key() {
+        return key;
     }
     @Override
     public int getScore() {

@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
  * during the processing step of MarkDuplicatesSpark
  */
 public final class EmptyFragment extends PairedEnds {
-    protected transient GATKRead first;
+    protected transient int key;
 
     private final int firstUnclippedStartPosition;
     private final int firstStartPosition;
@@ -29,10 +29,13 @@ public final class EmptyFragment extends PairedEnds {
         super(0, null);
 
         this.firstUnclippedStartPosition = ReadUtils.getStrandedUnclippedStart(read);
-        this.first = read;
         this.firstRefIndex = (short)ReadUtils.getReferenceIndex(read, header);
         this.R1R = read.isReverseStrand();
         firstStartPosition = 0;
+        this.key = ReadsKey.hashKeyForFragment(firstUnclippedStartPosition,
+                isR1R(),
+                firstRefIndex,
+                ReadUtils.getLibrary(read, header));
     }
 
     @Override
@@ -44,11 +47,9 @@ public final class EmptyFragment extends PairedEnds {
         return 0;
     }
     @Override
-    public int key(SAMFileHeader header) {
-        return ReadsKey.hashKeyForFragment(firstUnclippedStartPosition,
-                isR1R(),
-                firstRefIndex,
-                ReadUtils.getLibrary(first, header));
+    // NOTE: This is transient and thus may not exist if the object gets serialized
+    public int key() {
+        return key;
     }
     @Override
     public int getUnclippedStartPosition() {

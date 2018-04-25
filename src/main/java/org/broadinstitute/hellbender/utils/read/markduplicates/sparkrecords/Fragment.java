@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
  * during the processing step of MarkDuplicatesSpark
  */
 public class Fragment extends PairedEnds {
-    protected transient GATKRead first;
+    protected transient int key;
 
     private final int firstStartPosition;
     private final int firstUnclippedStartPosition;
@@ -25,12 +25,15 @@ public class Fragment extends PairedEnds {
     public Fragment(final GATKRead first, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
         super(partitionIndex, first.getName());
 
-        this.first = first;
         this.firstUnclippedStartPosition = ReadUtils.getStrandedUnclippedStart(first);
         this.firstStartPosition = first.getAssignedStart();
         this.firstRefIndex = (short)ReadUtils.getReferenceIndex(first, header);
         this.score = scoringStrategy.score(first);
         this.R1R = first.isReverseStrand();
+        this.key = ReadsKey.hashKeyForFragment(firstUnclippedStartPosition,
+                isR1R(),
+                firstRefIndex,
+                ReadUtils.getLibrary(first, header));
     }
 
     @Override
@@ -38,11 +41,9 @@ public class Fragment extends PairedEnds {
       return Type.FRAGMENT;
     }
     @Override
-    public int key(SAMFileHeader header) {
-        return ReadsKey.hashKeyForFragment(firstUnclippedStartPosition,
-                isR1R(),
-                firstRefIndex,
-                ReadUtils.getLibrary(first, header));
+    // NOTE: This is transient and thus may not exist if the object gets serialized
+    public int key() {
+        return key;
     }
     @Override
     public int getScore() {

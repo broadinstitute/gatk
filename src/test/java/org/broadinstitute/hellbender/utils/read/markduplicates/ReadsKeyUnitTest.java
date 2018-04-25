@@ -1,10 +1,11 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates;
 
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.annotations.Test;
 
 import java.util.Random;
 
-public class ReadsKeyUnitTest {
+public class ReadsKeyUnitTest extends GATKBaseTest {
 
     @Test (enabled = false)
     // This test makes the argument that using a StringBuilder in ReadsKey is faster than an equivalent call to String.format()

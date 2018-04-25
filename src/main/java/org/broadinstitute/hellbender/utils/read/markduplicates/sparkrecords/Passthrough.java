@@ -9,12 +9,12 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
  * processing on the reads. (eg. unmapped reads we don't want to process but must be non-duplicate marked)
  */
 public final class Passthrough extends MarkDuplicatesSparkRecord {
-    private final transient GATKRead read;
+    private final transient int key;
 
     Passthrough(GATKRead read, int partitionIndex) {
         super(partitionIndex, read.getName());
 
-        this.read = read;
+        this.key = ReadsKey.hashKeyForRead(read);
     }
 
     @Override
@@ -22,7 +22,8 @@ public final class Passthrough extends MarkDuplicatesSparkRecord {
         return Type.PASSTHROUGH;
     }
     @Override
-    public int key(final SAMFileHeader header) {
-        return ReadsKey.hashKeyForRead(read);
+    // NOTE: This is transient and thus may not exist if the object gets serialized
+    public int key() {
+        return key;
     }
 }

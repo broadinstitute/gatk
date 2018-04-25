@@ -718,10 +718,24 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
         samRecord.setHeaderStrict(header);
     }
 
+    /**
+     * This is used to access the transient attribute store in the underlying SAMRecord.
+     *
+     * NOTE: This is an advanced use case for SAMRecord and you should probably use setAttribute() instead
+     * @param key key whose value is to be retrived
+     */
     public Object getTransientAttribute(Object key) {
         return samRecord.getTransientAttribute(key);
     }
 
+    /**
+     * This is used to access the transient attribute store in the underlying SAMRecord. This is used to store temporary
+     * attributes that will not be serialized and that do not trigger the SAMRecord to parse the attributes if they are not needed.
+     *
+     * NOTE: This is an advanced use case for SAMRecord and you should probably use setAttribute() instead
+     * @param key key under which the value will be stored
+     * @param value value to be keyed
+     */
     public void setTransientAttribute(Object key, Object value) {
         samRecord.setTransientAttribute(key, value);
     }
