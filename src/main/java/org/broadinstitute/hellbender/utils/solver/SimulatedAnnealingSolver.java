@@ -62,16 +62,25 @@ public class SimulatedAnnealingSolver {
     }
 
     public double solve(final double[] x0,final int numSteps, final int loggingInterval) {
-        double[] neighborX = new double[size];
-        final double initialEnergy = computeEnergy(x0);
-        double meanEnergyChange = 0;
-        final int numTestPoints = 100;
+        double[] testX = new double[size];
+        double meanEnergy = 0;
+        final int numTestPoints = 500;
         for (int i = 0; i < numTestPoints; i++) {
-            updateNeighbor(x0, neighborX);
-            final double neighborEnergy = computeEnergy(neighborX);
-            meanEnergyChange += Math.abs(neighborEnergy - initialEnergy) / numTestPoints;
+            for (int j = 0; j < testX.length; j++) {
+                testX[j] = random.nextInt((int) (upperBound[j] - lowerBound[j] + 1)) + lowerBound[j];
+            }
+            final double neighborEnergy = computeEnergy(testX);
+            meanEnergy += neighborEnergy / numTestPoints;
         }
-        final double T0 = meanEnergyChange;
+        double varEnergy = 0;
+        for (int i = 0; i < numTestPoints; i++) {
+            for (int j = 0; j < testX.length; j++) {
+                testX[j] = random.nextInt((int) (upperBound[j] - lowerBound[j] + 1)) + lowerBound[j];
+            }
+            final double neighborEnergy = computeEnergy(testX);
+            varEnergy += (neighborEnergy - meanEnergy) * (neighborEnergy -  meanEnergy) / numTestPoints;
+        }
+        final double T0 = Math.sqrt(varEnergy);
         final Function<Integer,Double> temperatureSchedule = step -> T0 * (1 - (step / (double) numSteps));
         return solve(x0, numSteps, temperatureSchedule, loggingInterval);
     }
@@ -85,16 +94,6 @@ public class SimulatedAnnealingSolver {
         double[] neighborX = new double[size];
         final double[] minX = new double[size];
         double currentEnergy = computeEnergy(x);
-
-        double meanEnergyChange = 0;
-        final int numTestPoints = 100;
-        for (int i = 0; i < numTestPoints; i++) {
-            updateNeighbor(x, neighborX);
-            final double neighborEnergy = computeEnergy(neighborX);
-            meanEnergyChange += Math.abs(neighborEnergy - currentEnergy) / numTestPoints;
-        }
-        final double T0 = meanEnergyChange;
-
         double minEnergy = currentEnergy;
         int tMin = 0;
         copyStates(x, minX);

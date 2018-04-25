@@ -250,7 +250,7 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
     public static class DiscoverVariantsFromReadDepthArgumentCollection implements Serializable {
         private static final long serialVersionUID = 1L;
 
-        public final int DEFAULT_MIN_EVENT_SIZE = 1000;
+        public final int DEFAULT_MIN_EVENT_SIZE = 500;
         public final double DEFAULT_MIN_SCORE = 0;
 
         public final double DEFAULT_COUNTEREVIDENCE_PSEUDOCOUNT = 1;

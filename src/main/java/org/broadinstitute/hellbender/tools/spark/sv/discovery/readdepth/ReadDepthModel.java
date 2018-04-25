@@ -27,15 +27,12 @@ public final class ReadDepthModel implements Serializable {
 
     public static final long serialVersionUID = 1L;
     private final Map<SimpleSVType.TYPES,List<ReadDepthCluster>> clusteredEvents;
-    private final NormalDistribution standardNormal;
-    private final Random random;
     private ReadDepthModelParameters parameters;
     private final Logger logger = LogManager.getLogger(this.getClass());
+    private long seed;
 
     public ReadDepthModel(final SVIntervalTree<LargeSimpleSV> eventsTree, final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector, final SAMSequenceDictionary dictionary) {
         this.parameters = new ReadDepthModelParameters();
-        this.standardNormal = new NormalDistribution(0, 1);
-        this.random = new Random();
         setSamplerSeed(0);
         this.clusteredEvents = clusterEvents(eventsTree, copyRatioSegmentOverlapDetector, dictionary);
     }
@@ -55,8 +52,7 @@ public final class ReadDepthModel implements Serializable {
     }
 
     public void setSamplerSeed(final long seed) {
-        standardNormal.reseedRandomGenerator(seed);
-        random.setSeed(seed);
+        this.seed = seed;
     }
 
     private Map<SimpleSVType.TYPES,List<ReadDepthCluster>> clusterEvents(final SVIntervalTree<LargeSimpleSV> eventsTree, final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector, final SAMSequenceDictionary dictionary) {
@@ -104,40 +100,55 @@ public final class ReadDepthModel implements Serializable {
         return 1.0;
     }
 
-    public Tuple2<Double,List<ReadDepthEvent>> solve(final JavaSparkContext ctx, final int maxIter, final double absoluteTolerance) {
-        double lastEnergy = Double.MAX_VALUE;
-        double delta;
-        int iter = 1;
+    public Tuple2<Double,List<ReadDepthEvent>> solve(final JavaSparkContext ctx) {
         final JavaRDD<ReadDepthCluster> clusterRdd = ctx.parallelize(clusteredEvents.values().stream().flatMap(List::stream).collect(Collectors.toList()));
-        final List<Tuple2<ReadDepthCluster,Double>> result = solveStateMaximumPosterior(clusterRdd);
+        final List<Tuple2<ReadDepthCluster,Double>> result = solveStateMaximumPosterior(clusterRdd, parameters, seed);
+        //solveParameterMaximumPosterior(result.stream().map(Tuple2::_1).collect(Collectors.toList()), parameters, seed, logger);
         final double energy = result.stream().mapToDouble(Tuple2::_2).sum();
         final List<ReadDepthEvent> events = result.stream().map(Tuple2::_1).map(ReadDepthCluster::getEventsList).flatMap(List::stream).collect(Collectors.toList());
-        //final double energy = solveParameterMaximumPosterior();
-        delta = Math.abs(energy - lastEnergy);
-        lastEnergy = energy;
-        logger.info("Iteration " + iter + ": f = " + energy + ", delta = " + delta);
+        logger.info("Done: f = " + energy);
         return new Tuple2<>(energy,events);
     }
 
-    public double solveParameterMaximumPosterior() {
+    public static double solveParameterMaximumPosterior(final List<ReadDepthCluster> clusters, final ReadDepthModelParameters parameters, final long seed, final Logger logger) {
         final int size = parameters.getParameters().length;
-        final Function<double[],Double> energyFunction = x -> clusteredEvents.values().stream().flatMap(List::stream).mapToDouble(cluster -> -computeLogPosterior(cluster.getStates(), cluster)).sum();
-        final Supplier<double[]> sampler = this::parameterStepSampler;
+        final NormalDistribution standardNormal = new NormalDistribution(0, 1);
+        standardNormal.reseedRandomGenerator(seed);
+        final Function<double[],Double> energyFunction = x -> clusters.stream().mapToDouble(cluster -> rejectDupAcceptDelEnergy(x, cluster, seed)).sum();
+        final Supplier<double[]> sampler = () -> parameterStepSampler(standardNormal);
         final double[] lowerBound = ReadDepthModelParameters.getDefaultLowerBounds();
         final double[] upperBound = ReadDepthModelParameters.getDefaultUpperBounds();
         final SimulatedAnnealingSolver parameterSolver = new SimulatedAnnealingSolver(size, energyFunction, sampler, lowerBound, upperBound);
 
         final double[] x0 = parameters.getParameters();
-        final double finalEnergy = parameterSolver.solve(x0, 10000, 0);
+        final double finalEnergy = parameterSolver.solve(x0, 3, 0);
         parameters.setParameters(parameterSolver.getSolution());
+        logger.info(parameters.toString());
         return finalEnergy;
     }
 
-    private List<Tuple2<ReadDepthCluster,Double>> solveStateMaximumPosterior(final JavaRDD<ReadDepthCluster> clusters) {
-        return clusters.map(cluster -> solveStateMaximumPosterior(cluster)).collect();
+    private static double rejectDupAcceptDelEnergy(final double[] x, final ReadDepthCluster cluster, final long seed) {
+        double err = 0;
+        final ReadDepthModelParameters parameters = new ReadDepthModelParameters();
+        parameters.setParameters(x);
+        solveStateMaximumPosterior(cluster, parameters, seed);
+        for (final ReadDepthEvent event : cluster.getEventsList()) {
+            final int id = event.getId();
+            final SimpleSVType.TYPES type = cluster.getType();
+            if (type == SimpleSVType.TYPES.DEL) {
+                err += 1 - Math.min(1, x[id]);
+            } else if (type == SimpleSVType.TYPES.DUP_TAND) {
+                err += x[id];
+            }
+        }
+        return err;
     }
 
-    private double[] stateStepSampler(final int size) {
+    private static List<Tuple2<ReadDepthCluster,Double>> solveStateMaximumPosterior(final JavaRDD<ReadDepthCluster> clusters, final ReadDepthModelParameters parameters, final long seed) {
+        return clusters.map(cluster -> solveStateMaximumPosterior(cluster, parameters, seed)).collect();
+    }
+
+    private static double[] stateStepSampler(final int size, final Random random) {
         /*final double[] sample = standardNormal.sample(size);
         for (int i = 0; i < sample.length; i++) {
             sample[i] *= 0.1;
@@ -156,25 +167,25 @@ public final class ReadDepthModel implements Serializable {
         return sample;
     }
 
-    public Tuple2<ReadDepthCluster,Double> solveStateMaximumPosterior(final ReadDepthCluster cluster) {
+    public static Tuple2<ReadDepthCluster,Double> solveStateMaximumPosterior(final ReadDepthCluster cluster, final ReadDepthModelParameters parameters, final long seed) {
         if (cluster.getEventsList().size() == 1) {
-            return solveStateMaximumPosteriorBF(cluster);
+            return solveStateMaximumPosteriorBF(cluster, parameters);
         }
-        return solveStateMaximumPosteriorSA(cluster);
+        return solveStateMaximumPosteriorSA(cluster, parameters, seed);
     }
 
-    private Tuple2<ReadDepthCluster,Double> solveStateMaximumPosteriorBF(final ReadDepthCluster cluster) {
+    private static Tuple2<ReadDepthCluster,Double> solveStateMaximumPosteriorBF(final ReadDepthCluster cluster, final ReadDepthModelParameters parameters) {
         final int numEvents = cluster.getEventsTree().size();
         if (numEvents != 1) {
             throw new GATKException("Brute force only supports one event");
         }
         final double[] x = new double[numEvents];
         double minX = 0;
-        double minEnergy = -computeCallDistanceLikelihood(x, cluster);
+        double minEnergy = -computeLogPosterior(x, cluster, parameters);
         final int maxPloidy = (int) parameters.getParameter(ReadDepthModelParameters.ParameterEnum.MAX_PLOIDY);
         for (int i = 1; i <= maxPloidy; i++) {
             x[0] = i;
-            final double energy = -computeCallDistanceLikelihood(x, cluster);
+            final double energy = -computeLogPosterior(x, cluster, parameters);
             if (i == 0 || energy < minEnergy) {
                 minX = i;
                 minEnergy = energy;
@@ -184,11 +195,12 @@ public final class ReadDepthModel implements Serializable {
         return new Tuple2<>(cluster, minEnergy);
     }
 
-    private Tuple2<ReadDepthCluster,Double> solveStateMaximumPosteriorSA(final ReadDepthCluster cluster) {
+    private static Tuple2<ReadDepthCluster,Double> solveStateMaximumPosteriorSA(final ReadDepthCluster cluster, final ReadDepthModelParameters parameters, final long seed) {
         final List<ReadDepthEvent> events = cluster.getEventsList();
-        final Function<double[], Double> energyFunction = x -> -computeLogPosterior(x, cluster);
+        final Function<double[], Double> energyFunction = x -> -computeLogPosterior(x, cluster, parameters);
         final int size = events.size();
-        final Supplier<double[]> sampler = () -> stateStepSampler(size);
+        final Random random = new Random(seed);
+        final Supplier<double[]> sampler = () -> stateStepSampler(size, random);
         final double[] lowerBound = new double[size];
         final double[] upperBound = new double[size];
         Arrays.fill(lowerBound, 0);
@@ -201,7 +213,7 @@ public final class ReadDepthModel implements Serializable {
             x0[i] = events.get(i).getState();
         }
         final int numSteps = (int) Math.min(100000, Math.pow(10, size));
-        logger.info("Solving state posterior for " + size + " events...");
+        //final double finalEnergy = sa.solve(x0, numSteps, 1000);
         final double finalEnergy = sa.solve(x0, numSteps, ReadDepthModel::metropolisHastingsTemperatureSchedule, 1000);
 
         final double[] minEnergyState = sa.getSolution();
@@ -211,34 +223,37 @@ public final class ReadDepthModel implements Serializable {
         return new Tuple2<>(cluster, finalEnergy);
     }
 
-    private double computeLogPosterior(final double[] x, final ReadDepthCluster cluster) {
-        return computeLogLikelihood(x, cluster) + computeLogPrior(x, cluster);
+    private static double computeLogPosterior(final double[] x, final ReadDepthCluster cluster, final ReadDepthModelParameters parameters) {
+        return computeLogLikelihood(x, cluster, parameters) + computeLogPrior(x, cluster, parameters);
     }
 
-    private double computeLogLikelihood(final double[] x, final ReadDepthCluster cluster) {
-        return cluster.getCopyNumberInfo().stream().mapToDouble(entry -> computeCopyNumberLikelihood(x, entry)).sum()
-                + cluster.getEventsList().stream().mapToDouble(event -> computeReadEvidenceLikelihood(x, event)).sum()
-                + computeCallDistanceLikelihood(x, cluster);
+    private static double computeLogLikelihood(final double[] x, final ReadDepthCluster cluster, final ReadDepthModelParameters parameters) {
+        return cluster.getCopyNumberInfo().stream().mapToDouble(entry -> computeCopyNumberLikelihood(x, entry, parameters)).sum()
+                + cluster.getEventsList().stream().mapToDouble(event -> computeReadEvidenceLikelihood(x, event, parameters)).sum()
+                + computeCallDistanceLikelihood(x, cluster, parameters);
     }
 
-    private double computeLogPrior(final double[] x, final ReadDepthCluster cluster) {
-        return cluster.getCopyNumberInfo().stream().mapToDouble(entry -> computePloidyPrior(x, entry, cluster.getType())).sum();
+    private static double computeLogPrior(final double[] x, final ReadDepthCluster cluster, final ReadDepthModelParameters parameters) {
+        return cluster.getCopyNumberInfo().stream().mapToDouble(entry -> computePloidyPrior(x, entry, cluster.getType(), parameters)).sum();
     }
 
-    private double computeCallDistanceLikelihood(final double[] x, final ReadDepthCluster cluster) {
-        final double meanInsertSize = parameters.getParameter(ReadDepthModelParameters.ParameterEnum.MEAN_INSERT_SIZE);
-        final double callDistancePseudocount = parameters.getParameter(ReadDepthModelParameters.ParameterEnum.CALL_DISTANCE_PSEUDOCOUNT);
+    private static double computeCallDistanceLikelihood(final double[] x, final ReadDepthCluster cluster, final ReadDepthModelParameters parameters) {
+        //final double meanInsertSize = parameters.getParameter(ReadDepthModelParameters.ParameterEnum.MEAN_INSERT_SIZE);
+        //final double callDistancePseudocount = parameters.getParameter(ReadDepthModelParameters.ParameterEnum.CALL_DISTANCE_PSEUDOCOUNT);
         double total = 0;
         final List<ReadDepthEvent> events = cluster.getEventsList();
-        final List<Tuple2<Integer, Integer>> nearestCallDistances = cluster.getNearestCallDistances();
+        final List<Tuple2<Double, Double>> nearestCallDistances = cluster.getNearestCallDistances();
         for (int i = 0; i < events.size(); i++) {
-            final double std = meanInsertSize / Math.max(callDistancePseudocount, callDistancePseudocount + Math.min(x[i], 1));
-            total += events.get(i).getEvent().getSize() * (unscaledLogNormal(nearestCallDistances.get(i)._1, 0, std) + unscaledLogNormal(nearestCallDistances.get(i)._2, 0, std));
+            final double mean = x[i] == 0 ? 6 : 4;
+            final double std = x[i] == 0 ? 1000: 1000; // 1 : 1; //TODO
+            total += events.get(i).getEvent().getSize() * (unscaledLogNormal(nearestCallDistances.get(i)._1, mean, std) + unscaledLogNormal(nearestCallDistances.get(i)._2, mean, std));
+            //final double std = meanInsertSize / Math.max(callDistancePseudocount, callDistancePseudocount + Math.min(x[i], 1));
+            //total += events.get(i).getEvent().getSize() * (unscaledLogNormal(nearestCallDistances.get(i)._1, 0, std) + unscaledLogNormal(nearestCallDistances.get(i)._2, 0, std));
         }
         return total;
     }
 
-    private double computeReadEvidenceLikelihood(final double[] x, final ReadDepthEvent event) {
+    private static double computeReadEvidenceLikelihood(final double[] x, final ReadDepthEvent event, final ReadDepthModelParameters parameters) {
         final double singleCopyDepth = parameters.getParameter(ReadDepthModelParameters.ParameterEnum.COPY_NEUTRAL_DEPTH) * 0.5;
         final double expectedReadEvidenceFraction = parameters.getParameter(ReadDepthModelParameters.ParameterEnum.EXPECTED_READ_EVIDENCE_FRACTION);
         final double expectedReadEvidenceStd = parameters.getParameter(ReadDepthModelParameters.ParameterEnum.EXPECTED_READ_EVIDENCE_STD);
@@ -248,23 +263,19 @@ public final class ReadDepthModel implements Serializable {
                 + unscaledLogNormal(event.getEvent().getSplitReadEvidence(), expectedEvidence, sigma));
     }
 
-    private double computeCopyNumberLikelihood(final double[] x, final Tuple2<List<OverlapInfo>, Double> entry) {
-        final double copyNumberStd = parameters.getParameter(ReadDepthModelParameters.ParameterEnum.COPY_NUMBER_STD);
+    private static double computeCopyNumberLikelihood(final double[] x, final Tuple2<List<OverlapInfo>, Double> entry, final ReadDepthModelParameters parameters) {
         final List<OverlapInfo> overlapInfoList = entry._1;
         final double calledCopyNumber = entry._2;
+        final double sigma = calledCopyNumber == 0 ? 10 : parameters.getParameter(ReadDepthModelParameters.ParameterEnum.COPY_NUMBER_STD); //TODO different distribution for CN 0?
         return overlapInfoList.stream()
                 .mapToDouble(info -> {
                     final double estimatedCopyNumber = 2 + info.idsAndCoefficients.stream().mapToDouble(tuple -> tuple._2 * x[tuple._1]).sum();
-                    return unscaledLogNormal(calledCopyNumber, estimatedCopyNumber, copyNumberStd) * info.size; //TODO different distribution for CN 0?
+                    return unscaledLogNormal(estimatedCopyNumber, calledCopyNumber, sigma) * info.size;
                 }).sum();
     }
 
-    private double stateToProbability(final double q) {
-        return 1.0 - Math.exp(-q / 0.5);
-    }
-
-    private double computePloidyPrior(final double[] x, final Tuple2<List<OverlapInfo>, Double> entry,
-                                      final SimpleSVType.TYPES type) {
+    private static double computePloidyPrior(final double[] x, final Tuple2<List<OverlapInfo>, Double> entry,
+                                      final SimpleSVType.TYPES type, final ReadDepthModelParameters parameters) {
         final List<OverlapInfo> overlapInfoList = entry._1;
         final double maxPloidy = parameters.getParameter(ReadDepthModelParameters.ParameterEnum.MAX_PLOIDY);
         final double parameterConstraintStd = parameters.getParameter(ReadDepthModelParameters.ParameterEnum.PARAMETER_CONSTRAINT_STD);
@@ -273,7 +284,7 @@ public final class ReadDepthModel implements Serializable {
             double totalPloidy = info.idsAndCoefficients.stream().mapToDouble(pair -> getPloidy(x[pair._1], type)).sum();
             final double excessPloidy;
             if (totalPloidy > maxPloidy) {
-                excessPloidy = maxPloidy - totalPloidy;
+                excessPloidy = totalPloidy - maxPloidy;
             } else {
                 excessPloidy = 0;
             }
@@ -283,7 +294,7 @@ public final class ReadDepthModel implements Serializable {
     }
 
     private static double getPloidy(final double val, final SimpleSVType.TYPES type) {
-        return type == SimpleSVType.TYPES.DUP ? Math.min(val, 1) : val;
+        return type == SimpleSVType.TYPES.DUP_TAND ? Math.min(val, 1) : val;
     }
 
     private final static class ReadDepthModelParameters implements Serializable {
@@ -309,8 +320,8 @@ public final class ReadDepthModel implements Serializable {
         public static final double DEFAULT_MEAN_INSERT_SIZE = 500;
         public static final double DEFAULT_PARAMETER_CONSTRAINT_STD = 0.001;
         public static final double DEFAULT_EXPECTED_READ_EVIDENCE_FRACTION = 1.0;
-        public static final double DEFAULT_EXPECTED_READ_EVIDENCE_STD = 0.5;
-        public static final double DEFAULT_COPY_NUMBER_STD = 2;
+        public static final double DEFAULT_EXPECTED_READ_EVIDENCE_STD = 1000; //0.2;
+        public static final double DEFAULT_COPY_NUMBER_STD = 1000; //0.5;
         public static final double DEFAULT_CALL_DISTANCE_PSEUDOCOUNT = 0.01;
 
         private double[] parameters;
@@ -391,7 +402,7 @@ public final class ReadDepthModel implements Serializable {
         }
     }
 
-    final double[] parameterStepSampler() {
+    final static double[] parameterStepSampler(final NormalDistribution standardNormal) {
         final double[] sample = standardNormal.sample(ReadDepthModelParameters.ParameterEnum.values().length);
         sample[ReadDepthModelParameters.ParameterEnum.SA_STEPS.ordinal()] = 0;
         sample[ReadDepthModelParameters.ParameterEnum.SA_T0.ordinal()] = 0;

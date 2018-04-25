@@ -23,7 +23,7 @@ final class ReadDepthCluster implements Serializable {
     private final List<ReadDepthEvent> eventsList;
     private final SVIntervalTree<ReadDepthEvent> eventsTree;
     private final List<Tuple2<List<ReadDepthModel.OverlapInfo>, Double>> copyNumberInfo;
-    private final List<Tuple2<Integer, Integer>> nearestCallDistances;
+    private final List<Tuple2<Double, Double>> nearestCallDistances;
     private final SimpleSVType.TYPES type;
 
     public ReadDepthCluster(final List<ReadDepthEvent> events, final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector, final SAMSequenceDictionary dictionary) {
@@ -120,7 +120,7 @@ final class ReadDepthCluster implements Serializable {
             final SVInterval interval = SVIntervalUtils.convertToSVInterval(copyRatioSegment.getInterval(), dictionary);
             final Iterator<SVIntervalTree.Entry<ReadDepthEvent>> iter = eventsTree.overlappers(interval);
             if (iter.hasNext()) {
-                final double copyNumberCall = Math.min(Math.pow(2.0, copyRatioSegment.getMeanLog2CopyRatio()) * 2, 4.0); //TODO capping segment copy number at 4
+                final double copyNumberCall = Math.pow(2.0, copyRatioSegment.getMeanLog2CopyRatio()) * 2;
                 final List<ReadDepthModel.OverlapInfo> overlapInfo = getOverlapInfo(copyRatioSegment, Utils.stream(iter).map(SVIntervalTree.Entry::getValue).collect(Collectors.toList()));
                 result.add(new Tuple2<>(overlapInfo, copyNumberCall));
             }
@@ -129,8 +129,8 @@ final class ReadDepthCluster implements Serializable {
         return result;
     }
 
-    private List<Tuple2<Integer, Integer>> getNearestCallDistances(final List<ReadDepthEvent> eventsList, final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector, final SAMSequenceDictionary dictionary) {
-        final List<Tuple2<Integer, Integer>> result = new ArrayList<>(eventsList.size());
+    private List<Tuple2<Double, Double>> getNearestCallDistances(final List<ReadDepthEvent> eventsList, final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector, final SAMSequenceDictionary dictionary) {
+        final List<Tuple2<Double, Double>> result = new ArrayList<>(eventsList.size());
         for (final ReadDepthEvent event : eventsList) {
             final SimpleInterval interval = SVIntervalUtils.convertToSimpleInterval(event.getEvent().getInterval(), dictionary);
             final CalledCopyRatioSegment.Call expectedCall = event.getEvent().getType() == SimpleSVType.TYPES.DEL ? CalledCopyRatioSegment.Call.DELETION : CalledCopyRatioSegment.Call.AMPLIFICATION;
@@ -138,7 +138,7 @@ final class ReadDepthCluster implements Serializable {
             int leftDistance;
             int rightDistance;
             if (overlappingCalls.isEmpty()) {
-                result.add(new Tuple2<>((int) -1e6, (int) 1e6));
+                result.add(new Tuple2<>(100., 100.));
             } else {
                 leftDistance = overlappingCalls.get(0).getStart() - interval.getStart();
                 rightDistance = overlappingCalls.get(0).getEnd() - interval.getEnd();
@@ -152,9 +152,9 @@ final class ReadDepthCluster implements Serializable {
                         rightDistance = rightDistanceTest;
                     }
                 }
-                event.leftDistance = leftDistance;
-                event.rightDistance = rightDistance;
-                result.add(new Tuple2<>(leftDistance, rightDistance));
+                event.leftDistance = Math.log(1 + Math.abs(leftDistance));
+                event.rightDistance = Math.log(1 + Math.abs(rightDistance));
+                result.add(new Tuple2<>(event.leftDistance, event.rightDistance));
             }
         }
         return result;
@@ -176,7 +176,7 @@ final class ReadDepthCluster implements Serializable {
         return copyNumberInfo;
     }
 
-    public List<Tuple2<Integer, Integer>> getNearestCallDistances() {
+    public List<Tuple2<Double, Double>> getNearestCallDistances() {
         return nearestCallDistances;
     }
 

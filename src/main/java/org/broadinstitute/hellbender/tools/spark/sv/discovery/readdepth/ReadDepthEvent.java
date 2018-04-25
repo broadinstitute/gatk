@@ -11,8 +11,8 @@ final class ReadDepthEvent implements Serializable {
     private final int id;
     private final LargeSimpleSV event;
     private double state;
-    public int leftDistance;
-    public int rightDistance;
+    public double leftDistance;
+    public double rightDistance;
 
     public ReadDepthEvent(final int id, final LargeSimpleSV event) {
         this.event = event;

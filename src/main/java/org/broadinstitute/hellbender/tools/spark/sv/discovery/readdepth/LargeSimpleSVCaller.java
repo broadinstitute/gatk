@@ -41,8 +41,6 @@ public class LargeSimpleSVCaller {
 
     private static final Logger logger = LogManager.getLogger(LargeSimpleSVCaller.class);
 
-    private static final int MAX_COPY_RATIO_EVENT_SIZE = 100000;
-
     private final SVIntervalTree<Object> highCoverageIntervalTree;
     private final SVIntervalTree<VariantContext> structuralVariantCallTree;
     private final SVIntervalTree<EvidenceTargetLink> intrachromosomalLinkTree;
@@ -421,12 +419,15 @@ public class LargeSimpleSVCaller {
             }
         }
 
-        /*
+
         final Set<LargeSimpleSV> callsToRemove = new HashSet<>();
         final Iterator<SVIntervalTree.Entry<LargeSimpleSV>> iterator = calledEventTree.iterator();
         while (iterator.hasNext()) {
             final SVIntervalTree.Entry<LargeSimpleSV> entry = iterator.next();
             final SVInterval interval = entry.getInterval();
+            if (interval.overlaps(new SVInterval(2, 37710188, 37712149))) {
+                int x = 0;
+            }
             final LargeSimpleSV largeSimpleSV = entry.getValue();
             final Set<EvidenceTargetLink> supportingEvidence = new HashSet<>(largeSimpleSV.getSupportingEvidence());
             final List<LargeSimpleSV> conflictingCalls = Utils.stream(calledEventTree.overlappers(interval)).map(SVIntervalTree.Entry::getValue)
@@ -434,10 +435,10 @@ public class LargeSimpleSVCaller {
                     .filter(overlapper -> !callsToRemove.contains(overlapper))
                     .collect(Collectors.toList());
             if (conflictingCalls.size() < 2) continue;
-            final double maxScore = conflictingCalls.stream().mapToDouble(call -> call.getScore(arguments.counterEvidencePseudocount)).max().getAsDouble();
+            final double maxScore = conflictingCalls.stream().mapToDouble(call -> call.getReadPairEvidence()).max().getAsDouble();
             boolean bFoundMax = false;
             for (final LargeSimpleSV conflictingCall : conflictingCalls) {
-                final double conflictingCallScore = conflictingCall.getScore(arguments.counterEvidencePseudocount);
+                final double conflictingCallScore = conflictingCall.getReadPairEvidence();
                 if (conflictingCallScore < maxScore) {
                     callsToRemove.add(conflictingCall);
                 } else if (conflictingCallScore == maxScore) {
@@ -449,11 +450,11 @@ public class LargeSimpleSVCaller {
                 }
             }
         }
-        */
 
         final SVIntervalTree<LargeSimpleSV> filteredCalls = new SVIntervalTree<>();
         Utils.stream(calledEventTree.iterator())
                 .filter(entry -> entry.getInterval().getContig() == 0)  //TODO
+                .filter(entry -> !callsToRemove.contains(entry.getValue()))
                 .filter(entry -> {
                     final Set<CalledCopyRatioSegment> overlappingSegments = copyRatioSegmentOverlapDetector.getOverlaps(SVIntervalUtils.convertToSimpleInterval(entry.getInterval(), dictionary));
                     final CalledCopyRatioSegment.Call expectedCall = entry.getValue().getType() == SimpleSVType.TYPES.DEL ? CalledCopyRatioSegment.Call.DELETION : CalledCopyRatioSegment.Call.AMPLIFICATION;
@@ -464,7 +465,7 @@ public class LargeSimpleSVCaller {
 
         logger.info("Running read depth model on " + filteredCalls.size() + " events");
         final ReadDepthModel readDepthModel = new ReadDepthModel(filteredCalls, copyRatioSegmentOverlapDetector, dictionary);
-        final Tuple2<Double,List<ReadDepthEvent>> result = readDepthModel.solve(ctx, 1, 1e-3);
+        final Tuple2<Double,List<ReadDepthEvent>> result = readDepthModel.solve(ctx);
         final Collection<ReadDepthEvent> finalResult = result._2;
         return new Tuple2<>(finalResult, Collections.emptyList());
     }
