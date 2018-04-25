@@ -62,7 +62,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
      */
     @Advanced
     @Argument(fullName = "comp", shortName = "comp", doc = "Comparison VCF file(s)", optional = true)
-    public List<FeatureInput<VariantContext>> comps = Collections.emptyList();
+    public List<FeatureInput<VariantContext>> comps = new ArrayList<>();
 
     /**
      * The reference confidence mode makes it possible to emit a per-bp or summarized confidence estimate for a site being strictly homozygous-reference.

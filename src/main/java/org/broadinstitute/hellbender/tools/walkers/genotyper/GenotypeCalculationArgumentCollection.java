@@ -158,7 +158,7 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      */
     @Advanced
     @Argument(fullName = "input-prior",  doc = "Input prior for calls", optional = true)
-    public List<Double> inputPrior = Collections.emptyList();
+    public List<Double> inputPrior = new ArrayList<>();
 
     /**
      *   Sample ploidy - equivalent to number of chromosomes per pool. In pooled experiments this should be = # of samples in pool * individual sample ploidy
