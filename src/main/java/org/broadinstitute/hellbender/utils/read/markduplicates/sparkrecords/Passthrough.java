@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
  * Dummy class used for preserving reads that need to be marked as non-duplicate despite not wanting to perform any
  * processing on the reads. (eg. unmapped reads we don't want to process but must be non-duplicate marked)
  */
-public final class Passthrough extends MarkDuplicatesSparkRecords {
+public final class Passthrough extends MarkDuplicatesSparkRecord {
     private final transient GATKRead read;
 
     Passthrough(GATKRead read, int partitionIndex) {

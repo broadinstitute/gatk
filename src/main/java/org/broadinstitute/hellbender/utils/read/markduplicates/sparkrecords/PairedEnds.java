@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords;
 /**
  * Struct-like class to store information about the paired reads for mark duplicates.
  */
-public abstract class PairedEnds extends MarkDuplicatesSparkRecords {
+public abstract class PairedEnds extends MarkDuplicatesSparkRecord {
 
     PairedEnds(int partitionIndex, String name) {
         super(partitionIndex, name);
