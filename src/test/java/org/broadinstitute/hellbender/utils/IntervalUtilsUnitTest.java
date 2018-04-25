@@ -2121,4 +2121,62 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         final List<List<SimpleInterval>> result = IntervalUtils.groupIntervalsByContig(inputIntervals);
         Assert.assertEquals(result, expectedResult);
     }
+
+    @DataProvider(name = "forTestCompareLocatablesOfSameContig")
+    private Object[][] forTestCompareLocatablesOfSameContig() {
+
+        final List<Object[]> data = new ArrayList<>(20);
+
+        SimpleInterval locatableOne;
+        SimpleInterval locatableTwo;
+
+        // different contig, throws
+        locatableOne = new SimpleInterval("chr1", 1, 100);
+        locatableTwo = new SimpleInterval("chr2", 1, 100);
+        data.add(new Object[]{locatableOne, locatableTwo, 0, IllegalArgumentException.class});
+
+        // one contains two
+        locatableOne = new SimpleInterval("chr1", 1, 100);
+        locatableTwo = new SimpleInterval("chr1", 10, 50);
+        data.add(new Object[]{locatableOne, locatableTwo, -1, null});
+
+        // two contains one
+        data.add(new Object[]{locatableTwo, locatableOne, 1, null});
+
+        // one upstream of two
+        locatableOne = new SimpleInterval("chr1", 1, 100);
+        locatableTwo = new SimpleInterval("chr1", 51, 151);
+        data.add(new Object[]{locatableOne, locatableTwo, -1, null});
+
+        // two upstream of one
+        data.add(new Object[]{locatableTwo, locatableOne, 1, null});
+
+        // one equals two
+        locatableOne = new SimpleInterval("chr1", 1, 100);
+        locatableTwo = new SimpleInterval("chr1", 1, 100);
+        data.add(new Object[]{locatableOne, locatableTwo, 0, null});
+
+        // one/two left boundary the same
+        locatableOne = new SimpleInterval("chr1", 1, 100);
+        locatableTwo = new SimpleInterval("chr1", 1, 101);
+        data.add(new Object[]{locatableOne, locatableTwo, -1, null});
+        data.add(new Object[]{locatableTwo, locatableOne, 1, null});
+
+        return data.toArray(new Object[data.size()][]);
+
+    }
+
+    @Test(dataProvider = "forTestCompareLocatablesOfSameContig")
+    @SuppressWarnings("rawtypes")
+    public void testCompareLocatablesOfSameContig(final SimpleInterval locatableOne, final SimpleInterval locatableTwo,
+                                                  final int expectedResult,
+                                                  final Class expectedExceptionClass) {
+
+        try {
+            Assert.assertEquals(IntervalUtils.compareLocatablesOfSameContig(locatableOne, locatableTwo),
+                                expectedResult);
+        } catch (final Exception e) {
+            Assert.assertEquals(e.getClass(), expectedExceptionClass);
+        }
+    }
 }
