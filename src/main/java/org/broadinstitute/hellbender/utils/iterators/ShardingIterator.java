@@ -51,10 +51,12 @@ public final class ShardingIterator<T extends Locatable> implements Iterator<Sha
         Utils.nonEmpty(boundaries, "Empty shard boundaries");
         Utils.nonNull(dictionary, "null dictionary");
 
+        // TODO: avoid new object creation for already PeekableIterator and LinkedList args
         // store the iterator and allow peek()
-        this.it = (iterator instanceof PeekableIterator) ? (PeekableIterator) iterator : new PeekableIterator<>(iterator);
-        // convert the boundaries into a queu
-        this.shards = (boundaries instanceof Queue) ? (Queue) boundaries : new LinkedList<>(boundaries);
+        this.it = new PeekableIterator<>(iterator);
+        // TODO: avoid new object creation for already LinkedList and LinkedList args
+        // convert the boundaries into a queue
+        this.shards = new LinkedList<>(boundaries);
         // store the dictionary
         this.dictionary = dictionary;
         // create a new queue for the next data
