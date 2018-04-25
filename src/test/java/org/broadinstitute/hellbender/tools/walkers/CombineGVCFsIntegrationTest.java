@@ -80,6 +80,11 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
                 {new File[]{getTestFile("NA12878.AS.chr20snippet.g.vcf"), getTestFile("NA12892.AS.chr20snippet.g.vcf")}, getTestFile("testAlleleSpecificAnnotationsNoGroup.vcf"), Arrays.asList("-G", "Standard", "-G", "AS_Standard"), b37_reference_20_21},
                 //Test that trailing reference blocks are emitted with correct intervals
                 {new File[]{getTestFile("gvcfExample1WithTrailingReferenceBlocks.g.vcf"), getTestFile("gvcfExample2WithTrailingReferenceBlocks.g.vcf")}, getTestFile("gvcfWithTrailingReferenceBlocksExpected.g.vcf"), NO_EXTRA_ARGS, b38_reference_20_21},
+                // same test as the previous one, except with a band multiple specified
+                {new File[]{getTestFile("gvcfExample1WithTrailingReferenceBlocks.g.vcf"), getTestFile("gvcfExample2WithTrailingReferenceBlocks.g.vcf")},
+                        getTestFile("gvcfWithTrailingReferenceBlocksBandedExpected.g.vcf"),
+                        Arrays.asList("--" + CombineGVCFs.BREAK_BANDS_LONG_NAME, "2000000"),
+                        b38_reference_20_21},
         };
     }
 
