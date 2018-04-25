@@ -9,15 +9,17 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
  */
 public final class ReadsKey {
 
-    public static final String FRAGMENT_PREFIX = "f|";
+    public static final String FRAGMENT_PREFIX = "f";
 
-    private static final String PAIRED_ENDS_PREFIX = "p|";
+    public static final String DELIMETER = "|";
+
+    private static final String PAIRED_ENDS_PREFIX = "p";
 
     /**
      * Makes a unique key for the fragment.
      */
     public static String keyForFragment(final SAMFileHeader header, final GATKRead read) {
-        return FRAGMENT_PREFIX + subkeyForFragment(header, read);
+        return FRAGMENT_PREFIX + DELIMETER + subkeyForFragment(header, read);
     }
 
     /**
@@ -26,12 +28,10 @@ public final class ReadsKey {
     private static String subkeyForFragment(final SAMFileHeader header, final GATKRead read) {
         final String library = ReadUtils.getLibrary(read, header);
 
-        return String.format(
-                "%s|%d|%d|%s",
-                library != null ? library : "-",
-                ReadUtils.getReferenceIndex(read, header),
-                ReadUtils.getStrandedUnclippedStart(read),
-                read.isReverseStrand() ? "r" : "f");
+        return new StringBuilder().append(library != null ? library : "-").append(DELIMETER)
+                .append(ReadUtils.getReferenceIndex(read, header)).append(DELIMETER)
+                .append(ReadUtils.getStrandedUnclippedStart(read)).append(DELIMETER)
+                .append(read.isReverseStrand() ? "r" : "f").toString();
     }
 
     /**
@@ -40,31 +40,26 @@ public final class ReadsKey {
     public static String keyForPairedEnds(final SAMFileHeader header, final GATKRead first, final GATKRead second) {
         final String key = subkeyForFragment(header, first);
         if (second == null) {
-            return PAIRED_ENDS_PREFIX + key;
+            return PAIRED_ENDS_PREFIX + DELIMETER + key;
         }
 
-        return String.format(
-                PAIRED_ENDS_PREFIX + "%s|%d|%d|%s",
-                key,
-                ReadUtils.getReferenceIndex(second, header),
-                ReadUtils.getStrandedUnclippedStart(second),
-                second.isReverseStrand() ? "r" : "f");
+        return new StringBuilder().append(PAIRED_ENDS_PREFIX).append(key).append(DELIMETER)
+                .append(ReadUtils.getReferenceIndex(second, header)).append(DELIMETER)
+                .append(ReadUtils.getStrandedUnclippedStart(second)).append(DELIMETER)
+                .append(second.isReverseStrand() ? "r" : "f").toString();
     }
 
     /**
      * Makes a unique key for the read.
      */
     public static String keyForRead(final SAMFileHeader header, final GATKRead read) {
-        return String.format(
-                "%s|%s",
-                read.getReadGroup(),
-                read.getName());
+        return new StringBuilder().append(read.getReadGroup()).append(DELIMETER).append(read.getName()).toString();
     }
 
     /**
      * Returns true if the key is a fragment key.
      */
     public static boolean isFragment(String key) {
-        return key.startsWith(FRAGMENT_PREFIX);
+        return key.charAt(0)=='f';
     }
 }
