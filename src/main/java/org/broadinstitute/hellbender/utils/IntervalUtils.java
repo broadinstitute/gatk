@@ -84,13 +84,32 @@ public final class IntervalUtils {
             // compare the contigs
             result = compareContigs(first, second, dictionary);
             if (result == 0) {
-                // compare start position
-                result = Integer.compare(first.getStart(), second.getStart());
-                if (result == 0) {
-                    // compare end position
-                    result = Integer.compare(first.getEnd(), second.getEnd());
-                }
+                result = compareLocatablesOfSameContig(first, second);
             }
+        }
+        return result;
+    }
+
+    /**
+     * Compare two locations assuming they are of the same contig.
+     *
+     * @return 0 if first and second are equal, a negative value if first < second or a positive value if first > second,
+     * @throws IllegalArgumentException if two locatables are not of the same contig
+     */
+    public static final int compareLocatablesOfSameContig(final Locatable first, final Locatable second) {
+        Utils.nonNull(first);
+        Utils.nonNull(second);
+
+        if ( ! first.getContig().equals(second.getContig()) ) {
+            throw new IllegalArgumentException("Applying comparator on locatables that are NOT of the same contig: "
+                    + first.toString() + "\t" + second.toString());
+        }
+
+        // compare start position
+        int result = Integer.compare(first.getStart(), second.getStart());
+        if (result == 0) {
+            // compare end position
+            result = Integer.compare(first.getEnd(), second.getEnd());
         }
         return result;
     }
