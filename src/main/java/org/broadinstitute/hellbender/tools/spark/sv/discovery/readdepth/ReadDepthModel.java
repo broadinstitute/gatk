@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.solver.GradientDescentSolver;
 import org.broadinstitute.hellbender.utils.solver.SimulatedAnnealingSolver;
 import scala.Tuple2;
 
@@ -215,10 +216,14 @@ public final class ReadDepthModel implements Serializable {
         final Supplier<double[]> sampler = () -> parameterStepSampler(standardNormal);
         final double[] lowerBound = ReadDepthModelParameters.getDefaultLowerBounds();
         final double[] upperBound = ReadDepthModelParameters.getDefaultUpperBounds();
-        final SimulatedAnnealingSolver parameterSolver = new SimulatedAnnealingSolver(size, energyFunction, sampler, lowerBound, upperBound);
-
         final double[] x0 = parameters.getParameters();
+
+        //final SimulatedAnnealingSolver parameterSolver = new SimulatedAnnealingSolver(size, energyFunction, sampler, lowerBound, upperBound);
+        //final double finalEnergy = parameterSolver.solve(x0, 2000, 100);
+
+        final GradientDescentSolver parameterSolver = new GradientDescentSolver(energyFunction, size, 1e-3, 1e-3);
         final double finalEnergy = parameterSolver.solve(x0, 2000, 100);
+
         parameters.setParameters(parameterSolver.getSolution());
         logger.info(parameters.toString());
         return finalEnergy;
