@@ -121,6 +121,9 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         @Argument(doc = "Traverse assembly graph and produce contigs for all paths.", fullName = "expand-assembly-graph")
         public boolean expandAssemblyGraph = true;
 
+        @Advanced @Argument(doc = "ZDropoff (see Bwa mem manual) for contig alignment.", fullName = "z-dropoff")
+        public int zDropoff = 20;
+
         // --------- locations ----------
 
         @Argument(doc = "bwa-mem index image file", fullName = "aligner-index-image")
