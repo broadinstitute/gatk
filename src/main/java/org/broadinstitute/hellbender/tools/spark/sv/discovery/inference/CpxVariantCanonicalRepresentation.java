@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AnnotatedVariantProducer;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import scala.Tuple2;
 
@@ -136,8 +137,9 @@ final class CpxVariantCanonicalRepresentation {
             checkBoundedBySharedSingleBase(cpxVariantInducingAssemblyContig);
         }
 
+        final Set<SimpleInterval> twoBaseBoundaries = cpxVariantInducingAssemblyContig.getTwoBaseBoundaries();
         affectedRefRegion = getAffectedReferenceRegion(segmentingLocations);
-        referenceSegments = extractRefSegments(basicInfo, segmentingLocations);
+        referenceSegments = extractRefSegments(basicInfo, segmentingLocations, twoBaseBoundaries);
         eventDescriptions = extractAltArrangements(basicInfo, contigAlignments, jumps, referenceSegments);
 
         altSeq = extractAltHaplotypeSeq(cpxVariantInducingAssemblyContig.getPreprocessedTig(), referenceSegments, basicInfo);
@@ -152,7 +154,8 @@ final class CpxVariantCanonicalRepresentation {
 
     @VisibleForTesting
     static List<SimpleInterval> extractRefSegments(final CpxVariantInducingAssemblyContig.BasicInfo basicInfo,
-                                                   final List<SimpleInterval> segmentingLocations) {
+                                                   final List<SimpleInterval> segmentingLocations,
+                                                   final Set<SimpleInterval> twoBaseBoundaries) {
 
         if (segmentingLocations.size() == 1) { // for case described in {@link checkBoundedBySharedSingleBase}
             return segmentingLocations;
@@ -168,8 +171,14 @@ final class CpxVariantCanonicalRepresentation {
             // there shouldn't be a segment constructed if two segmenting locations are adjacent to each other on the reference
             // this could happen when (in the simplest case), two alignments are separated by a mapped insertion (hence 3 total alignments),
             // and the two alignments' ref span are connected
+            // more generally: only segment when the two segmenting locations are boundaries of alignments that overlap each other (ref. span)
             if (rightBoundary.getStart() - leftBoundary.getEnd() > 1) {
-                segments.add(new SimpleInterval(eventPrimaryChromosome, leftBoundary.getStart(), rightBoundary.getStart()));
+                segments.add(new SimpleInterval(eventPrimaryChromosome, leftBoundary.getEnd(), rightBoundary.getStart()));
+            } else if (rightBoundary.getStart() - leftBoundary.getEnd() == 1) {
+                final SimpleInterval twoBaseSegment = new SimpleInterval(eventPrimaryChromosome, leftBoundary.getEnd(), rightBoundary.getStart());
+                if ( twoBaseBoundaries.contains(twoBaseSegment) ) {
+                    segments.add(twoBaseSegment);
+                }
             }
             leftBoundary = rightBoundary;
         }
@@ -335,7 +344,7 @@ final class CpxVariantCanonicalRepresentation {
                                                                                           : (head.referenceSpan.getStart() - firstSegment.getEnd() == 1);
             if ( ! firstSegmentNeighborsHeadAlignment )
                 throw new CpxVariantInterpreter.UnhandledCaseSeen("1st segment is not overlapping with head alignment but it is not immediately before/after the head alignment either\n"
-                        + tigWithInsMappings.toString());
+                        + tigWithInsMappings.toString() + "\nSegments:\t" + segments.toString());
             start = head.endInAssembledContig;
         } else {
             final SimpleInterval intersect = firstSegment.intersect(head.referenceSpan);

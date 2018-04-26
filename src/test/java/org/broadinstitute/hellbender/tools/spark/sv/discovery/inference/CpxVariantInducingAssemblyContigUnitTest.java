@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery.inference;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import org.apache.commons.collections4.CollectionUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVTestUtils;
@@ -15,9 +16,7 @@ import org.testng.annotations.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.CpxSVInferenceTestUtils.bareBoneHg38SAMSeqDict;
 
@@ -159,5 +158,24 @@ public class CpxVariantInducingAssemblyContigUnitTest extends GATKBaseTest {
                 CpxVariantInducingAssemblyContig.extractSegmentingRefLocationsOnEventPrimaryChromosome(jumps, basicInfo,
                         bareBoneHg38SAMSeqDict);
         Assert.assertEquals(result, expectedResults);
+    }
+
+    // =================================================================================================================
+    @DataProvider(name = "forGetAlignmentsBoundedBySegmentingLocations")
+    private Object[][] forGetAlignmentsBoundedBySegmentingLocations() {
+        final List<Object[]> data = new ArrayList<>(20);
+        for (final CpxSVInferenceTestUtils.PreprocessedAndAnalysisReadyContigWithExpectedResults x : CpxSVInferenceTestUtils.PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS) {
+            final CpxVariantInducingAssemblyContig expectedCpxVariantInducingAssemblyContig = x.expectedCpxVariantInducingAssemblyContig;
+            final Set<SimpleInterval> expectedTwoBaseBoundaries = x.expectedTwoBaseBoundaries;
+            data.add(new Object[]{expectedCpxVariantInducingAssemblyContig, expectedTwoBaseBoundaries});
+        }
+        return data.toArray(new Object[data.size()][]);
+    }
+
+    @Test(groups = "sv", dataProvider = "forGetAlignmentsBoundedBySegmentingLocations")
+    public void testGetAlignmentsBoundedBySegmentingLocations(final CpxVariantInducingAssemblyContig cpxVariantInducingAssemblyContig,
+                                                              final Set<SimpleInterval> expectedAlignmentsBoundedBySegmentingLocations) {
+        Assert.assertTrue(CollectionUtils.isEqualCollection(cpxVariantInducingAssemblyContig.getTwoBaseBoundaries(),
+                                                            expectedAlignmentsBoundedBySegmentingLocations));
     }
 }
