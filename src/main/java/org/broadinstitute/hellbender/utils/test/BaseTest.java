@@ -271,9 +271,7 @@ public abstract class BaseTest {
      * @return an empty directory starting with prefix which will be deleted after the program exits
      */
     public static File createTempDir(final String prefix){
-        final File dir = IOUtils.tempDir(prefix, "");
-        IOUtils.deleteRecursivelyOnExit(dir);
-        return dir;
+        return IOUtils.createTmpDir(prefix);
     }
 
     /**

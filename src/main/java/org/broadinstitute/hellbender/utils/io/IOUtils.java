@@ -64,35 +64,17 @@ public final class IOUtils {
     /**
      * Creates a temp directory with the prefix and optional suffix.
      *
-     * @param prefix       Prefix for the directory name.
-     * @param suffix       Optional suffix for the directory name.
-     * @return The created temporary directory.
-     */
-    public static File tempDir(String prefix, String suffix) {
-        return tempDir(prefix, suffix, null);
-    }
-
-    /**
-     * Creates a temp directory with the prefix and optional suffix.
+     * The directory and any contents will be automatically deleted at shutdown.
      *
-     * @param prefix        Prefix for the directory name.
-     * @param suffix        Optional suffix for the directory name.
-     * @param tempDirParent Parent directory for the temp directory.
+     * @param prefix       Prefix for the directory name.
      * @return The created temporary directory.
      */
-    public static File tempDir(String prefix, String suffix, File tempDirParent) {
+    public static File createTmpDir(String prefix) {
         try {
-            if (tempDirParent == null)
-                tempDirParent = FileUtils.getTempDirectory();
-            if (!tempDirParent.exists() && !tempDirParent.mkdirs())
-                throw new UserException.BadTmpDir("Could not create temp directory: " + tempDirParent);
-            File temp = File.createTempFile(prefix, suffix, tempDirParent);
-            if (!temp.delete())
-                throw new UserException.BadTmpDir("Could not delete sub file: " + temp.getAbsolutePath());
-            if (!temp.mkdir())
-                throw new UserException.BadTmpDir("Could not create sub directory: " + temp.getAbsolutePath());
-            return absolute(temp);
-        } catch (IOException e) {
+            final File tmpdir = Files.createTempDirectory(prefix).toFile();
+            deleteRecursivelyOnExit(tmpdir);
+            return absolute(tmpdir);
+        } catch (final IOException | SecurityException e) {
             throw new UserException.BadTmpDir(e.getMessage(), e);
         }
     }
@@ -158,17 +140,18 @@ public final class IOUtils {
     }
 
     /**
-     * A mix of getCanonicalFile and getAbsoluteFile that returns the
-     * absolute path to the file without deferencing symbolic links.
+     * Get an absolute and partially simplified path to the given file.
+     *
+     * This differs from {@link File#getAbsoluteFile()} because it removes extraneous "." in the file path,
+     *   ex:    /path/./to/./directory/. -> /path/to/directory/
+     *
+     * It differs from {@link File#getCanonicalFile()} in that it doesn't dereference symbolic links or completely
+     * simplify the file path.  For instance ".." is not simplified by this method.
      *
      * @param file the file.
-     * @return the absolute path to the file.
+     * @return the absolute path to the file with redundant "./" removed.
      */
     public static File absolute(File file) {
-        return new File(absolutePath(file));
-    }
-
-    private static String absolutePath(File file) {
         File fileAbs = file.getAbsoluteFile();
         LinkedList<String> names = new LinkedList<>();
         while (fileAbs != null) {
@@ -200,7 +183,7 @@ public final class IOUtils {
             }
         }
 
-        return ("/" + StringUtils.join(names, "/"));
+        return new File(("/" + StringUtils.join(names, "/")));
     }
 
     /**

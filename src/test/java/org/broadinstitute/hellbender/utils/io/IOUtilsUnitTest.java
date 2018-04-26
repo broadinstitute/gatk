@@ -21,7 +21,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void testTempDir() {
-        File tempDir = IOUtils.tempDir("Q-Unit-Test", "", new File("queueTempDirToDelete"));
+        File tempDir = IOUtils.createTmpDir("Q-Unit-Test");
         Assert.assertTrue(tempDir.exists());
         Assert.assertFalse(tempDir.isFile());
         Assert.assertTrue(tempDir.isDirectory());
