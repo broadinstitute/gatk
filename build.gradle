@@ -53,6 +53,10 @@ repositories {
         url "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot/" //for htsjdk snapshots
     }
 
+    maven {
+        url "https://oss.sonatype.org/content/repositories/snapshots/" //for disq snapshots
+    }
+
     mavenLocal()
 }
 
@@ -288,6 +292,7 @@ dependencies {
         exclude group: 'org.apache.hadoop'
         exclude module: 'htsjdk'
     }
+    compile('org.disq-bio:disq:0.0.1-SNAPSHOT')
     compile('org.apache.hadoop:hadoop-client:' + hadoopVersion) // should be a 'provided' dependency
     compile('com.github.jsr203hadoop:jsr203hadoop:1.0.3')
 

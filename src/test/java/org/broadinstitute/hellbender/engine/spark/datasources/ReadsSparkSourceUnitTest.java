@@ -82,7 +82,7 @@ public class ReadsSparkSourceUnitTest extends GATKBaseTest {
         Assert.assertEquals(serialReads.size(), parallelReads.size());
     }
 
-    @Test(expectedExceptions = UserException.class, expectedExceptionsMessageRegExp = ".*Failed to read bam header from hdfs://bogus/path.bam.*")
+    @Test(expectedExceptions = UserException.class, expectedExceptionsMessageRegExp = ".*java.net.UnknownHostException: bogus.*")
     public void readsSparkSourceUnknownHostTest() {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         ReadsSparkSource readSource = new ReadsSparkSource(ctx, ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY);
@@ -153,7 +153,7 @@ public class ReadsSparkSourceUnitTest extends GATKBaseTest {
         JavaRDD<GATKRead> allInOnePartition = readSource.getParallelReads(bam, null);
         JavaRDD<GATKRead> smallPartitions = readSource.getParallelReads(bam, null,  100 * 1024); // 100 kB
         Assert.assertEquals(allInOnePartition.partitions().size(), 1);
-        Assert.assertEquals(smallPartitions.partitions().size(), 2);
+        Assert.assertEquals(smallPartitions.partitions().size(), 3);
     }
 
     @Test(groups = "spark")

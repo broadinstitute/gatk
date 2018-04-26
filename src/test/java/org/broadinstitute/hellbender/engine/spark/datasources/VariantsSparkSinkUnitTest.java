@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 import com.google.common.io.Files;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.SamStreams;
 import htsjdk.samtools.seekablestream.SeekablePathStream;
 import htsjdk.samtools.seekablestream.SeekableStream;
 import htsjdk.samtools.util.BlockCompressedInputStream;
@@ -27,7 +28,6 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
-import org.seqdoop.hadoop_bam.VCFFormat;
 import org.seqdoop.hadoop_bam.util.VCFHeaderReader;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -38,6 +38,7 @@ import org.testng.annotations.Test;
 import java.io.*;
 import java.net.URI;
 import java.util.*;
+import java.util.zip.GZIPInputStream;
 
 public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
     private static final String SAMPLE = "sample";
@@ -216,31 +217,41 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
             outputFile = outputPath;
         }
         boolean blockCompressed = isBlockCompressed(outputFile);
-        VCFFormat vcfFormat = getVcfFormat(outputFile);
+        String vcfFormat = getVcfFormat(outputFile);
         if (outputFile.endsWith(".vcf")) {
-            Assert.assertTrue(vcfFormat == VCFFormat.VCF);
+            Assert.assertEquals("VCF", vcfFormat);
             Assert.assertFalse(blockCompressed);
         } else if (outputFile.endsWith(".vcf.gz") || outputFile.endsWith(".vcf.bgz")) {
-            Assert.assertTrue(vcfFormat == VCFFormat.VCF);
+            Assert.assertEquals("VCF", vcfFormat);
             Assert.assertTrue(blockCompressed);
         } else if (outputFile.endsWith(".bcf")) {
-            Assert.assertTrue(vcfFormat == VCFFormat.BCF);
+            Assert.assertEquals("BCF", vcfFormat);
             Assert.assertFalse(blockCompressed);
         } else if (outputFile.endsWith(".bcf.gz")) {
-            Assert.assertTrue(vcfFormat == VCFFormat.BCF);
+            Assert.assertEquals("BCF", vcfFormat);
             Assert.assertTrue(blockCompressed);
         }
     }
 
-    private static VCFFormat getVcfFormat(String outputFile) throws IOException {
+    private static String getVcfFormat(String outputFile) throws IOException {
         try (InputStream in = openFile(outputFile)) {
-            return VCFFormat.inferFromData(in);
+            BufferedInputStream bis = new BufferedInputStream(in); // so mark/reset is supported
+            return inferFromUncompressedData(SamStreams.isGzippedSAMFile(bis) ? new GZIPInputStream(bis) : bis);
         }
+    }
+
+    private static String inferFromUncompressedData(final InputStream in) throws IOException {
+        final byte b = (byte)in.read();
+        in.close();
+        switch (b) {
+            case 'B':  return "BCF";
+            case '#':  return "VCF";
+        }
+        return null;
     }
 
     private static boolean isBlockCompressed(String outputFile) throws IOException {
         try (InputStream in = new BufferedInputStream(openFile(outputFile))) {
-            System.out.println("testing " + outputFile);
             return BlockCompressedInputStream.isValidFile(in);
         }
     }
