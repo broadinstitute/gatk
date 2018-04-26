@@ -172,8 +172,6 @@ workflow Mutect2 {
             input:
                 intervals = subintervals,
                 ref_fasta = ref_fasta,
-                ref_fai = ref_fai,
-                ref_dict = ref_dict,
                 tumor_bam = tumor_bam,
                 tumor_bai = tumor_bai,
                 normal_bam = normal_bam,
@@ -252,8 +250,6 @@ workflow Mutect2 {
                 gatk_override = gatk_override,
                 intervals = intervals,
                 ref_fasta = ref_fasta,
-                ref_fai = ref_fai,
-                ref_dict = ref_dict,
                 preemptible_attempts = preemptible_attempts,
                 gatk_docker = gatk_docker,
                 tumor_bam = tumor_bam,
@@ -326,8 +322,6 @@ workflow Mutect2 {
                 m2_vcf = funcotate_vcf_input,
                 m2_vcf_index = funcotate_vcf_input_index,
                 ref_fasta = ref_fasta,
-                ref_fai = ref_fai,
-                ref_dict = ref_dict,
                 reference_version = select_first([reference_version, "NO_REFERENCE_VERSION_GIVEN"]),
                 output_name = funcotated_name,
                 compress = compress,
@@ -411,8 +405,6 @@ task M2 {
     # inputs
     String? intervals
     String ref_fasta
-    String ref_fai
-    String ref_dict
     String tumor_bam
     String tumor_bai
     String? normal_bam
@@ -633,8 +625,6 @@ task CalculateContamination {
     # inputs
     String? intervals
     String ref_fasta
-    String ref_fai
-    String ref_dict
     String tumor_bam
     String tumor_bai
     String? normal_bam
@@ -882,8 +872,6 @@ task SumFloats {
 task Funcotate {
     # inputs
     String ref_fasta
-    String ref_fai
-    String ref_dict
     String m2_vcf
     String m2_vcf_index
     String reference_version
