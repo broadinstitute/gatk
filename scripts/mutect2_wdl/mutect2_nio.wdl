@@ -173,9 +173,7 @@ workflow Mutect2 {
                 intervals = subintervals,
                 ref_fasta = ref_fasta,
                 tumor_bam = tumor_bam,
-                tumor_bai = tumor_bai,
                 normal_bam = normal_bam,
-                normal_bai = normal_bai,
                 pon = pon,
                 gnomad = gnomad,
                 preemptible_attempts = preemptible_attempts,
@@ -253,9 +251,7 @@ workflow Mutect2 {
                 preemptible_attempts = preemptible_attempts,
                 gatk_docker = gatk_docker,
                 tumor_bam = tumor_bam,
-                tumor_bai = tumor_bai,
                 normal_bam = normal_bam,
-                normal_bai = normal_bai,
                 variants_for_contamination = variants_for_contamination,
                 disk_space = tumor_bam_size + normal_bam_size + ceil(size(variants_for_contamination, "GB") * small_input_to_output_multiplier) + disk_pad
         }
@@ -406,9 +402,7 @@ task M2 {
     String? intervals
     String ref_fasta
     String tumor_bam
-    String tumor_bai
     String? normal_bam
-    String? normal_bai
     String? pon
     String? gnomad
     String? m2_extra_args
@@ -626,9 +620,7 @@ task CalculateContamination {
     String? intervals
     String ref_fasta
     String tumor_bam
-    String tumor_bai
     String? normal_bam
-    String? normal_bai
     String? variants_for_contamination
 
     File? gatk_override
