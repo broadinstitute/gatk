@@ -46,7 +46,7 @@ public class ExampleReadSliderWalkerIntegrationTest extends CommandLineProgramTe
                         " -I " + TEST_DATA_DIRECTORY + "reads_data_source_test1.bam" +
                         " -V " + TEST_DATA_DIRECTORY + "feature_data_source_test.vcf" +
                         " -O %s",
-                Arrays.asList(TEST_OUTPUT_DIRECTORY + "expected_ExampleReadSliderWalkerIntegrationTest_output.txt")
+                Arrays.asList(expectedOutput)
         );
         testSpec.executeTest("testExampleReadSliderWalker", this);
     }
