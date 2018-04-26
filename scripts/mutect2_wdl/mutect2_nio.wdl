@@ -37,9 +37,9 @@
 ## normal_bam, normal_bam_index: BAM and index for the normal sample
 ##
 ## ** Primary resources ** (optional but strongly recommended)
-## pon, pon_index: optional panel of normals in VCF format containing probable technical artifacts (false positves)
-## gnomad, gnomad_index: optional database of known germline variants (see http://gnomad.broadinstitute.org/downloads)
-## variants_for_contamination, variants_for_contamination_index: VCF of common variants with allele frequencies for calculating contamination
+## pon: optional panel of normals in VCF format containing probable technical artifacts (false positves)
+## gnomad: optional database of known germline variants (see http://gnomad.broadinstitute.org/downloads)
+## variants_for_contamination: VCF of common variants with allele frequencies for calculating contamination
 ##
 ## ** Secondary resources ** (for optional tasks)
 ## onco_ds_tar_gz, default_config_file: Oncotator datasources and config file
@@ -71,12 +71,9 @@ workflow Mutect2 {
     File? normal_bam
     File? normal_bai
     File? pon
-    File? pon_index
     Int scatter_count
     File? gnomad
-    File? gnomad_index
     File? variants_for_contamination
-    File? variants_for_contamination_index
     Boolean? run_orientation_bias_filter
     Boolean run_ob_filter = select_first([run_orientation_bias_filter, false])
     Array[String]? artifact_modes
@@ -89,7 +86,6 @@ workflow Mutect2 {
     Boolean? compress_vcfs
     Boolean compress = select_first([compress_vcfs, false])
     File? gga_vcf
-    File? gga_vcf_idx
 
     # oncotator inputs
     Boolean? run_oncotator
@@ -129,7 +125,7 @@ workflow Mutect2 {
     # Disk sizes used for dynamic sizing
     Int ref_size = ceil(size(ref_fasta, "GB") + size(ref_dict, "GB") + size(ref_fai, "GB"))
     Int tumor_bam_size = ceil(size(tumor_bam, "GB") + size(tumor_bai, "GB"))
-    Int gnomad_vcf_size = if defined(gnomad) then ceil(size(gnomad, "GB") + size(gnomad_index, "GB")) else 0
+    Int gnomad_vcf_size = if defined(gnomad) then ceil(size(gnomad, "GB")) else 0
     Int normal_bam_size = if defined(normal_bam) then ceil(size(normal_bam, "GB") + size(normal_bai, "GB")) else 0
 
     # If no tar is provided, the task downloads one from broads ftp server
@@ -183,15 +179,12 @@ workflow Mutect2 {
                 normal_bam = normal_bam,
                 normal_bai = normal_bai,
                 pon = pon,
-                pon_index = pon_index,
                 gnomad = gnomad,
-                gnomad_index = gnomad_index,
                 preemptible_attempts = preemptible_attempts,
                 m2_extra_args = m2_extra_args,
                 make_bamout = make_bamout_or_default,
                 compress = compress,
                 gga_vcf = gga_vcf,
-                gga_vcf_idx = gga_vcf_idx,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 disk_space = m2_per_scatter_size
@@ -268,7 +261,6 @@ workflow Mutect2 {
                 normal_bam = normal_bam,
                 normal_bai = normal_bai,
                 variants_for_contamination = variants_for_contamination,
-                variants_for_contamination_index = variants_for_contamination_index,
                 disk_space = tumor_bam_size + normal_bam_size + ceil(size(variants_for_contamination, "GB") * small_input_to_output_multiplier) + disk_pad
         }
     }
@@ -428,9 +420,7 @@ task M2 {
     String? normal_bam
     String? normal_bai
     String? pon
-    String? pon_index
     String? gnomad
-    String? gnomad_index
     String? m2_extra_args
     Boolean? make_bamout
     Boolean compress
@@ -652,7 +642,6 @@ task CalculateContamination {
     String? normal_bam
     String? normal_bai
     String? variants_for_contamination
-    String? variants_for_contamination_index
 
     File? gatk_override
 
