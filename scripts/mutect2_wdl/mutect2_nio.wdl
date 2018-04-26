@@ -153,6 +153,9 @@ workflow Mutect2 {
 
     String output_vcf_name = basename(tumor_bam, ".bam") + ".vcf"
 
+    # Size M2 differently based on if we are using NIO or not
+    Int m2_output_size = tumor_bam_size / scatter_count
+    Int m2_per_scatter_size = ((tumor_bam_size + normal_bam_size) / scatter_count) + ref_size + (gnomad_vcf_size / scatter_count) + m2_output_size + disk_pad
 
     call SplitIntervals {
         input:
@@ -168,7 +171,6 @@ workflow Mutect2 {
             disk_space = ref_size + ceil(size(intervals, "GB") * small_input_to_output_multiplier) + disk_pad
     }
 
-    Int m2_output_size = tumor_bam_size / scatter_count
     scatter (subintervals in SplitIntervals.interval_files ) {
         call M2 {
             input:
@@ -192,7 +194,7 @@ workflow Mutect2 {
                 gga_vcf_idx = gga_vcf_idx,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
-                disk_space = tumor_bam_size + normal_bam_size + ref_size + gnomad_vcf_size + m2_output_size + disk_pad
+                disk_space = m2_per_scatter_size
         }
 
         Float sub_vcf_size = size(M2.unfiltered_vcf, "GB")
