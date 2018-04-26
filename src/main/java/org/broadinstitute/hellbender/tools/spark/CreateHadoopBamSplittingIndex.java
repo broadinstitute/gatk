@@ -1,6 +1,10 @@
 package org.broadinstitute.hellbender.tools.spark;
 
 import htsjdk.samtools.*;
+import htsjdk.samtools.BAMSBIIndexer;
+import htsjdk.samtools.seekablestream.SeekableFileStream;
+import htsjdk.samtools.seekablestream.SeekableStream;
+import htsjdk.samtools.util.BlockCompressedFilePointerUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -14,7 +18,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
 import org.codehaus.plexus.util.FileUtils;
-import org.seqdoop.hadoop_bam.SplittingBAMIndexer;
 import picard.cmdline.programgroups.OtherProgramGroup;
 
 import java.io.*;
@@ -70,15 +73,15 @@ public final class CreateHadoopBamSplittingIndex extends CommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            doc = "The BAM splitting_index file. If this is unspecified an index will be created with the same name as " +
-                    "the input file but with the additional extension " + SplittingBAMIndexer.OUTPUT_FILE_EXTENSION,
+            doc = "The splitting index (SBI) file. If this is unspecified an index will be created with the same name as " +
+                    "the input file but with the additional extension " + SBIIndex.FILE_EXTENSION,
             optional = true)
     public File output;
 
     @Argument(fullName = SPLITTING_INDEX_GRANULARITY_LONG_NAME,
             doc = "Splitting index granularity, an entry is created in the index every this many reads.",
             optional = true)
-    public int granularity = SplittingBAMIndexer.DEFAULT_GRANULARITY;
+    public long granularity = SBIIndexWriter.DEFAULT_GRANULARITY;
 
     @Argument(fullName = CREATE_BAI_LONG_NAME,
             doc = "Set this to create a bai index at the same time as creating a splitting index",
@@ -89,7 +92,7 @@ public final class CreateHadoopBamSplittingIndex extends CommandLineProgram {
     @Override
     public Object doWork() {
         if( granularity <= 0) {
-            throw new CommandLineException.BadArgumentValue(SPLITTING_INDEX_GRANULARITY_LONG_NAME, Integer.toString(granularity), "Granularity must be > 0");
+            throw new CommandLineException.BadArgumentValue(SPLITTING_INDEX_GRANULARITY_LONG_NAME, Long.toString(granularity), "Granularity must be > 0");
         }
         final File index = getOutputFile(output, inputBam);
         if(createBai){
@@ -101,19 +104,17 @@ public final class CreateHadoopBamSplittingIndex extends CommandLineProgram {
         return 0;
     }
 
-    private static void createOnlySplittingIndex(final File inputBam, final File index, final int granularity) {
+    private static void createOnlySplittingIndex(final File inputBam, final File index, final long granularity) {
         assertIsBam(inputBam);
-        //createBamSplittingIndex(inputBam, getOutputFile(output, inputBam), readValidationStringency, granularity);
-        try(BufferedInputStream in = new BufferedInputStream(new FileInputStream(inputBam));
-          BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(index))) {
-                SplittingBAMIndexer.index(in, out, inputBam.length(), granularity);
-
+        try(SeekableStream in = new SeekableFileStream(inputBam);
+            BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(index))) {
+                BAMSBIIndexer.createIndex(in, out, granularity);
         } catch (final IOException e) {
             throw new UserException("Couldn't create splitting index", e);
         }
     }
 
-    private static void createBaiAndSplittingIndex(final File inputBam, final File index, final int granularity, final ValidationStringency readValidationStringency) {
+    private static void createBaiAndSplittingIndex(final File inputBam, final File index, final long granularity, final ValidationStringency readValidationStringency) {
         assertIsBam(inputBam);
         try(SamReader reader = SamReaderFactory.makeDefault()
                 .validationStringency(readValidationStringency)
@@ -122,14 +123,24 @@ public final class CreateHadoopBamSplittingIndex extends CommandLineProgram {
             BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(index))) {
                 final SAMFileHeader header = reader.getFileHeader();
                 assertBamIsCoordinateSorted(header);
-                final SplittingBAMIndexer indexer = new SplittingBAMIndexer(out, granularity);
+                final SBIIndexWriter indexer = new SBIIndexWriter(out, granularity);
 
                 final BAMIndexer bamIndexer = new BAMIndexer(IOUtils.replaceExtension(index, BAMIndex.BAMIndexSuffix), header);
+                BAMFileSpan lastFilePointer = null;
                 for(final SAMRecord read : reader){
-                    indexer.processAlignment(read);
+                    BAMFileSpan filePointer = (BAMFileSpan) read.getFileSource().getFilePointer();
+                    indexer.processRecord(filePointer.getFirstOffset());
                     bamIndexer.processAlignment(read);
+                    lastFilePointer = filePointer;
                 }
-                indexer.finish(inputBam.length());
+                long nextStart = 0;
+                if (lastFilePointer != null && !lastFilePointer.getChunks().isEmpty()) {
+                    nextStart = lastFilePointer.getChunks().get(0).getChunkEnd();
+                }
+                if (nextStart == 0) {
+                    nextStart = BlockCompressedFilePointerUtil.makeFilePointer(inputBam.length()); // default to file length (in case of no reads)
+                }
+                indexer.finish(nextStart, inputBam.length()); // nextStart is start of next record that would be added
                 bamIndexer.finish();
         } catch (final IOException e) {
             throw new UserException("Couldn't create splitting index", e);
@@ -153,11 +164,11 @@ public final class CreateHadoopBamSplittingIndex extends CommandLineProgram {
 
     private static File getOutputFile(final File suggestedOutput, final File input) {
         if(suggestedOutput == null){
-            return new File(input.getPath() + SplittingBAMIndexer.OUTPUT_FILE_EXTENSION);
+            return new File(input.getPath() + SBIIndex.FILE_EXTENSION);
         } else {
-            if (!suggestedOutput.getAbsolutePath().endsWith("bam" + SplittingBAMIndexer.OUTPUT_FILE_EXTENSION)){
-                logger.warn("Creating a splitting index with an extension that doesn't match "
-                        + "bam"+SplittingBAMIndexer.OUTPUT_FILE_EXTENSION + ".  Output file: "+suggestedOutput);
+            if (!suggestedOutput.getAbsolutePath().endsWith("bam" + SBIIndex.FILE_EXTENSION)){
+                logger.warn("Creating a splitting index (SBI) with an extension that doesn't match "
+                        + "bam"+SBIIndex.FILE_EXTENSION + ".  Output file: "+suggestedOutput);
             }
             return suggestedOutput;
         }
