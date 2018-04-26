@@ -271,7 +271,6 @@ workflow Mutect2 {
             gatk_docker = gatk_docker,
             intervals = intervals,
             unfiltered_vcf = MergeVCFs.merged_vcf,
-            unfiltered_vcf_index = MergeVCFs.merged_vcf_index,
             output_name = filtered_name,
             compress = compress,
             preemptible_attempts = preemptible_attempts,
@@ -289,7 +288,6 @@ workflow Mutect2 {
             input:
                 gatk_override = gatk_override,
                 input_vcf = Filter.filtered_vcf,
-                input_vcf_index = Filter.filtered_vcf_index,
                 output_name = filtered_name,
                 compress = compress,
                 gatk_docker = gatk_docker,
@@ -687,7 +685,6 @@ task Filter {
     # inputs
     String? intervals
     String unfiltered_vcf
-    String unfiltered_vcf_index
     String output_name
     Boolean compress
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
@@ -740,7 +737,6 @@ task FilterByOrientationBias {
     # input
     File? gatk_override
     String input_vcf
-    String input_vcf_index
     String output_name
     Boolean compress
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
