@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.BreakpointComplications.*;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment.DistancesBetweenAlignmentsOnRefAndOnRead;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleChimera.DistancesBetweenAlignmentsOnRefAndOnRead;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -54,11 +54,11 @@ abstract class BreakpointsInference {
     }
     abstract BreakpointComplications getComplications();
 
-    protected BreakpointsInference(final ChimericAlignment simpleChimera, final byte[] contigSequence) {
+    protected BreakpointsInference(final SimpleChimera simpleChimera, final byte[] contigSequence) {
         resolveComplications(simpleChimera, contigSequence);
     }
 
-    protected void validateInferredLocations(final ChimericAlignment ca,
+    protected void validateInferredLocations(final SimpleChimera ca,
                                              final SAMSequenceDictionary referenceSequenceDictionary) {
 
         final Tuple2<SimpleInterval, SimpleInterval> leftJustifiedBreakpoints = getLeftJustifiedBreakpoints();
@@ -88,11 +88,11 @@ abstract class BreakpointsInference {
         }
     }
     ///////////////
-    static final BreakpointsInference getInferenceClass(final ChimericAlignment simpleChimera,
+    static final BreakpointsInference getInferenceClass(final SimpleChimera simpleChimera,
                                                         final byte[] contigSequence,
                                                         final SAMSequenceDictionary referenceDictionary) {
 
-        switch (inferFromSimpleChimera(simpleChimera)) {
+        switch (simpleChimera.inferType()) {
             case InterChromosome:
                 return new InterChromosomeBreakpointsInference(simpleChimera, contigSequence, referenceDictionary);
             case IntraChrRefOrderSwap:
@@ -113,60 +113,7 @@ abstract class BreakpointsInference {
         }
     }
 
-    /**
-     * Implementing a logic, where based on the {@code simpleChimera}, which show's how a read or assembly contig's
-     * alignments overlap or are distant from each other, infer the possible simple breakpoint type.
-     * @throws IllegalArgumentException when the simple chimera indicates strand switch or simple translocation or incomplete picture.
-     */
-    static TypeInferredFromSimpleChimera inferFromSimpleChimera (final ChimericAlignment simpleChimera) {
-
-        if ( simpleChimera.isLikelySimpleTranslocation() ) { // see {@link ChimericAlignment.isCandidateSimpleTranslocation()} for definition
-            final boolean sameChromosomeEvent =
-                    simpleChimera.regionWithLowerCoordOnContig.referenceSpan.getContig()
-                            .equals(simpleChimera.regionWithHigherCoordOnContig.referenceSpan.getContig());
-            if ( sameChromosomeEvent ) {
-                return TypeInferredFromSimpleChimera.IntraChrRefOrderSwap;
-            } else {
-                return TypeInferredFromSimpleChimera.InterChromosome;
-            }
-        } else {
-            if (simpleChimera.strandSwitch != StrandSwitch.NO_SWITCH) {
-                // TODO: 9/9/17 the case involves an inversion, could be retired once same chr strand-switch BND calls are evaluated.
-                return TypeInferredFromSimpleChimera.IntraChrStrandSwitch;
-            } else {
-                final ChimericAlignment.DistancesBetweenAlignmentsOnRefAndOnRead distances = simpleChimera.getDistancesBetweenAlignmentsOnRefAndOnRead();
-                final int distBetweenAlignRegionsOnRef = distances.distBetweenAlignRegionsOnRef, // distance-1 between the two regions on reference, denoted as d1 in the comments below
-                          distBetweenAlignRegionsOnCtg = distances.distBetweenAlignRegionsOnCtg; // distance-1 between the two regions on contig, denoted as d2 in the comments below
-                if (distBetweenAlignRegionsOnRef > 0) {        // Deletion:
-                    if (distBetweenAlignRegionsOnCtg <= 0) {     // simple deletion when == 0; with homology when < 0
-                        return TypeInferredFromSimpleChimera.SIMPLE_DEL;
-                    } else {
-                        return TypeInferredFromSimpleChimera.RPL;
-                    }
-                } else if (distBetweenAlignRegionsOnRef < 0) {
-                    if (distBetweenAlignRegionsOnCtg >= 0) { // Tandem repeat expansion:   reference bases [r1e-|d1|+1, r1e] to contig bases [c1e-|d1|+1, c1e] and [c2b, c2b+|d1|-1] with optional inserted sequence [c1e+1, c2b-1] in between the two intervals on contig
-                        return TypeInferredFromSimpleChimera.SMALL_DUP_EXPANSION;
-                    } else {  // complicated case, see below
-                        // Deletion:  duplication with repeat number N1 on reference, N2 on contig, such that N1 <= 2*N2 (and N2<N1);
-                        // Insertion: duplication with repeat number N1 on reference, N2 on contig, such that N2 <= 2*N1 (and N1<N2);
-                        // in both cases, the equal sign on the right can be taken only when there's pseudo-homology between starting bases of the duplicated sequence and starting bases of the right flanking region
-                        // the reference system with a shorter overlap (i.e. with less-negative distance between regions) has a higher repeat number
-                        return TypeInferredFromSimpleChimera.SMALL_DUP_CPX;
-                    }
-                } else {  // distBetweenAlignRegionsOnRef == 0
-                    if (distBetweenAlignRegionsOnCtg > 0) { // Insertion: simple insertion, inserted sequence is the sequence [c1e+1, c2b-1] on the contig
-                        return TypeInferredFromSimpleChimera.SIMPLE_INS;
-                    } else if (distBetweenAlignRegionsOnCtg < 0) { // Tandem repeat contraction: reference has two copies but one copy was deleted on the contig; duplicated sequence on reference are [r1e-|d2|+1, r1e] and [r2b, r2b+|d2|-1]
-                        return TypeInferredFromSimpleChimera.DEL_DUP_CONTRACTION;
-                    } else { // both == 0 => SNP & indel
-                        throw new GATKException("Detected badly parsed chimeric alignment for identifying SV breakpoints; no rearrangement found: " + simpleChimera.toString());
-                    }
-                }
-            }
-        }
-    }
-
-    abstract void resolveComplications(final ChimericAlignment simpleChimera, final byte[] contigSequence);
+    abstract void resolveComplications(final SimpleChimera simpleChimera, final byte[] contigSequence);
     // =================================================================================================================
 
     /**
@@ -183,13 +130,13 @@ abstract class BreakpointsInference {
         }
 
         @Override
-        void resolveComplications(final ChimericAlignment simpleChimera, final byte[] contigSequence) {
+        void resolveComplications(final SimpleChimera simpleChimera, final byte[] contigSequence) {
             complications =
                     new SimpleInsDelOrReplacementBreakpointComplications(simpleChimera, contigSequence);
         }
 
 
-        protected SimpleInsertionDeletionBreakpointsInference (final ChimericAlignment simpleChimera,
+        protected SimpleInsertionDeletionBreakpointsInference (final SimpleChimera simpleChimera,
                                                                final byte[] contigSequence,
                                                                final SAMSequenceDictionary referenceDictionary) {
             super(simpleChimera, contigSequence);
@@ -223,7 +170,7 @@ abstract class BreakpointsInference {
     ///////////////
     abstract static class SmallDuplicationBreakpointsInference extends BreakpointsInference {
 
-        SmallDuplicationBreakpointsInference(final ChimericAlignment simpleChimera,
+        SmallDuplicationBreakpointsInference(final SimpleChimera simpleChimera,
                                              final byte[] contigSequence) {
             super(simpleChimera, contigSequence);
 
@@ -242,12 +189,12 @@ abstract class BreakpointsInference {
         }
 
         @Override
-        void resolveComplications(final ChimericAlignment simpleChimera, final byte[] contigSequence) {
+        void resolveComplications(final SimpleChimera simpleChimera, final byte[] contigSequence) {
             complications =
                     new SmallDuplicationWithPreciseDupRangeBreakpointComplications(simpleChimera, contigSequence);
         }
 
-        SmallDuplicationWithPreciseDupRangeBreakpointsInference(final ChimericAlignment simpleChimera,
+        SmallDuplicationWithPreciseDupRangeBreakpointsInference(final SimpleChimera simpleChimera,
                                                                 final byte[] contigSequence,
                                                                 final SAMSequenceDictionary referenceDictionary) {
             super(simpleChimera, contigSequence);
@@ -317,12 +264,12 @@ abstract class BreakpointsInference {
 
 
         @Override
-        void resolveComplications(final ChimericAlignment simpleChimera, final byte[] contigSequence) {
+        void resolveComplications(final SimpleChimera simpleChimera, final byte[] contigSequence) {
             complications =
                     new SmallDuplicationWithImpreciseDupRangeBreakpointComplications(simpleChimera, contigSequence);
         }
 
-        SmallDuplicationWithImpreciseDupRangeBreakpointsInference(final ChimericAlignment simpleChimera,
+        SmallDuplicationWithImpreciseDupRangeBreakpointsInference(final SimpleChimera simpleChimera,
                                                                   final byte[] contigSequence,
                                                                   final SAMSequenceDictionary referenceDictionary) {
             super(simpleChimera, contigSequence);
@@ -393,7 +340,7 @@ abstract class BreakpointsInference {
 
     ///////////////
     abstract static class BNDTypeBreakpointsInference extends BreakpointsInference {
-        protected BNDTypeBreakpointsInference(final ChimericAlignment simpleChimera,
+        protected BNDTypeBreakpointsInference(final SimpleChimera simpleChimera,
                                               final byte[] contigSequence,
                                               final SAMSequenceDictionary referenceDictionary) {
             super(simpleChimera, contigSequence);
@@ -410,11 +357,11 @@ abstract class BreakpointsInference {
         }
 
         @Override
-        void resolveComplications(final ChimericAlignment simpleChimera, final byte[] contigSequence) {
+        void resolveComplications(final SimpleChimera simpleChimera, final byte[] contigSequence) {
             complications = new IntraChrStrandSwitchBreakpointComplications(simpleChimera, contigSequence);
         }
 
-        IntraChrStrandSwitchBreakpointInference(final ChimericAlignment simpleChimera,
+        IntraChrStrandSwitchBreakpointInference(final SimpleChimera simpleChimera,
                                                 final byte[] contigSequence,
                                                 final SAMSequenceDictionary referenceDictionary) {
             super(simpleChimera, contigSequence, referenceDictionary);
@@ -423,7 +370,7 @@ abstract class BreakpointsInference {
                     = downstreamBreakpointRefContig
                     = simpleChimera.regionWithLowerCoordOnContig.referenceSpan.getContig();
 
-            if (simpleChimera.isLikelyInvertedDuplication()){
+            if (simpleChimera.isCandidateInvertedDuplication()){
 
                 upstreamBreakpointRefPos = complications.getDupSeqRepeatUnitRefSpan().getStart() - 1;
                 downstreamBreakpointRefPos = complications.getDupSeqRepeatUnitRefSpan().getEnd();
@@ -461,10 +408,10 @@ abstract class BreakpointsInference {
             validateInferredLocations(simpleChimera, referenceDictionary);
         }
 
-        private static byte[] extractAltHaplotypeForInvDup(final ChimericAlignment chimericAlignment, final byte[] contigSeq) {
+        private static byte[] extractAltHaplotypeForInvDup(final SimpleChimera simpleChimera, final byte[] contigSeq) {
 
-            final AlignmentInterval firstAlignmentInterval  = chimericAlignment.regionWithLowerCoordOnContig;
-            final AlignmentInterval secondAlignmentInterval = chimericAlignment.regionWithHigherCoordOnContig;
+            final AlignmentInterval firstAlignmentInterval  = simpleChimera.regionWithLowerCoordOnContig;
+            final AlignmentInterval secondAlignmentInterval = simpleChimera.regionWithHigherCoordOnContig;
 
             final int start, end; // intended to be 0-based, semi-open [start, end)
             final boolean needRC;
@@ -531,12 +478,12 @@ abstract class BreakpointsInference {
         }
 
         @Override
-        void resolveComplications(final ChimericAlignment simpleChimera,
+        void resolveComplications(final SimpleChimera simpleChimera,
                                   final byte[] contigSequence) {
             complications = new IntraChrRefOrderSwapBreakpointComplications(simpleChimera, contigSequence);
         }
 
-        IntraChrRefOrderSwapBreakpointsInference(final ChimericAlignment simpleChimera,
+        IntraChrRefOrderSwapBreakpointsInference(final SimpleChimera simpleChimera,
                                                  final byte[] contigSequence,
                                                  final SAMSequenceDictionary referenceDictionary) {
             super(simpleChimera, contigSequence, referenceDictionary);
@@ -582,12 +529,12 @@ abstract class BreakpointsInference {
         }
 
         @Override
-        void resolveComplications(final ChimericAlignment simpleChimera,
+        void resolveComplications(final SimpleChimera simpleChimera,
                                   final byte[] contigSequence) {
             complications = new InterChromosomeBreakpointComplications(simpleChimera, contigSequence);
         }
 
-        InterChromosomeBreakpointsInference(final ChimericAlignment simpleChimera,
+        InterChromosomeBreakpointsInference(final SimpleChimera simpleChimera,
                                             final byte[] contigSequence,
                                             final SAMSequenceDictionary referenceDictionary) {
             super(simpleChimera, contigSequence, referenceDictionary);
@@ -605,7 +552,7 @@ abstract class BreakpointsInference {
             validateInferredLocations(simpleChimera, referenceDictionary);
         }
 
-        private void extractRefPositions(final ChimericAlignment ca,
+        private void extractRefPositions(final SimpleChimera ca,
                                          final InterChromosomeBreakpointComplications complication,
                                          final SAMSequenceDictionary referenceDictionary) {
             final int homologyLen = complication.getHomologyForwardStrandRep().length();
@@ -655,7 +602,7 @@ abstract class BreakpointsInference {
             }
         }
 
-        private void determineRefContigs(ChimericAlignment ca, SAMSequenceDictionary referenceDictionary) {
+        private void determineRefContigs(SimpleChimera ca, SAMSequenceDictionary referenceDictionary) {
             final boolean firstInPartner = isFirstInPartner(ca, referenceDictionary);
             if (firstInPartner) {
                 upstreamBreakpointRefContig = ca.regionWithLowerCoordOnContig.referenceSpan.getContig();
@@ -666,7 +613,7 @@ abstract class BreakpointsInference {
             }
         }
 
-        private static boolean isFirstInPartner(final ChimericAlignment ca, final SAMSequenceDictionary referenceDictionary) {
+        private static boolean isFirstInPartner(final SimpleChimera ca, final SAMSequenceDictionary referenceDictionary) {
             switch (ca.strandSwitch) {
                 case NO_SWITCH: return 0 > IntervalUtils.compareContigs(ca.regionWithLowerCoordOnContig.referenceSpan,
                         ca.regionWithHigherCoordOnContig.referenceSpan, referenceDictionary);

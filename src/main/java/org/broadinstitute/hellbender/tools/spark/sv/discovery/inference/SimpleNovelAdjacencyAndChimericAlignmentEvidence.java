@@ -6,7 +6,6 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.collect.Lists;
 import org.broadinstitute.hellbender.utils.Utils;
-import scala.Tuple2;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -86,18 +85,18 @@ public final class SimpleNovelAdjacencyAndChimericAlignmentEvidence {
      */
     @DefaultSerializer(SimpleChimeraAndNCAMstring.Serializer.class)
     public static final class SimpleChimeraAndNCAMstring {
-        private static final ChimericAlignment.Serializer caSerializer = new ChimericAlignment.Serializer();
+        private static final SimpleChimera.Serializer caSerializer = new SimpleChimera.Serializer();
 
-        public final ChimericAlignment simpleChimera;
+        public final SimpleChimera simpleChimera;
         public final String goodNonCanonicalMappingSATag;
 
-        public SimpleChimeraAndNCAMstring(final ChimericAlignment simpleChimera, final String goodNonCanonicalMappingSATag) {
+        public SimpleChimeraAndNCAMstring(final SimpleChimera simpleChimera, final String goodNonCanonicalMappingSATag) {
             this.simpleChimera = simpleChimera;
             this.goodNonCanonicalMappingSATag = goodNonCanonicalMappingSATag;
         }
 
         SimpleChimeraAndNCAMstring(final Kryo kryo, final Input input) {
-            simpleChimera = caSerializer.read(kryo, input, ChimericAlignment.class);
+            simpleChimera = caSerializer.read(kryo, input, SimpleChimera.class);
             goodNonCanonicalMappingSATag = input.readString();
         }
 

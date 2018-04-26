@@ -13,9 +13,20 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * A wrapper around {@link AlignedContig} to
- * represent mapped assembly contig  whose alignments
- * went through {@link AssemblyContigAlignmentsConfigPicker}.
+ * A wrapper around {@link AlignedContig} to represent mapped assembly contig whose alignments
+ * went through {@link AssemblyContigAlignmentsConfigPicker} and may represent SV breakpoints.
+ *
+ * Example Contig:
+ * ACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTG
+ * Alignment regions:
+ * |---------1:100-200------------|
+ *                                 |----------2:100-200------------------|
+ *                                                                       |----------3:100-200-----------------|
+ * Assembled breakpoints:
+ * 1) links 1:100-200 to 2:100-200
+ * 2) links 2:100-200 to 3:100-200
+ *
+ * A contig could have incomplete picture, see {@link #hasIncompletePicture()}
  */
 @DefaultSerializer(AssemblyContigWithFineTunedAlignments.Serializer.class)
 public final class AssemblyContigWithFineTunedAlignments {
@@ -118,66 +129,103 @@ public final class AssemblyContigWithFineTunedAlignments {
         return sourceTig.hasOnly2Alignments();
     }
 
-    public final boolean hasIncompletePicture() {
-        if ( hasOnly2GoodAlignments() )
-            return hasIncompletePictureFromTwoAlignments();
-        else
-            return hasIncompletePictureFromMultipleAlignments();
+    public enum AlignmentSignatureBasicTypes {
+        Suspicious, Simple, Complex;
+    }
+
+    public enum Suspicious {
+        Incomplete, Ambiguous, MisAssemblySuspect;
+    }
+
+    public AlignmentSignatureBasicTypes getAlignmentSignatureBasicTypes() {
+        if ( hasEquallyGoodAlnConfigurations || hasIncompletePicture() || (! isInformative()) ) {
+            return AlignmentSignatureBasicTypes.Suspicious;
+        } else if ( hasOnly2GoodAlignments() ) {
+            return AlignmentSignatureBasicTypes.Simple;
+        } else {
+            return AlignmentSignatureBasicTypes.Complex;
+        }
+    }
+
+    public Suspicious getReasonForSuspicion() {
+
+        if ( hasEquallyGoodAlnConfigurations ) { // ambiguous
+            return Suspicious.Ambiguous;
+        } else if ( hasIncompletePicture() ) {
+            return Suspicious.Incomplete;
+        } else if ( ! isInformative() ) { // un-informative contig, mis-assembly suspect
+            return Suspicious.MisAssemblySuspect;
+        } else {
+            throw new UnsupportedOperationException(
+                    "operating on contig without a suspicious alignment signature, contig: " + toString());
+        }
     }
 
     public final boolean hasEquallyGoodAlnConfigurations() {
         return hasEquallyGoodAlnConfigurations;
     }
 
+    public final boolean hasIncompletePicture() {
+        if ( hasOnly2GoodAlignments() )
+            return hasIncompletePictureFromTwoAlignments(getHeadAlignment(), getTailAlignment());
+        else
+            return hasIncompletePictureFromMultipleAlignments();
+    }
+
     //==================================================================================================================
 
     /**
-     * An assembly contig with two good alignments indicates to us that
-     * it doesn't have the complete alt haplotype assembled if it shows
+     * This predicate tests if an assembly contig has the full event (i.e. alt haplotype) assembled
+     * Of course, the grand problem of SV is always not getting the big-enough picture
+     * but here we have a more workable definition of what is definitely not big-enough:
+     *
+     * If the assembly contig, with its two (picked) alignments, shows any of the following signature,
+     * it is definitely not giving the whole picture of the alt haplotype,
+     * hence without other types of evidence (or linking breakpoints, which itself needs other evidence anyway),
+     * human-friendly interpretation for them is unreliable.
      * <ul>
      *     <li>
-     *        either alignment's ref span is contained in the other's;
+     *         head and tail alignments contain each other in terms of their reference span,
+     *         regardless if strand switch is involved;
      *     </li>
-     *
-     *    <li>
-     *        if the two alignments map to the same chromosome, and their ref span indicate order switch AND overlap
-     *        (this indicate a duplication, inverted or not, but we don't have the full duplicated region assembled)
-     *    </li>
+     *     <li>
+     *         if the two alignments map to the same chromosome, and their reference spans overlap, and in the mean time
+     *         <ul>
+     *             <li>
+     *                 there's reference order switch, or
+     *             </li>
+     *             <li>
+     *                 there's strand switch,
+     *         todo: this obsoletes the actual use of SimpleChimera#isCandidateInvertedDuplication()
+     *               and related inverted duplication call code we have now,
+     *               but those could be used to figure out how to annotate which known ref regions are invert duplicated
+     *             </li>
+     *         </ul>
+     *     </li>
      * </ul>
-     *
      */
-    public boolean hasIncompletePictureFromTwoAlignments() {
-        return hasIncompletePictureDueToRefSpanContainment()
-                ||
-                (firstAndLastAlignmentMappedToSameChr() && hasIncompletePictureDueToOverlappingRefOrderSwitch());
-    }
+    public static boolean hasIncompletePictureFromTwoAlignments(final AlignmentInterval headAlignment,
+                                                                final AlignmentInterval tailAlignment) {
 
-    private boolean hasIncompletePictureDueToRefSpanContainment() {
-        return oneRefSpanContainsTheOther(sourceTig.getHeadAlignment().referenceSpan,
-                                          sourceTig.getTailAlignment().referenceSpan);
-    }
+        final SimpleInterval referenceSpanOne = headAlignment.referenceSpan;
+        final SimpleInterval referenceSpanTwo = tailAlignment.referenceSpan;
 
-    /**
-     * Note that this is a little different from the multiple alignment case (>2):
-     * here we allow ref order switch because we can emit BND record, and only one BND is necessary.
-     * But for multiple alignments, one BND record is not enough and we need to figure out how to emit records for them.
-     */
-    private boolean hasIncompletePictureDueToOverlappingRefOrderSwitch() {
+        // inter contig mapping will not be treated as incomplete picture for 2-alignment reads
+        if ( !referenceSpanOne.getContig().equals(referenceSpanTwo.getContig()))
+            return false;
 
-        final AlignmentInterval one = sourceTig.getHeadAlignment();
-        final AlignmentInterval two = sourceTig.getTailAlignment();
-        final SimpleInterval referenceSpanOne = one.referenceSpan;
-        final SimpleInterval referenceSpanTwo = two.referenceSpan;
-
-        if (oneRefSpanContainsTheOther(referenceSpanOne, referenceSpanTwo))
+        if ( oneRefSpanContainsTheOther(referenceSpanOne, referenceSpanTwo) )
             return true;
 
-        if (one.forwardStrand != two.forwardStrand) {
+        // Note that this is a little different from the multiple alignment (>2) case:
+        // here we allow ref order switch because we can emit BND record, and only one BND is necessary.
+        // But for multiple alignments, one BND record is not enough and we need to figure out how to emit records for them.
+        if (headAlignment.forwardStrand != tailAlignment.forwardStrand) {
             // TODO: 10/29/17 this obsoletes the inverted duplication call code we have now,
             // but those could be used to figure out how to annotate which known ref regions are invert duplicated
             return referenceSpanOne.overlaps(referenceSpanTwo);
         } else {
-            if (one.forwardStrand) {
+            if (headAlignment.forwardStrand) {
                 return referenceSpanOne.getStart() > referenceSpanTwo.getStart() &&
                         referenceSpanOne.getStart() <= referenceSpanTwo.getEnd();
             } else {
@@ -262,7 +310,7 @@ public final class AssemblyContigWithFineTunedAlignments {
 
     //==================================================================================================================
 
-    private static boolean oneRefSpanContainsTheOther(final SimpleInterval one, final SimpleInterval two) {
+    public static boolean oneRefSpanContainsTheOther(final SimpleInterval one, final SimpleInterval two) {
         return one.contains(two) || two.contains(one);
     }
 

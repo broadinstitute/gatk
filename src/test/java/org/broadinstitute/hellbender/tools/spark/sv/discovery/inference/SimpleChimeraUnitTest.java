@@ -27,7 +27,7 @@ import java.util.List;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryTestDataProvider.*;
 
-public class ChimericAlignmentUnitTest extends GATKBaseTest {
+public class SimpleChimeraUnitTest extends GATKBaseTest {
 
     static List<Tuple3<AlignmentInterval, AlignmentInterval, SAMSequenceDictionary>> alignmentPairsForSimpleChimeraAndRefSeqDict() {
 
@@ -296,21 +296,21 @@ public class ChimericAlignmentUnitTest extends GATKBaseTest {
         final AlignmentInterval region2 = chimericPairsAndRefSeqDict._2();
         final SAMSequenceDictionary refDict = chimericPairsAndRefSeqDict._3();
 
-        Assert.assertEquals(ChimericAlignment.determineStrandSwitch(region1, region2), expectedStrandSwitch);
-        Assert.assertEquals(ChimericAlignment.isForwardStrandRepresentation(region1, region2, expectedStrandSwitch, refDict), expectedIsForwardStrandRepresentation);
+        Assert.assertEquals(SimpleChimera.determineStrandSwitch(region1, region2), expectedStrandSwitch);
+        Assert.assertEquals(SimpleChimera.isForwardStrandRepresentation(region1, region2, expectedStrandSwitch, refDict), expectedIsForwardStrandRepresentation);
 
-        final ChimericAlignment chimericAlignment = new ChimericAlignment(region1, region2, Collections.emptyList(), "dummyName", refDict);
+        final SimpleChimera simpleChimera = new SimpleChimera(region1, region2, Collections.emptyList(), "dummyName", refDict);
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
         final Output out = new Output(bos);
         final Kryo kryo = new Kryo();
-        kryo.writeClassAndObject(out, chimericAlignment);
+        kryo.writeClassAndObject(out, simpleChimera);
         out.flush();
 
         final ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
         final Input in = new Input(bis);
         @SuppressWarnings("unchecked")
-        final ChimericAlignment roundTrip = (ChimericAlignment) kryo.readClassAndObject(in);
-        Assert.assertEquals(roundTrip, chimericAlignment);
-        Assert.assertEquals(roundTrip.hashCode(), chimericAlignment.hashCode());
+        final SimpleChimera roundTrip = (SimpleChimera) kryo.readClassAndObject(in);
+        Assert.assertEquals(roundTrip, simpleChimera);
+        Assert.assertEquals(roundTrip.hashCode(), simpleChimera.hashCode());
     }
 }

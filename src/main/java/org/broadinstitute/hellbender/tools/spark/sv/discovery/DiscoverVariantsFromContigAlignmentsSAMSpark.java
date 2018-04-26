@@ -26,7 +26,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedC
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleChimera;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleNovelAdjacencyAndChimericAlignmentEvidence;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
@@ -165,7 +165,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                                                                     final JavaRDD<AlignedContig> alignedContigs) {
         final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceData.referenceSequenceDictionaryBroadcast;
 
-        final JavaPairRDD<byte[], List<ChimericAlignment>> contigSeqAndChimeras =
+        final JavaPairRDD<byte[], List<SimpleChimera>> contigSeqAndChimeras =
                 alignedContigs.filter(alignedContig -> alignedContig.getAlignments().size() > 1)
                         .mapToPair(alignedContig ->
                                 new Tuple2<>(alignedContig.getContigSequence(),
@@ -180,13 +180,13 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
         final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs = svDiscoveryInputData.discoverStageArgs;
         final Logger toolLogger = svDiscoveryInputData.toolLogger;
 
-        final JavaPairRDD<NovelAdjacencyAndAltHaplotype, Iterable<ChimericAlignment>> narlsAndSources =
+        final JavaPairRDD<NovelAdjacencyAndAltHaplotype, Iterable<SimpleChimera>> narlsAndSources =
                 contigSeqAndChimeras
                         .flatMapToPair(tigSeqAndChimeras -> {
                             final byte[] contigSeq = tigSeqAndChimeras._1;
-                            final List<ChimericAlignment> chimericAlignments = tigSeqAndChimeras._2;
-                            final Stream<Tuple2<NovelAdjacencyAndAltHaplotype, ChimericAlignment>> novelAdjacencyAndSourceChimera =
-                                    chimericAlignments.stream()
+                            final List<SimpleChimera> simpleChimeras = tigSeqAndChimeras._2;
+                            final Stream<Tuple2<NovelAdjacencyAndAltHaplotype, SimpleChimera>> novelAdjacencyAndSourceChimera =
+                                    simpleChimeras.stream()
                                             .map(ca -> new Tuple2<>(
                                                     new NovelAdjacencyAndAltHaplotype(ca, contigSeq,
                                                             referenceSequenceDictionaryBroadcast.getValue()), ca));
@@ -240,18 +240,18 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
      * @param alignedContig          made of (sorted {alignmentIntervals}, sequence) of a potentially-signalling locally-assembled contig
      * @param referenceDictionary    reference sequence dictionary
      * @param filterAlignmentByMqOrLength
-     * @param uniqueRefSpanThreshold for an alignment interval to be used to construct a ChimericAlignment,
+     * @param uniqueRefSpanThreshold for an alignment interval to be used to construct a SimpleChimera,
      *                               how long a unique--i.e. the same ref span is not covered by other alignment intervals--alignment on the reference must it have
      * @param mapQualThresholdInclusive
      * @param filterWhollyContainedAlignments
      */
     @VisibleForTesting
-    public static List<ChimericAlignment> parseOneContig(final AlignedContig alignedContig,
-                                                         final SAMSequenceDictionary referenceDictionary,
-                                                         final boolean filterAlignmentByMqOrLength,
-                                                         final int uniqueRefSpanThreshold,
-                                                         final int mapQualThresholdInclusive,
-                                                         final boolean filterWhollyContainedAlignments) {
+    public static List<SimpleChimera> parseOneContig(final AlignedContig alignedContig,
+                                                     final SAMSequenceDictionary referenceDictionary,
+                                                     final boolean filterAlignmentByMqOrLength,
+                                                     final int uniqueRefSpanThreshold,
+                                                     final int mapQualThresholdInclusive,
+                                                     final boolean filterWhollyContainedAlignments) {
 
         if (alignedContig.getAlignments().size() < 2) {
             return new ArrayList<>();
@@ -267,7 +267,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
             }
         }
 
-        final List<ChimericAlignment> results = new ArrayList<>(alignedContig.getAlignments().size() - 1);
+        final List<SimpleChimera> results = new ArrayList<>(alignedContig.getAlignments().size() - 1);
         final List<String> insertionMappings = new ArrayList<>();
 
         // then iterate over the AR's in pair to identify CA's.
@@ -289,11 +289,11 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
             // TODO: 10/18/17 this way of filtering CA based on not quality but alignment characteristics is temporary:
             //       this was initially developed for ins/del (and tested for that purpose), simple translocations travel through a different code path at the moment.
             // TODO: ultimately we need to merge these two code paths
-            final ChimericAlignment chimericAlignment = new ChimericAlignment(current, next, insertionMappings,
+            final SimpleChimera simpleChimera = new SimpleChimera(current, next, insertionMappings,
                     alignedContig.getContigName(), referenceDictionary);
             // the following check/filter is due to the fact that simple translocations are to be handled in a different code path
-            if (chimericAlignment.isNeitherSimpleTranslocationNorIncompletePicture())
-                results.add(chimericAlignment);
+            if (simpleChimera.isNeitherIncompleteNorSimpleTranslocation())
+                results.add(simpleChimera);
 
             current = next;
         }

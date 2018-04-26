@@ -14,7 +14,7 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleChimera;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleNovelAdjacencyAndChimericAlignmentEvidence;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
@@ -67,7 +67,7 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
 
         final List<SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring> chimericAlignments = Collections.singletonList(
                 new SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring(
-                        new ChimericAlignment(testData.firstAlignment, testData.secondAlignment,
+                        new SimpleChimera(testData.firstAlignment, testData.secondAlignment,
                                 Collections.emptyList(), testData.evidenceAssemblyContigName, b37_seqDict),
                         AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME));
 
@@ -135,7 +135,7 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
 
         final NovelAdjacencyAndAltHaplotype breakpoints = testData.biPathBubble;
         final List<SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring> evidence = Collections.singletonList(
-                new SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring(new ChimericAlignment(testData.firstAlignment, testData.secondAlignment,
+                new SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring(new SimpleChimera(testData.firstAlignment, testData.secondAlignment,
                         Collections.emptyList(), testData.evidenceAssemblyContigName, b37_seqDict),
                         AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME));
         final String sampleID = "testSample";

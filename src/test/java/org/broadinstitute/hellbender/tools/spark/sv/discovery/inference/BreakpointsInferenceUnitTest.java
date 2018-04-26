@@ -16,7 +16,7 @@ public class BreakpointsInferenceUnitTest {
     public void testGetBreakpoints_ExpectException() {
         final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100100), 1 ,100, TextCigarCodec.decode("100M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100101, 100200), 101 ,200, TextCigarCodec.decode("100M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        final ChimericAlignment chimericAlignment = new ChimericAlignment(region1, region2, Collections.emptyList(), "1", SimpleSVDiscoveryTestDataProvider.b37_seqDict);
-        BreakpointsInference.inferFromSimpleChimera(chimericAlignment);
+        final SimpleChimera simpleChimera = new SimpleChimera(region1, region2, Collections.emptyList(), "1", SimpleSVDiscoveryTestDataProvider.b37_seqDict);
+        simpleChimera.inferType();
     }
 }

@@ -42,7 +42,12 @@ import java.util.stream.Stream;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY;
-import static org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.AssemblyContigAlignmentSignatureClassifier.RawTypes;
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments.AlignmentSignatureBasicTypes.Complex;
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments.AlignmentSignatureBasicTypes.Simple;
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments.AlignmentSignatureBasicTypes.Suspicious;
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments.Suspicious.Ambiguous;
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments.Suspicious.Incomplete;
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments.Suspicious.MisAssemblySuspect;
 
 /**
  * (Internal) Examines aligned contigs from local assemblies and calls structural variants or their breakpoints
@@ -146,7 +151,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
                         cnvCallsBroadcast,
                         getReads(), getHeaderForReads(), getReference(), localLogger);
 
-        final EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> contigsByPossibleRawTypes =
+        final AssemblyContigsClassifiedByAlignmentSignatures contigsByPossibleRawTypes =
                 preprocess(svDiscoveryInputData, writeSAMFiles);
 
         dispatchJobs(contigsByPossibleRawTypes, svDiscoveryInputData);
@@ -154,12 +159,52 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
 
     //==================================================================================================================
 
+    public static final class AssemblyContigsClassifiedByAlignmentSignatures {
+        final JavaRDD<AssemblyContigWithFineTunedAlignments> ambiguous;
+        final JavaRDD<AssemblyContigWithFineTunedAlignments> incomplete;
+        final JavaRDD<AssemblyContigWithFineTunedAlignments> misassembly;
+        final JavaRDD<AssemblyContigWithFineTunedAlignments> simple;
+        final JavaRDD<AssemblyContigWithFineTunedAlignments> complex;
+
+        private AssemblyContigsClassifiedByAlignmentSignatures(final JavaRDD<AssemblyContigWithFineTunedAlignments> ambiguous,
+                                                               final JavaRDD<AssemblyContigWithFineTunedAlignments> incomplete,
+                                                               final JavaRDD<AssemblyContigWithFineTunedAlignments> misassembly,
+                                                               final JavaRDD<AssemblyContigWithFineTunedAlignments> simple,
+                                                               final JavaRDD<AssemblyContigWithFineTunedAlignments> complex) {
+            this.ambiguous = ambiguous;
+            this.incomplete = incomplete;
+            this.misassembly = misassembly;
+            this.simple = simple;
+            this.complex = complex;
+        }
+
+        /**
+         * Write SAM file, if requested, for original alignments of contigs recognized as "Ambiguous", "Incomplete", and "MisAssemblySuspect"
+         * TODO: 11/17/17 salvation on assembly contigs that 1) has ambiguous "best" configuration, and 2) has incomplete picture; and flag accordingly
+         *
+         * TODO: 3/4/18 a bug is present here that even though only one alignment has not-bad MQ, it could contain a large gap,
+         *      depending on the behavior of the other gap-less bad mappings,
+         *      we may end up classifying the whole contig as incomplete, or signal-less,
+         *      we should keep the single not-bad mapping and annotate accordingly
+         */
+        private void writeSAMfilesForSuspicious(final String outputPrefix, final JavaRDD<GATKRead> assemblyRawAlignments,
+                                                final SAMFileHeader header) {
+            final Set<String> ambiguousContigNames = new HashSet<>( ambiguous.map(AssemblyContigWithFineTunedAlignments::getContigName).collect() );
+            final Set<String> incompleteContigNames = new HashSet<>( incomplete.map(AssemblyContigWithFineTunedAlignments::getContigName).collect() );
+            final Set<String> misAssemblySuspectContigNames = new HashSet<>( misassembly.map(AssemblyContigWithFineTunedAlignments::getContigName).collect() );
+
+            SvDiscoveryUtils.writeSAMRecords(assemblyRawAlignments, ambiguousContigNames, outputPrefix + AssemblyContigWithFineTunedAlignments.Suspicious.Ambiguous.name() + ".bam", header);
+            SvDiscoveryUtils.writeSAMRecords(assemblyRawAlignments, incompleteContigNames, outputPrefix + AssemblyContigWithFineTunedAlignments.Suspicious.Incomplete.name() + ".bam", header);
+            SvDiscoveryUtils.writeSAMRecords(assemblyRawAlignments, misAssemblySuspectContigNames, outputPrefix + AssemblyContigWithFineTunedAlignments.Suspicious.MisAssemblySuspect.name() + ".bam", header);
+        }
+    }
+
     /**
      * First parse the input alignments, then classify the assembly contigs based on their alignment signatures,
      * and return the contigs that are classified together for downstream inference.
      */
-    public static EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> preprocess(final SvDiscoveryInputData svDiscoveryInputData,
-                                                                                               final boolean writeSAMFiles) {
+    public static AssemblyContigsClassifiedByAlignmentSignatures preprocess(final SvDiscoveryInputData svDiscoveryInputData,
+                                                                            final boolean writeSAMFiles) {
 
         final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceData.referenceSequenceDictionaryBroadcast;
         final Broadcast<SAMFileHeader> headerBroadcast = svDiscoveryInputData.sampleSpecificData.headerBroadcast;
@@ -177,26 +222,33 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         toolLogger.info( contigsWithChimericAlignmentsReconstructed.count() +
                 " contigs with chimeric alignments potentially giving SV signals.");
 
-        // classify assembly contigs by their possible type of SV based on studying alignment signature
-        final EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> contigsByPossibleRawTypes =
-                AssemblyContigAlignmentSignatureClassifier.classifyContigs(contigsWithChimericAlignmentsReconstructed,
-                        referenceSequenceDictionaryBroadcast, toolLogger);
+        // get assembly contigs by their possible type of SV based on studying alignment signature
+        final AssemblyContigsClassifiedByAlignmentSignatures assemblyContigsClassifiedByAlignmentSignatures =
+                classifyContigs(contigsWithChimericAlignmentsReconstructed, toolLogger);
 
-        // write SAM file, if requested, for original alignments of contigs recognized as "Ambiguous", "Incomplete", and "MisAssemblySuspect"
         if (writeSAMFiles) {
             final String outputPrefix = svDiscoveryInputData.outputPath;
-
-            final Set<String> ambiguousContigNames = new HashSet<>( contigsByPossibleRawTypes.get(RawTypes.Ambiguous).map(AssemblyContigWithFineTunedAlignments::getContigName).collect() );
-            final Set<String> incompleteContigNames = new HashSet<>( contigsByPossibleRawTypes.get(RawTypes.Incomplete).map(AssemblyContigWithFineTunedAlignments::getContigName).collect() );
-            final Set<String> misAssemblySuspectContigNames = new HashSet<>( contigsByPossibleRawTypes.get(RawTypes.MisAssemblySuspect).map(AssemblyContigWithFineTunedAlignments::getContigName).collect() );
-
-            final SAMFileHeader header = headerBroadcast.getValue();
-            SvDiscoveryUtils.writeSAMRecords(assemblyRawAlignments, ambiguousContigNames, outputPrefix + RawTypes.Ambiguous.name() + ".bam", header);
-            SvDiscoveryUtils.writeSAMRecords(assemblyRawAlignments, incompleteContigNames, outputPrefix + RawTypes.Incomplete.name() + ".bam", header);
-            SvDiscoveryUtils.writeSAMRecords(assemblyRawAlignments, misAssemblySuspectContigNames, outputPrefix + RawTypes.MisAssemblySuspect.name() + ".bam", header);
+            assemblyContigsClassifiedByAlignmentSignatures.writeSAMfilesForSuspicious(outputPrefix, assemblyRawAlignments,
+                    headerBroadcast.getValue());
         }
 
-        return contigsByPossibleRawTypes;
+        return assemblyContigsClassifiedByAlignmentSignatures;
+    }
+
+    private static AssemblyContigsClassifiedByAlignmentSignatures classifyContigs(final JavaRDD<AssemblyContigWithFineTunedAlignments> contigs,
+                                                                                  final Logger toolLogger) {
+
+        final JavaRDD<AssemblyContigWithFineTunedAlignments> suspiciousContigs = contigs
+                .filter(tig ->
+                        tig.getAlignmentSignatureBasicTypes()
+                                .equals(Suspicious));
+        final JavaRDD<AssemblyContigWithFineTunedAlignments> ambiguous = suspiciousContigs.filter(tig -> tig.getReasonForSuspicion().equals(Ambiguous));
+        JavaRDD<AssemblyContigWithFineTunedAlignments> incomplete = suspiciousContigs.filter(tig -> tig.getReasonForSuspicion().equals(Incomplete));
+        JavaRDD<AssemblyContigWithFineTunedAlignments> misassembly = suspiciousContigs.filter(tig -> tig.getReasonForSuspicion().equals(MisAssemblySuspect));
+        JavaRDD<AssemblyContigWithFineTunedAlignments> simple = contigs.filter(tig -> tig.getAlignmentSignatureBasicTypes().equals(Simple));
+        JavaRDD<AssemblyContigWithFineTunedAlignments> complex = contigs.filter(tig -> tig.getAlignmentSignatureBasicTypes().equals(Complex));
+
+        return new AssemblyContigsClassifiedByAlignmentSignatures(ambiguous, incomplete, misassembly, simple, complex);
     }
 
     //==================================================================================================================
@@ -205,36 +257,30 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
      * Sends assembly contigs classified based on their alignment signature to
      * a corresponding breakpoint location inference unit.
      *
-     * Two VCF files will be output: {@link #outputPrefix}"NonComplex.vcf" and {@link #outputPrefix}"Cpx.vcf".
+     * Two VCF files will be output: {@link #outputPrefix}"NonComplex.vcf" and {@link #outputPrefix}"Complex.vcf".
      *
-     * Note that
-     * {@link AssemblyContigAlignmentSignatureClassifier.RawTypes#Incomplete},
-     * {@link AssemblyContigAlignmentSignatureClassifier.RawTypes#Ambiguous}, and
-     * {@link AssemblyContigAlignmentSignatureClassifier.RawTypes#MisAssemblySuspect}
+     * Note that contigs with alignment signature classified as
+     * {@link AssemblyContigWithFineTunedAlignments.AlignmentSignatureBasicTypes#Suspicious}
      * currently DO NOT generate any VCF yet.
-     * However, if flag {@link #writeSAMFiles} is turned on,
-     * alignments of all contigs that are classified to be any of
-     * {@link AssemblyContigAlignmentSignatureClassifier.RawTypes}
-     * will be extracted and put in SAM files in {@link #outputPrefix} too.
      */
-    public static void dispatchJobs(final EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> contigsByPossibleRawTypes,
+    public static void dispatchJobs(final AssemblyContigsClassifiedByAlignmentSignatures contigsByPossibleRawTypes,
                                     final SvDiscoveryInputData svDiscoveryInputData) {
 
         final String outputPrefixWithSampleName = svDiscoveryInputData.outputPath;
 
         // TODO: 1/10/18 bring back read annotation, see ticket 4228
-        forNonComplexVariants(contigsByPossibleRawTypes, svDiscoveryInputData);
+        forNonComplexVariants(contigsByPossibleRawTypes.simple, svDiscoveryInputData);
 
         final List<VariantContext> complexVariants =
-                CpxVariantInterpreter.inferCpxVariant(contigsByPossibleRawTypes.get(RawTypes.Cpx), svDiscoveryInputData);
+                CpxVariantInterpreter.inferCpxVariant(contigsByPossibleRawTypes.complex, svDiscoveryInputData);
 
-        svDiscoveryInputData.updateOutputPath(outputPrefixWithSampleName + RawTypes.Cpx.name() + ".vcf");
+        svDiscoveryInputData.updateOutputPath(outputPrefixWithSampleName + "Complex.vcf");
         SVVCFWriter.writeVCF(complexVariants, svDiscoveryInputData.outputPath,
                 svDiscoveryInputData.referenceData.referenceSequenceDictionaryBroadcast.getValue(),
                 svDiscoveryInputData.toolLogger);
     }
 
-    private static void forNonComplexVariants(final EnumMap<RawTypes, JavaRDD<AssemblyContigWithFineTunedAlignments>> contigsByPossibleRawTypes,
+    private static void forNonComplexVariants(final JavaRDD<AssemblyContigWithFineTunedAlignments> contigsWithSimpleChimera,
                                               final SvDiscoveryInputData svDiscoveryInputData) {
 
         final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputData.referenceData.referenceBroadcast;
@@ -245,14 +291,9 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
 
         svDiscoveryInputData.updateOutputPath(outputPrefixWithSampleName + "NonComplex.vcf");
 
-        final JavaRDD<AssemblyContigWithFineTunedAlignments> nonComplexSignatures =
-                contigsByPossibleRawTypes.get(RawTypes.InsDel)
-                        .union(contigsByPossibleRawTypes.get(RawTypes.IntraChrStrandSwitch))
-                        .union(contigsByPossibleRawTypes.get(RawTypes.MappedInsertionBkpt));
-
         final List<VariantContext> annotatedSimpleVariants =
                 new SimpleNovelAdjacencyInterpreter()
-                        .inferTypeFromSingleContigSimpleChimera(nonComplexSignatures, svDiscoveryInputData)
+                        .inferTypeFromSingleContigSimpleChimera(contigsWithSimpleChimera, svDiscoveryInputData)
                         .flatMap(pair ->
                             getVariantContextIterator(pair, sampleId, referenceBroadcast,
                                     referenceSequenceDictionaryBroadcast, cnvCallsBroadcast)

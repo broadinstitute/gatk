@@ -432,7 +432,7 @@ final class CpxVariantInducingAssemblyContig {
             Utils.validateArg(AlignmentInterval.overlapOnContig(one, two) <=0,
                     "assumption that input alignments DO NOT overlap is violated.");
 
-            strandSwitch = ChimericAlignment.determineStrandSwitch(one, two);
+            strandSwitch = SimpleChimera.determineStrandSwitch(one, two);
 
             switch (strandSwitch){
                 case NO_SWITCH:

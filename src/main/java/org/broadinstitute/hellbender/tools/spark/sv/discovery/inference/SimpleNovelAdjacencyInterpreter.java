@@ -19,7 +19,7 @@ import java.util.List;
 /**
  * This deals with the special case where a contig has exactly two alignments
  * and seemingly has the complete alt haplotype assembled.
- * See criteria in {@link AssemblyContigWithFineTunedAlignments#hasIncompletePictureFromTwoAlignments()} ()}.
+ * See criteria in {@link AssemblyContigWithFineTunedAlignments#hasIncompletePictureFromTwoAlignments(AlignmentInterval, AlignmentInterval)}.
  *
  * TODO: 1/19/18 see ticket 4189
  *      Exactly how the returned type in {@link SimpleNovelAdjacencyAndChimericAlignmentEvidence} is treated (trusted, or updated, or re-interpreted),
@@ -63,14 +63,14 @@ public final class SimpleNovelAdjacencyInterpreter {
 
         final JavaRDD<SimpleNovelAdjacencyAndChimericAlignmentEvidence> simpleNovelAdjacencies =
                 assemblyContigs
-                        .filter(tig -> ChimericAlignment
+                        .filter(tig -> SimpleChimera
                                 .splitPairStrongEnoughEvidenceForCA(
                                         tig.getHeadAlignment(),
                                         tig.getTailAlignment(),
                                         MORE_RELAXED_ALIGNMENT_MIN_MQ, MORE_RELAXED_ALIGNMENT_MIN_LENGTH))
                         .mapToPair(tig -> {
                             final SAMSequenceDictionary refSeqDict = referenceSequenceDictionaryBroadcast.getValue();
-                            final ChimericAlignment simpleChimera = extractSimpleChimera(tig, refSeqDict);
+                            final SimpleChimera simpleChimera = extractSimpleChimera(tig, refSeqDict);
                             final byte[] contigSequence = tig.getContigSequence();
 
                             final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype =
@@ -97,8 +97,8 @@ public final class SimpleNovelAdjacencyInterpreter {
      * @throws IllegalArgumentException if the input contig doesn't have exactly two good input alignments
      */
     @VisibleForTesting
-    static ChimericAlignment extractSimpleChimera(final AssemblyContigWithFineTunedAlignments contig,
-                                                  final SAMSequenceDictionary referenceDictionary) {
+    static SimpleChimera extractSimpleChimera(final AssemblyContigWithFineTunedAlignments contig,
+                                              final SAMSequenceDictionary referenceDictionary) {
         if ( ! contig.hasOnly2GoodAlignments() )
             throw new IllegalArgumentException("assembly contig sent to the wrong path: assumption that contig has only 2 good alignments is violated for\n" +
                     contig.toString());
@@ -106,7 +106,7 @@ public final class SimpleNovelAdjacencyInterpreter {
         final AlignmentInterval alignmentOne = contig.getAlignments().get(0);
         final AlignmentInterval alignmentTwo = contig.getAlignments().get(1);
 
-        return new ChimericAlignment(alignmentOne, alignmentTwo, contig.getInsertionMappings(),
+        return new SimpleChimera(alignmentOne, alignmentTwo, contig.getInsertionMappings(),
                 contig.getContigName(), referenceDictionary);
     }
 }

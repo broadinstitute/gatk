@@ -20,7 +20,7 @@ import java.util.List;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME;
 
-public class SimpleNovelAdjacencyAndChimericAlignmentEvidenceUnitTest extends GATKBaseTest {
+public class SimpleNovelAdjacencyAndSimpleChimeraEvidenceUnitTest extends GATKBaseTest {
 
 
     @DataProvider(name = "forKryoSerializationAndHashCode")
@@ -31,9 +31,9 @@ public class SimpleNovelAdjacencyAndChimericAlignmentEvidenceUnitTest extends GA
                 pair :
                 SimpleSVDiscoveryTestDataProvider.getAllTestDataPaired()) {
             final NovelAdjacencyAndAltHaplotype biPathBubble = pair._1.biPathBubble;
-            final ChimericAlignment forwardRep = new ChimericAlignment(pair._1.firstAlignment, pair._1.secondAlignment, Collections.emptyList(), pair._1.evidenceAssemblyContigName,
+            final SimpleChimera forwardRep = new SimpleChimera(pair._1.firstAlignment, pair._1.secondAlignment, Collections.emptyList(), pair._1.evidenceAssemblyContigName,
                     SimpleSVDiscoveryTestDataProvider.b37_seqDict);
-            final ChimericAlignment reverseRep = new ChimericAlignment(pair._2.firstAlignment, pair._2.secondAlignment, Collections.emptyList(), pair._2.evidenceAssemblyContigName,
+            final SimpleChimera reverseRep = new SimpleChimera(pair._2.firstAlignment, pair._2.secondAlignment, Collections.emptyList(), pair._2.evidenceAssemblyContigName,
                     SimpleSVDiscoveryTestDataProvider.b37_seqDict);
             final List<SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring> evidence =
                     Arrays.asList(new SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring(forwardRep, NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME),

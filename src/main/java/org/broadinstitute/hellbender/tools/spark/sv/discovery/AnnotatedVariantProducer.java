@@ -14,7 +14,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleChimera;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleNovelAdjacencyAndChimericAlignmentEvidence;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
@@ -276,15 +276,15 @@ public class AnnotatedVariantProducer implements Serializable {
         final List<String> insSeqMappings;
         final String goodNonCanonicalMappingSATag;
 
-        ChimericContigAlignmentEvidenceAnnotations(final ChimericAlignment chimericAlignment, final String goodNonCanonicalMappingSATag){
-            minMQ = Math.min(chimericAlignment.regionWithLowerCoordOnContig.mapQual,
-                             chimericAlignment.regionWithHigherCoordOnContig.mapQual);
-            minAL = Math.min(chimericAlignment.regionWithLowerCoordOnContig.referenceSpan.size(),
-                             chimericAlignment.regionWithHigherCoordOnContig.referenceSpan.size())
-                    - AlignmentInterval.overlapOnContig(chimericAlignment.regionWithLowerCoordOnContig,
-                                                        chimericAlignment.regionWithHigherCoordOnContig);
-            sourceContigName = chimericAlignment.sourceContigName;
-            insSeqMappings = chimericAlignment.insertionMappings;
+        ChimericContigAlignmentEvidenceAnnotations(final SimpleChimera simpleChimera, final String goodNonCanonicalMappingSATag){
+            minMQ = Math.min(simpleChimera.regionWithLowerCoordOnContig.mapQual,
+                             simpleChimera.regionWithHigherCoordOnContig.mapQual);
+            minAL = Math.min(simpleChimera.regionWithLowerCoordOnContig.referenceSpan.size(),
+                             simpleChimera.regionWithHigherCoordOnContig.referenceSpan.size())
+                    - AlignmentInterval.overlapOnContig(simpleChimera.regionWithLowerCoordOnContig,
+                                                        simpleChimera.regionWithHigherCoordOnContig);
+            sourceContigName = simpleChimera.sourceContigName;
+            insSeqMappings = simpleChimera.insertionMappings;
             this.goodNonCanonicalMappingSATag = goodNonCanonicalMappingSATag;
         }
     }

@@ -6,7 +6,7 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVariantsFromContigAlignmentsSAMSpark;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
@@ -16,49 +16,14 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 /**
- * Holds information about a split alignment of a contig, which may represent an SV breakpoint. Each ChimericAlignment
- * represents the junction on the contig of two aligned regions. For example, if a contig aligns to three different regions
- * of the genome (with one primary and two supplementary alignment records), there will be two ChimericAlignment
- * objects created, one to represent each junction between alignment regions:
- *
- * Example Contig:
- * ACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTG
- * Alignment regions:
- * |---------1:100-200------------|
- *                                 |----------2:100-200------------------|
- *                                                                       |----------3:100-200-----------------|
- * Assembled breakpoints:
- * 1) links 1:100-200 to 2:100-200
- * 2) links 2:100-200 to 3:100-200
- *
- * Inserted sequence contains portions of the contig that are aligned to neither region, and therefore may be inserted in
- * the sample. For example, a translocation breakpoint with a micro-insertion:
- *
- * Contig:
- * ACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTG
- * Alignment regions:
- * |-----1:100-200-------|
- *                          |----2:100-200-----|
- * Inserted sequence:
- *  GA
- *
- * Homology represents ambiguity about the exact location of the breakpoint. For example, in this case one alignment
- * region ends with "AC" and the next begins with AC, so we don't know if the AC truly belongs with the first or
- * second alignment region.
- *
- * Contig:
- * ACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTG
- * Alignment regions:
- * |-----1:100-200-------|
- *                    |-----2:100-200----------|
- * Homology:
- *  AC
+ * Conceptually, a simple chimera represents the junction on
+ * {@link AssemblyContigWithFineTunedAlignments} that have
+ * exactly two good alignments.
  */
-@DefaultSerializer(ChimericAlignment.Serializer.class)
-public class ChimericAlignment {
+@DefaultSerializer(SimpleChimera.Serializer.class)
+public class SimpleChimera {
 
     public final String sourceContigName;
 
@@ -70,7 +35,10 @@ public class ChimericAlignment {
 
     public final List<String> insertionMappings;
 
-    protected ChimericAlignment(final Kryo kryo, final Input input) {
+    // =================================================================================================================
+    // (conditional) construction block
+
+    protected SimpleChimera(final Kryo kryo, final Input input) {
 
         this.sourceContigName = input.readString();
 
@@ -88,14 +56,14 @@ public class ChimericAlignment {
     }
 
     /**
-     * Construct a new ChimericAlignment from two alignment intervals.
+     * Construct a new SimpleChimera from two alignment intervals.
      * Assumes {@code intervalWithLowerCoordOnContig} has a lower {@link AlignmentInterval#startInAssembledContig}
      * than {@code regionWithHigherCoordOnContig}.
      */
     @VisibleForTesting
-    public ChimericAlignment(final AlignmentInterval intervalWithLowerCoordOnContig, final AlignmentInterval intervalWithHigherCoordOnContig,
-                             final List<String> insertionMappings, final String sourceContigName,
-                             final SAMSequenceDictionary referenceDictionary) {
+    public SimpleChimera(final AlignmentInterval intervalWithLowerCoordOnContig, final AlignmentInterval intervalWithHigherCoordOnContig,
+                         final List<String> insertionMappings, final String sourceContigName,
+                         final SAMSequenceDictionary referenceDictionary) {
 
         this.sourceContigName = sourceContigName;
 
@@ -110,28 +78,25 @@ public class ChimericAlignment {
         this.insertionMappings = insertionMappings;
     }
 
-    // =================================================================================================================
-
     /**
-     * See
-     * {@link AssemblyContigAlignmentSignatureClassifier#isCandidateSimpleTranslocation(AlignmentInterval, AlignmentInterval, StrandSwitch)}
-     * for definition of "simple translocations".
+     * Roughly similar to
+     * DiscoverVariantsFromContigAlignmentsSAMSpark#nextAlignmentMayBeInsertion(AlignmentInterval, AlignmentInterval, Integer, Integer, boolean):
+     *  1) either alignment may have very low mapping quality (a more relaxed mapping quality threshold);
+     *  2) either alignment may consume only a "short" part of the contig, or if assuming that the alignment consumes
+     *     roughly the same amount of ref bases and read bases, has isAlignment that is too short
      */
-    boolean isLikelySimpleTranslocation() {
-        return AssemblyContigAlignmentSignatureClassifier.isCandidateSimpleTranslocation(regionWithLowerCoordOnContig, regionWithHigherCoordOnContig, strandSwitch);
-    }
+    static boolean splitPairStrongEnoughEvidenceForCA(final AlignmentInterval intervalOne,
+                                                      final AlignmentInterval intervalTwo,
+                                                      final int mapQThresholdInclusive,
+                                                      final int alignmentLengthThresholdInclusive) {
 
-    /**
-     * See {@link AssemblyContigAlignmentSignatureClassifier#isCandidateInvertedDuplication(AlignmentInterval, AlignmentInterval)}
-     */
-    boolean isLikelyInvertedDuplication() {
-        return AssemblyContigAlignmentSignatureClassifier.isCandidateInvertedDuplication(regionWithLowerCoordOnContig, regionWithHigherCoordOnContig);
-    }
+        if (intervalOne.mapQual < mapQThresholdInclusive || intervalTwo.mapQual < mapQThresholdInclusive)
+            return false;
 
-    public boolean isNeitherSimpleTranslocationNorIncompletePicture() {
-        return !isLikelySimpleTranslocation()
-                &&
-                !AssemblyContigAlignmentSignatureClassifier.hasIncompletePictureFromTwoAlignments(regionWithLowerCoordOnContig, regionWithHigherCoordOnContig);
+        // TODO: 2/2/18 improve annotation for alignment length: compared to #firstAlignmentIsTooShort(),
+        // we are not subtracting alignments' overlap on the read, i.e. we are not filtering alignments based on their unique read span size,
+        // but downstream analysis should have this information via an annotation, the current annotation is not up for this task
+        return Math.min(intervalOne.getSizeOnRead(), intervalTwo.getSizeOnRead()) >= alignmentLengthThresholdInclusive;
     }
 
     /**
@@ -195,6 +160,137 @@ public class ChimericAlignment {
         }
     }
 
+    // =================================================================================================================
+    // state query block
+
+    /**
+     * Implementing a logic, where based on the simple chimera, which show's how a read or assembly contig's
+     * alignments overlap or are distant from each other, infer the possible simple breakpoint type.
+     * @throws IllegalArgumentException when the simple chimera indicates strand switch or simple translocation or incomplete picture.
+     */
+    TypeInferredFromSimpleChimera inferType() {
+
+        if ( isCandidateSimpleTranslocation()) { // see {@link SimpleChimera.isCandidateSimpleTranslocation()} for definition
+            final boolean sameChromosomeEvent =
+                    regionWithLowerCoordOnContig.referenceSpan.getContig()
+                            .equals(regionWithHigherCoordOnContig.referenceSpan.getContig());
+            if ( sameChromosomeEvent ) {
+                return TypeInferredFromSimpleChimera.IntraChrRefOrderSwap;
+            } else {
+                return TypeInferredFromSimpleChimera.InterChromosome;
+            }
+        } else {
+            if (strandSwitch != StrandSwitch.NO_SWITCH) {
+                // TODO: 9/9/17 the case involves an inversion, could be retired once same chr strand-switch BND calls are evaluated.
+                return TypeInferredFromSimpleChimera.IntraChrStrandSwitch;
+            } else {
+                final DistancesBetweenAlignmentsOnRefAndOnRead distances = getDistancesBetweenAlignmentsOnRefAndOnRead();
+                final int distBetweenAlignRegionsOnRef = distances.distBetweenAlignRegionsOnRef, // distance-1 between the two regions on reference, denoted as d1 in the comments below
+                        distBetweenAlignRegionsOnCtg = distances.distBetweenAlignRegionsOnCtg; // distance-1 between the two regions on contig, denoted as d2 in the comments below
+                if (distBetweenAlignRegionsOnRef > 0) {        // Deletion:
+                    if (distBetweenAlignRegionsOnCtg <= 0) {     // simple deletion when == 0; with homology when < 0
+                        return TypeInferredFromSimpleChimera.SIMPLE_DEL;
+                    } else {
+                        return TypeInferredFromSimpleChimera.RPL;
+                    }
+                } else if (distBetweenAlignRegionsOnRef < 0) {
+                    if (distBetweenAlignRegionsOnCtg >= 0) { // Tandem repeat expansion:   reference bases [r1e-|d1|+1, r1e] to contig bases [c1e-|d1|+1, c1e] and [c2b, c2b+|d1|-1] with optional inserted sequence [c1e+1, c2b-1] in between the two intervals on contig
+                        return TypeInferredFromSimpleChimera.SMALL_DUP_EXPANSION;
+                    } else {  // complicated case, see below
+                        // Deletion:  duplication with repeat number N1 on reference, N2 on contig, such that N1 <= 2*N2 (and N2<N1);
+                        // Insertion: duplication with repeat number N1 on reference, N2 on contig, such that N2 <= 2*N1 (and N1<N2);
+                        // in both cases, the equal sign on the right can be taken only when there's pseudo-homology between starting bases of the duplicated sequence and starting bases of the right flanking region
+                        // the reference system with a shorter overlap (i.e. with less-negative distance between regions) has a higher repeat number
+                        return TypeInferredFromSimpleChimera.SMALL_DUP_CPX;
+                    }
+                } else {  // distBetweenAlignRegionsOnRef == 0
+                    if (distBetweenAlignRegionsOnCtg > 0) { // Insertion: simple insertion, inserted sequence is the sequence [c1e+1, c2b-1] on the contig
+                        return TypeInferredFromSimpleChimera.SIMPLE_INS;
+                    } else if (distBetweenAlignRegionsOnCtg < 0) { // Tandem repeat contraction: reference has two copies but one copy was deleted on the contig; duplicated sequence on reference are [r1e-|d2|+1, r1e] and [r2b, r2b+|d2|-1]
+                        return TypeInferredFromSimpleChimera.DEL_DUP_CONTRACTION;
+                    } else { // both == 0 => SNP & indel
+                        throw new GATKException("Detected badly parsed chimeric alignment for identifying SV breakpoints; no rearrangement found: " + toString());
+                    }
+                }
+            }
+        }
+    }
+
+    public boolean isNeitherIncompleteNorSimpleTranslocation() {
+        if ( hasIncompletePicture() )
+            return false;
+        return ! isCandidateSimpleTranslocation();
+    }
+
+    /**
+     * Determine if the chimeric alignment indicates a simple translocation.
+     * Simple translocations are defined here and at this time as:
+     * <ul>
+     *     <li>
+     *         evidence alignments doesn't show signature specified in {@link #hasIncompletePicture()}
+     *     </li>
+     *     <li>inter-chromosomal translocations, i.e. novel adjacency between different reference chromosomes, or</li>
+     *      <li>intra-chromosomal translocation that DOES NOT involve a strand switch, that is:
+     *          novel adjacency between reference locations on the same chromosome involving reference-order switch but NO strand switch,
+     *          but in the meantime, the two inducing alignments CANNOT overlap each other since that would point to
+     *          incomplete picture, hence not "simple" anymore.
+     *      </li>
+     * </ul>
+     *
+     * <p>
+     *     Note that the above definition specifically does not cover the case where
+     *     the suggested novel adjacency are linking two reference locations that are
+     *     on the same chromosome involving a strand switch.
+     *     The reason is: to resolve/interpret such cases
+     *     (distinguish between a real inversion or dispersed inverted duplication),
+     *     we need other types of evidence in addition to contig alignment signatures.
+     * </p>
+     */
+    @VisibleForTesting
+    boolean isCandidateSimpleTranslocation() {
+
+        if ( hasIncompletePicture() ) // note that this implies inter-chromosome events are kept
+            return false;
+
+        if (!regionWithLowerCoordOnContig.referenceSpan.getContig()
+                .equals(regionWithHigherCoordOnContig.referenceSpan.getContig()))
+            return true;
+
+        if ( !strandSwitch.equals(StrandSwitch.NO_SWITCH) ) // note that simple chimera having complete picture could have strand switch
+            return false;
+
+        final SimpleInterval referenceSpanOne = regionWithLowerCoordOnContig.referenceSpan,
+                             referenceSpanTwo = regionWithHigherCoordOnContig.referenceSpan;
+
+        if (regionWithLowerCoordOnContig.forwardStrand) {
+            return referenceSpanOne.getStart() > referenceSpanTwo.getEnd();
+        } else {
+            return referenceSpanTwo.getStart() > referenceSpanOne.getEnd();
+        }
+    }
+
+    /**
+     * See criteria in {@link AssemblyContigWithFineTunedAlignments#hasIncompletePictureFromTwoAlignments(AlignmentInterval, AlignmentInterval)}.
+     */
+    private boolean hasIncompletePicture() {
+        return AssemblyContigWithFineTunedAlignments.hasIncompletePictureFromTwoAlignments(regionWithLowerCoordOnContig, regionWithHigherCoordOnContig);
+    }
+
+    /**
+     * todo : see ticket #3529 (Change to a more principled criterion than more than half of alignments overlapping)
+     * @return true iff the two alignments of the assembly contig are
+     *         1) mappings to different strands on the same chromosome, and
+     *         2) overlapping on reference is more than half of the two AI's minimal read span.
+     */
+    @VisibleForTesting
+    boolean isCandidateInvertedDuplication() {
+        if (regionWithLowerCoordOnContig.forwardStrand == regionWithHigherCoordOnContig.forwardStrand)
+            return false;
+        return 2 * AlignmentInterval.overlapOnRefSpan(regionWithLowerCoordOnContig, regionWithHigherCoordOnContig)
+                >
+                Math.min(regionWithLowerCoordOnContig.getSizeOnRead(), regionWithHigherCoordOnContig.getSizeOnRead());
+    }
+
     /**
      * Struct to represent the (distance - 1) between boundaries of the two alignments represented by this CA,
      * on reference, and on read.
@@ -206,7 +302,7 @@ public class ChimericAlignment {
      * Note that
      *
      * Note that this concept is ONLY applicable to chimeric alignments that are
-     * {@link #isNeitherSimpleTranslocationNorIncompletePicture()} and
+     * {@link #isNeitherIncompleteNorSimpleTranslocation()} and
      * {@link #determineStrandSwitch(AlignmentInterval, AlignmentInterval)} == {@link StrandSwitch#NO_SWITCH}
      */
     static final class DistancesBetweenAlignmentsOnRefAndOnRead {
@@ -234,7 +330,7 @@ public class ChimericAlignment {
     }
 
     DistancesBetweenAlignmentsOnRefAndOnRead getDistancesBetweenAlignmentsOnRefAndOnRead() {
-        Utils.validateArg(isNeitherSimpleTranslocationNorIncompletePicture(),
+        Utils.validateArg(isNeitherIncompleteNorSimpleTranslocation(),
                 "Assumption that the simple chimera is neither incomplete picture nor simple translocation is violated.\n" +
                         toString());
         Utils.validateArg(strandSwitch.equals(StrandSwitch.NO_SWITCH),
@@ -264,25 +360,7 @@ public class ChimericAlignment {
                 c2b);
     }
 
-    /**
-     * Roughly similar to {@link DiscoverVariantsFromContigAlignmentsSAMSpark#nextAlignmentMayBeInsertion(AlignmentInterval, AlignmentInterval, Integer, Integer, boolean)}:
-     *  1) either alignment may have very low mapping quality (a more relaxed mapping quality threshold);
-     *  2) either alignment may consume only a "short" part of the contig, or if assuming that the alignment consumes
-     *     roughly the same amount of ref bases and read bases, has isAlignment that is too short
-     */
-    static boolean splitPairStrongEnoughEvidenceForCA(final AlignmentInterval intervalOne,
-                                                      final AlignmentInterval intervalTwo,
-                                                      final int mapQThresholdInclusive,
-                                                      final int alignmentLengthThresholdInclusive) {
-
-        if (intervalOne.mapQual < mapQThresholdInclusive || intervalTwo.mapQual < mapQThresholdInclusive)
-            return false;
-
-        // TODO: 2/2/18 improve annotation for alignment length: compared to #firstAlignmentIsTooShort(),
-        // we are not subtracting alignments' overlap on the read, i.e. we are not filtering alignments based on their unique read span size,
-        // but downstream analysis should have this information via an annotation, the current annotation is not up for this task
-        return Math.min(intervalOne.getSizeOnRead(), intervalTwo.getSizeOnRead()) >= alignmentLengthThresholdInclusive;
-    }
+    // =================================================================================================================
 
     @Override
     public String toString() {
@@ -308,15 +386,15 @@ public class ChimericAlignment {
         insertionMappings.forEach(output::writeString);
     }
 
-    public static final class Serializer extends com.esotericsoftware.kryo.Serializer<ChimericAlignment> {
+    public static final class Serializer extends com.esotericsoftware.kryo.Serializer<SimpleChimera> {
         @Override
-        public void write(final Kryo kryo, final Output output, final ChimericAlignment chimericAlignment) {
-            chimericAlignment.serialize(kryo, output);
+        public void write(final Kryo kryo, final Output output, final SimpleChimera simpleChimera) {
+            simpleChimera.serialize(kryo, output);
         }
 
         @Override
-        public ChimericAlignment read(final Kryo kryo, final Input input, final Class<ChimericAlignment> klass ) {
-            return new ChimericAlignment(kryo, input);
+        public SimpleChimera read(final Kryo kryo, final Input input, final Class<SimpleChimera> klass ) {
+            return new SimpleChimera(kryo, input);
         }
     }
 
@@ -325,7 +403,7 @@ public class ChimericAlignment {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        ChimericAlignment that = (ChimericAlignment) o;
+        SimpleChimera that = (SimpleChimera) o;
 
         if (isForwardStrandRepresentation != that.isForwardStrandRepresentation) return false;
         if (!sourceContigName.equals(that.sourceContigName)) return false;

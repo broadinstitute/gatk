@@ -91,7 +91,7 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
         final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("20", 20101, 20200), 101, 200, TextCigarCodec.decode("100M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         final ArrayList<String> insertionMappings = new ArrayList<>();
         insertionMappings.add(insertionMapping);
-        final ChimericAlignment breakpoint = new ChimericAlignment(region1, region2, insertionMappings, contigName, b37_seqDict);
+        final SimpleChimera breakpoint = new SimpleChimera(region1, region2, insertionMappings, contigName, b37_seqDict);
         return new NovelAdjacencyAndAltHaplotype(breakpoint, SVTestUtils.makeDummySequence(200, (byte)'A'), b37_seqDict);
     }
 
@@ -168,16 +168,16 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
         final AlignmentInterval region3 = new AlignmentInterval(new SimpleInterval("20", 23103633, 23104602), 556, 1525, TextCigarCodec.decode("555S970M"), true, 60, 3, 100, ContigAlignmentsModifier.AlnModType.NONE);
 
         final AlignedContig alignedContig = new AlignedContig("asm00001:tig0001", contigSequence, Arrays.asList(region1, region2, region3));
-        final List<ChimericAlignment> assembledBreakpointsFromAlignmentIntervals = DiscoverVariantsFromContigAlignmentsSAMSpark.parseOneContig(alignedContig, b37_seqDict, true, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, true);
+        final List<SimpleChimera> assembledBreakpointsFromAlignmentIntervals = DiscoverVariantsFromContigAlignmentsSAMSpark.parseOneContig(alignedContig, b37_seqDict, true, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, true);
         Assert.assertEquals(assembledBreakpointsFromAlignmentIntervals.size(), 1);
-        final ChimericAlignment chimericAlignment = assembledBreakpointsFromAlignmentIntervals.get(0);
-        Assert.assertEquals(chimericAlignment.sourceContigName, "asm00001:tig0001");
-        Assert.assertEquals(chimericAlignment.regionWithLowerCoordOnContig, region1);
-        Assert.assertEquals(chimericAlignment.regionWithHigherCoordOnContig, region3);
-        Assert.assertEquals(chimericAlignment.insertionMappings.size(), 1);
+        final SimpleChimera simpleChimera = assembledBreakpointsFromAlignmentIntervals.get(0);
+        Assert.assertEquals(simpleChimera.sourceContigName, "asm00001:tig0001");
+        Assert.assertEquals(simpleChimera.regionWithLowerCoordOnContig, region1);
+        Assert.assertEquals(simpleChimera.regionWithHigherCoordOnContig, region3);
+        Assert.assertEquals(simpleChimera.insertionMappings.size(), 1);
         final String expectedInsertionMappingsString = String.join(AlignmentInterval.PACKED_STRING_REP_SEPARATOR, "516", "557", "20:23103196-23103237", "-", "515S42M968S", "60", "2", "100", "O");
-        Assert.assertEquals(chimericAlignment.insertionMappings.get(0), expectedInsertionMappingsString);
-        final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(chimericAlignment, contigSequence, b37_seqDict);
+        Assert.assertEquals(simpleChimera.insertionMappings.get(0), expectedInsertionMappingsString);
+        final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(simpleChimera, contigSequence, b37_seqDict);
         Assert.assertTrue(breakpoints.getComplication().getHomologyForwardStrandRep().isEmpty());
         Assert.assertEquals(breakpoints.getComplication().getInsertedSequenceForwardStrandRep().getBytes(), Arrays.copyOfRange(contigSequence, 519, 555));
         Assert.assertEquals(breakpoints.getAltHaplotypeSequence(), Arrays.copyOfRange(contigSequence, 519, 555));
@@ -188,9 +188,9 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
     public void testGetBreakpoints_5to3Inversion_simple() {
         final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("20", 101, 200), 1, 100, TextCigarCodec.decode("100M100S"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("20", 501, 600), 101, 200, TextCigarCodec.decode("100S100M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        final ChimericAlignment chimericAlignment = new ChimericAlignment(region1, region2, Collections.emptyList(), "1", b37_seqDict);
+        final SimpleChimera simpleChimera = new SimpleChimera(region1, region2, Collections.emptyList(), "1", b37_seqDict);
         final Tuple2<SimpleInterval, SimpleInterval> breakpoints =
-                BreakpointsInference.getInferenceClass(chimericAlignment, null, b37_seqDict)
+                BreakpointsInference.getInferenceClass(simpleChimera, null, b37_seqDict)
                 .getLeftJustifiedBreakpoints();
         Assert.assertEquals(breakpoints._1(), new SimpleInterval("20", 200, 200));
         Assert.assertEquals(breakpoints._2(), new SimpleInterval("20", 600, 600));
@@ -202,10 +202,10 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
 
         final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("20", 101, 156), 1, 56, TextCigarCodec.decode("56M50S"), true, 60, 0, 56, ContigAlignmentsModifier.AlnModType.NONE);
         final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("20", 501, 556), 51, 106, TextCigarCodec.decode("56M50S"), false, 60, 0, 56, ContigAlignmentsModifier.AlnModType.NONE);
-        final ChimericAlignment chimericAlignment = new ChimericAlignment(region1, region2, Collections.emptyList(), "1", b37_seqDict);
+        final SimpleChimera simpleChimera = new SimpleChimera(region1, region2, Collections.emptyList(), "1", b37_seqDict);
 
         final Tuple2<SimpleInterval, SimpleInterval> breakpoints =
-                BreakpointsInference.getInferenceClass(chimericAlignment, contigSeq, b37_seqDict)
+                BreakpointsInference.getInferenceClass(simpleChimera, contigSeq, b37_seqDict)
                         .getLeftJustifiedBreakpoints();
         Assert.assertEquals(breakpoints._1(), new SimpleInterval("20", 150, 150));
         Assert.assertEquals(breakpoints._2(), new SimpleInterval("20", 556, 556));
@@ -475,7 +475,7 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
                 new SimpleInterval("chr21", 39192594, 39192692),
                 252 ,350,
                 TextCigarCodec.decode("251S99M26S"), true, 32, 1, 94, ContigAlignmentsModifier.AlnModType.NONE);
-        ChimericAlignment simpleChimera = new ChimericAlignment(region1, region2, Collections.emptyList(), "testContig", b38_seqDict);
+        SimpleChimera simpleChimera = new SimpleChimera(region1, region2, Collections.emptyList(), "testContig", b38_seqDict);
         NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(simpleChimera,
                 "TTCCTTAAAATGCAGGTGAATACAAGAATTAGGTTTCAGGTTTTATATATATATTCTGATATATATATATAATATAACCTGAGATATATATATAAATATATATATTAATATATATTAATATATATAAATATATATATATTAATATATATTTATATATAAATATATATATATTAATATATATAAATATATATAAATATATATATATTAATATATATTAATATATAAATATATATATATTAATATATATTAATATATATAAATATATATATTAATATATATAAATATATATATAAATATATATAAATATATAAATATATATATAAATATATATAAATATATATAAATATATATACACACATACATACACATATACATT".getBytes(),
                 b38_seqDict);

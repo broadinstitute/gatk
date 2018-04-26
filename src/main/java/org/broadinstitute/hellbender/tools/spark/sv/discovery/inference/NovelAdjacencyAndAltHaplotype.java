@@ -17,12 +17,11 @@ import scala.Tuple2;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * This class represents a pair of inferred genomic locations on the reference whose novel adjacency is generated
  * due to an SV event (in other words, a simple rearrangement between two genomic locations)
- * that is suggested by the input {@link ChimericAlignment},
+ * that is suggested by the input {@link SimpleChimera},
  * and complications as enclosed in {@link BreakpointComplications}
  * in pinning down the locations to exact base pair resolution.
  *
@@ -45,15 +44,15 @@ public class NovelAdjacencyAndAltHaplotype {
     private final TypeInferredFromSimpleChimera type;
     private final byte[] altHaplotypeSequence;
 
-    public NovelAdjacencyAndAltHaplotype(final ChimericAlignment chimericAlignment, final byte[] contigSequence,
+    public NovelAdjacencyAndAltHaplotype(final SimpleChimera simpleChimera, final byte[] contigSequence,
                                          final SAMSequenceDictionary referenceDictionary) {
 
-        strandSwitch = chimericAlignment.strandSwitch;
+        strandSwitch = simpleChimera.strandSwitch;
 
         try {
 
             final BreakpointsInference inferredClass =
-                    BreakpointsInference.getInferenceClass(chimericAlignment, contigSequence, referenceDictionary);
+                    BreakpointsInference.getInferenceClass(simpleChimera, contigSequence, referenceDictionary);
 
             final Tuple2<SimpleInterval, SimpleInterval> leftJustifiedBreakpoints = inferredClass.getLeftJustifiedBreakpoints();
             leftJustifiedLeftRefLoc = leftJustifiedBreakpoints._1();
@@ -61,13 +60,13 @@ public class NovelAdjacencyAndAltHaplotype {
 
             complication = inferredClass.getComplications();
 
-            type = BreakpointsInference.inferFromSimpleChimera(chimericAlignment);
+            type = simpleChimera.inferType();
 
             altHaplotypeSequence = inferredClass.getInferredAltHaplotypeSequence();
 
         } catch (final IllegalArgumentException iaex) { // catching IAEX specifically because it is the most likely exception thrown if there's bug, this helps quickly debugging what the problem is
             throw new GATKException("Erred when inferring breakpoint location and event type from chimeric alignment:\n" +
-                    chimericAlignment.toString(), iaex);
+                    simpleChimera.toString(), iaex);
         }
     }
 

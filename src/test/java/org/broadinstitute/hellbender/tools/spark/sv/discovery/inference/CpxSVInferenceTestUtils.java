@@ -466,10 +466,10 @@ public final class CpxSVInferenceTestUtils extends GATKBaseTest {
                         .next();
 
         final AssemblyContigAlignmentsConfigPicker.GoodAndBadMappings goodAndBadMappings =
-                AssemblyContigAlignmentSignatureClassifier.removeNonUniqueMappings(
+                AssemblyContigAlignmentsConfigPicker.removeNonUniqueMappings(
                         intermediate.getAlignments(),
-                        AssemblyContigAlignmentSignatureClassifier.ALIGNMENT_MAPQUAL_THREHOLD,
-                        AssemblyContigAlignmentSignatureClassifier.ALIGNMENT_READSPAN_THRESHOLD);
+                        AssemblyContigAlignmentsConfigPicker.LAST_ROUND_TUNING_ALIGNMENT_MAPQUAL_THREHOLD,
+                        AssemblyContigAlignmentsConfigPicker.LAST_ROUND_TUNING_ALIGNMENT_READSPAN_THRESHOLD);
         final AssemblyContigWithFineTunedAlignments result = new AssemblyContigWithFineTunedAlignments(
                 new AlignedContig(intermediate.getContigName(), intermediate.getContigSequence(), goodAndBadMappings.getGoodMappings()),
                 goodAndBadMappings.getBadMappingsAsCompactStrings(), false, (AlignmentInterval) null);
