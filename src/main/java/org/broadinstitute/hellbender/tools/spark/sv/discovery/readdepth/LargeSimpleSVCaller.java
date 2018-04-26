@@ -42,7 +42,10 @@ public class LargeSimpleSVCaller {
     private static final Logger logger = LogManager.getLogger(LargeSimpleSVCaller.class);
 
     private final SVIntervalTree<Object> highCoverageIntervalTree;
+    private final SVIntervalTree<Object> mappableIntervalTree;
+    private final SVIntervalTree<Object> blacklistTree;
     private final SVIntervalTree<VariantContext> structuralVariantCallTree;
+    private final SVIntervalTree<VariantContext> truthSetTree;
     private final SVIntervalTree<EvidenceTargetLink> intrachromosomalLinkTree;
     private final SVIntervalTree<EvidenceTargetLink> interchromosomalLinkTree;
     private final SVIntervalTree<GATKRead> contigTree;
@@ -57,11 +60,14 @@ public class LargeSimpleSVCaller {
 
     public LargeSimpleSVCaller(final Collection<VariantContext> breakpoints,
                                final Collection<VariantContext> structuralVariantCalls,
+                               final Collection<VariantContext> truthSet,
                                final Collection<GATKRead> assembledContigs,
                                final Collection<EvidenceTargetLink> evidenceTargetLinks,
                                final CopyRatioCollection copyRatios,
                                final CalledCopyRatioSegmentCollection copyRatioSegments,
                                final List<SVInterval> highCoverageIntervals,
+                               final List<SVInterval> mappableIntervals,
+                               final List<SVInterval> blacklist,
                                final SAMSequenceDictionary dictionary,
                                final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments) {
         Utils.nonNull(breakpoints, "Breakpoint collection cannot be null");
@@ -80,7 +86,14 @@ public class LargeSimpleSVCaller {
 
         pairedBreakpoints = getIntrachromosomalBreakpointPairs(breakpoints);
         structuralVariantCallTree = buildVariantIntervalTree(structuralVariantCalls);
+        if (truthSet != null) {
+            truthSetTree = buildVariantIntervalTree(truthSet);
+        } else {
+            truthSetTree = null;
+        }
         highCoverageIntervalTree = buildSVIntervalTree(highCoverageIntervals);
+        mappableIntervalTree = buildSVIntervalTree(mappableIntervals);
+        blacklistTree = buildSVIntervalTree(blacklist);
 
         final Collection<EvidenceTargetLink> filteredEvidenceTargetLinks = new ArrayList<>(evidenceTargetLinks);
 
@@ -425,9 +438,6 @@ public class LargeSimpleSVCaller {
         while (iterator.hasNext()) {
             final SVIntervalTree.Entry<LargeSimpleSV> entry = iterator.next();
             final SVInterval interval = entry.getInterval();
-            if (interval.overlaps(new SVInterval(2, 37710188, 37712149))) {
-                int x = 0;
-            }
             final LargeSimpleSV largeSimpleSV = entry.getValue();
             final Set<EvidenceTargetLink> supportingEvidence = new HashSet<>(largeSimpleSV.getSupportingEvidence());
             final List<LargeSimpleSV> conflictingCalls = Utils.stream(calledEventTree.overlappers(interval)).map(SVIntervalTree.Entry::getValue)
@@ -453,9 +463,20 @@ public class LargeSimpleSVCaller {
 
         final SVIntervalTree<LargeSimpleSV> filteredCalls = new SVIntervalTree<>();
         Utils.stream(calledEventTree.iterator())
-                .filter(entry -> entry.getInterval().getContig() == 0)  //TODO
+                .filter(entry -> entry.getInterval().getContig() >= 0)  //TODO
                 .filter(entry -> !callsToRemove.contains(entry.getValue()))
+                .filter(entry -> !blacklistTree.hasOverlapper(entry.getInterval()))
                 .filter(entry -> {
+                    final SVInterval interval = entry.getInterval();
+                    final SVInterval start = new SVInterval(interval.getContig(), interval.getStart(), interval.getStart());
+                    final SVInterval end = new SVInterval(interval.getContig(), interval.getEnd(), interval.getEnd());
+                    return mappableIntervalTree.hasOverlapper(start) && mappableIntervalTree.hasOverlapper(end);
+                }).filter(entry -> {
+                    final SVInterval interval = entry.getInterval();
+                    final SVInterval start = new SVInterval(interval.getContig(), interval.getStart(), interval.getStart());
+                    final SVInterval end = new SVInterval(interval.getContig(), interval.getEnd(), interval.getEnd());
+                    return !highCoverageIntervalTree.hasOverlapper(start) && !highCoverageIntervalTree.hasOverlapper(end);
+                }).filter(entry -> {
                     final Set<CalledCopyRatioSegment> overlappingSegments = copyRatioSegmentOverlapDetector.getOverlaps(SVIntervalUtils.convertToSimpleInterval(entry.getInterval(), dictionary));
                     final CalledCopyRatioSegment.Call expectedCall = entry.getValue().getType() == SimpleSVType.TYPES.DEL ? CalledCopyRatioSegment.Call.DELETION : CalledCopyRatioSegment.Call.AMPLIFICATION;
                     final int callOverlap = overlappingSegments.stream().filter(segment -> segment.getCall() == expectedCall).mapToInt(segment -> SVIntervalUtils.convertToSVInterval(segment.getInterval(), dictionary).overlapLen(entry.getInterval())).sum();
@@ -464,8 +485,13 @@ public class LargeSimpleSVCaller {
                 }).forEach(event -> filteredCalls.put(event.getInterval(), event.getValue()));
 
         logger.info("Running read depth model on " + filteredCalls.size() + " events");
-        final ReadDepthModel readDepthModel = new ReadDepthModel(filteredCalls, copyRatioSegmentOverlapDetector, dictionary);
-        final Tuple2<Double,List<ReadDepthEvent>> result = readDepthModel.solve(ctx);
+        final ReadDepthModel readDepthModel = new ReadDepthModel(filteredCalls, intrachromosomalLinkTree, copyRatioSegmentOverlapDetector, mappableIntervalTree, dictionary); //TODO add interchromosomal links
+        final Tuple2<Double,List<ReadDepthEvent>> result;
+        if (truthSetTree == null) {
+            result = readDepthModel.solve(ctx);
+        }  else {
+            result = readDepthModel.train(ctx, truthSetTree);
+        }
         final Collection<ReadDepthEvent> finalResult = result._2;
         return new Tuple2<>(finalResult, Collections.emptyList());
     }

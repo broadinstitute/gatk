@@ -160,8 +160,14 @@ public class DiscoverVariantsFromReadDepth extends GATKSparkTool {
     private String filteredCallsPath;
     @Argument(doc = "High coverage intervals file path",fullName = HIGH_COVERAGE_INTERVALS_LONG_NAME)
     private String highCoverageIntervalsPath;
+    @Argument(doc = "Mappable intervals file path",fullName = "mappable-intervals")
+    private String mappableIntervalsPath;
+    @Argument(doc = "One or more blacklisted intervals files",fullName = "blacklist")
+    private List<String > blacklistedPaths;
     @Argument(doc = "Sequence dictionary",fullName = "sequence-dictionary")
     private String sequenceDictionaryPath;
+    @Argument(doc = "Truth set (.vcf)",fullName = "truth-intervals", optional = true)
+    private String truthIntervalsPath;
 
     private final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments = new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection();
     private LargeSimpleSVCaller largeSimpleSVCaller;
@@ -175,7 +181,21 @@ public class DiscoverVariantsFromReadDepth extends GATKSparkTool {
         logger.info("Loading assembly...");
         final Collection<GATKRead> assembly = getReads(assemblyBamPath);
         logger.info("Loading high coverage intervals...");
-        final List<SVInterval> highCoverageIntervals = getHighCoverageIntervals(highCoverageIntervalsPath, dictionary);
+        final List<SVInterval> highCoverageIntervals = getIntervals(highCoverageIntervalsPath, dictionary);
+        logger.info("Loading high coverage intervals...");
+        final List<SVInterval> mappableIntervals = getIntervals(mappableIntervalsPath, dictionary);
+        final List<SVInterval> blacklist = new ArrayList<>();
+        for (final String path : blacklistedPaths) {
+            logger.info("Loading blacklist at " + path);
+            blacklist.addAll(getIntervals(path, dictionary));
+        }
+        final Collection<VariantContext> truthSet;
+        if (truthIntervalsPath == null) {
+            truthSet = null;
+        } else {
+            logger.info("Loading truth set...");
+            truthSet = readVCF(truthIntervalsPath, dictionary);
+        }
         logger.info("Loading breakpoints...");
         final Collection<VariantContext> breakpointCalls = readVCF(breakpointVCFPath, dictionary);
         logger.info("Loading SV calls...");
@@ -187,7 +207,7 @@ public class DiscoverVariantsFromReadDepth extends GATKSparkTool {
         logger.info("Loading copy ratio bins...");
         final CopyRatioCollection copyRatios = getCopyRatios(copyRatioFilePath);
 
-        largeSimpleSVCaller = new LargeSimpleSVCaller(breakpointCalls, svCalls, assembly, evidenceTargetLinks, copyRatios, copyRatioSegments, highCoverageIntervals, dictionary, arguments);
+        largeSimpleSVCaller = new LargeSimpleSVCaller(breakpointCalls, svCalls, truthSet, assembly, evidenceTargetLinks, copyRatios, copyRatioSegments, highCoverageIntervals, mappableIntervals, blacklist, dictionary, arguments);
 
         final Tuple2<Collection<ReadDepthEvent>,List<VariantContext>> result = largeSimpleSVCaller.callEvents(ctx, null);
         events = result._1;
@@ -222,7 +242,7 @@ public class DiscoverVariantsFromReadDepth extends GATKSparkTool {
         }
     }
 
-    private static List<SVInterval> getHighCoverageIntervals(final String path, final SAMSequenceDictionary dictionary) {
+    private static List<SVInterval> getIntervals(final String path, final SAMSequenceDictionary dictionary) {
         if (path != null) {
             final GenomeLocParser genomeLocParser = new GenomeLocParser(dictionary);
             return IntervalUtils.parseIntervalArguments(genomeLocParser, path).stream()

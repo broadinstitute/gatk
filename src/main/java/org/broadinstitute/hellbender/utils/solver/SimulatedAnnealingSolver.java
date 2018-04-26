@@ -61,26 +61,8 @@ public class SimulatedAnnealingSolver {
         return lastSolution;
     }
 
-    public double solve(final double[] x0,final int numSteps, final int loggingInterval) {
-        double[] testX = new double[size];
-        double meanEnergy = 0;
-        final int numTestPoints = 500;
-        for (int i = 0; i < numTestPoints; i++) {
-            for (int j = 0; j < testX.length; j++) {
-                testX[j] = random.nextInt((int) (upperBound[j] - lowerBound[j] + 1)) + lowerBound[j];
-            }
-            final double neighborEnergy = computeEnergy(testX);
-            meanEnergy += neighborEnergy / numTestPoints;
-        }
-        double varEnergy = 0;
-        for (int i = 0; i < numTestPoints; i++) {
-            for (int j = 0; j < testX.length; j++) {
-                testX[j] = random.nextInt((int) (upperBound[j] - lowerBound[j] + 1)) + lowerBound[j];
-            }
-            final double neighborEnergy = computeEnergy(testX);
-            varEnergy += (neighborEnergy - meanEnergy) * (neighborEnergy -  meanEnergy) / numTestPoints;
-        }
-        final double T0 = Math.sqrt(varEnergy);
+    public double solve(final double[] x0, final int numSteps, final int loggingInterval) {
+        final double T0 = 1;
         final Function<Integer,Double> temperatureSchedule = step -> T0 * (1 - (step / (double) numSteps));
         return solve(x0, numSteps, temperatureSchedule, loggingInterval);
     }
@@ -94,6 +76,9 @@ public class SimulatedAnnealingSolver {
         double[] neighborX = new double[size];
         final double[] minX = new double[size];
         double currentEnergy = computeEnergy(x);
+        if (loggingInterval > 0) {
+            logger.info("Solving " + x0.length + " parameters over " + numSteps + " steps; f0 = " + currentEnergy);
+        }
         double minEnergy = currentEnergy;
         int tMin = 0;
         copyStates(x, minX);
@@ -106,7 +91,7 @@ public class SimulatedAnnealingSolver {
             updateNeighbor(x, neighborX);
             final double neighborEnergy = computeEnergy(neighborX);
             final double acceptanceProbability;
-            if (neighborEnergy < currentEnergy) {
+            if (neighborEnergy <= currentEnergy) {
                 acceptanceProbability = 1;
             } else {
                 acceptanceProbability = Math.exp((currentEnergy - neighborEnergy) / T);
@@ -123,8 +108,10 @@ public class SimulatedAnnealingSolver {
                 }
             }
         }
-        logger.info("Solved after " + numSteps + " : f = " + currentEnergy + ", fmin = " + minEnergy + ", tmin = " + tMin);
-        logger.info("\tx_min = " + stateString(minX));
+        if (loggingInterval > 0) {
+            logger.info("Solved after " + numSteps + " : f = " + currentEnergy + ", fmin = " + minEnergy + ", tmin = " + tMin);
+            logger.info("\tx_min = " + stateString(minX));
+        }
         lastSolution = minX;
         return minEnergy;
     }

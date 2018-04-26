@@ -4,10 +4,10 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.OverlapDetector;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.LargeSimpleSV;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -22,22 +22,58 @@ final class ReadDepthCluster implements Serializable {
     public static final long serialVersionUID = 1L;
     private final List<ReadDepthEvent> eventsList;
     private final SVIntervalTree<ReadDepthEvent> eventsTree;
-    private final List<Tuple2<List<ReadDepthModel.OverlapInfo>, Double>> copyNumberInfo;
-    private final List<Tuple2<Double, Double>> nearestCallDistances;
     private final SimpleSVType.TYPES type;
 
     public ReadDepthCluster(final List<ReadDepthEvent> events, final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector, final SAMSequenceDictionary dictionary) {
         this.eventsList = events;
         this.eventsTree = getIntervalTree(eventsList);
-        final List<CalledCopyRatioSegment> overlappingSegments = getOverlappingSegments(eventsList, copyRatioSegmentOverlapDetector, dictionary);
-        this.copyNumberInfo = getCopyNumberInfo(overlappingSegments, eventsTree, dictionary);
-        this.nearestCallDistances = getNearestCallDistances(eventsList, copyRatioSegmentOverlapDetector, dictionary);
+        setCopyNumberInfo(copyRatioSegmentOverlapDetector, dictionary);
+        final List<CalledCopyRatioSegment> segments = events.stream()
+                .flatMap(event -> copyRatioSegmentOverlapDetector.getOverlaps(SVIntervalUtils.convertToSimpleInterval(event.getEvent().getInterval(), dictionary)).stream())
+                .collect(Collectors.toList());
+        setOverlapInfo(eventsTree, segments, dictionary);
+        setNearestCallDistances(copyRatioSegmentOverlapDetector, dictionary);
         this.type = events.isEmpty() ? null : events.iterator().next().getEvent().getType();
     }
 
-    private static List<ReadDepthModel.OverlapInfo> getOverlapInfo(final CalledCopyRatioSegment segment, final List<ReadDepthEvent> overlappers) {
+    private static void optimizeOverlapInfo(final List<ReadDepthEvent> events) {
+        for (final ReadDepthEvent event : events) {
+            final Map<Integer, Double> optimizedOverlapInfo = new HashMap<>(SVUtils.hashMapCapacity(event.overlapInfoList.size()));
+            double newCopyNumber = 0;
+            double totalWeight = 0;
+            for (final ReadDepthModel.OverlapInfo info : event.overlapInfoList) {
+                newCopyNumber += info.segmentCopyNumber * info.weight;
+                totalWeight += info.weight;
+                for (final Tuple2<Integer,Integer> idAndSign : info.overlappingIdsAndSigns) {
+                    final int id = idAndSign._1;
+                    final int sign = idAndSign._2;
+                    optimizedOverlapInfo.putIfAbsent(id, 0.);
+                    optimizedOverlapInfo.put(id, optimizedOverlapInfo.get(id) + info.weight * sign);
+                }
+            }
+            newCopyNumber /= totalWeight;
+            event.optimizedOverlapInfoList = optimizedOverlapInfo.entrySet().stream().map(entry -> new Tuple2<>(entry.getKey(),entry.getValue())).collect(Collectors.toList());
+            event.observedCopyNumber = newCopyNumber;
+        }
+    }
 
-        final Map<Integer, LargeSimpleSV> overlapperMap = overlappers.stream().collect(Collectors.toMap(event -> event.getId(), event -> event.getEvent()));
+    private static void setOverlapInfo(final SVIntervalTree<ReadDepthEvent> eventsTree, final Collection<CalledCopyRatioSegment> segments, final SAMSequenceDictionary dictionary) {
+        final Iterator<SVIntervalTree.Entry<ReadDepthEvent>> iterator = eventsTree.iterator();
+        while (iterator.hasNext()) {
+            iterator.next().getValue().overlapInfoList = new ArrayList<>();
+        }
+        for (final CalledCopyRatioSegment segment : segments) {
+            final SVInterval segmentInterval = SVIntervalUtils.convertToSVInterval(segment.getInterval(), dictionary);
+            final List<ReadDepthEvent> overlappingEvents = Utils.stream(eventsTree.overlappers(segmentInterval)).map(SVIntervalTree.Entry::getValue).collect(Collectors.toList());
+            setOverlapInfoOnSegment(segment, overlappingEvents);
+        }
+        optimizeOverlapInfo(Utils.stream(eventsTree.iterator()).map(SVIntervalTree.Entry::getValue).collect(Collectors.toList()));
+    }
+
+    private static void setOverlapInfoOnSegment(final CalledCopyRatioSegment segment, final List<ReadDepthEvent> overlappers) {
+
+        final double copyNumber = Math.pow(2.0, segment.getMeanLog2CopyRatio()) * 2;
+        final Map<Integer, ReadDepthEvent> overlapperMap = overlappers.stream().collect(Collectors.toMap(event -> event.getId(), event -> event));
         final SimpleInterval interval = segment.getInterval();
         final List<ReadDepthEvent> startSortedOverlappers = new ArrayList<>(overlappers);
         Collections.sort(startSortedOverlappers, Comparator.comparingInt(event -> event.getEvent().getStart()));
@@ -48,7 +84,6 @@ final class ReadDepthCluster implements Serializable {
         int lastStart = interval.getStart();
         int startIndex = 0;
         int endIndex = 0;
-        final ArrayList<ReadDepthModel.OverlapInfo> overlapInfoList = new ArrayList<>();
         final List<Integer> openEvents = new ArrayList<>();
         while (startIndex < overlappers.size() || endIndex < overlappers.size()) {
             int nextStart;
@@ -68,9 +103,6 @@ final class ReadDepthCluster implements Serializable {
             } else {
                 nextEnd = interval.getEnd();
             }
-            final List<Tuple2<Integer, Integer>> idsAndCoefficients = openEvents.stream()
-                    .map(id -> new Tuple2<>(id, overlapperMap.get(id).getType() == SimpleSVType.TYPES.DEL ? -1 : 1))
-                    .collect(Collectors.toList());
             final int subIntervalLength;
             if (startIndex < overlappers.size() && nextStart < nextEnd) {
                 subIntervalLength = nextStart - lastStart;
@@ -86,16 +118,18 @@ final class ReadDepthCluster implements Serializable {
                 openEvents.remove(Integer.valueOf(endSortedOverlappers.get(endIndex).getId()));
                 endIndex++;
             }
-            if (!idsAndCoefficients.isEmpty()) {
-                final double scalingFactor = subIntervalLength;
-                overlapInfoList.add(new ReadDepthModel.OverlapInfo(idsAndCoefficients, scalingFactor));
+            for (final Integer id : openEvents) {
+                final double weight = subIntervalLength / (double) overlapperMap.get(id).getEvent().getSize();
+                final List<Tuple2<Integer,Integer>> overlappingIdsAndSigns = openEvents.stream()
+                        .filter(eventId -> !eventId.equals(id))
+                        .map(eventId -> new Tuple2<>(id, overlapperMap.get(id).getEvent().getType() == SimpleSVType.TYPES.DEL ? -1 : 1))
+                        .collect(Collectors.toList());
+                overlapperMap.get(id).overlapInfoList.add(new ReadDepthModel.OverlapInfo(overlappingIdsAndSigns, weight, copyNumber));
             }
             if (lastStart == interval.getEnd()) {
                 break;
             }
         }
-        overlapInfoList.trimToSize();
-        return overlapInfoList;
     }
 
     private List<CalledCopyRatioSegment> getOverlappingSegments(final List<ReadDepthEvent> eventsList, final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector, final SAMSequenceDictionary dictionary) {
@@ -114,23 +148,27 @@ final class ReadDepthCluster implements Serializable {
         return eventsTree;
     }
 
-    private List<Tuple2<List<ReadDepthModel.OverlapInfo>, Double>> getCopyNumberInfo(final List<CalledCopyRatioSegment> overlappingSegments, final SVIntervalTree<ReadDepthEvent> eventsTree, final SAMSequenceDictionary dictionary) {
-        final ArrayList<Tuple2<List<ReadDepthModel.OverlapInfo>, Double>> result = new ArrayList<>(overlappingSegments.size());
-        for (final CalledCopyRatioSegment copyRatioSegment : overlappingSegments) {
-            final SVInterval interval = SVIntervalUtils.convertToSVInterval(copyRatioSegment.getInterval(), dictionary);
-            final Iterator<SVIntervalTree.Entry<ReadDepthEvent>> iter = eventsTree.overlappers(interval);
-            if (iter.hasNext()) {
+    private void setCopyNumberInfo(final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector, final SAMSequenceDictionary dictionary) {
+        for (final ReadDepthEvent event : eventsList) {
+            double observedCopyNumber = 0;
+            final SVInterval eventInterval = event.getEvent().getInterval();
+            final Set<CalledCopyRatioSegment> overlappingSegments = copyRatioSegmentOverlapDetector.getOverlaps(SVIntervalUtils.convertToSimpleInterval(eventInterval, dictionary));
+            int copyNumberOverlap = 0;
+            final CalledCopyRatioSegment.Call expectedCall = event.getEvent().getType() == SimpleSVType.TYPES.DEL ? CalledCopyRatioSegment.Call.DELETION : CalledCopyRatioSegment.Call.AMPLIFICATION;
+            for (final CalledCopyRatioSegment copyRatioSegment : overlappingSegments) {
+                final SVInterval segmentInterval = SVIntervalUtils.convertToSVInterval(copyRatioSegment.getInterval(), dictionary);
                 final double copyNumberCall = Math.pow(2.0, copyRatioSegment.getMeanLog2CopyRatio()) * 2;
-                final List<ReadDepthModel.OverlapInfo> overlapInfo = getOverlapInfo(copyRatioSegment, Utils.stream(iter).map(SVIntervalTree.Entry::getValue).collect(Collectors.toList()));
-                result.add(new Tuple2<>(overlapInfo, copyNumberCall));
+                observedCopyNumber += copyNumberCall * segmentInterval.overlapLen(eventInterval);
+                if (copyRatioSegment.getCall() == expectedCall) {
+                    copyNumberOverlap += segmentInterval.overlapLen(eventInterval);
+                }
             }
+            event.observedCopyNumber = observedCopyNumber / (double) eventInterval.getLength();
+            event.copyNumberCallOverlap = copyNumberOverlap / (double) eventInterval.getLength();
         }
-        result.trimToSize();
-        return result;
     }
 
-    private List<Tuple2<Double, Double>> getNearestCallDistances(final List<ReadDepthEvent> eventsList, final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector, final SAMSequenceDictionary dictionary) {
-        final List<Tuple2<Double, Double>> result = new ArrayList<>(eventsList.size());
+    private void setNearestCallDistances(final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector, final SAMSequenceDictionary dictionary) {
         for (final ReadDepthEvent event : eventsList) {
             final SimpleInterval interval = SVIntervalUtils.convertToSimpleInterval(event.getEvent().getInterval(), dictionary);
             final CalledCopyRatioSegment.Call expectedCall = event.getEvent().getType() == SimpleSVType.TYPES.DEL ? CalledCopyRatioSegment.Call.DELETION : CalledCopyRatioSegment.Call.AMPLIFICATION;
@@ -138,7 +176,8 @@ final class ReadDepthCluster implements Serializable {
             int leftDistance;
             int rightDistance;
             if (overlappingCalls.isEmpty()) {
-                result.add(new Tuple2<>(100., 100.));
+                event.leftDistance = 100;
+                event.rightDistance = 100;
             } else {
                 leftDistance = overlappingCalls.get(0).getStart() - interval.getStart();
                 rightDistance = overlappingCalls.get(0).getEnd() - interval.getEnd();
@@ -154,10 +193,8 @@ final class ReadDepthCluster implements Serializable {
                 }
                 event.leftDistance = Math.log(1 + Math.abs(leftDistance));
                 event.rightDistance = Math.log(1 + Math.abs(rightDistance));
-                result.add(new Tuple2<>(event.leftDistance, event.rightDistance));
             }
         }
-        return result;
     }
 
     public double[] getStates() {
@@ -170,14 +207,6 @@ final class ReadDepthCluster implements Serializable {
 
     public SVIntervalTree<ReadDepthEvent> getEventsTree() {
         return eventsTree;
-    }
-
-    public List<Tuple2<List<ReadDepthModel.OverlapInfo>, Double>> getCopyNumberInfo() {
-        return copyNumberInfo;
-    }
-
-    public List<Tuple2<Double, Double>> getNearestCallDistances() {
-        return nearestCallDistances;
     }
 
     public SimpleSVType.TYPES getType() {

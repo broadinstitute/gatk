@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -80,6 +81,13 @@ public class SVIntervalUtils {
      */
     public static <T> boolean hasReciprocalOverlapInTree(final SVInterval interval, final SVIntervalTree<T> tree, final double minFractionOverlap) {
         return getTreeOverlapperStream(interval, tree).anyMatch(node -> hasReciprocalOverlap(interval, node.getInterval(), minFractionOverlap));
+    }
+
+    /**
+     * Returns entries that have minimum recriprocal overlap fraction with the given interval
+     */
+    public static <T> List<SVIntervalTree.Entry<T>> getIntervalsWithReciprocalOverlapInTree(final SVInterval interval, final SVIntervalTree<T> tree, final double minFractionOverlap) {
+        return getTreeOverlapperStream(interval, tree).filter(node -> hasReciprocalOverlap(interval, node.getInterval(), minFractionOverlap)).collect(Collectors.toList());
     }
 
     /**
