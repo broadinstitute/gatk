@@ -3,7 +3,7 @@
 ## This WDL workflow runs GATK4 Mutect 2 on a single tumor-normal pair or on a single tumor sample,
 ## and performs additional filtering and functional annotation tasks.
 ##
-## NOTE: this wdl is an exact copy of mutect2.wdl in the gatk repo except for replacing File with String in order to
+## NOTE: this wdl is an exact copy of mutect2.wdl in the gatk repo except for replacing File with String in GATK task inputs in order to
 ## avoid localizing files in cromwell and thereby allowing the GATK engine to access cloud-based files with NIO.  Once
 ## cromwell supports "smart" File variables that know when and when not to localize the two wdls should be merged.
 ##
@@ -417,23 +417,23 @@ task SplitIntervals {
 
 task M2 {
     # inputs
-    File? intervals
-    File ref_fasta
-    File ref_fai
-    File ref_dict
-    File tumor_bam
-    File tumor_bai
-    File? normal_bam
-    File? normal_bai
-    File? pon
-    File? pon_index
-    File? gnomad
-    File? gnomad_index
+    String? intervals
+    String ref_fasta
+    String ref_fai
+    String ref_dict
+    String tumor_bam
+    String tumor_bai
+    String? normal_bam
+    String? normal_bai
+    String? pon
+    String? pon_index
+    String? gnomad
+    String? gnomad_index
     String? m2_extra_args
     Boolean? make_bamout
     Boolean compress
-    File? gga_vcf
-    File? gga_vcf_idx
+    String? gga_vcf
+    String? gga_vcf_idx
 
     String output_vcf = "output" + if compress then ".vcf.gz" else ".vcf"
     String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
@@ -641,16 +641,16 @@ task CollectSequencingArtifactMetrics {
 
 task CalculateContamination {
     # inputs
-    File? intervals
-    File ref_fasta
-    File ref_fai
-    File ref_dict
-    File tumor_bam
-    File tumor_bai
-    File? normal_bam
-    File? normal_bai
-    File? variants_for_contamination
-    File? variants_for_contamination_index
+    String? intervals
+    String ref_fasta
+    String ref_fai
+    String ref_dict
+    String tumor_bam
+    String tumor_bai
+    String? normal_bam
+    String? normal_bai
+    String? variants_for_contamination
+    String? variants_for_contamination_index
 
     File? gatk_override
 
@@ -694,9 +694,9 @@ task CalculateContamination {
 
 task Filter {
     # inputs
-    File? intervals
-    File unfiltered_vcf
-    File unfiltered_vcf_index
+    String? intervals
+    String unfiltered_vcf
+    String unfiltered_vcf_index
     String output_name
     Boolean compress
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
@@ -748,8 +748,8 @@ task Filter {
 task FilterByOrientationBias {
     # input
     File? gatk_override
-    File input_vcf
-    File input_vcf_index
+    String input_vcf
+    String input_vcf_index
     String output_name
     Boolean compress
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
@@ -894,11 +894,11 @@ task SumFloats {
 
 task Funcotate {
     # inputs
-    File ref_fasta
-    File ref_fai
-    File ref_dict
-    File m2_vcf
-    File m2_vcf_index
+    String ref_fasta
+    String ref_fai
+    String ref_dict
+    String m2_vcf
+    String m2_vcf_index
     String reference_version
     String output_name
     Boolean compress
