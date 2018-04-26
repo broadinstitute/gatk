@@ -2,18 +2,17 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import com.google.common.collect.Iterators;
 import com.google.common.collect.PeekingIterator;
-import htsjdk.samtools.*;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
+import com.tom_e_white.squark.HtsjdkReadsRdd;
+import com.tom_e_white.squark.HtsjdkReadsRddStorage;
+import com.tom_e_white.squark.HtsjdkReadsTraversalParameters;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.ValidationStringency;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.PathFilter;
-import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.parquet.avro.AvroParquetInputFormat;
-import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction2;
@@ -28,25 +27,19 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
-import org.seqdoop.hadoop_bam.AnySAMInputFormat;
-import org.seqdoop.hadoop_bam.BAMInputFormat;
-import org.seqdoop.hadoop_bam.CRAMInputFormat;
-import org.seqdoop.hadoop_bam.SAMRecordWritable;
-import org.seqdoop.hadoop_bam.util.SAMHeaderReader;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
 /** Loads the reads from disk either serially (using samReaderFactory) or in parallel using Hadoop-BAM.
  * The parallel code is a modified version of the example writing code from Hadoop-BAM.
  */
 public final class ReadsSparkSource implements Serializable {
     private static final long serialVersionUID = 1L;
-    private static final String HADOOP_PART_PREFIX = "part-";
 
     private transient final JavaSparkContext ctx;
     private ValidationStringency validationStringency = ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY;
@@ -85,39 +78,22 @@ public final class ReadsSparkSource implements Serializable {
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
     public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, final TraversalParameters traversalParameters, final long splitSize) {
-        SAMFileHeader header = getHeader(readFileName, referencePath);
-
-        // use the Hadoop configuration attached to the Spark context to maintain cumulative settings
-        final Configuration conf = ctx.hadoopConfiguration();
-        if (splitSize > 0) {
-            conf.set("mapreduce.input.fileinputformat.split.maxsize", Long.toString(splitSize));
+        try {
+            String cramReferencePath = checkCramReference(ctx, readFileName, referencePath);
+            HtsjdkReadsTraversalParameters<SimpleInterval> tp = traversalParameters == null ? null :
+                    new HtsjdkReadsTraversalParameters<>(traversalParameters.getIntervalsForTraversal(), traversalParameters.traverseUnmappedReads());
+            HtsjdkReadsRdd htsjdkReadsRdd = HtsjdkReadsRddStorage.makeDefault(ctx)
+                    .splitSize((int) splitSize)
+                    .validationStringency(validationStringency)
+                    .referenceSourcePath(cramReferencePath)
+                    .read(readFileName, tp);
+            JavaRDD<GATKRead> reads = htsjdkReadsRdd.getReads()
+                    .map(read -> (GATKRead) SAMRecordToGATKReadAdapter.headerlessReadAdapter(read))
+                    .filter(Objects::nonNull);
+            return putPairsInSamePartition(htsjdkReadsRdd.getHeader(), reads, ctx);
+        } catch (IOException | IllegalArgumentException e) {
+            throw new UserException("Failed to load reads from " + readFileName + "\n Caused by:" + e.getMessage(), e);
         }
-
-        final JavaPairRDD<LongWritable, SAMRecordWritable> rdd2;
-
-        setHadoopBAMConfigurationProperties(readFileName, referencePath);
-
-        boolean isBam = IOUtils.isBamFileName(readFileName);
-        if (isBam) {
-            if (traversalParameters == null) {
-                BAMInputFormat.unsetTraversalParameters(conf);
-            } else {
-                BAMInputFormat.setTraversalParameters(conf, traversalParameters.getIntervalsForTraversal(), traversalParameters.traverseUnmappedReads());
-            }
-        }
-
-        rdd2 = ctx.newAPIHadoopFile(
-                readFileName, AnySAMInputFormat.class, LongWritable.class, SAMRecordWritable.class,
-                conf);
-
-        JavaRDD<GATKRead> reads= rdd2.map(v1 -> {
-            SAMRecord sam = v1._2().get();
-            if (isBam || samRecordOverlaps(sam, traversalParameters)) { // don't check overlaps for BAM since it is done by input format
-                return (GATKRead) SAMRecordToGATKReadAdapter.headerlessReadAdapter(sam);
-            }
-            return null;
-        }).filter(v1 -> v1 != null);
-        return putPairsInSamePartition(header, reads, ctx);
     }
 
     /**
@@ -183,23 +159,12 @@ public final class ReadsSparkSource implements Serializable {
 
         // local file or HDFs case
         try {
-            Path path = new Path(filePath);
-            FileSystem fs = path.getFileSystem(ctx.hadoopConfiguration());
-            if (fs.isDirectory(path)) {
-                FileStatus[] bamFiles = fs.listStatus(path, new PathFilter() {
-                    private static final long serialVersionUID = 1L;
-                    @Override
-                    public boolean accept(Path path) {
-                        return path.getName().startsWith(HADOOP_PART_PREFIX);
-                    }
-                });
-                if (bamFiles.length == 0) {
-                    throw new UserException("No BAM files to load header from in: " + path);
-                }
-                path = bamFiles[0].getPath(); // Hadoop-BAM writes the same header to each shard, so use the first one
-            }
-            setHadoopBAMConfigurationProperties(filePath, referencePath);
-            return SAMHeaderReader.readSAMHeaderFrom(path, ctx.hadoopConfiguration());
+            String cramReferencePath = checkCramReference(ctx, filePath, referencePath);
+            return HtsjdkReadsRddStorage.makeDefault(ctx)
+                    .validationStringency(validationStringency)
+                    .referenceSourcePath(cramReferencePath)
+                    .read(filePath)
+                    .getHeader();
         } catch (IOException | IllegalArgumentException e) {
             throw new UserException("Failed to read bam header from " + filePath + "\n Caused by:" + e.getMessage(), e);
         }
@@ -267,46 +232,23 @@ public final class ReadsSparkSource implements Serializable {
     }
 
     /**
-     * Propagate any values that need to be passed to Hadoop-BAM through configuration properties:
-     *
-     *   - the validation stringency property is always set using the current value of the
-     *     validationStringency field
-     *   - if the input file is a CRAM file, the reference value will also be set, and must be a URI
-     *     which includes a scheme. if no scheme is provided a "file://" scheme will be used. for
-     *     non-CRAM input the reference may be null.
-     *   - if the input file is not CRAM, the reference property is *unset* to prevent Hadoop-BAM
-     *     from passing a stale value through to htsjdk when multiple read calls are made serially
-     *     with different inputs but the same Spark context
+     * @return the <code>referencePath</code> or <code>null</code> if not CRAM
      */
-    private void setHadoopBAMConfigurationProperties(final String inputName, final String referenceName) {
-        // use the Hadoop configuration attached to the Spark context to maintain cumulative settings
-        final Configuration conf = ctx.hadoopConfiguration();
-        conf.set(SAMHeaderReader.VALIDATION_STRINGENCY_PROPERTY, validationStringency.name());
-
-        if (!IOUtils.isCramFileName(inputName)) {
-            // only set the reference for CRAM input
-            conf.unset(CRAMInputFormat.REFERENCE_SOURCE_PATH_PROPERTY);
-        }
-        else {
-            if (null == referenceName) {
+    static String checkCramReference(final JavaSparkContext ctx, final String filePath, final String referencePath) {
+        if (IOUtils.isCramFileName(filePath)) {
+            if (referencePath == null) {
                 throw new UserException.MissingReference("A reference is required for CRAM input");
-            }
-            else {
-                if (ReferenceTwoBitSource.isTwoBit(referenceName)) { // htsjdk can't handle 2bit reference files
-                    throw new UserException("A 2bit file cannot be used as a CRAM file reference");
-                }
-                else { // Hadoop-BAM requires the reference to be a URI, including scheme
-                    final Path refPath = new Path(referenceName);
-                    if (!SparkUtils.pathExists(ctx, refPath)) {
-                        throw new UserException.MissingReference("The specified fasta file (" + referenceName + ") does not exist.");
-                    }
-                    final String referenceURI = null == refPath.toUri().getScheme() ?
-                            "file://" + new File(referenceName).getAbsolutePath() :
-                            referenceName;
-                    conf.set(CRAMInputFormat.REFERENCE_SOURCE_PATH_PROPERTY, referenceURI);
+            } else if (ReferenceTwoBitSource.isTwoBit(referencePath)) { // htsjdk can't handle 2bit reference files
+                throw new UserException("A 2bit file cannot be used as a CRAM file reference");
+            } else {
+                final Path refPath = new Path(referencePath);
+                if (!SparkUtils.pathExists(ctx, refPath)) {
+                    throw new UserException.MissingReference("The specified fasta file (" + referencePath + ") does not exist.");
                 }
             }
+            return referencePath;
         }
+        return null;
     }
 
     /**

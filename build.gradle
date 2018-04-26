@@ -296,6 +296,9 @@ dependencies {
         exclude group: 'org.apache.hadoop'
         exclude module: 'htsjdk'
     }
+    compile('com.tom_e_white:squark:0.0.1-SNAPSHOT') {
+        exclude module: 'htsjdk'
+    }
     compile('org.apache.hadoop:hadoop-client:' + hadoopVersion) // should be a 'provided' dependency
     compile('com.github.jsr203hadoop:jsr203hadoop:1.0.3')
 
