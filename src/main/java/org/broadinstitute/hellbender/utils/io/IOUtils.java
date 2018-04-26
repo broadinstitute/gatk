@@ -93,7 +93,7 @@ public final class IOUtils {
                 throw new UserException.BadTmpDir("Could not create sub directory: " + temp.getAbsolutePath());
             return absolute(temp);
         } catch (IOException e) {
-            throw new UserException.BadTmpDir(e.getMessage());
+            throw new UserException.BadTmpDir(e.getMessage(), e);
         }
     }
 
@@ -124,7 +124,7 @@ public final class IOUtils {
             FileUtils.writeStringToFile(tempFile, content, StandardCharsets.UTF_8);
             return tempFile;
         } catch (IOException e) {
-            throw new UserException.BadTmpDir(e.getMessage());
+            throw new UserException.BadTmpDir(e.getMessage(), e);
         }
     }
 
@@ -214,7 +214,7 @@ public final class IOUtils {
         try {
             temp = File.createTempFile(FilenameUtils.getBaseName(resource.getPath()) + ".", "." + FilenameUtils.getExtension(resource.getPath()));
         } catch (IOException e) {
-            throw new UserException.BadTmpDir(e.getMessage());
+            throw new UserException.BadTmpDir(e.getMessage(), e);
         }
         writeResource(resource, temp);
         return temp;
