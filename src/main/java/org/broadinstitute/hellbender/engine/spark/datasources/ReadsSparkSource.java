@@ -16,7 +16,6 @@ import org.apache.parquet.avro.AvroParquetInputFormat;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.FlatMapFunction2;
 import org.apache.spark.broadcast.Broadcast;
 import org.bdgenomics.formats.avro.AlignmentRecord;
@@ -27,10 +26,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.read.BDGAlignmentRecordToGATKReadAdapter;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadConstants;
-import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
+import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import org.seqdoop.hadoop_bam.AnySAMInputFormat;
 import org.seqdoop.hadoop_bam.BAMInputFormat;
@@ -211,10 +207,10 @@ public final class ReadsSparkSource implements Serializable {
 
     /**
      * Ensure reads in a pair fall in the same partition (input split), if the reads are queryname-sorted,
-     * so they are processed together. No shuffle is needed.
+     * or querygroup sorted, so they are processed together. No shuffle is needed.
      */
     JavaRDD<GATKRead> putPairsInSamePartition(final SAMFileHeader header, final JavaRDD<GATKRead> reads) {
-        if (!header.getSortOrder().equals(SAMFileHeader.SortOrder.queryname)) {
+        if (!ReadUtils.isReadNameGroupedBam(header)) {
             return reads;
         }
         int numPartitions = reads.getNumPartitions();

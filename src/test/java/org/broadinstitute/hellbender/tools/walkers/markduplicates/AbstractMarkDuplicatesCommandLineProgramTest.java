@@ -10,6 +10,8 @@ import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.tools.spark.pipelines.MarkDuplicatesSparkIntegrationTest;
+import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSpark;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
@@ -316,6 +318,9 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         // second end unmapped
         tester.addMappedPair(1, 10189, 10040, false, false, "41S35M", "65M11S", true, false, false, ELIGIBLE_BASE_QUALITY); // mapped OK
         tester.addMappedFragment(1, 10040, true, DEFAULT_BASE_QUALITY); // duplicate
+        if (this instanceof MarkDuplicatesSparkIntegrationTest) {
+            tester.addArg("--do_not_mark_unmapped_mates");
+        }
         tester.runTest();
     }
 
@@ -326,6 +331,9 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         // first end unmapped
         tester.addMappedPair(1, 10189, 10040, false, false, "41S35M", "65M11S", true, false, false, ELIGIBLE_BASE_QUALITY); // mapped OK
         tester.addMappedFragment(1, 10040, true, DEFAULT_BASE_QUALITY); // duplicate
+        if (this instanceof MarkDuplicatesSparkIntegrationTest) {
+            tester.addArg("--do_not_mark_unmapped_mates");
+        }
         tester.runTest();
     }
 

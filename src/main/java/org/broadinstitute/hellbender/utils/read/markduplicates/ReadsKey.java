@@ -6,65 +6,49 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 /**
  * Encodes a unique key for read, read pairs and fragments. Used to identify duplicates for MarkDuplicatesGATK.
+ *
+ * This class was changed to primarily operate on key hashing instead of generating long string keys as it was discovered
+ * that it had performance implications for serialization in MarkDuplicatesSpark. 
  */
 public final class ReadsKey {
 
-    public static final String FRAGMENT_PREFIX = "f|";
-
-    private static final String PAIRED_ENDS_PREFIX = "p|";
-
     /**
-     * Makes a unique key for the fragment.
+     * Makes a hash key for the fragment.
      */
-    public static String keyForFragment(final SAMFileHeader header, final GATKRead read) {
-        return FRAGMENT_PREFIX + subkeyForFragment(header, read);
+    public static int hashKeyForFragment(int strandedUnclippedStart, boolean reverseStrand, int referenceIndex, String library) {
+
+        int key = library != null ? library.hashCode() : 1;
+        key = key * 31 + referenceIndex;
+        key = key * 31 + strandedUnclippedStart;
+        return key * 31 + (reverseStrand ? 0 : 1);
     }
 
     /**
-     * Makes a unique key for the fragment (excluding the prefix).
+     * Makes a hash key for the paired reads.
      */
-    private static String subkeyForFragment(final SAMFileHeader header, final GATKRead read) {
-        final String library = ReadUtils.getLibrary(read, header);
-
-        return String.format(
-                "%s|%d|%d|%s",
-                library != null ? library : "-",
-                ReadUtils.getReferenceIndex(read, header),
-                ReadUtils.getStrandedUnclippedStart(read),
-                read.isReverseStrand() ? "r" : "f");
-    }
-
-    /**
-     * Makes a unique key for the paired reads.
-     */
-    public static String keyForPairedEnds(final SAMFileHeader header, final GATKRead first, final GATKRead second) {
-        final String key = subkeyForFragment(header, first);
+    public static int hashKeyForPair(final SAMFileHeader header, final GATKRead first, final GATKRead second) {
+        int key = hashKeyForFragment(ReadUtils.getStrandedUnclippedStart(first), first.isReverseStrand(),
+                                     ReadUtils.getReferenceIndex(first, header), ReadUtils.getLibrary(first, header));
         if (second == null) {
-            return PAIRED_ENDS_PREFIX + key;
+            return key;
         }
 
-        return String.format(
-                PAIRED_ENDS_PREFIX + "%s|%d|%d|%s",
-                key,
-                ReadUtils.getReferenceIndex(second, header),
-                ReadUtils.getStrandedUnclippedStart(second),
-                second.isReverseStrand() ? "r" : "f");
+        key = 31 * key + ReadUtils.getReferenceIndex(second, header);
+        key = 31 * key + ReadUtils.getStrandedUnclippedStart(second);
+        return 31 * key + (second.isReverseStrand() ? 0 : 1);
     }
 
     /**
      * Makes a unique key for the read.
      */
-    public static String keyForRead(final SAMFileHeader header, final GATKRead read) {
-        return String.format(
-                "%s|%s",
-                read.getReadGroup(),
-                read.getName());
+    public static String keyForRead(final GATKRead read) {
+        return read.getName();
     }
 
     /**
-     * Returns true if the key is a fragment key.
+     * Makes a hash key for the read.
      */
-    public static boolean isFragment(String key) {
-        return key.startsWith(FRAGMENT_PREFIX);
+    public static int hashKeyForRead(final GATKRead read) {
+        return read.getName().hashCode();
     }
 }
