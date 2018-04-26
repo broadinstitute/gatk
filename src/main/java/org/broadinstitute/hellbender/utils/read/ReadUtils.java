@@ -387,6 +387,25 @@ public final class ReadUtils {
     }
 
     /**
+     * Helper method for interrogating if a read and its mate (if it exists) are unmapped
+     * @param read a read with mate information to interrogate
+     * @return true if this read and its are unmapped
+     */
+    public static boolean readAndMateAreUnmapped(GATKRead read) {
+        return read.isUnmapped() && (!read.isPaired() || read.mateIsUnmapped());
+    }
+
+    /**
+     * Interrogates the header to determine if the bam is expected to be sorted such that reads with the same name appear in order.
+     * This can correspond to either a queryname sorted bam or a querygrouped bam (unordered readname groups)
+     * @param header header corresponding to the bam file in question
+     * @return true if the header has has the right readname group
+     */
+    public static boolean isReadNameGroupedBam(SAMFileHeader header) {
+        return SAMFileHeader.SortOrder.queryname.equals(header.getSortOrder()) || SAMFileHeader.GroupOrder.query.equals(header.getGroupOrder());
+    }
+
+    /**
      * A marker to tell which end of the read has been clipped
      */
     public enum ClippingTail {

@@ -12,6 +12,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.ReadContextData;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -113,10 +114,10 @@ public class ReadsPipelineSpark extends GATKSparkTool {
     private JoinStrategy joinStrategy = JoinStrategy.BROADCAST;
 
     @ArgumentCollection
-    public final BwaArgumentCollection bwaArgs = new BwaArgumentCollection();
+    protected MarkDuplicatesSparkArgumentCollection markDuplicatesSparkArgumentCollection = new MarkDuplicatesSparkArgumentCollection();
 
-    @Argument(shortName = "DS", fullName ="duplicates-scoring-strategy", doc = "The scoring strategy for choosing the non-duplicate among candidates.")
-    public MarkDuplicatesScoringStrategy duplicatesScoringStrategy = MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES;
+    @ArgumentCollection
+    public final BwaArgumentCollection bwaArgs = new BwaArgumentCollection();
 
     /**
      * all the command line arguments for BQSR and its covariates
@@ -166,8 +167,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
             header = getHeaderForReads();
         }
 
-        final JavaRDD<GATKRead> markedReadsWithOD = MarkDuplicatesSpark.mark(alignedReads, header, duplicatesScoringStrategy, new OpticalDuplicateFinder(), getRecommendedNumReducers());
-        final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.cleanupTemporaryAttributes(markedReadsWithOD);
+        final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.mark(alignedReads, header, markDuplicatesSparkArgumentCollection.duplicatesScoringStrategy, new OpticalDuplicateFinder(), getRecommendedNumReducers(), markDuplicatesSparkArgumentCollection.dontMarkUnmappedMates);
 
         // The markedReads have already had the WellformedReadFilter applied to them, which
         // is all the filtering that MarkDupes and ApplyBQSR want. BQSR itself wants additional

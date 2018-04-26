@@ -620,6 +620,16 @@ public final class Utils {
     }
 
     /**
+     * Checks that a {@link Collection} is not {@code null} and that it is not empty.
+     * If it's non-null and non-empty it returns the true
+     * @param collection any Collection
+     * @return true if the collection exists and has elements
+     */
+    public static boolean isNonEmpty(Collection<?> collection){
+        return collection != null && !collection.isEmpty();
+    }
+
+    /**
      * Checks that a {@link String} is not {@code null} and that it is not empty.
      * If it's non-null and non-empty it returns the input, otherwise it throws an {@link IllegalArgumentException}
      * @param string any String

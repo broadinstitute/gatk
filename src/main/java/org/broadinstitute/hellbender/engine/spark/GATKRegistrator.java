@@ -6,8 +6,9 @@ import de.javakaffee.kryoserializers.UnmodifiableCollectionsSerializer;
 import htsjdk.samtools.*;
 import org.apache.spark.serializer.KryoRegistrator;
 import org.bdgenomics.adam.serialization.ADAMKryoRegistrator;
+import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSparkUtils;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
-import org.broadinstitute.hellbender.utils.read.markduplicates.PairedEnds;
+import org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords.*;
 
 import java.util.Collections;
 
@@ -77,8 +78,10 @@ public class GATKRegistrator implements KryoRegistrator {
         kryo.register(SAMFileHeader.SortOrder.class);
         kryo.register(SAMProgramRecord.class);
         kryo.register(SAMReadGroupRecord.class);
-
-        //register to avoid writing the full name of this class over and over
-        kryo.register(PairedEnds.class, new FieldSerializer<>(kryo, PairedEnds.class));
+        kryo.register(EmptyFragment.class, new FieldSerializer(kryo, EmptyFragment.class));
+        kryo.register(Fragment.class, new FieldSerializer(kryo, Fragment.class));
+        kryo.register(Pair.class, new Pair.Serializer());
+        kryo.register(Passthrough.class, new FieldSerializer(kryo, Passthrough.class));
+        kryo.register(MarkDuplicatesSparkUtils.IndexPair.class, new FieldSerializer(kryo, MarkDuplicatesSparkUtils.IndexPair.class));
     }
 }

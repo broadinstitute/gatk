@@ -2,23 +2,28 @@ package org.broadinstitute.hellbender.tools.spark.transforms.markduplicates;
 
 import com.google.api.client.util.Lists;
 import com.google.common.collect.ImmutableList;
-import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.*;
+import org.apache.spark.SparkContext;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
-import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
+import org.broadinstitute.hellbender.utils.read.*;
+import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import scala.Tuple2;
+import scala.collection.Seq;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class MarkDuplicatesSparkUtilsUnitTest extends GATKBaseTest {
     @Test(groups = "spark")
@@ -38,34 +43,6 @@ public class MarkDuplicatesSparkUtilsUnitTest extends GATKBaseTest {
                 ImmutableList.of(pairIterable(1, "a"), pairIterable(2, "b"), pairIterable(1, "c")));
     }
 
-    @Test(groups = "spark")
-    public void testSpanReadsByKeyWithAlternatingGroups() {
-        SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeaderWithGroups(1, 1, 1000, 2);
-        GATKRead read1 = ArtificialReadUtils.createArtificialRead(header, "N", 0, 1, 20);
-        read1.setReadGroup(getReadGroupId(header, 0));
-        GATKRead read2 = ArtificialReadUtils.createArtificialRead(header, "N", 0, 2, 20);
-        read2.setReadGroup(getReadGroupId(header, 1));
-        GATKRead read3 = ArtificialReadUtils.createArtificialRead(header, "N", 0, 3, 20);
-        read3.setReadGroup(getReadGroupId(header, 0));
-        GATKRead read4 = ArtificialReadUtils.createArtificialRead(header, "N", 0, 4, 20);
-        read4.setReadGroup(getReadGroupId(header, 1));
-
-        String key1 = ReadsKey.keyForRead(header, read1);
-        String key2 = ReadsKey.keyForRead(header, read2);
-        String key3 = ReadsKey.keyForRead(header, read3);
-        String key4 = ReadsKey.keyForRead(header, read4);
-
-        Assert.assertEquals("ReadGroup0|N", key1);
-        Assert.assertEquals("ReadGroup1|N", key2);
-        Assert.assertEquals("ReadGroup0|N", key3);
-        Assert.assertEquals("ReadGroup1|N", key4);
-
-        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        JavaRDD<GATKRead> reads = ctx.parallelize(ImmutableList.of(read1, read2, read3, read4), 1);
-        JavaPairRDD<String, Iterable<GATKRead>> groupedReads = MarkDuplicatesSparkUtils.spanReadsByKey(header, reads);
-        Assert.assertEquals(groupedReads.collect(),
-                ImmutableList.of(pairIterable(key1, read1, read3), pairIterable(key2, read2, read4)));
-    }
 
     private String getReadGroupId(final SAMFileHeader header, final int index) {
         return header.getReadGroups().get(index).getReadGroupId();
