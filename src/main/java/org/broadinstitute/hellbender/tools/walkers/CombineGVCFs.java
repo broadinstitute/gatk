@@ -99,7 +99,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
     protected int multipleAtWhichToBreakBands = 0;
 
     @Override
-    public boolean useAnnotationArguments() { return true;}
+    public boolean useVariantAnnotations() { return true;}
 
     @Override
     public List<Class<? extends Annotation>> getDefaultAnnotationGroups() {
@@ -224,7 +224,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
     @Override
     public void onTraversalStart() {
         // create the annotation engine
-        annotationEngine = new VariantAnnotatorEngine(getAnnotationsToUse(), dbsnp.dbsnp, Collections.emptyList(), false);
+        annotationEngine = new VariantAnnotatorEngine(makeAnnotationCollection(), dbsnp.dbsnp, Collections.emptyList(), false);
 
         vcfWriter = getVCFWriter();
 

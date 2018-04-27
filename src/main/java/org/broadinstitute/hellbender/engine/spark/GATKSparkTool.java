@@ -7,7 +7,6 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
-import org.broadinstitute.hellbender.cmdline.GATKPlugin.DefaultGATKVariantAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
@@ -123,11 +122,11 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      */
     @Override
     public List<? extends CommandLinePluginDescriptor<?>> getPluginDescriptors() {
-        return useAnnotationArguments()?
-                Arrays.asList(new GATKReadFilterPluginDescriptor(getDefaultReadFilters()), new GATKAnnotationPluginDescriptor(
-                        new DefaultGATKVariantAnnotationArgumentCollection(),
+        GATKReadFilterPluginDescriptor readFilterDescriptor = new GATKReadFilterPluginDescriptor(getDefaultReadFilters());
+        return useVariantAnnotations()?
+                Arrays.asList(readFilterDescriptor, new GATKAnnotationPluginDescriptor(
                         getDefaultAnnotations(), getDefaultAnnotationGroups())):
-                Collections.singletonList(new GATKReadFilterPluginDescriptor(getDefaultReadFilters()));
+                Collections.singletonList(readFilterDescriptor);
     }
 
     /**
@@ -385,9 +384,9 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     }
 
     /**
-     * @see GATKTool#useAnnotationArguments()
+     * @see GATKTool#useVariantAnnotations()
      */
-    public boolean useAnnotationArguments() {
+    public boolean useVariantAnnotations() {
         return false;
     }
 
@@ -406,12 +405,12 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     }
 
     /**
-     * @see GATKTool#getAnnotationsToUse()
+     * @see GATKTool#makeAnnotationCollection()
      */
-    public Collection<Annotation> getAnnotationsToUse() {
-        final GATKAnnotationPluginDescriptor readFilterPlugin =
+    public Collection<Annotation> makeAnnotationCollection() {
+        final GATKAnnotationPluginDescriptor annotationPlugin =
                 getCommandLineParser().getPluginDescriptor(GATKAnnotationPluginDescriptor.class);
-        return readFilterPlugin.getResolvedInstances();
+        return annotationPlugin.getResolvedInstances();
     }
 
     /**

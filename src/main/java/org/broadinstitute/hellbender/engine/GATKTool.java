@@ -19,7 +19,6 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.GATKPlugin.DefaultGATKVariantAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -43,12 +42,6 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
-
-import java.io.File;
-import java.nio.file.Path;
-import java.time.ZonedDateTime;
-import java.util.*;
-import java.util.stream.Stream;
 
 /**
  * Base class for all GATK tools. Tool authors that wish to write a "GATK" tool but not use one of
@@ -177,11 +170,11 @@ public abstract class GATKTool extends CommandLineProgram {
      */
     @Override
     public List<? extends CommandLinePluginDescriptor<?>> getPluginDescriptors() {
-        return useAnnotationArguments()?
-                Arrays.asList(new GATKReadFilterPluginDescriptor(getDefaultReadFilters()), new GATKAnnotationPluginDescriptor(
-                        new DefaultGATKVariantAnnotationArgumentCollection(),
+        GATKReadFilterPluginDescriptor readFilterDescriptor = new GATKReadFilterPluginDescriptor(getDefaultReadFilters());
+        return useVariantAnnotations()?
+                Arrays.asList(readFilterDescriptor, new GATKAnnotationPluginDescriptor(
                         getDefaultAnnotations(), getDefaultAnnotationGroups())):
-                Collections.singletonList(new GATKReadFilterPluginDescriptor(getDefaultReadFilters()));
+                Collections.singletonList(readFilterDescriptor);
     }
 
     /**
@@ -231,14 +224,14 @@ public abstract class GATKTool extends CommandLineProgram {
      *
      * To specify default annotations for a tool simply specify them using {@link #getDefaultAnnotationGroups()} or {@link #getDefaultAnnotations()}
      *
-     * To access instantiated annotation objects simply use {@link #getAnnotationsToUse()}.
+     * To access instantiated annotation objects simply use {@link #makeAnnotationCollection()}.
      */
-    public boolean useAnnotationArguments() {
+    public boolean useVariantAnnotations() {
         return false;
     }
 
     /**
-     * Returns the default list of Annotations that are used for this tool. The annotations returned
+     * Returns the default list of {@link Annotation}s that are used for this tool. The annotations returned
      * by this method are subject to selective enabling/disabling by the user via the command line. The
      * default implementation returns an empty list. Subclasses can override to provide alternative annotations.
      *
@@ -252,7 +245,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * Returns the default list of annotation groups that are used for this tool. The annotations returned
      * by this method will have default arguments, which can be overridden with specifc arguments using
      * {@link #getDefaultAnnotations()}. Returned annotation groups are subject to selective enabling/disabling
-     * by the user via the command line. Thedefault implementation returns an empty list.
+     * by the user via the command line. The default implementation returns an empty list.
      *
      * @return List of annotation groups to be applied for this tool.
      */
@@ -273,9 +266,9 @@ public abstract class GATKTool extends CommandLineProgram {
      * To apply returned annotations to a VariantContext, simply use a {@link org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine}
      * constructed with the discovered annotations.
      */
-    public Collection<Annotation> getAnnotationsToUse(){
-        if (!useAnnotationArguments()) {
-            throw new GATKException("Tool requested tailored annotations but has not overridden 'useAnnotationArguments()' to return true");
+    public Collection<Annotation> makeAnnotationCollection(){
+        if (!useVariantAnnotations()) {
+            throw new GATKException("Tool requested tailored annotations but has not overridden 'useVariantAnnotations()' to return true");
         }
         final GATKAnnotationPluginDescriptor annotationPlugin =
                 getCommandLineParser().getPluginDescriptor(GATKAnnotationPluginDescriptor.class);

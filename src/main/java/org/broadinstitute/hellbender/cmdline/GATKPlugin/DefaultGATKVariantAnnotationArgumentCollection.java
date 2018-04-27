@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.cmdline.GATKPlugin;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,27 +12,6 @@ import java.util.List;
  */
 public class DefaultGATKVariantAnnotationArgumentCollection extends GATKAnnotationArgumentCollection {
     private static final long serialVersionUID = 1L;
-
-//    /**
-//     * Argument collection constructor which defines tool default annotation arguments when they are not overridden by the user
-//     *
-//     * NOTE: This is a temporary solution to allow configurable annotations before the annotation plugin descriptor has been
-//     * hooked up to the engine as the solution for adding default annotations. This constructor will soon not exist.
-//     * Be aware that the new path will involve passing default annotations or groups directly to the GATKAnnotationPluginDescriptor.
-//     *
-//     * @param defaultGroups               List annotation group names to be used by default
-//     * @param defaultAnnotations          List of annotation class names to be used by default
-//     * @param defaultAnnotationsToExclude List of annotation class names to exclude by default. These override the default annotations and annotation groups.
-//     */
-//    public DefaultGATKVariantAnnotationArgumentCollection(final List<String> defaultGroups, final List<String> defaultAnnotations, final List<String> defaultAnnotationsToExclude) {
-//        Utils.nonNull(defaultGroups);
-//        Utils.nonNull(defaultAnnotations);
-//        Utils.nonNull(defaultAnnotationsToExclude);
-//
-//        annotationGroupsToUse = new ArrayList<>(defaultGroups);
-//        annotationsToUse = new ArrayList<>(defaultAnnotations);
-//        annotationsToExclude = new ArrayList<>(defaultAnnotationsToExclude);
-//    }
 
     /**
      * Which annotations to include in variant calls in the output. These supplement annotations provided by annotation groups.
@@ -67,13 +45,13 @@ public class DefaultGATKVariantAnnotationArgumentCollection extends GATKAnnotati
      * annotations may not be actually applied if they are not applicable to the data provided or if they are
      * unavailable to the tool (e.g. there are several annotations that are currently not hooked up to
      * HaplotypeCaller). At present no error or warning message will be provided, the annotation will simply be
-     * skipped silently. You can check the output VCF header to see which annotations were actually applied (although
+     * skipped silently. You can check the output VCF header to see which annotations were activated and thus might be applied (although
      * this does not guarantee that the annotation was applied to all records in the VCF, since some annotations have
      * additional requirements, e.g. minimum number of samples or heterozygous sites only -- see the documentation
      * for individual annotations' requirements).
      */
-    @Argument(fullName="use-all-annotations", doc="Use all possible annotations (not for the faint of heart)", optional=true)
-    protected Boolean USE_ALL_ANNOTATIONS = false;
+    @Argument(fullName=StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS, doc="Use all possible annotations (not for the faint of heart)", optional=true)
+    protected Boolean enableAllAnnotations = false;
 
     @Override
     public List<String> getUserEnabledAnnotationNames() {
@@ -97,6 +75,6 @@ public class DefaultGATKVariantAnnotationArgumentCollection extends GATKAnnotati
 
     @Override
     public boolean getEnableAllAnnotations() {
-        return USE_ALL_ANNOTATIONS;
+        return enableAllAnnotations;
     }
 }

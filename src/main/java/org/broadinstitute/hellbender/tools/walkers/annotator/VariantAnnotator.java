@@ -154,7 +154,7 @@ public class VariantAnnotator extends VariantWalker {
     protected Boolean expressionAlleleConcordance = false;
 
     @Override
-    public boolean useAnnotationArguments() { return true;}
+    public boolean useVariantAnnotations() { return true;}
 
     private VariantAnnotatorEngine annotatorEngine;
     private SampleList variantSamples;
@@ -167,8 +167,7 @@ public class VariantAnnotator extends VariantWalker {
         final  List<String> samples = getHeaderForVariants().getGenotypeSamples();
         variantSamples = new IndexedSampleList(samples);
 
-        annotatorEngine = new VariantAnnotatorEngine(getAnnotationsToUse(), dbsnp.dbsnp, comps, false);
-        //TODO add expressions?
+        annotatorEngine = new VariantAnnotatorEngine(makeAnnotationCollection(), dbsnp.dbsnp, comps, false);
         annotatorEngine.addExpressions(expressionsToUse, resources, expressionAlleleConcordance );
 
         // setup the header fields

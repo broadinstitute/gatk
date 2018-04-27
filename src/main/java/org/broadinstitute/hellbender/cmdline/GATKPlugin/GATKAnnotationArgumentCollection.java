@@ -29,7 +29,7 @@ public abstract class GATKAnnotationArgumentCollection implements Serializable {
     public abstract List<String> getUserDisabledAnnotationNames();
 
     /**
-     * Returns {@code true} if all default annotations are disabled; {@code false} otherwise.
+     * Return {@code true} if the user has requested that all annotations be enabled; {@code false} otherwise.
      */
     public abstract boolean getDisableToolDefaultAnnotations();
 

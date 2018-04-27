@@ -156,6 +156,28 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         initialize(createBamOutIndex, createBamOutMD5);
     }
 
+    /**
+     * Common method to use in order to remove unwanted annotations from the list returned by the plugin specifically
+     * for reference confidence mode. Will also ensure StrandBiasBySample is present regardless of user requests.
+     *
+     * @param annotations a list of annotations to change
+     * @return a list of annotations with non GVCF annotations removed
+     */
+    public static Collection<Annotation> filterReferenceConfidenceAnnotations(Collection<Annotation> annotations) {
+        // Override user preferences and add StrandBiasBySample
+        if (!annotations.contains(new StrandBiasBySample())) {
+            annotations.add(new StrandBiasBySample());
+        }
+        // Override user preferences and remove ChromosomeCounts, FisherStrand, StrandOddsRatio, and QualByDepth Annotations
+        return annotations.stream()
+                .filter(c -> !(
+                        c.getClass() == (ChromosomeCounts.class) ||
+                        c.getClass() == (FisherStrand.class) ||
+                        c.getClass() == (StrandOddsRatio.class) ||
+                        c.getClass() == (QualByDepth.class))
+                ).collect(Collectors.toList());
+    }
+
     private void initialize(boolean createBamOutIndex, final boolean createBamOutMD5) {
         // Note: order of operations matters here!
 
@@ -222,17 +244,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
             hcArgs.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING = -0.0;
 
-            //TODO this should probably be changed for a more elegant solution but this changes the least amount compared to current (Note this wouldn't apply for spark anyway)
-            //TODO for posterity the problem is that there is no way to negatively specify classes when we provide tool defaults to the AnnotaiotnPlugin
-//            hcArgs.defaultGATKVariantAnnotationArgumentCollection.getUserDisabledAnnotationNames().add(ChromosomeCounts.class.getSimpleName());
-//            hcArgs.defaultGATKVariantAnnotationArgumentCollection.getUserDisabledAnnotationNames().add(FisherStrand.class.getSimpleName());
-//            hcArgs.defaultGATKVariantAnnotationArgumentCollection.getUserDisabledAnnotationNames().add(StrandOddsRatio.class.getSimpleName());
-//            hcArgs.defaultGATKVariantAnnotationArgumentCollection.getUserDisabledAnnotationNames().add(QualByDepth.class.getSimpleName());
-//
-//            annotationEngine.addAnnotation(new StrandBiasBySample());
-
             // but we definitely want certain other ones
-            //hcArgs.defaultGATKVariantAnnotationArgumentCollection.getUserEnabledAnnotationNames().add(StrandBiasBySample.class.getSimpleName());
             logger.info("Standard Emitting and Calling confidence set to 0.0 for reference-model confidence output");
             if ( ! hcArgs.annotateAllSitesWithPLs ) {
                 logger.info("All sites annotated with PLs forced to true for reference-model confidence output");

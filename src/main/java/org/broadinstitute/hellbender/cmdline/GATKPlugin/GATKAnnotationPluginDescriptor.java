@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.cmdline.GATKPlugin;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
-import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
@@ -16,9 +15,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.io.File;
 import java.lang.reflect.Modifier;
 import java.util.*;
-import org.broadinstitute.hellbender.engine.FeatureInput;
-import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
-
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -101,6 +97,10 @@ public class GATKAnnotationPluginDescriptor  extends CommandLinePluginDescriptor
      * @param toolDefaultGroups List of tool specified default annotation group names. Annotations specified this way
      *                          will be instantiated with default arguments. may be null.
      */
+    public GATKAnnotationPluginDescriptor(final List<Annotation> toolDefaultAnnotations, final List<Class<? extends Annotation>> toolDefaultGroups) {
+        this(new DefaultGATKVariantAnnotationArgumentCollection(), toolDefaultAnnotations, toolDefaultGroups);
+    }
+
     public GATKAnnotationPluginDescriptor(final GATKAnnotationArgumentCollection userArgs, final List<Annotation> toolDefaultAnnotations, final List<Class<? extends Annotation>> toolDefaultGroups) {
         this.userArgs = userArgs;
         if (null != toolDefaultAnnotations) {

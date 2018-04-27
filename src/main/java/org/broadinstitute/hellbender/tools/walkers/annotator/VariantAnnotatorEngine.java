@@ -42,17 +42,16 @@ public final class VariantAnnotatorEngine {
 
     /**
      * Creates an annotation engine from a list of tailored annotations output from command line parsing
-     * @param annotationList ist of annotation objects (with any parameters already filled) to include
+     * @param annotationList list of annotation objects (with any parameters already filled) to include
      * @param dbSNPInput input for variants from a known set from DbSNP or null if not provided.
      *                   The annotation engine will mark variants overlapping anything in this set using {@link htsjdk.variant.vcf.VCFConstants#DBSNP_KEY}.
      * @param featureInputs list of inputs with known variants.
      *                   The annotation engine will mark variants overlapping anything in those sets using the name given by {@link FeatureInput#getName()}.
      *                   Note: the DBSNP FeatureInput should be passed in separately, and not as part of this List - an GATKException will be thrown otherwise.
      *                   Note: there are no non-DBSNP comparison FeatureInputs an empty List should be passed in here, rather than null.
-     * @param useRaw whether the engine should output raw annotations
-     *               When this is set to true, the annotation engine will call {@link ReducibleAnnotation#annotateRawData(ReferenceContext, VariantContext, ReadLikelihoods)}
-     *               on any annotations that extend {@link ReducibleAnnotation} and {@link InfoFieldAnnotation#annotate(ReferenceContext, VariantContext, ReadLikelihoods)}
-     *               for all other annotations, otherwise it will simply call {@link InfoFieldAnnotation#annotate(ReferenceContext, VariantContext, ReadLikelihoods)} on every annotation.
+     * @param useRaw When this is set to true, the annotation engine will call {@link ReducibleAnnotation#annotateRawData(ReferenceContext, VariantContext, ReadLikelihoods)}
+     *               on annotations that extend {@link ReducibleAnnotation}, instead of {@link InfoFieldAnnotation#annotate(ReferenceContext, VariantContext, ReadLikelihoods)},
+     *               which is the default for all annotations.
      */
     public VariantAnnotatorEngine(final Collection<Annotation> annotationList,
                                    final FeatureInput<VariantContext> dbSNPInput,
@@ -77,26 +76,6 @@ public final class VariantAnnotatorEngine {
                 reducibleKeys.add(((ReducibleAnnotation) annot).getRawKeyName());
             }
         }
-    }
-
-
-    /**
-     * Makes the engine for all known annotation types (minus the excluded ones).
-     * @param annotationsToExclude list of annotations to exclude (pass an empty list to indicate that there are no exclusions)
-     * @param dbSNPInput input for variants from a known set from DbSNP or null if not provided.
-     *                   The annotation engine will mark variants overlapping anything in this set using {@link htsjdk.variant.vcf.VCFConstants#DBSNP_KEY}.
-     * @param comparisonFeatureInputs list of inputs with known variants.
-     *                   The annotation engine will mark variants overlapping anything in those sets using the name given by {@link FeatureInput#getName()}.
-     *                   Note: the DBSNP FeatureInput should be passed in separately, and not as part of this List - an GATKException will be thrown otherwise.
-     *                   Note: there are no non-DBSNP comparison FeatureInputs an empty List should be passed in here, rather than null.
-     */
-    public static VariantAnnotatorEngine ofAllMinusExcluded(final List<Class<? extends Annotation>> annotationsToExclude,
-                                                            final FeatureInput<VariantContext> dbSNPInput,
-                                                            final List<FeatureInput<VariantContext>> comparisonFeatureInputs,
-                                                            final boolean useRawAnnotations) {
-        Utils.nonNull(annotationsToExclude, "annotationsToExclude is null");
-        Utils.nonNull(comparisonFeatureInputs, "comparisonFeatureInputs is null");
-        return new VariantAnnotatorEngine(AnnotationManager.ofAllMinusExcluded(annotationsToExclude), dbSNPInput, comparisonFeatureInputs, useRawAnnotations);
     }
 
     private VariantOverlapAnnotator initializeOverlapAnnotator(final FeatureInput<VariantContext> dbSNPInput, final List<FeatureInput<VariantContext>> featureInputs) {
@@ -332,25 +311,6 @@ public final class VariantAnnotatorEngine {
      */
     public boolean isRequestedReducibleRawKey(String key) {
         return reducibleKeys.contains(key);
-    }
-
-    private static final class AnnotationManager {
-        /**
-         * An annotation will be included only when it is not excluded explicitly.
-         */
-        static List<Annotation> ofAllMinusExcluded(final List<Class<? extends Annotation>> annotationsToExclude){
-            final Set<VariantAnnotation> union = Sets.union(new LinkedHashSet<>(makeAllGenotypeAnnotations()), new LinkedHashSet<>(AnnotationManager.makeAllInfoFieldAnnotations()));
-            return union.stream().filter(a -> !annotationsToExclude.contains(a.getClass())).collect(Collectors.toList());
-        }
-
-        private static List<InfoFieldAnnotation> makeAllInfoFieldAnnotations() {
-            return ClassUtils.makeInstancesOfSubclasses(InfoFieldAnnotation.class, Annotation.class.getPackage());
-        }
-
-        private static List<GenotypeAnnotation> makeAllGenotypeAnnotations() {
-            return ClassUtils.makeInstancesOfSubclasses(GenotypeAnnotation.class, Annotation.class.getPackage());
-        }
-
     }
 
     /**

@@ -157,7 +157,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
     protected boolean includeReadsWithDeletionsInIsActivePileups() { return true; }
 
     @Override
-    public boolean useAnnotationArguments() { return true;}
+    public boolean useVariantAnnotations() { return true;}
 
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
@@ -179,7 +179,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
 
     @Override
     public void onTraversalStart() {
-        VariantAnnotatorEngine annotatorEngine = new VariantAnnotatorEngine(getAnnotationsToUse(), null, Collections.emptyList(), false);
+        VariantAnnotatorEngine annotatorEngine = new VariantAnnotatorEngine(makeAnnotationCollection(), null, Collections.emptyList(), false);
         m2Engine = new Mutect2Engine(MTAC, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), referenceArguments.getReferenceFileName(), annotatorEngine);
         vcfWriter = createVCFWriter(outputVCF);
         m2Engine.writeHeader(vcfWriter, getDefaultToolVCFHeaderLines());

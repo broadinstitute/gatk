@@ -21,16 +21,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     private static final long serialVersionUID = 1L;
 
     public static final String MAX_MNP_DISTANCE_LONG_NAME = "max-mnp-distance";
-    public static final String MAX_MNP_DISTANCE_SHORT_NAME = "mnp-dist";//    /**
-//     * When HaplotypeCaller is run with -ERC GVCF or -ERC BP_RESOLUTION, some annotations are excluded from the
-//     * output by default because they will only be meaningful once they have been recalculated by GenotypeGVCFs. As
-//     * of version 3.3 this concerns ChromosomeCounts, FisherStrand, StrandOddsRatio and QualByDepth.
-//     */
-//    @ArgumentCollection
-//    public VariantAnnotationArgumentCollection variantAnnotationArgumentCollection = new VariantAnnotationArgumentCollection(
-//            Arrays.asList(StandardAnnotation.class.getSimpleName(), StandardHCAnnotation.class.getSimpleName()),
-//            Collections.emptyList(),
-//            Collections.emptyList());
+    public static final String MAX_MNP_DISTANCE_SHORT_NAME = "mnp-dist";
 
     /**
      * You can use this argument to specify that HC should process a single sample out of a multisample BAM file. This

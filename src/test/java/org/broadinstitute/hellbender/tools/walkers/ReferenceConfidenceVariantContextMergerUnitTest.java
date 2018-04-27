@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngineUnitTest;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -40,7 +41,7 @@ public class ReferenceConfidenceVariantContextMergerUnitTest extends GATKBaseTes
 
 
     private static VariantAnnotatorEngine getAnnotationEngine() {
-        return VariantAnnotatorEngine.ofAllMinusExcluded(Collections.emptyList(), null, Collections.emptyList(), false);
+        return new VariantAnnotatorEngine(VariantAnnotatorEngineUnitTest.ofAllMinusExcluded(Collections.emptyList()), null, Collections.emptyList(), false);
     }
 
     @Test(dataProvider = "referenceConfidenceMergeData")
