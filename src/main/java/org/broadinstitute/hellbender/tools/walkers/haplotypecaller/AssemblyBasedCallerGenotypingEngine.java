@@ -152,6 +152,13 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
     protected static List<VariantContext> getVCsAtThisLocation(final List<Haplotype> haplotypes,
                                                                final int loc,
                                                                final List<VariantContext> activeAllelesToGenotype) {
+        return getVCsAtThisLocation(haplotypes, loc, activeAllelesToGenotype, false);
+    }
+
+    protected static List<VariantContext> getVCsAtThisLocation(final List<Haplotype> haplotypes,
+                                                               final int loc,
+                                                               final List<VariantContext> activeAllelesToGenotype,
+                                                               final boolean includeSpanningEvents) {
         // the overlapping events to merge into a common reference view
 
                 if (loc == 10008952) {
@@ -162,18 +169,24 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
         final Set<LocationAndAlleles> uniqueLocationsAndAlleles = new HashSet<>();
 
         if( activeAllelesToGenotype.isEmpty() ) {
-            haplotypes.stream().flatMap(h -> Utils.stream(h.getEventMap().getSpanningEvents(loc)))
-                    .filter(Objects::nonNull).forEach(v -> {
-                final LocationAndAlleles locationAndAlleles = new LocationAndAlleles(v.getStart(), v.getAlleles());
-                if (! uniqueLocationsAndAlleles.contains(locationAndAlleles)) {
-                    uniqueLocationsAndAlleles.add(locationAndAlleles);
-                    results.add(v);
-                }
-            });
+            haplotypes.stream()
+                    .flatMap(h -> Utils.stream(h.getEventMap().getSpanningEvents(loc)))
+                    .filter(Objects::nonNull)
+                    .filter(v -> (includeSpanningEvents || v.getStart() == loc))
+                    .forEach(v -> {
+                        final LocationAndAlleles locationAndAlleles = new LocationAndAlleles(v.getStart(), v.getAlleles());
+                        if (! uniqueLocationsAndAlleles.contains(locationAndAlleles)) {
+                            uniqueLocationsAndAlleles.add(locationAndAlleles);
+                            results.add(v);
+                        }
+                    });
         } else { // we are in GGA mode!
             int compCount = 0;
             for( final VariantContext compVC : activeAllelesToGenotype ) {
                 if( compVC.getStart() <= loc && compVC.getEnd() >= loc) {
+                    if (! (includeSpanningEvents || compVC.getStart() == loc)) {
+                        continue;
+                    }
                     int alleleCount = 0;
                     for( final Allele compAltAllele : compVC.getAlternateAlleles() ) {
                         final List<Allele> alleleSet = Arrays.asList(compVC.getReference(), compAltAllele);

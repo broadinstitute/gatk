@@ -103,7 +103,7 @@ public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
                                          final List<VariantContext> activeAllelesToGenotype,
                                          final List<VariantContext> expectedVcsAtThisLocation) {
 
-        final List<VariantContext> vcsAtThisPosition = AssemblyBasedCallerGenotypingEngine.getVCsAtThisLocation(haplotypes, loc, activeAllelesToGenotype);
+        final List<VariantContext> vcsAtThisPosition = AssemblyBasedCallerGenotypingEngine.getVCsAtThisLocation(haplotypes, loc, activeAllelesToGenotype, true);
         Assert.assertEquals(vcsAtThisPosition.size(), expectedVcsAtThisLocation.size());
         for (int i = 0; i < expectedVcsAtThisLocation.size(); i++) {
             VariantContextTestUtils.assertVariantContextsAreEqual(vcsAtThisPosition.get(i), expectedVcsAtThisLocation.get(i), new ArrayList<>());
