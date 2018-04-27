@@ -1,6 +1,6 @@
 import argparse
-from segment_caller import LoadAndSampleCrAndAf
-from segment_caller import CNVCaller
+from modeled_segments_caller import LoadAndSampleCrAndAf
+from modeled_segments_caller import ModeledSegmentsCaller
 
 
 
@@ -81,8 +81,15 @@ group.add_argument("--interactive_output_copy_ratio_suffix",
                    type=str,
                    required=False,
                    default="",
-                   help="[Interactive mode only:] Suffix of the plot showing the histogram and the clustering" +
-                        " of copy ratio points.")
+                   help="[Interactive mode only:] Suffix of the plot showing the histogram and the Gaussian fits to" +
+                        " copy ratio data.")
+
+group.add_argument("--interactive_output_copy_ratio_clustering_suffix",
+                   type=str,
+                   required=False,
+                   default="",
+                   help="[Interactive mode only:] Suffix of the plot showing the histogram of copy ratio data and" +
+                        "the first two copy ratio clusters.")
 
 group.add_argument("--log_filename_prefix",
                    type=str,
@@ -109,7 +116,7 @@ if __name__ == "__main__":
                                 log_filename_prefix=args.log_filename_prefix
                                 )
 
-    caller = CNVCaller(data, interactive=args.interactive,
+    caller = ModeledSegmentsCaller(data, interactive=args.interactive,
                        output_image_dir=args.output_image_dir,
                        output_calls_dir=args.output_calls_dir,
                        output_image_prefix=args.output_image_prefix,
@@ -117,5 +124,6 @@ if __name__ == "__main__":
                        interactive_output_del_ampl_image_suffix=args.interactive_output_del_ampl_image_suffix,
                        interactive_output_scatter_plot_suffix=args.interactive_output_scatter_plot_suffix,
                        interactive_output_allele_fraction_plot_suffix=args.interactive_output_allele_fraction_plot_suffix,
-                       interactive_output_copy_ratio_suffix=args.interactive_output_copy_ratio_suffix
+                       interactive_output_copy_ratio_suffix=args.interactive_output_copy_ratio_suffix,
+                       interactive_output_copy_ratio_clustering_suffix=args.interactive_output_copy_ratio_clustering_suffix
                        )
