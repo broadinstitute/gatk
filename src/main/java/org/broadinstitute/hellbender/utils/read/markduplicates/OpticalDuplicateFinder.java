@@ -1,8 +1,9 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates;
 
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicatesArgumentCollection;
 
- import java.io.Serializable;
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -103,8 +104,8 @@ public final class OpticalDuplicateFinder implements Serializable {
             final int fields = getRapidDefaultReadNameRegexSplit(readName, ':', tmpLocationFields);
             if (!(fields == 5 || fields == 7)) {
                 if (null != log && !this.warnedAboutRegexNotMatching) {
-                    this.log.warn(String.format("Default READ_NAME_REGEX '%s' did not match read name '%s'.  " +
-                                    "You may need to specify a READ_NAME_REGEX in order to correctly identify optical duplicates.  " +
+                    this.log.warn(String.format("Default "+ OpticalDuplicatesArgumentCollection.READ_NAME_REGEX_LONG_NAME + " '%s' did not match read name '%s'.  " +
+                                    "You may need to specify a " + OpticalDuplicatesArgumentCollection.READ_NAME_REGEX_LONG_NAME + " in order to correctly identify optical duplicates.  " +
                                     "Note that this message will not be emitted again even if other read names do not match the regex.",
                             this.readNameRegex, readName));
                     this.warnedAboutRegexNotMatching = true;
@@ -130,7 +131,7 @@ public final class OpticalDuplicateFinder implements Serializable {
                 return true;
             } else {
                 if (null != log && !this.warnedAboutRegexNotMatching) {
-                    this.log.warn(String.format("READ_NAME_REGEX '%s' did not match read name '%s'.  Your regex may not be correct.  " +
+                    this.log.warn(String.format(OpticalDuplicatesArgumentCollection.READ_NAME_REGEX_LONG_NAME+ " '%s' did not match read name '%s'.  Your regex may not be correct.  " +
                                     "Note that this message will not be emitted again even if other read names do not match the regex.",
                             this.readNameRegex, readName));
                     warnedAboutRegexNotMatching = true;

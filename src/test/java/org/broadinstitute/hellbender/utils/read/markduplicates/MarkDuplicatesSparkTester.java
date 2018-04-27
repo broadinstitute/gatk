@@ -1,13 +1,10 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates;
 
-import com.google.common.collect.Lists;
 import htsjdk.samtools.DuplicateScoringStrategy;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSpark;
 import org.broadinstitute.hellbender.utils.test.testers.AbstractMarkDuplicatesTester;
-
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * A tester class for {@link MarkDuplicatesSpark}.
@@ -30,7 +27,7 @@ public final class MarkDuplicatesSparkTester extends AbstractMarkDuplicatesTeste
     @Override
     protected void addArgs() {
         if (!markUnmappedReads) {
-            addArg("--" + MarkDuplicatesSpark.DO_NOT_MARK_UNMAPPED_MATES);
+            addArg("--" + MarkDuplicatesSparkArgumentCollection.DO_NOT_MARK_UNMAPPED_MATES_LONG_NAME);
         }
     }
 }

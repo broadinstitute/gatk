@@ -96,7 +96,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         outputFile.delete();
         args.add(outputFile.getAbsolutePath());
 
-        args.add("--METRICS_FILE");
+        args.add("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
         File metricsFile = createTempFile("markdups_metrics", ".txt");
         args.add(metricsFile.getAbsolutePath());
 

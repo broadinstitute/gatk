@@ -2,8 +2,8 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceTwoBitSource;
-import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSpark;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerIntegrationTest;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -122,7 +122,7 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
             args.add("-R");
             args.add(referenceFile.getAbsolutePath());
         }
-        args.add("--"+ MarkDuplicatesSpark.DO_NOT_MARK_UNMAPPED_MATES);
+        args.add("--"+ MarkDuplicatesSparkArgumentCollection.DO_NOT_MARK_UNMAPPED_MATES_LONG_NAME);
         args.add("-indels");
         args.add("--enable-baq");
         args.add("-pairHMM");

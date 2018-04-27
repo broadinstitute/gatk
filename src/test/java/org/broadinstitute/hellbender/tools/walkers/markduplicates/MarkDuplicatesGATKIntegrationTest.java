@@ -72,7 +72,7 @@ public final class MarkDuplicatesGATKIntegrationTest extends AbstractMarkDuplica
             final File outputSam = new File(outputDir, TEST_BASE_NAME + ".sam");
             args.add("--output");
             args.add(outputSam.getAbsolutePath());
-            args.add("--METRICS_FILE");
+            args.add("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
             args.add(new File(outputDir, TEST_BASE_NAME + ".duplicate_metrics").getAbsolutePath());
             if (suppressPg) {
                 args.add("--PROGRAM_RECORD_ID");
@@ -197,7 +197,7 @@ public final class MarkDuplicatesGATKIntegrationTest extends AbstractMarkDuplica
         outputFile.delete();
         args.add(outputFile.getAbsolutePath());
 
-        args.add("--METRICS_FILE");
+        args.add("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
         File metricsFile = createTempFile("markdups_metrics", ".txt");
         args.add(metricsFile.getAbsolutePath());
 
@@ -220,7 +220,7 @@ public final class MarkDuplicatesGATKIntegrationTest extends AbstractMarkDuplica
         outputFile.delete();
         args.add(outputFile.getAbsolutePath());
 
-        args.add("--METRICS_FILE");
+        args.add("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
         File metricsFile = createTempFile("markdups_metrics", ".txt");
         args.add(metricsFile.getAbsolutePath());
 

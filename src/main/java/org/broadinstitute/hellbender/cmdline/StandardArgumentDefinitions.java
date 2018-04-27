@@ -70,6 +70,11 @@ public final class StandardArgumentDefinitions {
     public static final String BQSR_TABLE_SHORT_NAME = "bqsr";
     public static final String BQSR_TABLE_LONG_NAME = "bqsr-recal-file";
 
+    public static final String DUPLICATE_SCORING_STRATEGY_LONG_NAME = "duplicate-scoring-strategy";
+    public static final String DUPLICATE_SCORING_STRATEGY_SHORT_NAME = "DS";
+    public static final String METRICS_FILE_LONG_NAME = "metrics-file";
+    public static final String METRICS_FILE_SHORT_NAME = "M";
+
     /**
      * The option specifying a main configuration file.
      * This is used in {@link org.broadinstitute.hellbender.Main} to control which config file is loaded.

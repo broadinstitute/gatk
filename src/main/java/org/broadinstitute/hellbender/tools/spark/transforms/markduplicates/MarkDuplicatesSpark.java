@@ -40,7 +40,6 @@ import java.util.stream.Collectors;
 @BetaFeature
 public final class MarkDuplicatesSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
-    public static final String DO_NOT_MARK_UNMAPPED_MATES = "do-not-mark-unmapped-mates";
 
     @Override
     public boolean requiresReads() { return true; }
@@ -50,7 +49,8 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
     protected String output;
 
     @Argument(doc = "Path to write duplication metrics to.", optional=true,
-            shortName = "M", fullName = "METRICS_FILE")
+            shortName = StandardArgumentDefinitions.METRICS_FILE_SHORT_NAME,
+            fullName = StandardArgumentDefinitions.METRICS_FILE_LONG_NAME)
     protected String metricsFile;
 
     @ArgumentCollection

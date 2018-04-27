@@ -8,6 +8,7 @@ import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.FormatUtil;
 import htsjdk.samtools.util.TestUtil;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
 import org.testng.Assert;
 
@@ -32,8 +33,8 @@ public abstract class AbstractMarkDuplicatesTester extends SamFileTester {
         expectedMetrics.READ_PAIR_OPTICAL_DUPLICATES = 0;
 
         metricsFile = new File(getOutputDir(), "metrics.txt");
-        addArg("--METRICS_FILE", metricsFile.getAbsolutePath());
-        addArg("--DUPLICATE_SCORING_STRATEGY", duplicateScoringStrategy.name());
+        addArg("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME, metricsFile.getAbsolutePath());
+        addArg("--"+StandardArgumentDefinitions.DUPLICATE_SCORING_STRATEGY_LONG_NAME, duplicateScoringStrategy.name());
     }
 
     public AbstractMarkDuplicatesTester() {
@@ -43,7 +44,7 @@ public abstract class AbstractMarkDuplicatesTester extends SamFileTester {
         expectedMetrics.READ_PAIR_OPTICAL_DUPLICATES = 0;
 
         metricsFile = new File(getOutputDir(), "metrics.txt");
-        addArg("--METRICS_FILE", metricsFile.getAbsolutePath());
+        addArg("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME, metricsFile.getAbsolutePath());
     }
 
     public File getMetricsFile() {
