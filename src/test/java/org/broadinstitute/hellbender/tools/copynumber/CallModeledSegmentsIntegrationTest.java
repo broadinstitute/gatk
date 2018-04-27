@@ -10,7 +10,7 @@ import java.util.List;
 import java.io.File;
 import java.util.Scanner;
 
-public class CNVCallerIntegrationTest extends CommandLineProgramTest {
+public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
     private static final File INPUT_NORMAL = new File(
             "/Volumes/dsde_working/slee/archived/2017/ModelSegments-pipeline-test-cfc/run/cromwell-executions/CNVSomaticPairsWorkflow/99e77cf5-1aaf-4517-8926-8e0cb38c3222/call-CNVSomaticPairWorkflow/shard-12/CNVSomaticPairWorkflow/3adbf26d-78e0-4da0-96a7-ac48bf5b8648/call-ModelSegmentsNormal/execution/TCGA-44-6147-10A-01D-1753-08.modelFinal.seg");
     private static final File INPUT_TUMOR = new File(
@@ -24,16 +24,16 @@ public class CNVCallerIntegrationTest extends CommandLineProgramTest {
         final File FileOutputDir = createTempDir("/Users/mkanaszn/Desktop/test/calls");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, INPUT_NORMAL.getAbsolutePath())
-                //.addArgument(CNVCaller.OUTPUT_IMAGE_DIR_LONG_NAME, FigOutputDir.getAbsolutePath())
-                //.addArgument(CNVCaller.OUTPUT_CALLS_DIR_LONG_NAME, FileOutputDir.getAbsolutePath())
-                .addArgument(CNVCaller.OUTPUT_IMAGE_DIR_LONG_NAME, "/Users/mkanaszn/Desktop/tmp/figs")
-                .addArgument(CNVCaller.OUTPUT_CALLS_DIR_LONG_NAME, "/Users/mkanaszn/Desktop/tmp/calls")
-                .addArgument(CNVCaller.OUTPUT_IMAGE_PREFIX_LONG_NAME, "testFig")
-                .addArgument(CNVCaller.OUTPUT_CALLS_PREFIX_LONG_NAME, "testCalls")
-                .addArgument(CNVCaller.LOAD_COPY_RATIO_LONG_NAME, "true")
-                .addArgument(CNVCaller.LOAD_ALLELE_FRACTION_LONG_NAME, "true")
-                .addArgument(CNVCaller.INTERACTIVE_RUN_LONG_NAME, "true")
-                .addArgument(CNVCaller.LOG_FILENAME_PREFIX_LONG_NAME, "/Users/mkanaszn/Desktop/tmp/logging/test.log");
+                //.addArgument(CallModeledSegments.OUTPUT_IMAGE_DIR_LONG_NAME, FigOutputDir.getAbsolutePath())
+                //.addArgument(CallModeledSegments.OUTPUT_CALLS_DIR_LONG_NAME, FileOutputDir.getAbsolutePath())
+                .addArgument(CallModeledSegments.OUTPUT_IMAGE_DIR_LONG_NAME, "/Users/mkanaszn/Desktop/tmp/figs")
+                .addArgument(CallModeledSegments.OUTPUT_CALLS_DIR_LONG_NAME, "/Users/mkanaszn/Desktop/tmp/calls")
+                .addArgument(CallModeledSegments.OUTPUT_IMAGE_PREFIX_LONG_NAME, "testFig")
+                .addArgument(CallModeledSegments.OUTPUT_CALLS_PREFIX_LONG_NAME, "testCalls")
+                .addArgument(CallModeledSegments.LOAD_COPY_RATIO_LONG_NAME, "true")
+                .addArgument(CallModeledSegments.LOAD_ALLELE_FRACTION_LONG_NAME, "true")
+                .addArgument(CallModeledSegments.INTERACTIVE_RUN_LONG_NAME, "true")
+                .addArgument(CallModeledSegments.LOG_FILENAME_PREFIX_LONG_NAME, "/Users/mkanaszn/Desktop/tmp/logging/test.log");
         List<String> args = argsBuilder.getArgsList();
         for (String ar:args) {
             System.out.println(ar);
@@ -59,10 +59,10 @@ public class CNVCallerIntegrationTest extends CommandLineProgramTest {
         final File FileOutputDir = createTempDir("test/calls");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addInput(INPUT_NORMAL)
-                .addArgument(CNVCaller.OUTPUT_IMAGE_DIR_LONG_NAME, FigOutputDir.getAbsolutePath())
-                .addArgument(CNVCaller.OUTPUT_CALLS_DIR_LONG_NAME, FileOutputDir.getAbsolutePath())
-                .addArgument(CNVCaller.LOAD_COPY_RATIO_LONG_NAME, "true")
-                .addArgument(CNVCaller.LOAD_ALLELE_FRACTION_LONG_NAME, "true");
+                .addArgument(CallModeledSegments.OUTPUT_IMAGE_DIR_LONG_NAME, FigOutputDir.getAbsolutePath())
+                .addArgument(CallModeledSegments.OUTPUT_CALLS_DIR_LONG_NAME, FileOutputDir.getAbsolutePath())
+                .addArgument(CallModeledSegments.LOAD_COPY_RATIO_LONG_NAME, "true")
+                .addArgument(CallModeledSegments.LOAD_ALLELE_FRACTION_LONG_NAME, "true");
         runCommandLine(argsBuilder);
         //assertOutputFiles(outputDir);
     }
@@ -73,10 +73,10 @@ public class CNVCallerIntegrationTest extends CommandLineProgramTest {
         final File FileOutputDir = createTempDir("test/calls");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addInput(INPUT_TUMOR)
-                .addArgument(CNVCaller.OUTPUT_IMAGE_DIR_LONG_NAME, FigOutputDir.getAbsolutePath())
-                .addArgument(CNVCaller.OUTPUT_CALLS_DIR_LONG_NAME, FileOutputDir.getAbsolutePath())
-                .addArgument(CNVCaller.LOAD_COPY_RATIO_LONG_NAME, "true")
-                .addArgument(CNVCaller.LOAD_ALLELE_FRACTION_LONG_NAME, "true");
+                .addArgument(CallModeledSegments.OUTPUT_IMAGE_DIR_LONG_NAME, FigOutputDir.getAbsolutePath())
+                .addArgument(CallModeledSegments.OUTPUT_CALLS_DIR_LONG_NAME, FileOutputDir.getAbsolutePath())
+                .addArgument(CallModeledSegments.LOAD_COPY_RATIO_LONG_NAME, "true")
+                .addArgument(CallModeledSegments.LOAD_ALLELE_FRACTION_LONG_NAME, "true");
         runCommandLine(argsBuilder);
         //assertOutputFiles(outputDir);
     }
@@ -87,10 +87,10 @@ public class CNVCallerIntegrationTest extends CommandLineProgramTest {
         final File FileOutputDir = createTempDir("test/calls");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addInput(INPUT_CELL_LINE_50_PER_CENT_PURITY)
-                .addArgument(CNVCaller.OUTPUT_IMAGE_DIR_LONG_NAME, FigOutputDir.getAbsolutePath())
-                .addArgument(CNVCaller.OUTPUT_CALLS_DIR_LONG_NAME, FileOutputDir.getAbsolutePath())
-                .addArgument(CNVCaller.LOAD_COPY_RATIO_LONG_NAME, "true")
-                .addArgument(CNVCaller.LOAD_ALLELE_FRACTION_LONG_NAME, "true");
+                .addArgument(CallModeledSegments.OUTPUT_IMAGE_DIR_LONG_NAME, FigOutputDir.getAbsolutePath())
+                .addArgument(CallModeledSegments.OUTPUT_CALLS_DIR_LONG_NAME, FileOutputDir.getAbsolutePath())
+                .addArgument(CallModeledSegments.LOAD_COPY_RATIO_LONG_NAME, "true")
+                .addArgument(CallModeledSegments.LOAD_ALLELE_FRACTION_LONG_NAME, "true");
         runCommandLine(argsBuilder);
         //assertOutputFiles(outputDir);
     }
