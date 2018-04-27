@@ -19,7 +19,7 @@ public class CalledModeledSegment implements Locatable {
     private final SimplePosteriorSummary log2CopyRatioSimplePosteriorSummary;
     private final SimplePosteriorSummary minorAlleleFractionSimplePosteriorSummary;
 
-    private final double callNormal;
+    private final String callNormal;
     private final double PHREDScoreNormal;
 
     public CalledModeledSegment(final SimpleInterval interval,
@@ -27,7 +27,7 @@ public class CalledModeledSegment implements Locatable {
                                 final int numPointsAlleleFraction,
                                 final SimplePosteriorSummary log2CopyRatioSimplePosteriorSummary,
                                 final SimplePosteriorSummary minorAlleleFractionSimplePosteriorSummary,
-                                final double callNormal,
+                                final String callNormal,
                                 final double PHREDScoreNormal) {
         Utils.validateArg(numPointsCopyRatio > 0 || numPointsAlleleFraction > 0,
                 String.format("Number of copy-ratio points or number of allele-fraction points must be positive: %s", interval));
@@ -67,7 +67,7 @@ public class CalledModeledSegment implements Locatable {
         return this.numPointsAlleleFraction;
     }
 
-    public double getCallNormal() { return this.callNormal; }
+    public String getCallNormal() { return this.callNormal; }
 
     public double getPHREDScoreNormal() {return this.PHREDScoreNormal; }
 

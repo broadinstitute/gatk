@@ -406,7 +406,7 @@ class LoadAndSampleCrAndAf:
 
 
 
-class CNVCaller:
+class ModeledSegmentsCaller:
     """ This class takes an instance of the class LoadAndSampleCrAndAf as input
         and it identifies the normal segments. It outputs the plots of the segments
         (and optionally other plots about the fitting procedure) and saves the results
@@ -420,7 +420,8 @@ class CNVCaller:
                  interactive_output_del_ampl_image_suffix:str="_del_ampl.jpg",
                  interactive_output_scatter_plot_suffix:str="_scatter_plot.jpg",
                  interactive_output_allele_fraction_plot_suffix:str= "_allele_fraction_CN1_and_CN2_candidate_intervals.jpg",
-                 interactive_output_copy_ratio_suffix:str="_copy_ratio_fit.jpg"):
+                 interactive_output_copy_ratio_suffix:str="_copy_ratio_fit.jpg",
+                 interactive_output_copy_ratio_clustering_suffix:str="_copy_ratio_clusters.jpg"):
         """ On initialization, the caller loads the copy ratio and allele fraction data from
             the LoadAndSampleCrAndAf class. It then identifies normal segments and saves the
             results, including the plots.
@@ -445,6 +446,7 @@ class CNVCaller:
         self.__interactive_output_scatter_plot_suffix = interactive_output_scatter_plot_suffix
         self.__interactive_output_allele_fraction_plot_suffix = interactive_output_allele_fraction_plot_suffix
         self.__interactive_output_copy_ratio_suffix = interactive_output_copy_ratio_suffix
+        self.__interactive_output_copy_ratio_clustering_suffix = interactive_output_copy_ratio_clustering_suffix
 
         # Load data from file
         [self.__copy_ratio_median,
@@ -503,7 +505,7 @@ class CNVCaller:
         if self.__load_CR and self.__load_AF and self.__interactive:
             if not self.log_filename=="":
                 logging.info("Creating auxiliary plots in interactive mode.")
-                self.__plot_clustering()
+            self.__plot_clustering()
 
         # Save the results in a file
         if not self.log_filename=="":
@@ -544,6 +546,7 @@ class CNVCaller:
         self.fig_scatter_plot = image_fname_prefix + self.__interactive_output_scatter_plot_suffix
         self.fig_allele_fraction_CN1_CN2_intervals = image_fname_prefix + self.__interactive_output_allele_fraction_plot_suffix
         self.fig_copy_ratio_fit = image_fname_prefix + self.__interactive_output_copy_ratio_suffix
+        self.fig_copy_ratio_clusters = image_fname_prefix + self.__interactive_output_copy_ratio_clustering_suffix
 
     def get_output_calls_filename(self):
         """Name of the output calls file."""
@@ -790,7 +793,7 @@ class CNVCaller:
             plt.plot(CN2_interval_candidate[0], [0], "g*")
             plt.plot(CN2_interval_candidate[1], [0], "g*")
             plt.xlim(0,3)
-            plt.savefig(self.fig_scatter_plot)
+            plt.savefig(self.fig_copy_ratio_clusters)
             plt.close(fig)
 
         # If at least 'normal_min_ratio' fraction of the AF points in the 'CN1_interval_candidate' falls within
@@ -1157,7 +1160,7 @@ class CNVCaller:
         plt.xlim((0, 5))
         plt.xticks(np.arange(0, 6, 1))
 
-        plt.savefig(self.__fig_scatter_plot)
+        plt.savefig(self.fig_scatter_plot)
         plt.close(fig)
 
     def __plot_classification(self):
