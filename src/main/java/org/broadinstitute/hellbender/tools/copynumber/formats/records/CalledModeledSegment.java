@@ -8,20 +8,27 @@ import org.broadinstitute.hellbender.utils.mcmc.DecileCollection;
 
 import java.util.List;
 
-public class ModeledSegment implements Locatable {
+/**
+ * @author Marton Kanasz-Nagy &lt;mkanaszn@broadinstitute.org&gt;
+ */
+public class CalledModeledSegment implements Locatable {
     private final SimpleInterval interval;
     private final int numPointsCopyRatio;
-
     private final int numPointsAlleleFraction;
 
     private final SimplePosteriorSummary log2CopyRatioSimplePosteriorSummary;
     private final SimplePosteriorSummary minorAlleleFractionSimplePosteriorSummary;
 
-    public ModeledSegment(final SimpleInterval interval,
-                          final int numPointsCopyRatio,
-                          final int numPointsAlleleFraction,
-                          final SimplePosteriorSummary log2CopyRatioSimplePosteriorSummary,
-                          final SimplePosteriorSummary minorAlleleFractionSimplePosteriorSummary) {
+    private final double callNormal;
+    private final double PHREDScoreNormal;
+
+    public CalledModeledSegment(final SimpleInterval interval,
+                                final int numPointsCopyRatio,
+                                final int numPointsAlleleFraction,
+                                final SimplePosteriorSummary log2CopyRatioSimplePosteriorSummary,
+                                final SimplePosteriorSummary minorAlleleFractionSimplePosteriorSummary,
+                                final double callNormal,
+                                final double PHREDScoreNormal) {
         Utils.validateArg(numPointsCopyRatio > 0 || numPointsAlleleFraction > 0,
                 String.format("Number of copy-ratio points or number of allele-fraction points must be positive: %s", interval));
         this.interval = Utils.nonNull(interval);
@@ -29,34 +36,40 @@ public class ModeledSegment implements Locatable {
         this.numPointsAlleleFraction = numPointsAlleleFraction;
         this.log2CopyRatioSimplePosteriorSummary = Utils.nonNull(log2CopyRatioSimplePosteriorSummary);
         this.minorAlleleFractionSimplePosteriorSummary = Utils.nonNull(minorAlleleFractionSimplePosteriorSummary);
+        this.callNormal = callNormal;
+        this.PHREDScoreNormal = PHREDScoreNormal;
     }
 
     @Override
     public String getContig() {
-        return interval.getContig();
+        return this.interval.getContig();
     }
 
     @Override
     public int getStart() {
-        return interval.getStart();
+        return this.interval.getStart();
     }
 
     @Override
     public int getEnd() {
-        return interval.getEnd();
+        return this.interval.getEnd();
     }
 
     public SimpleInterval getInterval() {
-        return interval;
+        return this.interval;
     }
 
     public int getNumPointsCopyRatio() {
-        return numPointsCopyRatio;
+        return this.numPointsCopyRatio;
     }
 
     public int getNumPointsAlleleFraction() {
-        return numPointsAlleleFraction;
+        return this.numPointsAlleleFraction;
     }
+
+    public double getCallNormal() { return this.callNormal; }
+
+    public double getPHREDScoreNormal() {return this.PHREDScoreNormal; }
 
     public SimplePosteriorSummary getLog2CopyRatioSimplePosteriorSummary() {
         return log2CopyRatioSimplePosteriorSummary;
