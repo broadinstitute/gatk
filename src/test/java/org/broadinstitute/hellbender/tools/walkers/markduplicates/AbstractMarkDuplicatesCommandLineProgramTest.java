@@ -562,7 +562,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         args.add(sam.getAbsolutePath());
         args.add("-O");
         args.add(outputSam.getAbsolutePath());
-        args.add("--METRICS_FILE");
+        args.add("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
         args.add(metricsFile.getAbsolutePath());
         markDuplicates.instanceMain(args.getArgsArray());
         IntegrationTestSpec.assertEqualTextFiles(metricsFile, expectedMetrics, "#"); //this compares the values but not headers
@@ -615,7 +615,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         args.add(input.getPath());
         args.add("-"+StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         args.add(outputFile.getAbsolutePath());
-        args.add("--METRICS_FILE");
+        args.add("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
         args.add(metricsFile.getAbsolutePath());
         args.add(extraArgs);
 

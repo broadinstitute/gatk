@@ -30,7 +30,8 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
             doc = "The output file to write marked records to")
     public File OUTPUT;
 
-    @Argument(shortName = "M",
+    @Argument(shortName = StandardArgumentDefinitions.METRICS_FILE_SHORT_NAME,
+            fullName = StandardArgumentDefinitions.METRICS_FILE_LONG_NAME,
             doc = "File to write duplication metrics to")
     public File METRICS_FILE;
 
@@ -67,7 +68,9 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
             doc = "If true, assume that the input file is coordinate sorted even if the header says otherwise.")
     public boolean ASSUME_SORTED = false;
 
-    @Argument(shortName = "DS", doc = "The scoring strategy for choosing the non-duplicate among candidates.")
+    @Argument(shortName = StandardArgumentDefinitions.DUPLICATE_SCORING_STRATEGY_SHORT_NAME,
+            fullName = StandardArgumentDefinitions.DUPLICATE_SCORING_STRATEGY_LONG_NAME,
+            doc = "The scoring strategy for choosing the non-duplicate among candidates.")
     public DuplicateScoringStrategy.ScoringStrategy DUPLICATE_SCORING_STRATEGY = ScoringStrategy.TOTAL_MAPPED_REFERENCE_LENGTH;
 
     /** The program groups that have been seen during the course of examining the input records. */

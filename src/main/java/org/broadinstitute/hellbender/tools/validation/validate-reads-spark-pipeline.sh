@@ -88,7 +88,7 @@ echo "################################################"
 echo "############## Run GATK 4 tools ################"
 echo "################################################"
 # Run MarkDuplicates
-${GATK4_JAR} MarkDuplicatesSpark -I ${CLEAN_BAM} -O ${MARKED_BAM} --METRICS_FILE=tmp.metrics -DS SUM_OF_BASE_QUALITIES
+${GATK4_JAR} MarkDuplicatesSpark -I ${CLEAN_BAM} -O ${MARKED_BAM} --metrics-file=tmp.metrics -DS SUM_OF_BASE_QUALITIES
 
 # Run BQSR
 ${GATK4_JAR} BaseRecalibratorSpark -I ${MARKED_BAM} -R $3 -knownSites $4 -O ${RECAL_TABLE}
