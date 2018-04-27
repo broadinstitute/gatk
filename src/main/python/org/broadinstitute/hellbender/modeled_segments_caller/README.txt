@@ -1,9 +1,9 @@
-===============
-GATK CNV caller
-===============
+==============================
+GATK CNV ModeledSegmentsCaller
+==============================
 
-`segment_caller` is a python module that identifies segments with cancerous copy number
-variations.
+`modeled_segments_caller` is a python module that identifies segments with cancerous copy
+number variations.
 
 This module makes use of both copy ratio and allele fraction data from the CNV pipeline,
 as output by the java class ModeledSegments.
