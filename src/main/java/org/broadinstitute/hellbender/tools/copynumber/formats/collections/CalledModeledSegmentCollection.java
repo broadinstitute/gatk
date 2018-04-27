@@ -34,8 +34,8 @@ public final class CalledModeledSegmentCollection extends AbstractSampleLocatabl
         MINOR_ALLELE_FRACTION_POSTERIOR_10,
         MINOR_ALLELE_FRACTION_POSTERIOR_50,
         MINOR_ALLELE_FRACTION_POSTERIOR_90,
-        CALL,
-        PHRED;
+        CALL_NORMAL,
+        PHRED_SCORE_NORMAL;
 
         static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
     }
@@ -53,8 +53,8 @@ public final class CalledModeledSegmentCollection extends AbstractSampleLocatabl
         final double minorAlleleFractionPosterior50 = dataLine.getDouble(CalledModeledSegmentTableColumn.MINOR_ALLELE_FRACTION_POSTERIOR_50);
         final double minorAlleleFractionPosterior90 = dataLine.getDouble(CalledModeledSegmentTableColumn.MINOR_ALLELE_FRACTION_POSTERIOR_90);
         final SimpleInterval interval = new SimpleInterval(contig, start, end);
-        final String callNormal = dataLine.get(CalledModeledSegmentTableColumn.CALL);
-        final double PHREDScoreNormal = dataLine.getDouble(CalledModeledSegmentTableColumn.PHRED);
+        final double callNormal = dataLine.getDouble(CalledModeledSegmentTableColumn.CALL_NORMAL);
+        final double PHREDScoreNormal = dataLine.getDouble(CalledModeledSegmentTableColumn.PHRED_SCORE_NORMAL);
 
         return new CalledModeledSegment(interval, numPointsCopyRatio, numPointsAlleleFraction,
                 new CalledModeledSegment.SimplePosteriorSummary(log2CopyRatioPosterior10, log2CopyRatioPosterior50, log2CopyRatioPosterior90),
@@ -74,7 +74,7 @@ public final class CalledModeledSegmentCollection extends AbstractSampleLocatabl
                     .append(formatDouble(calledModeledSegment.getMinorAlleleFractionSimplePosteriorSummary().getDecile10()))
                     .append(formatDouble(calledModeledSegment.getMinorAlleleFractionSimplePosteriorSummary().getDecile50()))
                     .append(formatDouble(calledModeledSegment.getMinorAlleleFractionSimplePosteriorSummary().getDecile90()))
-                    .append(calledModeledSegment.getCallNormal())
+                    .append(formatDouble(calledModeledSegment.getCallNormal()))
                     .append(formatDouble(calledModeledSegment.getPHREDScoreNormal()));
 
     public CalledModeledSegmentCollection(final File inputFile) {
