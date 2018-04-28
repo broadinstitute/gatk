@@ -38,35 +38,29 @@ public final class GradientDescentSolver {
         return lastSolution;
     }
 
-    public void initialize(final double[] initX) {
-        for (int i = 0; i < x.length; i++) {
-            x[i] = initX[i];
-        }
-    }
-
     final String stateString(final double[] x) {
         return "[" + String.join(", ", Arrays.stream(x).boxed().map(String::valueOf).collect(Collectors.toList())) + "]";
     }
 
-    public double solve(final double[] x0, final int numSteps, final int loggingInterval) {
-        double[] x = x0;
+    public double solve(final double[] x0, final int numSteps, final double maxStepSize, final int loggingInterval) {
+        copyStates(x0, x);
         final double[] minX = new double[size];
         double currentEnergy = computeEnergy(x);
         if (loggingInterval > 0) {
-            logger.info("Solving " + x0.length + " parameters over " + numSteps + " steps; f0 = " + currentEnergy);
+            logger.info("Solving " + size + " parameters over " + numSteps + " steps; f0 = " + currentEnergy);
         }
         double minEnergy = currentEnergy;
         int tMin = 0;
         copyStates(x, minX);
+        double testGradient;
         for (int step = 0; step < numSteps; step++) {
+            testGradient = computeGradient();
+            computeDelta(step, maxStepSize);
+            step();
             if (loggingInterval > 0 && step % loggingInterval == 0) {
-                logger.info("Iteration " + step + " : f = " + currentEnergy + ", fmin = " + minEnergy);
+                logger.info("Iteration " + step + " : f = " + currentEnergy + ", fmin = " + minEnergy + ", gradient = " + testGradient / Math.sqrt(size*gradientStep*gradientStep));
                 logger.info("\tx = " + stateString(x));
             }
-
-            final double testGradient = computeGradient();
-            computeDelta(step);
-            step();
         }
         if (loggingInterval > 0) {
             logger.info("Solved after " + numSteps + " : f = " + currentEnergy + ", fmin = " + minEnergy + ", tmin = " + tMin);
@@ -76,15 +70,11 @@ public final class GradientDescentSolver {
         return minEnergy;
     }
 
-    private void computeDelta(final int stepNumber) {
+    private void computeDelta(final int stepNumber, final double maxStepSize) {
         for (int i = 0; i < gradient.length; i++) {
 
             final double beta1 = 0.9; //0.99;
             final double beta2 = 0.999; //0.9999;
-            if (stepNumber == 0) {
-                //mtX[i] = gradientX[i];
-                //vtX[i] = gradientX[i] * gradientX[i];
-            }
 
             //Basic
             //deltaX[i] = gradientX[i] * learningRate;
@@ -93,16 +83,20 @@ public final class GradientDescentSolver {
             //}
 
             //Simple momentum
-            //deltaX[i] = mtX[i] * 0.99 + gradientX[i] * learningRate;
-            //if (Math.abs(deltaX[i]) > maxStepSize) {
-            //    deltaX[i] = maxStepSize * Math.signum(deltaX[i]);
+            //delta[i] = mt[i] * 0.99 + gradient[i] * learningRate;
+            //if (Math.abs(delta[i]) > maxStepSize) {
+            //    delta[i] = maxStepSize * Math.signum(delta[i]);
             //}
-            //mtX[i] = deltaX[i];
+            //mt[i] = delta[i];
 
             //ADAM
+            if (stepNumber == 0) {
+                mt[i] = gradient[i];
+                vt[i] = gradient[i] * gradient[i];
+            }
             mt[i] = (beta1 * mt[i] +  (1 - beta1) * gradient[i]); // / (1 - Math.pow(beta1, numIter + 1));
             vt[i] = (beta2 * vt[i] +  (1 - beta2) * gradient[i] * gradient[i]); // / (1 - Math.pow(beta2, numIter + 1));
-            delta[i] = mt[i] * learningRate / (Math.sqrt(vt[i]) + 1e-8);
+            delta[i] = - mt[i] * learningRate / (Math.sqrt(vt[i]) + 1e-8);
 
             //ADAMAX
             //mtX[i] = (beta1 * mtX[i] +  (1 - beta1) * gradientX[i]) / (1 - Math.pow(beta1, numIter + 1));
@@ -113,12 +107,12 @@ public final class GradientDescentSolver {
     }
 
     private double step() {
-        double deltaRiTotal = 0;
+        double deltaTotal = 0;
         for (int i = 0; i < x.length; i++) {
             x[i] = x[i] + delta[i];
-            deltaRiTotal += delta[i]*delta[i];
+            deltaTotal += delta[i]*delta[i];
         }
-        return deltaRiTotal;
+        return Math.sqrt(deltaTotal);
     }
 
     private void copyStates(final double[] fromX, final double[] toX) {

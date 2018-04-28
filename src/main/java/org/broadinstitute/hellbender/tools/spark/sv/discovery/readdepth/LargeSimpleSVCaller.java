@@ -475,7 +475,9 @@ public class LargeSimpleSVCaller {
                     final SVInterval interval = entry.getInterval();
                     final SVInterval start = new SVInterval(interval.getContig(), interval.getStart(), interval.getStart());
                     final SVInterval end = new SVInterval(interval.getContig(), interval.getEnd(), interval.getEnd());
-                    return !highCoverageIntervalTree.hasOverlapper(start) && !highCoverageIntervalTree.hasOverlapper(end);
+                    final SVInterval paddedStart = SVIntervalUtils.getPaddedInterval(start, 500, dictionary);
+                    final SVInterval paddedEnd = SVIntervalUtils.getPaddedInterval(end, 500, dictionary);
+                    return !highCoverageIntervalTree.hasOverlapper(paddedStart) && !highCoverageIntervalTree.hasOverlapper(paddedEnd);
                 }).filter(entry -> {
                     final Set<CalledCopyRatioSegment> overlappingSegments = copyRatioSegmentOverlapDetector.getOverlaps(SVIntervalUtils.convertToSimpleInterval(entry.getInterval(), dictionary));
                     final CalledCopyRatioSegment.Call expectedCall = entry.getValue().getType() == SimpleSVType.TYPES.DEL ? CalledCopyRatioSegment.Call.DELETION : CalledCopyRatioSegment.Call.AMPLIFICATION;

@@ -38,22 +38,30 @@ final class ReadDepthCluster implements Serializable {
 
     private static void optimizeOverlapInfo(final List<ReadDepthEvent> events) {
         for (final ReadDepthEvent event : events) {
-            final Map<Integer, Double> optimizedOverlapInfo = new HashMap<>(SVUtils.hashMapCapacity(event.overlapInfoList.size()));
-            double newCopyNumber = 0;
-            double totalWeight = 0;
-            for (final ReadDepthModel.OverlapInfo info : event.overlapInfoList) {
-                newCopyNumber += info.segmentCopyNumber * info.weight;
-                totalWeight += info.weight;
-                for (final Tuple2<Integer,Integer> idAndSign : info.overlappingIdsAndSigns) {
-                    final int id = idAndSign._1;
-                    final int sign = idAndSign._2;
-                    optimizedOverlapInfo.putIfAbsent(id, 0.);
-                    optimizedOverlapInfo.put(id, optimizedOverlapInfo.get(id) + info.weight * sign);
+            if (!event.overlapInfoList.isEmpty()) {
+                final Map<Integer, Double> optimizedOverlapInfo = new HashMap<>(SVUtils.hashMapCapacity(event.overlapInfoList.size()));
+                double newCopyNumber = 0;
+                double totalWeight = 0;
+                for (final ReadDepthModel.OverlapInfo info : event.overlapInfoList) {
+                    newCopyNumber += info.segmentCopyNumber * info.weight;
+                    totalWeight += info.weight;
+                    for (final Tuple2<Integer, Integer> idAndSign : info.overlappingIdsAndSigns) {
+                        final int id = idAndSign._1;
+                        final int sign = idAndSign._2;
+                        optimizedOverlapInfo.putIfAbsent(id, 0.);
+                        optimizedOverlapInfo.put(id, optimizedOverlapInfo.get(id) + info.weight * sign);
+                    }
                 }
+                if (totalWeight == 0) {
+                    throw new IllegalStateException("Total weight in overlap info was 0");
+                }
+                newCopyNumber /= totalWeight;
+                event.optimizedOverlapInfoList = optimizedOverlapInfo.entrySet().stream().map(entry -> new Tuple2<>(entry.getKey(), entry.getValue())).collect(Collectors.toList());
+                event.observedCopyNumber = newCopyNumber;
+            } else {
+                event.optimizedOverlapInfoList = Collections.emptyList();
+                event.observedCopyNumber = 2;
             }
-            newCopyNumber /= totalWeight;
-            event.optimizedOverlapInfoList = optimizedOverlapInfo.entrySet().stream().map(entry -> new Tuple2<>(entry.getKey(),entry.getValue())).collect(Collectors.toList());
-            event.observedCopyNumber = newCopyNumber;
         }
     }
 
@@ -104,6 +112,7 @@ final class ReadDepthCluster implements Serializable {
                 nextEnd = interval.getEnd();
             }
             final int subIntervalLength;
+            final List<Integer> currentOpenEvents = new ArrayList<>(openEvents);
             if (startIndex < overlappers.size() && nextStart < nextEnd) {
                 subIntervalLength = nextStart - lastStart;
                 lastStart = nextStart;
@@ -118,9 +127,9 @@ final class ReadDepthCluster implements Serializable {
                 openEvents.remove(Integer.valueOf(endSortedOverlappers.get(endIndex).getId()));
                 endIndex++;
             }
-            for (final Integer id : openEvents) {
+            for (final Integer id : currentOpenEvents) {
                 final double weight = subIntervalLength / (double) overlapperMap.get(id).getEvent().getSize();
-                final List<Tuple2<Integer,Integer>> overlappingIdsAndSigns = openEvents.stream()
+                final List<Tuple2<Integer,Integer>> overlappingIdsAndSigns = currentOpenEvents.stream()
                         .filter(eventId -> !eventId.equals(id))
                         .map(eventId -> new Tuple2<>(id, overlapperMap.get(id).getEvent().getType() == SimpleSVType.TYPES.DEL ? -1 : 1))
                         .collect(Collectors.toList());
