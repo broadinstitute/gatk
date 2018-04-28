@@ -134,6 +134,13 @@ public class SVIntervalUtils {
     }
 
     /**
+     * Converts GenomeLoc to SimpleInterval
+     */
+    public static SimpleInterval convertToSimpleInterval(final GenomeLoc interval) {
+        return new SimpleInterval(interval.getContig(), interval.getStart(), interval.getEnd());
+    }
+
+    /**
      * Converts SVInterval to GenomeLoc
      */
     public static GenomeLoc convertToGenomeLoc(final SVInterval interval, final SAMSequenceDictionary dictionary) {

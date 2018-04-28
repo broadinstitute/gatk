@@ -8,8 +8,13 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.math3.linear.RealVector;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.engine.ProgressMeter;
+import org.apache.spark.broadcast.Broadcast;
+import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.IntervalWalkerContext;
+import org.broadinstitute.hellbender.engine.spark.SparkSharder;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CalledCopyRatioSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
@@ -31,6 +36,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * Searches for large structural variants using assembled breakpoint pairs, clustered read pair evidence, binned copy
@@ -41,6 +47,7 @@ public class LargeSimpleSVCaller {
 
     private static final Logger logger = LogManager.getLogger(LargeSimpleSVCaller.class);
 
+    private final JavaRDD<GATKRead> reads;
     private final SVIntervalTree<Object> highCoverageIntervalTree;
     private final SVIntervalTree<Object> mappableIntervalTree;
     private final SVIntervalTree<Object> blacklistTree;
@@ -58,7 +65,8 @@ public class LargeSimpleSVCaller {
     private final Collection<IntrachromosomalBreakpointPair> pairedBreakpoints;
     private final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments;
 
-    public LargeSimpleSVCaller(final Collection<VariantContext> breakpoints,
+    public LargeSimpleSVCaller(final JavaRDD<GATKRead> reads,
+                               final Collection<VariantContext> breakpoints,
                                final Collection<VariantContext> structuralVariantCalls,
                                final Collection<VariantContext> truthSet,
                                final Collection<GATKRead> assembledContigs,
@@ -70,6 +78,7 @@ public class LargeSimpleSVCaller {
                                final List<SVInterval> blacklist,
                                final SAMSequenceDictionary dictionary,
                                final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments) {
+        Utils.nonNull(reads, "Reads RDD cannot be null");
         Utils.nonNull(breakpoints, "Breakpoint collection cannot be null");
         Utils.nonNull(assembledContigs, "Contig collection cannot be null");
         Utils.nonNull(evidenceTargetLinks, "Evidence target link collection cannot be null");
@@ -79,6 +88,7 @@ public class LargeSimpleSVCaller {
         Utils.nonNull(arguments, "Parameter arguments collection cannot be null");
         Utils.nonNull(highCoverageIntervals, "High coverage intervals list cannot be null");
 
+        this.reads = reads;
         this.dictionary = dictionary;
         this.arguments = arguments;
 
@@ -486,6 +496,25 @@ public class LargeSimpleSVCaller {
                     return fractionOverlap > 0.5;
                 }).forEach(event -> filteredCalls.put(event.getInterval(), event.getValue()));
 
+        final List<GenomeLoc> eventIntervals = Utils.stream(filteredCalls.iterator()).flatMap(call -> {
+            final int padding = 1000;
+            final SVInterval leftInterval = SVIntervalUtils.getPaddedInterval(new SVInterval(call.getInterval().getContig(), call.getInterval().getStart(), call.getInterval().getStart()), padding, dictionary);
+            final SVInterval rightInterval = SVIntervalUtils.getPaddedInterval(new SVInterval(call.getInterval().getContig(), call.getInterval().getEnd(), call.getInterval().getEnd()), padding, dictionary);
+            return Stream.of(SVIntervalUtils.convertToGenomeLoc(leftInterval, dictionary), SVIntervalUtils.convertToGenomeLoc(rightInterval, dictionary));
+        }).collect(Collectors.toList());
+        final List<SimpleInterval> mergedEventIntervals = IntervalUtils.mergeIntervalLocations(eventIntervals, IntervalMergingRule.ALL).stream()
+                .map(loc -> SVIntervalUtils.convertToSimpleInterval(loc))
+                .sorted(IntervalUtils.getDictionaryOrderComparator(dictionary))
+                .collect(Collectors.toList());
+        final JavaRDD<IntervalWalkerContext> intervalWalkers = getIntervals(ctx, mergedEventIntervals);
+        final SVIntervalTree<List<GATKRead>> readsTree = new SVIntervalTree<>();
+        logger.info("Collecting reads...");
+        final List<Tuple2<SimpleInterval,List<GATKRead>>> intervalsAndReads = intervalWalkers.map(walker -> new Tuple2<>(walker.getInterval(), Utils.stream(walker.getReadsContext().iterator()).collect(Collectors.toList()))).collect();
+        for (final Tuple2<SimpleInterval,List<GATKRead>> pair : intervalsAndReads) {
+            readsTree.put(SVIntervalUtils.convertToSVInterval(pair._1, dictionary), pair._2);
+        }
+        logger.info("Retrieved " + intervalsAndReads.stream().mapToInt(pair -> pair._2.size()).sum() + " reads on " + readsTree.size() + " intervals.");
+
         logger.info("Running read depth model on " + filteredCalls.size() + " events");
         final ReadDepthModel readDepthModel = new ReadDepthModel(filteredCalls, intrachromosomalLinkTree, copyRatioSegmentOverlapDetector, mappableIntervalTree, dictionary); //TODO add interchromosomal links
         final Tuple2<Double,List<ReadDepthEvent>> result;
@@ -496,6 +525,47 @@ public class LargeSimpleSVCaller {
         }
         final Collection<ReadDepthEvent> finalResult = result._2;
         return new Tuple2<>(finalResult, Collections.emptyList());
+    }
+
+
+    /**
+     * Loads intervals and the corresponding reads, reference and features into a {@link JavaRDD}.
+     *
+     * @return all intervals as a {@link JavaRDD}.
+     */
+    public JavaRDD<IntervalWalkerContext> getIntervals(JavaSparkContext ctx, final List<SimpleInterval> intervals) {
+        // don't shard the intervals themselves, since we want each interval to be processed by a single task
+        final List<ShardBoundary> intervalShardBoundaries = intervals.stream()
+                .map(i -> new ShardBoundary(i, i)).collect(Collectors.toList());
+        JavaRDD<Shard<GATKRead>> shardedReads = SparkSharder.shard(ctx, reads, GATKRead.class, dictionary, intervalShardBoundaries, Integer.MAX_VALUE, false);
+        Broadcast<ReferenceMultiSource> bReferenceSource = null;
+        Broadcast<FeatureManager> bFeatureManager = null;
+        return shardedReads.map(getIntervalsFunction(bReferenceSource, bFeatureManager, dictionary, 1000));
+    }
+
+    private static org.apache.spark.api.java.function.Function<Shard<GATKRead>, IntervalWalkerContext> getIntervalsFunction(
+            Broadcast<ReferenceMultiSource> bReferenceSource, Broadcast<FeatureManager> bFeatureManager,
+            SAMSequenceDictionary sequenceDictionary, int intervalShardPadding) {
+        return (org.apache.spark.api.java.function.Function<Shard<GATKRead>, IntervalWalkerContext>) shard -> {
+            // get reference bases for this shard (padded)
+            SimpleInterval interval = shard.getInterval();
+            SimpleInterval paddedInterval = shard.getInterval().expandWithinContig(intervalShardPadding, sequenceDictionary);
+            ReadsContext readsContext = new ReadsContext(new GATKDataSource<GATKRead>() {
+                @Override
+                public Iterator<GATKRead> iterator() {
+                    return shard.iterator();
+                }
+                @Override
+                public Iterator<GATKRead> query(SimpleInterval interval) {
+                    return StreamSupport.stream(shard.spliterator(), false).filter(
+                            r -> IntervalUtils.overlaps(r, interval)).iterator();
+                }
+            }, shard.getInterval());
+            ReferenceDataSource reference = bReferenceSource == null ? null :
+                    new ReferenceMemorySource(bReferenceSource.getValue().getReferenceBases(paddedInterval), sequenceDictionary);
+            FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
+            return new IntervalWalkerContext(interval, readsContext, new ReferenceContext(reference, interval), new FeatureContext(features, interval));
+        };
     }
 
 /*

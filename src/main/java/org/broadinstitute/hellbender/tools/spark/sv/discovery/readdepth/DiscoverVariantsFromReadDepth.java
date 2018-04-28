@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFileReader;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -178,6 +179,7 @@ public class DiscoverVariantsFromReadDepth extends GATKSparkTool {
     @Override
     public void runTool(final JavaSparkContext ctx) {
         dictionary = ReferenceUtils.loadFastaDictionary(BucketUtils.openFile(sequenceDictionaryPath));
+        final JavaRDD<GATKRead> reads = getUnfilteredReads();
         logger.info("Loading assembly...");
         final Collection<GATKRead> assembly = getReads(assemblyBamPath);
         logger.info("Loading high coverage intervals...");
@@ -207,7 +209,7 @@ public class DiscoverVariantsFromReadDepth extends GATKSparkTool {
         logger.info("Loading copy ratio bins...");
         final CopyRatioCollection copyRatios = getCopyRatios(copyRatioFilePath);
 
-        largeSimpleSVCaller = new LargeSimpleSVCaller(breakpointCalls, svCalls, truthSet, assembly, evidenceTargetLinks, copyRatios, copyRatioSegments, highCoverageIntervals, mappableIntervals, blacklist, dictionary, arguments);
+        largeSimpleSVCaller = new LargeSimpleSVCaller(reads, breakpointCalls, svCalls, truthSet, assembly, evidenceTargetLinks, copyRatios, copyRatioSegments, highCoverageIntervals, mappableIntervals, blacklist, dictionary, arguments);
 
         final Tuple2<Collection<ReadDepthEvent>,List<VariantContext>> result = largeSimpleSVCaller.callEvents(ctx, null);
         events = result._1;

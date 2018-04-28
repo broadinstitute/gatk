@@ -3,12 +3,14 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery.readdepth;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.LargeSimpleSV;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -137,6 +139,10 @@ public abstract class LargeSimpleSVFactory {
         }).collect(Collectors.toList());
     }
 
+    protected static Collection<GATKRead> getReads(final SVInterval interval, final JavaRDD<GATKRead> reads, final SAMSequenceDictionary dictionary) {
+        final SimpleInterval simpleInterval = SVIntervalUtils.convertToSimpleInterval(interval, dictionary);
+        return reads.filter(read -> read.overlaps(simpleInterval)).collect();
+    }
 
     /**
      * Returns true if the given evidence has valid orientation as counter-evidence
