@@ -24,7 +24,6 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRa
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatioSegment;
-import org.broadinstitute.hellbender.tools.copynumber.gcnv.GermlineCNVPostprocessingEngine;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
@@ -283,10 +282,10 @@ public class DiscoverVariantsFromReadDepth extends GATKSparkTool {
                 if (!genotype.hasExtendedAttribute("NP")) {
                     throw new UserException.BadInput("Number of points genotype not found in variant context " + variantContext.getID());
                 }
-                if (!genotype.hasExtendedAttribute(GermlineCNVPostprocessingEngine.CN)) {
+                if (!genotype.hasExtendedAttribute("CN")) {
                     throw new UserException.BadInput("Copy number genotype not found in variant context " + variantContext.getID());
                 }
-                final int copyNumber = Integer.valueOf((String) genotype.getExtendedAttribute(GermlineCNVPostprocessingEngine.CN));
+                final int copyNumber = Integer.valueOf((String) genotype.getExtendedAttribute("CN"));
                 final int numPoints = Integer.valueOf((String) genotype.getExtendedAttribute("NP"));
                 final CopyRatioSegment segment = new CopyRatioSegment(interval, numPoints, Math.log(copyNumber) / Math.log(2.0));
                 final CalledCopyRatioSegment.Call call;
