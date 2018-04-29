@@ -177,6 +177,8 @@ public class DiscoverVariantsFromReadDepth extends GATKSparkTool {
 
     @Override
     public void runTool(final JavaSparkContext ctx) {
+        //ctx.hadoopConfiguration().set("fs.gs.project.id", "broad-dsde-methods");
+        //ctx.hadoopConfiguration().set("google.cloud.auth.service.account.json.keyfile", "/Users/markw/IdeaProjects/gatk/DSDE-Methods-2fcf61fced3a.json");
         dictionary = ReferenceUtils.loadFastaDictionary(BucketUtils.openFile(sequenceDictionaryPath));
         final JavaRDD<GATKRead> reads = getUnfilteredReads();
         logger.info("Loading assembly...");

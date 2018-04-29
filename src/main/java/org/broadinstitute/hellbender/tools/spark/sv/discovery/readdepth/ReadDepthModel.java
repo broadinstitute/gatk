@@ -102,7 +102,7 @@ public final class ReadDepthModel implements Serializable {
                     .distinct()
                     .filter(link -> !eventLinks.contains(link))
                     .mapToInt(link -> link.getReadPairs())
-                    .sum() * 1e6 / (double) (size * COPY_NEUTRAL_DEPTH);
+                    .sum() * 1e6 / (size * COPY_NEUTRAL_DEPTH);
         }
     }
 
