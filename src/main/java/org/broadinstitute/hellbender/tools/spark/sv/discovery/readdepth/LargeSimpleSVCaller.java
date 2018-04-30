@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery.readdepth;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.math3.linear.RealVector;
@@ -10,11 +11,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.broadcast.Broadcast;
-import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
-import org.broadinstitute.hellbender.engine.spark.IntervalWalkerContext;
-import org.broadinstitute.hellbender.engine.spark.SparkSharder;
+import org.broadinstitute.hellbender.engine.ProgressMeter;
+import org.broadinstitute.hellbender.engine.TraversalParameters;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CalledCopyRatioSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
@@ -36,7 +35,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 /**
  * Searches for large structural variants using assembled breakpoint pairs, clustered read pair evidence, binned copy
@@ -378,7 +376,7 @@ public class LargeSimpleSVCaller {
     /**
      * Returns all events. Searches by iterating over the breakpoint pairs and then the evidence target links.
      */
-    public Tuple2<Collection<ReadDepthEvent>, List<VariantContext>> callEvents(final JavaSparkContext ctx, final ProgressMeter progressMeter) {
+    public Tuple2<Collection<ReadDepthEvent>, List<VariantContext>> callEvents(final String inputPath, final JavaSparkContext ctx, final ProgressMeter progressMeter) {
 
         if (progressMeter != null) {
             progressMeter.setRecordLabel("intervals");
@@ -506,14 +504,14 @@ public class LargeSimpleSVCaller {
                 .map(loc -> SVIntervalUtils.convertToSimpleInterval(loc))
                 .sorted(IntervalUtils.getDictionaryOrderComparator(dictionary))
                 .collect(Collectors.toList());
-        final JavaRDD<IntervalWalkerContext> intervalWalkers = getIntervals(ctx, mergedEventIntervals);
-        final SVIntervalTree<List<GATKRead>> readsTree = new SVIntervalTree<>();
+
+        final List<Tuple2<SVInterval,GATKRead>> intervalsAndReads = getReads(inputPath, ctx, mergedEventIntervals, dictionary);
+        final SVIntervalTree<GATKRead> readsTree = new SVIntervalTree<>();
         logger.info("Collecting reads...");
-        final List<Tuple2<SimpleInterval,List<GATKRead>>> intervalsAndReads = intervalWalkers.map(walker -> new Tuple2<>(walker.getInterval(), Utils.stream(walker.getReadsContext().iterator()).collect(Collectors.toList()))).collect();
-        for (final Tuple2<SimpleInterval,List<GATKRead>> pair : intervalsAndReads) {
-            readsTree.put(SVIntervalUtils.convertToSVInterval(pair._1, dictionary), pair._2);
+        for (final Tuple2<SVInterval,GATKRead> pair : intervalsAndReads) {
+            readsTree.put(pair._1, pair._2);
         }
-        logger.info("Retrieved " + intervalsAndReads.stream().mapToInt(pair -> pair._2.size()).sum() + " reads on " + readsTree.size() + " intervals.");
+        logger.info("Retrieved " + intervalsAndReads.stream().mapToInt(pair -> pair._2.getLength()).sum() + " reads");
 
         logger.info("Running read depth model on " + filteredCalls.size() + " events");
         final ReadDepthModel readDepthModel = new ReadDepthModel(filteredCalls, intrachromosomalLinkTree, copyRatioSegmentOverlapDetector, mappableIntervalTree, dictionary); //TODO add interchromosomal links
@@ -527,17 +525,25 @@ public class LargeSimpleSVCaller {
         return new Tuple2<>(finalResult, Collections.emptyList());
     }
 
+    public static List<Tuple2<SVInterval,GATKRead>> getReads(final String inputPath, final JavaSparkContext ctx, final List<SimpleInterval> intervals, final SAMSequenceDictionary dictionary) {
+        final TraversalParameters traversalParameters = new TraversalParameters(intervals, false);
+        final ReadsSparkSource readsSource = new ReadsSparkSource(ctx, ValidationStringency.DEFAULT_STRINGENCY);
+        final JavaRDD<GATKRead> reads = readsSource.getParallelReads(inputPath, null, traversalParameters, 8000000);
+        return reads.filter(read -> !read.isUnmapped()).map(read -> new Tuple2<>(SVIntervalUtils.convertToSVInterval(new SimpleInterval(read.getContig(), read.getUnclippedStart(), read.getUnclippedEnd()), dictionary), read)).collect();
+    }
 
-    /**
-     * Loads intervals and the corresponding reads, reference and features into a {@link JavaRDD}.
-     *
-     * @return all intervals as a {@link JavaRDD}.
-     */
+/*
     public JavaRDD<IntervalWalkerContext> getIntervals(JavaSparkContext ctx, final List<SimpleInterval> intervals) {
+
         // don't shard the intervals themselves, since we want each interval to be processed by a single task
         final List<ShardBoundary> intervalShardBoundaries = intervals.stream()
                 .map(i -> new ShardBoundary(i, i)).collect(Collectors.toList());
-        JavaRDD<Shard<GATKRead>> shardedReads = SparkSharder.shard(ctx, reads, GATKRead.class, dictionary, intervalShardBoundaries, Integer.MAX_VALUE, false);
+        for (final ShardBoundary interval : intervalShardBoundaries) {
+            if (interval.getStart() < 0 || interval.getEnd() < 0) {
+                int x = 0;
+            }
+        }
+        JavaRDD<Shard<GATKRead>> shardedReads = SparkSharder.shard(ctx, reads, GATKRead.class, dictionary, intervalShardBoundaries, 1000, false);
         Broadcast<ReferenceMultiSource> bReferenceSource = null;
         Broadcast<FeatureManager> bFeatureManager = null;
         return shardedReads.map(getIntervalsFunction(bReferenceSource, bFeatureManager, dictionary, 1000));
@@ -566,7 +572,7 @@ public class LargeSimpleSVCaller {
             FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
             return new IntervalWalkerContext(interval, readsContext, new ReferenceContext(reference, interval), new FeatureContext(features, interval));
         };
-    }
+    }*/
 
 /*
     private final static class GradientDescentSolver {

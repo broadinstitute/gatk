@@ -212,7 +212,7 @@ public class DiscoverVariantsFromReadDepth extends GATKSparkTool {
 
         largeSimpleSVCaller = new LargeSimpleSVCaller(reads, breakpointCalls, svCalls, truthSet, assembly, evidenceTargetLinks, copyRatios, copyRatioSegments, highCoverageIntervals, mappableIntervals, blacklist, dictionary, arguments);
 
-        final Tuple2<Collection<ReadDepthEvent>,List<VariantContext>> result = largeSimpleSVCaller.callEvents(ctx, null);
+        final Tuple2<Collection<ReadDepthEvent>,List<VariantContext>> result = largeSimpleSVCaller.callEvents(readArguments.getReadFilesNames().get(0), ctx, null);
         events = result._1;
         filteredCalls = result._2;
 
