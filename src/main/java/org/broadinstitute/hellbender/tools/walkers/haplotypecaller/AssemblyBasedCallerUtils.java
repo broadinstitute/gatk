@@ -215,7 +215,7 @@ public final class AssemblyBasedCallerUtils {
 
     // Contract: the List<Allele> alleles of the resulting VariantContext is the ref allele followed by alt alleles in the
     // same order as in the input vcs
-    public static VariantContext makeMergedVariantContext(final List<VariantContext> vcs, final Locatable loc) {
+    public static VariantContext makeMergedVariantContext(final List<VariantContext> vcs) {
         if (vcs.isEmpty()) {
             return null;
         }

@@ -131,9 +131,6 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
         final List<Allele> noCallAlleles = GATKVariantContextUtils.noCallAlleles(ploidy);
 
         for( final int loc : startPosKeySet ) {
-            if (loc == 10004094) {
-                int foo = loc;
-            }
             if( loc < activeRegionWindow.getStart() || loc > activeRegionWindow.getEnd() ) {
                 continue;
             }
@@ -143,11 +140,7 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
                             Allele.create(ref[loc - refLoc.getStart()], true),
                             loc);
 
-            if (eventsAtThisLocWithSpanDelsReplaced.size() > 1) {
-                logger.info("merging multiple events");
-            }
-
-            VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLocWithSpanDelsReplaced, new SimpleInterval(refLoc.getContig(), loc, loc));
+            VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLocWithSpanDelsReplaced);
 
             if( mergedVC == null ) {
                 continue;

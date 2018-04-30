@@ -107,7 +107,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             // Note: as above, passing an empty list of activeAllelesToGenotype is the correct behavior even when givenAlleles is
             // non-empty, for the same reason.  If you don't believe this, check {@code testGivenAllelesMode} in {@link Mutect2IntegrationTest}.
             final List<VariantContext> eventsAtThisLoc = getVCsAtThisLocation(haplotypes, loc, Collections.emptyList());
-            final VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLoc, new SimpleInterval(activeRegionWindow.getContig(), loc, loc));
+            final VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLoc);
             if( mergedVC == null ) {
                 continue;
             }

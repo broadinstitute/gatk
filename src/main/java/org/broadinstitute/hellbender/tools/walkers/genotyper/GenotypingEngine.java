@@ -269,7 +269,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         // Add 0.0 removes -0.0 occurrences.
         final double phredScaledConfidence = (-10.0 * log10Confidence) + 0.0;
 
-        // return a null call if we don't pass the confidence cutoff or the most likely allele frequency is zero,
+        // return a null call if we don't pass the confidence cutoff or the most likely allele frequency is zero
         // skip this if we are already looking at a vc with NON_REF as the first alt allele i.e. if we are in GenotypeGVCFs
         if ( !passesEmitThreshold(phredScaledConfidence, outputAlternativeAlleles.siteIsMonomorphic)
                 && !forceSiteEmission()

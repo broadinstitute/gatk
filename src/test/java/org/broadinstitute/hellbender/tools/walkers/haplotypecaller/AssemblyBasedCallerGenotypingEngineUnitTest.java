@@ -139,6 +139,16 @@ public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
 
         final VariantContext spandDelVc = new VariantContextBuilder("a", "20", 1000, 1000, Arrays.asList(refAllele, Allele.SPAN_DEL)).make();
 
+        final Haplotype deletionHaplotype2 = new Haplotype("ACTGGTCAGGTCAAGGTCA".getBytes());
+        final List<Allele> deletionAlleles2 = Arrays.asList(Allele.create("ACTGGTCAACTCT", true), Allele.create("A"));
+        final VariantContextBuilder deletionVCBuilder2 = new VariantContextBuilder("b", "20", 995, 1007, deletionAlleles2);
+        final VariantContext deletionVc2 = deletionVCBuilder2.make();
+        deletionHaplotype2.setEventMap(new EventMap(Arrays.asList(deletionVc2)));
+
+        final VariantContext spandDelVc2 = new VariantContextBuilder("b", "20", 1000, 1000, Arrays.asList(refAllele, Allele.SPAN_DEL)).make();
+
+        final List<VariantContext> emptyGivenAllelesList = new ArrayList<>();
+
         final VariantContext mergedSnpAndDelVC = new VariantContextBuilder("a", "20", 1000, 1000,
                 Arrays.asList(refAllele,
                         Allele.SPAN_DEL,
@@ -152,6 +162,7 @@ public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
                 snpVc,
                 snpVc.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype),
+                emptyGivenAllelesList,
                 Maps.asMap(new HashSet<>(snpAlleles),
                 (key) -> {
                     if (snpAlleles.get(1).equals(key)) return Arrays.asList(snpHaplotype);
@@ -163,6 +174,7 @@ public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
                 mergedSnpAndDelVC,
                 mergedSnpAndDelVC.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype, deletionHaplotype),
+                emptyGivenAllelesList,
                 Maps.asMap(new HashSet<>(mergedSnpAndDelVC.getAlleles()),
                         (key) -> {
                             if (snpAlleles.get(1).equals(key)) return Arrays.asList(snpHaplotype);
@@ -176,9 +188,40 @@ public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
                 snpVc,
                 snpVc.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype, snpHaplotypeNotPresentInEventsAtThisLoc),
+                Arrays.asList(snpVc),
                 Maps.asMap(new HashSet<>(snpVc.getAlleles()),
                         (key) -> {
                             if (snpAlleles.get(1).equals(key)) return Arrays.asList(snpHaplotype);
+                            return Arrays.asList(refHaplotype);
+                        })
+        });
+
+        // two spanning deletions, no given alleles -> both dels should be in event map for span del
+        tests.add(new Object[]{
+                Arrays.asList(spandDelVc, spandDelVc2, snpVc),
+                mergedSnpAndDelVC,
+                snpVc.getStart(),
+                Arrays.asList(snpHaplotype, refHaplotype, deletionHaplotype, deletionHaplotype2),
+                emptyGivenAllelesList,
+                Maps.asMap(new HashSet<>(mergedSnpAndDelVC.getAlleles()),
+                        (key) -> {
+                            if (snpAlleles.get(1).equals(key)) return Arrays.asList(snpHaplotype);
+                            if (Allele.SPAN_DEL.equals(key)) return Arrays.asList(deletionHaplotype, deletionHaplotype2);
+                            return Arrays.asList(refHaplotype);
+                        })
+        });
+
+        // two spanning deletions, one in given alleles -> only the matching deletion should be in the event map for the span del
+        tests.add(new Object[]{
+                Arrays.asList(spandDelVc, spandDelVc2, snpVc),
+                mergedSnpAndDelVC,
+                snpVc.getStart(),
+                Arrays.asList(snpHaplotype, refHaplotype, deletionHaplotype, deletionHaplotype2),
+                Arrays.asList(snpVc, deletionVc2),
+                Maps.asMap(new HashSet<>(mergedSnpAndDelVC.getAlleles()),
+                        (key) -> {
+                            if (snpAlleles.get(1).equals(key)) return Arrays.asList(snpHaplotype);
+                            if (Allele.SPAN_DEL.equals(key)) return Arrays.asList(deletionHaplotype2);
                             return Arrays.asList(refHaplotype);
                         })
         });
@@ -192,8 +235,9 @@ public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
                                    final VariantContext mergedVc,
                                    final int loc,
                                    final List<Haplotype> haplotypes,
+                                   final List<VariantContext> activeAllelesToGenotype,
                                    final Map<Allele, List<Haplotype>> expectedEventMap) {
-        final Map<Allele, List<Haplotype>> actualEventMap = AssemblyBasedCallerGenotypingEngine.createAlleleMapper(eventsAtThisLoc, mergedVc, loc, haplotypes, new ArrayList<>());
+        final Map<Allele, List<Haplotype>> actualEventMap = AssemblyBasedCallerGenotypingEngine.createAlleleMapper(eventsAtThisLoc, mergedVc, loc, haplotypes, activeAllelesToGenotype);
         Assert.assertEquals(actualEventMap.size(), expectedEventMap.size());
         for (final Allele key : actualEventMap.keySet()) {
             Assert.assertTrue(expectedEventMap.containsKey(key), "Got unexpected allele " + key + " with values " + actualEventMap.get(key));

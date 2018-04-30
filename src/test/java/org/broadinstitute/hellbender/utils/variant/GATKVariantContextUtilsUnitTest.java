@@ -254,15 +254,9 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     private class SimpleMergeRSIDTest extends TestDataProvider {
         List<String> inputs;
         String expected;
-        Locatable loc;
 
         private SimpleMergeRSIDTest(String... arg) {
-            this(baseLoc, arg);
-        }
-
-        private SimpleMergeRSIDTest(final Locatable loc, String... arg) {
             super(SimpleMergeRSIDTest.class);
-            this.loc = loc;
             LinkedList<String> allStrings = new LinkedList<>(Arrays.asList(arg));
             expected = allStrings.pollLast();
             inputs = allStrings;
@@ -323,17 +317,13 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
             this(name, input1, input2, expected, GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED, setExpected);
         }
 
-        private MergeFilteredTest(String name, VariantContext input1, VariantContext input2, VariantContext expected, GATKVariantContextUtils.FilteredRecordMergeType type, String setExpected, Locatable loc) {
+        private MergeFilteredTest(String name, VariantContext input1, VariantContext input2, VariantContext expected, GATKVariantContextUtils.FilteredRecordMergeType type, String setExpected) {
             super(MergeFilteredTest.class, name);
             LinkedList<VariantContext> all = new LinkedList<>(Arrays.asList(input1, input2));
             this.expected = expected;
             this.type = type;
             inputs = all;
             this.setExpected = setExpected;
-        }
-
-        private MergeFilteredTest(String name, VariantContext input1, VariantContext input2, VariantContext expected, GATKVariantContextUtils.FilteredRecordMergeType type, String setExpected) {
-            this(name, input1, input2, expected, type, setExpected, baseLoc);
         }
 
         public String toString() {
@@ -457,19 +447,13 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         List<VariantContext> inputs;
         VariantContext expected;
         List<String> priority;
-        Locatable loc;
 
         private MergeGenotypesTest(String name, String priority, VariantContext... arg) {
-            this(baseLoc, name, priority, arg);
-        }
-
-        private MergeGenotypesTest(Locatable loc, String name, String priority, VariantContext... arg) {
             super(MergeGenotypesTest.class, name);
             LinkedList<VariantContext> all = new LinkedList<>(Arrays.asList(arg));
             this.expected = all.pollLast();
             inputs = all;
             this.priority = Arrays.asList(priority.split(","));
-            this.loc = loc;
         }
 
         public String toString() {
