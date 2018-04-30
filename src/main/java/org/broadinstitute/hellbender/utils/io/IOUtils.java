@@ -62,20 +62,25 @@ public final class IOUtils {
     }
 
     /**
-     * Creates a temp directory with the prefix and optional suffix.
+     * Creates a temp directory with the given prefix.
      *
      * The directory and any contents will be automatically deleted at shutdown.
+     *
+     * This will not work if the temp dir is not representable as a File.
      *
      * @param prefix       Prefix for the directory name.
      * @return The created temporary directory.
      */
-    public static File createTmpDir(String prefix) {
+    public static File createTempDir(String prefix) {
         try {
-            final File tmpdir = Files.createTempDirectory(prefix).toFile();
-            deleteRecursivelyOnExit(tmpdir);
-            return absolute(tmpdir);
+            final File tmpDir = Files.createTempDirectory(prefix)
+                    .normalize()
+                    .toFile();
+            deleteRecursivelyOnExit(tmpDir);
+
+            return tmpDir;
         } catch (final IOException | SecurityException e) {
-            throw new UserException.BadTmpDir(e.getMessage(), e);
+            throw new UserException.BadTempDir(e.getMessage(), e);
         }
     }
 
@@ -102,11 +107,11 @@ public final class IOUtils {
      */
     public static File writeTempFile(String content, String prefix, String suffix, File directory) {
         try {
-            File tempFile = absolute(File.createTempFile(prefix, suffix, directory));
+            File tempFile = File.createTempFile(prefix, suffix, directory).toPath().normalize().toFile();
             FileUtils.writeStringToFile(tempFile, content, StandardCharsets.UTF_8);
             return tempFile;
         } catch (IOException e) {
-            throw new UserException.BadTmpDir(e.getMessage(), e);
+            throw new UserException.BadTempDir(e.getMessage(), e);
         }
     }
 
@@ -140,53 +145,6 @@ public final class IOUtils {
     }
 
     /**
-     * Get an absolute and partially simplified path to the given file.
-     *
-     * This differs from {@link File#getAbsoluteFile()} because it removes extraneous "." in the file path,
-     *   ex:    /path/./to/./directory/. -> /path/to/directory/
-     *
-     * It differs from {@link File#getCanonicalFile()} in that it doesn't dereference symbolic links or completely
-     * simplify the file path.  For instance ".." is not simplified by this method.
-     *
-     * @param file the file.
-     * @return the absolute path to the file with redundant "./" removed.
-     */
-    public static File absolute(File file) {
-        File fileAbs = file.getAbsoluteFile();
-        LinkedList<String> names = new LinkedList<>();
-        while (fileAbs != null) {
-            String name = fileAbs.getName();
-            fileAbs = fileAbs.getParentFile();
-
-            if (".".equals(name)) {
-                /* skip */
-
-                /* TODO: What do we do for ".."?
-              } else if (name == "..") {
-
-                CentOS tcsh says use getCanonicalFile:
-                ~ $ mkdir -p test1/test2
-                ~ $ ln -s test1/test2 test3
-                ~ $ cd test3/..
-                ~/test1 $
-
-                Mac bash says keep going with getAbsoluteFile:
-                ~ $ mkdir -p test1/test2
-                ~ $ ln -s test1/test2 test3
-                ~ $ cd test3/..
-                ~ $
-
-                For now, leave it and let the shell figure it out.
-                */
-            } else {
-                names.add(0, name);
-            }
-        }
-
-        return new File(("/" + StringUtils.join(names, "/")));
-    }
-
-    /**
      * Writes an embedded resource to a temp file.
      * File is not scheduled for deletion and must be cleaned up by the caller.
      * @param resource Embedded resource.
@@ -197,7 +155,7 @@ public final class IOUtils {
         try {
             temp = File.createTempFile(FilenameUtils.getBaseName(resource.getPath()) + ".", "." + FilenameUtils.getExtension(resource.getPath()));
         } catch (IOException e) {
-            throw new UserException.BadTmpDir(e.getMessage(), e);
+            throw new UserException.BadTempDir(e.getMessage(), e);
         }
         writeResource(resource, temp);
         return temp;

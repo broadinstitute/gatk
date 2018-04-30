@@ -182,15 +182,15 @@ public class UserException extends RuntimeException {
     }
 
 
-    public static class BadTmpDir extends UserException {
+    public static class BadTempDir extends UserException {
         private static final long serialVersionUID = 0L;
 
         private static final String MESSAGE_FORMAT_STRING = "Failure working with the tmp directory %s. Try changing the tmp dir with with --" + StandardArgumentDefinitions.TMP_DIR_NAME + " on the command line.  Exact error was %s";
-        public BadTmpDir(String message) {
+        public BadTempDir(String message) {
             super(String.format(MESSAGE_FORMAT_STRING, System.getProperties().get("java.io.tmpdir"), message));
         }
 
-        public BadTmpDir(String message, Throwable cause) {
+        public BadTempDir(String message, Throwable cause) {
             super(String.format(MESSAGE_FORMAT_STRING, System.getProperties().get("java.io.tmpdir"), message), cause);
         }
     }
