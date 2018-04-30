@@ -83,8 +83,8 @@ public final class RScriptExecutor extends ScriptExecutor {
     public boolean exec() {
         List<File> tempFiles = new ArrayList<>();
         try {
-            File tempLibSourceDir  = IOUtils.tempDir("RlibSources.", "");
-            File tempLibInstallationDir = IOUtils.tempDir("Rlib.", "");
+            File tempLibSourceDir  = IOUtils.createTempDir("RlibSources.");
+            File tempLibInstallationDir = IOUtils.createTempDir("Rlib.");
             tempFiles.add(tempLibSourceDir);
             tempFiles.add(tempLibInstallationDir);
 

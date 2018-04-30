@@ -21,40 +21,13 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void testTempDir() {
-        File tempDir = IOUtils.tempDir("Q-Unit-Test", "", new File("queueTempDirToDelete"));
+        File tempDir = IOUtils.createTempDir("Q-Unit-Test");
         Assert.assertTrue(tempDir.exists());
         Assert.assertFalse(tempDir.isFile());
         Assert.assertTrue(tempDir.isDirectory());
         boolean deleted = IOUtils.tryDelete(tempDir);
         Assert.assertTrue(deleted);
         Assert.assertFalse(tempDir.exists());
-    }
-
-    @Test
-    public void testAbsolute() {
-        File dir = IOUtils.absolute(new File("/path/./to/./directory/."));
-        Assert.assertEquals(dir, new File("/path/to/directory"));
-
-        dir = IOUtils.absolute(new File("/"));
-        Assert.assertEquals(dir, new File("/"));
-
-        dir = IOUtils.absolute(new File("/."));
-        Assert.assertEquals(dir, new File("/"));
-
-        dir = IOUtils.absolute(new File("/././."));
-        Assert.assertEquals(dir, new File("/"));
-
-        dir = IOUtils.absolute(new File("/./directory/."));
-        Assert.assertEquals(dir, new File("/directory"));
-
-        dir = IOUtils.absolute(new File("/./directory/./"));
-        Assert.assertEquals(dir, new File("/directory"));
-
-        dir = IOUtils.absolute(new File("/./directory./"));
-        Assert.assertEquals(dir, new File("/directory."));
-
-        dir = IOUtils.absolute(new File("/./.directory/"));
-        Assert.assertEquals(dir, new File("/.directory"));
     }
 
     @Test

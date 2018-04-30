@@ -415,7 +415,7 @@ public final class ProcessControllerUnitTest extends GATKBaseTest {
             FileUtils.writeStringToFile(file, contents, StandardCharsets.UTF_8);
             return file;
         } catch (IOException e) {
-            throw new UserException.BadTmpDir(e.getMessage());
+            throw new UserException.BadTempDir(e.getMessage(), e);
         }
     }
 

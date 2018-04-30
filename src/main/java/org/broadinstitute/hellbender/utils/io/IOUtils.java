@@ -62,38 +62,25 @@ public final class IOUtils {
     }
 
     /**
-     * Creates a temp directory with the prefix and optional suffix.
+     * Creates a temp directory with the given prefix.
+     *
+     * The directory and any contents will be automatically deleted at shutdown.
+     *
+     * This will not work if the temp dir is not representable as a File.
      *
      * @param prefix       Prefix for the directory name.
-     * @param suffix       Optional suffix for the directory name.
      * @return The created temporary directory.
      */
-    public static File tempDir(String prefix, String suffix) {
-        return tempDir(prefix, suffix, null);
-    }
-
-    /**
-     * Creates a temp directory with the prefix and optional suffix.
-     *
-     * @param prefix        Prefix for the directory name.
-     * @param suffix        Optional suffix for the directory name.
-     * @param tempDirParent Parent directory for the temp directory.
-     * @return The created temporary directory.
-     */
-    public static File tempDir(String prefix, String suffix, File tempDirParent) {
+    public static File createTempDir(String prefix) {
         try {
-            if (tempDirParent == null)
-                tempDirParent = FileUtils.getTempDirectory();
-            if (!tempDirParent.exists() && !tempDirParent.mkdirs())
-                throw new UserException.BadTmpDir("Could not create temp directory: " + tempDirParent);
-            File temp = File.createTempFile(prefix, suffix, tempDirParent);
-            if (!temp.delete())
-                throw new UserException.BadTmpDir("Could not delete sub file: " + temp.getAbsolutePath());
-            if (!temp.mkdir())
-                throw new UserException.BadTmpDir("Could not create sub directory: " + temp.getAbsolutePath());
-            return absolute(temp);
-        } catch (IOException e) {
-            throw new UserException.BadTmpDir(e.getMessage());
+            final File tmpDir = Files.createTempDirectory(prefix)
+                    .normalize()
+                    .toFile();
+            deleteRecursivelyOnExit(tmpDir);
+
+            return tmpDir;
+        } catch (final IOException | SecurityException e) {
+            throw new UserException.BadTempDir(e.getMessage(), e);
         }
     }
 
@@ -120,11 +107,11 @@ public final class IOUtils {
      */
     public static File writeTempFile(String content, String prefix, String suffix, File directory) {
         try {
-            File tempFile = absolute(File.createTempFile(prefix, suffix, directory));
+            File tempFile = File.createTempFile(prefix, suffix, directory).toPath().normalize().toFile();
             FileUtils.writeStringToFile(tempFile, content, StandardCharsets.UTF_8);
             return tempFile;
         } catch (IOException e) {
-            throw new UserException.BadTmpDir(e.getMessage());
+            throw new UserException.BadTempDir(e.getMessage(), e);
         }
     }
 
@@ -158,52 +145,6 @@ public final class IOUtils {
     }
 
     /**
-     * A mix of getCanonicalFile and getAbsoluteFile that returns the
-     * absolute path to the file without deferencing symbolic links.
-     *
-     * @param file the file.
-     * @return the absolute path to the file.
-     */
-    public static File absolute(File file) {
-        return new File(absolutePath(file));
-    }
-
-    private static String absolutePath(File file) {
-        File fileAbs = file.getAbsoluteFile();
-        LinkedList<String> names = new LinkedList<>();
-        while (fileAbs != null) {
-            String name = fileAbs.getName();
-            fileAbs = fileAbs.getParentFile();
-
-            if (".".equals(name)) {
-                /* skip */
-
-                /* TODO: What do we do for ".."?
-              } else if (name == "..") {
-
-                CentOS tcsh says use getCanonicalFile:
-                ~ $ mkdir -p test1/test2
-                ~ $ ln -s test1/test2 test3
-                ~ $ cd test3/..
-                ~/test1 $
-
-                Mac bash says keep going with getAbsoluteFile:
-                ~ $ mkdir -p test1/test2
-                ~ $ ln -s test1/test2 test3
-                ~ $ cd test3/..
-                ~ $
-
-                For now, leave it and let the shell figure it out.
-                */
-            } else {
-                names.add(0, name);
-            }
-        }
-
-        return ("/" + StringUtils.join(names, "/"));
-    }
-
-    /**
      * Writes an embedded resource to a temp file.
      * File is not scheduled for deletion and must be cleaned up by the caller.
      * @param resource Embedded resource.
@@ -214,7 +155,7 @@ public final class IOUtils {
         try {
             temp = File.createTempFile(FilenameUtils.getBaseName(resource.getPath()) + ".", "." + FilenameUtils.getExtension(resource.getPath()));
         } catch (IOException e) {
-            throw new UserException.BadTmpDir(e.getMessage());
+            throw new UserException.BadTempDir(e.getMessage(), e);
         }
         writeResource(resource, temp);
         return temp;

@@ -432,7 +432,7 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
             logger.info("Generating segments VCF file...");
 
             /* perform segmentation */
-            final File pythonScriptOutputPath = IOUtils.tempDir("gcnv-segmented-calls", "");
+            final File pythonScriptOutputPath = IOUtils.createTempDir("gcnv-segmented-calls");
             final boolean pythonScriptSucceeded = executeSegmentGermlineCNVCallsPythonScript(
                     sampleIndex, contigPloidyCallsPath, sortedCallsShardPaths, sortedModelShardPaths,
                     pythonScriptOutputPath);
