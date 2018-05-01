@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.mcmc.MultivariateMetropolisSampler;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.solver.SimulatedAnnealingSolver;
 import scala.Tuple2;
 
@@ -48,12 +49,13 @@ public final class ReadDepthModel implements Serializable {
     private final Logger logger = LogManager.getLogger(this.getClass());
     private long seed;
 
-    public ReadDepthModel(final SVIntervalTree<LargeSimpleSV> callableEventsTree, final SVIntervalTree<EvidenceTargetLink> links, final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector, final SVIntervalTree<Object> mappableIntervalTree, final SAMSequenceDictionary dictionary) {
+    public ReadDepthModel(final SVIntervalTree<GATKRead> reads, final SVIntervalTree<LargeSimpleSV> callableEventsTree, final SVIntervalTree<EvidenceTargetLink> links, final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector, final SVIntervalTree<Object> mappableIntervalTree, final SAMSequenceDictionary dictionary) {
         this.parameters = new ReadDepthModelParameters();
         setSamplerSeed(0);
         this.clusteredEvents = clusterEvents(callableEventsTree, copyRatioSegmentOverlapDetector, dictionary);
         setLinkDensity(links, dictionary);
         setMappabilityIndex(mappableIntervalTree);
+        setSNPRate(reads);
     }
 
     private static double unscaledNormal(final double x, final double mu, final double sigma) {
@@ -72,6 +74,15 @@ public final class ReadDepthModel implements Serializable {
 
     public void setSamplerSeed(final long seed) {
         this.seed = seed;
+    }
+
+    public void setSNPRate(final SVIntervalTree<GATKRead> reads) {
+        final Collection<ReadDepthEvent> events = getEvents();
+        for (final ReadDepthEvent event : events) {
+            final SVInterval eventInterval = event.getEvent().getInterval();
+            final int snpCount = Utils.stream(reads.overlappers(eventInterval)).mapToInt(entry -> entry.getValue().hasAttribute("NM") ? entry.getValue().getAttributeAsInteger("NM") : 0).sum();
+            event.snpRate = snpCount / (double) eventInterval.getLength(); // Utils.stream(reads.overlappers(eventInterval)).count();
+        }
     }
 
     public void setMappabilityIndex(final SVIntervalTree<Object> mappableTree) {
@@ -186,18 +197,18 @@ public final class ReadDepthModel implements Serializable {
             energy = trainParameters(clustersRDD, numEvents, parameters, truthSetTreeBroadcast, + i * 738232L, logger);
             logger.info("Training outer iteration " + i + ": f = " + energy);
         }
-        final List<ReadDepthEvent> events = clusters.stream().map(ReadDepthCluster::getEventsList).flatMap(List::stream).collect(Collectors.toList());
-        for (final ReadDepthCluster cluster : clusters) {
-            final double[] eventStates = cluster.getStates();
-            for (final ReadDepthEvent event : cluster.getEventsList()) {
-                event.copyNumberCallOverlapLikelihood = computeCallOverlapLikelihood(eventStates, event, parameters);
-                event.distanceLikelihood = computeCallDistanceLikelihood(eventStates, event, parameters);
-                event.copyNumberLikelihood = computeCopyNumberLikelihood(eventStates, event, parameters);
-                event.readPairEvidenceLikelihood = computeReadPairEvidenceLikelihood(eventStates, event, parameters);
-                event.splitReadEvidenceLikelihood = computeSplitReadEvidenceLikelihood(eventStates, event, parameters);
-            }
+
+        final Tuple2<Double,List<ReadDepthEvent>> result = solve(ctx);
+        final List<ReadDepthEvent> events = result._2;
+        final double[] eventStates = events.stream().mapToDouble(ReadDepthEvent::getState).toArray();
+        for (final ReadDepthEvent event : events) {
+            event.copyNumberCallOverlapLikelihood = computeCallOverlapLikelihood(eventStates, event, parameters);
+            event.distanceLikelihood = computeCallDistanceLikelihood(eventStates, event, parameters);
+            event.copyNumberLikelihood = computeCopyNumberLikelihood(eventStates, event, parameters);
+            event.readPairEvidenceLikelihood = computeReadPairEvidenceLikelihood(eventStates, event, parameters);
+            event.splitReadEvidenceLikelihood = computeSplitReadEvidenceLikelihood(eventStates, event, parameters);
         }
-        setEventTruePositiveFlags(clusters, truthSetTree);
+        setEventTruePositiveFlags(events, truthSetTree);
         return new Tuple2<>(energy,events);
     }
 
@@ -212,7 +223,7 @@ public final class ReadDepthModel implements Serializable {
 
         final Supplier<double[]> sampler = () -> parameterStepSampler(standardNormal);
         final SimulatedAnnealingSolver parameterSolver = new SimulatedAnnealingSolver(size, energyFunction, sampler, lowerBound, upperBound);
-        final double finalEnergy = parameterSolver.solve(x0, 2000, 10);
+        final double finalEnergy = parameterSolver.solve(x0, 500, 10);
 
         //final GradientDescentSolver parameterSolver = new GradientDescentSolver(energyFunction, size, 0.1, 0.001);
         //final double finalEnergy = parameterSolver.solve(x0, 2000, 0.1, 1);
@@ -236,8 +247,8 @@ public final class ReadDepthModel implements Serializable {
         return clusters.map(cluster -> sampleStates(cluster, 1000, parametersX, seed + seedX)).mapToDouble(cluster -> computeTrainingError(cluster, truthSetTree.getValue())).sum() / numEvents;
     }
 
-    public static void setEventTruePositiveFlags(final List<ReadDepthCluster> eventClusters, final SVIntervalTree<VariantContext> truthSetTree) {
-        final List<ReadDepthEvent> calledEvents = eventClusters.stream().flatMap(cluster -> cluster.getEventsList().stream()).filter(event -> event.getState() > 0).collect(Collectors.toList());
+    public static void setEventTruePositiveFlags(final List<ReadDepthEvent> events, final SVIntervalTree<VariantContext> truthSetTree) {
+        final List<ReadDepthEvent> calledEvents = events.stream().filter(event -> event.getState() > 0).collect(Collectors.toList());
         for (final ReadDepthEvent event : calledEvents) {
             event.isTruePositive = SVIntervalUtils.getIntervalsWithReciprocalOverlapInTree(event.getEvent().getInterval(), truthSetTree, 0.5).stream()
                     .anyMatch(entry -> (entry.getValue().getStructuralVariantType() == StructuralVariantType.DEL && event.getEvent().getType() == SimpleSVType.TYPES.DEL)
@@ -438,7 +449,8 @@ public final class ReadDepthModel implements Serializable {
                 + computeSplitReadEvidenceLikelihood(x, event, parameters)
                 + computeCallDistanceLikelihood(x, event, parameters)
                 //+ computeLinkDensityLikelihood(x, event, parameters)
-                + computeCallOverlapLikelihood(x, event, parameters)).sum();
+                + computeCallOverlapLikelihood(x, event, parameters)
+                + computeSnpRateLikelihood(x, event, parameters)).sum();
     }
 
     private static double computeLogPrior(final double[] x, final ReadDepthCluster cluster, final ReadDepthModelParameters parameters) {
@@ -457,6 +469,13 @@ public final class ReadDepthModel implements Serializable {
         final double mean = x[id] == 0 ? parameters.getParameter(ReadDepthModelParameters.ParameterEnum.CALL_OVERLAP_MEAN_0) : parameters.getParameter(ReadDepthModelParameters.ParameterEnum.CALL_OVERLAP_MEAN_1);
         final double std = x[id] == 0 ? parameters.getParameter(ReadDepthModelParameters.ParameterEnum.CALL_OVERLAP_STD_0) : parameters.getParameter(ReadDepthModelParameters.ParameterEnum.CALL_OVERLAP_STD_1);
         return unscaledLogNormal(event.copyNumberCallOverlap, mean, std);
+    }
+
+    private static double computeSnpRateLikelihood(final double[] x, final ReadDepthEvent event, final ReadDepthModelParameters parameters) {
+        final int id = event.getId();
+        final double mean = x[id] == 0 ? parameters.getParameter(ReadDepthModelParameters.ParameterEnum.SNP_RATE_MEAN_0) : parameters.getParameter(ReadDepthModelParameters.ParameterEnum.SNP_RATE_MEAN_1);
+        final double std = x[id] == 0 ? parameters.getParameter(ReadDepthModelParameters.ParameterEnum.SNP_RATE_STD_0) : parameters.getParameter(ReadDepthModelParameters.ParameterEnum.SNP_RATE_STD_1);
+        return unscaledLogNormal(event.snpRate, mean, std);
     }
 
     private static double computeCallDistanceLikelihood(final double[] x, final ReadDepthEvent event, final ReadDepthModelParameters parameters) {
@@ -531,22 +550,30 @@ public final class ReadDepthModel implements Serializable {
             CALL_OVERLAP_STD_0,
             CALL_OVERLAP_MEAN_1,
             CALL_OVERLAP_STD_1,
+            SNP_RATE_MEAN_0,
+            SNP_RATE_STD_0,
+            SNP_RATE_MEAN_1,
+            SNP_RATE_STD_1,
         }
 
-        public static final double DEFAULT_EXPECTED_READ_PAIR_EVIDENCE_FRACTION = 1.3;
-        public static final double DEFAULT_EXPECTED_READ_PAIR_EVIDENCE_STD = 1;
-        public static final double DEFAULT_EXPECTED_SPLIT_READ_EVIDENCE_FRACTION = 1.5;
-        public static final double DEFAULT_EXPECTED_SPLIT_READ_EVIDENCE_STD = 2.6;
-        public static final double DEFAULT_COPY_NUMBER_STD_0 = 2.55;
-        public static final double DEFAULT_COPY_NUMBER_STD_1 = 2.34;
-        public static final double DEFAULT_CALL_START_DISTANCE_MEAN_0 = 7.8;
-        public static final double DEFAULT_CALL_START_DISTANCE_STD_0 = 2.2;
+        public static final double DEFAULT_EXPECTED_READ_PAIR_EVIDENCE_FRACTION = 1.7;
+        public static final double DEFAULT_EXPECTED_READ_PAIR_EVIDENCE_STD = 0.9;
+        public static final double DEFAULT_EXPECTED_SPLIT_READ_EVIDENCE_FRACTION = 1.4;
+        public static final double DEFAULT_EXPECTED_SPLIT_READ_EVIDENCE_STD = 2.8;
+        public static final double DEFAULT_COPY_NUMBER_STD_0 = 2.6;
+        public static final double DEFAULT_COPY_NUMBER_STD_1 = 2.3;
+        public static final double DEFAULT_CALL_START_DISTANCE_MEAN_0 = 7.3;
+        public static final double DEFAULT_CALL_START_DISTANCE_STD_0 = 1.8;
         public static final double DEFAULT_CALL_START_DISTANCE_MEAN_1 = 6.7;
-        public static final double DEFAULT_CALL_START_DISTANCE_STD_1 = 2.1;
-        public static final double DEFAULT_CALL_OVERLAP_MEAN_0 = 0.5;
-        public static final double DEFAULT_CALL_OVERLAP_STD_0 = 1.0;
-        public static final double DEFAULT_CALL_OVERLAP_MEAN_1 = 0.76;
+        public static final double DEFAULT_CALL_START_DISTANCE_STD_1 = 2.4;
+        public static final double DEFAULT_CALL_OVERLAP_MEAN_0 = 0.6;
+        public static final double DEFAULT_CALL_OVERLAP_STD_0 = 1.2;
+        public static final double DEFAULT_CALL_OVERLAP_MEAN_1 = 7;
         public static final double DEFAULT_CALL_OVERLAP_STD_1 = 2.2;
+        public static final double DEFAULT_SNP_RATE_MEAN_0 = 5.0;
+        public static final double DEFAULT_SNP_RATE_STD_0 = 2.0;
+        public static final double DEFAULT_SNP_RATE_MEAN_1 = 1.4;
+        public static final double DEFAULT_SNP_RATE_STD_1 = 2.5;
 
         private double[] parameters;
 
@@ -566,6 +593,10 @@ public final class ReadDepthModel implements Serializable {
             setParameter(ParameterEnum.CALL_OVERLAP_STD_0, DEFAULT_CALL_OVERLAP_STD_0);
             setParameter(ParameterEnum.CALL_OVERLAP_MEAN_1, DEFAULT_CALL_OVERLAP_MEAN_1);
             setParameter(ParameterEnum.CALL_OVERLAP_STD_1, DEFAULT_CALL_OVERLAP_STD_1);
+            setParameter(ParameterEnum.SNP_RATE_MEAN_0, DEFAULT_SNP_RATE_MEAN_0);
+            setParameter(ParameterEnum.SNP_RATE_STD_0, DEFAULT_SNP_RATE_STD_0);
+            setParameter(ParameterEnum.SNP_RATE_MEAN_1, DEFAULT_SNP_RATE_MEAN_1);
+            setParameter(ParameterEnum.SNP_RATE_STD_1, DEFAULT_SNP_RATE_STD_1);
         }
 
         public double[] getParameters() {
@@ -588,9 +619,9 @@ public final class ReadDepthModel implements Serializable {
 
         public static double[] getDefaultUpperBounds() {
             final double[] params = new double[ParameterEnum.values().length];
-            params[ParameterEnum.EXPECTED_READ_PAIR_EVIDENCE_FRACTION.ordinal()] = 2;
+            params[ParameterEnum.EXPECTED_READ_PAIR_EVIDENCE_FRACTION.ordinal()] = 10;
             params[ParameterEnum.EXPECTED_READ_PAIR_EVIDENCE_STD.ordinal()] = 100;
-            params[ParameterEnum.EXPECTED_SPLIT_READ_EVIDENCE_FRACTION.ordinal()] = 2;
+            params[ParameterEnum.EXPECTED_SPLIT_READ_EVIDENCE_FRACTION.ordinal()] = 10;
             params[ParameterEnum.EXPECTED_SPLIT_READ_EVIDENCE_STD.ordinal()] = 100;
             params[ParameterEnum.COPY_NUMBER_STD_0.ordinal()] = 100;
             params[ParameterEnum.COPY_NUMBER_STD_1.ordinal()] = 100;
@@ -598,10 +629,14 @@ public final class ReadDepthModel implements Serializable {
             params[ParameterEnum.CALL_START_DISTANCE_STD_0.ordinal()] = 100;
             params[ParameterEnum.CALL_START_DISTANCE_MEAN_1.ordinal()] = 100;
             params[ParameterEnum.CALL_START_DISTANCE_STD_1.ordinal()] = 100;
-            params[ParameterEnum.CALL_OVERLAP_MEAN_0.ordinal()] = 1;
+            params[ParameterEnum.CALL_OVERLAP_MEAN_0.ordinal()] = 100;
             params[ParameterEnum.CALL_OVERLAP_STD_0.ordinal()] = 100;
-            params[ParameterEnum.CALL_OVERLAP_MEAN_1.ordinal()] = 1;
+            params[ParameterEnum.CALL_OVERLAP_MEAN_1.ordinal()] = 100;
             params[ParameterEnum.CALL_OVERLAP_STD_1.ordinal()] = 100;
+            params[ParameterEnum.SNP_RATE_MEAN_0.ordinal()] = 100;
+            params[ParameterEnum.SNP_RATE_STD_0.ordinal()] = 100;
+            params[ParameterEnum.SNP_RATE_MEAN_1.ordinal()] = 100;
+            params[ParameterEnum.SNP_RATE_STD_1.ordinal()] = 100;
             return params;
         }
 
@@ -621,6 +656,10 @@ public final class ReadDepthModel implements Serializable {
             params[ParameterEnum.CALL_OVERLAP_STD_0.ordinal()] = 1e-3;
             params[ParameterEnum.CALL_OVERLAP_MEAN_1.ordinal()] = 0;
             params[ParameterEnum.CALL_OVERLAP_STD_1.ordinal()] = 1e-3;
+            params[ParameterEnum.SNP_RATE_MEAN_0.ordinal()] = 0;
+            params[ParameterEnum.SNP_RATE_STD_0.ordinal()] = 1e-3;
+            params[ParameterEnum.SNP_RATE_MEAN_1.ordinal()] = 0;
+            params[ParameterEnum.SNP_RATE_STD_1.ordinal()] = 1e-3;
             return params;
         }
 

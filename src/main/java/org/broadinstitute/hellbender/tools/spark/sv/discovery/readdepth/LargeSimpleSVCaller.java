@@ -514,7 +514,7 @@ public class LargeSimpleSVCaller {
         logger.info("Retrieved " + intervalsAndReads.stream().mapToInt(pair -> pair._2.getLength()).sum() + " reads");
 
         logger.info("Running read depth model on " + filteredCalls.size() + " events");
-        final ReadDepthModel readDepthModel = new ReadDepthModel(filteredCalls, intrachromosomalLinkTree, copyRatioSegmentOverlapDetector, mappableIntervalTree, dictionary); //TODO add interchromosomal links
+        final ReadDepthModel readDepthModel = new ReadDepthModel(readsTree, filteredCalls, intrachromosomalLinkTree, copyRatioSegmentOverlapDetector, mappableIntervalTree, dictionary); //TODO add interchromosomal links
         final Tuple2<Double,List<ReadDepthEvent>> result;
         if (truthSetTree == null) {
             result = readDepthModel.solve(ctx);
