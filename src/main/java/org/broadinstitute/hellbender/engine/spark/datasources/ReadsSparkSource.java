@@ -117,7 +117,7 @@ public final class ReadsSparkSource implements Serializable {
             }
             return null;
         }).filter(v1 -> v1 != null);
-        return putPairsInSamePartition(header, reads);
+        return putPairsInSamePartition(header, reads, ctx);
     }
 
     /**
@@ -164,7 +164,7 @@ public final class ReadsSparkSource implements Serializable {
                 .values();
         JavaRDD<GATKRead> readsRdd = recordsRdd.map(record -> new BDGAlignmentRecordToGATKReadAdapter(record, bHeader.getValue()));
         JavaRDD<GATKRead> filteredRdd = readsRdd.filter(record -> samRecordOverlaps(record.convertToSAMRecord(header), traversalParameters));
-        return putPairsInSamePartition(header, filteredRdd);
+        return putPairsInSamePartition(header, filteredRdd, ctx);
     }
 
     /**
@@ -209,7 +209,7 @@ public final class ReadsSparkSource implements Serializable {
      * Ensure reads in a pair fall in the same partition (input split), if the reads are queryname-sorted,
      * or querygroup sorted, so they are processed together. No shuffle is needed.
      */
-    JavaRDD<GATKRead> putPairsInSamePartition(final SAMFileHeader header, final JavaRDD<GATKRead> reads) {
+    public static JavaRDD<GATKRead> putPairsInSamePartition(final SAMFileHeader header, final JavaRDD<GATKRead> reads, final JavaSparkContext ctx) {
         if (!ReadUtils.isReadNameGroupedBam(header)) {
             return reads;
         }

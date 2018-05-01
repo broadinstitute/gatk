@@ -60,6 +60,11 @@ public class MarkDuplicatesSparkUtils {
             this.value = value;
             this.index = index;
         }
+
+        @Override
+        public String toString() {
+            return "indexpair["+index+","+value.toString()+"]";
+        }
     }
 
     /**
@@ -167,9 +172,7 @@ public class MarkDuplicatesSparkUtils {
             keyedReads = spanReadsByKey(indexedReads);
         } else {
             // sort by group and name (incurs a shuffle)
-            JavaPairRDD<String, IndexPair<GATKRead>> keyReadPairs = indexedReads.mapToPair(read -> new Tuple2<>(ReadsKey.keyForRead(
-                    read.getValue()), read));
-            keyedReads = keyReadPairs.groupByKey(numReducers);
+            throw new GATKException("MarkDuplicatesSparkUtils.mark() requires input reads to be queryname sorted, yet the header indicated otherwise");
         }
         return keyedReads;
     }
