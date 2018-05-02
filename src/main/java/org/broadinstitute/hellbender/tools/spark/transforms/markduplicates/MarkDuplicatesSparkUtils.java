@@ -7,7 +7,6 @@ import com.google.common.collect.*;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.metrics.MetricsFile;
-import org.apache.parquet.Ints;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -326,9 +325,9 @@ public class MarkDuplicatesSparkUtils {
     // Note, this uses bitshift operators in order to perform only a single groupBy operation for all the merged data
     private static long getGroupKey(MarkDuplicatesSparkRecord record) {
         return record.getClass()==Passthrough.class?-1:
-                (((long)((PairedEnds)record).getUnclippedStartPosition()) << 32 |
-                        ((PairedEnds)record).getFirstRefIndex() << 16 );
-        //| ((PairedEnds)pe).getLibraryIndex())).values();
+                ((((long)((PairedEnds)record).getUnclippedStartPosition()) << 32) |
+                        (((PairedEnds)record).getFirstRefIndex() << 16) |
+                        ((PairedEnds)record).getPCROrientation() );
     }
 
     /**

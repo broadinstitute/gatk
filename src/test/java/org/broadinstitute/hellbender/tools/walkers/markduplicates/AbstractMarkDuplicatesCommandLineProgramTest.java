@@ -177,7 +177,6 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         tester.setExpectedOpticalDuplicate(0);
         tester.addMatePair("RUNID:7:1203:2886:82292",  19, 19, 485253, 485253, false, false, true, true, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.2");  // duplicate
         tester.addMatePair("RUNID:7:1203:2886:82242", 19, 19, 485253, 485253, false, false, false, false, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.1");
-
         SAMFileHeader header = tester.getHeader();
         SAMReadGroupRecord readGroup1 = new SAMReadGroupRecord("H0164.2");
         SAMReadGroupRecord readGroup2 = new SAMReadGroupRecord("H0164.1");
@@ -192,7 +191,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
     public void testOpticalDuplicatesTheSameReadGroup() {
         final AbstractMarkDuplicatesTester tester = getTester();
         tester.setExpectedOpticalDuplicate(1);
-        tester.addMatePair("RUNID:7:1203:2886:82292",  19, 19, 485253, 485253, false, false, true, true, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.2");  // duplicate
+        tester.addMatePair("RUNID:7:1203:2886:82292",  19, 19, 485253, 485253, false, false, true, true, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.2");  // duplicate (tie broken by readname)
         tester.addMatePair("RUNID:7:1203:2886:82242", 19, 19, 485253, 485253, false, false, false, false, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.2");
 
         SAMFileHeader header = tester.getHeader();
@@ -202,6 +201,16 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         readGroup2.setSample("test");
         header.addReadGroup(readGroup1);
         header.addReadGroup(readGroup2);
+        tester.runTest();
+    }
+
+    @Test
+    public void testOpticalDuplicatesAndPCRDuplicatesOrientationDifference() {
+        final AbstractMarkDuplicatesTester tester = getTester();
+        tester.setExpectedOpticalDuplicate(0);
+        tester.addMatePair("RUNID:7:1203:2886:82292",  19, 19, 485253, 486253, false, false, true, true, "101M", "101M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "1");  // duplicate
+        tester.addMatePair("RUNID:7:1203:2886:16834", 19, 19, 486253, 485253, false, false, false, false, "101M", "101M", false, true, false, false, false, DEFAULT_BASE_QUALITY, "1");
+        // Even though these reads are in a duplicate group together, we don't want to mark them as Optical Duplicates because their orientation is flipped (which doesn't matter for PCR duplicates)
         tester.runTest();
     }
 
