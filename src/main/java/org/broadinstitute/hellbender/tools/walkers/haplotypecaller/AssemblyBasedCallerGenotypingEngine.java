@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.variant.variantcontext.*;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculatorProvider;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -13,6 +14,7 @@ import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -289,22 +291,25 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
                 if (spanningEvent.getStart() == loc) {
                     // the event starts at the current location
 
-                    //TODO: this only works if eventsAtThisLoc's and mergedVC's alleles are ordered identically.
-                    //TODO: this is in fact the case (see AssemblyBasedCallerUtils::makeMergedVariantContext), but
-                    //TODO: that's not good enough
-
-                    //TODO: due to the ordering mentioned above the SPAN_DEL containing variants should come first in eventsAtThisLoc
-                    int alleleIndex = 0;
-                    for (int n = 0; n < eventsAtThisLoc.size(); n++) {
-                        if (eventsAtThisLoc.get(n).getAlternateAllele(0).equals(Allele.SPAN_DEL)) {
-                            alleleIndex = 1;
-                            continue;
+                    if (spanningEvent.getReference().length() == mergedVC.getReference().length()) {
+                        // reference allele lengths are equal; we can just use the spanning event's alt allele
+                        // in the case of GGA mode the spanning event might not match an allele in the mergedVC
+                        if (result.containsKey(spanningEvent.getAlternateAllele(0))) {
+                            result.get(spanningEvent.getAlternateAllele(0)).add(h);
                         }
-                        if (spanningEvent.hasSameAllelesAs(eventsAtThisLoc.get(n))) {
-                            result.get(mergedVC.getAlternateAllele(alleleIndex)).add(h);
-                            break;
+                    } else if (spanningEvent.getReference().length() < mergedVC.getReference().length()) {
+                        // spanning event has shorter ref allele than merged VC; we need to pad out its alt allele
+                        final Map<Allele, Allele> spanningEventAlleleMappingToMergedVc
+                                = GATKVariantContextUtils.createAlleleMapping(mergedVC.getReference(), spanningEvent, new ArrayList<>());
+                        final Allele remappedSpanningEventAltAllele = spanningEventAlleleMappingToMergedVc.get(spanningEvent.getAlternateAllele(0));
+                        // in the case of GGA mode the spanning event might not match an allele in the mergedVC
+                        if (result.containsKey(remappedSpanningEventAltAllele)) {
+                            result.get(remappedSpanningEventAltAllele).add(h);
                         }
-                        alleleIndex++;
+                    } else {
+                        // the process of creating the merged VC in AssemblyBasedCallerUtils::makeMergedVariantContext should have
+                        // already padded out the reference allele
+                        throw new GATKException.ShouldNeverReachHereException("The ref allele of a spanning event is longer than the merged VariantContext ref length.");
                     }
 
                 } else {

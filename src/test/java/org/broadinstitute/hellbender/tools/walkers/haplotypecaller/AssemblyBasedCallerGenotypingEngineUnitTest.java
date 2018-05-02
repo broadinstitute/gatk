@@ -147,6 +147,21 @@ public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
 
         final VariantContext spandDelVc2 = new VariantContextBuilder("b", "20", 1000, 1000, Arrays.asList(refAllele, Allele.SPAN_DEL)).make();
 
+        final Haplotype deletionStartingAtLocHaplotype = new Haplotype("ACTGGTCAGGTCAAGGTCA".getBytes());
+        final Allele deletionStartingAtLocRefAllele = Allele.create("ACTGGTCAACTCT", true);
+        final List<Allele> deletionStartingAtLocAlleles = Arrays.asList(deletionStartingAtLocRefAllele, Allele.create("A"));
+        final VariantContextBuilder deletionStartingAtLocVCBuilder = new VariantContextBuilder("b", "20", 1000, 1012, deletionStartingAtLocAlleles);
+        final VariantContext deletionStartingAtLocVc = deletionStartingAtLocVCBuilder.make();
+        deletionStartingAtLocHaplotype.setEventMap(new EventMap(Arrays.asList(deletionStartingAtLocVc)));
+
+        final Allele remappedSNPAllele = Allele.create("GCTGGTCAACTCT");
+        final VariantContext mergedSnpAndDelStartingAtLocVC = new VariantContextBuilder("a", "20", 1000, 1012,
+                Arrays.asList(deletionStartingAtLocRefAllele,
+                        Allele.create("A"), // for the deletion,
+                        remappedSNPAllele // for the SNP
+                )).make();
+
+
         final List<VariantContext> emptyGivenAllelesList = new ArrayList<>();
 
         final VariantContext mergedSnpAndDelVC = new VariantContextBuilder("a", "20", 1000, 1000,
@@ -222,6 +237,35 @@ public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
                         (key) -> {
                             if (snpAlleles.get(1).equals(key)) return Arrays.asList(snpHaplotype);
                             if (Allele.SPAN_DEL.equals(key)) return Arrays.asList(deletionHaplotype2);
+                            return Arrays.asList(refHaplotype);
+                        })
+        });
+
+        // A deletion starting at the loc in the given alleles, the snp not in the given alleles
+        tests.add(new Object[]{
+                Arrays.asList(snpVc, deletionStartingAtLocVc),
+                deletionStartingAtLocVc,
+                snpVc.getStart(),
+                Arrays.asList(snpHaplotype, refHaplotype, deletionStartingAtLocHaplotype),
+                Arrays.asList(deletionStartingAtLocVc),
+                Maps.asMap(new HashSet<>(deletionStartingAtLocVc.getAlleles()),
+                        (key) -> {
+                            if (deletionStartingAtLocAlleles.get(1).equals(key)) return Arrays.asList(deletionStartingAtLocHaplotype);
+                            return Arrays.asList(refHaplotype);
+                        })
+        });
+
+        // A deletion starting at the loc and the SNP in the given alleles
+        tests.add(new Object[]{
+                Arrays.asList(snpVc, deletionStartingAtLocVc),
+                mergedSnpAndDelStartingAtLocVC,
+                snpVc.getStart(),
+                Arrays.asList(snpHaplotype, refHaplotype, deletionStartingAtLocHaplotype),
+                Arrays.asList(deletionStartingAtLocVc, snpVc),
+                Maps.asMap(new HashSet<>(mergedSnpAndDelStartingAtLocVC.getAlleles()),
+                        (key) -> {
+                            if (deletionStartingAtLocAlleles.get(1).equals(key)) return Arrays.asList(deletionStartingAtLocHaplotype);
+                            if (remappedSNPAllele.equals(key)) return Arrays.asList(snpHaplotype);
                             return Arrays.asList(refHaplotype);
                         })
         });
