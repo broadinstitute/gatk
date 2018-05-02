@@ -210,7 +210,9 @@ public class DiscoverVariantsFromReadDepth extends GATKSparkTool {
         logger.info("Loading copy ratio bins...");
         final CopyRatioCollection copyRatios = getCopyRatios(copyRatioFilePath);
 
-        largeSimpleSVCaller = new LargeSimpleSVCaller(reads, breakpointCalls, svCalls, truthSet, assembly, evidenceTargetLinks, copyRatios, copyRatioSegments, highCoverageIntervals, mappableIntervals, blacklist, dictionary, arguments);
+        final List<LargeSimpleSV> largeSimpleSVs = Collections.emptyList(); //TODO
+
+        largeSimpleSVCaller = new LargeSimpleSVCaller(reads, largeSimpleSVs, svCalls, truthSet, assembly, evidenceTargetLinks, copyRatios, copyRatioSegments, highCoverageIntervals, mappableIntervals, blacklist, dictionary, arguments);
 
         final Tuple2<Collection<ReadDepthEvent>,List<VariantContext>> result = largeSimpleSVCaller.callEvents(readArguments.getReadFilesNames().get(0), ctx, null);
         events = result._1;
@@ -227,7 +229,7 @@ public class DiscoverVariantsFromReadDepth extends GATKSparkTool {
         try (final OutputStream outputStream = BucketUtils.createFile(outputPath)) {
             outputStream.write(("#" + ReadDepthEvent.getBedHeader() + "\n").getBytes());
             for (final ReadDepthEvent event : events) {
-                outputStream.write((event.toBedString(dictionary, arguments.counterEvidencePseudocount) + "\n").getBytes());
+                outputStream.write((event.toBedString(dictionary) + "\n").getBytes());
             }
         } catch (final IOException e) {
             throw new GATKException("Error writing output BED file", e);

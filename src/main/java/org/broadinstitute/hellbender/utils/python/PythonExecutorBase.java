@@ -31,7 +31,7 @@ public abstract class PythonExecutorBase extends ScriptExecutor {
      */
     public enum PythonExecutableName {
 
-        PYTHON("python"),
+        PYTHON("pythonw"),
         PYTHON3("python3");
 
         private final String executableName;

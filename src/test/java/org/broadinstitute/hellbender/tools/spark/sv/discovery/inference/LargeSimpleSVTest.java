@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.inference;
 
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.readdepth.LargeSimpleSV;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.IntrachromosomalBreakpointPair;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -17,7 +18,7 @@ public class LargeSimpleSVTest {
         final IntrachromosomalBreakpointPair breakpoints = new IntrachromosomalBreakpointPair(0, 90, 205, firstContigs, secondContigs);
         final LargeSimpleSV sv = new LargeSimpleSV(SimpleSVType.TYPES.DEL, 100, 200, 0, 1, 2, 3, 4, breakpoints);
 
-        Assert.assertEquals(sv.getType(), SimpleSVType.TYPES.DEL);
+        Assert.assertEquals(sv.getEventType(), SimpleSVType.TYPES.DEL);
         Assert.assertEquals(sv.getStart(), 100);
         Assert.assertEquals(sv.getEnd(), 200);
         Assert.assertEquals(sv.getContigId(), 0);

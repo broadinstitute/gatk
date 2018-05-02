@@ -13,7 +13,6 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.LargeSimpleSV;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
@@ -49,11 +48,10 @@ public final class ReadDepthModel implements Serializable {
     private final Logger logger = LogManager.getLogger(this.getClass());
     private long seed;
 
-    public ReadDepthModel(final SVIntervalTree<GATKRead> reads, final SVIntervalTree<LargeSimpleSV> callableEventsTree, final SVIntervalTree<EvidenceTargetLink> links, final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector, final SVIntervalTree<Object> mappableIntervalTree, final SAMSequenceDictionary dictionary) {
+    public ReadDepthModel(final SVIntervalTree<GATKRead> reads, final SVIntervalTree<LargeSimpleSV> callableEventsTree, final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector, final SVIntervalTree<Object> mappableIntervalTree, final SAMSequenceDictionary dictionary) {
         this.parameters = new ReadDepthModelParameters();
         setSamplerSeed(0);
         this.clusteredEvents = clusterEvents(callableEventsTree, copyRatioSegmentOverlapDetector, dictionary);
-        setLinkDensity(links, dictionary);
         setMappabilityIndex(mappableIntervalTree);
         setSNPRate(reads);
     }
@@ -135,7 +133,7 @@ public final class ReadDepthModel implements Serializable {
                 for (final LargeSimpleSV clusterEvent : oldCluster) {
                     cluster.addAll(Utils.stream(eventsTree.overlappers(clusterEvent.getInterval()))
                             .map(SVIntervalTree.Entry::getValue)
-                            .filter(overlapper -> overlapper.getType() == event.getType()) //Cluster by event type
+                            .filter(overlapper -> overlapper.getEventType() == event.getEventType()) //Cluster by event type
                             .collect(Collectors.toList()));
                 }
             } while (cluster.size() > oldClusterSize);
@@ -148,8 +146,8 @@ public final class ReadDepthModel implements Serializable {
                 newCluster.add(new ReadDepthEvent(eventId, newClusterIter.next()));
                 eventId++;
             }
-            clusteredEvents.putIfAbsent(event.getType(), new ArrayList<>());
-            clusteredEvents.get(event.getType()).add(new ReadDepthCluster(newCluster, copyRatioSegmentOverlapDetector, dictionary));
+            clusteredEvents.putIfAbsent(event.getEventType(), new ArrayList<>());
+            clusteredEvents.get(event.getEventType()).add(new ReadDepthCluster(newCluster, copyRatioSegmentOverlapDetector, dictionary));
         }
         return clusteredEvents;
     }
@@ -251,8 +249,8 @@ public final class ReadDepthModel implements Serializable {
         final List<ReadDepthEvent> calledEvents = events.stream().filter(event -> event.getState() > 0).collect(Collectors.toList());
         for (final ReadDepthEvent event : calledEvents) {
             event.isTruePositive = SVIntervalUtils.getIntervalsWithReciprocalOverlapInTree(event.getEvent().getInterval(), truthSetTree, 0.5).stream()
-                    .anyMatch(entry -> (entry.getValue().getStructuralVariantType() == StructuralVariantType.DEL && event.getEvent().getType() == SimpleSVType.TYPES.DEL)
-                            || (entry.getValue().getStructuralVariantType() == StructuralVariantType.DUP && event.getEvent().getType() == SimpleSVType.TYPES.DUP_TAND));
+                    .anyMatch(entry -> (entry.getValue().getStructuralVariantType() == StructuralVariantType.DEL && event.getEvent().getEventType() == SimpleSVType.TYPES.DEL)
+                            || (entry.getValue().getStructuralVariantType() == StructuralVariantType.DUP && event.getEvent().getEventType() == SimpleSVType.TYPES.DUP_TANDEM));
         }
     }
 
@@ -260,8 +258,8 @@ public final class ReadDepthModel implements Serializable {
         final List<ReadDepthEvent> calledEvents = cluster.getEventsList();
         final Set<ReadDepthEvent> trueCalls = calledEvents.stream()
                 .filter(event -> SVIntervalUtils.getIntervalsWithReciprocalOverlapInTree(event.getEvent().getInterval(), truthSetTree, 0.5).stream()
-                        .anyMatch(entry -> (entry.getValue().getStructuralVariantType() == StructuralVariantType.DEL && event.getEvent().getType() == SimpleSVType.TYPES.DEL)
-                                || (entry.getValue().getStructuralVariantType() == StructuralVariantType.DUP && event.getEvent().getType() == SimpleSVType.TYPES.DUP_TAND)))
+                        .anyMatch(entry -> (entry.getValue().getStructuralVariantType() == StructuralVariantType.DEL && event.getEvent().getEventType() == SimpleSVType.TYPES.DEL)
+                                || (entry.getValue().getStructuralVariantType() == StructuralVariantType.DUP && event.getEvent().getEventType() == SimpleSVType.TYPES.DUP_TANDEM)))
                 .collect(Collectors.toSet());
         final List<ReadDepthEvent> falseCalls = calledEvents.stream().filter(event -> !trueCalls.contains(event)).collect(Collectors.toList());
         final double crossEntropy = - trueCalls.stream().mapToDouble(event -> Math.log(Math.max(1e-8, event.probability))).sum()
@@ -510,7 +508,7 @@ public final class ReadDepthModel implements Serializable {
                         .mapToDouble(id -> x[id])
                         .sum()))
                 .sum();*/
-        final double modelCopyNumber = 2 + x[event.getId()] * (event.getEvent().getType() == DEL ? -1 : 1);
+        final double modelCopyNumber = 2 + x[event.getId()] * (event.getEvent().getEventType() == DEL ? -1 : 1);
         final double sigma = modelCopyNumber == 0 ? parameters.getParameter(ReadDepthModelParameters.ParameterEnum.COPY_NUMBER_STD_0) : parameters.getParameter(ReadDepthModelParameters.ParameterEnum.COPY_NUMBER_STD_1);
         return unscaledLogNormal(dataCopyNumber, modelCopyNumber, sigma);
     }
@@ -529,7 +527,7 @@ public final class ReadDepthModel implements Serializable {
     }
 
     private static double getPloidy(final double val, final SimpleSVType.TYPES type) {
-        return type == SimpleSVType.TYPES.DUP_TAND ? Math.min(val, 1) : val;
+        return type == SimpleSVType.TYPES.DUP_TANDEM ? Math.min(val, 1) : val;
     }
 
     private final static class ReadDepthModelParameters implements Serializable {

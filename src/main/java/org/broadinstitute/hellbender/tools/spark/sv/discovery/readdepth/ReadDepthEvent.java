@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.readdepth;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.LargeSimpleSV;
 import scala.Tuple2;
 
 import java.io.Serializable;
@@ -61,8 +60,8 @@ final class ReadDepthEvent implements Serializable {
         return LargeSimpleSV.getBedHeader() + "\tID\tSTATE\tMEAN_CN\tDIST1\tDIST2\tLINK_DENSITY\tMAPPABILITY\tCALL_OVERLAP\tSNP_RATE\tCN_LIK\tDIST_LIK\tCALL_OVERLAP_LIK\tRP_LIK\tSR_LIK\tP\tIS_TP";
     }
 
-    public String toBedString(final SAMSequenceDictionary dictionary, final double counterEvidencePseudocount) {
-        return event.toBedString(dictionary, counterEvidencePseudocount) + "\t" + id + "\t" + state + "\t" + observedCopyNumber
+    public String toBedString(final SAMSequenceDictionary dictionary) {
+        return event.toBedString(dictionary) + "\t" + id + "\t" + state + "\t" + observedCopyNumber
                 + "\t" + leftDistance + "\t" + rightDistance + "\t" + linkDensity + "\t" + mappabilityIndex + "\t" + copyNumberCallOverlap + "\t" + snpRate
                 + "\t" + copyNumberLikelihood + "\t" + distanceLikelihood + "\t" + copyNumberCallOverlapLikelihood + "\t" + readPairEvidenceLikelihood + "\t" + splitReadEvidenceLikelihood + "\t" + probability + "\t" + (isTruePositive ? 1 : 0);
     }

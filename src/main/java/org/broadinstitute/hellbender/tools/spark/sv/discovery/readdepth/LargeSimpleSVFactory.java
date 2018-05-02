@@ -4,10 +4,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.spark.api.java.JavaRDD;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.LargeSimpleSV;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -15,7 +12,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -32,14 +28,14 @@ public abstract class LargeSimpleSVFactory {
     protected final SVIntervalTree<EvidenceTargetLink> interchromosomalLinkTree;
     protected final SVIntervalTree<VariantContext> structuralVariantCallTree;
     protected final SVIntervalTree<GATKRead> contigTree;
-    protected final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments;
+    protected final StructuralVariationDiscoveryArgumentCollection.StructuralVariantIntervalsForCNV arguments;
     protected final SAMSequenceDictionary dictionary;
 
     public LargeSimpleSVFactory(final SVIntervalTree<EvidenceTargetLink> intrachromosomalLinkTree,
                                 final SVIntervalTree<EvidenceTargetLink> interchromosomalLinkTree,
                                 final SVIntervalTree<VariantContext> structuralVariantCallTree,
                                 final SVIntervalTree<GATKRead> contigTree,
-                                final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments,
+                                final StructuralVariationDiscoveryArgumentCollection.StructuralVariantIntervalsForCNV arguments,
                                 final SAMSequenceDictionary dictionary) {
         Utils.nonNull(intrachromosomalLinkTree, "Intrachromosomal link tree cannot be null");
         Utils.nonNull(interchromosomalLinkTree, "Interchromosomal link tree cannot be null");
@@ -155,26 +151,6 @@ public abstract class LargeSimpleSVFactory {
     protected abstract boolean hasSupportingEvidenceOrientation(final EvidenceTargetLink link);
 
     /**
-     * Returns true if this event should be filtered based on the copy ratio bins found in the interval
-     */
-    protected abstract boolean isInvalidCoverage(final List<CopyRatio> copyRatios);
-
-    /**
-     * Gets valid copy ratio states that would support the presence of an event
-     */
-    protected abstract Set<Integer> getValidHMMCopyStates(final int numStates);
-
-    /**
-     * Determines if the event is supported by copy ratio segment calls
-     *
-     * @param interval            Event interval
-     * @param overlappingSegments Segments overlapping the interval
-     * @param dictionary          Sequence dictionary
-     * @return True if the event is supported by the overlapping segments
-     */
-    protected abstract boolean supportedBySegmentCalls(final SVInterval interval, final Set<CalledCopyRatioSegment> overlappingSegments, final SAMSequenceDictionary dictionary);
-
-    /**
      * Returns number of supporting evidence read pairs
      */
     protected abstract int countSupportingEvidenceReadPairs(final Collection<EvidenceTargetLink> links);
@@ -233,7 +209,6 @@ public abstract class LargeSimpleSVFactory {
         final SVInterval paddedRightInterval = SVIntervalUtils.getPaddedInterval(rightInterval, evidencePadding, dictionary);
         final Collection<EvidenceTargetLink> overlappingLinks = getMatchingLinks(paddedLeftInterval, paddedRightInterval, intrachromosomalLinkTree);
         final Collection<EvidenceTargetLink> evidenceLinks = getLinksWithEvidenceOrientation(overlappingLinks);
-        if (evidenceLinks.isEmpty()) return null;
 
         //Get "outer" and "inner" intervals
         final SVInterval outerInterval = new SVInterval(contigId, leftInterval.getStart(), rightInterval.getEnd());
@@ -245,45 +220,12 @@ public abstract class LargeSimpleSVFactory {
 
         //Tally evidence and counterevidence
         final int readPairEvidence = countSupportingEvidenceReadPairs(evidenceLinks);
-        if (readPairEvidence == 0) return null; //TODO
         final int splitReadEvidence = countSupportingEvidenceSplitReads(evidenceLinks);
         final int readPairCounterEvidence = countUniqueCounterEvidenceReadPairs(counterEvidenceLinks, evidenceLinks, arguments.minCountervidenceClusterSize);
         final int splitReadCounterEvidence = countUniqueCounterEvidenceSplitReads(counterEvidenceLinks, evidenceLinks, arguments.minCountervidenceClusterSize);
 
-        //Score the event and reject if too small
-        final double eventScore = LargeSimpleSV.computeScore(readPairEvidence, splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, arguments.counterEvidencePseudocount, breakpoints != null);
-        if (eventScore < arguments.minScore) return null;
-
         final String contigName = sequence.getSequenceName();
         return getNewSV(callInterval.getStart(), callInterval.getEnd(), contigId, contigName, readPairEvidence, splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, breakpoints, evidenceLinks);
-
-        /*
-        //Test if the copy ratio bins indicate we should reject this call
-        final List<CopyRatio> eventBins = getCopyRatiosOnInterval(innerInterval, copyRatioOverlapDetector, arguments.copyRatioBinTrimming, dictionary);
-        if (isInvalidCoverage(eventBins)) return null;
-
-        //Test if the event matches a model segments call
-        final String contigName = sequence.getSequenceName();
-        final Set<CalledCopyRatioSegment> overlappingSegments = copyRatioSegmentOverlapDetector.getOverlaps(SVIntervalUtils.convertToSimpleInterval(innerInterval, dictionary));
-        final boolean eventSegmentSupport = supportedBySegmentCalls(innerInterval, overlappingSegments, dictionary);
-        if (eventSegmentSupport) {
-            return getNewSV(callInterval.getStart(), callInterval.getEnd(), contigId, contigName, readPairEvidence,
-                    splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, breakpoints);
-        }
-
-        //Run copy number state HMM over copy ratios and test if the states (a la Viterbi) match the valid states for the event type
-        if (supportedByHMM(eventBins)) {
-            return getNewSV(callInterval.getStart(), callInterval.getEnd(), contigId, contigName, readPairEvidence, splitReadEvidence, readPairCounterEvidence, splitReadCounterEvidence, breakpoints);
-        }
-
-        return null;
-        */
-    }
-
-    private boolean checkFlankingSegments(final SVInterval interval, final Set<CalledCopyRatioSegment> overlappingSegments, final SAMSequenceDictionary dictionary) {
-        final int neutralBases = overlappingSegments.stream().filter(segment -> segment.getCall() == CalledCopyRatioSegment.Call.NEUTRAL)
-                .mapToInt(segment -> SVIntervalUtils.convertToSVInterval(segment.getInterval(), dictionary).overlapLen(interval)).sum();
-        return neutralBases / (double) interval.getLength() >= arguments.minSegmentOverlap;
     }
 
     /**

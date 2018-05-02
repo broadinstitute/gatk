@@ -247,6 +247,47 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         public boolean outputCpxResultsInHumanReadableFormat = false;
     }
 
+    public static class StructuralVariantIntervalsForCNV implements Serializable {
+        private static final long serialVersionUID = 1L;
+
+        public final int DEFAULT_MIN_EVENT_SIZE = 500;
+
+        public final int DEFAULT_BREAKPOINT_PADDING = 0;
+        public final int DEFAULT_EVIDENCE_TARGET_LINK_PADDING = 0;
+        public final int DEFAULT_LOCAL_COUNTEREVIDENCE_RANGE = 1000;
+        public final int DEFAULT_MIN_COUNTERVIDENCE_CLUSTER_SIZE = 0;
+
+        public static final String DEFAULT_MIN_EVENT_SIZE_LONG_NAME = "min-size";
+        public static final String DEFAULT_BREAKPOINT_PADDING_LONG_NAME = "breakpoint-padding";
+        public static final String DEFAULT_EVIDENCE_TARGET_LINK_PADDING_LONG_NAME = "cluster-padding";
+        public static final String DEFAULT_LOCAL_COUNTEREVIDENCE_RANGE_LONG_NAME = "counter-evidence-range";
+        public static final String DEFAULT_MIN_COUNTERVIDENCE_CLUSTER_SIZE_LONG_NAME = "min-counter-evidence-size";
+
+        @Argument(doc = "Minimum event size",
+                fullName = DEFAULT_MIN_EVENT_SIZE_LONG_NAME, optional = true)
+        public int minEventSize = DEFAULT_MIN_EVENT_SIZE;
+
+        @Advanced
+        @Argument(doc = "Padding to apply to each breakpoint when searching for supporting evidence",
+                fullName = DEFAULT_BREAKPOINT_PADDING_LONG_NAME, optional = true)
+        public int breakpointPadding = DEFAULT_BREAKPOINT_PADDING;
+
+        @Advanced
+        @Argument(doc = "Padding to apply to each interval of clustered read evidence when searching for supporting evidence",
+                fullName = DEFAULT_EVIDENCE_TARGET_LINK_PADDING_LONG_NAME, optional = true)
+        public int evidenceTargetLinkPadding = DEFAULT_EVIDENCE_TARGET_LINK_PADDING;
+
+        @Advanced
+        @Argument(doc = "Padding to apply to event interval when searching for counter-evidence",
+                fullName = DEFAULT_LOCAL_COUNTEREVIDENCE_RANGE_LONG_NAME, optional = true)
+        public int localCounterevidenceRange = DEFAULT_LOCAL_COUNTEREVIDENCE_RANGE;
+
+        @Advanced
+        @Argument(doc = "Minimum size of any cluster of counter-evidence",
+                fullName = DEFAULT_MIN_COUNTERVIDENCE_CLUSTER_SIZE_LONG_NAME, optional = true)
+        public int minCountervidenceClusterSize = DEFAULT_MIN_COUNTERVIDENCE_CLUSTER_SIZE;
+    }
+
     public static class DiscoverVariantsFromReadDepthArgumentCollection implements Serializable {
         private static final long serialVersionUID = 1L;
 
