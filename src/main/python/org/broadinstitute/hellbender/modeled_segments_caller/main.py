@@ -417,6 +417,8 @@ class ModeledSegmentsCaller:
                  output_calls_dir: str= "",
                  output_image_prefix:str= "",
                  output_calls_prefix: str= "",
+                 output_image_suffix: str=".jpg",
+                 output_calls_suffix: str=".called.seg",
                  interactive_output_del_ampl_image_suffix:str="_del_ampl.jpg",
                  interactive_output_scatter_plot_suffix:str="_scatter_plot.jpg",
                  interactive_output_allele_fraction_plot_suffix:str= "_allele_fraction_CN1_and_CN2_candidate_intervals.jpg",
@@ -442,11 +444,16 @@ class ModeledSegmentsCaller:
         self.__output_calls_dir = output_calls_dir
         self.__output_calls_prefix = output_calls_prefix
         self.__output_image_prefix = output_image_prefix
+        self.__output_calls_suffix = output_calls_suffix
+        self.__output_image_suffix = output_image_suffix
         self.__interactive_output_del_ampl_image_suffix = interactive_output_del_ampl_image_suffix
         self.__interactive_output_scatter_plot_suffix = interactive_output_scatter_plot_suffix
         self.__interactive_output_allele_fraction_plot_suffix = interactive_output_allele_fraction_plot_suffix
         self.__interactive_output_copy_ratio_suffix = interactive_output_copy_ratio_suffix
         self.__interactive_output_copy_ratio_clustering_suffix = interactive_output_copy_ratio_clustering_suffix
+
+        # Set the maximal value of the PHRED score we allow (since we don't want it to be off the scale on the plots)
+        self.__max_PHRED_score = 100.
 
         # Load data from file
         [self.__copy_ratio_median,
@@ -496,7 +503,7 @@ class ModeledSegmentsCaller:
             [self.__responsibilities_normal,
              self.__normal_segment_indices] = self.__choose_normal_segments__CR_data_only()
 
-        # Save segments
+        # Save plots of the segments
         if not self.log_filename=="":
             logging.info("Plotting and saving segments.")
         self.__plot_and_save_segments()
@@ -510,15 +517,15 @@ class ModeledSegmentsCaller:
         # Save the results in a file
         if not self.log_filename=="":
             logging.info("Saving results.")
-        self.__save_result()
+        self.__save_calls_to_file()
         if not self.log_filename=="":
             logging.info("Finished.\n\n\n")
 
 
     def set_output_filenames(self):
         """Set file names for all outputs."""
-        self.fig_normal_segments_filename = self.__output_image_dir + self.__output_image_prefix + ".jpg"
-        self.output_calls_filename = self.__output_calls_dir + self.__output_calls_prefix + ".called.seg"
+        self.fig_normal_segments_filename = self.__output_image_dir + self.__output_image_prefix + self.__output_image_suffix
+        self.output_calls_filename = self.__output_calls_dir + self.__output_calls_prefix + self.__output_calls_suffix
 
         # Get input directory
         input_fname_ending = self.__CR_AF_data.get_input_filename().split("/")[-1]
@@ -967,7 +974,6 @@ class ModeledSegmentsCaller:
         y_responsibilities_normal = []
         y_responsibilities_normal_PHRED = []
         y_color = []
-        max_PHRED_score = 100
 
         site = 0
         for i in range(n_segments):
@@ -983,7 +989,10 @@ class ModeledSegmentsCaller:
             y_maj_AF_10.append([1-self.__allele_fraction_10th_perc[i]] * 2)
             y_maj_AF_90.append([1-self.__allele_fraction_90th_perc[i]] * 2)
             y_responsibilities_normal.append([self.__responsibilities_normal[i]] * 2)
-            y_responsibilities_normal_PHRED.append([self.__get_phred_score(self.__responsibilities_normal[i], max_PHRED_score)] * 2)
+            y_responsibilities_normal_PHRED.append([self.__get_phred_score(
+                probability=self.__responsibilities_normal[i],
+                max_phred_score=self.__max_PHRED_score
+            )] * 2)
 
             n_d_a = self.__normal_del_ampl(self.__copy_ratio_median[i], avg_normal_CR,
                                            std_dev_normal_CR, self.__responsibilities_normal[i])
@@ -1009,7 +1018,7 @@ class ModeledSegmentsCaller:
         contig_beginning_end.append([current_contig_beginning, site])
 
         fig1, (ax1, ax2, ax3) = plt.subplots(3, sharex=True, dpi=400, figsize=(8, 8))
-        self.__gray_background_contigs(contig_beginning_end, 0, 1.05 * max_PHRED_score, ax1)
+        self.__gray_background_contigs(contig_beginning_end, 0, 1.05 * self.__max_PHRED_score, ax1)
 
         lines_PHRED = []
         for i in range(len(x)):
@@ -1018,7 +1027,7 @@ class ModeledSegmentsCaller:
         lc_PHRED = LineCollection(lines_PHRED, color=(0.35, 0.35, 0.35))
         ax1.add_collection(lc_PHRED)
         ax1.set_xlim(contig_beginning_end[0][0], contig_beginning_end[-1][1])
-        ax1.set_ylim([0, 1.05 * max_PHRED_score])
+        ax1.set_ylim([0, 1.05 * self.__max_PHRED_score])
         ax1.set_ylabel('PHRED(P(normal))')
 
         self.__gray_background_contigs(contig_beginning_end, -0.02, 3, ax2)
@@ -1216,7 +1225,7 @@ class ModeledSegmentsCaller:
             return max_phred_score
         return min([-10*np.log10(1-probability), max_phred_score])
 
-    def __save_result(self):
+    def __save_calls_to_file(self):
         """ Save the results.
         """
         input_filename = self.__CR_AF_data.get_input_filename()
@@ -1236,10 +1245,10 @@ class ModeledSegmentsCaller:
                     file_data += line.strip() + "\t" + str(self.__normal_del_ampl(self.__copy_ratio_median[i],
                                                                                   avg_normal_CR, std_dev_normal_CR,
                                                                                   self.__responsibilities_normal[i]))
-                    if self.__responsibilities_normal[i] >= 1.:
-                        file_data += "\t" + "Inf" + "\n"
-                    else:
-                        file_data += "\t" + str(round(-10 * math.log(1 - self.__responsibilities_normal[i], 10), 6)) + "\n"
+                    file_data += "\t"
+                    file_data += str(self.__get_phred_score(probability=self.__responsibilities_normal[i],
+                                                            max_phred_score=self.__max_PHRED_score))
+                    file_data += "\n"
                     i += 1
         file_header = file_header[0:-1] + "\tCALL\tPHRED\n"
 
