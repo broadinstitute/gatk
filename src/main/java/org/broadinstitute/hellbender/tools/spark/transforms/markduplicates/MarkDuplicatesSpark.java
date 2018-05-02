@@ -28,6 +28,7 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesSco
 import org.broadinstitute.hellbender.utils.read.markduplicates.SerializableOpticalDuplicatesFinder;
 import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
+import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import scala.Tuple2;
 

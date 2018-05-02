@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
+import org.broadinstitute.hellbender.utils.read.markduplicates.ReadEnds;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
 
 /**
@@ -60,6 +61,10 @@ public class Fragment extends PairedEnds {
     @Override
     public boolean isR1R() {
       return R1R;
+    }
+    @Override
+    public byte getPCROrientation() {
+        return (R1R)? ReadEnds.R : ReadEnds.F;
     }
     @Override
     public int getFirstRefIndex() {
