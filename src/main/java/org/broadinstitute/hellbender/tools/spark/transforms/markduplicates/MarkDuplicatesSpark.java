@@ -89,12 +89,18 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                                          final MarkDuplicatesScoringStrategy scoringStrategy,
                                          final OpticalDuplicateFinder opticalDuplicateFinder,
                                          final int numReducers, final boolean dontMarkUnmappedMates) {
-        SAMFileHeader headerForSort = header.clone();
-        headerForSort.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-        JavaRDD<GATKRead> sortedReadsForMarking = ReadUtils.isReadNameGroupedBam(header)? reads :
-                ReadsSparkSource.putPairsInSamePartition(SparkUtils.sortReads(reads, headerForSort, numReducers),headerForSort,reads.context());//TODO this can and should be switched to a better comparator
+        JavaRDD<GATKRead> sortedReadsForMarking;
+        SAMFileHeader headerForTool = header.clone();
 
-        JavaPairRDD<MarkDuplicatesSparkUtils.IndexPair<String>, Integer> namesOfNonDuplicates = MarkDuplicatesSparkUtils.transformToDuplicateNames(header, scoringStrategy, opticalDuplicateFinder, sortedReadsForMarking, numReducers);
+        // If the input isn't queryname sorted, sort it before duplicate marking
+        if (ReadUtils.isReadNameGroupedBam(header)) {
+            sortedReadsForMarking = reads;
+        } else {
+            headerForTool.setSortOrder(SAMFileHeader.SortOrder.queryname);
+            sortedReadsForMarking = ReadsSparkSource.putPairsInSamePartition(headerForTool, SparkUtils.querynameSortReads(reads, numReducers), new JavaSparkContext(reads.context()));
+        }
+
+        JavaPairRDD<MarkDuplicatesSparkUtils.IndexPair<String>, Integer> namesOfNonDuplicates = MarkDuplicatesSparkUtils.transformToDuplicateNames(headerForTool, scoringStrategy, opticalDuplicateFinder, sortedReadsForMarking, numReducers);
 
         // Here we explicitly repartition the read names of the unmarked reads to match the partitioning of the original bam
         final JavaRDD<Tuple2<String,Integer>> repartitionedReadNames = namesOfNonDuplicates
