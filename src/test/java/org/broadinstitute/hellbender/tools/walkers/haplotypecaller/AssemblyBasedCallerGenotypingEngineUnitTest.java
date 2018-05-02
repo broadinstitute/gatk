@@ -173,7 +173,6 @@ public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
 
         final List<Object[]> tests = new ArrayList<>();
         tests.add(new Object[]{
-                Arrays.asList(snpVc),
                 snpVc,
                 snpVc.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype),
@@ -185,7 +184,6 @@ public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
                 })
         });
         tests.add(new Object[]{
-                Arrays.asList(spandDelVc, snpVc),
                 mergedSnpAndDelVC,
                 mergedSnpAndDelVC.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype, deletionHaplotype),
@@ -199,7 +197,6 @@ public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
         });
         // includes a SNP haplotype not present in events at this loc (which might happen in GGA mode)
         tests.add(new Object[]{
-                Arrays.asList(snpVc),
                 snpVc,
                 snpVc.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype, snpHaplotypeNotPresentInEventsAtThisLoc),
@@ -213,7 +210,6 @@ public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
 
         // two spanning deletions, no given alleles -> both dels should be in event map for span del
         tests.add(new Object[]{
-                Arrays.asList(spandDelVc, spandDelVc2, snpVc),
                 mergedSnpAndDelVC,
                 snpVc.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype, deletionHaplotype, deletionHaplotype2),
@@ -228,7 +224,6 @@ public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
 
         // two spanning deletions, one in given alleles -> only the matching deletion should be in the event map for the span del
         tests.add(new Object[]{
-                Arrays.asList(spandDelVc, spandDelVc2, snpVc),
                 mergedSnpAndDelVC,
                 snpVc.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype, deletionHaplotype, deletionHaplotype2),
@@ -243,7 +238,6 @@ public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
 
         // A deletion starting at the loc in the given alleles, the snp not in the given alleles
         tests.add(new Object[]{
-                Arrays.asList(deletionStartingAtLocVc),
                 deletionStartingAtLocVc,
                 deletionStartingAtLocVc.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype, deletionStartingAtLocHaplotype),
@@ -257,7 +251,6 @@ public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
 
         // A deletion starting at the loc not in the given alleles, the snp in the given alleles
         tests.add(new Object[]{
-                Arrays.asList(snpVc),
                 snpVc,
                 snpVc.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype, deletionStartingAtLocHaplotype),
@@ -271,7 +264,6 @@ public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
 
         // A deletion starting at the loc and the SNP in the given alleles
         tests.add(new Object[]{
-                Arrays.asList(snpVc, deletionStartingAtLocVc),
                 mergedSnpAndDelStartingAtLocVC,
                 snpVc.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype, deletionStartingAtLocHaplotype),
@@ -289,13 +281,12 @@ public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider = "getEventMapper")
-    public void testGetEventMapper(final List<VariantContext> eventsAtThisLoc,
-                                   final VariantContext mergedVc,
+    public void testGetEventMapper(final VariantContext mergedVc,
                                    final int loc,
                                    final List<Haplotype> haplotypes,
                                    final List<VariantContext> activeAllelesToGenotype,
                                    final Map<Allele, List<Haplotype>> expectedEventMap) {
-        final Map<Allele, List<Haplotype>> actualEventMap = AssemblyBasedCallerGenotypingEngine.createAlleleMapper(eventsAtThisLoc, mergedVc, loc, haplotypes, activeAllelesToGenotype);
+        final Map<Allele, List<Haplotype>> actualEventMap = AssemblyBasedCallerGenotypingEngine.createAlleleMapper(mergedVc, loc, haplotypes, activeAllelesToGenotype);
         Assert.assertEquals(actualEventMap.size(), expectedEventMap.size());
         for (final Allele key : actualEventMap.keySet()) {
             Assert.assertTrue(expectedEventMap.containsKey(key), "Got unexpected allele " + key + " with values " + actualEventMap.get(key));

@@ -111,9 +111,9 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             if( mergedVC == null ) {
                 continue;
             }
-
+            
             // converting ReadLikelihoods<Haplotype> to ReadLikelihoods<Allele>
-            final Map<Allele, List<Haplotype>> alleleMapper = createAlleleMapper(eventsAtThisLoc, mergedVC, loc, haplotypes);
+            final Map<Allele, List<Haplotype>> alleleMapper = createAlleleMapper(mergedVC, loc, haplotypes);
             final ReadLikelihoods<Allele> log10Likelihoods = log10ReadLikelihoods.marginalize(alleleMapper,
                     new SimpleInterval(mergedVC).expandWithinContig(ALLELE_EXTENSION, header.getSequenceDictionary()));
             filterOverlappingReads(log10Likelihoods, mergedVC.getReference(), loc, false);

@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.variant.variantcontext.*;
 import org.apache.commons.lang3.tuple.Pair;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculatorProvider;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -235,17 +234,15 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
      * Returns a mapping from Allele in the mergedVC, which represents all of the alleles being genotyped at loc,
      * to a list of Haplotypes that support that allele. If the mergedVC includes a spanning deletion allele, all
      * haplotypes that support spanning deletions will be assigned to that allele in the map.
-     * @param eventsAtThisLoc The list of variant contexts active at the current location. Can include spanning deletions.
      * @param mergedVC The merged variant context for the locus, which includes all active alternate alleles merged to a single reference allele
      * @param loc The active locus being genotyped
      * @param haplotypes Haplotypes for the current active region
      * @return
      */
-    protected static Map<Allele, List<Haplotype>> createAlleleMapper(final List<VariantContext> eventsAtThisLoc,
-                                                                     final VariantContext mergedVC,
+    protected static Map<Allele, List<Haplotype>> createAlleleMapper(final VariantContext mergedVC,
                                                                      final int loc,
                                                                      final List<Haplotype> haplotypes) {
-        return createAlleleMapper(eventsAtThisLoc, mergedVC, loc, haplotypes, null);
+        return createAlleleMapper(mergedVC, loc, haplotypes, null);
     }
 
     /**
@@ -254,21 +251,16 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
      * spanning events that do not start at this location are included only if they match one of the given alleles, a
      * necessary check for the desired behavior of HaplotypeCaller's genotype given alleles mode. Otherwise, if the mergedVC
      * includes a spanning deletion allele, all haplotypes that support spanning deletions will be assigned to that allele in the map.
-     * @param eventsAtThisLoc The list of variant contexts active at the current location. Can include spanning deletions.
      * @param mergedVC The merged variant context for the locus, which includes all active alternate alleles merged to a single reference allele
      * @param loc The active locus being genotyped
      * @param haplotypes Haplotypes for the current active region
      * @param activeAllelesToGenotype Given alleles being genotyped in the active region, if running in GGA mode; can be null or empty otherwise
      * @return
      */
-    protected static Map<Allele, List<Haplotype>> createAlleleMapper(final List<VariantContext> eventsAtThisLoc,
-                                                                     final VariantContext mergedVC,
+    protected static Map<Allele, List<Haplotype>> createAlleleMapper(final VariantContext mergedVC,
                                                                      final int loc,
                                                                      final List<Haplotype> haplotypes,
                                                                      final List<VariantContext> activeAllelesToGenotype) {
-        Utils.validateArg(haplotypes.size() > eventsAtThisLoc.size(), "expected haplotypes.size() >= eventsAtThisLoc.size() + 1");
-        Utils.validateArg(eventsAtThisLoc.stream().mapToInt(VariantContext::getStart).allMatch(i -> i == loc),
-                "Can't create an AlleleMapper for events with different start positions");
 
         final Map<Allele, List<Haplotype>> result = new LinkedHashMap<>();
 
@@ -318,20 +310,14 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
                     if (activeAllelesToGenotype != null && activeAllelesToGenotype.size() > 0) {
                         // in HC GGA mode we need to check to make sure that spanning deletion
                         // events actually match one of the alleles we were given to genotype
-                        for (VariantContext givenVC : activeAllelesToGenotype) {
-                            if (givenVC.getStart() == spanningEvent.getStart() && givenVC.getReference().equals(spanningEvent.getReference())) {
-                                for (Allele a : spanningEvent.getAlternateAlleles()) {
-                                    if (givenVC.hasAlternateAllele(a)) {
-                                        if (! result.containsKey(Allele.SPAN_DEL)) {
-                                            result.put(Allele.SPAN_DEL, new ArrayList<>());
-                                        }
-                                        result.get(Allele.SPAN_DEL).add(h);
-                                        break;
-                                    }
-                                }
+                        VariantContext matchingGivenVc = findMatchingGivenAllele(activeAllelesToGenotype, spanningEvent);
+                        if (matchingGivenVc != null) {
+                            if (!result.containsKey(Allele.SPAN_DEL)) {
+                                result.put(Allele.SPAN_DEL, new ArrayList<>());
                             }
-
+                            result.get(Allele.SPAN_DEL).add(h);
                         }
+
                     } else {
                         if (! result.containsKey(Allele.SPAN_DEL)) {
                             result.put(Allele.SPAN_DEL, new ArrayList<>());
@@ -347,6 +333,20 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
             }
         }
         return result;
+    }
+
+    private static VariantContext findMatchingGivenAllele(final List<VariantContext> activeAllelesToGenotype, final VariantContext spanningEvent) {
+        for (VariantContext givenVC : activeAllelesToGenotype) {
+            if (givenVC.getStart() == spanningEvent.getStart() && givenVC.getReference().equals(spanningEvent.getReference())) {
+                for (Allele a : spanningEvent.getAlternateAlleles()) {
+                    if (givenVC.hasAlternateAllele(a)) {
+                        return givenVC;
+                    }
+                }
+            }
+
+        }
+        return null;
     }
 
     // Builds the read-likelihoods collection to use for annotation considering user arguments and the collection
