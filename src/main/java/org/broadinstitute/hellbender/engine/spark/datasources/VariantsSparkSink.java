@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
@@ -129,24 +128,6 @@ public final class VariantsSparkSink {
         }
     }
 
-    public static class GvcfKeyIgnoringBCFRecordWriter<K> extends KeyIgnoringBCFRecordWriter<K> {
-
-        public GvcfKeyIgnoringBCFRecordWriter(Path output, VCFHeader header, boolean writeHeader, TaskAttemptContext ctx) throws IOException {
-            super(output, header, writeHeader, ctx);
-        }
-
-        public GvcfKeyIgnoringBCFRecordWriter(OutputStream outputStream, VCFHeader header, boolean writeHeader, TaskAttemptContext ctx) throws IOException {
-            super(outputStream, header, writeHeader, ctx);
-        }
-
-        @Override
-        protected VariantContextWriter createVariantContextWriter(Configuration conf,
-                                                                  OutputStream out) {
-            return getVariantContextWriter(super.createVariantContextWriter(conf, out), conf);
-
-        }
-    }
-
     public static class GvcfKeyIgnoringVCFRecordWriter<K> extends KeyIgnoringVCFRecordWriter<K> {
 
         public GvcfKeyIgnoringVCFRecordWriter(Path output, VCFHeader header, boolean writeHeader, TaskAttemptContext ctx) throws IOException {
@@ -222,6 +203,11 @@ public final class VariantsSparkSink {
             final VCFHeader header, final boolean writeGvcf, final List<Integer> gqPartitions, final int defaultPloidy, final int numReducers) throws IOException {
 
         final Configuration conf = ctx.hadoopConfiguration();
+
+        //TODO remove me when https://github.com/broadinstitute/gatk/issues/4303 are fixed
+        if (outputFile.endsWith(IOUtil.BCF_FILE_EXTENSION) || outputFile.endsWith(IOUtil.BCF_FILE_EXTENSION + ".gz")) {
+            throw new UserException.UnimplementedFeature("It is currently not possible to write a BCF file on spark.  See https://github.com/broadinstitute/gatk/issues/4303 for more details .");
+        }
 
         if (outputFile.endsWith(BGZFCodec.DEFAULT_EXTENSION) || outputFile.endsWith(".gz")) {
             conf.setBoolean(FileOutputFormat.COMPRESS, true);

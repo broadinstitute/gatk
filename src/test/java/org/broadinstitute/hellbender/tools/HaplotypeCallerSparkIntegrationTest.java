@@ -129,12 +129,30 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
     }
 
     @DataProvider
+    public static Object[][] brokenGVCFCases() {
+        return new Object[][]{
+                {".g.bcf"},
+                {".g.bcf.gz"}
+        };
+    }
+
+    @Test(dataProvider = "brokenGVCFCases", expectedExceptions = UserException.UnimplementedFeature.class)
+    public void testBrokenGVCFConfigurationsAreDisallowed(String extension) {
+        final String[] args = {
+                "-I", NA12878_20_21_WGS_bam,
+                "-R", b37_2bit_reference_20_21,
+                "-O", createTempFile("testGVCF_GZ_throw_exception", extension).getAbsolutePath(),
+                "-ERC", "GVCF",
+        };
+
+        runCommandLine(args);
+    }
+
+    @DataProvider
     public static Object[][] gvcfCases() {
         return new Object[][]{
                 {".g.vcf"},
-                {".g.vcf.gz"},
-                {".g.bcf"},
-                {".g.bcf.gz"}
+                {".g.vcf.gz"}
         };
     }
 
