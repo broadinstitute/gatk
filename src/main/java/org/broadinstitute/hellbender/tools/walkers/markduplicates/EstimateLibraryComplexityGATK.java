@@ -142,11 +142,11 @@ public final class EstimateLibraryComplexityGATK extends AbstractOpticalDuplicat
     /**
      * Little class to hold the sequence of a pair of reads and tile location information.
      */
-    static class PairedReadSequence implements OpticalDuplicateFinder.PhysicalLocation {
+    static class PairedReadSequence implements picard.sam.util.PhysicalLocation {
         static int size_in_bytes = 2 + 1 + 4 + 1 + 300; // rough guess at memory footprint
         short readGroup = -1;
         short tile = -1;
-        short x = -1, y = -1;
+        int x = -1, y = -1;
         boolean qualityOk = true;
         byte[] read1;
         byte[] read2;
@@ -165,16 +165,16 @@ public final class EstimateLibraryComplexityGATK extends AbstractOpticalDuplicat
         public void setTile(final short tile) { this.tile = tile; }
 
         @Override
-        public short getX() { return this.x; }
+        public int getX() { return this.x; }
 
         @Override
-        public void setX(final short x) { this.x = x; }
+        public void setX(final int x) { this.x = x; }
 
         @Override
-        public short getY() { return this.y; }
+        public int getY() { return this.y; }
 
         @Override
-        public void setY(final short y) { this.y = y; }
+        public void setY(final int y) { this.y = y; }
 
         @Override
         public short getLibraryId() { return this.libraryId; }

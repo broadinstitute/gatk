@@ -5,9 +5,13 @@ import com.esotericsoftware.kryo.serializers.FieldSerializer;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.*;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.metrics.MetricsFile;
+import org.apache.parquet.Ints;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -18,11 +22,13 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.markduplicates.*;
 import org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords.*;
+import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import scala.Tuple2;
 
 import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Utility classes and functions for Mark Duplicates.
@@ -91,6 +97,9 @@ public class MarkDuplicatesSparkUtils {
 
         final JavaPairRDD<String, Iterable<IndexPair<GATKRead>>> keyedReads = getReadsGroupedByName(header, mappedReads, numReducers);
 
+        //TODO why in the world does a JavaRDD return a normal sparkcontext instead of the nice wrapped one...?
+        final Broadcast<Map<String, Short>> headerReadGroupIndexMap = new JavaSparkContext(reads.context()).broadcast( getHeaderReadGroupIndexMap(header));
+
         // Place all the reads into a single RDD of MarkDuplicatesSparkRecord objects
         final JavaPairRDD<Integer, MarkDuplicatesSparkRecord> pairedEnds = keyedReads.flatMapToPair(keyedRead -> {
             final List<Tuple2<Integer, MarkDuplicatesSparkRecord>> out = Lists.newArrayList();
@@ -127,7 +136,8 @@ public class MarkDuplicatesSparkUtils {
             } else if (primaryReads.size()==2) {
                 final IndexPair<GATKRead> firstRead = primaryReads.get(0);
                 final IndexPair<GATKRead> secondRead = primaryReads.get(1);
-                final PairedEnds pair = MarkDuplicatesSparkRecord.newPair(firstRead.getValue(), secondRead.getValue(), header, secondRead.getIndex(), scoringStrategy);
+                final Pair pair = MarkDuplicatesSparkRecord.newPair(firstRead.getValue(), secondRead.getValue(), header, secondRead.getIndex(), scoringStrategy);
+                pair.setReadGroup(headerReadGroupIndexMap.getValue().get(firstRead.getValue().getReadGroup())); //TODO figure out what to do in the case where there is no readgroup
                 out.add(new Tuple2<>(pair.key(), pair));
 
             // If there is one paired read in the template this probably means the bam is missing its mate, don't duplicate mark it
@@ -150,6 +160,15 @@ public class MarkDuplicatesSparkUtils {
         final JavaPairRDD<Integer, Iterable<MarkDuplicatesSparkRecord>> keyedPairs = pairedEnds.groupByKey(); //TODO evaluate replacing this with a smart aggregate by key.
 
         return markDuplicateRecords(keyedPairs, finder);
+    }
+
+    /**
+     * Method which generates a map of the readgroups from the header so they can be serialized as indexes
+     */
+    private static Map<String, Short> getHeaderReadGroupIndexMap(final SAMFileHeader header) {
+        final List<SAMReadGroupRecord> readGroups = header.getReadGroups();
+        final Iterator<Short> iterator = IntStream.range(0, readGroups.size()).boxed().map(Short.class::cast).iterator();
+        return Maps.uniqueIndex(iterator, idx -> readGroups.get(idx).getId() );
     }
 
     /**

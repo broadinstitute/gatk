@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.read.markduplicates;
 
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicatesArgumentCollection;
+import picard.sam.util.PhysicalLocation;
 
 import java.io.Serializable;
 import java.util.Collections;
@@ -17,20 +18,20 @@ import java.util.regex.Pattern;
  * @author Nils Homer
  */
 public final class OpticalDuplicateFinder implements Serializable {
-
     private static final long serialVersionUID = 1l;
 
     public static final String DEFAULT_READ_NAME_REGEX = "[a-zA-Z0-9]+:[0-9]:([0-9]+):([0-9]+):([0-9]+).*".intern();
 
     public static final int DEFAULT_OPTICAL_DUPLICATE_DISTANCE = 100;
+    public static final int DEFAULT_BIG_DUPLICATE_SET_SIZE = 1000;
+    public static final int DEFAULT_MAX_DUPLICATE_SET_SIZE = 300000;
+
 
     public String readNameRegex;
-
     public int opticalDuplicatePixelDistance;
-
     private Pattern readNamePattern;
 
-    private boolean warnedAboutRegexNotMatching = false;
+    private boolean warnedAboutRegexNotMatching = false; //TODO this should be a oneShot logger
 
     private final Logger log;
 
@@ -67,7 +68,7 @@ public final class OpticalDuplicateFinder implements Serializable {
      * All values should be defaulted to -1 if unavailable.  ReadGroup and Tile should only allow
      * non-zero positive integers, x and y coordinates may be negative.
      */
-    public interface PhysicalLocation {
+    public interface PhysicalLocation extends picard.sam.util.PhysicalLocation{
         short getReadGroup();
 
         void setReadGroup(short rg);
@@ -76,11 +77,11 @@ public final class OpticalDuplicateFinder implements Serializable {
 
         void setTile(short tile);
 
-        short getX();
+        int getX();
 
         void setX(short x);
 
-        short getY();
+        int getY();
 
         void setY(short y);
 
@@ -208,6 +209,13 @@ public final class OpticalDuplicateFinder implements Serializable {
     public boolean[] findOpticalDuplicates(final List<? extends PhysicalLocation> list) {
         final int length = list.size();
         final boolean[] opticalDuplicateFlags = new boolean[length];
+
+        // If there is only one or zero reads passed in (so there are obviously no optical duplicates),
+        // or if there are too many reads (so we don't want to try to run this expensive n^2 algorithm),
+        // then just return an array of all false
+        if (length < 2 || length > DEFAULT_MAX_DUPLICATE_SET_SIZE) {
+            return opticalDuplicateFlags;
+        }
 
         Collections.sort(list, new Comparator<PhysicalLocation>() {
             @Override

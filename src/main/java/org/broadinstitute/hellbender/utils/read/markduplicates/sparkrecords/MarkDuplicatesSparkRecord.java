@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
+import sun.invoke.empty.Empty;
 
 /**
  * A common interface for the data types that represent reads for mark duplicates spark. This is done to satisfy limitations
@@ -25,17 +26,17 @@ public abstract class MarkDuplicatesSparkRecord {
 
 
     // A fragment containing only one read without a mapped mate
-    public static PairedEnds newFragment(final GATKRead first, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
+    public static Fragment newFragment(final GATKRead first, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
         return new Fragment(first, header, partitionIndex, scoringStrategy);
     }
 
     // An optimization for reducing the serialized data passed around when indicating that there was a mapped read at a location
-    public static PairedEnds newEmptyFragment(GATKRead read, SAMFileHeader header) {
+    public static EmptyFragment newEmptyFragment(GATKRead read, SAMFileHeader header) {
         return new EmptyFragment(read, header);
     }
 
     // An object representing a pair of primary and secondary reads with a particular span for duplicate marking
-    public static PairedEnds newPair(GATKRead first, GATKRead second, SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
+    public static Pair newPair(GATKRead first, GATKRead second, SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
         return new Pair(first, second, header, partitionIndex, scoringStrategy);
     }
 
