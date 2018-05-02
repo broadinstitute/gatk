@@ -172,7 +172,8 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         return new Object[][] {
                 {"/local/example.txt", "/local/example.txt"},
                 {"/local/file://example.txt", "/local/file:/example.txt"},
-                {"file:///local/example.txt", "/local/example.txt"}
+                {"file:///local/example.txt", "/local/example.txt"},
+                {"gs://dir/example.txt", "gs://dir/example.txt"}
         };
     }
 

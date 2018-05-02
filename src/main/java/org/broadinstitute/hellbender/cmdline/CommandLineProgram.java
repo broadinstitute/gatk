@@ -61,7 +61,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     private static final String DEFAULT_TOOLKIT_SHORT_NAME = "GATK";
 
     @Argument(fullName = StandardArgumentDefinitions.TMP_DIR_NAME, common=true, optional=true, doc = "Temp directory to use.")
-    public String TMP_DIR;
+    public String tmpDir;
 
     @ArgumentCollection(doc="Special Arguments that have meaning to the argument parsing system.  " +
             "It is unlikely these will ever need to be accessed by the command line program")
@@ -142,7 +142,9 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     public Object instanceMainPostParseArgs() {
         // Provide one temp directory if the caller didn't
         // TODO - this should use the HTSJDK IOUtil.getDefaultTmpDirPath, which is somehow broken in the current HTSJDK version
-        if (TMP_DIR == null || TMP_DIR.isEmpty()) TMP_DIR = IOUtils.getAbsolutePathWithoutFileProtocol(IOUtils.getPath(System.getProperty("java.io.tmpdir")));
+        if (tmpDir == null || tmpDir.isEmpty()) {
+            tmpDir = IOUtils.getAbsolutePathWithoutFileProtocol(IOUtils.getPath(System.getProperty("java.io.tmpdir")));
+        }
 
         // Build the default headers
         final ZonedDateTime startDateTime = ZonedDateTime.now();
@@ -152,7 +154,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         LoggingUtils.setLoggingLevel(VERBOSITY);  // propagate the VERBOSITY level to logging frameworks
 
         // set the temp directory as a java property, checking for existence and read/write access
-        final Path p = IOUtils.getPath(TMP_DIR);
+        final Path p = IOUtils.getPath(tmpDir);
         try {
             p.getFileSystem().provider().checkAccess(p, AccessMode.READ, AccessMode.WRITE);
             System.setProperty("java.io.tmpdir", IOUtils.getAbsolutePathWithoutFileProtocol(p));
@@ -160,11 +162,10 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
             // TODO: it may be that the program does not need a tmp dir
             // TODO: if it fails, the problem can be discovered downstream
             // TODO: should log a warning instead?
-            throw new UserException.BadInput(String.format("--%s (%s) should exists and have read/write access",
-                    StandardArgumentDefinitions.TMP_DIR_NAME, IOUtils.getAbsolutePathWithoutFileProtocol(p)), e);
+            throw new UserException.BadTempDir(p, "should exist and have read/write access", e);
         } catch (final IOException e) {
             // other exceptions with the tmp directory
-            throw new UserException.BadInput(e.getMessage(), e);
+            throw new UserException.BadTempDir(p, e.getMessage(), e);
         }
 
         //Set defaults (note: setting them here means they are not controllable by the user)
