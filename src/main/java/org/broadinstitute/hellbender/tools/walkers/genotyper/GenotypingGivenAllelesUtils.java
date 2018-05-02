@@ -7,6 +7,10 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Compendium of utils to work in GENOTYPE_GIVEN_ALLELES mode.
@@ -32,23 +36,24 @@ public final class GenotypingGivenAllelesUtils {
         Utils.nonNull(tracker, "tracker may not be null");
         Utils.nonNull(loc, "location may not be null");
         Utils.nonNull(allelesBinding, "alleles binding may not be null");
-        VariantContext vc = null;
 
-        // search for usable record
-        for ( final VariantContext rodVc : tracker.getValues(allelesBinding, new SimpleInterval(loc)) ) {
-            if ( rodVc != null && (keepFiltered || rodVc.isNotFiltered()) && (! snpsOnly || rodVc.isSNP() )) {
-                if ( vc == null ) {
-                    vc = rodVc;
-                } else {
-                    if (logger != null) {
-                        logger.warn("Multiple valid VCF records detected in the alleles input file at site "
-                                + loc + ", only considering the first record");
-                    }
-                }
-            }
+        final List<VariantContext> rodVcsAtLoc = tracker.getValues(allelesBinding, new SimpleInterval(loc))
+                .stream()
+                .filter(vc -> vc.getStart() == loc.getStart() &&
+                        (keepFiltered || vc.isNotFiltered()) &&
+                        (!snpsOnly || vc.isSNP()))
+                .collect(Collectors.toList());
+
+
+        if (rodVcsAtLoc.isEmpty()) {
+            return null;
         }
+        final List<String> haplotypeSources = rodVcsAtLoc.stream().map(VariantContext::getSource).collect(Collectors.toList());
+        final VariantContext mergedVc = GATKVariantContextUtils.simpleMerge(rodVcsAtLoc, haplotypeSources,
+                GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
+                GATKVariantContextUtils.GenotypeMergeType.PRIORITIZE, false, false, null, false, false);
 
-        return vc;
+        return mergedVc;
     }
 
 }
