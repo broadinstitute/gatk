@@ -39,6 +39,18 @@ group.add_argument("--output_calls_prefix",
                    default=argparse.SUPPRESS,
                    help="Prefix of the output calls filenames.")
 
+group.add_argument("--output_image_suffix",
+                   type=str,
+                   required=True,
+                   default=argparse.SUPPRESS,
+                   help="Prefix of the output image filenames.")
+
+group.add_argument("--output_calls_suffix",
+                   type=str,
+                   required=True,
+                   default=argparse.SUPPRESS,
+                   help="Prefix of the output calls filenames.")
+
 group.add_argument("--load_copy_ratio",
                    type=str,
                    required=False,
@@ -121,6 +133,8 @@ if __name__ == "__main__":
                        output_calls_dir=args.output_calls_dir,
                        output_image_prefix=args.output_image_prefix,
                        output_calls_prefix=args.output_calls_prefix,
+                       output_image_suffix=args.output_image_suffix,
+                       output_calls_suffix=args.output_calls_suffix,
                        interactive_output_del_ampl_image_suffix=args.interactive_output_del_ampl_image_suffix,
                        interactive_output_scatter_plot_suffix=args.interactive_output_scatter_plot_suffix,
                        interactive_output_allele_fraction_plot_suffix=args.interactive_output_allele_fraction_plot_suffix,
