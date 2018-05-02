@@ -308,8 +308,9 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
                         }
                     } else {
                         // the process of creating the merged VC in AssemblyBasedCallerUtils::makeMergedVariantContext should have
-                        // already padded out the reference allele
-                        throw new GATKException.ShouldNeverReachHereException("The ref allele of a spanning event is longer than the merged VariantContext ref length.");
+                        // already padded out the reference allele, therefore this spanning VC must not be in events at this site
+                        // because we're in GGA mode and it's not an allele we want
+                        continue;
                     }
 
                 } else {

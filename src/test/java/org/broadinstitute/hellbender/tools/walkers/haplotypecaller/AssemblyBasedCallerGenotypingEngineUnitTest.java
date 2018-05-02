@@ -243,14 +243,28 @@ public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
 
         // A deletion starting at the loc in the given alleles, the snp not in the given alleles
         tests.add(new Object[]{
-                Arrays.asList(snpVc, deletionStartingAtLocVc),
+                Arrays.asList(deletionStartingAtLocVc),
                 deletionStartingAtLocVc,
-                snpVc.getStart(),
+                deletionStartingAtLocVc.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype, deletionStartingAtLocHaplotype),
                 Arrays.asList(deletionStartingAtLocVc),
                 Maps.asMap(new HashSet<>(deletionStartingAtLocVc.getAlleles()),
                         (key) -> {
                             if (deletionStartingAtLocAlleles.get(1).equals(key)) return Arrays.asList(deletionStartingAtLocHaplotype);
+                            return Arrays.asList(refHaplotype);
+                        })
+        });
+
+        // A deletion starting at the loc not in the given alleles, the snp in the given alleles
+        tests.add(new Object[]{
+                Arrays.asList(snpVc),
+                snpVc,
+                snpVc.getStart(),
+                Arrays.asList(snpHaplotype, refHaplotype, deletionStartingAtLocHaplotype),
+                Arrays.asList(snpVc),
+                Maps.asMap(new HashSet<>(snpVc.getAlleles()),
+                        (key) -> {
+                            if (snpAlleles.get(1).equals(key)) return Arrays.asList(snpHaplotype);
                             return Arrays.asList(refHaplotype);
                         })
         });
