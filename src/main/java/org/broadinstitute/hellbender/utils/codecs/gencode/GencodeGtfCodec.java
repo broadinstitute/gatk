@@ -575,7 +575,8 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
                             "GENCODE GTF Header line 1 has an incompatible version number (" +
                                     versionNumber + "): " + header.get(0));
                 } else {
-                    return false;
+                    logger.warn("GENCODE GTF Header line 1 has an incompatible version number (" +
+                            versionNumber + "): " + header.get(0) + "   Continuing, but errors may occur.");
                 }
             }
         }
@@ -604,18 +605,6 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
                 throw new UserException.MalformedFile(
                         "GENCODE GTF Header line 2 does not contain expected contact information (" +
                                 "##contact: gencode): " + header.get(2));
-            }
-            else {
-                return false;
-            }
-        }
-
-        if ( !header.get(2).endsWith("@sanger.ac.uk") &&
-             !header.get(2).endsWith("@ebi.ac.uk") ) {
-            if ( throwIfInvalid ) {
-                throw new UserException.MalformedFile(
-                        "GENCODE GTF Header line 2 does not contain expected contact email address (" +
-                                "@sanger.ac.uk): " + header.get(2));
             }
             else {
                 return false;

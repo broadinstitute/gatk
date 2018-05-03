@@ -63,6 +63,7 @@ public interface Funcotation {
     }
 
     /**
+     * TODO: This should not be specific to a VCF.  That should be the job of the VCFOutputRenderer to sanitize any strings.  A Funcotation should not care whether it is being rendered to a VCF or MAF.
      * Converts this {@link Funcotation} to a string suitable for insertion into a VCF file.
      * {@code manualAnnotationString} should be written first, followed by the inherent annotations in this {@link Funcotation}.
      * @param manualAnnotationString A {@link String} of manually-provided annotations to add to this {@link Funcotation}.

@@ -1,0 +1,219 @@
+##fileformat=VCFv4.2
+##Biotin(Bgnd)=Biotin(Bgnd)|Staining|508|179
+##Biotin(High)=Biotin(High)|Staining|778|5902
+##DNP(Bgnd)=DNP(Bgnd)|Staining|1058|245
+##DNP(High)=DNP(High)|Staining|32198|156
+##Extension(A)=Extension(A)|Extension|41089|480
+##Extension(C)=Extension(C)|Extension|2446|11515
+##Extension(G)=Extension(G)|Extension|2936|11197
+##Extension(T)=Extension(T)|Extension|43350|395
+##FILTER=<ID=DUPE,Description="Duplicate assays position.">
+##FILTER=<ID=FAIL_REF,Description="Assay failed to map to reference.">
+##FILTER=<ID=TRIALLELIC,Description="Tri-allelic assay.">
+##FILTER=<ID=ZCALL_DIFF,Description="ZCALL_DIFF">
+##FORMAT=<ID=BAF,Number=1,Type=Float,Description="B Allele Frequency">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=GTA,Number=1,Type=String,Description="Illumina Autocall Genotype">
+##FORMAT=<ID=GTZ,Number=1,Type=String,Description="zCall Genotype">
+##FORMAT=<ID=IGC,Number=1,Type=Float,Description="Illumina GenCall Confidence Score">
+##FORMAT=<ID=LRR,Number=1,Type=Float,Description="Log R Ratio">
+##FORMAT=<ID=NORMX,Number=1,Type=Float,Description="Normalized X intensity">
+##FORMAT=<ID=NORMY,Number=1,Type=Float,Description="Normalized Y intensity">
+##FORMAT=<ID=R,Number=1,Type=Float,Description="Normalized R value">
+##FORMAT=<ID=THETA,Number=1,Type=Float,Description="Normalized Theta value">
+##FORMAT=<ID=X,Number=1,Type=Integer,Description="Raw X intensity">
+##FORMAT=<ID=Y,Number=1,Type=Integer,Description="Raw Y intensity">
+##GATKCommandLine=<ID=SelectVariants,CommandLine="SelectVariants  --output 0816201804HC0_R01C01.pik3ca.vcf --variant 0816201804HC0_R01C01.vcf --intervals 3:178844764-178974044 --reference /home/foo/ref/Homo_sapiens_assembly19.fasta  --invertSelect false --exclude-non-variants false --exclude-filtered false --preserve-alleles false --remove-unused-alternates false --restrict-alleles-to ALL --keep-original-ac false --keep-original-dp false --mendelian-violation false --invert-mendelian-violation false --mendelian-violation-qual-threshold 0.0 --select-random-fraction 0.0 --remove-fraction-genotypes 0.0 --fully-decode false --max-indel-size 2147483647 --min-indel-size 0 --max-filtered-genotypes 2147483647 --min-filtered-genotypes 0 --max-fraction-filtered-genotypes 1.0 --min-fraction-filtered-genotypes 0.0 --max-nocall-number 2147483647 --max-nocall-fraction 1.0 --set-filtered-gt-to-nocall false --allow-nonoverlapping-command-line-samples false --suppress-reference-path false --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --help false --version false --showHidden false --verbosity INFO --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --disable-tool-default-read-filters false",Version=4.beta.6-377-g542f340-SNAPSHOT,Date="May 17, 2018 12:53:46 PM EDT">
+##Hyb(High)=Hyb(High)|Hybridization|3310|11184
+##Hyb(Low)=Hyb(Low)|Hybridization|3436|1823
+##Hyb(Medium)=Hyb(Medium)|Hybridization|1307|6426
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=ALLELE_A,Number=1,Type=String,Description="A allele">
+##INFO=<ID=ALLELE_B,Number=1,Type=String,Description="B allele">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=BEADSET_ID,Number=1,Type=Integer,Description="Bead set ID for normalization">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=GC_SCORE,Number=1,Type=Float,Description="Gentrain Score">
+##INFO=<ID=ILLUMINA_BUILD,Number=1,Type=String,Description="Genome Build in Illumina manifest">
+##INFO=<ID=ILLUMINA_CHR,Number=1,Type=String,Description="Chromosome in Illumina manifest">
+##INFO=<ID=ILLUMINA_POS,Number=1,Type=Integer,Description="Position in Illumina manifest">
+##INFO=<ID=ILLUMINA_STRAND,Number=1,Type=String,Description="Probe strand">
+##INFO=<ID=N_AA,Number=1,Type=Integer,Description="Number of AA calls in training set">
+##INFO=<ID=N_AB,Number=1,Type=Integer,Description="Number of AB calls in training set">
+##INFO=<ID=N_BB,Number=1,Type=Integer,Description="Number of BB calls in training set">
+##INFO=<ID=PROBE_A,Number=1,Type=String,Description="Probe base pair sequence">
+##INFO=<ID=PROBE_B,Number=1,Type=String,Description="Probe base pair sequence; not missing for strand-ambiguous SNPs">
+##INFO=<ID=SOURCE,Number=1,Type=String,Description="Probe source">
+##INFO=<ID=devR_AA,Number=1,Type=Float,Description="Standard deviation of normalized R for AA cluster">
+##INFO=<ID=devR_AB,Number=1,Type=Float,Description="Standard deviation of normalized R for AB cluster">
+##INFO=<ID=devR_BB,Number=1,Type=Float,Description="Standard deviation of normalized R for BB cluster">
+##INFO=<ID=devTHETA_AA,Number=1,Type=Float,Description="Standard deviation of normalized THETA for AA cluster">
+##INFO=<ID=devTHETA_AB,Number=1,Type=Float,Description="Standard deviation of normalized THETA for AB cluster">
+##INFO=<ID=devTHETA_BB,Number=1,Type=Float,Description="Standard deviation of normalized THETA for BB cluster">
+##INFO=<ID=devX_AA,Number=1,Type=Float,Description="Standard deviation of normalized X for AA cluster">
+##INFO=<ID=devX_AB,Number=1,Type=Float,Description="Standard deviation of normalized X for AB cluster">
+##INFO=<ID=devX_BB,Number=1,Type=Float,Description="Standard deviation of normalized X for BB cluster">
+##INFO=<ID=devY_AA,Number=1,Type=Float,Description="Standard deviation of normalized Y for AA cluster">
+##INFO=<ID=devY_AB,Number=1,Type=Float,Description="Standard deviation of normalized Y for AB cluster">
+##INFO=<ID=devY_BB,Number=1,Type=Float,Description="Standard deviation of normalized Y for BB cluster">
+##INFO=<ID=meanR_AA,Number=1,Type=Float,Description="Mean of normalized R for AA cluster">
+##INFO=<ID=meanR_AB,Number=1,Type=Float,Description="Mean of normalized R for AB cluster">
+##INFO=<ID=meanR_BB,Number=1,Type=Float,Description="Mean of normalized R for BB cluster">
+##INFO=<ID=meanTHETA_AA,Number=1,Type=Float,Description="Mean of normalized THETA for AA cluster">
+##INFO=<ID=meanTHETA_AB,Number=1,Type=Float,Description="Mean of normalized THETA for AB cluster">
+##INFO=<ID=meanTHETA_BB,Number=1,Type=Float,Description="Mean of normalized THETA for BB cluster">
+##INFO=<ID=meanX_AA,Number=1,Type=Float,Description="Mean of normalized X for AA cluster">
+##INFO=<ID=meanX_AB,Number=1,Type=Float,Description="Mean of normalized X for AB cluster">
+##INFO=<ID=meanX_BB,Number=1,Type=Float,Description="Mean of normalized X for BB cluster">
+##INFO=<ID=meanY_AA,Number=1,Type=Float,Description="Mean of normalized Y for AA cluster">
+##INFO=<ID=meanY_AB,Number=1,Type=Float,Description="Mean of normalized Y for AB cluster">
+##INFO=<ID=meanY_BB,Number=1,Type=Float,Description="Mean of normalized Y for BB cluster">
+##INFO=<ID=refSNP,Number=1,Type=String,Description="dbSNP rs ID">
+##INFO=<ID=zthresh_X,Number=1,Type=Float,Description="zCall X threshold">
+##INFO=<ID=zthresh_Y,Number=1,Type=Float,Description="zCall Y threshold">
+##NP(A)=NP(A)|Non-Polymorphic|17148|391
+##NP(C)=NP(C)|Non-Polymorphic|1093|6000
+##NP(G)=NP(G)|Non-Polymorphic|1286|5170
+##NP(T)=NP(T)|Non-Polymorphic|15772|304
+##NSB(Bgnd)Blue=NSB(Bgnd)Blue|Non-SpecificBinding|922|301
+##NSB(Bgnd)Green=NSB(Bgnd)Green|Non-SpecificBinding|842|238
+##NSB(Bgnd)Purple=NSB(Bgnd)Purple|Non-SpecificBinding|912|204
+##NSB(Bgnd)Red=NSB(Bgnd)Red|Non-SpecificBinding|1016|295
+##Restore=Restore|Restoration|961|374
+##String(MM)=String(MM)|Stringency|4768|259
+##String(PM)=String(PM)|Stringency|29830|468
+##TargetRemoval=TargetRemoval|TargetRemoval|2492|281
+##analysisVersionNumber=1
+##arrayType=PsychChip_v1-1_15073391_A1
+##autocallDate=08/17/2017 00:40
+##autocallGender=F
+##autocallVersion=2.0.0.137
+##chipWellBarcode=0816201804HC0_R01C01
+##clusterFile=PsychChip_v1-1_15073391_A1_ClusterFile.egt
+##content=PsychChip_v1-1_15073391_A1.1.2.extended.csv
+##contig=<ID=1,length=249250621,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=2,length=243199373,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=3,length=198022430,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=4,length=191154276,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=5,length=180915260,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=6,length=171115067,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=7,length=159138663,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=8,length=146364022,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=9,length=141213431,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=10,length=135534747,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=11,length=135006516,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=12,length=133851895,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=13,length=115169878,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=14,length=107349540,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=15,length=102531392,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=16,length=90354753,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=17,length=81195210,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=18,length=78077248,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=19,length=59128983,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=20,length=63025520,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=21,length=48129895,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=22,length=51304566,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=X,length=155270560,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=Y,length=59373566,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=MT,length=16569,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000207.1,length=4262,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000226.1,length=15008,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000229.1,length=19913,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000231.1,length=27386,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000210.1,length=27682,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000239.1,length=33824,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000235.1,length=34474,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000201.1,length=36148,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000247.1,length=36422,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000245.1,length=36651,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000197.1,length=37175,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000203.1,length=37498,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000246.1,length=38154,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000249.1,length=38502,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000196.1,length=38914,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000248.1,length=39786,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000244.1,length=39929,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000238.1,length=39939,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000202.1,length=40103,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000234.1,length=40531,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000232.1,length=40652,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000206.1,length=41001,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000240.1,length=41933,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000236.1,length=41934,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000241.1,length=42152,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000243.1,length=43341,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000242.1,length=43523,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000230.1,length=43691,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000237.1,length=45867,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000233.1,length=45941,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000204.1,length=81310,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000198.1,length=90085,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000208.1,length=92689,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000191.1,length=106433,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000227.1,length=128374,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000228.1,length=129120,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000214.1,length=137718,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000221.1,length=155397,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000209.1,length=159169,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000218.1,length=161147,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000220.1,length=161802,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000213.1,length=164239,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000211.1,length=166566,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000199.1,length=169874,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000217.1,length=172149,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000216.1,length=172294,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000215.1,length=172545,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000205.1,length=174588,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000219.1,length=179198,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000224.1,length=179693,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000223.1,length=180455,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000195.1,length=182896,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000212.1,length=186858,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000222.1,length=186861,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000200.1,length=187035,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000193.1,length=189789,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000194.1,length=191469,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000225.1,length=211173,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=GL000192.1,length=547496,assembly=Homo_sapiens_assembly19.fasta>
+##contig=<ID=NC_007605,length=171823,assembly=Homo_sapiens_assembly19.fasta>
+##expectedGender=Female
+##extendedIlluminaManifestVersion=1.2
+##extendedManifestFile=PsychChip_v1-1_15073391_A1.1.2.extended.csv
+##fileDate=Thu Aug 17 00:44:56 UTC 2017
+##fingerprintGender=Unknown
+##genomeBuild=HG19
+##imagingDate=8/14/2015 7:27:49 PM
+##manifestFile=PsychChip_v1-1_15073391_A1.csv
+##p95Green=7373
+##p95Red=22526
+##picardVersion=1.1222-SNAPSHOT
+##reference=file:///home/foo/ref/Homo_sapiens_assembly19.fasta
+##sampleAlias=NA12878
+##scannerName=N0700
+##source=BPM file
+##source=SelectVariants
+##zcallThresholds=thresholds.7.txt
+##zcallVersion=1.0.0.0
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	0816201804HC0_R01C01
+3	178872355	rs11706842	C	T	.	.	AC=1;AF=0.500;ALLELE_A=T;ALLELE_B=C*;AN=2;BEADSET_ID=927;GC_SCORE=0.823;ILLUMINA_BUILD=37.1;ILLUMINA_CHR=3;ILLUMINA_POS=178872355;ILLUMINA_STRAND=TOP;N_AA=4;N_AB=194;N_BB=1053;PROBE_A=AATGTGTTACAATCTGTCCCCCACCATATACATATACAAAGTAGCAGTCC;PROBE_B=.;SOURCE=dbSNP;devR_AA=0.1;devR_AB=0.1;devR_BB=0.1;devTHETA_AA=0.02;devTHETA_AB=0.035;devTHETA_BB=0.018;devX_AA=0.095;devX_AB=0.05;devX_BB=0.02;devY_AA=0.022;devY_AB=0.06;devY_BB=0.094;meanR_AA=0.748;meanR_AB=0.789;meanR_BB=0.755;meanTHETA_AA=0.052;meanTHETA_AB=0.569;meanTHETA_BB=0.946;meanX_AA=0.692;meanX_AB=0.352;meanX_BB=0.059;meanY_AA=0.056;meanY_AB=0.437;meanY_BB=0.695;refSNP=rs11706842;zthresh_X=0.18402316111;zthresh_Y=0.185250013887	GT:BAF:GTA:GTZ:IGC:LRR:NORMX:NORMY:R:THETA:X:Y	1/0:0.514:1/0:1/0:0.849:-0.05:0.333:0.428:0.761:0.579:4554:2131
+3	178902506	psy_rs111868222	G	A	.	.	AC=0;AF=0.00;ALLELE_A=A;ALLELE_B=G*;AN=2;BEADSET_ID=928;GC_SCORE=0.893;ILLUMINA_BUILD=37.1;ILLUMINA_CHR=3;ILLUMINA_POS=178902506;ILLUMINA_STRAND=TOP;N_AA=0;N_AB=28;N_BB=1220;PROBE_A=TTATTGGACCAGCCTAGACTGAAAATCTTCTGTTTAGGCATTTTGGTGGG;PROBE_B=.;SOURCE=psych;devR_AA=0.1;devR_AB=0.105;devR_BB=0.1;devTHETA_AA=0.022;devTHETA_AB=0.023;devTHETA_BB=0.01;devX_AA=0.101;devX_AB=0.054;devX_BB=0.015;devY_AA=0.031;devY_AB=0.055;devY_BB=0.097;meanR_AA=0.948;meanR_AB=1.181;meanR_BB=0.994;meanTHETA_AA=0.026;meanTHETA_AB=0.512;meanTHETA_BB=0.973;meanX_AA=0.911;meanX_AB=0.58;meanX_BB=0.041;meanY_AA=0.037;meanY_AB=0.602;meanY_BB=0.953;refSNP=rs111868222;zthresh_X=0.140378981558;zthresh_Y=0.166929562077	GT:BAF:GTA:GTZ:IGC:LRR:NORMX:NORMY:R:THETA:X:Y	0/0:0.99:0/0:0/0:0.882:0.069:0.057:0.99:1.047:0.963:1498:5593
+3	178907849	rs9866361	G	A	.	.	AC=0;AF=0.00;ALLELE_A=A;ALLELE_B=G*;AN=2;BEADSET_ID=927;GC_SCORE=0.797;ILLUMINA_BUILD=37.1;ILLUMINA_CHR=3;ILLUMINA_POS=178907849;ILLUMINA_STRAND=TOP;N_AA=19;N_AB=360;N_BB=872;PROBE_A=GAGGCCCTAACTGGGGCCCAGAAAATTGTACTGAAGGATACTTGCTTCCT;PROBE_B=.;SOURCE=dbSNP;devR_AA=0.1;devR_AB=0.1;devR_BB=0.1;devTHETA_AA=0.023;devTHETA_AB=0.038;devTHETA_BB=0.021;devX_AA=0.094;devX_AB=0.05;devX_BB=0.018;devY_AA=0.019;devY_AB=0.056;devY_BB=0.093;meanR_AA=0.556;meanR_AB=0.58;meanR_BB=0.576;meanTHETA_AA=0.054;meanTHETA_AB=0.544;meanTHETA_BB=0.94;meanX_AA=0.513;meanX_AB=0.27;meanX_BB=0.05;meanY_AA=0.043;meanY_AB=0.31;meanY_BB=0.526;refSNP=rs9866361;zthresh_X=0.161949964118;zthresh_Y=0.175918019742	GT:BAF:GTA:GTZ:IGC:LRR:NORMX:NORMY:R:THETA:X:Y	0/0:0.978:0/0:0/0:0.811:-0.054:0.061:0.495:0.555:0.922:1038:2429
+3	178916753	exm365588	A	G	.	.	AC=0;AF=0.00;ALLELE_A=A*;ALLELE_B=G;AN=2;BEADSET_ID=850;GC_SCORE=0.886;ILLUMINA_BUILD=37.1;ILLUMINA_CHR=3;ILLUMINA_POS=178916753;ILLUMINA_STRAND=TOP;N_AA=1247;N_AB=0;N_BB=0;PROBE_A=GATAGTGACTTTAGAATGCCTCCGTGAGGCTACATTAATAACCATAAAGC;PROBE_B=.;SOURCE=ExomeSNPs;devR_AA=0.1;devR_AB=0.1;devR_BB=0.1;devTHETA_AA=0.022;devTHETA_AB=0.022;devTHETA_BB=0.022;devX_AA=0.094;devX_AB=0.05;devX_BB=0.017;devY_AA=0.015;devY_AB=0.052;devY_BB=0.098;meanR_AA=0.455;meanR_AB=0.541;meanR_BB=0.503;meanTHETA_AA=0.047;meanTHETA_AB=0.511;meanTHETA_BB=0.976;meanX_AA=0.424;meanX_AB=0.266;meanX_BB=0.018;meanY_AA=0.031;meanY_AB=0.275;meanY_BB=0.485;refSNP=rs190372148;zthresh_X=0.182850738152;zthresh_Y=0.12847847542	GT:BAF:GTA:GTZ:IGC:LRR:NORMX:NORMY:R:THETA:X:Y	0/0:0:0/0:0/0:0.489:0.114:0.459:0.034:0.493:0.047:8065:228
+3	178916791	exm365589	C	A	.	.	AC=0;AF=0.00;ALLELE_A=A;ALLELE_B=C*;AN=2;BEADSET_ID=850;GC_SCORE=0.89;ILLUMINA_BUILD=37.1;ILLUMINA_CHR=3;ILLUMINA_POS=178916791;ILLUMINA_STRAND=TOP;N_AA=0;N_AB=0;N_BB=1250;PROBE_A=TAACCATAAAGCATGAACTATTTAAAGAAGCAAGAAAATACCCCCTCCAT;PROBE_B=.;SOURCE=ExomeSNPs;devR_AA=0.1;devR_AB=0.1;devR_BB=0.1;devTHETA_AA=0.022;devTHETA_AB=0.022;devTHETA_BB=0.013;devX_AA=0.099;devX_AB=0.053;devX_BB=0.014;devY_AA=0.024;devY_AB=0.052;devY_BB=0.096;meanR_AA=0.738;meanR_AB=0.886;meanR_BB=0.745;meanTHETA_AA=0.024;meanTHETA_AB=0.494;meanTHETA_BB=0.965;meanX_AA=0.711;meanX_AB=0.447;meanX_BB=0.039;meanY_AA=0.027;meanY_AB=0.439;meanY_BB=0.706;refSNP=rs71310379;zthresh_X=0.133750336661;zthresh_Y=0.164321280546	GT:BAF:GTA:GTZ:IGC:LRR:NORMX:NORMY:R:THETA:X:Y	0/0:1:0/0:0/0:0.494:0.001:0.022:0.718:0.741:0.98:620:4057
+3	178921158	rs7623154	G	A	.	.	AC=1;AF=0.500;ALLELE_A=A;ALLELE_B=G*;AN=2;BEADSET_ID=927;GC_SCORE=0.788;ILLUMINA_BUILD=37.1;ILLUMINA_CHR=3;ILLUMINA_POS=178921158;ILLUMINA_STRAND=TOP;N_AA=30;N_AB=414;N_BB=807;PROBE_A=CTTTCGTGCAATTTATATTCAGAAGTGTTTGATTGATCTTGTGCTTCAAC;PROBE_B=.;SOURCE=dbSNP;devR_AA=0.1;devR_AB=0.1;devR_BB=0.1;devTHETA_AA=0.016;devTHETA_AB=0.029;devTHETA_BB=0.015;devX_AA=0.094;devX_AB=0.049;devX_BB=0.021;devY_AA=0.019;devY_AB=0.061;devY_BB=0.092;meanR_AA=0.827;meanR_AB=0.983;meanR_BB=0.947;meanTHETA_AA=0.05;meanTHETA_AB=0.585;meanTHETA_BB=0.933;meanX_AA=0.767;meanX_AB=0.426;meanX_BB=0.09;meanY_AA=0.06;meanY_AB=0.557;meanY_BB=0.857;refSNP=rs7623154;zthresh_X=0.224662521322;zthresh_Y=0.204527740428	GT:BAF:GTA:GTZ:IGC:LRR:NORMX:NORMY:R:THETA:X:Y	1/0:0.484:1/0:1/0:0.797:0.017:0.442:0.547:0.99:0.567:6004:2730
+3	178922361	exm365611	C	G	.	.	AC=0;AF=0.00;ALLELE_A=G;ALLELE_B=C*;AN=2;BEADSET_ID=850;GC_SCORE=0.906;ILLUMINA_BUILD=37.1;ILLUMINA_CHR=3;ILLUMINA_POS=178922361;ILLUMINA_STRAND=BOT;N_AA=0;N_AB=0;N_BB=1249;PROBE_A=TACCATGGAGGAGAACCCTTATGTGACAATGTGAACACTCAAAGAGTACG;PROBE_B=TACCATGGAGGAGAACCCTTATGTGACAATGTGAACACTCAAAGAGTACC;SOURCE=ExomeSNPs;devR_AA=0.1;devR_AB=0.1;devR_BB=0.1;devTHETA_AA=0.022;devTHETA_AB=0.022;devTHETA_BB=0.014;devX_AA=0.099;devX_AB=0.052;devX_BB=0.014;devY_AA=0.022;devY_AB=0.052;devY_BB=0.097;meanR_AA=0.664;meanR_AB=0.793;meanR_BB=0.678;meanTHETA_AA=0.024;meanTHETA_AB=0.501;meanTHETA_BB=0.977;meanX_AA=0.64;meanX_AB=0.396;meanX_BB=0.024;meanY_AA=0.025;meanY_AB=0.397;meanY_BB=0.654;refSNP=rs113613074;zthresh_X=0.119568794798;zthresh_Y=0.156845592246	GT:BAF:GTA:GTZ:IGC:LRR:NORMX:NORMY:R:THETA:X:Y	0/0:1:0/0:0/0:0.515:-0.048:0.015:0.639:0.654:0.986:603:11188
+3	178927410	exm365615	A	G	.	.	AC=0;AF=0.00;ALLELE_A=A*;ALLELE_B=G;AN=2;BEADSET_ID=1161;GC_SCORE=0.868;ILLUMINA_BUILD=37.1;ILLUMINA_CHR=3;ILLUMINA_POS=178927410;ILLUMINA_STRAND=BOT;N_AA=1072;N_AB=169;N_BB=0;PROBE_A=GAGCAAATGGAAAGGCAAAGTCGAGCAGCACGAGGAAGATCAGGAATGTA;PROBE_B=.;SOURCE=ExomeSNPs;devR_AA=0.1;devR_AB=0.1;devR_BB=0.1;devTHETA_AA=0.012;devTHETA_AB=0.042;devTHETA_BB=0.022;devX_AA=0.099;devX_AB=0.058;devX_BB=0.024;devY_AA=0.015;devY_AB=0.059;devY_BB=0.099;meanR_AA=0.829;meanR_AB=0.918;meanR_BB=0.742;meanTHETA_AA=0.017;meanTHETA_AB=0.509;meanTHETA_BB=0.975;meanX_AA=0.808;meanX_AB=0.452;meanX_BB=0.028;meanY_AA=0.021;meanY_AB=0.466;meanY_BB=0.714;refSNP=rs2230461;zthresh_X=0.183044318831;zthresh_Y=0.127662818665	GT:BAF:GTA:GTZ:IGC:LRR:NORMX:NORMY:R:THETA:X:Y	0/0:0.009:0/0:0/0:0.851:0.267:0.961:0.038:1:0.025:15373:361
+3	178932551	rs12494623	C	T	.	.	AC=2;AF=1.00;ALLELE_A=T;ALLELE_B=C*;AN=2;BEADSET_ID=971;GC_SCORE=0.869;ILLUMINA_BUILD=37.1;ILLUMINA_CHR=3;ILLUMINA_POS=178932551;ILLUMINA_STRAND=TOP;N_AA=343;N_AB=398;N_BB=479;PROBE_A=GTGAAGACCTGCTGTTTTCTCTGCTTCCAAGCTCAACTAACAATATATTT;PROBE_B=.;SOURCE=dbSNP;devR_AA=0.131;devR_AB=0.1;devR_BB=0.123;devTHETA_AA=0.017;devTHETA_AB=0.023;devTHETA_BB=0.022;devX_AA=0.126;devX_AB=0.061;devX_BB=0.024;devY_AA=0.017;devY_AB=0.074;devY_BB=0.118;meanR_AA=0.622;meanR_AB=0.938;meanR_BB=0.739;meanTHETA_AA=0.028;meanTHETA_AB=0.563;meanTHETA_BB=0.965;meanX_AA=0.596;meanX_AB=0.423;meanX_BB=0.038;meanY_AA=0.026;meanY_AB=0.515;meanY_BB=0.701;refSNP=rs12494623;zthresh_X=0.152176899827;zthresh_Y=0.170103096568	GT:BAF:GTA:GTZ:IGC:LRR:NORMX:NORMY:R:THETA:X:Y	1/1:0.027:1/1:1/1:0.906:-0.336:0.465:0.042:0.507:0.057:7174:362
+3	178937400	exm2255857	A	G	.	.	AC=0;AF=0.00;ALLELE_A=A*;ALLELE_B=G;AN=2;BEADSET_ID=850;GC_SCORE=0.891;ILLUMINA_BUILD=37.1;ILLUMINA_CHR=3;ILLUMINA_POS=178937400;ILLUMINA_STRAND=TOP;N_AA=1251;N_AB=0;N_BB=0;PROBE_A=CATACACAGATGTATTGCTTGGTAAAAGATTGGCCTCCAATCAAACCTGA;PROBE_B=.;SOURCE=1000genomes;devR_AA=0.1;devR_AB=0.108;devR_BB=0.1;devTHETA_AA=0.013;devTHETA_AB=0.022;devTHETA_BB=0.022;devX_AA=0.096;devX_AB=0.053;devX_BB=0.026;devY_AA=0.015;devY_AB=0.053;devY_BB=0.1;meanR_AA=0.79;meanR_AB=0.96;meanR_BB=0.803;meanTHETA_AA=0.031;meanTHETA_AB=0.503;meanTHETA_BB=0.976;meanX_AA=0.753;meanX_AB=0.477;meanX_BB=0.029;meanY_AA=0.037;meanY_AB=0.482;meanY_BB=0.773;refSNP=rs137902538;zthresh_X=0.187164813479;zthresh_Y=0.140282002247	GT:BAF:GTA:GTZ:IGC:LRR:NORMX:NORMY:R:THETA:X:Y	0/0:0:0/0:0/0:0.496:-0.05:0.731:0.031:0.761:0.027:12748:231
+3	178947118	variant.78684	C	T	.	.	AC=0;AF=0.00;ALLELE_A=T;ALLELE_B=C*;AN=2;BEADSET_ID=816;GC_SCORE=0.902;ILLUMINA_BUILD=37;ILLUMINA_CHR=3;ILLUMINA_POS=178947118;ILLUMINA_STRAND=TOP;N_AA=0;N_AB=0;N_BB=1251;PROBE_A=ACCTTTCAAGCCGCCTTTGCACTGAATTTGCATAATAGTGTGAGAATTTC;PROBE_B=.;SOURCE=STAARS;devR_AA=0.1;devR_AB=0.1;devR_BB=0.1;devTHETA_AA=0.022;devTHETA_AB=0.022;devTHETA_BB=0.015;devX_AA=0.098;devX_AB=0.052;devX_BB=0.014;devY_AA=0.019;devY_AB=0.051;devY_BB=0.096;meanR_AA=0.576;meanR_AB=0.681;meanR_BB=0.596;meanTHETA_AA=0.024;meanTHETA_AB=0.494;meanTHETA_BB=0.964;meanX_AA=0.555;meanX_AB=0.344;meanX_BB=0.032;meanY_AA=0.021;meanY_AB=0.337;meanY_BB=0.565;zthresh_X=0.122228724787;zthresh_Y=0.159007429626	GT:BAF:GTA:GTZ:IGC:LRR:NORMX:NORMY:R:THETA:X:Y	0/0:1:0/0:0/0:0.509:0.03:0.022:0.585:0.607:0.977:711:3117
+3	178950297	rs1607237	C	T	.	.	AC=2;AF=1.00;ALLELE_A=T;ALLELE_B=C*;AN=2;BEADSET_ID=927;GC_SCORE=0.848;ILLUMINA_BUILD=37.1;ILLUMINA_CHR=3;ILLUMINA_POS=178950297;ILLUMINA_STRAND=BOT;N_AA=486;N_AB=560;N_BB=205;PROBE_A=GTCTGTGTGTCTGCTTTTGTGTGTATCTGCTGTTTTGGTAATTATAGTTT;PROBE_B=.;SOURCE=dbSNP;devR_AA=0.102;devR_AB=0.12;devR_BB=0.1;devTHETA_AA=0.012;devTHETA_AB=0.028;devTHETA_BB=0.016;devX_AA=0.099;devX_AB=0.057;devX_BB=0.022;devY_AA=0.018;devY_AB=0.057;devY_BB=0.094;meanR_AA=1.064;meanR_AB=1.186;meanR_BB=1.006;meanTHETA_AA=0.03;meanTHETA_AB=0.494;meanTHETA_BB=0.943;meanX_AA=1.016;meanX_AB=0.598;meanX_BB=0.083;meanY_AA=0.048;meanY_AB=0.587;meanY_BB=0.923;refSNP=rs1607237;zthresh_X=0.199217026256;zthresh_Y=0.172626912202	GT:BAF:GTA:GTZ:IGC:LRR:NORMX:NORMY:R:THETA:X:Y	1/1:0:1/1:1/1:0.882:-0.014:1.013:0.039:1.052:0.025:13288:291
+3	178960744	exm2238961	T	C	.	.	AC=0;AF=0.00;ALLELE_A=T*;ALLELE_B=C;AN=2;BEADSET_ID=850;GC_SCORE=0.832;ILLUMINA_BUILD=37.1;ILLUMINA_CHR=3;ILLUMINA_POS=178960744;ILLUMINA_STRAND=BOT;N_AA=1251;N_AB=0;N_BB=0;PROBE_A=AAGATTTCTCTGCTCTTCCTTTGCTCCTCCTCATAATGCACAGTTTGAAC;PROBE_B=.;SOURCE=1000_genomes;devR_AA=0.1;devR_AB=0.195;devR_BB=0.113;devTHETA_AA=0.007;devTHETA_AB=0.022;devTHETA_BB=0.022;devX_AA=0.099;devX_AB=0.059;devX_BB=0.042;devY_AA=0.015;devY_AB=0.058;devY_BB=0.117;meanR_AA=1.388;meanR_AB=1.725;meanR_BB=1.296;meanTHETA_AA=0.014;meanTHETA_AB=0.495;meanTHETA_BB=0.975;meanX_AA=1.358;meanX_AB=0.87;meanX_BB=0.048;meanY_AA=0.029;meanY_AB=0.855;meanY_BB=1.248;refSNP=rs200646413;zthresh_X=0.181538312311;zthresh_Y=0.124907131052	GT:BAF:GTA:GTZ:IGC:LRR:NORMX:NORMY:R:THETA:X:Y	0/0:0.004:0/0:0/0:0.423:0.033:1.384:0.039:1.423:0.018:24000:330
+3	178960843	exm365663	A	G	.	.	AC=0;AF=0.00;ALLELE_A=A*;ALLELE_B=G;AN=2;BEADSET_ID=850;GC_SCORE=0.847;ILLUMINA_BUILD=37.1;ILLUMINA_CHR=3;ILLUMINA_POS=178960843;ILLUMINA_STRAND=TOP;N_AA=1251;N_AB=0;N_BB=0;PROBE_A=CAGTGCTATATTTTTCACACAGTAAGGACAGGTGTTGTGTTAATCTCACC;PROBE_B=.;SOURCE=ExomeSNPs;devR_AA=0.1;devR_AB=0.18;devR_BB=0.106;devTHETA_AA=0.009;devTHETA_AB=0.022;devTHETA_BB=0.022;devX_AA=0.096;devX_AB=0.057;devX_BB=0.04;devY_AA=0.017;devY_AB=0.058;devY_BB=0.11;meanR_AA=1.287;meanR_AB=1.594;meanR_BB=1.215;meanTHETA_AA=0.034;meanTHETA_AB=0.505;meanTHETA_BB=0.976;meanX_AA=1.221;meanX_AB=0.791;meanX_BB=0.044;meanY_AA=0.066;meanY_AB=0.804;meanY_BB=1.171;refSNP=rs145985409;zthresh_X=0.19811140407;zthresh_Y=0.172079887333	GT:BAF:GTA:GTZ:IGC:LRR:NORMX:NORMY:R:THETA:X:Y	0/0:0.01:0/0:0/0:0.441:0.077:1.276:0.087:1.363:0.043:22154:590
+3	178962380	exm2273981	C	T	.	.	AC=0;AF=0.00;ALLELE_A=T;ALLELE_B=C*;AN=2;BEADSET_ID=850;GC_SCORE=0.901;ILLUMINA_BUILD=37.2;ILLUMINA_CHR=3;ILLUMINA_POS=178962380;ILLUMINA_STRAND=TOP;N_AA=0;N_AB=0;N_BB=1251;PROBE_A=CGACTGGCTGGACTGTGCCTTCACCTGTGGTGTGCACTGCCACGGTCAGG;PROBE_B=.;SOURCE=1000genomes;devR_AA=0.1;devR_AB=0.133;devR_BB=0.1;devTHETA_AA=0.022;devTHETA_AB=0.022;devTHETA_BB=0.009;devX_AA=0.101;devX_AB=0.054;devX_BB=0.013;devY_AA=0.032;devY_AB=0.054;devY_BB=0.097;meanR_AA=0.964;meanR_AB=1.179;meanR_BB=0.948;meanTHETA_AA=0.024;meanTHETA_AB=0.5;meanTHETA_BB=0.976;meanX_AA=0.928;meanX_AB=0.589;meanX_BB=0.034;meanY_AA=0.036;meanY_AB=0.59;meanY_BB=0.915;refSNP=rs199686819;zthresh_X=0.12173904259;zthresh_Y=0.159179424244	GT:BAF:GTA:GTZ:IGC:LRR:NORMX:NORMY:R:THETA:X:Y	0/0:1:0/0:0/0:0.508:-0.062:0.033:0.876:0.909:0.976:819:4947
+3	178962425	newrs145138176	C	T	.	.	AC=0;AF=0.00;ALLELE_A=T;ALLELE_B=C*;AN=2;BEADSET_ID=816;GC_SCORE=0.879;ILLUMINA_BUILD=37;ILLUMINA_CHR=3;ILLUMINA_POS=178962425;ILLUMINA_STRAND=TOP;N_AA=0;N_AB=0;N_BB=1250;PROBE_A=GAGAGAAGAATCGACCTGCACTGCCATCCACACAGATATCATGGACGACT;PROBE_B=.;SOURCE=STAARS;devR_AA=0.1;devR_AB=0.121;devR_BB=0.1;devTHETA_AA=0.022;devTHETA_AB=0.022;devTHETA_BB=0.011;devX_AA=0.101;devX_AB=0.054;devX_BB=0.014;devY_AA=0.029;devY_AB=0.053;devY_BB=0.095;meanR_AA=0.883;meanR_AB=1.074;meanR_BB=0.877;meanTHETA_AA=0.024;meanTHETA_AB=0.494;meanTHETA_BB=0.963;meanX_AA=0.851;meanX_AB=0.543;meanX_BB=0.048;meanY_AA=0.032;meanY_AB=0.532;meanY_BB=0.829;refSNP=rs145138176;zthresh_X=0.14237441016;zthresh_Y=0.168724424863	GT:BAF:GTA:GTZ:IGC:LRR:NORMX:NORMY:R:THETA:X:Y	0/0:0.999:0/0:0/0:0.48:-0.121:0.045:0.761:0.806:0.963:1125:4047
+3	178968543	exm365677	G	T	.	.	AC=0;AF=0.00;ALLELE_A=T;ALLELE_B=G*;AN=2;BEADSET_ID=850;GC_SCORE=0.906;ILLUMINA_BUILD=37.1;ILLUMINA_CHR=3;ILLUMINA_POS=178968543;ILLUMINA_STRAND=TOP;N_AA=0;N_AB=1;N_BB=1250;PROBE_A=GGGCTTCTCAGTCCTAATGTTCTTCTTGCTCGGAACAACCATTCTAAAGC;PROBE_B=.;SOURCE=ExomeSNPs;devR_AA=0.104;devR_AB=0.156;devR_BB=0.1;devTHETA_AA=0.022;devTHETA_AB=0.022;devTHETA_BB=0.008;devX_AA=0.107;devX_AB=0.058;devX_BB=0.014;devY_AA=0.036;devY_AB=0.057;devY_BB=0.097;meanR_AA=1.1;meanR_AB=1.381;meanR_BB=1.127;meanTHETA_AA=0.025;meanTHETA_AB=0.492;meanTHETA_BB=0.975;meanX_AA=1.059;meanX_AB=0.7;meanX_BB=0.042;meanY_AA=0.041;meanY_AB=0.682;meanY_BB=1.085;refSNP=rs61734056;zthresh_X=0.135160960006;zthresh_Y=0.165299195841	GT:BAF:GTA:GTZ:IGC:LRR:NORMX:NORMY:R:THETA:X:Y	0/0:1:0/0:0/0:0.897:0.034:0.04:1.113:1.153:0.977:972:6285
+3	178968568	exm365678	A	C	.	.	AC=0;AF=0.00;ALLELE_A=A*;ALLELE_B=C;AN=2;BEADSET_ID=1168;GC_SCORE=0.889;ILLUMINA_BUILD=37.1;ILLUMINA_CHR=3;ILLUMINA_POS=178968568;ILLUMINA_STRAND=BOT;N_AA=1249;N_AB=1;N_BB=0;PROBE_A=CCGTGATGCTGGGGTTTGCCATGATGGGCTTCTCAGTCCTAATGTTCTTC;PROBE_B=.;SOURCE=ExomeSNPs;devR_AA=0.143;devR_AB=0.175;devR_BB=0.109;devTHETA_AA=0.01;devTHETA_AB=0.022;devTHETA_BB=0.022;devX_AA=0.14;devX_AB=0.076;devX_BB=0.041;devY_AA=0.016;devY_AB=0.077;devY_BB=0.113;meanR_AA=1.113;meanR_AB=1.547;meanR_BB=1.25;meanTHETA_AA=0.019;meanTHETA_AB=0.509;meanTHETA_BB=0.975;meanX_AA=1.081;meanX_AB=0.763;meanX_BB=0.046;meanY_AA=0.032;meanY_AB=0.784;meanY_BB=1.204;refSNP=rs2276802;zthresh_X=0.189602852188;zthresh_Y=0.145988814983	GT:BAF:GTA:GTZ:IGC:LRR:NORMX:NORMY:R:THETA:X:Y	0/0:0:0/0:0/0:0.878:-0.023:1.069:0.021:1.089:0.012:17958:362
+3	178968634	exm365682	C	T	.	.	AC=1;AF=0.500;ALLELE_A=T;ALLELE_B=C*;AN=2;BEADSET_ID=850;GC_SCORE=0.885;ILLUMINA_BUILD=37.1;ILLUMINA_CHR=3;ILLUMINA_POS=178968634;ILLUMINA_STRAND=TOP;N_AA=216;N_AB=596;N_BB=439;PROBE_A=ACTACAGTGATGGAGACCCACTAGATGTGCACAAGAGGCTGCCATCCAGT;PROBE_B=.;SOURCE=ExomeSNPs;devR_AA=0.1;devR_AB=0.1;devR_BB=0.1;devTHETA_AA=0.011;devTHETA_AB=0.025;devTHETA_BB=0.01;devX_AA=0.096;devX_AB=0.058;devX_BB=0.015;devY_AA=0.019;devY_AB=0.054;devY_BB=0.097;meanR_AA=1.156;meanR_AB=1.266;meanR_BB=0.992;meanTHETA_AA=0.036;meanTHETA_AB=0.47;meanTHETA_BB=0.972;meanX_AA=1.094;meanX_AB=0.662;meanX_BB=0.042;meanY_AA=0.062;meanY_AB=0.603;meanY_BB=0.951;refSNP=rs7645550;zthresh_X=0.139062088415;zthresh_Y=0.166539592425	GT:BAF:GTA:GTZ:IGC:LRR:NORMX:NORMY:R:THETA:X:Y	1/0:0.496:1/0:1/0:0.922:-0.041:0.647:0.582:1.23:0.466:11372:3338
+3	178968660	exm365684	T	C	.	.	AC=0;AF=0.00;ALLELE_A=T*;ALLELE_B=C;AN=2;BEADSET_ID=850;GC_SCORE=0.862;ILLUMINA_BUILD=37.1;ILLUMINA_CHR=3;ILLUMINA_POS=178968660;ILLUMINA_STRAND=TOP;N_AA=987;N_AB=246;N_BB=18;PROBE_A=TGCCTCAGGGAAGAAGAGAGAGACAGACTACAGTGATGGAGACCCACTAG;PROBE_B=.;SOURCE=ExomeSNPs;devR_AA=0.1;devR_AB=0.1;devR_BB=0.1;devTHETA_AA=0.01;devTHETA_AB=0.039;devTHETA_BB=0.016;devX_AA=0.096;devX_AB=0.061;devX_BB=0.022;devY_AA=0.015;devY_AB=0.061;devY_BB=0.098;meanR_AA=1.016;meanR_AB=1.151;meanR_BB=0.92;meanTHETA_AA=0.036;meanTHETA_AB=0.5;meanTHETA_BB=0.97;meanX_AA=0.962;meanX_AB=0.575;meanX_BB=0.041;meanY_AA=0.054;meanY_AB=0.576;meanY_BB=0.878;refSNP=rs1170672;zthresh_X=0.191295862566;zthresh_Y=0.153061435119	GT:BAF:GTA:GTZ:IGC:LRR:NORMX:NORMY:R:THETA:X:Y	0/0:0:0/0:0/0:0.899:0.047:1.001:0.046:1.048:0.029:17415:341
+3	178968848	exm365690	G	A	.	.	AC=0;AF=0.00;ALLELE_A=A;ALLELE_B=G*;AN=2;BEADSET_ID=850;GC_SCORE=0.884;ILLUMINA_BUILD=37.1;ILLUMINA_CHR=3;ILLUMINA_POS=178968848;ILLUMINA_STRAND=BOT;N_AA=0;N_AB=0;N_BB=1250;PROBE_A=TATTTAGATGGACTTTTCACCAAGCTCTGAACTGGGATTTCATTTTGTTG;PROBE_B=.;SOURCE=ExomeSNPs;devR_AA=0.1;devR_AB=0.1;devR_BB=0.1;devTHETA_AA=0.022;devTHETA_AB=0.022;devTHETA_BB=0.015;devX_AA=0.099;devX_AB=0.052;devX_BB=0.015;devY_AA=0.022;devY_AB=0.051;devY_BB=0.096;meanR_AA=0.662;meanR_AB=0.79;meanR_BB=0.676;meanTHETA_AA=0.024;meanTHETA_AB=0.494;meanTHETA_BB=0.963;meanX_AA=0.638;meanX_AB=0.399;meanX_BB=0.037;meanY_AA=0.024;meanY_AB=0.391;meanY_BB=0.639;refSNP=rs113011029;zthresh_X=0.138051204865;zthresh_Y=0.165472197716	GT:BAF:GTA:GTZ:IGC:LRR:NORMX:NORMY:R:THETA:X:Y	0/0:0.988:0/0:0/0:0.486:0.095:0.051:0.674:0.725:0.952:1106:3811
