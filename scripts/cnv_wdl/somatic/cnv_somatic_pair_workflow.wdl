@@ -119,9 +119,6 @@ workflow CNVSomaticPairWorkflow {
     Boolean? load_allele_fraction
     Int? mem_gb_for_call_modeled_segments
 
-
-    # Marton -- change this
-
     #########################################
     #### optional arguments for plotting ####
     #########################################

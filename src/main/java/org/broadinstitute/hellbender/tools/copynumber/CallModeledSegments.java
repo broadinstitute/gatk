@@ -85,6 +85,9 @@ public final class CallModeledSegments extends CommandLineProgram {
     public static final String OUTPUT_CALLS_SUFFIX_DEFAULT_VALUE = ".called.seg";
     public static final String INTERACTIVE_RUN_LONG_NAME = "interactive";
 
+    public static final String NORMAL_MINOR_ALLELE_FRACTION_THRESHOLD = "normal_minor_allele_fraction_threshold";
+    public static final String COPY_RATIO_PEAK_MIN_WEIGHT = "copy_ratio_peak_min_weight";
+    public static final String MIN_FRACTION_OF_POINTS_IN_NORMAL_ALLELE_FRACTION_REGION = "min_fraction_of_points_in_normal_allele_fraction_region";
 
     // Adiditional arguments
     private static final String INTERACTIVE_OUTPUT_DEL_AMPL_IMAGE_SUFFIX = "interactive_output_del_ampl_image_suffix";
@@ -184,6 +187,30 @@ public final class CallModeledSegments extends CommandLineProgram {
     )
     private String logFilenamePrefix="";
 
+    @Argument(
+            doc = "If the allele fraction value of a peak fitted to the data is above this threshold and its copy ratio "
+                    + "value is within the appropriate region, then the peak is considered normal.",
+            fullName = NORMAL_MINOR_ALLELE_FRACTION_THRESHOLD,
+            optional = true
+    )
+    private double normalMinorAlleleFractionThreshold=0.475;
+
+    @Argument(
+            doc = "During the copy ratio clustering, peaks with weights smaller than this ratio are not taken into " +
+                    "account.",
+            fullName = COPY_RATIO_PEAK_MIN_WEIGHT,
+            optional = true
+    )
+    private double copyRatioPeakMinWeight=0.03;
+
+    @Argument(
+            doc = "The region of copy ratio values are is considered normal only if at least this fraction of points " +
+                    "are above the normalMinorAlleleFractionThreshold",
+            fullName = MIN_FRACTION_OF_POINTS_IN_NORMAL_ALLELE_FRACTION_REGION,
+            optional = true
+    )
+    private double minFractionOfPointsInNormalAlleleFractionRegion=0.15;
+
     @Override
     protected void onStartup() {
         PythonScriptExecutor.checkPythonEnvironmentForPackage("modeled_segments_caller");
@@ -257,7 +284,10 @@ public final class CallModeledSegments extends CommandLineProgram {
                 "--" + INTERACTIVE_OUTPUT_ALLELE_FRACTION_PLOT_SUFFIX + "=" + INTERACTIVE_OUTPUT_ALLELE_FRACTION_PLOT_SUFFIX_DEFAULT_VALUE,
                 "--" + INTERACTIVE_OUTPUT_COPY_RATIO_SUFFIX + "=" + INTERACTIVE_OUTPUT_COPY_RATIO_SUFFIX_DEFAULT_VALUE,
                 "--" + INTERACTIVE_OUTPUT_COPY_RATIO_CLUSTERING_SUFFIX + "=" + INTERACTIVE_OUTPUT_COPY_RATIO_CLUSTERING_SUFFIX_DEFAULT_VALUE,
-                "--" + OUTPUT_LOG_PREFIX_LONG_NAME + "=" + String.valueOf(logFilenamePrefix)));
+                "--" + OUTPUT_LOG_PREFIX_LONG_NAME + "=" + String.valueOf(logFilenamePrefix),
+                "--" + NORMAL_MINOR_ALLELE_FRACTION_THRESHOLD + "=" + String.valueOf(normalMinorAlleleFractionThreshold),
+                "--" + COPY_RATIO_PEAK_MIN_WEIGHT + "=" + String.valueOf(copyRatioPeakMinWeight),
+                "--" + MIN_FRACTION_OF_POINTS_IN_NORMAL_ALLELE_FRACTION_REGION + "=" + String.valueOf(minFractionOfPointsInNormalAlleleFractionRegion)));
 
         return executor.executeScript(
                 new Resource(script, CallModeledSegments.class),
@@ -265,4 +295,3 @@ public final class CallModeledSegments extends CommandLineProgram {
                 arguments);
     }
 }
-
