@@ -19,6 +19,14 @@ CIGAR_CODES_TO_COUNT = [
     defines.CIGAR_CODE['M'], defines.CIGAR_CODE['I'], defines.CIGAR_CODE['S'], defines.CIGAR_CODE['D']
 ]
 
+p_lut = np.zeros((256,))
+not_p_lut = np.zeros((256,))
+
+for i in range(256):
+    exponent = float(-i) / 10.0
+    p_lut[i] = 1.0 - (10.0**exponent)
+    not_p_lut[i] = (1.0 - p_lut[i]) / 3.0
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~ Inference ~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -58,7 +66,7 @@ def score_and_write_batch(args, model, file_out, fifo, batch_size, python_batch_
             var = Variant(fifo_data[0], int(fifo_data[1]), fifo_data[2], fifo_data[3], fifo_data[6])
             while fidx+7 < len(fifo_data):
                 read_tuples.append( Read(fifo_data[fidx],
-                                         [int(q) for q in fifo_data[fidx+1].split(',')],
+                                         list(map(int, fifo_data[fidx+1].split(','))),
                                          fifo_data[fidx+2],
                                          bool_from_java(fifo_data[fidx+3]),
                                          bool_from_java(fifo_data[fidx+4]),
@@ -372,18 +380,9 @@ def base_quality_to_phred_array(base_quality, base, base_dict):
 
 
 def base_quality_to_p_hot_array(base_quality, base, base_dict):
-    phot = np.zeros((4,))
-    exponent = float(-base_quality) / 10.0
-    p = 1.0-(10.0**exponent)
-    not_p = (1.0-p)/3.0
-
-    for b in base_dict.keys():
-        if b == base:
-            phot[base_dict[b]] = p
-        elif b == defines.INDEL_CHAR:
-            continue
-        else:
-            phot[base_dict[b]] = not_p
+    not_p = not_p_lut[base_quality]
+    phot = [not_p, not_p, not_p, not_p]
+    phot[base_dict[base]] = p_lut[base_quality]
 
     return phot
 
