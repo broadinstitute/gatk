@@ -21,6 +21,12 @@ group.add_argument("--output_image_dir",
                    default=argparse.SUPPRESS,
                    help="Output path to the image file showing the plots of the segments.")
 
+group.add_argument("--output_log_dir",
+                   type=str,
+                   required=False,
+                   default="",
+                   help="Directory containing the log file if specified.")
+
 group.add_argument("--output_calls_dir",
                    type=str,
                    required=True,
@@ -39,17 +45,23 @@ group.add_argument("--output_calls_prefix",
                    default=argparse.SUPPRESS,
                    help="Prefix of the output calls filenames.")
 
+group.add_argument("--output_log_prefix",
+                   type=str,
+                   required=False,
+                   default="",
+                   help="Prefix of the log file. If left empty, no logging will occur.")
+
 group.add_argument("--output_image_suffix",
                    type=str,
                    required=True,
                    default=argparse.SUPPRESS,
-                   help="Prefix of the output image filenames.")
+                   help="Suffix of the output image filenames.")
 
 group.add_argument("--output_calls_suffix",
                    type=str,
                    required=True,
                    default=argparse.SUPPRESS,
-                   help="Prefix of the output calls filenames.")
+                   help="Suffix of the output calls filenames.")
 
 group.add_argument("--load_copy_ratio",
                    type=str,
@@ -103,13 +115,6 @@ group.add_argument("--interactive_output_copy_ratio_clustering_suffix",
                    help="[Interactive mode only:] Suffix of the plot showing the histogram of copy ratio data and" +
                         "the first two copy ratio clusters.")
 
-group.add_argument("--log_filename_prefix",
-                   type=str,
-                   required=False,
-                   default="",
-                   help="Whether progress of the code should be saved in a log file.")
-
-
 def str2bool(boolString):
     if boolString=="true" or boolString==True:
         return True
@@ -125,7 +130,8 @@ if __name__ == "__main__":
     data = LoadAndSampleCrAndAf(args.input_file,
                                 load_CR=str2bool(args.load_copy_ratio),
                                 load_AF=str2bool(args.load_allele_fraction),
-                                log_filename_prefix=args.log_filename_prefix
+                                output_log_dir=args.output_log_dir,
+                                output_log_prefix=args.output_log_prefix
                                 )
 
     caller = ModeledSegmentsCaller(data, interactive=args.interactive,

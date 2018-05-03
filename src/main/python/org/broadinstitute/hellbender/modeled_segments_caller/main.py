@@ -33,7 +33,8 @@ class LoadAndSampleCrAndAf:
         We read these data from the file on initialization and then sample
         the distribution using self.sample_data_points().
     """
-    def __init__(self, filename: str, load_CR: bool = True, load_AF: bool=True, log_filename_prefix: str=""):
+    def __init__(self, filename: str, load_CR: bool = True, load_AF: bool=True,
+                 output_log_dir: str= "", output_log_prefix: str= ""):
         """ Inputs:
             - filename: '.seg' file characterizing the posterior distribution of the
               copy ratio and the allele fraction
@@ -42,20 +43,27 @@ class LoadAndSampleCrAndAf:
         """
 
         # Start logging
-        if not (log_filename_prefix==""):
+        if output_log_dir=="":
+            input_fname_ending = filename.split("/")[-1]
+            input_dir = filename.split(input_fname_ending)[0]
+            self.__output_log_dir=input_dir
+        else:
+            self.__output_log_dir=output_log_dir
+
+        if not (output_log_prefix==""):
             now = str(datetime.datetime.now())
             now2 = now.replace(" ", "_")
             now2 = now2.replace(":", "_")
             now2 = now2.replace(".", "_")
-            self.log_filename = log_filename_prefix + now2 + ".log"
-            logging.basicConfig(filename=self.log_filename,level=logging.DEBUG)
+            self.__log_filename = output_log_dir + "/" + output_log_prefix + now2 + ".log"
+            logging.basicConfig(filename=self.__log_filename, level=logging.DEBUG)
             logging.info("* ---- %s ---- *" % now)
             logging.info("Initializing class LoadAndSampleCrAndAf")
             logging.info("Input file: %s" % filename)
             logging.info("load_copy_ratio: %s" % load_CR)
             logging.info("load_allele_fraction: %s" % load_AF)
         else:
-            self.log_filename=""
+            self.__log_filename= ""
 
         # Initialize
         np.random.seed(RANDOM_SEED)
@@ -64,7 +72,7 @@ class LoadAndSampleCrAndAf:
         self.__load_AF = load_AF
 
         # Load data from file
-        if not (log_filename_prefix==""):
+        if not (output_log_prefix==""):
             logging.info("Loading data from file.")
         [self.__copy_ratio_median,           # median of the copy ratio posterior for each segment
          self.__copy_ratio_10th_perc,        # 10th percentile ...
@@ -82,7 +90,7 @@ class LoadAndSampleCrAndAf:
 
         # Sample posterior distributions
         # Returns list of samples for each segment
-        if not (log_filename_prefix==""):
+        if not (output_log_prefix==""):
             logging.info("Sampling data points.")
         [self.__copy_ratio_sampled_per_segment,       # sampled copy ratio values
          self.__allele_fraction_sampled_per_segment   # sampled allele fraction values
@@ -92,7 +100,7 @@ class LoadAndSampleCrAndAf:
         self.__copy_ratio_sampled = [i for sublist in self.__copy_ratio_sampled_per_segment for i in sublist]
         self.__allele_fraction_sampled = [i for sublist in self.__allele_fraction_sampled_per_segment for i in sublist]
 
-        if not (log_filename_prefix==""):
+        if not (output_log_prefix==""):
             logging.info("Finished.\n\n\n")
 
     def get_data_from_file(self):
@@ -129,6 +137,10 @@ class LoadAndSampleCrAndAf:
     def get_load_AF(self):
         """ Whether we loaded the allele fraction values."""
         return self.__load_AF
+
+    def get_log_filename(self):
+        """ Return log file name. """
+        return self.__log_filename
 
     def __import_copy_ratio_and_allele_fraction(self):
         """ Read data related to the copy ratio and allele fraction distributions from file.
@@ -430,8 +442,8 @@ class ModeledSegmentsCaller:
         """
 
         # Start logging
-        self.log_filename=CR_AF_data.log_filename
-        if not (self.log_filename==""):
+        self.__log_filename=CR_AF_data.get_log_filename()
+        if not (self.__log_filename==""):
             logging.info("* ---- %s ---- *" % str(datetime.datetime.now()))
             logging.info("Initializing class CNVCaller")
 
@@ -477,10 +489,10 @@ class ModeledSegmentsCaller:
          self.__allele_fraction_sampled_per_segment] = self.__CR_AF_data.get_sampled_points_per_segment()
 
         # Set the filenames for the output data
-        if not self.log_filename=="":
+        if not self.__log_filename=="":
             logging.info("Setting output filenames.")
         self.set_output_filenames()
-        if not self.log_filename=="":
+        if not self.__log_filename=="":
             logging.info("   Normal segments image file : %s" % self.fig_normal_segments_filename)
             logging.info("   Calls file : %s" % self.output_calls_filename)
             if self.__interactive:
@@ -493,7 +505,7 @@ class ModeledSegmentsCaller:
                 logging.info("   (interactive mode) Gaussian fit to the copy ratio data: %s" % self.fig_copy_ratio_fit)
 
         # Find normal segments
-        if not self.log_filename=="":
+        if not self.__log_filename=="":
             logging.info("Determining normal segments.")
         if self.__load_CR and self.__load_AF:
             [self.__responsibilities_normal,
@@ -504,21 +516,21 @@ class ModeledSegmentsCaller:
              self.__normal_segment_indices] = self.__choose_normal_segments__CR_data_only()
 
         # Save plots of the segments
-        if not self.log_filename=="":
+        if not self.__log_filename=="":
             logging.info("Plotting and saving segments.")
         self.__plot_and_save_segments()
 
         # Create auxiliary plots when needed
         if self.__load_CR and self.__load_AF and self.__interactive:
-            if not self.log_filename=="":
+            if not self.__log_filename=="":
                 logging.info("Creating auxiliary plots in interactive mode.")
             self.__plot_clustering()
 
         # Save the results in a file
-        if not self.log_filename=="":
+        if not self.__log_filename=="":
             logging.info("Saving results.")
         self.__save_calls_to_file()
-        if not self.log_filename=="":
+        if not self.__log_filename=="":
             logging.info("Finished.\n\n\n")
 
 
@@ -819,11 +831,11 @@ class ModeledSegmentsCaller:
                                                                 if (af >= normal_range_AF[0] and af <= normal_range_AF[1])])
         if (n_points_in_normal_range__CN1_interval_candidate / len(AF__CN1_interval_candidate) > normal_min_ratio):
             CN2_interval = CN1_interval_candidate
-            if self.__interactive and self.log_filename!="":
+            if self.__interactive and self.__log_filename!="":
                 logging.info("We chose the 1st interval to be of copy number 2.")
         else:
             CN2_interval = CN2_interval_candidate
-            if self.__interactive and self.log_filename!="":
+            if self.__interactive and self.__log_filename!="":
                 logging.info("We chose the 2nd interval to be of copy number 2.")
 
         # Plot histograms of AF data falling in the intervals 'CN1_interval_candidate' and 'CN2_interval_candidate'
