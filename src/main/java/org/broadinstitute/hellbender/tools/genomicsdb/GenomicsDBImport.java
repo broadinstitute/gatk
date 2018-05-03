@@ -113,8 +113,7 @@ import java.util.stream.Collectors;
  * <h3>Caveats</h3>
  * <ul>
  *     <li>IMPORTANT: The -Xmx value the tool is run with should be less than the total amount of physical memory available by at least a few GB, as the native TileDB library requires additional memory on top of the Java memory. Failure to leave enough memory for the native code can result in confusing error messages!</li>
- *     <li>A single interval must be provided. This means each import is limited to a maximum of one contig</li>
- *     <li>Currently, only supports diploid data</li>
+ *     <li>At least one interval must be provided</li>
  *     <li>Input GVCFs cannot contain multiple entries for a single genomic position</li>
  *     <li>The --genomicsdb-workspace-path must point to a non-existent or empty directory.</li>
  * </ul>
@@ -479,8 +478,8 @@ public final class GenomicsDBImport extends GATKTool {
                 : getFeatureReadersSerially(sampleNameToVcfPath, batchSize, index);
     }
 
-    private List<GenomicsDBImportConfiguration.Partition> generatePartitionListFromIntervals(List<ChromosomeInterval> chromosomeIntevals) {
-        return chromosomeIntevals.stream().map(interval -> {
+    private List<GenomicsDBImportConfiguration.Partition> generatePartitionListFromIntervals(List<ChromosomeInterval> chromosomeIntervals) {
+        return chromosomeIntervals.stream().map(interval -> {
             GenomicsDBImportConfiguration.Partition.Builder partitionBuilder = GenomicsDBImportConfiguration.Partition.newBuilder();
             Coordinates.ContigPosition.Builder contigPositionBuilder = Coordinates.ContigPosition.newBuilder();
             Coordinates.GenomicsDBColumn.Builder columnBuilder = Coordinates.GenomicsDBColumn.newBuilder();
@@ -529,11 +528,7 @@ public final class GenomicsDBImport extends GATKTool {
         final int updatedBatchSize = (batchSize == DEFAULT_ZERO_BATCH_SIZE) ? sampleCount : batchSize;
 //        final int totalBatchCount = (sampleCount/updatedBatchSize) + (sampleCount%updatedBatchSize==0 ? 0 : 1);
         final ImportConfig importConfig = createImportConfig(updatedBatchSize);
-        //TODO: Fix this.
-//        BiConsumer<Map<String, FeatureReader<VariantContext>>, Integer> closeReaders = (readers, batchCount) -> {
-//            progressMeter.update(intervals.get(0));
-//            logger.info("Done importing batch " + batchCount + "/" + totalBatchCount);
-//        };
+
         GenomicsDBImporter importer;
         try {
             importer = new GenomicsDBImporter(importConfig);

@@ -52,6 +52,19 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String GENOMICSDB_TEST_DIR = toolsTestDir + "GenomicsDBImport/";
     private static final String COMBINEGVCFS_TEST_DIR = toolsTestDir + "walkers/CombineGVCFs/";
     private static final String COMBINED = largeFileTestDir + "gvcfs/combined.gatk3.7.g.vcf.gz";
+    //Consider a gVCF with a REF block chr20:50-150. Importing this data into GenomicsDB using multiple intervals
+    //-L chr20:1-100 and -L chr20:101-200 will cause the REF block to be imported into both the arrays
+    //Now, when reading data from the workspace (assume full scan) - the data is split into 2 REF block intervals chr20:50-100
+    //and chr20:101-150 one from each array
+    //The following COMBINED_MULTI_INTERVAL gvcf is identical to the gVCF in the previous line except at the partition break
+    //position
+    //The previous file has the following line:
+    //chr20   17970000        .       G       <NON_REF>       .       .       END=17970001
+    //
+    //while this file has:
+    //chr20   17970000        .       G       <NON_REF>       .       .       .
+    //chr20   17970001        .       G       <NON_REF>       .       .       .
+    //
     private static final String COMBINED_MULTI_INTERVAL = largeFileTestDir + "gvcfs/combined_multi_interval.gatk3.7.g.vcf.gz";
     private static final String COMBINED_WITHSPACES = largeFileTestDir + "gvcfs/combined.gatk3.7.smaller_interval.g.vcf";
     private static final ArrayList<SimpleInterval> INTERVAL =

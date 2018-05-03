@@ -406,10 +406,26 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
                         .setReferenceGenome(reference.getAbsolutePath())
                         .setVidMappingFile(vidmapJson.getAbsolutePath())
                         .setCallsetMappingFile(callsetJson.getAbsolutePath())
-                        .setVcfHeaderFilename(vcfHeader.getAbsolutePath());
+                        .setVcfHeaderFilename(vcfHeader.getAbsolutePath())
+                        .setProduceGTField(false)
+                        .setProduceGTWithMinPLValueForSpanningDeletions(false)
+                        .setSitesOnlyQuery(false);
         File arrayFolder = new File(Paths.get(workspace.getAbsolutePath(), GenomicsDBConstants.DEFAULT_ARRAY_NAME)
                 .toAbsolutePath().toString());
 
+        //For the multi-interval support, we create multiple arrays (directories) in a single workspace -
+        //one per interval. So, if you wish to import intervals ("chr1", [ 1, 100M ]) and ("chr2", [ 1, 100M ]),
+        //you end up with 2 directories named chr1$1$100M and chr2$1$100M. So, the array names depend on the
+        //partition bounds.
+
+        //During the read phase, the user only supplies the workspace. The array names are obtained by scanning
+        //the entries in the workspace and reading the right arrays. For example, if you wish to read ("chr2",
+        //50, 50M), then only the second array is queried.
+
+        //In the previous version of the tool, the array name was a constant - genomicsdb_array. The new version
+        //will be backward compatible with respect to reads. Hence, if a directory named genomicsdb_array is found,
+        //the array name is passed to the GenomicsDBFeatureReader otherwise the array names are generated from the
+        //directory entries.
         if (arrayFolder.exists()) {
             exportConfigurationBuilder.setArrayName(GenomicsDBConstants.DEFAULT_ARRAY_NAME);
         } else {
