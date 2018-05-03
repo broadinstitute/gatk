@@ -295,7 +295,7 @@ public class ReadsSparkSourceUnitTest extends GATKBaseTest {
         header.setSortOrder(SAMFileHeader.SortOrder.queryname);
         JavaRDD<GATKRead> reads =  ctx.parallelize(createPairedReads(ctx, header, numPairs, numReadsInPair), numPartitions);
         ReadsSparkSource readsSparkSource = new ReadsSparkSource(ctx);
-        JavaRDD<GATKRead> pairedReads = readsSparkSource.putPairsInSamePartition(header, reads, ctx);
+        JavaRDD<GATKRead> pairedReads = ReadsSparkSource.putPairsInSamePartition(header, reads, ctx);
         List<List<GATKRead>> partitions = pairedReads.mapPartitions((FlatMapFunction<Iterator<GATKRead>, List<GATKRead>>) it ->
                 Iterators.singletonIterator(Lists.newArrayList(it))).collect();
         assertEquals(partitions.size(), numPartitions);
