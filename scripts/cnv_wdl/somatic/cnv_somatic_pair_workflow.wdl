@@ -109,9 +109,9 @@ workflow CNVSomaticPairWorkflow {
     Int? num_smoothing_iterations_per_fit
     Int? mem_gb_for_model_segments
 
-    ######################################################
-    #### optional arguments for CallCopyRatioSegments ####
-    ######################################################
+    ####################################################
+    #### optional arguments for CallModeledSegments ####
+    ####################################################
     Float? neutral_segment_copy_ratio_lower_bound
     Float? neutral_segment_copy_ratio_upper_bound
     Float? outlier_neutral_segment_copy_ratio_z_score_threshold
