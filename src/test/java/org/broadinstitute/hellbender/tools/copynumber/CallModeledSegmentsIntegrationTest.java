@@ -17,27 +17,33 @@ import java.io.File;
 public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
     // Simulated samples
     private static final File SIMULATED_DATA_DIR = new File("/Users/mkanaszn/Broad_Institute/Code/gatk_ssh/gatk/src/test/resources/org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/");
-    private static final File INPUT_SIMULATED_NORMAL_DATA = new File("/Users/mkanaszn/Broad_Institute/Code/gatk_ssh/gatk/src/test/resources/org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/normal_sample_data.seg");
-    private static final File INPUT_SIMULATED_NORMAL_TRUTH = new File("/Users/mkanaszn/Broad_Institute/Code/gatk_ssh/gatk/src/test/resources/org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/normal_sample_truth.seg");
-    private static final File INPUT_SIMULATED_NORMAL_NOISY_DATA = new File("/Users/mkanaszn/Broad_Institute/Code/gatk_ssh/gatk/src/test/resources/org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/normal_noisy_sample_data.seg");
-    private static final File INPUT_SIMULATED_NORMAL_NOISY_TRUTH = new File("/Users/mkanaszn/Broad_Institute/Code/gatk_ssh/gatk/src/test/resources/org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/normal_noisy_sample_truth.seg");
-    private static final File INPUT_SIMULATED_SOMATIC_40P_PURITY_DATA = new File("/Users/mkanaszn/Broad_Institute/Code/gatk_ssh/gatk/src/test/resources/org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/cancer_0p40_purity_data.seg");
-    private static final File INPUT_SIMULATED_SOMATIC_40P_PURITY_TRUTH = new File("/Users/mkanaszn/Broad_Institute/Code/gatk_ssh/gatk/src/test/resources/org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/cancer_0p40_purity_truth.seg");
-    private static final File INPUT_SIMULATED_SOMATIC_60P_PURITY_DATA = new File("/Users/mkanaszn/Broad_Institute/Code/gatk_ssh/gatk/src/test/resources/org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/cancer_0p60_purity_data.seg");
-    private static final File INPUT_SIMULATED_SOMATIC_60P_PURITY_TRUTH = new File("/Users/mkanaszn/Broad_Institute/Code/gatk_ssh/gatk/src/test/resources/org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/cancer_0p60_purity_truth.seg");
-    private static final File INPUT_SIMULATED_SOMATIC_100P_PURITY_DATA = new File("/Users/mkanaszn/Broad_Institute/Code/gatk_ssh/gatk/src/test/resources/org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/cancer_1p00_purity_data.seg");
-    private static final File INPUT_SIMULATED_SOMATIC_100P_PURITY_TRUTH = new File("/Users/mkanaszn/Broad_Institute/Code/gatk_ssh/gatk/src/test/resources/org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/cancer_1p00_purity_truth.seg");
+    // private static final File OUTPUT_IMAGE_DIR = createTempDir(SIMULATED_DATA_DIR.getAbsolutePath() + "/test/figs/");
+    // private static final File OUTPUT_CALL_DIR = createTempDir(SIMULATED_DATA_DIR.getAbsolutePath() + "/test/calls/");
+    // private static final File OUTPUT_LOG_DIR =  createTempDir(SIMULATED_DATA_DIR.getAbsolutePath() + "/test/logs/");
+    private static final File OUTPUT_IMAGE_DIR = new File("/Users/mkanaszn/Desktop/tmp/figs/");
+    private static final File OUTPUT_CALL_DIR = new File("/Users/mkanaszn/Desktop/tmp/calls/");
+    private static final File OUTPUT_LOG_DIR =  new File("/Users/mkanaszn/Desktop/tmp/logs/");
+    private static final File INPUT_SIMULATED_NORMAL_DATA = new File(SIMULATED_DATA_DIR.getAbsolutePath() + "/normal_sample_data.seg");
+    private static final File INPUT_SIMULATED_NORMAL_TRUTH = new File(SIMULATED_DATA_DIR.getAbsolutePath() + "/normal_sample_truth.seg");
+    private static final File INPUT_SIMULATED_NORMAL_NOISY_DATA = new File(SIMULATED_DATA_DIR.getAbsolutePath() + "/normal_noisy_sample_data.seg");
+    private static final File INPUT_SIMULATED_NORMAL_NOISY_TRUTH = new File(SIMULATED_DATA_DIR.getAbsolutePath() + "/normal_noisy_sample_truth.seg");
+    private static final File INPUT_SIMULATED_SOMATIC_40P_PURITY_DATA = new File(SIMULATED_DATA_DIR.getAbsolutePath() + "/cancer_0p40_purity_data.seg");
+    private static final File INPUT_SIMULATED_SOMATIC_40P_PURITY_TRUTH = new File(SIMULATED_DATA_DIR.getAbsolutePath() + "/cancer_0p40_purity_truth.seg");
+    private static final File INPUT_SIMULATED_SOMATIC_60P_PURITY_DATA = new File(SIMULATED_DATA_DIR.getAbsolutePath() + "/cancer_0p60_purity_data.seg");
+    private static final File INPUT_SIMULATED_SOMATIC_60P_PURITY_TRUTH = new File(SIMULATED_DATA_DIR.getAbsolutePath() + "/cancer_0p60_purity_truth.seg");
+    private static final File INPUT_SIMULATED_SOMATIC_100P_PURITY_DATA = new File(SIMULATED_DATA_DIR.getAbsolutePath() + "/cancer_1p00_purity_data.seg");
+    private static final File INPUT_SIMULATED_SOMATIC_100P_PURITY_TRUTH = new File(SIMULATED_DATA_DIR.getAbsolutePath() + "/cancer_1p00_purity_truth.seg");
 
     @DataProvider
     public Iterator<Object[]> simulatedData() {
         // The data provider contains the inputs of the runTest method
         // inputFile, truthFile, loadCopyRatio, loadAlleleFraction, interactiveMode
         List<Object[]> result = new LinkedList<>();
-        result.add(new Object[] {INPUT_SIMULATED_NORMAL_DATA, INPUT_SIMULATED_NORMAL_TRUTH, true, true, true });
-        result.add(new Object[] {INPUT_SIMULATED_NORMAL_NOISY_DATA, INPUT_SIMULATED_NORMAL_NOISY_TRUTH, true, true, true });
-        result.add(new Object[] {INPUT_SIMULATED_SOMATIC_40P_PURITY_DATA, INPUT_SIMULATED_SOMATIC_40P_PURITY_TRUTH, true, true, true });
-        result.add(new Object[] {INPUT_SIMULATED_SOMATIC_60P_PURITY_DATA, INPUT_SIMULATED_SOMATIC_60P_PURITY_TRUTH, true, true, true });
-        result.add(new Object[] {INPUT_SIMULATED_SOMATIC_100P_PURITY_DATA, INPUT_SIMULATED_SOMATIC_100P_PURITY_TRUTH, true, true, true });
+        result.add(new Object[] {INPUT_SIMULATED_NORMAL_DATA, INPUT_SIMULATED_NORMAL_TRUTH, true, true, true, "normal_simulated", "normal_simulated", "normal_simulated"});
+        result.add(new Object[] {INPUT_SIMULATED_NORMAL_NOISY_DATA, INPUT_SIMULATED_NORMAL_NOISY_TRUTH, true, true, true, "normal_noisy_simulated", "normal_noisy_simulated", "normal_noisy_simulated"});
+        result.add(new Object[] {INPUT_SIMULATED_SOMATIC_40P_PURITY_DATA, INPUT_SIMULATED_SOMATIC_40P_PURITY_TRUTH, true, true, true, "somatic_40per_cent", "somatic_40per_cent", "somatic_40per_cent"});
+        result.add(new Object[] {INPUT_SIMULATED_SOMATIC_60P_PURITY_DATA, INPUT_SIMULATED_SOMATIC_60P_PURITY_TRUTH, true, true, true, "somatic_60per_cent", "somatic_60per_cent", "somatic_60per_cent"});
+        result.add(new Object[] {INPUT_SIMULATED_SOMATIC_100P_PURITY_DATA, INPUT_SIMULATED_SOMATIC_100P_PURITY_TRUTH, true, true, true, "somatic_100per_cent", "somatic_100per_cent", "somatic_100per_cent"});
         return result.iterator();
     }
 
@@ -46,8 +52,13 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
                                   final File truthFile,
                                   final boolean loadCopyRatio,
                                   final boolean loadAlleleFraction,
-                                  final boolean interactiveRun) {
-        runTest(inputFile, truthFile, loadCopyRatio, loadAlleleFraction, interactiveRun);
+                                  final boolean interactiveRun,
+                                  final String outputCallsPrefix,
+                                  final String outputImagePrefix,
+                                  final String outputLogPrefix) {
+        runTest(inputFile, truthFile,
+                loadCopyRatio, loadAlleleFraction, interactiveRun,
+                outputCallsPrefix, outputImagePrefix, outputLogPrefix);
     }
 
 
@@ -56,7 +67,10 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
                          final File truthFile,
                          final boolean loadCopyRatio,
                          final boolean loadAlleleFraction,
-                         final boolean interactiveRun) {
+                         final boolean interactiveRun,
+                         final String outputCallsPrefix,
+                         final String outputImagePrefix,
+                         final String outputLogPrefix) {
         // Make sure that either the copy ratio or the allele fraction data is loaded
         if (!loadCopyRatio && !loadAlleleFraction) {
             System.out.println("Error: either copy ratio or allele fraction or both need to be loaded.");
@@ -64,37 +78,33 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
         }
 
         // Run clustering algorithm
-        final File outputImageDir = createTempDir(SIMULATED_DATA_DIR.getAbsolutePath() + "test/figs/");
-        final File outputCallsDir = createTempDir(SIMULATED_DATA_DIR.getAbsolutePath() + "test/calls/");
-        final File outputLogDir =  createTempDir(SIMULATED_DATA_DIR.getAbsolutePath() + "test/logs/");
-        final String outputImagePrefix = "testImage";
-        final String outputCallsPrefix = "testCalls";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, inputFile.getAbsolutePath())
-                .addArgument(CallModeledSegments.OUTPUT_IMAGE_DIR_LONG_NAME, outputImageDir.getAbsolutePath())
-                .addArgument(CallModeledSegments.OUTPUT_CALLS_DIR_LONG_NAME, outputCallsDir.getAbsolutePath())
-                .addArgument(CallModeledSegments.LOG_FILENAME_PREFIX_LONG_NAME, outputLogDir.getAbsolutePath())
+                .addArgument(CallModeledSegments.OUTPUT_IMAGE_DIR_LONG_NAME, OUTPUT_IMAGE_DIR.getAbsolutePath())
+                .addArgument(CallModeledSegments.OUTPUT_CALLS_DIR_LONG_NAME, OUTPUT_CALL_DIR.getAbsolutePath())
+                .addArgument(CallModeledSegments.OUTPUT_LOG_DIR_LONG_NAME, OUTPUT_LOG_DIR.getAbsolutePath())
+                .addArgument(CallModeledSegments.OUTPUT_LOG_PREFIX_LONG_NAME, outputLogPrefix)
                 .addArgument(CallModeledSegments.OUTPUT_IMAGE_PREFIX_LONG_NAME, outputImagePrefix)
                 .addArgument(CallModeledSegments.OUTPUT_CALLS_PREFIX_LONG_NAME, outputCallsPrefix)
                 .addArgument(CallModeledSegments.LOAD_COPY_RATIO_LONG_NAME, String.valueOf(loadCopyRatio))
                 .addArgument(CallModeledSegments.LOAD_ALLELE_FRACTION_LONG_NAME, String.valueOf(loadCopyRatio))
                 .addArgument(CallModeledSegments.INTERACTIVE_RUN_LONG_NAME, String.valueOf(interactiveRun));
         List<String> args = argsBuilder.getArgsList();
-        String outputCallsFilePath = outputCallsDir.getAbsolutePath() + "/" + outputCallsPrefix + CallModeledSegments.OUTPUT_CALLS_SUFFIX_DEFAULT_VALUE;
-        String outputImageFilePath = outputImageDir.getAbsolutePath() + "/" + outputImagePrefix + CallModeledSegments.OUTPUT_IMAGE_SUFFIX_DEFAULT_VALUE;
+        String outputCallsFilePath = OUTPUT_CALL_DIR.getAbsolutePath() + "/" + outputCallsPrefix + CallModeledSegments.OUTPUT_CALLS_SUFFIX_DEFAULT_VALUE;
+        String outputImageFilePath = OUTPUT_IMAGE_DIR.getAbsolutePath() + "/" + outputImagePrefix + CallModeledSegments.OUTPUT_IMAGE_SUFFIX_DEFAULT_VALUE;
         File outputCallsFile = new File(outputCallsFilePath);
         File outputImageFile = new File(outputImageFilePath);
         runCommandLine(argsBuilder);
 
         // Make sure that output image file and calls file exist
-        assertOutputFiles(outputCallsFile, outputImageFile, outputImageDir, outputCallsDir);
+        assertOutputFiles(outputCallsFile, outputImageFile, OUTPUT_IMAGE_DIR, OUTPUT_CALL_DIR);
 
         // Make sure that the output calls agree with the truth data
         boolean onlyNormalSegments = compareCalledFiles(outputCallsFile, truthFile);
 
         // Make sure that the interactive images were produced in interactive run
         if (interactiveRun) {
-            assertInteractiveFiles(outputImageDir, outputImagePrefix, onlyNormalSegments);
+            assertInteractiveFiles(OUTPUT_IMAGE_DIR, outputImagePrefix, onlyNormalSegments);
         }
     }
 
@@ -142,19 +152,27 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
         List<CalledModeledSegment> outputDataRecords = outputData.getRecords();
         List<CalledModeledSegment> truthDataRecords = truthData.getRecords();
         boolean onlyNormaSegments = true;
-        boolean agreesWithTruth = true;
+        boolean agreesWithTruth;
+        double errorTolerance = 0.02;
+        int basePairsDifferent = 0;
+        int totalBasePairs = 0;
         for (int i=0; i<outputDataRecords.size(); i++) {
+            totalBasePairs += outputDataRecords.get(i).getEnd() - outputDataRecords.get(i).getStart() + 1;
             if (!(outputDataRecords.get(i).getCallNormal()).equals(truthDataRecords.get(i).getCallNormal())) {
-                agreesWithTruth = false;
+                basePairsDifferent += outputDataRecords.get(i).getEnd() - outputDataRecords.get(i).getStart() + 1;
             }
             if (!outputDataRecords.get(i).getCallNormal().equals("0")) {
                 onlyNormaSegments = false;
             }
         }
-        if (!agreesWithTruth) {
+        System.out.println("Error ratio: " + String.valueOf(((double) basePairsDifferent) / ((double) totalBasePairs)));
+        if (((double) basePairsDifferent) / ((double) totalBasePairs) > errorTolerance) {
+            agreesWithTruth = false;
             printComparison(outputDataRecords, truthDataRecords, agreesWithTruth);
+            Assert.assertTrue(agreesWithTruth);
+        } else {
+            agreesWithTruth = true;
         }
-        Assert.assertTrue(agreesWithTruth);
         return onlyNormaSegments;
     }
 

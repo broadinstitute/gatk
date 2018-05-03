@@ -75,14 +75,16 @@ public final class CallModeledSegments extends CommandLineProgram {
     public static final String LOAD_ALLELE_FRACTION_LONG_NAME = "load_allele_fraction";
     public static final String OUTPUT_IMAGE_DIR_LONG_NAME = "output_image_dir";
     public static final String OUTPUT_CALLS_DIR_LONG_NAME = "output_calls_dir";
+    public static final String OUTPUT_LOG_DIR_LONG_NAME = "output_log_dir";
     public static final String OUTPUT_IMAGE_PREFIX_LONG_NAME = "output_image_prefix";
     public static final String OUTPUT_CALLS_PREFIX_LONG_NAME = "output_calls_prefix";
+    public static final String OUTPUT_LOG_PREFIX_LONG_NAME = "output_log_prefix";
     public static final String OUTPUT_IMAGE_SUFFIX_LONG_NAME = "output_image_suffix";
     public static final String OUTPUT_CALLS_SUFFIX_LONG_NAME = "output_calls_suffix";
     public static final String OUTPUT_IMAGE_SUFFIX_DEFAULT_VALUE = ".jpg";
     public static final String OUTPUT_CALLS_SUFFIX_DEFAULT_VALUE = ".called.seg";
     public static final String INTERACTIVE_RUN_LONG_NAME = "interactive";
-    public static final String LOG_FILENAME_PREFIX_LONG_NAME = "log_filename";
+
 
     // Adiditional arguments
     private static final String INTERACTIVE_OUTPUT_DEL_AMPL_IMAGE_SUFFIX = "interactive_output_del_ampl_image_suffix";
@@ -148,6 +150,13 @@ public final class CallModeledSegments extends CommandLineProgram {
     private String outputCallsFileDir="";
 
     @Argument(
+            doc = "Output directory for the log file.",
+            fullName = OUTPUT_LOG_DIR_LONG_NAME,
+            optional = true
+    )
+    private String outputLogDir="";
+
+    @Argument(
             doc = "Whether auxiliary plots should be saved.",
             fullName = INTERACTIVE_RUN_LONG_NAME,
             optional = true
@@ -170,7 +179,7 @@ public final class CallModeledSegments extends CommandLineProgram {
 
     @Argument(
             doc = "Prefix of the log file.",
-            fullName = LOG_FILENAME_PREFIX_LONG_NAME,
+            fullName = OUTPUT_LOG_PREFIX_LONG_NAME,
             optional = true
     )
     private String logFilenamePrefix="";
@@ -224,6 +233,10 @@ public final class CallModeledSegments extends CommandLineProgram {
                 ? outputCallsFileDir
                 : outputCallsFileDir + File.separator;
 
+        final String outputLogDirArg = Utils.nonEmpty(outputLogDir).endsWith(File.separator)
+                ? outputLogDir
+                : outputLogDir + File.separator;
+
         final String script;
         script = SEGMENT_CALLER_PYTHON_SCRIPT;
 
@@ -231,6 +244,7 @@ public final class CallModeledSegments extends CommandLineProgram {
                 "--input_file=" + inFile.getAbsolutePath(),
                 "--" + OUTPUT_CALLS_DIR_LONG_NAME + "=" + outputFileDirArg,
                 "--" + OUTPUT_IMAGE_DIR_LONG_NAME + "=" + outputImageDirArg,
+                "--" + OUTPUT_LOG_DIR_LONG_NAME + "=" + outputLogDirArg,
                 "--" + OUTPUT_IMAGE_PREFIX_LONG_NAME + "=" + String.valueOf(outputImagePrefix),
                 "--" + OUTPUT_CALLS_PREFIX_LONG_NAME + "=" + String.valueOf(outputCallsPrefix),
                 "--" + OUTPUT_IMAGE_SUFFIX_LONG_NAME + "=" + String.valueOf(outputImageSuffix),
@@ -243,7 +257,7 @@ public final class CallModeledSegments extends CommandLineProgram {
                 "--" + INTERACTIVE_OUTPUT_ALLELE_FRACTION_PLOT_SUFFIX + "=" + INTERACTIVE_OUTPUT_ALLELE_FRACTION_PLOT_SUFFIX_DEFAULT_VALUE,
                 "--" + INTERACTIVE_OUTPUT_COPY_RATIO_SUFFIX + "=" + INTERACTIVE_OUTPUT_COPY_RATIO_SUFFIX_DEFAULT_VALUE,
                 "--" + INTERACTIVE_OUTPUT_COPY_RATIO_CLUSTERING_SUFFIX + "=" + INTERACTIVE_OUTPUT_COPY_RATIO_CLUSTERING_SUFFIX_DEFAULT_VALUE,
-                "--" + LOG_FILENAME_PREFIX_LONG_NAME + "=" + String.valueOf(logFilenamePrefix)));
+                "--" + OUTPUT_LOG_PREFIX_LONG_NAME + "=" + String.valueOf(logFilenamePrefix)));
 
         return executor.executeScript(
                 new Resource(script, CallModeledSegments.class),
