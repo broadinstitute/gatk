@@ -234,7 +234,8 @@ public class VariantRecalibrator extends MultiVariantWalker {
     /**
      * Add truth sensitivity slices through the call set at the given values. The default values are 100.0, 99.9, 99.0, and 90.0
      * which will result in 4 estimated tranches in the final call set: the full set of calls (100% sensitivity at the accessible
-     * sites in the truth set), a 99.9% truth sensitivity tranche, along with progressively smaller tranches at 99% and 90%. Note, you must pass in each tranche as a separate value (e.g. -tranche 100.0 -tranche 99.9).
+     * sites in the truth set), a 99.9% truth sensitivity tranche, along with progressively smaller tranches at 99% and 90%.
+     * Note: You must pass in each tranche as a separate value (e.g. -tranche 100.0 -tranche 99.9).
      */
     @Argument(fullName="truth-sensitivity-tranche",
             shortName="tranche",
