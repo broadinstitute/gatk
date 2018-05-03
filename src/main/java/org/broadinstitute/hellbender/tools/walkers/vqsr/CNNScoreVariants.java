@@ -299,7 +299,7 @@ public class CNNScoreVariants extends VariantWalker {
         if (curBatchSize == transferBatchSize) {
             if (waitforBatchCompletion == true) {
                 // wait for the last batch to complete before we start a new one
-                asyncWriter.waitForPreviousBatchCompletion(3, TimeUnit.MINUTES);
+                asyncWriter.waitForPreviousBatchCompletion(1, TimeUnit.MINUTES);
                 waitforBatchCompletion = false;
                 pythonExecutor.getAccumulatedOutput();
             }
@@ -382,12 +382,12 @@ public class CNNScoreVariants extends VariantWalker {
     @Override
     public Object onTraversalSuccess() {
         if (waitforBatchCompletion) {
-            asyncWriter.waitForPreviousBatchCompletion(3, TimeUnit.MINUTES);
+            asyncWriter.waitForPreviousBatchCompletion(1, TimeUnit.MINUTES);
             pythonExecutor.getAccumulatedOutput();
         }
         if (curBatchSize > 0) {
             executePythonCommand();
-            asyncWriter.waitForPreviousBatchCompletion(3, TimeUnit.MINUTES);
+            asyncWriter.waitForPreviousBatchCompletion(1, TimeUnit.MINUTES);
             pythonExecutor.getAccumulatedOutput();
         }
 
