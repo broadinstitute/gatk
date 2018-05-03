@@ -111,7 +111,7 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                 configData,
                 new LinkedHashMap<>(),
                 TranscriptSelectionMode.BEST_EFFECT,
-                new HashSet<>()
+                new HashSet<>(), true
         );
 
         // Sort the datasources to ensure the same order every time:

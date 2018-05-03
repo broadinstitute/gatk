@@ -9,7 +9,7 @@
   "Mutect2_Multi.scatter_count": 2,
   "Mutect2_Multi.run_orientation_bias_filter": true,
   "Mutect2_Multi.run_oncotator": true,
-  "Mutect2_Multi.run_funcotator": false,
+  "Mutect2_Multi.run_funcotator": true,
   "Mutect2_Multi.preemptible_attempts": 2,
   "Mutect2_Multi.artifact_modes": ["G/T", "C/T"],
   "Mutect2_Multi.compress_vcfs": false,

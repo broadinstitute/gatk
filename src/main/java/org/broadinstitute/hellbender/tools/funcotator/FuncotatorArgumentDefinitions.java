@@ -50,6 +50,8 @@ public class FuncotatorArgumentDefinitions {
     public static final String LOOKAHEAD_CACHE_IN_BP_NAME = "lookahead-cache-bp";
     public static final int LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE = VariantWalkerBase.FEATURE_CACHE_LOOKAHEAD;
 
+    public static final String ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_OVERRIDE_LONG_NAME = "allow-hg19-gencode-b37-contig-matching-override";
+
     // ------------------------------------------------------------
     // Helper Types:
 

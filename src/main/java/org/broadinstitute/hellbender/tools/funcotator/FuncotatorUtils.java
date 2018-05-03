@@ -8,6 +8,8 @@ import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -25,6 +27,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public final class FuncotatorUtils {
 
@@ -1977,5 +1980,51 @@ public final class FuncotatorUtils {
         public TranscriptCodingSequenceException( final String msg, final Throwable throwable ) {
             super(msg, throwable);
         }
+    }
+
+    /**
+     * Given a VCF header and an annotation line, return a map of name to funcotation.
+     *
+     * @param funcotationHeaderKeys The funcotation keys from the description of the funcotation info field.
+     *                              @see FuncotatorUtils#extractFuncotatorKeysFromHeaderDescription(String).  Never {@code null}
+     * @param funcotationAttributeAsString The value in a funcotation info field.  Never {@code null}
+     * @return map of the fields specified in the description to the values in the attribute.  Never {@code null}
+     */
+    public static Map<String, String> getFuncotationMapFromVcfFuncotationField(final String[] funcotationHeaderKeys, final String funcotationAttributeAsString) {
+
+        Utils.nonNull(funcotationHeaderKeys);
+        Utils.nonNull(funcotationAttributeAsString);
+
+        final String[] valuesSplit = StringUtils.splitByWholeSeparatorPreserveAllTokens(funcotationAttributeAsString, "|");
+        final String[] values = funcotationAttributeAsString.startsWith("|") ? ArrayUtils.subarray(valuesSplit, 1, valuesSplit.length): valuesSplit;
+
+        if (funcotationHeaderKeys.length != values.length) {
+            throw new GATKException.ShouldNeverReachHereException("Could not parse FUNCOTATION field properly.");
+        }
+
+        return IntStream.range(0, funcotationHeaderKeys.length).boxed()
+                .collect(Collectors.toMap(i -> funcotationHeaderKeys[i], i -> values[i]));
+    }
+
+    /**
+     * @param funcotationHeaderDescription The raw description of the funcotation info field.  Never {@code null}
+     * @return Array of the keys, in proper order.  Never {@code null}
+     */
+    public static String[] extractFuncotatorKeysFromHeaderDescription(final String funcotationHeaderDescription) {
+        Utils.nonNull(funcotationHeaderDescription);
+
+        final String[] keysSplit = StringUtils.splitByWholeSeparatorPreserveAllTokens(funcotationHeaderDescription, "|");
+        return ArrayUtils.subarray(keysSplit, 1, keysSplit.length);
+    }
+
+    /**
+     * Make sure that an individual funcotation (i.e. single value of a funcotation) is sanitized for VCF consumption.
+     * Particularly, make sure that it does not allow special characters that would interfere with VCF parsing.
+     * @param individualFuncotation  value from a funcotation Never {@code null}
+     * @return input string with special characters replaced by _%HEX%_ where HEX is the 2 digit ascii hex code.
+     */
+    public static String sanitizeFuncotationForVcf(final String individualFuncotation) {
+        Utils.nonNull(individualFuncotation);
+        return StringUtils.replaceEach(individualFuncotation, new String[]{",", ";", "=", "\t", "|"}, new String[]{"_%2C_", "_%3B_", "_%3D_", "_%09_", "_%7C_"});
     }
 }

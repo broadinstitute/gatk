@@ -5,7 +5,6 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
-import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotator;
@@ -196,7 +195,7 @@ public class VcfOutputRenderer extends OutputRenderer {
     }
 
     private static String retrieveSanitizedFuncotation(final Funcotation funcotation, final String manualAnnotationSerializedString) {
-        final String initialString = funcotation.serializeToVcfString(manualAnnotationSerializedString);
-        return StringUtils.replaceEach(initialString, new String[]{",", ";", "=", "\t", "|"}, new String[]{"_%2C_", "_%3B_", "_%3D_", "_%09_", "_%7C_"});
+       return funcotation.serializeToVcfString(manualAnnotationSerializedString);
+
     }
 }

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
+import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
@@ -1417,5 +1418,25 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     @Test(dataProvider = "provideForTestGetStrandCorrectedAllele")
     public void testGetStrandCorrectedAllele(final Allele allele, final Strand strand, final Allele expected) {
          Assert.assertEquals( FuncotatorUtils.getStrandCorrectedAllele(allele, strand), expected );
+    }
+
+    @DataProvider(name = "provideForFuncotatorTestAnnotationValues")
+    Object[][] provideForFuncotatorTestAnnotationValues() {
+        return new Object[][]{
+                {
+                    "Functional annotation from the Funcotator tool.  Funcotation fields are: |Foo|Bar|Baz", 
+                        "|1|2|",
+                        ImmutableMap.of("Foo", "1", "Bar", "2", "Baz", "")
+                }, {   
+                    "Functional annotation from the Funcotator tool.  Funcotation fields are: |Gencode_28_hugoSymbol|Gencode_28_ncbiBuild|Gencode_28_chromosome|Gencode_28_start",
+                    "|||chr3|179204486",
+                    ImmutableMap.of("Gencode_28_hugoSymbol", "", "Gencode_28_ncbiBuild", "", "Gencode_28_chromosome" , "chr3", "Gencode_28_start", "179204486")
+                }
+        };
+    }
+    @Test(dataProvider = "provideForFuncotatorTestAnnotationValues")
+    public void testFuncotatorAnnotationParsing(final String headerString, final String annotationValue, final Map gtMap) {
+        final String[] keys = FuncotatorUtils.extractFuncotatorKeysFromHeaderDescription(headerString);
+        Assert.assertEquals(FuncotatorUtils.getFuncotationMapFromVcfFuncotationField(keys, annotationValue), gtMap);
     }
 }

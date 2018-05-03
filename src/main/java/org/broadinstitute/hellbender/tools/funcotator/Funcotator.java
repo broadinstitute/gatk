@@ -295,6 +295,13 @@ public class Funcotator extends VariantWalker {
     )
     protected int lookaheadFeatureCachingInBp = FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE;
 
+    @Argument(
+            fullName = FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_OVERRIDE_LONG_NAME,
+            optional = true,
+            doc = "(Advanced/Use at your own risk) Use in conjunction with allow hg19 contig names with b37.  If you also select this flag, no check that your input reference is b37 is actually performed.  Otherwise, ignored.  Typically, this option is useful in integration tests (written by devs) only."
+    )
+    protected boolean allowHg19ContigNamesWithB37Lenient = false;
+
     //==================================================================================================================
 
     private OutputRenderer outputRenderer;
@@ -331,7 +338,7 @@ public class Funcotator extends VariantWalker {
         final Map<Path, Properties> configData = DataSourceUtils.getAndValidateDataSourcesFromPaths(referenceVersion, dataSourceDirectories);
         initializeManualFeaturesForLocatableDataSources(configData);
         dataSourceFactories.addAll(
-                DataSourceUtils.createDataSourceFuncotationFactoriesForDataSources(configData, annotationOverridesMap, transcriptSelectionMode, userTranscriptIdSet)
+                DataSourceUtils.createDataSourceFuncotationFactoriesForDataSources(configData, annotationOverridesMap, transcriptSelectionMode, userTranscriptIdSet, allowHg19ContigNamesWithB37)
         );
 
         // Sort our data source factories to ensure they're always in the same order:  gencode datasources first
@@ -452,19 +459,12 @@ public class Funcotator extends VariantWalker {
         // Get our feature inputs:
         final Map<String, List<Feature>> featureSourceMap = new HashMap<>();
 
-        // Create a variant context for annotation that has a new contig based on whether we need to overwrite the
-        // contig names in the next section.
-        VariantContext variantContextFixedContigForDataSources = variant;
-
         // Check to see if we need to query with a different reference convention (i.e. "chr1" vs "1").
-        if (allowHg19ContigNamesWithB37 && inputReferenceIsB37) {
-            final VariantContextBuilder variantContextBuilderForFixedContigForDataSources = new VariantContextBuilder(variant);
+        if (allowHg19ContigNamesWithB37 && (inputReferenceIsB37 || allowHg19ContigNamesWithB37Lenient)) {
 
             // Construct a new contig and new interval with no "chr" in front of it:
             final String hg19Contig = FuncotatorUtils.convertB37ContigToHg19Contig( variant.getContig() );
             final SimpleInterval hg19Interval = new SimpleInterval(hg19Contig, variant.getStart(), variant.getEnd());
-
-            variantContextBuilderForFixedContigForDataSources.chr(hg19Contig);
 
             // Get our features for the new interval:
             for ( final FeatureInput<? extends Feature> featureInput : manualLocatableFeatureInputs ) {
@@ -475,8 +475,6 @@ public class Funcotator extends VariantWalker {
                 featureList.addAll(featureContext.getValues(featureInput));
                 featureSourceMap.put( featureInput.getName(), featureList);
             }
-            // Get our VariantContext for annotation:
-            variantContextFixedContigForDataSources = variantContextBuilderForFixedContigForDataSources.make();
         }
         else {
             for ( final FeatureInput<? extends Feature> featureInput : manualLocatableFeatureInputs ) {
@@ -497,14 +495,14 @@ public class Funcotator extends VariantWalker {
         //  datasources always appear first)
         for (final DataSourceFuncotationFactory funcotationFactory : dataSourceFactories ) {
             if (funcotationFactory.getType().equals(FuncotatorArgumentDefinitions.DataSourceType.GENCODE)) {
-                final List<Funcotation> funcotationsFromGencodeFactory = funcotationFactory.createFuncotations(variantContextFixedContigForDataSources, referenceContext, featureSourceMap);
+                final List<Funcotation> funcotationsFromGencodeFactory = funcotationFactory.createFuncotations(variant, referenceContext, featureSourceMap);
                 funcotations.addAll(funcotationsFromGencodeFactory);
                 gencodeFuncotations.addAll(
                         funcotationsFromGencodeFactory.stream()
                                 .map(x -> (GencodeFuncotation)x)
                                 .collect(Collectors.toList()));
             } else {
-                funcotations.addAll( funcotationFactory.createFuncotations(variantContextFixedContigForDataSources, referenceContext, featureSourceMap, gencodeFuncotations) );
+                funcotations.addAll( funcotationFactory.createFuncotations(variant, referenceContext, featureSourceMap, gencodeFuncotations) );
             }
         }
 

@@ -822,6 +822,17 @@ public abstract class GATKTool extends CommandLineProgram {
     protected String getToolkitShortName() { return "GATK"; }
 
     /**
+     * Call {@link GATKTool#addFeatureInputsAfterInitialization(String, String, Class, int)} with no caching.
+     *
+     * @return The {@link FeatureInput} used as the key for this data source.
+     */
+    protected FeatureInput<? extends Feature> addFeatureInputsAfterInitialization(final String filePath, final String name,
+                                                                                  final Class<? extends Feature> featureType) {
+
+        return addFeatureInputsAfterInitialization(filePath, name, featureType, 0);
+    }
+
+    /**
      * A method to allow a user to inject data sources after initialization that were not specified as command-line
      * arguments.
      *

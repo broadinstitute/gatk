@@ -1,0 +1,10 @@
+##fileformat=VCFv4.1
+##fileDate=201708028
+##source=FuncotatorTestsV0.1
+##reference=file:///Users/jonn/Development/references/Homo_sapiens_assembly19.fasta
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+3	178866587	.	G	A	40	.	.
+3	178866587	.	G	T	40	.	.
+3	178866586	.	A	ACGA	40	.	.
+3	178866586	.	AG	A	40	.	.
+3	178866587	.	G	GAG	40	.	.

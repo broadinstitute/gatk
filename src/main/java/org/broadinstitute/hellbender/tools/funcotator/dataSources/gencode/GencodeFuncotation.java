@@ -171,6 +171,7 @@ public class GencodeFuncotation implements Funcotation {
         // Alias for the FIELD_DELIMITER so we can have nicer looking code:
         final String DELIMITER = VcfOutputRenderer.FIELD_DELIMITER;
 
+        // TODO: Sanitize for VCF.  Not quite as easy as it looks.
         // After the manual string, we check to see if we have an override first and if not we get the set field value:
         return  (hugoSymbolSerializedOverride != null ? hugoSymbolSerializedOverride : (hugoSymbol != null ? hugoSymbol : "")) + DELIMITER +
                 (ncbiBuildSerializedOverride != null ? ncbiBuildSerializedOverride : (ncbiBuild != null ? ncbiBuild : "")) + DELIMITER +
