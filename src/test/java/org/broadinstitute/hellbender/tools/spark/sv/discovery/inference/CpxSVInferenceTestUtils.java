@@ -66,7 +66,7 @@ public final class CpxSVInferenceTestUtils extends GATKBaseTest {
     /**
      * We are having this because it is SV, especially complex ones, are rare and events on chr20 and 21 are not enough.
      */
-    final static SAMSequenceDictionary bareBoneHg38SAMSeqDict;
+    public final static SAMSequenceDictionary bareBoneHg38SAMSeqDict;
     static {
         final List<SAMSequenceRecord> hg38Chromosomes = new ArrayList<>();
         final String hg38ChrBareBoneListFile =  GATKBaseTest.toolsTestDir + "/spark/sv/utils/hg38ChrBareBone.txt";
