@@ -120,6 +120,8 @@ workflow CNVSomaticPairWorkflow {
     Int? mem_gb_for_call_modeled_segments
 
 
+    # Marton -- change this
+
     #########################################
     #### optional arguments for plotting ####
     #########################################
@@ -263,6 +265,7 @@ workflow CNVSomaticPairWorkflow {
             disk_space_gb = modeled_segments_tumor_disk,
             preemptible_attempts = preemptible_attempts
     }
+    # Marton -- replace this and all other instances of CallCopyRatioSegments
 
     # The F=files from other tasks are small enough to just combine into one disk variable and pass to the tumor plotting tasks
     Int plot_tumor_disk = ref_size + ceil(size(DenoiseReadCountsTumor.standardized_copy_ratios, "GB")) + ceil(size(DenoiseReadCountsTumor.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsTumor.het_allelic_counts, "GB")) + ceil(size(ModelSegmentsTumor.modeled_segments, "GB")) + disk_pad
