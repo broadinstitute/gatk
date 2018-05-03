@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 import htsjdk.variant.variantcontext.Allele;
+import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
 
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -77,4 +78,10 @@ public interface Funcotation {
      * @return Return whether the field exists in this {@link Funcotation}.
      */
     boolean hasField(final String fieldName);
+
+    /**
+     * @return Metadata for this {@link Funcotation}.  Never {@code null}.  All fields in {@see getFieldNames} should be
+     * represented.
+     */
+    FuncotationMetadata getMetadata();
 }

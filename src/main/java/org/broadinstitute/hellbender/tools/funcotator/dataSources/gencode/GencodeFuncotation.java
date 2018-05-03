@@ -1,10 +1,12 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
+import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature;
 import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfGeneFeature;
@@ -94,17 +96,22 @@ public class GencodeFuncotation implements Funcotation {
     private String referenceContextSerializedOverride     = null;
     private String otherTranscriptsSerializedOverride     = null;
 
+    private FuncotationMetadata metadata;
     //==================================================================================================================
 
     /**
      * Basic constructor for a {@link GencodeFuncotation}.
+     *
+     * Not public, since calling code should use the GencodeFuncotationBuilder.
      */
-    public GencodeFuncotation() {}
+    @VisibleForTesting
+    GencodeFuncotation() {}
 
     /**
      * Copy constructor for a {@link GencodeFuncotation}.
      */
-    public GencodeFuncotation(final GencodeFuncotation that) {
+    @VisibleForTesting
+    GencodeFuncotation(final GencodeFuncotation that) {
         this.hugoSymbol = that.hugoSymbol;                         
         this.ncbiBuild = that.ncbiBuild;
         this.chromosome = that.chromosome;
@@ -154,6 +161,7 @@ public class GencodeFuncotation implements Funcotation {
         this.gcContentSerializedOverride = that.gcContentSerializedOverride;
         this.referenceContextSerializedOverride = that.referenceContextSerializedOverride;
         this.otherTranscriptsSerializedOverride = that.otherTranscriptsSerializedOverride;
+        this.metadata = that.metadata;
     }
 
     //==================================================================================================================
@@ -176,7 +184,7 @@ public class GencodeFuncotation implements Funcotation {
     public String serializeToVcfString() {
         // Alias for the FIELD_DELIMITER so we can have nicer looking code:
         final String DELIMITER = VcfOutputRenderer.FIELD_DELIMITER;
-        //TODO See issue https://github.com/broadinstitute/gatk/issues/4797 
+        //TODO See issue https://github.com/broadinstitute/gatk/issues/4797
 
         // After the manual string, we check to see if we have an override first and if not we get the set field value:
         final List<String> funcotations = Arrays.asList((hugoSymbolSerializedOverride != null ? hugoSymbolSerializedOverride : (hugoSymbol != null ? hugoSymbol : "")),
@@ -340,6 +348,11 @@ public class GencodeFuncotation implements Funcotation {
         final LinkedHashSet<String> fieldNames = getFieldNames();
         final String altFieldName = getDataSourceName() + "_" + version + "_" + fieldName;
         return ( fieldNames.contains(fieldName) || fieldNames.contains(altFieldName) );
+    }
+
+    @Override
+    public FuncotationMetadata getMetadata() {
+        return this.metadata;
     }
 
     //==================================================================================================================
@@ -751,7 +764,10 @@ public class GencodeFuncotation implements Funcotation {
         this.dataSourceName = dataSourceName;
     }
 
-    //==================================================================================================================
+    public void setMetadata(final FuncotationMetadata metadata) {
+        this.metadata = metadata;
+    }
+//==================================================================================================================
 
     /**
      * The names of the fields in this GencodeFuncotation.

@@ -3,9 +3,11 @@ package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadataUtils;
 import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature;
 import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfGeneFeature;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -29,6 +31,8 @@ public class GencodeFuncotationBuilder {
     }
 
     public GencodeFuncotation build() {
+        // TODO: File an issue to give mechanism for populating the metadata  (https://github.com/broadinstitute/gatk/issues/4857)
+        gencodeFuncotation.setMetadata(FuncotationMetadataUtils.createWithUnknownAttributes(new ArrayList<>(gencodeFuncotation.getFieldNames())));
         return gencodeFuncotation;
     }
 

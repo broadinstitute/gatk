@@ -1,20 +1,21 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.vcf;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFFileReader;
-import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLineType;
-import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import htsjdk.variant.vcf.*;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
+import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
+import org.broadinstitute.hellbender.tools.funcotator.metadata.VcfFuncotationMetadata;
 
 import java.nio.file.Path;
 import java.util.*;
@@ -59,6 +60,11 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
      */
     private final LinkedHashSet<String> supportedFieldNames;
 
+    /**
+     * Should contain metadata only for the fields in supportedFieldNames.
+     */
+    private final FuncotationMetadata supportedFieldMetadata;
+
     //==================================================================================================================
     // Constructors:
 
@@ -76,6 +82,9 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
         supportedFieldNames = new LinkedHashSet<>();
         populateSupportedFieldNamesFromVcfFile();
 
+        // This step has to occur after supported field names and name have been populated.
+        supportedFieldMetadata = createFuncotationMetadata(sourceFilePath);
+
         if (supportedFieldNames.size() == 0) {
             logger.warn("WARNING: VcfFuncotationFactory has nothing to annotate from VCF File: " + sourceFilePath.toUri().toString());
         }
@@ -87,6 +96,41 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
                     annotationOverrideMap.put(entry.getKey(), entry.getValue());
                 }
             }
+        }
+    }
+
+    private FuncotationMetadata createFuncotationMetadata(final Path sourceFilePath) {
+        // Read the VCF to just get the header
+        try ( final FeatureDataSource<VariantContext> vcfReader = new FeatureDataSource<>(sourceFilePath.toString()) ) {
+            final Object header = vcfReader.getHeader();
+            if ( ! (header instanceof VCFHeader) ) {
+                throw new IllegalArgumentException(sourceFilePath + " does not have a valid VCF header");
+            }
+            final VCFHeader sourceVcfHeader = (VCFHeader) header;
+            final List<VCFInfoHeaderLine> metadataVcfInfoHeaderLines = createFuncotationVcfInfoHeaderLines(sourceVcfHeader);
+            return VcfFuncotationMetadata.create(metadataVcfInfoHeaderLines);
+        }
+    }
+
+    @VisibleForTesting
+    List<VCFInfoHeaderLine> createFuncotationVcfInfoHeaderLines(final VCFHeader vcfHeader) {
+        final List<VCFInfoHeaderLine> supportedVcfInfoHeaderLines = vcfHeader.getInfoHeaderLines().stream()
+                .filter(vcfInfoHeaderLine -> supportedFieldNames.contains(determineFinalFieldName(name, vcfInfoHeaderLine.getID())))
+                .collect(Collectors.toList());
+
+        // Make sure to rename the input VCF field names to the output funcotation field names for this funcotation factory.
+        return supportedVcfInfoHeaderLines.stream()
+                .map(vcfInfoHeaderLine -> copyWithRename(vcfInfoHeaderLine, name))
+                .collect(Collectors.toList());
+    }
+
+    private static VCFInfoHeaderLine copyWithRename(final VCFInfoHeaderLine vcfInfoHeaderLine, final String name) {
+        if (vcfInfoHeaderLine.getCountType() == VCFHeaderLineCount.INTEGER) {
+            return new VCFInfoHeaderLine(determineFinalFieldName(name, vcfInfoHeaderLine.getID()),
+                    vcfInfoHeaderLine.getCount(), vcfInfoHeaderLine.getType(), vcfInfoHeaderLine.getDescription());
+        } else {
+            return new VCFInfoHeaderLine(determineFinalFieldName(name, vcfInfoHeaderLine.getID()),
+                    vcfInfoHeaderLine.getCountType(), vcfInfoHeaderLine.getType(), vcfInfoHeaderLine.getDescription());
         }
     }
 
@@ -168,11 +212,11 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
                                     valueString = entry.getValue().toString();
                                 }
 
-                                annotations.put(name + "_" + entry.getKey(), valueString);
+                                annotations.put(determineFinalFieldName(name, entry.getKey()), valueString);
                             }
 
                             // Add our funcotation to the funcotation list:
-                            outputFuncotations.add(new TableFuncotation(annotations, altAllele, name));
+                            outputFuncotations.add(TableFuncotation.create(annotations, altAllele, name, supportedFieldMetadata));
                             annotatedAltAlleles.add(altAllele);
                         }
                     }
@@ -215,7 +259,7 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
 
             for ( final Allele altAllele : alternateAlleles ) {
                 if ( !annotatedAltAlleles.contains(altAllele) ) {
-                    funcotationList.add(new TableFuncotation(supportedFieldNamesAndDefaults, altAllele, name));
+                    funcotationList.add(TableFuncotation.create(supportedFieldNamesAndDefaults, altAllele, name, supportedFieldMetadata));
                 }
             }
         }
@@ -243,13 +287,18 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
         // Add our sorted names to the supported list:
         for ( final String key : infoLineKeys ) {
             if ( infoFieldFlagMap.get(key) ) {
-                supportedFieldNamesAndDefaults.put( name + "_" + key, "false" );
+                supportedFieldNamesAndDefaults.put(determineFinalFieldName(name, key), "false" );
             }
             else {
-                supportedFieldNamesAndDefaults.put( name + "_" + key, "" );
+                supportedFieldNamesAndDefaults.put(determineFinalFieldName(name, key), "" );
             }
-            supportedFieldNames.add( name + "_" + key );
+            supportedFieldNames.add(determineFinalFieldName(name, key));
         }
+    }
+
+    @VisibleForTesting
+    static String determineFinalFieldName(final String funcotationFactoryName, final String fieldName) {
+        return funcotationFactoryName + "_" + fieldName;
     }
 
     //==================================================================================================================

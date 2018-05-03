@@ -199,11 +199,11 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
         // Add our tally for all alternate alleles in this variant:
         for ( final Allele altAllele : variant.getAlternateAlleles() ) {
             funcotationList.add(
-                    new TableFuncotation(
+                    TableFuncotation.create(
                             new ArrayList<>(supportedFields),
                             new ArrayList<>(Collections.singletonList(String.valueOf(0))),
                             altAllele,
-                            name
+                            name, null
                     )
             );
         }
@@ -288,11 +288,11 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
         // Add our tally for all alternate alleles in this variant:
         for ( final Allele altAllele : variant.getAlternateAlleles() ) {
             outputFuncotations.add(
-                    new TableFuncotation(
+                    TableFuncotation.create(
                             new ArrayList<>(supportedFields),
                             new ArrayList<>(Collections.singletonList(String.valueOf(numOverlappingMutations))),
                             altAllele,
-                            name
+                            name, null
                     )
             );
         }

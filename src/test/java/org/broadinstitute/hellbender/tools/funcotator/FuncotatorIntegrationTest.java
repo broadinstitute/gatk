@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
+import avro.shaded.com.google.common.collect.Sets;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
@@ -12,6 +13,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyXsvFuncotationFactory;
+import org.broadinstitute.hellbender.tools.funcotator.mafOutput.MafOutputRenderer;
 import org.broadinstitute.hellbender.tools.funcotator.mafOutput.MafOutputRendererConstants;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
@@ -665,6 +667,88 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         // There should only be one variant in the MAF, not two
         final AnnotatedIntervalCollection annotatedIntervalCollection = AnnotatedIntervalCollection.create(outputFile.toPath(), null);
         Assert.assertEquals(annotatedIntervalCollection.getRecords().size(), 10);
+    }
+
+    @Test
+    public void testVCFToMAFPreservesFields() {
+
+        final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType = FuncotatorArgumentDefinitions.OutputFormatType.MAF;
+        final File outputFile = getOutputFile(outputFormatType);
+
+        final ArgumentsBuilder arguments = new ArgumentsBuilder();
+
+        arguments.addVCF(new File(PIK3CA_VCF_HG19));
+        arguments.addOutput(outputFile);
+        arguments.addReference(new File(b37Chr3Ref));
+        arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_PIK3CA_DIR);
+        arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19);
+        arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
+        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME, true);
+        arguments.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
+
+        runCommandLine(arguments);
+
+        final AnnotatedIntervalCollection maf = AnnotatedIntervalCollection.create(outputFile.toPath(), null);
+        Assert.assertTrue(maf.getRecords().size() > 0);
+        Assert.assertTrue(maf.getRecords().stream().allMatch(r -> r.hasAnnotation("ILLUMINA_BUILD")));
+        Assert.assertTrue(maf.getRecords().stream().allMatch(r -> r.getAnnotationValue("ILLUMINA_BUILD").startsWith("37")));
+
+        // Needs to get aliases from the MAF, since AF (and maybe more) has its name changed.  So create a dummy
+        //  MafOutputRenderer that mimics the one that is used in the command line invocation above and get the aliases.
+        final File dummyOutputFile = getOutputFile(outputFormatType);
+        final MafOutputRenderer dummyMafOutputRenderer = new MafOutputRenderer(dummyOutputFile.toPath(), Collections.emptyList(), null, new LinkedHashMap<>(), new LinkedHashMap<>(), new HashSet<>());
+        final Map<String, Set<String>> mafAliasMap = dummyMafOutputRenderer.getReverseOutputFieldNameMap();
+
+        // Get all of the alias lists
+
+        final Pair<VCFHeader, List<VariantContext>> vcf  = VariantContextTestUtils.readEntireVCFIntoMemory(PIK3CA_VCF_HG19);
+        final Set<String> vcfHeaderInfoSet = vcf.getLeft().getInfoHeaderLines().stream()
+                .map(h -> h.getID())
+                .map(s -> mafAliasMap.getOrDefault(s, Collections.singleton(s)))
+                .flatMap(Set::stream)
+                .collect(Collectors.toSet());
+        Assert.assertTrue(vcfHeaderInfoSet.size() > 0);
+        Assert.assertTrue(maf.getAnnotations().containsAll(vcfHeaderInfoSet));
+    }
+
+    @Test
+    public void testVCFToVCFPreservesFields() {
+
+        final Set<String> PIK3CA_VCF_HG19_INPUT_FIELDS = new HashSet<>(Arrays.asList("FUNCOTATION", "AC", "AF", "ALLELE_A", "ALLELE_B", "AN", "BEADSET_ID", "DP", "GC_SCORE", "ILLUMINA_BUILD", "ILLUMINA_CHR", "ILLUMINA_POS", "ILLUMINA_STRAND", "N_AA", "N_AB", "N_BB", "PROBE_A", "PROBE_B", "SOURCE", "devR_AA", "devR_AB", "devR_BB", "devTHETA_AA", "devTHETA_AB", "devTHETA_BB", "devX_AA", "devX_AB", "devX_BB", "devY_AA", "devY_AB", "devY_BB", "meanR_AA", "meanR_AB", "meanR_BB", "meanTHETA_AA", "meanTHETA_AB", "meanTHETA_BB", "meanX_AA", "meanX_AB", "meanX_BB", "meanY_AA", "meanY_AB", "meanY_BB", "refSNP", "zthresh_X", "zthresh_Y"));
+
+        final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType = FuncotatorArgumentDefinitions.OutputFormatType.VCF;
+        final File outputFile = getOutputFile(outputFormatType);
+
+        final ArgumentsBuilder arguments = new ArgumentsBuilder();
+
+        arguments.addVCF(new File(PIK3CA_VCF_HG19));
+        arguments.addOutput(outputFile);
+        arguments.addReference(new File(b37Chr3Ref));
+        arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_PIK3CA_DIR);
+        arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19);
+        arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
+        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME, true);
+        arguments.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
+
+        runCommandLine(arguments);
+
+        final Pair<VCFHeader, List<VariantContext>> vcf  = VariantContextTestUtils.readEntireVCFIntoMemory(outputFile.getAbsolutePath());
+
+        final Set<String> vcfFields = vcf.getLeft().getInfoHeaderLines().stream()
+                .map(h -> h.getID())
+                .collect(Collectors.toSet());
+
+        final Set<String> missingFields = Sets.difference(PIK3CA_VCF_HG19_INPUT_FIELDS, vcfFields);
+        final Set<String> additionalFields = Sets.difference(vcfFields, PIK3CA_VCF_HG19_INPUT_FIELDS);
+
+        Assert.assertTrue(missingFields.size() == 0, "Fields were missing in the output: " + missingFields.stream().collect(Collectors.joining(", ")));
+        Assert.assertTrue(additionalFields.size() == 0, "Fields were added in the output: " + additionalFields.stream().collect(Collectors.joining(", ")));
+
+        final List<VariantContext> variantContexts = vcf.getRight();
+
+        Assert.assertTrue(variantContexts.size() > 0);
+        Assert.assertTrue(variantContexts.stream().allMatch(v -> v.hasAttribute("ILLUMINA_BUILD")));
+        Assert.assertTrue(variantContexts.stream().allMatch(v -> v.getAttributeAsString("ILLUMINA_BUILD", "").startsWith("37")));
     }
 }
 

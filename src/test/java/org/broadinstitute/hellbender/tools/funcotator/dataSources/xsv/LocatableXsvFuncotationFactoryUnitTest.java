@@ -175,7 +175,7 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                         "C", defaultAltAllele.getBaseString(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
                         reportableFieldNames,
                         Collections.emptyList(), Collections.emptyList(),
-                        Collections.singletonList(new TableFuncotation(reportableFieldNames, emptyFieldList, defaultAltAllele, defaultDataSourceName))
+                        Collections.singletonList(TableFuncotation.create(reportableFieldNames, emptyFieldList, defaultAltAllele, defaultDataSourceName, null))
                 ),
                 // Trivial case where null Features are in the list:
                 helpProvideForTestCreateFuncotations(
@@ -183,7 +183,7 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                         "C", defaultAltAllele.getBaseString(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
                         reportableFieldNames,
                         Arrays.asList(null, null, null), Collections.emptyList(),
-                        Collections.singletonList(new TableFuncotation(reportableFieldNames, emptyFieldList, defaultAltAllele, defaultDataSourceName))
+                        Collections.singletonList(TableFuncotation.create(reportableFieldNames, emptyFieldList, defaultAltAllele, defaultDataSourceName, null))
                 ),
 //                // Trivial case where no XsvTableFeatures are in the list:
 //                helpProvideForTestCreateFuncotations(
@@ -192,7 +192,7 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
 //                        reportableFieldNames,
 //                        Collections.singletonList(new DummyTestFeature("chr3", 178866314,178866314)),
 //                        Collections.emptyList(),
-//                        Collections.singletonList(new TableFuncotation(reportableFieldNames, emptyFieldList, defaultAltAllele, defaultDataSourceName))
+//                        Collections.singletonList(TableFuncotation.create(reportableFieldNames, emptyFieldList, defaultAltAllele, defaultDataSourceName))
 //                ),
                 // One XsvTableFeature in list
                 helpProvideForTestCreateFuncotations(
@@ -203,7 +203,7 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                             xsvTableFeature1
                         ),
                         Collections.emptyList(),
-                        Collections.singletonList(new TableFuncotation(xsvTableFeature1, defaultAltAllele, defaultDataSourceName))
+                        Collections.singletonList(TableFuncotation.create(xsvTableFeature1, defaultAltAllele, defaultDataSourceName, null))
                 ),
                 // Two XsvTableFeatures in list
                 helpProvideForTestCreateFuncotations(
@@ -214,7 +214,7 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                                 xsvTableFeature1, xsvTableFeature2
                         ),
                         Collections.emptyList(),
-                        Arrays.asList(new TableFuncotation(xsvTableFeature1, defaultAltAllele, defaultDataSourceName), new TableFuncotation(xsvTableFeature2, defaultAltAllele, defaultDataSourceName))
+                        Arrays.asList(TableFuncotation.create(xsvTableFeature1, defaultAltAllele, defaultDataSourceName, null), TableFuncotation.create(xsvTableFeature2, defaultAltAllele, defaultDataSourceName, null))
                 ),
                 // Many XsvTableFeatures in list
                 helpProvideForTestCreateFuncotations(
@@ -225,7 +225,7 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                                 xsvTableFeature1, xsvTableFeature2, xsvTableFeature3
                         ),
                         Collections.emptyList(),
-                        Arrays.asList(new TableFuncotation(xsvTableFeature1, defaultAltAllele, defaultDataSourceName), new TableFuncotation(xsvTableFeature2, defaultAltAllele, defaultDataSourceName), new TableFuncotation(xsvTableFeature3, defaultAltAllele, defaultDataSourceName))
+                        Arrays.asList(TableFuncotation.create(xsvTableFeature1, defaultAltAllele, defaultDataSourceName, null), TableFuncotation.create(xsvTableFeature2, defaultAltAllele, defaultDataSourceName, null), TableFuncotation.create(xsvTableFeature3, defaultAltAllele, defaultDataSourceName, null))
                 ),
                 // Many XsvTableFeatures in list and non-empty GencodeFuncotations
                 helpProvideForTestCreateFuncotations(
@@ -238,7 +238,7 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                         Collections.singletonList(
                                 new GencodeFuncotationBuilder().setChromosome("chr3").setStart(178866314).setEnd(178866314).build()
                         ),
-                        Arrays.asList(new TableFuncotation(xsvTableFeature1, defaultAltAllele, defaultDataSourceName), new TableFuncotation(xsvTableFeature2, defaultAltAllele, defaultDataSourceName), new TableFuncotation(xsvTableFeature3, defaultAltAllele, defaultDataSourceName))
+                        Arrays.asList(TableFuncotation.create(xsvTableFeature1, defaultAltAllele, defaultDataSourceName, null), TableFuncotation.create(xsvTableFeature2, defaultAltAllele, defaultDataSourceName, null), TableFuncotation.create(xsvTableFeature3, defaultAltAllele, defaultDataSourceName, null))
                 ),
         };
     }

@@ -152,6 +152,7 @@ public class VcfOutputRenderer extends OutputRenderer {
                 funcotatorAnnotationStringBuilder.append(
                         funcotations.stream()
                                 .filter(f -> f.getAltAllele().equals(altAllele))
+                                .filter(f -> f.getFieldNames().size() > 0)
                                 .map(f -> retrieveSanitizedFuncotation(f, manualAnnotationSerializedString))
                                 .collect(Collectors.joining(FIELD_DELIMITER))
                 );

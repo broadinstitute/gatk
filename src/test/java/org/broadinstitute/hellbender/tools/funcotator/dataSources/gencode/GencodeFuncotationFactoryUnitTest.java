@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 
+import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
@@ -31,6 +32,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Unit test class for the {@link GencodeFuncotationFactory} class.
@@ -1367,7 +1369,16 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                     genomeChangeCorrect && strandCorrect && cDnaChangeCorrect && codonChangeCorrect && proteinChangeCorrect,
                     errorMessageStringBuilder.toString() + "\n"
             );
-            
+
+            Assert.assertNotNull(funcotation.getMetadata());
+            Assert.assertTrue(funcotation.getMetadata().retrieveAllHeaderInfo().size() > 0);
+            Assert.assertEquals(funcotation.getMetadata().retrieveAllHeaderInfo().size(), funcotation.getFieldNames().size());
+
+            final Set<String> metaDataFields =  funcotation.getMetadata().retrieveAllHeaderInfo().stream()
+                    .map(f -> f.getID()).collect(Collectors.toSet());
+
+            final Set<String> intersection = Sets.intersection(metaDataFields, funcotation.getFieldNames());
+            Assert.assertEquals(intersection.size(), funcotation.getFieldNames().size());
         }
     }
 

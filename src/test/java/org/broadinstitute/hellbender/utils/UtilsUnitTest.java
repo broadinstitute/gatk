@@ -2,14 +2,15 @@ package org.broadinstitute.hellbender.utils;
 
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.util.Log.LogLevel;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.Level;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -18,6 +19,7 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
 import static org.testng.Assert.assertEquals;
@@ -879,5 +881,56 @@ public final class UtilsUnitTest extends GATKBaseTest {
     @Test(dataProvider = "provideDataForTestUtilsSplitStringExhaustively")
     public void testUtilsSplitStringExhaustively( final String str, final String delimiter ) {
         exhaustiveStringSplitHelper(str, delimiter);
+    }
+
+    @DataProvider
+    public Object[][] provideGetReverseValueToListMap() {
+        return new Object[][]{
+                {ImmutableMap.of("Foo", Arrays.asList(1, 2, 3)),
+                        ImmutableMap.of(1, Sets.newHashSet("Foo"), 2, Sets.newHashSet("Foo"), 3, Sets.newHashSet("Foo"))},
+                {ImmutableMap.of("Foo", Arrays.asList(1, 2, 3), "Baz", Arrays.asList(1, 2)),
+                        ImmutableMap.of(1, Sets.newHashSet("Foo", "Baz"), 2, Sets.newHashSet("Foo", "Baz"), 3, Sets.newHashSet("Foo"))},
+
+                // Let's throw in some nulls
+                {Collections.unmodifiableMap(Stream.of(
+                    new AbstractMap.SimpleEntry<>(null, Arrays.asList("one", "two", "three")),
+                    new AbstractMap.SimpleEntry<>("two", Arrays.asList("one", "two")))
+                    .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue))),
+                 Collections.unmodifiableMap(Stream.of(
+                    new AbstractMap.SimpleEntry<>("one", Sets.newHashSet(null, "two")),
+                    new AbstractMap.SimpleEntry<>("two", Sets.newHashSet(null, "two")),
+                    new AbstractMap.SimpleEntry<>("three", Sets.newHashSet((Object) null)))
+                    .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue)))},
+
+                // Let's throw in some nulls again
+                {Collections.unmodifiableMap(Stream.of(
+                    new AbstractMap.SimpleEntry<>(null, Arrays.asList(null, "two", "three")),
+                    new AbstractMap.SimpleEntry<>("two", Arrays.asList("one", "two")))
+                    .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue))),
+                 Collections.unmodifiableMap(Stream.of(
+                    new AbstractMap.SimpleEntry<>("one", Sets.newHashSet( "two")),
+                    new AbstractMap.SimpleEntry<>("two", Sets.newHashSet(null, "two")),
+                    new AbstractMap.SimpleEntry<>("three", Sets.newHashSet((Object) null)),
+                    new AbstractMap.SimpleEntry<>(null, Sets.newHashSet((Object) null)))
+                    .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue)))},
+
+                    // Let's throw in some nulls again and a non-string
+                {Collections.unmodifiableMap(Stream.of(
+                    new AbstractMap.SimpleEntry<>(null, Arrays.asList(null, 2, "three")),
+                    new AbstractMap.SimpleEntry<>("two", Arrays.asList("one", "two")))
+                    .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue))),
+                 Collections.unmodifiableMap(Stream.of(
+                    new AbstractMap.SimpleEntry<>("one", Sets.newHashSet( "two")),
+                    new AbstractMap.SimpleEntry<>("two", Sets.newHashSet( "two")),
+                    new AbstractMap.SimpleEntry<>("three", Sets.newHashSet((Object) null)),
+                    new AbstractMap.SimpleEntry<>(null, Sets.newHashSet((Object) null)),
+                    new AbstractMap.SimpleEntry<>(2, Sets.newHashSet((Object) null)))
+                    .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue)))}
+        };
+    }
+
+    @Test(dataProvider = "provideGetReverseValueToListMap")
+    public <T,U> void testGetReverseValueToListMap(final Map<T, List<U>> input,  final Map<U, Set<T>> gtOutput) {
+        Assert.assertEquals(Utils.getReverseValueToListMap(input), gtOutput);
     }
 }

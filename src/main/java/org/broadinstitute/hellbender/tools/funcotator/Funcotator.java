@@ -16,6 +16,8 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.mafOutput.MafOutputRenderer;
+import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
+import org.broadinstitute.hellbender.tools.funcotator.metadata.VcfFuncotationMetadata;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature;
@@ -228,19 +230,19 @@ public class Funcotator extends VariantWalker {
             fullName =  FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME,
             doc = "The version of the Human Genome reference to use (e.g. hg19, hg38, etc.).  This will correspond to a sub-folder of each data source corresponding to that data source for the given reference."
     )
-    protected String referenceVersion;
+    private String referenceVersion;
 
     @Argument(
             fullName =  FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME,
             doc = "The path to a data source folder for Funcotator.  May be specified more than once to handle multiple data source folders."
     )
-    protected List<String> dataSourceDirectories;
+    private List<String> dataSourceDirectories;
 
     @Argument(
             fullName =  FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME,
             doc = "The output file format.  Either VCF or MAF"
     )
-    protected FuncotatorArgumentDefinitions.OutputFormatType outputFormatType;
+    private FuncotatorArgumentDefinitions.OutputFormatType outputFormatType;
 
     //-----------------------------------------------------
     // Optional args:
@@ -250,42 +252,42 @@ public class Funcotator extends VariantWalker {
             optional = true,
             doc = "Ignore/drop variants that have been filtered in the input.  These variants will not appear in the output file."
     )
-    protected boolean removeFilteredVariants = false;
+    private boolean removeFilteredVariants = false;
 
     @Argument(
             fullName  = FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME,
             optional = true,
             doc = "Method of detailed transcript selection.  This will select the transcript for detailed annotation (CANONICAL or BEST_EFFECT)."
     )
-    protected TranscriptSelectionMode transcriptSelectionMode = FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE;
+    private TranscriptSelectionMode transcriptSelectionMode = FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE;
 
     @Argument(
             fullName  = FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_LONG_NAME,
             optional = true,
             doc = "File to use as a list of transcripts (one transcript ID per line, version numbers are ignored) OR A set of transcript IDs to use for annotation to override selected transcript."
     )
-    protected Set<String> userTranscriptIdSet = new HashSet<>();
+    private Set<String> userTranscriptIdSet = new HashSet<>();
 
     @Argument(
             fullName  = FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME,
             optional = true,
             doc = "Annotations to include in all annotated variants if the annotation is not specified in the data sources (in the format <ANNOTATION>:<VALUE>).  This will add the specified annotation to every annotated variant if it is not already present."
     )
-    protected List<String> annotationDefaults = new ArrayList<>();
+    private List<String> annotationDefaults = new ArrayList<>();
 
     @Argument(
             fullName  = FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_LONG_NAME,
             optional = true,
             doc = "Override values for annotations (in the format <ANNOTATION>:<VALUE>).  Replaces existing annotations of the given name with given values."
     )
-    protected List<String> annotationOverrides = new ArrayList<>();
+    private List<String> annotationOverrides = new ArrayList<>();
 
     @Argument(
             fullName = FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME,
             optional = true,
             doc = "Allow for the HG19 Reference version of GENCODE (or any other datasource) to match with B37 Contig names.  (May create erroneous annotations in some contigs where B37 != HG19)."
     )
-    protected boolean allowHg19ContigNamesWithB37 = true;
+    private boolean allowHg19ContigNamesWithB37 = true;
 
     @Argument(
             fullName = FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_NAME,
@@ -293,14 +295,14 @@ public class Funcotator extends VariantWalker {
             minValue = 0,
             doc = "Number of base-pairs to cache when querying variants."
     )
-    protected int lookaheadFeatureCachingInBp = FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE;
+    private int lookaheadFeatureCachingInBp = FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE;
 
     @Argument(
             fullName = FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_OVERRIDE_LONG_NAME,
             optional = true,
             doc = "(Advanced/Use at your own risk) Use in conjunction with allow hg19 contig names with b37.  If you also select this flag, no check that your input reference is b37 is actually performed.  Otherwise, ignored.  Typically, this option is useful in integration tests (written by devs) only."
     )
-    protected boolean allowHg19ContigNamesWithB37Lenient = false;
+    private boolean allowHg19ContigNamesWithB37Lenient = false;
 
     //==================================================================================================================
 
@@ -310,6 +312,13 @@ public class Funcotator extends VariantWalker {
     private final List<FeatureInput<? extends Feature>> manualLocatableFeatureInputs = new ArrayList<>();
 
     private boolean inputReferenceIsB37 = false;
+
+    private FuncotationMetadata inputMetadata;
+
+    /**
+     * Datasource name to use for Funcotations created from input variants.
+     */
+    public static String datasourceNameForInput = "INPUT";
 
     //==================================================================================================================
 
@@ -343,6 +352,9 @@ public class Funcotator extends VariantWalker {
 
         // Sort our data source factories to ensure they're always in the same order:  gencode datasources first
         dataSourceFactories.sort(DataSourceUtils::datasourceComparator);
+
+        // Create the metadata directly from the input.
+        inputMetadata = VcfFuncotationMetadata.create(new ArrayList<>(getHeaderForVariants().getInfoHeaderLines()));
 
         // Determine which annotations are accounted for (by the funcotation factories) and which are not.
         final LinkedHashMap<String, String> unaccountedForDefaultAnnotations = getUnaccountedForAnnotations( dataSourceFactories, annotationDefaultsMap );
@@ -517,6 +529,13 @@ public class Funcotator extends VariantWalker {
                     funcotationMap.add(txId, funcotationFactory.createFuncotations(variant, referenceContext, featureSourceMap, funcotationMap.getGencodeFuncotations(txId)));
                 }
             }
+        }
+
+        // Create the funcotations for the input and add to all txID mappings.
+        final List<String> txIds = funcotationMap.getTranscriptList();
+
+        for (final String txId: txIds) {
+            funcotationMap.add(txId, FuncotatorUtils.createFuncotations(variant, inputMetadata, datasourceNameForInput));
         }
 
         // At this point there is only one transcript ID in the funcotation map if canonical or best effect are selected

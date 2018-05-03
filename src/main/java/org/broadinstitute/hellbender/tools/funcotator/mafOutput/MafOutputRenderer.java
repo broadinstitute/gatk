@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator.mafOutput;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableMap;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
@@ -520,6 +521,21 @@ public class MafOutputRenderer extends OutputRenderer {
 
         // Make sure we keep track of the fact that we've now written the header:
         hasWrittenHeader = true;
+    }
+
+    /**
+     * @return Immutable copy of the output field map used by this MafOutputRenderer.
+     */
+    public ImmutableMap<String, List<String>> getOutputFieldNameMap() {
+        return ImmutableMap.copyOf(outputFieldNameMap);
+    }
+
+    /** No field ordering is preserved in the output of this method.
+     * @return Immutable copy of the reverse output field map used by this MafOutputRenderer.
+     * In other words, return a mapping for the input field name to the MAF column this will produce. Never {@code null}
+     */
+    public ImmutableMap<String, Set<String>> getReverseOutputFieldNameMap() {
+        return  ImmutableMap.copyOf(Utils.getReverseValueToListMap(outputFieldNameMap));
     }
 
     /**
