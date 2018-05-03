@@ -165,19 +165,11 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
                                         Allele.create("C"), FACTORY_NAME)
                         )
                 ),
-                // Three overlapping VCF features:
+                // No overlapping VCF features, since there are no indels in dbSNP (the test datasource), so the ground truth should be a default entry, which was constructed here manually:
                 helpProvideForTestCreateFuncotations("3", 64157, 64166, "AGAAAGGTCA", "TCTTTCCAGT",
-                        Arrays.asList(
-                                new TableFuncotation(FIELD_DEFAULT_MAP.keySet().stream().map(s->FACTORY_NAME + "_" + s).collect(Collectors.toList()),
-                                        Arrays.asList("true","false","0.9996,.,0.0003994","false","false","1","false","false","false","","false","false","false","false","true","false","false","false","false","false","false","false","false","false","false","false","false","false","false","false","527707435","64158","false","false","0","false","0","false","0.999966,3.4343e-005,.","false","false","false","SNV","true","0x050000000005040026000100","1","false","142"),
-                                        Allele.create("TCTTTCCAGT"), FACTORY_NAME),
-                                new TableFuncotation(FIELD_DEFAULT_MAP.keySet().stream().map(s->FACTORY_NAME + "_" + s).collect(Collectors.toList()),
-                                        Arrays.asList("true","false","0.9976,0.002396","false","false","1","false","false","false","","false","false","false","false","true","false","false","false","false","false","false","false","false","false","false","false","false","false","false","false","549364629","64163","false","false","0","false","0","false","0.9966,0.00339996","false","false","false","SNV","true","0x050000000005040026000100","1","false","142"),
-                                        Allele.create("TCTTTCCAGT"), FACTORY_NAME),
-                                new TableFuncotation(FIELD_DEFAULT_MAP.keySet().stream().map(s->FACTORY_NAME + "_" + s).collect(Collectors.toList()),
-                                        Arrays.asList("true","false","0.6466,0.3534","false","false","1","false","true","true","","true","false","false","true","true","false","false","false","false","false","false","false","false","false","false","false","false","false","false","false","9311287","64165","false","false","0","true","0","false","","false","false","false","SNV","true","0x05010000000517013f000100","1","false","119"),
-                                        Allele.create("TCTTTCCAGT"), FACTORY_NAME)
-                        )
+                        Collections.singletonList(new TableFuncotation(FIELD_DEFAULT_MAP.keySet().stream().map(s->FACTORY_NAME + "_" + s).collect(Collectors.toList()),
+                                Arrays.asList("false","false","","false","false","","false","false","false","","false","false","false","false","false","false","false","false","false","false","false","false","false","false","false","false","false","false","false","false","","","false","false","","false","","false","","false","false","false","","false","","","false",""),
+                                Allele.create("TCTTTCCAGT"), FACTORY_NAME))
                 ),
         };
     }

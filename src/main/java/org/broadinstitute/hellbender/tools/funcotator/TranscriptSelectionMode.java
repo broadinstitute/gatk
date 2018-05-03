@@ -162,6 +162,15 @@ public enum TranscriptSelectionMode {
         public Comparator<GencodeFuncotation> getComparator(final Set<String> userRequestedTranscripts) {
             return new CannonicalGencodeFuncotationComparator(userRequestedTranscripts);
         }
+    },
+
+    /**
+     * Same as CANONICAL, but indicates that no transcripts should be dropped.  Render all overlapping transcripts.
+     */
+    ALL {
+        public Comparator<GencodeFuncotation> getComparator(final Set<String> userRequestedTranscripts) {
+            return new CannonicalGencodeFuncotationComparator(userRequestedTranscripts);
+        }
     };
 
     public abstract Comparator<GencodeFuncotation> getComparator(final Set<String> userRequestedTranscripts);

@@ -79,7 +79,7 @@ public class AnnotatedIntervalCodec extends AsciiFeatureCodec<AnnotatedInterval>
 
     @Override
     public boolean canDecode(final String path) {
-        return (path.endsWith(".seg") && xsvLocatableTableCodec.canDecodeMinusExtensionChecks(path));
+        return (path.endsWith(".seg") || path.endsWith(".maf") || path.endsWith(".maf.annotated")) && xsvLocatableTableCodec.canDecodeMinusExtensionChecks(path);
     }
 
     /**

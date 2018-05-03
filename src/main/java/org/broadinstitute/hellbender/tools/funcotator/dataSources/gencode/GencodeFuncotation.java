@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature;
 import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfGeneFeature;
@@ -14,8 +15,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * A class to represent a Functional Annotation from the Gencode data source.
+ * A class to represent a Functional Annotation.  Each instance represents the annotations on a single transcript.
  * Created by jonn on 8/22/17.
+ *
+ * TODO: This will likely need to be renamed TranscriptFuncotation (or will have to implement an interface for TranscriptFuncotation) in order to handle non-gencode transcript sources.
  */
 public class GencodeFuncotation implements Funcotation {
 
@@ -173,31 +176,35 @@ public class GencodeFuncotation implements Funcotation {
     public String serializeToVcfString() {
         // Alias for the FIELD_DELIMITER so we can have nicer looking code:
         final String DELIMITER = VcfOutputRenderer.FIELD_DELIMITER;
-
+        //TODO See issue https://github.com/broadinstitute/gatk/issues/4797 
+        // TODO: Sanitize for VCF.  Not quite as easy as it looks.
         // After the manual string, we check to see if we have an override first and if not we get the set field value:
-        return  (hugoSymbolSerializedOverride != null ? hugoSymbolSerializedOverride : (hugoSymbol != null ? hugoSymbol : "")) + DELIMITER +
-                (ncbiBuildSerializedOverride != null ? ncbiBuildSerializedOverride : (ncbiBuild != null ? ncbiBuild : "")) + DELIMITER +
-                (chromosomeSerializedOverride != null ? chromosomeSerializedOverride : (chromosome != null ? chromosome : "")) + DELIMITER +
-                (startSerializedOverride != null ? startSerializedOverride : start) + DELIMITER +
-                (endSerializedOverride != null ? endSerializedOverride : end) + DELIMITER +
-                (variantClassificationSerializedOverride != null ? variantClassificationSerializedOverride : (variantClassification != null ? variantClassification : "")) + DELIMITER +
-                (secondaryVariantClassificationSerializedOverride != null ? secondaryVariantClassificationSerializedOverride : (secondaryVariantClassification != null ? secondaryVariantClassification : "")) + DELIMITER +
-                (variantTypeSerializedOverride != null ? variantTypeSerializedOverride : (variantType != null ? variantType : "")) + DELIMITER +
-                (refAlleleSerializedOverride != null ? refAlleleSerializedOverride : (refAllele != null ? refAllele : "")) + DELIMITER +
+        final List<String> funcotations = Arrays.asList((hugoSymbolSerializedOverride != null ? hugoSymbolSerializedOverride : (hugoSymbol != null ? hugoSymbol : "")),
+                (ncbiBuildSerializedOverride != null ? ncbiBuildSerializedOverride : (ncbiBuild != null ? ncbiBuild : "")),
+                (chromosomeSerializedOverride != null ? chromosomeSerializedOverride : (chromosome != null ? chromosome : "")),
+                (startSerializedOverride != null ? startSerializedOverride : String.valueOf(start)),
+                (endSerializedOverride != null ? endSerializedOverride : String.valueOf(end)),
+                (variantClassificationSerializedOverride != null ? variantClassificationSerializedOverride : (variantClassification != null ? variantClassification.toString() : "")),
+                (secondaryVariantClassificationSerializedOverride != null ? secondaryVariantClassificationSerializedOverride : (secondaryVariantClassification != null ? secondaryVariantClassification.toString() : "")),
+                (variantTypeSerializedOverride != null ? variantTypeSerializedOverride : (variantType != null ? variantType.toString() : "")),
+                (refAlleleSerializedOverride != null ? refAlleleSerializedOverride : (refAllele != null ? refAllele : "")),
                 // NOTE: Ref allele gets serialized as the tumorSeqAllele1 as well, but we have to account for the override:
-                (tumorSeqAllele1SerializedOverride != null ? tumorSeqAllele1SerializedOverride : (refAllele != null ? refAllele : "")) + DELIMITER +
-                (tumorSeqAllele2SerializedOverride != null ? tumorSeqAllele2SerializedOverride : (tumorSeqAllele2 != null ? tumorSeqAllele2 : "")) + DELIMITER +
-                (genomeChangeSerializedOverride != null ? genomeChangeSerializedOverride : (genomeChange != null ? genomeChange : "")) + DELIMITER +
-                (annotationTranscriptSerializedOverride != null ? annotationTranscriptSerializedOverride : (annotationTranscript != null ? annotationTranscript : "")) + DELIMITER +
-                (transcriptStrandSerializedOverride != null ? transcriptStrandSerializedOverride : (transcriptStrand != null ? transcriptStrand : "")) + DELIMITER +
-                (transcriptExonSerializedOverride != null ? transcriptExonSerializedOverride : (transcriptExon != null ? transcriptExon : "")) + DELIMITER +
-                (transcriptPosSerializedOverride != null ? transcriptPosSerializedOverride : (transcriptPos != null ? transcriptPos : "")) + DELIMITER +
-                (cDnaChangeSerializedOverride != null ? cDnaChangeSerializedOverride : (cDnaChange != null ? cDnaChange : "")) + DELIMITER +
-                (codonChangeSerializedOverride != null ? codonChangeSerializedOverride : (codonChange != null ? codonChange : "")) + DELIMITER +
-                (proteinChangeSerializedOverride != null ? proteinChangeSerializedOverride : (proteinChange != null ? proteinChange : "")) + DELIMITER +
-                (gcContentSerializedOverride != null ? gcContentSerializedOverride : (gcContent != null ? gcContent : "")) + DELIMITER +
-                (referenceContextSerializedOverride != null ? referenceContextSerializedOverride : (referenceContext != null ? referenceContext : "")) + DELIMITER +
-                (otherTranscriptsSerializedOverride != null ? otherTranscriptsSerializedOverride : (otherTranscripts != null ? otherTranscripts.stream().map(Object::toString).collect(Collectors.joining(VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER)) : ""));
+                (tumorSeqAllele1SerializedOverride != null ? tumorSeqAllele1SerializedOverride : (refAllele != null ? refAllele : "")),
+                (tumorSeqAllele2SerializedOverride != null ? tumorSeqAllele2SerializedOverride : (tumorSeqAllele2 != null ? tumorSeqAllele2 : "")),
+                (genomeChangeSerializedOverride != null ? genomeChangeSerializedOverride : (genomeChange != null ? genomeChange : "")),
+                (annotationTranscriptSerializedOverride != null ? annotationTranscriptSerializedOverride : (annotationTranscript != null ? annotationTranscript : "")),
+                (transcriptStrandSerializedOverride != null ? transcriptStrandSerializedOverride : (transcriptStrand != null ? transcriptStrand : "")),
+                (transcriptExonSerializedOverride != null ? transcriptExonSerializedOverride : (transcriptExon != null ? transcriptExon.toString() : "")),
+                (transcriptPosSerializedOverride != null ? transcriptPosSerializedOverride : (transcriptPos != null ? transcriptPos.toString() : "")),
+                (cDnaChangeSerializedOverride != null ? cDnaChangeSerializedOverride : (cDnaChange != null ? cDnaChange : "")),
+                (codonChangeSerializedOverride != null ? codonChangeSerializedOverride : (codonChange != null ? codonChange : "")),
+                (proteinChangeSerializedOverride != null ? proteinChangeSerializedOverride : (proteinChange != null ? proteinChange : "")),
+                (gcContentSerializedOverride != null ? gcContentSerializedOverride : (gcContent != null ? gcContent.toString() : "")),
+                (referenceContextSerializedOverride != null ? referenceContextSerializedOverride : (referenceContext != null ? referenceContext : "")),
+                (otherTranscriptsSerializedOverride != null ? otherTranscriptsSerializedOverride : (otherTranscripts != null ? otherTranscripts.stream().map(Object::toString).collect(Collectors.joining(VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER)) : ""))
+            );
+
+        return funcotations.stream().map(f -> FuncotatorUtils.sanitizeFuncotationForVcf(f)).collect(Collectors.joining(DELIMITER));
     }
 
     @Override
@@ -326,6 +333,13 @@ public class GencodeFuncotation implements Funcotation {
         }
 
         throw new GATKException(this.getClass().getSimpleName() + ": Does not contain field: " + fieldName);
+    }
+
+    @Override
+    public boolean hasField(final String fieldName) {
+        final LinkedHashSet<String> fieldNames = getFieldNames();
+        final String altFieldName = getDataSourceName() + "_" + version + "_" + fieldName;
+        return ( fieldNames.contains(fieldName) || fieldNames.contains(altFieldName) );
     }
 
     //==================================================================================================================

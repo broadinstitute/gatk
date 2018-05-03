@@ -72,4 +72,9 @@ public interface Funcotation {
     default String serializeToVcfString(final String manualAnnotationString) {
         return (manualAnnotationString == null ? "" : manualAnnotationString) + serializeToVcfString();
     }
+
+    /**
+     * @return Return whether the field exists in this {@link Funcotation}.
+     */
+    boolean hasField(final String fieldName);
 }

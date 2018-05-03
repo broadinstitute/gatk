@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.funcotator;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.util.ParsingUtils;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -31,6 +30,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Funcotator (FUNCtional annOTATOR) analyzes given variants for their function (as retrieved from a set of data sources) and produces the analysis in a specified output file.
@@ -264,21 +264,21 @@ public class Funcotator extends VariantWalker {
             optional = true,
             doc = "File to use as a list of transcripts (one transcript ID per line, version numbers are ignored) OR A set of transcript IDs to use for annotation to override selected transcript."
     )
-    protected Set<String> userTranscriptIdSet = FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_DEFAULT_VALUE;
+    protected Set<String> userTranscriptIdSet = new HashSet<>();
 
     @Argument(
             fullName  = FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME,
             optional = true,
             doc = "Annotations to include in all annotated variants if the annotation is not specified in the data sources (in the format <ANNOTATION>:<VALUE>).  This will add the specified annotation to every annotated variant if it is not already present."
     )
-    protected List<String> annotationDefaults = FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_DEFAULT_VALUE;
+    protected List<String> annotationDefaults = new ArrayList<>();
 
     @Argument(
             fullName  = FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_LONG_NAME,
             optional = true,
             doc = "Override values for annotations (in the format <ANNOTATION>:<VALUE>).  Replaces existing annotations of the given name with given values."
     )
-    protected List<String> annotationOverrides = FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_DEFAULT_VALUE;
+    protected List<String> annotationOverrides = new ArrayList<>();
 
     @Argument(
             fullName = FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME,
@@ -294,6 +294,13 @@ public class Funcotator extends VariantWalker {
             doc = "Number of base-pairs to cache when querying variants."
     )
     protected int lookaheadFeatureCachingInBp = FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE;
+
+    @Argument(
+            fullName = FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_OVERRIDE_LONG_NAME,
+            optional = true,
+            doc = "(Advanced/Use at your own risk) Use in conjunction with allow hg19 contig names with b37.  If you also select this flag, no check that your input reference is b37 is actually performed.  Otherwise, ignored.  Typically, this option is useful in integration tests (written by devs) only."
+    )
+    protected boolean allowHg19ContigNamesWithB37Lenient = false;
 
     //==================================================================================================================
 
@@ -331,7 +338,7 @@ public class Funcotator extends VariantWalker {
         final Map<Path, Properties> configData = DataSourceUtils.getAndValidateDataSourcesFromPaths(referenceVersion, dataSourceDirectories);
         initializeManualFeaturesForLocatableDataSources(configData);
         dataSourceFactories.addAll(
-                DataSourceUtils.createDataSourceFuncotationFactoriesForDataSources(configData, annotationOverridesMap, transcriptSelectionMode, userTranscriptIdSet)
+                DataSourceUtils.createDataSourceFuncotationFactoriesForDataSources(configData, annotationOverridesMap, transcriptSelectionMode, userTranscriptIdSet, allowHg19ContigNamesWithB37)
         );
 
         // Sort our data source factories to ensure they're always in the same order:  gencode datasources first
@@ -452,31 +459,23 @@ public class Funcotator extends VariantWalker {
         // Get our feature inputs:
         final Map<String, List<Feature>> featureSourceMap = new HashMap<>();
 
-        // Create a variant context for annotation that has a new contig based on whether we need to overwrite the
-        // contig names in the next section.
-        VariantContext variantContextFixedContigForDataSources = variant;
-
         // Check to see if we need to query with a different reference convention (i.e. "chr1" vs "1").
-        if (allowHg19ContigNamesWithB37 && inputReferenceIsB37) {
-            final VariantContextBuilder variantContextBuilderForFixedContigForDataSources = new VariantContextBuilder(variant);
+        if (allowHg19ContigNamesWithB37 && (inputReferenceIsB37 || allowHg19ContigNamesWithB37Lenient)) {
 
             // Construct a new contig and new interval with no "chr" in front of it:
             final String hg19Contig = FuncotatorUtils.convertB37ContigToHg19Contig( variant.getContig() );
             final SimpleInterval hg19Interval = new SimpleInterval(hg19Contig, variant.getStart(), variant.getEnd());
 
-            variantContextBuilderForFixedContigForDataSources.chr(hg19Contig);
-
             // Get our features for the new interval:
             for ( final FeatureInput<? extends Feature> featureInput : manualLocatableFeatureInputs ) {
                 @SuppressWarnings("unchecked")
                 final List<Feature> featureList = (List<Feature>)featureContext.getValues(featureInput, hg19Interval);
-
-                // TODO: This is a little sloppy, since it checks every datasource twice.  Once for hg19 contig names and once for b37 contig names.  See https://github.com/broadinstitute/gatk/issues/4798
-                featureList.addAll(featureContext.getValues(featureInput));
+                if (featureList.size() == 0) {
+                    // TODO: This is a little sloppy, since it checks every datasource twice.  Once for hg19 contig names and once for b37 contig names.  See https://github.com/broadinstitute/gatk/issues/4798
+                    featureList.addAll(featureContext.getValues(featureInput));
+                }
                 featureSourceMap.put( featureInput.getName(), featureList);
             }
-            // Get our VariantContext for annotation:
-            variantContextFixedContigForDataSources = variantContextBuilderForFixedContigForDataSources.make();
         }
         else {
             for ( final FeatureInput<? extends Feature> featureInput : manualLocatableFeatureInputs ) {
@@ -486,29 +485,39 @@ public class Funcotator extends VariantWalker {
             }
         }
 
+        // Create only the gencode funcotations.
+        if (retriveGencodeFuncotationFactoryStream().count() > 1) {
+            logger.warn("Attempting to annotate with more than one GENCODE datasource.  This is not supported.");
+        }
+
+        final List<GencodeFuncotation> transcriptFuncotations = retriveGencodeFuncotationFactoryStream()
+                .map(gf -> gf.createFuncotations(variant, referenceContext, featureSourceMap))
+                .flatMap(List::stream)
+                .map(gf -> (GencodeFuncotation) gf).collect(Collectors.toList());
+
         // Create a place to keep our funcotations:
-        final List<Funcotation> funcotations = new ArrayList<>();
+        final FuncotationMap funcotationMap = FuncotationMap.createFromGencodeFuncotations(transcriptFuncotations);
 
-        // Annotate with Gencode first:
-        // Create a list of GencodeFuncotation to use for other Data Sources:
-        final List<GencodeFuncotation> gencodeFuncotations = new ArrayList<>();
-
-        // Perform the actual annotation.  Note that we leverage the ordering of datasources here (i.e. that gencode/transcript
-        //  datasources always appear first)
+        // Perform the rest of the annotation.  Note that this code manually excludes the Gencode Funcotations.
         for (final DataSourceFuncotationFactory funcotationFactory : dataSourceFactories ) {
-            if (funcotationFactory.getType().equals(FuncotatorArgumentDefinitions.DataSourceType.GENCODE)) {
-                final List<Funcotation> funcotationsFromGencodeFactory = funcotationFactory.createFuncotations(variantContextFixedContigForDataSources, referenceContext, featureSourceMap);
-                funcotations.addAll(funcotationsFromGencodeFactory);
-                gencodeFuncotations.addAll(
-                        funcotationsFromGencodeFactory.stream()
-                                .map(x -> (GencodeFuncotation)x)
-                                .collect(Collectors.toList()));
-            } else {
-                funcotations.addAll( funcotationFactory.createFuncotations(variantContextFixedContigForDataSources, referenceContext, featureSourceMap, gencodeFuncotations) );
+
+            // Note that this guarantees that we do not add GencodeFuncotations a second time.
+            if (!funcotationFactory.getType().equals(FuncotatorArgumentDefinitions.DataSourceType.GENCODE)) {
+                final List<String> txIds = funcotationMap.keyList();
+
+                for (final String txId: txIds) {
+                    funcotationMap.add(txId, funcotationFactory.createFuncotations(variant, referenceContext, featureSourceMap, funcotationMap.getGencodeFuncotations(txId)));
+                }
             }
         }
 
-        outputRenderer.write(variant, funcotations);
+        // At this point there is only one transcript ID in the funcotation map if canonical or best effect are selected
+        outputRenderer.write(variant, funcotationMap);
+    }
+
+    private Stream<DataSourceFuncotationFactory> retriveGencodeFuncotationFactoryStream() {
+        return dataSourceFactories.stream()
+                .filter(f -> f.getType().equals(FuncotatorArgumentDefinitions.DataSourceType.GENCODE));
     }
 
     /**

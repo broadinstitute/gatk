@@ -128,11 +128,13 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
         // Get the features that this funcotation factory is responsible for:
         final List<Feature> featureList = getFeatureListFromMap(featureSourceMap);
 
+        final List<Funcotation> outputFuncotations;
+
         // If our featureList is compatible with this DataSourceFuncotationFactory, then we make our funcotations:
         if ( isFeatureListCompatible(featureList) ) {
 
             // Create our funcotations:
-            final List<Funcotation> outputFuncotations;
+
             if ( gencodeFuncotations == null ) {
                 outputFuncotations = createFuncotationsOnVariant(variant, referenceContext, featureList);
             }
@@ -142,11 +144,15 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
 
             // Set our overrides:
             setOverrideValuesInFuncotations(outputFuncotations);
-
-            return outputFuncotations;
         }
         else {
             return createDefaultFuncotationsOnVariant(variant, referenceContext);
+        }
+
+        if ((outputFuncotations == null) || (outputFuncotations.size() == 0)) {
+            return createDefaultFuncotationsOnVariant(variant, referenceContext);
+        } else {
+            return outputFuncotations;
         }
     }
 

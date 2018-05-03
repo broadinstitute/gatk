@@ -68,7 +68,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 GencodeFuncotationFactory.DEFAULT_NAME,
                 FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE,
                 new HashSet<>(),
-                new LinkedHashMap<>());
+                new LinkedHashMap<>(), false);
     }
 
     //==================================================================================================================
@@ -1156,7 +1156,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 GencodeFuncotationFactory.DEFAULT_NAME,
                 FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE,
                 requestedTranscriptIds,
-                new LinkedHashMap<>())) {
+                new LinkedHashMap<>(), true)) {
 
             // Generate our funcotations:
             final List<Feature> featureList = new ArrayList<>();
@@ -1213,7 +1213,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                                                                     GencodeFuncotationFactory.DEFAULT_NAME,
                                                                     FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE,
                                                                     new HashSet<>(),
-                                                                    new LinkedHashMap<>())) {
+                                                                    new LinkedHashMap<>(), false)) {
 
             // Generate our funcotations:
             final List<Feature> featureList = new ArrayList<>();
@@ -1283,7 +1283,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 GencodeFuncotationFactory.DEFAULT_NAME,
                 FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE,
                 requestedTranscriptIds,
-                new LinkedHashMap<>())) {
+                new LinkedHashMap<>(), true)) {
 
             final List<Feature> featureList = new ArrayList<>();
             featureList.add( gene );

@@ -19,7 +19,7 @@ public abstract class OutputRenderer implements AutoCloseable {
     //==================================================================================================================
     /**
      * {@link LinkedHashMap} of manually specified annotations to add to each output in addition to annotations provided
-     * to {@link OutputRenderer#write(VariantContext, List)}.
+     * to {@link OutputRenderer#write(VariantContext, FuncotationMap)}.
      */
     protected LinkedHashMap<String, String> manualAnnotations;
 
@@ -51,9 +51,9 @@ public abstract class OutputRenderer implements AutoCloseable {
     public abstract void close();
 
     /**
-     * Write the given {@code variant} and {@code funcotations} to the output file.
+     * Write the given {@code variant} and {@code txToFuncotationMap} to the output file.
      * @param variant {@link VariantContext} to write to the file.
-     * @param funcotations {@link List} of {@link Funcotation} to add to the given {@code variant} on output.
+     * @param txToFuncotationMap {@link FuncotationMap} to add to the given {@code variant} on output.
      */
-    public abstract void write(final VariantContext variant, final List<Funcotation> funcotations);
+    public abstract void write(final VariantContext variant, final FuncotationMap txToFuncotationMap);
 }

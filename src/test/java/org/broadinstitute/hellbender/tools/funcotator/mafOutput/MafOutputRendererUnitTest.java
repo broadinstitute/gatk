@@ -7,10 +7,7 @@ import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.collections.MapUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
-import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
-import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
-import org.broadinstitute.hellbender.tools.funcotator.TranscriptSelectionMode;
+import org.broadinstitute.hellbender.tools.funcotator.*;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
@@ -111,7 +108,7 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                 configData,
                 new LinkedHashMap<>(),
                 TranscriptSelectionMode.BEST_EFFECT,
-                new HashSet<>()
+                new HashSet<>(), true
         );
 
         // Sort the datasources to ensure the same order every time:
@@ -707,7 +704,8 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
         final File outFile = getSafeNonExistentFile("TestMafOutputFile");
         try ( final MafOutputRenderer mafOutputRenderer = createMafOutputRenderer( outFile ) ) {
             for ( int i = 0 ; i < variants.size(); ++i ) {
-                mafOutputRenderer.write(variants.get(i), funcotations.get(i));
+                final FuncotationMap funcotationMap = FuncotationMap.createNoTranscriptInfo(funcotations.get(i));
+                mafOutputRenderer.write(variants.get(i), funcotationMap);
             }
         }
 
