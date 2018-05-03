@@ -16,7 +16,6 @@ import datetime
 
 RANDOM_SEED = 123
 
-
 def is_number(s):
     """ Decide if 's' is a number. """
     try:
@@ -50,12 +49,13 @@ class LoadAndSampleCrAndAf:
         else:
             self.__output_log_dir=output_log_dir
 
+        # We only log if the prefix is not an empty string
         if not (output_log_prefix==""):
             now = str(datetime.datetime.now())
             now2 = now.replace(" ", "_")
             now2 = now2.replace(":", "_")
             now2 = now2.replace(".", "_")
-            self.__log_filename = output_log_dir + "/" + output_log_prefix + now2 + ".log"
+            self.__log_filename = output_log_dir + "/" + output_log_prefix + "_" + now2 + ".log"
             logging.basicConfig(filename=self.__log_filename, level=logging.DEBUG)
             logging.info("* ---- %s ---- *" % now)
             logging.info("Initializing class LoadAndSampleCrAndAf")
@@ -401,7 +401,7 @@ class LoadAndSampleCrAndAf:
 
         # Notice that when we fit the beta distribution then the x axis needs
         # to be expanded two-fold, so that instead of the usual [0, 0.5] range for AF,
-        # we get a [0,1] range of the beta distribution.
+        # we get a [0, 1] range of the beta distribution.
         if self.__load_CR:
             [cr_a, cr_b] = self.__fit_gamma_distribution(cr_median, cr_10, cr_90)
             cr = np.random.gamma(cr_a, 1 / cr_b, n_points)
@@ -440,6 +440,9 @@ class ModeledSegmentsCaller:
             the LoadAndSampleCrAndAf class. It then identifies normal segments and saves the
             results, including the plots.
         """
+
+        # Initialize random number generator
+        np.random.seed(RANDOM_SEED)
 
         # Start logging
         self.__log_filename=CR_AF_data.get_log_filename()
@@ -643,7 +646,6 @@ class ModeledSegmentsCaller:
         """
 
         np.random.seed(RANDOM_SEED)
-        #[sigma_CR_normal, sigma_AF_normal] = self.__estimate_width_of_normal_cluster()
         sigma_CR_normal = 0.005
         sigma_AF_normal = 0.005
 
@@ -1156,11 +1158,13 @@ class ModeledSegmentsCaller:
         plt.colorbar()
         plt.xlabel("Copy ratio samples")
         plt.ylabel("Allele fraction samples")
+        plt.title("Data histogram")
 
         plt.subplot(222)
         self.__plot_classification()
         plt.xlabel("Copy ratio samples")
         plt.ylabel("Allele fraction samples")
+        plt.title("Gaussian fit to the data")
         plt.xlim((0, 5))
         plt.ylim((0, 0.5))
         plt.xticks(np.arange(0, 6, 1))
@@ -1170,6 +1174,7 @@ class ModeledSegmentsCaller:
         self.__plot_Gaussian_mixture_fit()
         plt.xlabel("Copy ratio samples")
         plt.ylabel("Allele fraction samples")
+        plt.title("Classification of segments")
         plt.xlim((0, 5))
         plt.ylim((0, 0.5))
         plt.xticks(np.arange(0, 6, 1))
@@ -1212,6 +1217,10 @@ class ModeledSegmentsCaller:
         plt.colorbar()
 
     def __gray_background_contigs(self, contig_beginning_end: List, ymin: float, ymax: float, ax):
+        """Create a gray/white alternating background, in which the length of the individual stripes is
+           proportional to the corresponding contig.
+        """
+
         # The array contig_beginning_end should consist of pairs that contain the beginning and the end
         # of each chromosome
         n_contigs = len(contig_beginning_end)
@@ -1238,7 +1247,7 @@ class ModeledSegmentsCaller:
         return min([-10*np.log10(1-probability), max_phred_score])
 
     def __save_calls_to_file(self):
-        """ Save the results.
+        """ Save the calls and the corresponding PHRED scores into file.
         """
         input_filename = self.__CR_AF_data.get_input_filename()
         [avg_normal_CR, std_dev_normal_CR] = self.__average_and_std_dev_copy_ratio_normal_segments()
