@@ -435,7 +435,11 @@ class ModeledSegmentsCaller:
                  interactive_output_scatter_plot_suffix:str="_scatter_plot.jpg",
                  interactive_output_allele_fraction_plot_suffix:str= "_allele_fraction_CN1_and_CN2_candidate_intervals.jpg",
                  interactive_output_copy_ratio_suffix:str="_copy_ratio_fit.jpg",
-                 interactive_output_copy_ratio_clustering_suffix:str="_copy_ratio_clusters.jpg"):
+                 interactive_output_copy_ratio_clustering_suffix:str="_copy_ratio_clusters.jpg",
+                 normal_minor_allele_fraction_threshold: float=0.475,
+                 copy_ratio_peak_min_weight: float=0.03,
+                 min_fraction_of_points_in_normal_allele_fraction_region: float=0.15
+                 ):
         """ On initialization, the caller loads the copy ratio and allele fraction data from
             the LoadAndSampleCrAndAf class. It then identifies normal segments and saves the
             results, including the plots.
@@ -466,6 +470,9 @@ class ModeledSegmentsCaller:
         self.__interactive_output_allele_fraction_plot_suffix = interactive_output_allele_fraction_plot_suffix
         self.__interactive_output_copy_ratio_suffix = interactive_output_copy_ratio_suffix
         self.__interactive_output_copy_ratio_clustering_suffix = interactive_output_copy_ratio_clustering_suffix
+        self.__normal_minor_allele_fraction_threshold = normal_minor_allele_fraction_threshold
+        self.__copy_ratio_peak_min_weight = copy_ratio_peak_min_weight
+        self.__min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region
 
         # Set the maximal value of the PHRED score we allow (since we don't want it to be off the scale on the plots)
         self.__max_PHRED_score = 100.
@@ -610,35 +617,6 @@ class ModeledSegmentsCaller:
         """Return whether the code was run in interactive mode."""
         return self.__interactive
 
-    def __estimate_width_of_normal_cluster(self):
-        """ This auxiliary function estimates the standard deviation of the tightest cluster
-            in the region where the normal sample's peaks are expected to be.
-            This result is used later in the caller.
-        """
-        n_Gaussian_components_to_look_for = 5
-        weight_cutoff = 0.10   # Gaussians w/ weight below this will not be considered
-        default_covariances = [0.01, 0.01] # default return (if no points in the region)
-
-        # Heuristic parameters: choose points only in the region specified here:
-        cr_region = [0.4, 2.5]
-        af_region = [0.4, 0.5]
-        cr_af_normal = [[self.__copy_ratio_sampled[i], self.__allele_fraction_sampled[i]]
-                        for i in range(len(self.__copy_ratio_sampled))
-                        if cr_region[0] <= self.__copy_ratio_sampled[i] <= cr_region[1]
-                        and af_region[0] <= self.__allele_fraction_sampled[i] <= af_region[1]
-                        ]
-        if len(cr_af_normal) <= 1:
-            return default_covariances
-        [cr_normal, af_normal] = np.asarray(cr_af_normal).T
-        samples = np.asarray([cr_normal, af_normal]).T
-        gmix = mixture.GaussianMixture(n_components = min([n_Gaussian_components_to_look_for,
-                                       len(cr_af_normal)]), covariance_type="diag")
-        gmix.fit(samples)
-        covariances = np.array([gmix.covariances_[i] for i in range(len(gmix.weights_))
-                                if gmix.weights_[i] >= weight_cutoff])
-        covariances = [min(covariances[:,0]), min(covariances[:,1])]
-        return(covariances)
-
     def __choose_normal_segments__CR_AF_data(self, n_Gaussians: int=40):
         """ Choose those Gaussians from the fitted distribution that cover the
             normal segments. The Gaussians are fitted using Bayesian variational
@@ -646,6 +624,8 @@ class ModeledSegmentsCaller:
         """
 
         np.random.seed(RANDOM_SEED)
+
+        # Approximate the standard deviation of the prior for fitting the peaks
         sigma_CR_normal = 0.005
         sigma_AF_normal = 0.005
 
@@ -663,7 +643,7 @@ class ModeledSegmentsCaller:
 
         # We choose those peaks to be normal whose mean's copy ratio value is within the range specified
         # by '__choose_CN2_CR_cluster' and whose allele fraction value is within the range specified by 'normal_range_AF'
-        normal_range_AF = [0.475, 0.500]
+        normal_range_AF = [self.__normal_minor_allele_fraction_threshold, 0.5]
         normal_range_CR = self.__choose_CN2_CR_cluster()
 
         normal_peak_indices = []
@@ -795,7 +775,7 @@ class ModeledSegmentsCaller:
         CN1_interval_candidate_index = -1
         CN2_interval_candidate_index = -1
         for i in range(len(p_CR_segment)):
-            if p_CR_segment[i] > 0.03:
+            if p_CR_segment[i] > self.__copy_ratio_peak_min_weight:
                 if CN1_interval_candidate_index < 0:
                     CN1_interval_candidate_index = i
                 elif CN2_interval_candidate_index < 0:
@@ -817,11 +797,10 @@ class ModeledSegmentsCaller:
             plt.savefig(self.fig_copy_ratio_clusters)
             plt.close(fig)
 
-        # If at least 'normal_min_ratio' fraction of the AF points in the 'CN1_interval_candidate' falls within
-        # the range 'normal_range_AF', then we call that the copy number 2 segment. Otherwise, it will be
-        # 'CN2_interval_candidate'.
-        normal_min_ratio = 0.15
-        normal_range_AF = [0.475, 0.50]
+        # If at least 'self.__min_fraction_of_points_in_normal_allele_fraction_region' fraction of the AF points
+        # in the 'CN1_interval_candidate' falls within the range 'normal_range_AF', then we call that the copy number 2
+        # segment. Otherwise, it will be 'CN2_interval_candidate'.
+        normal_range_AF = [self.__normal_minor_allele_fraction_threshold, 0.5]
         AF__CN1_interval_candidate = []
         AF__CN2_interval_candidate = []
         for i in range(len(self.__allele_fraction_sampled)):
@@ -831,7 +810,7 @@ class ModeledSegmentsCaller:
                 AF__CN1_interval_candidate.append(self.__allele_fraction_sampled[i])
         n_points_in_normal_range__CN1_interval_candidate = len([af for af in AF__CN1_interval_candidate
                                                                 if (af >= normal_range_AF[0] and af <= normal_range_AF[1])])
-        if (n_points_in_normal_range__CN1_interval_candidate / len(AF__CN1_interval_candidate) > normal_min_ratio):
+        if (n_points_in_normal_range__CN1_interval_candidate / len(AF__CN1_interval_candidate) > self.__min_fraction_of_points_in_normal_allele_fraction_region):
             CN2_interval = CN1_interval_candidate
             if self.__interactive and self.__log_filename!="":
                 logging.info("We chose the 1st interval to be of copy number 2.")
@@ -845,11 +824,11 @@ class ModeledSegmentsCaller:
             fig = plt.figure(2, dpi=400)
             plt.subplot(211)
             plt.hist(AF__CN1_interval_candidate, bins=50)
-            plt.xlim(0,0.5)
+            plt.xlim(0, 0.5)
             plt.xlabel("Allele fraction of the first interval")
             plt.subplot(212)
             plt.hist(AF__CN2_interval_candidate, bins=50)
-            plt.xlim(0,0.5)
+            plt.xlim(0, 0.5)
             plt.xlabel("Allele fraction of the second interval")
             plt.savefig(self.fig_allele_fraction_CN1_CN2_intervals)
             plt.close(fig)
@@ -879,7 +858,7 @@ class ModeledSegmentsCaller:
         return [gmix.weights_, gmix.means_, gmix.covariances_]
 
     def __estimate_number_of_CR_clusters(self, max_n_Gaussians: int=10, alpha: float=1.,
-                                         min_std_dev: float=0.03, max_std_dev:float =0.4):
+                                         min_std_dev: float=0.03, max_std_dev: float=0.4):
         """ This function throws down max_n_Gaussians peaks on the one dimensional copy ratio data
             self.copy_ratio_sampled. Then, it merges those that have substantial overlap.
             The overlap is measured based on whether the peaks overlap up to alpha times their standard deviation.

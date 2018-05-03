@@ -115,6 +115,28 @@ group.add_argument("--interactive_output_copy_ratio_clustering_suffix",
                    help="[Interactive mode only:] Suffix of the plot showing the histogram of copy ratio data and" +
                         "the first two copy ratio clusters.")
 
+group.add_argument("--normal_minor_allele_fraction_threshold",
+                   type=float,
+                   required=False,
+                   default=0.475,
+                   help="If the allele fraction value of a peak fitted to the data is above this threshold and its "
+                        "copy ratio value is within the appropriate region, then the peak is considered normal.")
+
+group.add_argument("--copy_ratio_peak_min_weight",
+                   type=float,
+                   required=False,
+                   default=0.03,
+                   help="During the copy ratio clustering, peaks with weights smaller than this ratio are not "
+                        "taken into account.")
+
+group.add_argument("--min_fraction_of_points_in_normal_allele_fraction_region",
+                   type=float,
+                   required=False,
+                   default=0.15,
+                   help="The region of copy ratio values are is considered normal only if at least this "
+                        "fraction of points are above the normalMinorAlleleFractionThreshold",)
+
+
 def str2bool(boolString):
     if boolString=="true" or boolString==True:
         return True
@@ -145,5 +167,8 @@ if __name__ == "__main__":
                        interactive_output_scatter_plot_suffix=args.interactive_output_scatter_plot_suffix,
                        interactive_output_allele_fraction_plot_suffix=args.interactive_output_allele_fraction_plot_suffix,
                        interactive_output_copy_ratio_suffix=args.interactive_output_copy_ratio_suffix,
-                       interactive_output_copy_ratio_clustering_suffix=args.interactive_output_copy_ratio_clustering_suffix
+                       interactive_output_copy_ratio_clustering_suffix=args.interactive_output_copy_ratio_clustering_suffix,
+                       normal_minor_allele_fraction_threshold=args.normal_minor_allele_fraction_threshold,
+                       copy_ratio_peak_min_weight=args.copy_ratio_peak_min_weight,
+                       min_fraction_of_points_in_normal_allele_fraction_region=args.min_fraction_of_points_in_normal_allele_fraction_region
                        )
