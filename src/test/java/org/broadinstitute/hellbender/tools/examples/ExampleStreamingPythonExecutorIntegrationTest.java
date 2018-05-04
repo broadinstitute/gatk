@@ -25,7 +25,7 @@ public class ExampleStreamingPythonExecutorIntegrationTest extends CommandLinePr
         };
     }
 
-    @Test(dataProvider = "streamingBatchSizes")
+    @Test(groups = "python", dataProvider = "streamingBatchSizes")
     public void testExampleStreamingPythonExecutor(final int batchSize) throws IOException {
         final IntegrationTestSpec testSpec = new IntegrationTestSpec(
                 " -I " + TEST_DATA_DIRECTORY + "reads_data_source_test1.bam" +
