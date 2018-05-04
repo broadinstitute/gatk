@@ -21,6 +21,7 @@ import scala.Tuple2;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Searches for large structural variants using assembled breakpoint pairs, clustered read pair evidence, binned copy
@@ -242,7 +243,7 @@ public final class StructuralVariantIntervalFinder {
                                                           final int evidencePadding) {
 
         if (leftInterval.getContig() != rightInterval.getContig()) return Collections.emptyList();
-        if (callInterval.getLength() < arguments.minEventSize)
+        if (callInterval.getLength() < arguments.smallEventSize)
             return Collections.emptyList();
 
         final Collection<LargeSimpleSV> events = new ArrayList<>();
@@ -259,19 +260,18 @@ public final class StructuralVariantIntervalFinder {
     /**
      * Returns all events. Searches by iterating over the breakpoint pairs and then the evidence target links.
      */
-    public List<SimpleInterval> getIntervals(final ProgressMeter progressMeter) {
+    public Map<String,List<SimpleInterval>> getIntervals(final ProgressMeter progressMeter) {
 
         if (progressMeter != null) {
             progressMeter.setRecordLabel("intervals");
         }
 
-        final List<GenomeLoc> intervals = new ArrayList<>();
+        final List<SVInterval> intervals = new ArrayList<>();
 
-        final List<GenomeLoc> deletionCallIntervals = Utils.stream(structuralVariantCallTree.iterator())
+        final List<SVInterval> deletionCallIntervals = Utils.stream(structuralVariantCallTree.iterator())
                 .filter(entry -> entry.getValue().getStructuralVariantType() == StructuralVariantType.DEL)
-                .filter(entry -> entry.getInterval().getLength() >= arguments.minEventSize)
+                .filter(entry -> entry.getInterval().getLength() >= arguments.smallEventSize)
                 .map(SVIntervalTree.Entry::getInterval)
-                .map(interval -> SVIntervalUtils.convertToGenomeLoc(interval, dictionary))
                 .collect(Collectors.toList());
         intervals.addAll(deletionCallIntervals);
 
@@ -343,7 +343,7 @@ public final class StructuralVariantIntervalFinder {
                 //.filter(entry -> entry.getInterval().getContig() >= 0)  //TODO
                 //.filter(entry -> !callsToRemove.contains(entry.getValue()))
                 .filter(entry -> entry.getValue().getReadPairEvidence() > 0)
-                .filter(entry -> entry.getValue().getReadPairEvidence() > Math.log10(entry.getInterval().getLength()))
+                .filter(entry -> entry.getValue().getReadPairEvidence() > Math.log10(entry.getInterval().getLength()) - 2)
                 .filter(entry -> !blacklistTree.hasOverlapper(entry.getInterval()))
                 .filter(entry -> {
                     final SVInterval interval = entry.getInterval();
@@ -359,8 +359,8 @@ public final class StructuralVariantIntervalFinder {
             return !highCoverageIntervalTree.hasOverlapper(paddedStart) && !highCoverageIntervalTree.hasOverlapper(paddedEnd);
         }).forEach(event -> filteredCalls.put(event.getInterval(), event.getValue()));
 
-        final List<GenomeLoc> eventIntervals = Utils.stream(filteredCalls.iterator())
-                .map(event -> SVIntervalUtils.convertToGenomeLoc(event.getInterval(), dictionary))
+        final List<SVInterval> eventIntervals = Utils.stream(filteredCalls.iterator())
+                .map(SVIntervalTree.Entry::getInterval)
                 .collect(Collectors.toList());
         /*
         final List<GenomeLoc> eventIntervals = Utils.stream(filteredCalls.iterator()).flatMap(call -> {
@@ -370,15 +370,48 @@ public final class StructuralVariantIntervalFinder {
             return Stream.of(SVIntervalUtils.convertToGenomeLoc(leftInterval, dictionary), SVIntervalUtils.convertToGenomeLoc(rightInterval, dictionary));
         }).collect(Collectors.toList());
         */
-
         intervals.addAll(eventIntervals);
 
-        final List<SimpleInterval> mergedIntervals = IntervalUtils.mergeIntervalLocations(intervals, IntervalMergingRule.ALL).stream()
-                .map(loc -> SVIntervalUtils.convertToSimpleInterval(loc))
-                .sorted(IntervalUtils.getDictionaryOrderComparator(dictionary))
-                .collect(Collectors.toList());
+        final List<SimpleInterval> smallIntervals = stratifyIntervals(intervals, arguments.smallEventSize, arguments.mediumEventSize, dictionary);
+        final List<SimpleInterval> mediumIntervals = stratifyIntervals(intervals, arguments.mediumEventSize, arguments.largeEventSize,dictionary);
+        final List<SimpleInterval> largeIntervals = stratifyIntervals(intervals, arguments.largeEventSize, arguments.xlargeEventSize, dictionary);
+        final List<SimpleInterval> extraLargeIntervals = stratifyIntervals(intervals, arguments.xlargeEventSize, Integer.MAX_VALUE, dictionary);
 
-        return mergedIntervals;
+        final Map<String,List<SimpleInterval>> intervalsMap = new HashMap<>(SVUtils.hashMapCapacity(3));
+        intervalsMap.put("S", smallIntervals);
+        intervalsMap.put("M", mediumIntervals);
+        intervalsMap.put("L", largeIntervals);
+        intervalsMap.put("XL", extraLargeIntervals);
+
+        for (final String key : intervalsMap.keySet()) {
+            logger.info(key + " events: " + intervalsMap.get(key).size() + " intervals, " + intervalsMap.get(key).stream().mapToInt(SimpleInterval::getLengthOnReference).sum() + " bp");
+        }
+
+        return intervalsMap;
+    }
+
+    private static int getNumBins(final List<SVInterval> intervals, final int mediumIndex, final int largeIndex, final int xlargeIndex, final SAMSequenceDictionary dictionary) {
+        final int numSmall = mergeIntervals(intervals.subList(0, mediumIndex).stream(), dictionary).mapToInt(interval -> interval.getLengthOnReference()).sum() / 10;
+        final int numMedium =  mergeIntervals(intervals.subList(mediumIndex, largeIndex).stream(), dictionary).mapToInt(interval -> interval.getLengthOnReference()).sum() / 100;
+        final int numLarge =  mergeIntervals(intervals.subList(largeIndex, xlargeIndex).stream(), dictionary).mapToInt(interval -> interval.getLengthOnReference()).sum() / 1000;
+        final int numXLarge =  mergeIntervals(intervals.subList(xlargeIndex, intervals.size()).stream(), dictionary).mapToInt(interval -> interval.getLengthOnReference()).sum() / 10000;
+        return numSmall + numMedium + numLarge + numXLarge;
+    }
+
+    private static List<SimpleInterval> stratifyIntervals(final Collection<SVInterval> intervals, final int minSize, final int maxSize, final SAMSequenceDictionary dictionary) {
+        final Stream<SVInterval> filteredIntervals = getIntervalsInSizeRange(intervals, minSize, maxSize);
+        return mergeIntervals(filteredIntervals, dictionary).collect(Collectors.toList());
+    }
+
+    private static Stream<SimpleInterval> mergeIntervals(final Stream<SVInterval> intervals, final SAMSequenceDictionary dictionary) {
+        final List<GenomeLoc> genomeLocList = intervals.map(interval -> SVIntervalUtils.convertToGenomeLoc(interval, dictionary)).collect(Collectors.toList());
+        return IntervalUtils.mergeIntervalLocations(genomeLocList, IntervalMergingRule.ALL).stream()
+                .map(loc -> SVIntervalUtils.convertToSimpleInterval(loc))
+                .sorted(IntervalUtils.getDictionaryOrderComparator(dictionary));
+    }
+
+    private static Stream<SVInterval> getIntervalsInSizeRange(final Collection<SVInterval> intervals, final int minSize, final int maxSize) {
+        return intervals.stream().filter(interval -> interval.getLength() >= minSize && interval.getLength() < maxSize);
     }
 
     public static List<Tuple2<SVInterval,GATKRead>> getReads(final String inputPath, final JavaSparkContext ctx, final List<SimpleInterval> intervals, final SAMSequenceDictionary dictionary) {

@@ -96,7 +96,7 @@ public class LargeSimpleSVCaller {
 
         contigTree = buildReadIntervalTree(assembledContigs);
         /* copyRatioOverlapDetector =  getMinimalCopyRatioCollection(copyRatios, copyRatios.getMetadata(),
-                filteredEvidenceTargetLinks, pairedBreakpoints, dictionary, arguments.minEventSize, MAX_COPY_RATIO_EVENT_SIZE,
+                filteredEvidenceTargetLinks, pairedBreakpoints, dictionary, arguments.smallEventSize, MAX_COPY_RATIO_EVENT_SIZE,
                 arguments.breakpointPadding + arguments.hmmPadding,
                 arguments.evidenceTargetLinkPadding + arguments.hmmPadding).getOverlapDetector();*/
 

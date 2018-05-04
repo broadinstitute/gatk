@@ -250,22 +250,39 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
     public static class StructuralVariantIntervalsForCNV implements Serializable {
         private static final long serialVersionUID = 1L;
 
-        public final int DEFAULT_MIN_EVENT_SIZE = 500;
+        public final int DEFAULT_SMALL_EVENT_SIZE = 100;
+        public final int DEFAULT_MEDIUM_EVENT_SIZE = 1000;
+        public final int DEFAULT_LARGE_EVENT_SIZE = 10000;
+        public final int DEFAULT_XLARGE_EVENT_SIZE = 100000;
 
         public final int DEFAULT_BREAKPOINT_PADDING = 0;
         public final int DEFAULT_EVIDENCE_TARGET_LINK_PADDING = 0;
         public final int DEFAULT_LOCAL_COUNTEREVIDENCE_RANGE = 1000;
         public final int DEFAULT_MIN_COUNTERVIDENCE_CLUSTER_SIZE = 0;
 
-        public static final String DEFAULT_MIN_EVENT_SIZE_LONG_NAME = "min-size";
+        public static final String DEFAULT_SMALL_EVENT_SIZE_LONG_NAME = "small-size";
+        public static final String DEFAULT_MEDIUM_EVENT_SIZE_LONG_NAME = "medium-size";
+        public static final String DEFAULT_LARGE_EVENT_SIZE_LONG_NAME = "large-size";
         public static final String DEFAULT_BREAKPOINT_PADDING_LONG_NAME = "breakpoint-padding";
         public static final String DEFAULT_EVIDENCE_TARGET_LINK_PADDING_LONG_NAME = "cluster-padding";
         public static final String DEFAULT_LOCAL_COUNTEREVIDENCE_RANGE_LONG_NAME = "counter-evidence-range";
         public static final String DEFAULT_MIN_COUNTERVIDENCE_CLUSTER_SIZE_LONG_NAME = "min-counter-evidence-size";
 
-        @Argument(doc = "Minimum event size",
-                fullName = DEFAULT_MIN_EVENT_SIZE_LONG_NAME, optional = true)
-        public int minEventSize = DEFAULT_MIN_EVENT_SIZE;
+        @Argument(doc = "Minimum small event size",
+                fullName = DEFAULT_SMALL_EVENT_SIZE_LONG_NAME, optional = true)
+        public int smallEventSize = DEFAULT_SMALL_EVENT_SIZE;
+
+        @Argument(doc = "Minimum medium event size",
+                fullName = DEFAULT_MEDIUM_EVENT_SIZE_LONG_NAME, optional = true)
+        public int mediumEventSize = DEFAULT_MEDIUM_EVENT_SIZE;
+
+        @Argument(doc = "Minimum large event size",
+                fullName = DEFAULT_LARGE_EVENT_SIZE_LONG_NAME, optional = true)
+        public int largeEventSize = DEFAULT_LARGE_EVENT_SIZE;
+
+        @Argument(doc = "Minimum extra-large event size",
+                fullName = DEFAULT_LARGE_EVENT_SIZE_LONG_NAME, optional = true)
+        public int xlargeEventSize = DEFAULT_XLARGE_EVENT_SIZE;
 
         @Advanced
         @Argument(doc = "Padding to apply to each breakpoint when searching for supporting evidence",

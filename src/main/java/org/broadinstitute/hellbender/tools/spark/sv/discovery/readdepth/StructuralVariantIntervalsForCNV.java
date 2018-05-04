@@ -26,10 +26,8 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.nio.file.Paths;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -132,14 +130,16 @@ public class StructuralVariantIntervalsForCNV extends GATKTool {
     private String evidenceTargetLinksFilePath;
     @Argument(doc = "Assembly contigs (.bam or .sam)", fullName = ASSEMBLY_CONTIGS_LONG_NAME, optional = true)
     private String assemblyBamPath;
-    @Argument(doc = "Output intervals path (.bed)", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
+    @Argument(doc = "Output directory", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String outputPath;
     @Argument(doc = "High coverage intervals file path",fullName = HIGH_COVERAGE_INTERVALS_LONG_NAME)
     private String highCoverageIntervalsPath;
     @Argument(doc = "Mappable intervals file path",fullName = "mappable-intervals")
     private String mappableIntervalsPath;
     @Argument(doc = "One or more blacklisted intervals files",fullName = "blacklist")
-    private List<String > blacklistedPaths;
+    private List<String> blacklistedPaths;
+    @Argument(doc = "Sample name for output",fullName = "name")
+    private String sampleName;
 
     private final StructuralVariationDiscoveryArgumentCollection.StructuralVariantIntervalsForCNV arguments = new StructuralVariationDiscoveryArgumentCollection.StructuralVariantIntervalsForCNV();
     private StructuralVariantIntervalFinder structuralVariantIntervalFinder;
@@ -169,20 +169,25 @@ public class StructuralVariantIntervalsForCNV extends GATKTool {
         final Collection<EvidenceTargetLink> evidenceTargetLinks = getEvidenceTargetLinks(evidenceTargetLinksFilePath, dictionary);
 
         structuralVariantIntervalFinder = new StructuralVariantIntervalFinder(breakpointCalls, svCalls, assembly, evidenceTargetLinks, highCoverageIntervals, mappableIntervals, blacklist, dictionary, arguments);
-        final List<SimpleInterval> svIntervals = structuralVariantIntervalFinder.getIntervals(progressMeter);
+        final Map<String,List<SimpleInterval>> svIntervals = structuralVariantIntervalFinder.getIntervals(progressMeter);
         writeEvents(outputPath, svIntervals);
     }
 
     /**
      * Writes events collection to BED file
      */
-    private void writeEvents(final String outputPath, final List<SimpleInterval> svIntervals) {
-        try (final OutputStream outputStream = BucketUtils.createFile(outputPath)) {
-            for (final SimpleInterval interval : svIntervals) {
-                outputStream.write((dictionary.getSequence(interval.getContig()).getSequenceName() + "\t" + interval.getStart() + "\t" + interval.getEnd() + "\n").getBytes());
+    private void writeEvents(final String outputDirectory, final Map<String,List<SimpleInterval>> svIntervals) {
+        for (final String key : svIntervals.keySet()) {
+            final String fileName = sampleName + "-" + key + ".bed";
+            final String outputPath = Paths.get(outputDirectory, fileName).toAbsolutePath().toString();
+            try (final OutputStream outputStream = BucketUtils.createFile(outputPath)) {
+                outputStream.write(("#CHR\tPOS\tEND\n").getBytes());
+                for (final SimpleInterval interval : svIntervals.get(key)) {
+                    outputStream.write((dictionary.getSequence(interval.getContig()).getSequenceName() + "\t" + interval.getStart() + "\t" + interval.getEnd() + "\n").getBytes());
+                }
+            } catch (final IOException e) {
+                throw new GATKException("Error writing output to " + outputPath, e);
             }
-        } catch (final IOException e) {
-            throw new GATKException("Error writing output BED file", e);
         }
     }
 
