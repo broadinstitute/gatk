@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
-import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadEnds;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
 
@@ -193,13 +192,13 @@ public final class Pair extends PairedEnds implements picard.sam.util.PhysicalLo
     @Override
     public void setTile(final short tile) { this.tile = tile; }
     @Override
-    public short getX() { return this.x; }
+    public int getX() { return this.x; }
     @Override
-    public void setX(final short x) { this.x = x; }
+    public void setX(final int x) { this.x = (short)x; }
     @Override
-    public short getY() { return this.y; }
+    public int getY() { return this.y; }
     @Override
-    public void setY(final short y) { this.y = y; }
+    public void setY(final int y) { this.y = (short)y; }
     @Override
     public short getLibraryId() { return this.libraryId; }
     @Override

@@ -167,7 +167,7 @@ public class MarkDuplicatesSparkUtils {
      */
     private static Map<String, Short> getHeaderReadGroupIndexMap(final SAMFileHeader header) {
         final List<SAMReadGroupRecord> readGroups = header.getReadGroups();
-        final Iterator<Short> iterator = IntStream.range(0, readGroups.size()).boxed().map(Short.class::cast).iterator();
+        final Iterator<Short> iterator = IntStream.range(0, readGroups.size()).boxed().map(Integer::shortValue).iterator();
         return Maps.uniqueIndex(iterator, idx -> readGroups.get(idx).getId() );
     }
 
@@ -352,7 +352,7 @@ public class MarkDuplicatesSparkUtils {
     }
 
     private static Tuple2<IndexPair<String>, Integer> handlePairs(List<Pair> pairs, OpticalDuplicateFinder finder) {
-        final MarkDuplicatesSparkRecord bestPair = pairs.stream()
+        final Pair bestPair = pairs.stream()
                 .max(PAIRED_ENDS_SCORE_COMPARATOR)
                 .orElseThrow(() -> new GATKException.ShouldNeverReachHereException("There was no best pair because the stream was empty, but it shouldn't have been empty."));
 
@@ -365,15 +365,15 @@ public class MarkDuplicatesSparkUtils {
         if (groupByOrientation.containsKey(ReadEnds.FR) && groupByOrientation.containsKey(ReadEnds.RF)) {
             final List<Pair> peFR = new ArrayList<>(groupByOrientation.get(ReadEnds.FR));
             final List<Pair> peRF = new ArrayList<>(groupByOrientation.get(ReadEnds.RF));
-            numOpticalDuplicates = countOpticalDuplicates(finder, peFR) + countOpticalDuplicates(finder, peRF);
+            numOpticalDuplicates = countOpticalDuplicates(finder, peFR, bestPair) + countOpticalDuplicates(finder, peRF, bestPair);
         } else {
-            numOpticalDuplicates = countOpticalDuplicates(finder, pairs);
+            numOpticalDuplicates = countOpticalDuplicates(finder, pairs, bestPair);
         }
         return (new Tuple2<>(new IndexPair<>(bestPair.getName(), bestPair.getPartitionIndex()), numOpticalDuplicates));
     }
 
-    private static int countOpticalDuplicates(OpticalDuplicateFinder finder, List<Pair> scored) {
-        final boolean[] opticalDuplicateFlags = finder.findOpticalDuplicates(scored);
+    private static int countOpticalDuplicates(OpticalDuplicateFinder finder, List<Pair> scored, Pair best) {
+        final boolean[] opticalDuplicateFlags = finder.findOpticalDuplicates(scored, best);
         int numOpticalDuplicates = 0;
         for (final boolean b : opticalDuplicateFlags) {
             if (b) {

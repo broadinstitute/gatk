@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import picard.sam.markduplicates.util.OpticalDuplicateFinder;
+import picard.sam.util.PhysicalLocation;
 
 import java.io.File;
 import java.util.*;
@@ -243,7 +244,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
      * in fact optical duplicates, and stores the data in the instance level histogram.
      */
     public static void trackOpticalDuplicates(List<? extends ReadEnds> ends,
-                                              final
+                                              final ReadEnds keeper,
                                               final OpticalDuplicateFinder opticalDuplicateFinder,
                                               final LibraryIdGenerator libraryIdGenerator) {
         boolean hasFR = false, hasRF = false;
@@ -275,10 +276,10 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
             }
 
             // track the duplicates
-            trackOpticalDuplicates(trackOpticalDuplicatesF, opticalDuplicateFinder, libraryIdGenerator.getOpticalDuplicatesByLibraryIdMap());
-            trackOpticalDuplicates(trackOpticalDuplicatesR, opticalDuplicateFinder, libraryIdGenerator.getOpticalDuplicatesByLibraryIdMap());
+            trackOpticalDuplicates(trackOpticalDuplicatesF, opticalDuplicateFinder, libraryIdGenerator.getOpticalDuplicatesByLibraryIdMap(), keeper);
+            trackOpticalDuplicates(trackOpticalDuplicatesR, opticalDuplicateFinder, libraryIdGenerator.getOpticalDuplicatesByLibraryIdMap(), keeper);
         } else { // No need to partition
-            AbstractMarkDuplicatesCommandLineProgram.trackOpticalDuplicates(ends, opticalDuplicateFinder, libraryIdGenerator.getOpticalDuplicatesByLibraryIdMap());
+            AbstractMarkDuplicatesCommandLineProgram.trackOpticalDuplicates(ends, opticalDuplicateFinder, libraryIdGenerator.getOpticalDuplicatesByLibraryIdMap(), keeper);
         }
     }
 
@@ -286,10 +287,11 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
      * Looks through the set of reads and identifies how many of the duplicates are
      * in fact optical duplicates, and stores the data in the instance level histogram.
      */
-    private static void trackOpticalDuplicates(final List<? extends picard.sam.util.PhysicalLocation> list,
+    private static void trackOpticalDuplicates(final List<? extends PhysicalLocation> list,
                                                final OpticalDuplicateFinder opticalDuplicateFinder,
-                                               final Histogram<Short> opticalDuplicatesByLibraryId) {
-        final boolean[] opticalDuplicateFlags = opticalDuplicateFinder.findOpticalDuplicates(list);
+                                               final Histogram<Short> opticalDuplicatesByLibraryId,
+                                               final ReadEnds keeper) {
+        final boolean[] opticalDuplicateFlags = opticalDuplicateFinder.findOpticalDuplicates(list, keeper);
 
         int opticalDuplicates = 0;
         for (final boolean b : opticalDuplicateFlags) if (b) ++opticalDuplicates;

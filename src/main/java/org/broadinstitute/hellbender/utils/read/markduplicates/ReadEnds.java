@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates;
 
 /** Little struct-like class to hold read pair (and fragment) end data for duplicate marking. */
-public abstract class ReadEnds implements OpticalDuplicateFinder.PhysicalLocation {
+public abstract class ReadEnds implements picard.sam.util.PhysicalLocation {
 
     public static final byte F = 0, R = 1, FF = 2, FR = 3, RR = 4, RF = 5;
 
@@ -36,16 +36,16 @@ public abstract class ReadEnds implements OpticalDuplicateFinder.PhysicalLocatio
     public void setTile(final short tile) { this.tile = tile; }
 
     @Override
-    public short getX() { return this.x; }
+    public int getX() { return this.x; }
 
     @Override
-    public void setX(final short x) { this.x = x; }
+    public void setX(final int x) { this.x = (short)x; }
 
     @Override
-    public short getY() { return this.y; }
+    public int getY() { return this.y; }
 
     @Override
-    public void setY(final short y) { this.y = y; }
+    public void setY(final int y) { this.y = (short)y; }
 
     @Override
     public short getLibraryId() { return this.libraryId; }

@@ -25,6 +25,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
+import org.broadinstitute.hellbender.utils.read.markduplicates.SerializableOpticalDuplicatesFinder;
 import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
@@ -176,7 +177,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
     protected void runTool(final JavaSparkContext ctx) {
         JavaRDD<GATKRead> reads = getReads();
         final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
-                new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
+                new SerializableOpticalDuplicatesFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE) : null;
 
         final SAMFileHeader header = getHeaderForReads();
         final JavaRDD<GATKRead> finalReadsForMetrics = mark(reads, header, markDuplicatesSparkArgumentCollection.duplicatesScoringStrategy, finder, getRecommendedNumReducers(),  markDuplicatesSparkArgumentCollection.dontMarkUnmappedMates);

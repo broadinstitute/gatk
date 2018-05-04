@@ -21,7 +21,7 @@ import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.markduplicates.AbstractOpticalDuplicateFinderCommandLineProgram;
 import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
-import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
+import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.DataInputStream;
@@ -417,7 +417,7 @@ public final class EstimateLibraryComplexityGATK extends AbstractOpticalDuplicat
                                 final int duplicateCount = dupes.size();
                                 duplicationHisto.increment(duplicateCount);
 
-                                final boolean[] flags = opticalDuplicateFinder.findOpticalDuplicates(dupes);
+                                final boolean[] flags = opticalDuplicateFinder.findOpticalDuplicates(dupes, null);
                                 for (final boolean b : flags) {
                                     if (b) opticalHisto.increment(duplicateCount);
                                 }

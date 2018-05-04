@@ -460,7 +460,7 @@ public final class MarkDuplicatesGATK extends AbstractMarkDuplicatesCommandLineP
         }
 
         if (this.opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null) {
-            AbstractMarkDuplicatesCommandLineProgram.trackOpticalDuplicates(list, opticalDuplicateFinder, libraryIdGenerator);
+            AbstractMarkDuplicatesCommandLineProgram.trackOpticalDuplicates(list, best, opticalDuplicateFinder, libraryIdGenerator);
         }
     }
 
