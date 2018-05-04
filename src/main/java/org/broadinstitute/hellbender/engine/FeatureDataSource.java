@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.tribble.*;
 import htsjdk.variant.bcf2.BCF2Codec;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -409,7 +410,8 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
                         .setVcfHeaderFilename(vcfHeader.getAbsolutePath())
                         .setProduceGTField(false)
                         .setProduceGTWithMinPLValueForSpanningDeletions(false)
-                        .setSitesOnlyQuery(false);
+                        .setSitesOnlyQuery(false)
+                        .setMaxDiploidAltAllelesThatCanBeGenotyped(GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED);
         File arrayFolder = new File(Paths.get(workspace.getAbsolutePath(), GenomicsDBConstants.DEFAULT_ARRAY_NAME)
                 .toAbsolutePath().toString());
 
