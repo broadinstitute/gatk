@@ -165,7 +165,16 @@ public final class AssemblyContigWithFineTunedAlignments {
         return hasEquallyGoodAlnConfigurations;
     }
 
-    public final boolean hasIncompletePicture() {
+    /**
+     * This method exist because extending the assembly contig in either direction
+     * could (not always, see ticket #4229) change
+     * <ul>
+     *     <li>the interpretation and</li>
+     *     <li>affected reference region</li>
+     * </ul>
+     * significantly.
+     */
+    final boolean hasIncompletePicture() {
         if ( hasOnly2GoodAlignments() )
             return hasIncompletePictureFromTwoAlignments(getHeadAlignment(), getTailAlignment());
         else
@@ -175,11 +184,15 @@ public final class AssemblyContigWithFineTunedAlignments {
     //==================================================================================================================
 
     /**
-     * This predicate tests if an assembly contig has the full event (i.e. alt haplotype) assembled
-     * Of course, the grand problem of SV is always not getting the big-enough picture
-     * but here we have a more workable definition of what is definitely not big-enough:
+     * This predicate tests if an assembly contig with two (picked) alignments has the
+     * <ul>
+     *     <li>full event, or</li>
+     *     <li>breakpoint </li>
+     * </ul>
+     * assembled.
      *
-     * If the assembly contig, with its two (picked) alignments, shows any of the following signature,
+     * If the assembly contig's alignments show any of the following signature,
+     * it will be classified as incomplete.
      * it is definitely not giving the whole picture of the alt haplotype,
      * hence without other types of evidence (or linking breakpoints, which itself needs other evidence anyway),
      * human-friendly interpretation for them is unreliable.
@@ -189,16 +202,13 @@ public final class AssemblyContigWithFineTunedAlignments {
      *         regardless if strand switch is involved;
      *     </li>
      *     <li>
-     *         if the two alignments map to the same chromosome, and their reference spans overlap, and in the mean time
+     *         if the two alignments map to the same chromosome, AND their reference spans overlap, AND in the mean time
      *         <ul>
      *             <li>
      *                 there's reference order switch, or
      *             </li>
      *             <li>
-     *                 there's strand switch,
-     *         todo: this obsoletes the actual use of SimpleChimera#isCandidateInvertedDuplication()
-     *               and related inverted duplication call code we have now,
-     *               but those could be used to figure out how to annotate which known ref regions are invert duplicated
+     *                 there's strand switch.
      *             </li>
      *         </ul>
      *     </li>
@@ -310,7 +320,7 @@ public final class AssemblyContigWithFineTunedAlignments {
 
     //==================================================================================================================
 
-    public static boolean oneRefSpanContainsTheOther(final SimpleInterval one, final SimpleInterval two) {
+    private static boolean oneRefSpanContainsTheOther(final SimpleInterval one, final SimpleInterval two) {
         return one.contains(two) || two.contains(one);
     }
 

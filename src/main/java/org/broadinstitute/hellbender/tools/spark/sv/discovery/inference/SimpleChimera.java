@@ -279,8 +279,13 @@ public class SimpleChimera {
         return AssemblyContigWithFineTunedAlignments.hasIncompletePictureFromTwoAlignments(regionWithLowerCoordOnContig, regionWithHigherCoordOnContig);
     }
 
+    // TODO: 5/5/18 Note that the use of the following predicate is currently obsoleted by
+    //      {@link AssemblyContigWithFineTunedAlignments#hasIncompletePictureFromTwoAlignments()}
+    //      because the contigs with this alignment signature is classified as "incomplete",
+    //      hence will NOT sent here for constructing SimpleChimera's.
+    //      But we may want to keep the code (and related code in BreakpointComplications) for future use.
+    // another old todo: see ticket #3529 (Change to a more principled criterion than more than half of alignments overlapping)
     /**
-     * todo : see ticket #3529 (Change to a more principled criterion than more than half of alignments overlapping)
      * @return true iff the two alignments of the assembly contig are
      *         1) mappings to different strands on the same chromosome, and
      *         2) overlapping on reference is more than half of the two AI's minimal read span.

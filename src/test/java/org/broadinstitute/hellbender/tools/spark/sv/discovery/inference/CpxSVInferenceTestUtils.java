@@ -458,6 +458,7 @@ public final class CpxSVInferenceTestUtils extends GATKBaseTest {
                                                                                  final SAMSequenceDictionary refSeqDict) {
         final AlignedContig alignedContig =
                 SVTestUtils.fromPrimarySAMRecordString(primarySAMRecord, true);
+
         final AssemblyContigWithFineTunedAlignments intermediate =
                 AssemblyContigAlignmentsConfigPicker.reConstructContigFromPickedConfiguration(
                         new Tuple2<>(new Tuple2<>(alignedContig.getContigName(), alignedContig.getContigSequence()),
@@ -465,14 +466,11 @@ public final class CpxSVInferenceTestUtils extends GATKBaseTest {
                                                                             0.0)))
                         .next();
 
-        final AssemblyContigAlignmentsConfigPicker.GoodAndBadMappings goodAndBadMappings =
+        final AssemblyContigWithFineTunedAlignments result =
                 AssemblyContigAlignmentsConfigPicker.removeNonUniqueMappings(
-                        intermediate.getAlignments(),
-                        AssemblyContigAlignmentsConfigPicker.LAST_ROUND_TUNING_ALIGNMENT_MAPQUAL_THREHOLD,
-                        AssemblyContigAlignmentsConfigPicker.LAST_ROUND_TUNING_ALIGNMENT_READSPAN_THRESHOLD);
-        final AssemblyContigWithFineTunedAlignments result = new AssemblyContigWithFineTunedAlignments(
-                new AlignedContig(intermediate.getContigName(), intermediate.getContigSequence(), goodAndBadMappings.getGoodMappings()),
-                goodAndBadMappings.getBadMappingsAsCompactStrings(), false, (AlignmentInterval) null);
+                        intermediate,
+                        AssemblyContigAlignmentsConfigPicker.ALIGNMENT_LOW_REF_UNIQUENESS_THRESHOLD,
+                        AssemblyContigAlignmentsConfigPicker.ALIGNMENT_LOW_READ_UNIQUENESS_THRESHOLD);
         return CpxVariantInterpreter.furtherPreprocess(result, refSeqDict);
     }
 }

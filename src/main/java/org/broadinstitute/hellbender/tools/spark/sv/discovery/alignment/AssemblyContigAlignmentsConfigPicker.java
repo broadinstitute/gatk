@@ -49,6 +49,13 @@ public class AssemblyContigAlignmentsConfigPicker {
     static final int mqThreshold = 0;
 
     /**
+     * parameters to be passed to {@link #removeNonUniqueMappings(AssemblyContigWithFineTunedAlignments, int, int)}
+     * for dropping alignments that offer either low reference or read uniqueness.
+     */
+    public static final int ALIGNMENT_LOW_REF_UNIQUENESS_THRESHOLD = 20;
+    public static final int ALIGNMENT_LOW_READ_UNIQUENESS_THRESHOLD = 10;
+
+    /**
      * Filters an input of SAM file containing alignments of a single-ended long read that
      * aims at providing an "optimal coverage" of the assembly contig, based on an heuristic scoring scheme
      * {@link #computeScoreOfConfiguration(List, Set, int)}.
@@ -74,8 +81,8 @@ public class AssemblyContigAlignmentsConfigPicker {
 
         return assemblyContigWithPickedConfigurations
                 .flatMap(AssemblyContigAlignmentsConfigPicker::reConstructContigFromPickedConfiguration)
-                .map(tig -> lastRoundAlignmentFineTuning(tig, LAST_ROUND_TUNING_ALIGNMENT_MAPQUAL_THREHOLD,
-                                                              LAST_ROUND_TUNING_ALIGNMENT_READSPAN_THRESHOLD));
+                .map(tig -> removeNonUniqueMappings(tig, ALIGNMENT_LOW_REF_UNIQUENESS_THRESHOLD,
+                        ALIGNMENT_LOW_READ_UNIQUENESS_THRESHOLD));
     }
 
     //==================================================================================================================
@@ -591,29 +598,6 @@ public class AssemblyContigAlignmentsConfigPicker {
 
     //==================================================================================================================
 
-    public static final int LAST_ROUND_TUNING_ALIGNMENT_MAPQUAL_THREHOLD = 20;
-    public static final int LAST_ROUND_TUNING_ALIGNMENT_READSPAN_THRESHOLD = 10;
-
-    /**
-     * See  {@link #removeNonUniqueMappings(List, int, int)}
-     */
-    @VisibleForTesting
-    static AssemblyContigWithFineTunedAlignments lastRoundAlignmentFineTuning(final AssemblyContigWithFineTunedAlignments tig,
-                                                                              final int mapQThresholdInclusive,
-                                                                              final int uniqReadLenInclusive) {
-        if ( !tig.isInformative() || tig.hasOnly2GoodAlignments()) return tig;
-
-        final AssemblyContigAlignmentsConfigPicker.GoodAndBadMappings refinedMappings =
-                removeNonUniqueMappings(tig.getAlignments(), mapQThresholdInclusive, uniqReadLenInclusive);
-
-        final AlignedContig updatedTig = new AlignedContig(tig.getContigName(), tig.getContigSequence(),
-                refinedMappings.getGoodMappings());
-        return new AssemblyContigWithFineTunedAlignments(updatedTig,
-                refinedMappings.getBadMappingsAsCompactStrings(),
-                tig.hasEquallyGoodAlnConfigurations(),
-                tig.getSAtagForGoodMappingToNonCanonicalChromosome());
-    }
-
     /**
      * Process provided {@code originalConfiguration} of an assembly contig and split between good and bad alignments.
      *
@@ -638,20 +622,19 @@ public class AssemblyContigAlignmentsConfigPicker {
      * i.e. the configuration should be one of the best given by
      * {@link #pickBestConfigurations(AlignedContig, Set, Double)}.
      */
-    public static AssemblyContigAlignmentsConfigPicker.GoodAndBadMappings removeNonUniqueMappings(final List<AlignmentInterval> originalConfiguration,
-                                                                                                  final int mapQThresholdInclusive,
-                                                                                                  final int uniqReadLenInclusive) {
-        Utils.validateArg(originalConfiguration.size() > 2,
-                "assumption that input configuration to be fine tuned has more than 2 alignments is violated.\n" +
-                        originalConfiguration.stream().map(AlignmentInterval::toPackedString).collect(Collectors.toList()));
+    public static AssemblyContigWithFineTunedAlignments removeNonUniqueMappings(final AssemblyContigWithFineTunedAlignments tig,
+                                                                                final int mapQThresholdInclusive,
+                                                                                final int uniqReadLenInclusive) {
+        final List<AlignmentInterval> inputAlignments = tig.getAlignments();
+        if (inputAlignments.size() <= 2) return tig;
 
         // two pass, each focusing on removing the alignments of a contig that offers low uniqueness in one sense:
 
         // first pass is for removing alignments with low REFERENCE UNIQUENESS, using low mapping quality as the criterion
-        final List<AlignmentInterval> selectedAlignments = new ArrayList<>(originalConfiguration.size());
-        final List<AlignmentInterval> lowUniquenessMappings = new ArrayList<>(originalConfiguration.size());
+        final List<AlignmentInterval> selectedAlignments = new ArrayList<>(inputAlignments.size());
+        final List<AlignmentInterval> lowUniquenessMappings = new ArrayList<>(inputAlignments.size());
 
-        for (final AlignmentInterval alignment : originalConfiguration) {
+        for (final AlignmentInterval alignment : inputAlignments) {
             if (alignment.mapQual >= mapQThresholdInclusive)
                 selectedAlignments.add(alignment);
             else
@@ -688,7 +671,12 @@ public class AssemblyContigAlignmentsConfigPicker {
             }
         }
 
-        return new AssemblyContigAlignmentsConfigPicker.GoodAndBadMappings(selectedAlignments, lowUniquenessMappings);
+        final AlignedContig updatedTig = new AlignedContig(tig.getContigName(), tig.getContigSequence(), selectedAlignments);
+        return new AssemblyContigWithFineTunedAlignments(
+                updatedTig,
+                lowUniquenessMappings.stream().map(AlignmentInterval::toPackedString).collect(Collectors.toList()),
+                tig.hasEquallyGoodAlnConfigurations(),
+                tig.getSAtagForGoodMappingToNonCanonicalChromosome());
     }
 
     /**
