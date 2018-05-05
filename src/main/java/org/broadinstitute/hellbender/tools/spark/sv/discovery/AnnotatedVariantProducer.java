@@ -53,7 +53,7 @@ public class AnnotatedVariantProducer implements Serializable {
             throws IOException {
 
         final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype = simpleNovelAdjacencyAndChimericAlignmentEvidence.getNovelAdjacencyReferenceLocations();
-        final List<SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring> contigEvidence = simpleNovelAdjacencyAndChimericAlignmentEvidence.getAlignmentEvidence();
+        final List<SimpleChimera> contigEvidence = simpleNovelAdjacencyAndChimericAlignmentEvidence.getAlignmentEvidence();
 
         final VariantContext firstVar = produceAnnotatedVcFromInferredTypeAndRefLocations(novelAdjacencyAndAltHaplotype, linkedVariants._1, contigEvidence,
                 broadcastReference, broadcastSequenceDictionary, broadcastCNVCalls, sampleId);
@@ -73,6 +73,7 @@ public class AnnotatedVariantProducer implements Serializable {
      * Produces a VC from a {@link NovelAdjacencyAndAltHaplotype}
      * (consensus among different assemblies if they all point to the same breakpoint).
      * @param inferredType                      inferred type of variant
+     * @param contigEvidence                    evidence simple chimera contig(s) that support this {@code novelAdjacencyAndAltHaplotype}
      * @param broadcastReference                broadcast reference
      * @param broadcastSequenceDictionary       broadcast reference sequence dictionary
      * @param broadcastCNVCalls                 broadcast of external CNV calls (can be null)
@@ -81,7 +82,7 @@ public class AnnotatedVariantProducer implements Serializable {
      */
     public static VariantContext produceAnnotatedVcFromInferredTypeAndRefLocations(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype,
                                                                                    final SvType inferredType,
-                                                                                   final Iterable<SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring> contigEvidence,
+                                                                                   final Iterable<SimpleChimera> contigEvidence,
                                                                                    final Broadcast<ReferenceMultiSource> broadcastReference,
                                                                                    final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
                                                                                    final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls,
@@ -278,7 +279,7 @@ public class AnnotatedVariantProducer implements Serializable {
         final List<String> insSeqMappings;
         final String goodNonCanonicalMappingSATag;
 
-        ChimericContigAlignmentEvidenceAnnotations(final SimpleChimera simpleChimera, final String goodNonCanonicalMappingSATag){
+        ChimericContigAlignmentEvidenceAnnotations(final SimpleChimera simpleChimera){
             minMQ = Math.min(simpleChimera.regionWithLowerCoordOnContig.mapQual,
                              simpleChimera.regionWithHigherCoordOnContig.mapQual);
             minAL = Math.min(simpleChimera.regionWithLowerCoordOnContig.referenceSpan.size(),
@@ -287,17 +288,17 @@ public class AnnotatedVariantProducer implements Serializable {
                                                         simpleChimera.regionWithHigherCoordOnContig);
             sourceContigName = simpleChimera.sourceContigName;
             insSeqMappings = simpleChimera.insertionMappings;
-            this.goodNonCanonicalMappingSATag = goodNonCanonicalMappingSATag;
+            this.goodNonCanonicalMappingSATag = simpleChimera.goodNonCanonicalMappingSATag;
         }
     }
 
     @VisibleForTesting
-    static Map<String, Object> getEvidenceRelatedAnnotations(final Iterable<SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring> splitAlignmentEvidence) {
+    static Map<String, Object> getEvidenceRelatedAnnotations(final Iterable<SimpleChimera> splitAlignmentEvidence) {
 
         final List<ChimericContigAlignmentEvidenceAnnotations> annotations =
                 Utils.stream(splitAlignmentEvidence)
-                        .sorted(Comparator.comparing(evidence -> evidence.simpleChimera.sourceContigName))
-                        .map(evidence -> new ChimericContigAlignmentEvidenceAnnotations(evidence.simpleChimera, evidence.goodNonCanonicalMappingSATag))
+                        .sorted(Comparator.comparing(evidence -> evidence.sourceContigName))
+                        .map(ChimericContigAlignmentEvidenceAnnotations::new)
                         .collect(Collectors.toList());
 
         final Map<String, Object> attributeMap = new HashMap<>();

@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryTestDataProvider.*;
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME;
 import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.*;
 import static org.mockito.Mockito.when;
 
@@ -65,12 +66,10 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
                                        final String[] expectedMappingQualitiesAsStrings,
                                        final String[] expectedAlignmentLengthsAsStrings) {
 
-        final List<SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring> chimericAlignments = Collections.singletonList(
-                new SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring(
-                        new SimpleChimera(testData.firstAlignment, testData.secondAlignment,
-                                Collections.emptyList(), testData.evidenceAssemblyContigName, b37_seqDict),
-                        AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME));
-
+        final List<SimpleChimera> chimericAlignments =
+                Collections.singletonList( new SimpleChimera(testData.firstAlignment, testData.secondAlignment,
+                        Collections.emptyList(), testData.evidenceAssemblyContigName, NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME,
+                        b37_seqDict));
         final Map<String, Object> attributeMap =
                 AnnotatedVariantProducer.getEvidenceRelatedAnnotations(chimericAlignments);
 
@@ -140,10 +139,10 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
                                 final Broadcast<SAMSequenceDictionary> refSeqDictBroadcast) throws IOException {
 
         final NovelAdjacencyAndAltHaplotype breakpoints = testData.biPathBubble;
-        final List<SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring> evidence = Collections.singletonList(
-                new SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring(new SimpleChimera(testData.firstAlignment, testData.secondAlignment,
-                        Collections.emptyList(), testData.evidenceAssemblyContigName, b37_seqDict),
-                        AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME));
+        final List<SimpleChimera> evidence =
+                Collections.singletonList(new SimpleChimera(testData.firstAlignment, testData.secondAlignment,
+                        Collections.emptyList(), testData.evidenceAssemblyContigName, NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME,
+                                b37_seqDict));
         final String sampleID = "testSample";
 
         final VariantContext variantContext =

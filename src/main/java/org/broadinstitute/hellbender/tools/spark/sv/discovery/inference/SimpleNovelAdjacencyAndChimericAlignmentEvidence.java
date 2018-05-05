@@ -13,10 +13,10 @@ import java.util.List;
 @DefaultSerializer(SimpleNovelAdjacencyAndChimericAlignmentEvidence.Serializer.class)
 public final class SimpleNovelAdjacencyAndChimericAlignmentEvidence {
     private static final NovelAdjacencyAndAltHaplotype.Serializer narlSerializer = new NovelAdjacencyAndAltHaplotype.Serializer();
-    private static final SimpleChimeraAndNCAMstring.Serializer alignmentEvidenceSerializer = new SimpleChimeraAndNCAMstring.Serializer();
+    private static final SimpleChimera.Serializer alignmentEvidenceSerializer = new SimpleChimera.Serializer();
 
     private final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype;
-    private final List<SimpleChimeraAndNCAMstring> alignmentEvidence;
+    private final List<SimpleChimera> alignmentEvidence;
 
     public NovelAdjacencyAndAltHaplotype getNovelAdjacencyReferenceLocations() {
         return novelAdjacencyAndAltHaplotype;
@@ -24,12 +24,12 @@ public final class SimpleNovelAdjacencyAndChimericAlignmentEvidence {
     public byte[] getAltHaplotypeSequence() {
         return novelAdjacencyAndAltHaplotype.getAltHaplotypeSequence();
     }
-    public List<SimpleChimeraAndNCAMstring> getAlignmentEvidence() {
+    public List<SimpleChimera> getAlignmentEvidence() {
         return alignmentEvidence;
     }
 
     SimpleNovelAdjacencyAndChimericAlignmentEvidence(final NovelAdjacencyAndAltHaplotype novelAdjacencyReferenceLocations,
-                                                     final Iterable<SimpleChimeraAndNCAMstring> alignmentEvidence) {
+                                                     final Iterable<SimpleChimera> alignmentEvidence) {
         this.novelAdjacencyAndAltHaplotype = Utils.nonNull( novelAdjacencyReferenceLocations );
         this.alignmentEvidence = Lists.newArrayList( Utils.nonNull(alignmentEvidence) );
     }
@@ -39,7 +39,7 @@ public final class SimpleNovelAdjacencyAndChimericAlignmentEvidence {
         final int evidenceCount = input.readInt();
         alignmentEvidence = new ArrayList<>(evidenceCount);
         for (int i = 0; i < evidenceCount; ++i) {
-            alignmentEvidence.add( alignmentEvidenceSerializer.read(kryo, input, SimpleChimeraAndNCAMstring.class) );
+            alignmentEvidence.add( alignmentEvidenceSerializer.read(kryo, input, SimpleChimera.class) );
         }
     }
 
@@ -77,62 +77,5 @@ public final class SimpleNovelAdjacencyAndChimericAlignmentEvidence {
         int result = novelAdjacencyAndAltHaplotype.hashCode();
         result = 31 * result + alignmentEvidence.hashCode();
         return result;
-    }
-
-    /**
-     * A simple struct holding information of simple chimera of a particular contig and
-     * its good mapping to a non-canonical chromosome, if it has one.
-     */
-    @DefaultSerializer(SimpleChimeraAndNCAMstring.Serializer.class)
-    public static final class SimpleChimeraAndNCAMstring {
-        private static final SimpleChimera.Serializer caSerializer = new SimpleChimera.Serializer();
-
-        public final SimpleChimera simpleChimera;
-        public final String goodNonCanonicalMappingSATag;
-
-        public SimpleChimeraAndNCAMstring(final SimpleChimera simpleChimera, final String goodNonCanonicalMappingSATag) {
-            this.simpleChimera = simpleChimera;
-            this.goodNonCanonicalMappingSATag = goodNonCanonicalMappingSATag;
-        }
-
-        SimpleChimeraAndNCAMstring(final Kryo kryo, final Input input) {
-            simpleChimera = caSerializer.read(kryo, input, SimpleChimera.class);
-            goodNonCanonicalMappingSATag = input.readString();
-        }
-
-        private void serialize(final Kryo kryo, final Output output) {
-            caSerializer.write(kryo, output, simpleChimera);
-            output.writeString(goodNonCanonicalMappingSATag);
-        }
-
-        @Override
-        public boolean equals(final Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            final SimpleChimeraAndNCAMstring that = (SimpleChimeraAndNCAMstring) o;
-
-            if (!simpleChimera.equals(that.simpleChimera)) return false;
-            return goodNonCanonicalMappingSATag.equals(that.goodNonCanonicalMappingSATag);
-        }
-
-        @Override
-        public int hashCode() {
-            int result = simpleChimera.hashCode();
-            result = 31 * result + goodNonCanonicalMappingSATag.hashCode();
-            return result;
-        }
-
-        public static final class Serializer extends com.esotericsoftware.kryo.Serializer<SimpleChimeraAndNCAMstring> {
-            @Override
-            public void write(final Kryo kryo, final Output output, final SimpleChimeraAndNCAMstring alignmentEvidence) {
-                alignmentEvidence.serialize(kryo, output);
-            }
-
-            @Override
-            public SimpleChimeraAndNCAMstring read(final Kryo kryo, final Input input, final Class<SimpleChimeraAndNCAMstring> klass) {
-                return new SimpleChimeraAndNCAMstring(kryo, input);
-            }
-        }
     }
 }

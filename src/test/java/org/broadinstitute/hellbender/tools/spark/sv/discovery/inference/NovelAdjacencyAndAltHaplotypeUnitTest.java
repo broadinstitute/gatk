@@ -12,10 +12,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVariantsFr
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVTestUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryTestDataProvider;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvType;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.ContigAlignmentsModifier;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -30,6 +27,7 @@ import java.util.*;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryTestDataProvider.*;
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType.TYPES.*;
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME;
 import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.DUP_TAN_CONTRACTION_STRING;
 import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.DUP_TAN_EXPANSION_STRING;
 
@@ -93,7 +91,7 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
         final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("20", 20101, 20200), 101, 200, TextCigarCodec.decode("100M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         final ArrayList<String> insertionMappings = new ArrayList<>();
         insertionMappings.add(insertionMapping);
-        final SimpleChimera breakpoint = new SimpleChimera(region1, region2, insertionMappings, contigName, b37_seqDict);
+        final SimpleChimera breakpoint = new SimpleChimera(region1, region2, insertionMappings, contigName, NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict);
         return new NovelAdjacencyAndAltHaplotype(breakpoint, SVTestUtils.makeDummySequence(200, (byte)'A'), b37_seqDict);
     }
 
@@ -190,7 +188,7 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
     public void testGetBreakpoints_5to3Inversion_simple() {
         final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("20", 101, 200), 1, 100, TextCigarCodec.decode("100M100S"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("20", 501, 600), 101, 200, TextCigarCodec.decode("100S100M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        final SimpleChimera simpleChimera = new SimpleChimera(region1, region2, Collections.emptyList(), "1", b37_seqDict);
+        final SimpleChimera simpleChimera = new SimpleChimera(region1, region2, Collections.emptyList(), "1", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict);
         final Tuple2<SimpleInterval, SimpleInterval> breakpoints =
                 BreakpointsInference.getInferenceClass(simpleChimera, null, b37_seqDict)
                 .getLeftJustifiedBreakpoints();
@@ -204,7 +202,7 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
 
         final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("20", 101, 156), 1, 56, TextCigarCodec.decode("56M50S"), true, 60, 0, 56, ContigAlignmentsModifier.AlnModType.NONE);
         final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("20", 501, 556), 51, 106, TextCigarCodec.decode("56M50S"), false, 60, 0, 56, ContigAlignmentsModifier.AlnModType.NONE);
-        final SimpleChimera simpleChimera = new SimpleChimera(region1, region2, Collections.emptyList(), "1", b37_seqDict);
+        final SimpleChimera simpleChimera = new SimpleChimera(region1, region2, Collections.emptyList(), "1", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict);
 
         final Tuple2<SimpleInterval, SimpleInterval> breakpoints =
                 BreakpointsInference.getInferenceClass(simpleChimera, contigSeq, b37_seqDict)
@@ -499,7 +497,7 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends GATKBaseTest {
                 new SimpleInterval("chr21", 39192594, 39192692),
                 252 ,350,
                 TextCigarCodec.decode("251S99M26S"), true, 32, 1, 94, ContigAlignmentsModifier.AlnModType.NONE);
-        SimpleChimera simpleChimera = new SimpleChimera(region1, region2, Collections.emptyList(), "testContig", b38_seqDict);
+        SimpleChimera simpleChimera = new SimpleChimera(region1, region2, Collections.emptyList(), "testContig", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b38_seqDict);
         NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(simpleChimera,
                 "TTCCTTAAAATGCAGGTGAATACAAGAATTAGGTTTCAGGTTTTATATATATATTCTGATATATATATATAATATAACCTGAGATATATATATAAATATATATATTAATATATATTAATATATATAAATATATATATATTAATATATATTTATATATAAATATATATATATTAATATATATAAATATATATAAATATATATATATTAATATATATTAATATATAAATATATATATATTAATATATATTAATATATATAAATATATATATTAATATATATAAATATATATATAAATATATATAAATATATAAATATATATATAAATATATATAAATATATATAAATATATATACACACATACATACACATATACATT".getBytes(),
                 b38_seqDict);

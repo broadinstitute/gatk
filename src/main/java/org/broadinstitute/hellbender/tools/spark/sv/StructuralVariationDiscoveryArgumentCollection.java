@@ -11,6 +11,8 @@ import java.io.Serializable;
 public class StructuralVariationDiscoveryArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    public static final int STRUCTURAL_VARIANT_SIZE_LOWER_BOUND = 50;
+
     public static class FindBreakpointEvidenceSparkArgumentCollection implements Serializable {
         private static final long serialVersionUID = 1L;
 
@@ -202,7 +204,7 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
     public static class DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection implements Serializable {
         private static final long serialVersionUID = 1L;
 
-        public static final int GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY = 50; // alignment with gap of size >= 50 will be broken apart.
+        public static final int GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY = STRUCTURAL_VARIANT_SIZE_LOWER_BOUND; // alignment with gap of size >= 50 will be broken apart.
         public static final int CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD = 60;
         public static final int DEFAULT_MIN_ALIGNMENT_LENGTH = 50; // Minimum flanking alignment length filters used when going through contig alignments.
         public static final int DEFAULT_ASSEMBLED_IMPRECISE_EVIDENCE_OVERLAP_UNCERTAINTY = 100;

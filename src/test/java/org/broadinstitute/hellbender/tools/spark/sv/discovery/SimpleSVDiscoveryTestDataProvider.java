@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.*;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryUtils.getCanonicalChromosomes;
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME;
 
 /**
  * Provides test data for testing several methods involved in the SV variant caller,
@@ -276,7 +277,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 69149, 69294), 1, 146, TextCigarCodec.decode("146M51S"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 69315, 69364), 148, 197, TextCigarCodec.decode("147S50M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         final AlignedContig alignedContig = new AlignedContig("asm000001:tig00001", contigSeq, Arrays.asList(region1, region2));
-        final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), alignedContig.getContigName(), b37_seqDict), alignedContig.getContigSequence(), b37_seqDict);
+        final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), alignedContig.getContigName(), NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), alignedContig.getContigSequence(), b37_seqDict);
         return new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001");
     }
 
@@ -327,7 +328,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
 
             AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("20", 101, 205), 1, 105, TextCigarCodec.decode("105M100S"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
             AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("20", 501, 605), 101, 205, TextCigarCodec.decode("100S105M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-            final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, new ArrayList<>(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+            final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, new ArrayList<>(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
             result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
             outputStream.reset();
@@ -335,7 +336,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
             contigSeq = outputStream.toByteArray();
             region1 = new AlignmentInterval(new SimpleInterval("20", 501, 605), 1, 105, TextCigarCodec.decode("105M100S"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
             region2 = new AlignmentInterval(new SimpleInterval("20", 101, 205), 101, 205, TextCigarCodec.decode("100S105M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-            final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, new ArrayList<>(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+            final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, new ArrayList<>(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
             result.add(new TestDataForSimpleSVs(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
         }
         {// right flanking evidence '+'/'-' strand representation
@@ -345,7 +346,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
 
             AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("20", 201, 305), 1, 105, TextCigarCodec.decode("105M100S"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
             AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("20", 601, 705), 101, 205, TextCigarCodec.decode("100S105M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-            final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, new ArrayList<>(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+            final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, new ArrayList<>(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
             result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
             outputStream.reset();
@@ -354,7 +355,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
 
             region1 = new AlignmentInterval(new SimpleInterval("20", 601, 705), 1, 105, TextCigarCodec.decode("105M100S"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
             region2 = new AlignmentInterval(new SimpleInterval("20", 201, 305), 101, 205, TextCigarCodec.decode("100S105M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-            final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, new ArrayList<>(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+            final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, new ArrayList<>(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
             result.add(new TestDataForSimpleSVs(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
         }
         return result;
@@ -377,7 +378,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         byte[] contigSeq = outputStream.toByteArray();
         AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100040), 1 ,40, TextCigarCodec.decode("40M40S"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100061, 100100), 41 ,80, TextCigarCodec.decode("40S40M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+        final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
         result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
         // simple deletion '-' strand representation
@@ -388,7 +389,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         contigSeq = outputStream.toByteArray();
         region1 = new AlignmentInterval(new SimpleInterval("21", 100061, 100100), 1 ,40, TextCigarCodec.decode("40M40S"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100040), 41 ,80, TextCigarCodec.decode("40S40M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
         result.add(new TestDataForSimpleSVs(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
 
         return result;
@@ -411,7 +412,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         byte[] contigSeq = outputStream.toByteArray();
         AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100100), 1 ,100, TextCigarCodec.decode("100M100S"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100101, 100200), 151 ,250, TextCigarCodec.decode("100S100M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+        final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
         result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
         // simple insertion '-' strand representation
@@ -423,7 +424,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         contigSeq = outputStream.toByteArray();
         region1 = new AlignmentInterval(new SimpleInterval("21", 100101, 100200), 1 ,100, TextCigarCodec.decode("100M100S"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100100), 151 ,250, TextCigarCodec.decode("100S100M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
         result.add(new TestDataForSimpleSVs(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
 
         return result;
@@ -453,7 +454,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
             System.arraycopy(rightRefFlank, 30, contigSeq, 70 + substitution.length, 70);
             AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100070), 1 ,70, TextCigarCodec.decode("70M80S"), true, 60, 0, 70, ContigAlignmentsModifier.AlnModType.NONE);
             AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100131, 100200), 81 ,150, TextCigarCodec.decode("80S70M"), true, 60, 0, 70, ContigAlignmentsModifier.AlnModType.NONE);
-            NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+            NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
             result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
             // '-' strand representation
@@ -465,7 +466,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
             System.arraycopy(leftRefFlank, 30, contigSeq, 70 + substitution.length, 70);
             region1 = new AlignmentInterval(new SimpleInterval("21", 100131, 100200), 1 ,70, TextCigarCodec.decode("70M80S"), false, 60, 0, 70, ContigAlignmentsModifier.AlnModType.NONE);
             region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100070), 81 ,150, TextCigarCodec.decode("80S70M"), false, 60, 0, 70, ContigAlignmentsModifier.AlnModType.NONE);
-            final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+            final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
             result.add(new TestDataForSimpleSVs(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
         }
 
@@ -480,7 +481,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
             System.arraycopy(rightRefFlank, 10, contigSeq, 40 + substitution.length, 40);
             AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100040), 1 ,40, TextCigarCodec.decode("40M100S"), true, 60, 0, 60, ContigAlignmentsModifier.AlnModType.NONE);
             AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100061, 100100), 101 ,140, TextCigarCodec.decode("100S40M"), true, 60, 0, 60, ContigAlignmentsModifier.AlnModType.NONE);
-            NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+            NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
             result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
             // '-' strand representation
@@ -492,7 +493,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
             System.arraycopy(leftRefFlank, 10, contigSeq, 40 + substitution.length, 40);
             region1 = new AlignmentInterval(new SimpleInterval("21", 100061, 100100), 1 ,40, TextCigarCodec.decode("40M100S"), false, 60, 0, 60, ContigAlignmentsModifier.AlnModType.NONE);
             region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100040), 101 ,140, TextCigarCodec.decode("100S40M"), false, 60, 0, 60, ContigAlignmentsModifier.AlnModType.NONE);
-            final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+            final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
             result.add(new TestDataForSimpleSVs(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
         }
 
@@ -507,7 +508,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
             System.arraycopy(rightRefFlank, 30, contigSeq, 70 + substitution.length, 70);
             AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100070), 1 ,70, TextCigarCodec.decode("70M125S"), true, 60, 0, 70, ContigAlignmentsModifier.AlnModType.NONE);
             AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100131, 100200), 126 ,195, TextCigarCodec.decode("125S70M"), true, 60, 0, 70, ContigAlignmentsModifier.AlnModType.NONE);
-            NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+            NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
             result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
             // '-' strand representation
@@ -519,7 +520,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
             System.arraycopy(leftRefFlank, 30, contigSeq, 70 + substitution.length, 70);
             region1 = new AlignmentInterval(new SimpleInterval("21", 100131, 100200), 1 ,70, TextCigarCodec.decode("70M125S"), false, 60, 0, 70, ContigAlignmentsModifier.AlnModType.NONE);
             region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100070), 126 ,195, TextCigarCodec.decode("125S70M"), false, 60, 0, 70, ContigAlignmentsModifier.AlnModType.NONE);
-            final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+            final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
             result.add(new TestDataForSimpleSVs(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
         }
 
@@ -544,7 +545,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         byte[] contigSeq = outputStream.toByteArray();
         AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100044), 1 ,44, TextCigarCodec.decode("44M40S"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100079, 100122), 41 ,84, TextCigarCodec.decode("40S44M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+        final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
         result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
         // simple deletion with homology '-' strand representation
@@ -556,7 +557,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         contigSeq = outputStream.toByteArray();
         region1 = new AlignmentInterval(new SimpleInterval("21", 100079, 100122), 1 ,44, TextCigarCodec.decode("44M40S"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100044), 41 ,84, TextCigarCodec.decode("40S44M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
         result.add(new TestDataForSimpleSVs(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
 
         return result;
@@ -582,7 +583,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
 
         AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100050), 1 ,50, TextCigarCodec.decode("50M40S"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100051, 100100), 41 ,90, TextCigarCodec.decode("40S50M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+        final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
         result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
         // simple tandem duplication contraction '-' strand representation
@@ -594,7 +595,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         System.arraycopy(leftRefFlank, 0, contigSeq, 50, 40);
         region1 = new AlignmentInterval(new SimpleInterval("21", 100051, 100100), 1 ,50, TextCigarCodec.decode("50M40S"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100050), 41 ,90, TextCigarCodec.decode("40S50M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+        final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
         result.add(new TestDataForSimpleSVs(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
 
         return result;
@@ -623,7 +624,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
 
             AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100050), 1 ,50, TextCigarCodec.decode("50M50S"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
             AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100041, 100090), 51 ,100, TextCigarCodec.decode("50S50M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-            final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+            final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
             result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
             // '-' strand representation
@@ -635,7 +636,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
             contigSeq = outputStream.toByteArray();
             region1 = new AlignmentInterval(new SimpleInterval("21", 100041, 100090), 1 ,50, TextCigarCodec.decode("50M50S"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
             region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100050), 51 ,100, TextCigarCodec.decode("50S50M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-            final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+            final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
             result.add(new TestDataForSimpleSVs(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
         }
 
@@ -650,7 +651,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
 
             AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100095), 1 ,95, TextCigarCodec.decode("95M95S"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
             AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100041, 100135), 96 ,190, TextCigarCodec.decode("95S95M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-            final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+            final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
             result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
             // '-' strand representation
@@ -662,7 +663,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
             contigSeq = outputStream.toByteArray();
             region1 = new AlignmentInterval(new SimpleInterval("21", 100041, 100135), 1 ,95, TextCigarCodec.decode("95M95S"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
             region2 = new AlignmentInterval(new SimpleInterval("21", 100001, 100095), 96 ,190, TextCigarCodec.decode("95S95M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-            final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+            final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
             result.add(new TestDataForSimpleSVs(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
         }
 
@@ -693,12 +694,12 @@ public final class SimpleSVDiscoveryTestDataProvider {
         {
             AlignmentInterval region1 = SVTestUtils.fromSAMRecordString("asm029081:tig00000\t0\t21\t26847644\t60\t1394M1675S\t*\t0\t0\tTATGGTGACAACAGTTACAGCCTCAGAGTGGCTTTGAGATGGAGATTTGAGATGGAGATTTTGGACACTCATAATCTCCATCTCAAGGAGAGGTGGCCCAGAGGCTGAATGAAGATGAGTGAAGGTAGATGTGATTCCCTTAAATTGGGGCAAAAAGGGACAAAAACAGCAGAAAATCTGTATCTTTAAAGACATATGTAATGTATTTCAGTCTATCAACTTCTCTACATAAACTTTAGCTTTTAAAAATATGTTAACGTAAGTTTGACCTTTAGTGTGTTTCTACCTGCAGGGTATTCTTATTGGAGGTTTGTTTAAAAGCATACATTTCTGATCTTGAATGGGTTACTACAAATCCATTATAATTGTTTCATATTTCATGTTGCAGATACAAGTAGGGTTGAAAAAACAGTGAGTTAAAGGCAAAAGGATGGCCGGGAACATGGCTTTTTTATTCTCTGGGTTTCTATCCAGATTTCTGTTCTTTTGCATAATGACTCCAATCTGTTGTGCACCTGTAGTTCTGGGAAATGATTCTTTTTTAATCGCTTCAACAGAGACATGGATGTTGGAGTTGCCAACTACTAAGCTGAAAAACTCCATCTATGCTCAGAAGAACATTTAATCCACTTACTTTTTCTCTTTTATTTAAAGATTAGCACTCATCAGGCATTTGTGGTAATATGCAAATATATACATAGGACATATATGTATATTTATAAGCAAAATGTGAATTGGAAAAACATTTGAATGTAGAAACAAGACCACAGGAGTAAATTTGTACAAGGCACTAGTAAAAGTGACATGTAATATGGGGTTCTTGTAGTGAGTTTCATAATCCAATTTTTGCTCCTTGATTTGAATGGGCACCCAAAATAACACATGCTATCCTAATCCCTACTCCCCATATTTTGGGTTTTATTTTTATAGAATACATATGGGCTTATATAAACATTAATCTCAACATGTTCTAATTTACATATGTAAGCTAATTTTTATTTCTAGAGATAACAGAACAAAACTCAAAACATTTGACATAAAATTATTGGAACAATTAACAGTTTGACCTATTAAACACATTATTGTCCTCTATGAACAGAGGGACTGTCTGAAAAAAAGAACAAGTTGTCTGCATTTTAAAGTGAGAGATAAGCATCAAGGTGTCAATTTCTATTTACACCTTATGTGTTCTTATTTGTTTCACTGATTCATATGTTATAGACACAATATTCTATTCACAATTTTCACGACGTCTATACCAAAGTAAGTATTCAACAAGTAGCCATGAAATGAGGAAATCTGGTAATATACATGAGCTATTAGAATTGTTTTAATGTAAACATTGTCTAGAGAAACAACTAATGTGCATATTTCATAACCGGGAAATGCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTGAGACGGAGTCTCGCTGTCGCCCAGGCTGGAGTGCAGTGGCGCAATCTCGGCTCACTGCAGGCTCCGCCCCCTGGGGTTCACGCCATTCTCCTGCCTCAGCCTCCCGAGTAGCTGGGACTACAGGCGCCCGCCACCTCGCCCGGCTAATTTTTTGTATTTTTAGTAGAGACGGGGTTTCACCGTGTTAGCCAGGATGGTCTCGATCTCCTGACCTCGTGATCCGCCCGCCTCGGCCTCCCAAAGTGCTGGGATTACAGGCGTGAGCCACCGCGCCCGGCCCGGGAAATGCTTTTTATTCACATTTTAGTACCATAAGATTGACTAATTAGAAATAGGGAAGCTGTTTGGTATTAGTCCTACTTTTGGGAACATATGGTCTAAAGTAATATTGGACAAATGGATATTTTAATTGATCACAAATGAGAAAGTAGTTAGAAAACTTCTAGTTTAAACAGGTTATATACCCAGAAGTATTGCAAATATTGGAGACAGAAAAATTATTGTAGCTTGCATTTAGACTCAAAATTGATATTCCCTCCACATCATGCCCTCACAGAACTCAGAGGAGTATGATCTGCCAGATCGACTCCCTTTGTGTAACTGATGCAGAAATGAGACTCAAAAGGGTTAAGTAGTTTTCCCAAGATGTCATAGCGAGAGTCAAACTGGGGGCTTAGAAATGACTCTGACTCATAACTTTTAATCAACTGTTTTGACATTTTAACCTATCTAATTGTGTAGGAGGTAATTATATTGTCAGACTTTGGAATGATGTTGTTTCCAGTAAAGTTTTGTTTTAATTATAAATAGGAATTTTCCAGCAATAAAAAATTTCCACCTTAAAAGATTCTCAGACTTTAGTACATCTTTCTCCAAACACAAGGTGGCGATGGTCTACAACAAATGATGTGCGACTTGGTGTTTTTTTTTTTTTTTGTTCTTTCCTTTCCTTTTTTATTCTTAATAGTTCAAGTTAAGAATTTGCAAAAGTTTCACATCTTCTCAATCATGTTTAATAAATTCTAATTAAATATTCTCCTACCTCCTAGTATTATGGAAAATATTTTAAAAATATTACAATGTTAAATGAATTTATTCTTGAGGGCATAATAAAATGCGTTTTTAAATCAACTACTTTTTAATTATGTGTTTGTATTACCATAAACAAAAATCCAATTAAACTTTAAAGAAAGAAAACTGCCTCTGACAAAATAATACTGTGGACCGCTTTTATTCATTACATTTGAGAACTTCTTGTCATTCAAATGAAAAGATTAAGTACATTTGCAATCCACTAAAACAGATTAAAAACTCATTCATTTATTCAATAGATATTAAGTACATACAGTATGTTTAGTATACATTAATACTTGACAATCAATACTGGTTAACTGGTTTCCCTGGTTTAGAAATTTTCCTTAGCAACAACGTAAGGCTTAAAATGAAAAAAGAAAAGTGAGAAAATGTTCTACCACCAGGTGGTGACAAAAGATAAAATTTAAAATCGCTCTTAATGAGCACATACTTCATGTAATTCTTGAATACTGCAAATATAAGTGACTTCCGAATGTCATGTGAATTTAAAATCATATTCTAGGAATATTTTATTAATTAAAGCAAATTAATATTAACATATTATCTCT\t*\tSA:Z:21,26849022,+,1704S657M2I706M,60,2;chr10,97348533,+,1388S317M1364S,0,0;\tMD:Z:1204A189\tRG:Z:GATKSVContigAlignments\tNM:i:1\tAS:i:1389\tXS:i:0", true);
             AlignmentInterval region2 = SVTestUtils.fromSAMRecordString("asm029081:tig00000\t2048\t21\t26849022\t60\t1704H657M2I706M\t*\t0\t0\tCCGGGAAATGCTTTTTATTCACATTTTAGTACCATAAGATTGACTAATTAGAAATAGGGAAGCTGTTTGGTATTAGTCCTACTTTTGGGAACATATGGTCTAAAGTAATATTGGACAAATGGATATTTTAATTGATCACAAATGAGAAAGTAGTTAGAAAACTTCTAGTTTAAACAGGTTATATACCCAGAAGTATTGCAAATATTGGAGACAGAAAAATTATTGTAGCTTGCATTTAGACTCAAAATTGATATTCCCTCCACATCATGCCCTCACAGAACTCAGAGGAGTATGATCTGCCAGATCGACTCCCTTTGTGTAACTGATGCAGAAATGAGACTCAAAAGGGTTAAGTAGTTTTCCCAAGATGTCATAGCGAGAGTCAAACTGGGGGCTTAGAAATGACTCTGACTCATAACTTTTAATCAACTGTTTTGACATTTTAACCTATCTAATTGTGTAGGAGGTAATTATATTGTCAGACTTTGGAATGATGTTGTTTCCAGTAAAGTTTTGTTTTAATTATAAATAGGAATTTTCCAGCAATAAAAAATTTCCACCTTAAAAGATTCTCAGACTTTAGTACATCTTTCTCCAAACACAAGGTGGCGATGGTCTACAACAAATGATGTGCGACTTGGTGTTTTTTTTTTTTTTTGTTCTTTCCTTTCCTTTTTTATTCTTAATAGTTCAAGTTAAGAATTTGCAAAAGTTTCACATCTTCTCAATCATGTTTAATAAATTCTAATTAAATATTCTCCTACCTCCTAGTATTATGGAAAATATTTTAAAAATATTACAATGTTAAATGAATTTATTCTTGAGGGCATAATAAAATGCGTTTTTAAATCAACTACTTTTTAATTATGTGTTTGTATTACCATAAACAAAAATCCAATTAAACTTTAAAGAAAGAAAACTGCCTCTGACAAAATAATACTGTGGACCGCTTTTATTCATTACATTTGAGAACTTCTTGTCATTCAAATGAAAAGATTAAGTACATTTGCAATCCACTAAAACAGATTAAAAACTCATTCATTTATTCAATAGATATTAAGTACATACAGTATGTTTAGTATACATTAATACTTGACAATCAATACTGGTTAACTGGTTTCCCTGGTTTAGAAATTTTCCTTAGCAACAACGTAAGGCTTAAAATGAAAAAAGAAAAGTGAGAAAATGTTCTACCACCAGGTGGTGACAAAAGATAAAATTTAAAATCGCTCTTAATGAGCACATACTTCATGTAATTCTTGAATACTGCAAATATAAGTGACTTCCGAATGTCATGTGAATTTAAAATCATATTCTAGGAATATTTTATTAATTAAAGCAAATTAATATTAACATATTATCTCT\t*\tSA:Z:21,26847644,+,1394M1675S,60,1;chr10,97348533,+,1388S317M1364S,0,0;\tMD:Z:1363\tRG:Z:GATKSVContigAlignments\tNM:i:2\tAS:i:1345\tXS:i:0", true);
-            final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), "TATGGTGACAACAGTTACAGCCTCAGAGTGGCTTTGAGATGGAGATTTGAGATGGAGATTTTGGACACTCATAATCTCCATCTCAAGGAGAGGTGGCCCAGAGGCTGAATGAAGATGAGTGAAGGTAGATGTGATTCCCTTAAATTGGGGCAAAAAGGGACAAAAACAGCAGAAAATCTGTATCTTTAAAGACATATGTAATGTATTTCAGTCTATCAACTTCTCTACATAAACTTTAGCTTTTAAAAATATGTTAACGTAAGTTTGACCTTTAGTGTGTTTCTACCTGCAGGGTATTCTTATTGGAGGTTTGTTTAAAAGCATACATTTCTGATCTTGAATGGGTTACTACAAATCCATTATAATTGTTTCATATTTCATGTTGCAGATACAAGTAGGGTTGAAAAAACAGTGAGTTAAAGGCAAAAGGATGGCCGGGAACATGGCTTTTTTATTCTCTGGGTTTCTATCCAGATTTCTGTTCTTTTGCATAATGACTCCAATCTGTTGTGCACCTGTAGTTCTGGGAAATGATTCTTTTTTAATCGCTTCAACAGAGACATGGATGTTGGAGTTGCCAACTACTAAGCTGAAAAACTCCATCTATGCTCAGAAGAACATTTAATCCACTTACTTTTTCTCTTTTATTTAAAGATTAGCACTCATCAGGCATTTGTGGTAATATGCAAATATATACATAGGACATATATGTATATTTATAAGCAAAATGTGAATTGGAAAAACATTTGAATGTAGAAACAAGACCACAGGAGTAAATTTGTACAAGGCACTAGTAAAAGTGACATGTAATATGGGGTTCTTGTAGTGAGTTTCATAATCCAATTTTTGCTCCTTGATTTGAATGGGCACCCAAAATAACACATGCTATCCTAATCCCTACTCCCCATATTTTGGGTTTTATTTTTATAGAATACATATGGGCTTATATAAACATTAATCTCAACATGTTCTAATTTACATATGTAAGCTAATTTTTATTTCTAGAGATAACAGAACAAAACTCAAAACATTTGACATAAAATTATTGGAACAATTAACAGTTTGACCTATTAAACACATTATTGTCCTCTATGAACAGAGGGACTGTCTGAAAAAAAGAACAAGTTGTCTGCATTTTAAAGTGAGAGATAAGCATCAAGGTGTCAATTTCTATTTACACCTTATGTGTTCTTATTTGTTTCACTGATTCATATGTTATAGACACAATATTCTATTCACAATTTTCACGACGTCTATACCAAAGTAAGTATTCAACAAGTAGCCATGAAATGAGGAAATCTGGTAATATACATGAGCTATTAGAATTGTTTTAATGTAAACATTGTCTAGAGAAACAACTAATGTGCATATTTCATAACCGGGAAATGCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTGAGACGGAGTCTCGCTGTCGCCCAGGCTGGAGTGCAGTGGCGCAATCTCGGCTCACTGCAGGCTCCGCCCCCTGGGGTTCACGCCATTCTCCTGCCTCAGCCTCCCGAGTAGCTGGGACTACAGGCGCCCGCCACCTCGCCCGGCTAATTTTTTGTATTTTTAGTAGAGACGGGGTTTCACCGTGTTAGCCAGGATGGTCTCGATCTCCTGACCTCGTGATCCGCCCGCCTCGGCCTCCCAAAGTGCTGGGATTACAGGCGTGAGCCACCGCGCCCGGCCCGGGAAATGCTTTTTATTCACATTTTAGTACCATAAGATTGACTAATTAGAAATAGGGAAGCTGTTTGGTATTAGTCCTACTTTTGGGAACATATGGTCTAAAGTAATATTGGACAAATGGATATTTTAATTGATCACAAATGAGAAAGTAGTTAGAAAACTTCTAGTTTAAACAGGTTATATACCCAGAAGTATTGCAAATATTGGAGACAGAAAAATTATTGTAGCTTGCATTTAGACTCAAAATTGATATTCCCTCCACATCATGCCCTCACAGAACTCAGAGGAGTATGATCTGCCAGATCGACTCCCTTTGTGTAACTGATGCAGAAATGAGACTCAAAAGGGTTAAGTAGTTTTCCCAAGATGTCATAGCGAGAGTCAAACTGGGGGCTTAGAAATGACTCTGACTCATAACTTTTAATCAACTGTTTTGACATTTTAACCTATCTAATTGTGTAGGAGGTAATTATATTGTCAGACTTTGGAATGATGTTGTTTCCAGTAAAGTTTTGTTTTAATTATAAATAGGAATTTTCCAGCAATAAAAAATTTCCACCTTAAAAGATTCTCAGACTTTAGTACATCTTTCTCCAAACACAAGGTGGCGATGGTCTACAACAAATGATGTGCGACTTGGTGTTTTTTTTTTTTTTTGTTCTTTCCTTTCCTTTTTTATTCTTAATAGTTCAAGTTAAGAATTTGCAAAAGTTTCACATCTTCTCAATCATGTTTAATAAATTCTAATTAAATATTCTCCTACCTCCTAGTATTATGGAAAATATTTTAAAAATATTACAATGTTAAATGAATTTATTCTTGAGGGCATAATAAAATGCGTTTTTAAATCAACTACTTTTTAATTATGTGTTTGTATTACCATAAACAAAAATCCAATTAAACTTTAAAGAAAGAAAACTGCCTCTGACAAAATAATACTGTGGACCGCTTTTATTCATTACATTTGAGAACTTCTTGTCATTCAAATGAAAAGATTAAGTACATTTGCAATCCACTAAAACAGATTAAAAACTCATTCATTTATTCAATAGATATTAAGTACATACAGTATGTTTAGTATACATTAATACTTGACAATCAATACTGGTTAACTGGTTTCCCTGGTTTAGAAATTTTCCTTAGCAACAACGTAAGGCTTAAAATGAAAAAAGAAAAGTGAGAAAATGTTCTACCACCAGGTGGTGACAAAAGATAAAATTTAAAATCGCTCTTAATGAGCACATACTTCATGTAATTCTTGAATACTGCAAATATAAGTGACTTCCGAATGTCATGTGAATTTAAAATCATATTCTAGGAATATTTTATTAATTAAAGCAAATTAATATTAACATATTATCTCT".getBytes(), b37_seqDict);
+            final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), "TATGGTGACAACAGTTACAGCCTCAGAGTGGCTTTGAGATGGAGATTTGAGATGGAGATTTTGGACACTCATAATCTCCATCTCAAGGAGAGGTGGCCCAGAGGCTGAATGAAGATGAGTGAAGGTAGATGTGATTCCCTTAAATTGGGGCAAAAAGGGACAAAAACAGCAGAAAATCTGTATCTTTAAAGACATATGTAATGTATTTCAGTCTATCAACTTCTCTACATAAACTTTAGCTTTTAAAAATATGTTAACGTAAGTTTGACCTTTAGTGTGTTTCTACCTGCAGGGTATTCTTATTGGAGGTTTGTTTAAAAGCATACATTTCTGATCTTGAATGGGTTACTACAAATCCATTATAATTGTTTCATATTTCATGTTGCAGATACAAGTAGGGTTGAAAAAACAGTGAGTTAAAGGCAAAAGGATGGCCGGGAACATGGCTTTTTTATTCTCTGGGTTTCTATCCAGATTTCTGTTCTTTTGCATAATGACTCCAATCTGTTGTGCACCTGTAGTTCTGGGAAATGATTCTTTTTTAATCGCTTCAACAGAGACATGGATGTTGGAGTTGCCAACTACTAAGCTGAAAAACTCCATCTATGCTCAGAAGAACATTTAATCCACTTACTTTTTCTCTTTTATTTAAAGATTAGCACTCATCAGGCATTTGTGGTAATATGCAAATATATACATAGGACATATATGTATATTTATAAGCAAAATGTGAATTGGAAAAACATTTGAATGTAGAAACAAGACCACAGGAGTAAATTTGTACAAGGCACTAGTAAAAGTGACATGTAATATGGGGTTCTTGTAGTGAGTTTCATAATCCAATTTTTGCTCCTTGATTTGAATGGGCACCCAAAATAACACATGCTATCCTAATCCCTACTCCCCATATTTTGGGTTTTATTTTTATAGAATACATATGGGCTTATATAAACATTAATCTCAACATGTTCTAATTTACATATGTAAGCTAATTTTTATTTCTAGAGATAACAGAACAAAACTCAAAACATTTGACATAAAATTATTGGAACAATTAACAGTTTGACCTATTAAACACATTATTGTCCTCTATGAACAGAGGGACTGTCTGAAAAAAAGAACAAGTTGTCTGCATTTTAAAGTGAGAGATAAGCATCAAGGTGTCAATTTCTATTTACACCTTATGTGTTCTTATTTGTTTCACTGATTCATATGTTATAGACACAATATTCTATTCACAATTTTCACGACGTCTATACCAAAGTAAGTATTCAACAAGTAGCCATGAAATGAGGAAATCTGGTAATATACATGAGCTATTAGAATTGTTTTAATGTAAACATTGTCTAGAGAAACAACTAATGTGCATATTTCATAACCGGGAAATGCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTGAGACGGAGTCTCGCTGTCGCCCAGGCTGGAGTGCAGTGGCGCAATCTCGGCTCACTGCAGGCTCCGCCCCCTGGGGTTCACGCCATTCTCCTGCCTCAGCCTCCCGAGTAGCTGGGACTACAGGCGCCCGCCACCTCGCCCGGCTAATTTTTTGTATTTTTAGTAGAGACGGGGTTTCACCGTGTTAGCCAGGATGGTCTCGATCTCCTGACCTCGTGATCCGCCCGCCTCGGCCTCCCAAAGTGCTGGGATTACAGGCGTGAGCCACCGCGCCCGGCCCGGGAAATGCTTTTTATTCACATTTTAGTACCATAAGATTGACTAATTAGAAATAGGGAAGCTGTTTGGTATTAGTCCTACTTTTGGGAACATATGGTCTAAAGTAATATTGGACAAATGGATATTTTAATTGATCACAAATGAGAAAGTAGTTAGAAAACTTCTAGTTTAAACAGGTTATATACCCAGAAGTATTGCAAATATTGGAGACAGAAAAATTATTGTAGCTTGCATTTAGACTCAAAATTGATATTCCCTCCACATCATGCCCTCACAGAACTCAGAGGAGTATGATCTGCCAGATCGACTCCCTTTGTGTAACTGATGCAGAAATGAGACTCAAAAGGGTTAAGTAGTTTTCCCAAGATGTCATAGCGAGAGTCAAACTGGGGGCTTAGAAATGACTCTGACTCATAACTTTTAATCAACTGTTTTGACATTTTAACCTATCTAATTGTGTAGGAGGTAATTATATTGTCAGACTTTGGAATGATGTTGTTTCCAGTAAAGTTTTGTTTTAATTATAAATAGGAATTTTCCAGCAATAAAAAATTTCCACCTTAAAAGATTCTCAGACTTTAGTACATCTTTCTCCAAACACAAGGTGGCGATGGTCTACAACAAATGATGTGCGACTTGGTGTTTTTTTTTTTTTTTGTTCTTTCCTTTCCTTTTTTATTCTTAATAGTTCAAGTTAAGAATTTGCAAAAGTTTCACATCTTCTCAATCATGTTTAATAAATTCTAATTAAATATTCTCCTACCTCCTAGTATTATGGAAAATATTTTAAAAATATTACAATGTTAAATGAATTTATTCTTGAGGGCATAATAAAATGCGTTTTTAAATCAACTACTTTTTAATTATGTGTTTGTATTACCATAAACAAAAATCCAATTAAACTTTAAAGAAAGAAAACTGCCTCTGACAAAATAATACTGTGGACCGCTTTTATTCATTACATTTGAGAACTTCTTGTCATTCAAATGAAAAGATTAAGTACATTTGCAATCCACTAAAACAGATTAAAAACTCATTCATTTATTCAATAGATATTAAGTACATACAGTATGTTTAGTATACATTAATACTTGACAATCAATACTGGTTAACTGGTTTCCCTGGTTTAGAAATTTTCCTTAGCAACAACGTAAGGCTTAAAATGAAAAAAGAAAAGTGAGAAAATGTTCTACCACCAGGTGGTGACAAAAGATAAAATTTAAAATCGCTCTTAATGAGCACATACTTCATGTAATTCTTGAATACTGCAAATATAAGTGACTTCCGAATGTCATGTGAATTTAAAATCATATTCTAGGAATATTTTATTAATTAAAGCAAATTAATATTAACATATTATCTCT".getBytes(), b37_seqDict);
             result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
             region1 = SVTestUtils.fromSAMRecordString("asm000001:tig00001\t2064\t21\t26849022\t60\t1704H657M3I706M\t*\t0\t0\tCCGGGAAATGCTTTTTATTCACATTTTAGTACCATAAGATTGACTAATTAGAAATAGGGAAGCTGTTTGGTATTAGTCCTACTTTTGGGAACATATGGTCTAAAGTAATATTGGACAAATGGATATTTTAATTGATCACAAATGAGAAAGTAGTTAGAAAACTTCTAGTTTAAACAGGTTATATACCCAGAAGTATTGCAAATATTGGAGACAGAAAAATTATTGTAGCTTGCATTTAGACTCAAAATTGATATTCCCTCCACATCATGCCCTCACAGAACTCAGAGGAGTATGATCTGCCAGATCGACTCCCTTTGTGTAACTGATGCAGAAATGAGACTCAAAAGGGTTAAGTAGTTTTCCCAAGATGTCATAGCGAGAGTCAAACTGGGGGCTTAGAAATGACTCTGACTCATAACTTTTAATCAACTGTTTTGACATTTTAACCTATCTAATTGTGTAGGAGGTAATTATATTGTCAGACTTTGGAATGATGTTGTTTCCAGTAAAGTTTTGTTTTAATTATAAATAGGAATTTTCCAGCAATAAAAAATTTCCACCTTAAAAGATTCTCAGACTTTAGTACATCTTTCTCCAAACACAAGGTGGCGATGGTCTACAACAAATGATGTGCGACTTGGTGTTTTTTTTTTTTTTTTGTTCTTTCCTTTCCTTTTTTATTCTTAATAGTTCAAGTTAAGAATTTGCAAAAGTTTCACATCTTCTCAATCATGTTTAATAAATTCTAATTAAATATTCTCCTACCTCCTAGTATTATGGAAAATATTTTAAAAATATTACAATGTTAAATGAATTTATTCTTGAGGGCATAATAAAATGCGTTTTTAAATCAACTACTTTTTAATTATGTGTTTGTATTACCATAAACAAAAATCCAATTAAACTTTAAAGAAAGAAAACTGCCTCTGACAAAATAATACTGTGGACCGCTTTTATTCATTACATTTGAGAACTTCTTGTCATTCAAATGAAAAGATTAAGTACATTTGCAATCCACTAAAACAGATTAAAAACTCATTCATTTATTCAATAGATATTAAGTACATACAGTATGTTTAGTATACATTAATACTTGACAATCAATACTGGTTAACTGGTTTCCCTGGTTTAGAAATTTTCCTTAGCAACAACGTAAGGCTTAAAATGAAAAAAGAAAAGTGAGAAAATGTTCTACCACCAGGTGGTGACAAAAGATAAAATTTAAAATCGCTCTTAATGAGCACATACTTCATGTAATTCTTGAATACTGCAAATATAAGTGACTTCCGAATGTCATGTGAATTTAAAATCATATTCTAGGAATATTTTATTAATTAAAGCAAATTAATATTAACATATTATCTCT\t*\tSA:Z:21,26847644,-,1394M1676S,60,1;chr10,97348533,-,1388S317M1365S,0,0;\tMD:Z:1363\tRG:Z:GATKSVContigAlignments\tNM:i:3\tAS:i:1344\tXS:i:0", true);
             region2 = SVTestUtils.fromSAMRecordString("asm000001:tig00001\t16\t21\t26847644\t60\t1394M1676S\t*\t0\t0\tTATGGTGACAACAGTTACAGCCTCAGAGTGGCTTTGAGATGGAGATTTGAGATGGAGATTTTGGACACTCATAATCTCCATCTCAAGGAGAGGTGGCCCAGAGGCTGAATGAAGATGAGTGAAGGTAGATGTGATTCCCTTAAATTGGGGCAAAAAGGGACAAAAACAGCAGAAAATCTGTATCTTTAAAGACATATGTAATGTATTTCAGTCTATCAACTTCTCTACATAAACTTTAGCTTTTAAAAATATGTTAACGTAAGTTTGACCTTTAGTGTGTTTCTACCTGCAGGGTATTCTTATTGGAGGTTTGTTTAAAAGCATACATTTCTGATCTTGAATGGGTTACTACAAATCCATTATAATTGTTTCATATTTCATGTTGCAGATACAAGTAGGGTTGAAAAAACAGTGAGTTAAAGGCAAAAGGATGGCCGGGAACATGGCTTTTTTATTCTCTGGGTTTCTATCCAGATTTCTGTTCTTTTGCATAATGACTCCAATCTGTTGTGCACCTGTAGTTCTGGGAAATGATTCTTTTTTAATCGCTTCAACAGAGACATGGATGTTGGAGTTGCCAACTACTAAGCTGAAAAACTCCATCTATGCTCAGAAGAACATTTAATCCACTTACTTTTTCTCTTTTATTTAAAGATTAGCACTCATCAGGCATTTGTGGTAATATGCAAATATATACATAGGACATATATGTATATTTATAAGCAAAATGTGAATTGGAAAAACATTTGAATGTAGAAACAAGACCACAGGAGTAAATTTGTACAAGGCACTAGTAAAAGTGACATGTAATATGGGGTTCTTGTAGTGAGTTTCATAATCCAATTTTTGCTCCTTGATTTGAATGGGCACCCAAAATAACACATGCTATCCTAATCCCTACTCCCCATATTTTGGGTTTTATTTTTATAGAATACATATGGGCTTATATAAACATTAATCTCAACATGTTCTAATTTACATATGTAAGCTAATTTTTATTTCTAGAGATAACAGAACAAAACTCAAAACATTTGACATAAAATTATTGGAACAATTAACAGTTTGACCTATTAAACACATTATTGTCCTCTATGAACAGAGGGACTGTCTGAAAAAAAGAACAAGTTGTCTGCATTTTAAAGTGAGAGATAAGCATCAAGGTGTCAATTTCTATTTACACCTTATGTGTTCTTATTTGTTTCACTGATTCATATGTTATAGACACAATATTCTATTCACAATTTTCACGACGTCTATACCAAAGTAAGTATTCAACAAGTAGCCATGAAATGAGGAAATCTGGTAATATACATGAGCTATTAGAATTGTTTTAATGTAAACATTGTCTAGAGAAACAACTAATGTGCATATTTCATAACCGGGAAATGCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTGAGACGGAGTCTCGCTGTCGCCCAGGCTGGAGTGCAGTGGCGCAATCTCGGCTCACTGCAGGCTCCGCCCCCTGGGGTTCACGCCATTCTCCTGCCTCAGCCTCCCGAGTAGCTGGGACTACAGGCGCCCGCCACCTCGCCCGGCTAATTTTTTGTATTTTTAGTAGAGACGGGGTTTCACCGTGTTAGCCAGGATGGTCTCGATCTCCTGACCTCGTGATCCGCCCGCCTCGGCCTCCCAAAGTGCTGGGATTACAGGCGTGAGCCACCGCGCCCGGCCCGGGAAATGCTTTTTATTCACATTTTAGTACCATAAGATTGACTAATTAGAAATAGGGAAGCTGTTTGGTATTAGTCCTACTTTTGGGAACATATGGTCTAAAGTAATATTGGACAAATGGATATTTTAATTGATCACAAATGAGAAAGTAGTTAGAAAACTTCTAGTTTAAACAGGTTATATACCCAGAAGTATTGCAAATATTGGAGACAGAAAAATTATTGTAGCTTGCATTTAGACTCAAAATTGATATTCCCTCCACATCATGCCCTCACAGAACTCAGAGGAGTATGATCTGCCAGATCGACTCCCTTTGTGTAACTGATGCAGAAATGAGACTCAAAAGGGTTAAGTAGTTTTCCCAAGATGTCATAGCGAGAGTCAAACTGGGGGCTTAGAAATGACTCTGACTCATAACTTTTAATCAACTGTTTTGACATTTTAACCTATCTAATTGTGTAGGAGGTAATTATATTGTCAGACTTTGGAATGATGTTGTTTCCAGTAAAGTTTTGTTTTAATTATAAATAGGAATTTTCCAGCAATAAAAAATTTCCACCTTAAAAGATTCTCAGACTTTAGTACATCTTTCTCCAAACACAAGGTGGCGATGGTCTACAACAAATGATGTGCGACTTGGTGTTTTTTTTTTTTTTTTGTTCTTTCCTTTCCTTTTTTATTCTTAATAGTTCAAGTTAAGAATTTGCAAAAGTTTCACATCTTCTCAATCATGTTTAATAAATTCTAATTAAATATTCTCCTACCTCCTAGTATTATGGAAAATATTTTAAAAATATTACAATGTTAAATGAATTTATTCTTGAGGGCATAATAAAATGCGTTTTTAAATCAACTACTTTTTAATTATGTGTTTGTATTACCATAAACAAAAATCCAATTAAACTTTAAAGAAAGAAAACTGCCTCTGACAAAATAATACTGTGGACCGCTTTTATTCATTACATTTGAGAACTTCTTGTCATTCAAATGAAAAGATTAAGTACATTTGCAATCCACTAAAACAGATTAAAAACTCATTCATTTATTCAATAGATATTAAGTACATACAGTATGTTTAGTATACATTAATACTTGACAATCAATACTGGTTAACTGGTTTCCCTGGTTTAGAAATTTTCCTTAGCAACAACGTAAGGCTTAAAATGAAAAAAGAAAAGTGAGAAAATGTTCTACCACCAGGTGGTGACAAAAGATAAAATTTAAAATCGCTCTTAATGAGCACATACTTCATGTAATTCTTGAATACTGCAAATATAAGTGACTTCCGAATGTCATGTGAATTTAAAATCATATTCTAGGAATATTTTATTAATTAAAGCAAATTAATATTAACATATTATCTCT\t*\tSA:Z:21,26849022,-,1704S657M3I706M,60,3;chr10,97348533,-,1388S317M1365S,0,0;\tMD:Z:1204A189\tRG:Z:GATKSVContigAlignments\tNM:i:1\tAS:i:1384\tXS:i:0", true);
-            final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), "TATGGTGACAACAGTTACAGCCTCAGAGTGGCTTTGAGATGGAGATTTGAGATGGAGATTTTGGACACTCATAATCTCCATCTCAAGGAGAGGTGGCCCAGAGGCTGAATGAAGATGAGTGAAGGTAGATGTGATTCCCTTAAATTGGGGCAAAAAGGGACAAAAACAGCAGAAAATCTGTATCTTTAAAGACATATGTAATGTATTTCAGTCTATCAACTTCTCTACATAAACTTTAGCTTTTAAAAATATGTTAACGTAAGTTTGACCTTTAGTGTGTTTCTACCTGCAGGGTATTCTTATTGGAGGTTTGTTTAAAAGCATACATTTCTGATCTTGAATGGGTTACTACAAATCCATTATAATTGTTTCATATTTCATGTTGCAGATACAAGTAGGGTTGAAAAAACAGTGAGTTAAAGGCAAAAGGATGGCCGGGAACATGGCTTTTTTATTCTCTGGGTTTCTATCCAGATTTCTGTTCTTTTGCATAATGACTCCAATCTGTTGTGCACCTGTAGTTCTGGGAAATGATTCTTTTTTAATCGCTTCAACAGAGACATGGATGTTGGAGTTGCCAACTACTAAGCTGAAAAACTCCATCTATGCTCAGAAGAACATTTAATCCACTTACTTTTTCTCTTTTATTTAAAGATTAGCACTCATCAGGCATTTGTGGTAATATGCAAATATATACATAGGACATATATGTATATTTATAAGCAAAATGTGAATTGGAAAAACATTTGAATGTAGAAACAAGACCACAGGAGTAAATTTGTACAAGGCACTAGTAAAAGTGACATGTAATATGGGGTTCTTGTAGTGAGTTTCATAATCCAATTTTTGCTCCTTGATTTGAATGGGCACCCAAAATAACACATGCTATCCTAATCCCTACTCCCCATATTTTGGGTTTTATTTTTATAGAATACATATGGGCTTATATAAACATTAATCTCAACATGTTCTAATTTACATATGTAAGCTAATTTTTATTTCTAGAGATAACAGAACAAAACTCAAAACATTTGACATAAAATTATTGGAACAATTAACAGTTTGACCTATTAAACACATTATTGTCCTCTATGAACAGAGGGACTGTCTGAAAAAAAGAACAAGTTGTCTGCATTTTAAAGTGAGAGATAAGCATCAAGGTGTCAATTTCTATTTACACCTTATGTGTTCTTATTTGTTTCACTGATTCATATGTTATAGACACAATATTCTATTCACAATTTTCACGACGTCTATACCAAAGTAAGTATTCAACAAGTAGCCATGAAATGAGGAAATCTGGTAATATACATGAGCTATTAGAATTGTTTTAATGTAAACATTGTCTAGAGAAACAACTAATGTGCATATTTCATAACCGGGAAATGCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTGAGACGGAGTCTCGCTGTCGCCCAGGCTGGAGTGCAGTGGCGCAATCTCGGCTCACTGCAGGCTCCGCCCCCTGGGGTTCACGCCATTCTCCTGCCTCAGCCTCCCGAGTAGCTGGGACTACAGGCGCCCGCCACCTCGCCCGGCTAATTTTTTGTATTTTTAGTAGAGACGGGGTTTCACCGTGTTAGCCAGGATGGTCTCGATCTCCTGACCTCGTGATCCGCCCGCCTCGGCCTCCCAAAGTGCTGGGATTACAGGCGTGAGCCACCGCGCCCGGCCCGGGAAATGCTTTTTATTCACATTTTAGTACCATAAGATTGACTAATTAGAAATAGGGAAGCTGTTTGGTATTAGTCCTACTTTTGGGAACATATGGTCTAAAGTAATATTGGACAAATGGATATTTTAATTGATCACAAATGAGAAAGTAGTTAGAAAACTTCTAGTTTAAACAGGTTATATACCCAGAAGTATTGCAAATATTGGAGACAGAAAAATTATTGTAGCTTGCATTTAGACTCAAAATTGATATTCCCTCCACATCATGCCCTCACAGAACTCAGAGGAGTATGATCTGCCAGATCGACTCCCTTTGTGTAACTGATGCAGAAATGAGACTCAAAAGGGTTAAGTAGTTTTCCCAAGATGTCATAGCGAGAGTCAAACTGGGGGCTTAGAAATGACTCTGACTCATAACTTTTAATCAACTGTTTTGACATTTTAACCTATCTAATTGTGTAGGAGGTAATTATATTGTCAGACTTTGGAATGATGTTGTTTCCAGTAAAGTTTTGTTTTAATTATAAATAGGAATTTTCCAGCAATAAAAAATTTCCACCTTAAAAGATTCTCAGACTTTAGTACATCTTTCTCCAAACACAAGGTGGCGATGGTCTACAACAAATGATGTGCGACTTGGTGTTTTTTTTTTTTTTTTGTTCTTTCCTTTCCTTTTTTATTCTTAATAGTTCAAGTTAAGAATTTGCAAAAGTTTCACATCTTCTCAATCATGTTTAATAAATTCTAATTAAATATTCTCCTACCTCCTAGTATTATGGAAAATATTTTAAAAATATTACAATGTTAAATGAATTTATTCTTGAGGGCATAATAAAATGCGTTTTTAAATCAACTACTTTTTAATTATGTGTTTGTATTACCATAAACAAAAATCCAATTAAACTTTAAAGAAAGAAAACTGCCTCTGACAAAATAATACTGTGGACCGCTTTTATTCATTACATTTGAGAACTTCTTGTCATTCAAATGAAAAGATTAAGTACATTTGCAATCCACTAAAACAGATTAAAAACTCATTCATTTATTCAATAGATATTAAGTACATACAGTATGTTTAGTATACATTAATACTTGACAATCAATACTGGTTAACTGGTTTCCCTGGTTTAGAAATTTTCCTTAGCAACAACGTAAGGCTTAAAATGAAAAAAGAAAAGTGAGAAAATGTTCTACCACCAGGTGGTGACAAAAGATAAAATTTAAAATCGCTCTTAATGAGCACATACTTCATGTAATTCTTGAATACTGCAAATATAAGTGACTTCCGAATGTCATGTGAATTTAAAATCATATTCTAGGAATATTTTATTAATTAAAGCAAATTAATATTAACATATTATCTCT".getBytes(), b37_seqDict);
+            final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), "TATGGTGACAACAGTTACAGCCTCAGAGTGGCTTTGAGATGGAGATTTGAGATGGAGATTTTGGACACTCATAATCTCCATCTCAAGGAGAGGTGGCCCAGAGGCTGAATGAAGATGAGTGAAGGTAGATGTGATTCCCTTAAATTGGGGCAAAAAGGGACAAAAACAGCAGAAAATCTGTATCTTTAAAGACATATGTAATGTATTTCAGTCTATCAACTTCTCTACATAAACTTTAGCTTTTAAAAATATGTTAACGTAAGTTTGACCTTTAGTGTGTTTCTACCTGCAGGGTATTCTTATTGGAGGTTTGTTTAAAAGCATACATTTCTGATCTTGAATGGGTTACTACAAATCCATTATAATTGTTTCATATTTCATGTTGCAGATACAAGTAGGGTTGAAAAAACAGTGAGTTAAAGGCAAAAGGATGGCCGGGAACATGGCTTTTTTATTCTCTGGGTTTCTATCCAGATTTCTGTTCTTTTGCATAATGACTCCAATCTGTTGTGCACCTGTAGTTCTGGGAAATGATTCTTTTTTAATCGCTTCAACAGAGACATGGATGTTGGAGTTGCCAACTACTAAGCTGAAAAACTCCATCTATGCTCAGAAGAACATTTAATCCACTTACTTTTTCTCTTTTATTTAAAGATTAGCACTCATCAGGCATTTGTGGTAATATGCAAATATATACATAGGACATATATGTATATTTATAAGCAAAATGTGAATTGGAAAAACATTTGAATGTAGAAACAAGACCACAGGAGTAAATTTGTACAAGGCACTAGTAAAAGTGACATGTAATATGGGGTTCTTGTAGTGAGTTTCATAATCCAATTTTTGCTCCTTGATTTGAATGGGCACCCAAAATAACACATGCTATCCTAATCCCTACTCCCCATATTTTGGGTTTTATTTTTATAGAATACATATGGGCTTATATAAACATTAATCTCAACATGTTCTAATTTACATATGTAAGCTAATTTTTATTTCTAGAGATAACAGAACAAAACTCAAAACATTTGACATAAAATTATTGGAACAATTAACAGTTTGACCTATTAAACACATTATTGTCCTCTATGAACAGAGGGACTGTCTGAAAAAAAGAACAAGTTGTCTGCATTTTAAAGTGAGAGATAAGCATCAAGGTGTCAATTTCTATTTACACCTTATGTGTTCTTATTTGTTTCACTGATTCATATGTTATAGACACAATATTCTATTCACAATTTTCACGACGTCTATACCAAAGTAAGTATTCAACAAGTAGCCATGAAATGAGGAAATCTGGTAATATACATGAGCTATTAGAATTGTTTTAATGTAAACATTGTCTAGAGAAACAACTAATGTGCATATTTCATAACCGGGAAATGCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTGAGACGGAGTCTCGCTGTCGCCCAGGCTGGAGTGCAGTGGCGCAATCTCGGCTCACTGCAGGCTCCGCCCCCTGGGGTTCACGCCATTCTCCTGCCTCAGCCTCCCGAGTAGCTGGGACTACAGGCGCCCGCCACCTCGCCCGGCTAATTTTTTGTATTTTTAGTAGAGACGGGGTTTCACCGTGTTAGCCAGGATGGTCTCGATCTCCTGACCTCGTGATCCGCCCGCCTCGGCCTCCCAAAGTGCTGGGATTACAGGCGTGAGCCACCGCGCCCGGCCCGGGAAATGCTTTTTATTCACATTTTAGTACCATAAGATTGACTAATTAGAAATAGGGAAGCTGTTTGGTATTAGTCCTACTTTTGGGAACATATGGTCTAAAGTAATATTGGACAAATGGATATTTTAATTGATCACAAATGAGAAAGTAGTTAGAAAACTTCTAGTTTAAACAGGTTATATACCCAGAAGTATTGCAAATATTGGAGACAGAAAAATTATTGTAGCTTGCATTTAGACTCAAAATTGATATTCCCTCCACATCATGCCCTCACAGAACTCAGAGGAGTATGATCTGCCAGATCGACTCCCTTTGTGTAACTGATGCAGAAATGAGACTCAAAAGGGTTAAGTAGTTTTCCCAAGATGTCATAGCGAGAGTCAAACTGGGGGCTTAGAAATGACTCTGACTCATAACTTTTAATCAACTGTTTTGACATTTTAACCTATCTAATTGTGTAGGAGGTAATTATATTGTCAGACTTTGGAATGATGTTGTTTCCAGTAAAGTTTTGTTTTAATTATAAATAGGAATTTTCCAGCAATAAAAAATTTCCACCTTAAAAGATTCTCAGACTTTAGTACATCTTTCTCCAAACACAAGGTGGCGATGGTCTACAACAAATGATGTGCGACTTGGTGTTTTTTTTTTTTTTTTGTTCTTTCCTTTCCTTTTTTATTCTTAATAGTTCAAGTTAAGAATTTGCAAAAGTTTCACATCTTCTCAATCATGTTTAATAAATTCTAATTAAATATTCTCCTACCTCCTAGTATTATGGAAAATATTTTAAAAATATTACAATGTTAAATGAATTTATTCTTGAGGGCATAATAAAATGCGTTTTTAAATCAACTACTTTTTAATTATGTGTTTGTATTACCATAAACAAAAATCCAATTAAACTTTAAAGAAAGAAAACTGCCTCTGACAAAATAATACTGTGGACCGCTTTTATTCATTACATTTGAGAACTTCTTGTCATTCAAATGAAAAGATTAAGTACATTTGCAATCCACTAAAACAGATTAAAAACTCATTCATTTATTCAATAGATATTAAGTACATACAGTATGTTTAGTATACATTAATACTTGACAATCAATACTGGTTAACTGGTTTCCCTGGTTTAGAAATTTTCCTTAGCAACAACGTAAGGCTTAAAATGAAAAAAGAAAAGTGAGAAAATGTTCTACCACCAGGTGGTGACAAAAGATAAAATTTAAAATCGCTCTTAATGAGCACATACTTCATGTAATTCTTGAATACTGCAAATATAAGTGACTTCCGAATGTCATGTGAATTTAAAATCATATTCTAGGAATATTTTATTAATTAAAGCAAATTAATATTAACATATTATCTCT".getBytes(), b37_seqDict);
             result.add(new TestDataForSimpleSVs(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
         }
 
@@ -714,7 +715,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
 
             AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 25297101, 25297252), 1 ,152, TextCigarCodec.decode("152M147S"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
             AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 25297164, 25297300), 163 ,299, TextCigarCodec.decode("162S137M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-            final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+            final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
             result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
             // simple tandem duplication expansion with novel insertion '-' strand representation
@@ -728,7 +729,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
 
             region1 = new AlignmentInterval(new SimpleInterval("21", 25297164, 25297300), 1 ,137, TextCigarCodec.decode("137M162S"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
             region2 = new AlignmentInterval(new SimpleInterval("21", 25297101, 25297252), 148 ,299, TextCigarCodec.decode("147S152M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
-            final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict), contigSeq, b37_seqDict);
+            final NovelAdjacencyAndAltHaplotype breakpointsDetectedFromReverseStrand = new NovelAdjacencyAndAltHaplotype(new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict), contigSeq, b37_seqDict);
             result.add(new TestDataForSimpleSVs(region1, region2, breakpointsDetectedFromReverseStrand, "asm000001:tig00001"));
         }
 
@@ -766,7 +767,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("20", 312610, 312757), 128 ,275, TextCigarCodec.decode("127S148M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         NovelAdjacencyAndAltHaplotype breakpoints =
                 new NovelAdjacencyAndAltHaplotype(
-                        new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict),
+                        new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict),
                         contigSeqForComplexExpansionWithPseudoHomology, b37_seqDict);
         result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -776,7 +777,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         region2 = new AlignmentInterval(new SimpleInterval("20", 312579, 312718), 136 ,275, TextCigarCodec.decode("135S140M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         breakpoints = new NovelAdjacencyAndAltHaplotype(
                 new SimpleChimera(region1, region2, Collections.emptyList(),
-                        "asm000001:tig00001", b37_seqDict),
+                        "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict),
                 contigSeqForComplexExpansionWithPseudoHomology_reverseStrand, b37_seqDict);
         result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -787,7 +788,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         breakpoints =
                 new NovelAdjacencyAndAltHaplotype(
                         new SimpleChimera(region1, region2, Collections.emptyList(),
-                                "asm000001:tig00001", b37_seqDict),
+                                "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict),
                         contigSeqForComplexContractionWithPseudoHomology, b37_seqDict);
         result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -797,7 +798,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         region2 = new AlignmentInterval(new SimpleInterval("20", 312579, 312718), 40, 179, TextCigarCodec.decode("39S140M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         breakpoints = new NovelAdjacencyAndAltHaplotype(
                 new SimpleChimera(region1, region2, Collections.emptyList(),
-                        "asm000001:tig00001", b37_seqDict),
+                        "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict),
                 contigSeqForComplexContractionWithPseudoHomology_reverseStrand, b37_seqDict);
         result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -809,7 +810,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         breakpoints =
                 new NovelAdjacencyAndAltHaplotype(
                         new SimpleChimera(region1, region2, Collections.emptyList(),
-                                "asm000001:tig00001", b37_seqDict),
+                                "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict),
                         contigSeqForComplexContractionNoPseudoHomology, b37_seqDict);
         result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -819,7 +820,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         region2 = new AlignmentInterval(new SimpleInterval("20", 312579, 312801), 40, 262, TextCigarCodec.decode("39S223M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         breakpoints = new NovelAdjacencyAndAltHaplotype(
                 new SimpleChimera(region1, region2, Collections.emptyList(),
-                        "asm000001:tig00001", b37_seqDict),
+                        "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict),
                 contigSeqForComplexContractionNoPseudoHomology_reverseStrand, b37_seqDict);
         result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -830,7 +831,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         breakpoints =
                 new NovelAdjacencyAndAltHaplotype(
                         new SimpleChimera(region1, region2, Collections.emptyList(),
-                                "asm000001:tig00001", b37_seqDict),
+                                "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict),
                         contigSeqForComplexExpansionNoPseudoHomology, b37_seqDict);
         result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -840,7 +841,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         region2 = new AlignmentInterval(new SimpleInterval("20", 312579, 312801), 136, 358, TextCigarCodec.decode("135S223M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         breakpoints = new NovelAdjacencyAndAltHaplotype(
                 new SimpleChimera(region1, region2, Collections.emptyList(),
-                        "asm000001:tig00001", b37_seqDict),
+                        "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict),
                 contigSeqForComplexExpansionNoPseudoHomology_reverseStrand, b37_seqDict);
         result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -869,7 +870,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("20", 312610, 312703), 74 ,167, TextCigarCodec.decode("73S94M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         NovelAdjacencyAndAltHaplotype breakpoints =
                 new NovelAdjacencyAndAltHaplotype(
-                        new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", b37_seqDict),
+                        new SimpleChimera(region1, region2, Collections.emptyList(), "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict),
                         contigSeqForComplexExpansionWithPseudoHomology, b37_seqDict);
         result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -879,7 +880,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         region2 = new AlignmentInterval(new SimpleInterval("20", 312579, 312664), 82 ,167, TextCigarCodec.decode("81S86M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         breakpoints = new NovelAdjacencyAndAltHaplotype(
                 new SimpleChimera(region1, region2, Collections.emptyList(),
-                        "asm000001:tig00001", b37_seqDict),
+                        "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict),
                 contigSeqForComplexExpansionWithPseudoHomology_reverseStrand, b37_seqDict);
         result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -890,7 +891,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         breakpoints =
                 new NovelAdjacencyAndAltHaplotype(
                         new SimpleChimera(region1, region2, Collections.emptyList(),
-                                "asm000001:tig00001", b37_seqDict),
+                                "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict),
                         contigSeqForComplexExpansionNoPseudoHomology, b37_seqDict);
         result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 
@@ -900,7 +901,7 @@ public final class SimpleSVDiscoveryTestDataProvider {
         region2 = new AlignmentInterval(new SimpleInterval("20", 312579, 312693), 82, 196, TextCigarCodec.decode("81S115M"), false, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         breakpoints = new NovelAdjacencyAndAltHaplotype(
                 new SimpleChimera(region1, region2, Collections.emptyList(),
-                        "asm000001:tig00001", b37_seqDict),
+                        "asm000001:tig00001", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict),
                 contigSeqForComplexExpansionNoPseudoHomology_reverseStrand, b37_seqDict);
         result.add(new TestDataForSimpleSVs(region1, region2, breakpoints, "asm000001:tig00001"));
 

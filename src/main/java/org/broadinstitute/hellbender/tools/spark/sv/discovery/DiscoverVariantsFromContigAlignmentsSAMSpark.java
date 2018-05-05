@@ -208,11 +208,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                             {
                                 final NovelAdjacencyAndAltHaplotype novelAdjacency = noveltyTypeAndEvidence._1;
                                 final SimpleSVType inferredSimpleType = noveltyTypeAndEvidence._2._1;
-                                final List<SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring> evidence =
-                                        Utils.stream(noveltyTypeAndEvidence._2._2)
-                                                .map(ca -> new SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring(ca,
-                                                        AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME))
-                                                .collect(Collectors.toList());
+                                final Iterable<SimpleChimera> evidence = noveltyTypeAndEvidence._2._2;
                                 return AnnotatedVariantProducer
                                         .produceAnnotatedVcFromInferredTypeAndRefLocations(
                                                 novelAdjacency, inferredSimpleType, evidence,
@@ -290,7 +286,8 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
             //       this was initially developed for ins/del (and tested for that purpose), simple translocations travel through a different code path at the moment.
             // TODO: ultimately we need to merge these two code paths
             final SimpleChimera simpleChimera = new SimpleChimera(current, next, insertionMappings,
-                    alignedContig.getContigName(), referenceDictionary);
+                    alignedContig.getContigName(), AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME,
+                    referenceDictionary);
             // the following check/filter is due to the fact that simple translocations are to be handled in a different code path
             if (simpleChimera.isNeitherIncompleteNorSimpleTranslocation())
                 results.add(simpleChimera);

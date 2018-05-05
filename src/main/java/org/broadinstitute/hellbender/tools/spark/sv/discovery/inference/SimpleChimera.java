@@ -35,6 +35,8 @@ public class SimpleChimera {
 
     public final List<String> insertionMappings;
 
+    public final String goodNonCanonicalMappingSATag;
+
     // =================================================================================================================
     // (conditional) construction block
 
@@ -53,6 +55,7 @@ public class SimpleChimera {
         for(int i = 0; i < insertionsMappingSize; ++i) {
             insertionMappings.add(input.readString());
         }
+        goodNonCanonicalMappingSATag = input.readString();
     }
 
     /**
@@ -62,7 +65,7 @@ public class SimpleChimera {
      */
     @VisibleForTesting
     public SimpleChimera(final AlignmentInterval intervalWithLowerCoordOnContig, final AlignmentInterval intervalWithHigherCoordOnContig,
-                         final List<String> insertionMappings, final String sourceContigName,
+                         final List<String> insertionMappings, final String sourceContigName, final String goodNonCanonicalMappingSATag,
                          final SAMSequenceDictionary referenceDictionary) {
 
         this.sourceContigName = sourceContigName;
@@ -76,6 +79,7 @@ public class SimpleChimera {
                 isForwardStrandRepresentation(intervalWithLowerCoordOnContig, intervalWithHigherCoordOnContig, strandSwitch, referenceDictionary);
 
         this.insertionMappings = insertionMappings;
+        this.goodNonCanonicalMappingSATag = goodNonCanonicalMappingSATag;
     }
 
     /**
@@ -161,7 +165,6 @@ public class SimpleChimera {
     }
 
     // =================================================================================================================
-    // state query block
 
     /**
      * Implementing a logic, where based on the simple chimera, which show's how a read or assembly contig's
@@ -175,14 +178,14 @@ public class SimpleChimera {
                     regionWithLowerCoordOnContig.referenceSpan.getContig()
                             .equals(regionWithHigherCoordOnContig.referenceSpan.getContig());
             if ( sameChromosomeEvent ) {
-                return TypeInferredFromSimpleChimera.IntraChrRefOrderSwap;
+                return TypeInferredFromSimpleChimera.INTRA_CHR_REF_ORDER_SWAP;
             } else {
-                return TypeInferredFromSimpleChimera.InterChromosome;
+                return TypeInferredFromSimpleChimera.INTER_CHROMOSOME;
             }
         } else {
             if (strandSwitch != StrandSwitch.NO_SWITCH) {
                 // TODO: 9/9/17 the case involves an inversion, could be retired once same chr strand-switch BND calls are evaluated.
-                return TypeInferredFromSimpleChimera.IntraChrStrandSwitch;
+                return TypeInferredFromSimpleChimera.INTRA_CHR_STRAND_SWITCH;
             } else {
                 final DistancesBetweenAlignmentsOnRefAndOnRead distances = getDistancesBetweenAlignmentsOnRefAndOnRead();
                 final int distBetweenAlignRegionsOnRef = distances.distBetweenAlignRegionsOnRef, // distance-1 between the two regions on reference, denoted as d1 in the comments below
@@ -364,11 +367,16 @@ public class SimpleChimera {
 
     @Override
     public String toString() {
-        return sourceContigName +
-                "\t" +
-                regionWithLowerCoordOnContig.toPackedString() +
-                "\t" +
-                regionWithHigherCoordOnContig.toPackedString();
+        final StringBuilder sb = new StringBuilder("SimpleChimera{");
+        sb.append("sourceContigName='").append(sourceContigName).append('\'');
+        sb.append(", regionWithLowerCoordOnContig=").append(regionWithLowerCoordOnContig);
+        sb.append(", regionWithHigherCoordOnContig=").append(regionWithHigherCoordOnContig);
+        sb.append(", strandSwitch=").append(strandSwitch);
+        sb.append(", isForwardStrandRepresentation=").append(isForwardStrandRepresentation);
+        sb.append(", insertionMappings=").append(insertionMappings);
+        sb.append(", goodNonCanonicalMappingSATag='").append(goodNonCanonicalMappingSATag).append('\'');
+        sb.append('}');
+        return sb.toString();
     }
 
     protected void serialize(final Kryo kryo, final Output output) {
@@ -384,6 +392,7 @@ public class SimpleChimera {
         final int insertionsMappingSize = insertionMappings.size();
         output.writeInt(insertionsMappingSize);
         insertionMappings.forEach(output::writeString);
+        output.writeString(goodNonCanonicalMappingSATag);
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<SimpleChimera> {
@@ -399,18 +408,19 @@ public class SimpleChimera {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        SimpleChimera that = (SimpleChimera) o;
+        final SimpleChimera that = (SimpleChimera) o;
 
         if (isForwardStrandRepresentation != that.isForwardStrandRepresentation) return false;
         if (!sourceContigName.equals(that.sourceContigName)) return false;
         if (!regionWithLowerCoordOnContig.equals(that.regionWithLowerCoordOnContig)) return false;
         if (!regionWithHigherCoordOnContig.equals(that.regionWithHigherCoordOnContig)) return false;
         if (strandSwitch != that.strandSwitch) return false;
-        return insertionMappings.equals(that.insertionMappings);
+        if (!insertionMappings.equals(that.insertionMappings)) return false;
+        return goodNonCanonicalMappingSATag.equals(that.goodNonCanonicalMappingSATag);
     }
 
     @Override
@@ -418,9 +428,10 @@ public class SimpleChimera {
         int result = sourceContigName.hashCode();
         result = 31 * result + regionWithLowerCoordOnContig.hashCode();
         result = 31 * result + regionWithHigherCoordOnContig.hashCode();
-        result = 31 * result + strandSwitch.ordinal();
+        result = 31 * result + strandSwitch.hashCode();
         result = 31 * result + (isForwardStrandRepresentation ? 1 : 0);
         result = 31 * result + insertionMappings.hashCode();
+        result = 31 * result + goodNonCanonicalMappingSATag.hashCode();
         return result;
     }
 }

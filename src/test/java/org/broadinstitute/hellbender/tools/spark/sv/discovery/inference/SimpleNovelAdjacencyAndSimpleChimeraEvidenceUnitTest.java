@@ -31,13 +31,13 @@ public class SimpleNovelAdjacencyAndSimpleChimeraEvidenceUnitTest extends GATKBa
                 pair :
                 SimpleSVDiscoveryTestDataProvider.getAllTestDataPaired()) {
             final NovelAdjacencyAndAltHaplotype biPathBubble = pair._1.biPathBubble;
-            final SimpleChimera forwardRep = new SimpleChimera(pair._1.firstAlignment, pair._1.secondAlignment, Collections.emptyList(), pair._1.evidenceAssemblyContigName,
+            final SimpleChimera forwardRep = new SimpleChimera(pair._1.firstAlignment, pair._1.secondAlignment, Collections.emptyList(),
+                    pair._1.evidenceAssemblyContigName, NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME,
                     SimpleSVDiscoveryTestDataProvider.b37_seqDict);
-            final SimpleChimera reverseRep = new SimpleChimera(pair._2.firstAlignment, pair._2.secondAlignment, Collections.emptyList(), pair._2.evidenceAssemblyContigName,
+            final SimpleChimera reverseRep = new SimpleChimera(pair._2.firstAlignment, pair._2.secondAlignment, Collections.emptyList(),
+                    pair._2.evidenceAssemblyContigName, NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME,
                     SimpleSVDiscoveryTestDataProvider.b37_seqDict);
-            final List<SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring> evidence =
-                    Arrays.asList(new SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring(forwardRep, NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME),
-                            new SimpleNovelAdjacencyAndChimericAlignmentEvidence.SimpleChimeraAndNCAMstring(reverseRep, NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME));
+            final List<SimpleChimera> evidence = Arrays.asList(forwardRep, reverseRep);
             data.add(new Object[]{new SimpleNovelAdjacencyAndChimericAlignmentEvidence(biPathBubble, evidence)});
         }
         return data.toArray(new Object[data.size()][]);

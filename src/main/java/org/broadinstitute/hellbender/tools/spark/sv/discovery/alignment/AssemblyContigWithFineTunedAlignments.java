@@ -47,6 +47,14 @@ public final class AssemblyContigWithFineTunedAlignments {
      */
     private final String saTAGForGoodMappingToNonCanonicalChromosome;
 
+    public enum AlignmentSignatureBasicType {
+        UNKNOWN, SIMPLE, COMPLEX;
+    }
+
+    public enum ReasonForAlignmentClassificationFailure {
+        INCOMPLETE, AMBIGUOUS, MIS_ASSEMBLY_OR_MAPPING_SUSPECT;
+    }
+
     public AssemblyContigWithFineTunedAlignments(final AlignedContig contig) {
         this(Utils.nonNull(contig), emptyInsertionMappings, false, NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME);
     }
@@ -129,32 +137,24 @@ public final class AssemblyContigWithFineTunedAlignments {
         return sourceTig.hasOnly2Alignments();
     }
 
-    public enum AlignmentSignatureBasicTypes {
-        Suspicious, Simple, Complex;
-    }
-
-    public enum Suspicious {
-        Incomplete, Ambiguous, MisAssemblySuspect;
-    }
-
-    public AlignmentSignatureBasicTypes getAlignmentSignatureBasicTypes() {
+    public AlignmentSignatureBasicType getAlignmentSignatureBasicType() {
         if ( hasEquallyGoodAlnConfigurations || hasIncompletePicture() || (! isInformative()) ) {
-            return AlignmentSignatureBasicTypes.Suspicious;
+            return AlignmentSignatureBasicType.UNKNOWN;
         } else if ( hasOnly2GoodAlignments() ) {
-            return AlignmentSignatureBasicTypes.Simple;
+            return AlignmentSignatureBasicType.SIMPLE;
         } else {
-            return AlignmentSignatureBasicTypes.Complex;
+            return AlignmentSignatureBasicType.COMPLEX;
         }
     }
 
-    public Suspicious getReasonForSuspicion() {
+    public ReasonForAlignmentClassificationFailure getReasonForAlignmentClassificationFailure() {
 
         if ( hasEquallyGoodAlnConfigurations ) { // ambiguous
-            return Suspicious.Ambiguous;
+            return ReasonForAlignmentClassificationFailure.AMBIGUOUS;
         } else if ( hasIncompletePicture() ) {
-            return Suspicious.Incomplete;
+            return ReasonForAlignmentClassificationFailure.INCOMPLETE;
         } else if ( ! isInformative() ) { // un-informative contig, mis-assembly suspect
-            return Suspicious.MisAssemblySuspect;
+            return ReasonForAlignmentClassificationFailure.MIS_ASSEMBLY_OR_MAPPING_SUSPECT;
         } else {
             throw new UnsupportedOperationException(
                     "operating on contig without a suspicious alignment signature, contig: " + toString());
@@ -312,14 +312,6 @@ public final class AssemblyContigWithFineTunedAlignments {
 
     public static boolean oneRefSpanContainsTheOther(final SimpleInterval one, final SimpleInterval two) {
         return one.contains(two) || two.contains(one);
-    }
-
-    public boolean firstAndLastAlignmentMappedToSameChr() {
-
-        final String firstMappedChr = this.sourceTig.getHeadAlignment().referenceSpan.getContig();
-        final String lastMappedChr  = this.sourceTig.getTailAlignment().referenceSpan.getContig();
-
-        return firstMappedChr.equals(lastMappedChr);
     }
 
     void serialize(final Kryo kryo, final Output output) {

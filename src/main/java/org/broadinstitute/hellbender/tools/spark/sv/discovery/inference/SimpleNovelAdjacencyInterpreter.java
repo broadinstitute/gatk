@@ -75,9 +75,7 @@ public final class SimpleNovelAdjacencyInterpreter {
 
                             final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype =
                                     new NovelAdjacencyAndAltHaplotype(simpleChimera, contigSequence, refSeqDict);
-                            return new Tuple2<>(novelAdjacencyAndAltHaplotype,
-                                    new SimpleNovelAdjacencyAndChimericAlignmentEvidence
-                                            .SimpleChimeraAndNCAMstring(simpleChimera, tig.getSAtagForGoodMappingToNonCanonicalChromosome()));
+                            return new Tuple2<>(novelAdjacencyAndAltHaplotype, simpleChimera);
                         })
                         .groupByKey()       // group the same novel adjacency produced by different contigs together
                         .map(noveltyAndEvidence ->
@@ -107,6 +105,6 @@ public final class SimpleNovelAdjacencyInterpreter {
         final AlignmentInterval alignmentTwo = contig.getAlignments().get(1);
 
         return new SimpleChimera(alignmentOne, alignmentTwo, contig.getInsertionMappings(),
-                contig.getContigName(), referenceDictionary);
+                contig.getContigName(), contig.getSAtagForGoodMappingToNonCanonicalChromosome(), referenceDictionary);
     }
 }
