@@ -28,19 +28,16 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.Assembly
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleChimera;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleNovelAdjacencyAndChimericAlignmentEvidence;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
-import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
@@ -141,44 +138,49 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
 
         final String vcfOutputFile = prefixForOutput + "_" + SVUtils.getSampleId(getHeaderForReads()) + "_inv_del_ins.vcf";
 
-        final SvDiscoveryInputData svDiscoveryInputData =
-                new SvDiscoveryInputData(ctx, discoverStageArgs, null, vcfOutputFile,
+        final SvDiscoveryInputMetaData svDiscoveryInputMetaData =
+                new SvDiscoveryInputMetaData(ctx, discoverStageArgs, null, vcfOutputFile,
                         null, null, null,
                         cnvCallsBroadcast,
-                        getReads(), getHeaderForReads(), getReference(), localLogger);
+                        getHeaderForReads(), getReference(), localLogger);
 
         final JavaRDD<AlignedContig> parsedContigAlignments =
                 new SvDiscoverFromLocalAssemblyContigAlignmentsSpark
-                        .SAMFormattedContigAlignmentParser(svDiscoveryInputData.sampleSpecificData.assemblyRawAlignments,
-                                                           svDiscoveryInputData.sampleSpecificData.headerBroadcast.getValue(), true)
+                        .SAMFormattedContigAlignmentParser(getReads(),
+                                                           svDiscoveryInputMetaData.sampleSpecificData.headerBroadcast.getValue(), true)
                         .getAlignedContigs();
 
         // assembly-based breakpoints
-        List<VariantContext> annotatedVariants = discoverVariantsFromChimeras(svDiscoveryInputData, parsedContigAlignments);
+        List<VariantContext> annotatedVariants = discoverVariantsFromChimeras(svDiscoveryInputMetaData, parsedContigAlignments);
 
-        final SAMSequenceDictionary refSeqDictionary = svDiscoveryInputData.referenceData.referenceSequenceDictionaryBroadcast.getValue();
+        final SAMSequenceDictionary refSeqDictionary = svDiscoveryInputMetaData.referenceData.referenceSequenceDictionaryBroadcast.getValue();
         SVVCFWriter.writeVCF(annotatedVariants, vcfOutputFile, refSeqDictionary, localLogger);
     }
 
     @Deprecated
-    public static List<VariantContext> discoverVariantsFromChimeras(final SvDiscoveryInputData svDiscoveryInputData,
+    public static List<VariantContext> discoverVariantsFromChimeras(final SvDiscoveryInputMetaData svDiscoveryInputMetaData,
                                                                     final JavaRDD<AlignedContig> alignedContigs) {
-        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceData.referenceSequenceDictionaryBroadcast;
+
+        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast =
+                svDiscoveryInputMetaData.referenceData.referenceSequenceDictionaryBroadcast;
 
         final JavaPairRDD<byte[], List<SimpleChimera>> contigSeqAndChimeras =
-                alignedContigs.filter(alignedContig -> alignedContig.getAlignments().size() > 1)
-                        .mapToPair(alignedContig ->
-                                new Tuple2<>(alignedContig.getContigSequence(),
-                                        parseOneContig(alignedContig, referenceSequenceDictionaryBroadcast.getValue(),
-                                                true, DEFAULT_MIN_ALIGNMENT_LENGTH,
-                                                CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, true)));
+                alignedContigs
+                        .filter(alignedContig -> alignedContig.getAlignments().size() > 1)
+                        .mapToPair(alignedContig -> {
+                            final List<SimpleChimera> chimeras =
+                                    parseOneContig(alignedContig, referenceSequenceDictionaryBroadcast.getValue(),
+                                    true, DEFAULT_MIN_ALIGNMENT_LENGTH,
+                                    CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, true);
+                            return new Tuple2<>(alignedContig.getContigSequence(), chimeras);
+                        });
 
-        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputData.referenceData.referenceBroadcast;
-        final List<SVInterval> assembledIntervals = svDiscoveryInputData.sampleSpecificData.assembledIntervals;
-        final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast = svDiscoveryInputData.sampleSpecificData.cnvCallsBroadcast;
-        final String sampleId = svDiscoveryInputData.sampleSpecificData.sampleId;
-        final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs = svDiscoveryInputData.discoverStageArgs;
-        final Logger toolLogger = svDiscoveryInputData.toolLogger;
+        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputMetaData.referenceData.referenceBroadcast;
+        final List<SVInterval> assembledIntervals = svDiscoveryInputMetaData.sampleSpecificData.assembledIntervals;
+        final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast = svDiscoveryInputMetaData.sampleSpecificData.cnvCallsBroadcast;
+        final String sampleId = svDiscoveryInputMetaData.sampleSpecificData.sampleId;
+        final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs = svDiscoveryInputMetaData.discoverStageArgs;
+        final Logger toolLogger = svDiscoveryInputMetaData.toolLogger;
 
         final JavaPairRDD<NovelAdjacencyAndAltHaplotype, Iterable<SimpleChimera>> narlsAndSources =
                 contigSeqAndChimeras

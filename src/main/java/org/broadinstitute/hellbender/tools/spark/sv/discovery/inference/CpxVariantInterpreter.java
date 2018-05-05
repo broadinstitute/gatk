@@ -11,7 +11,7 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryInputData;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryInputMetaData;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
@@ -40,10 +40,10 @@ import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConsta
 public final class CpxVariantInterpreter {
 
     public static List<VariantContext> inferCpxVariant(final JavaRDD<AssemblyContigWithFineTunedAlignments> assemblyContigs,
-                                                       final SvDiscoveryInputData svDiscoveryInputData) {
+                                                       final SvDiscoveryInputMetaData svDiscoveryInputMetaData) {
 
-        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputData.referenceData.referenceBroadcast;
-        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceData.referenceSequenceDictionaryBroadcast;
+        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputMetaData.referenceData.referenceBroadcast;
+        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputMetaData.referenceData.referenceSequenceDictionaryBroadcast;
 
         // almost every thing happens in this series of maps
         final JavaPairRDD<CpxVariantCanonicalRepresentation, Iterable<CpxVariantInducingAssemblyContig>> interpretationAndAssemblyEvidence =
@@ -53,8 +53,8 @@ public final class CpxVariantInterpreter {
                         .mapToPair(tig -> new Tuple2<>(new CpxVariantCanonicalRepresentation(tig), tig))
                         .groupByKey(); // two contigs could give the same variant
 
-        if (svDiscoveryInputData.discoverStageArgs.outputCpxResultsInHumanReadableFormat) {
-            writeResultsForHumanConsumption(svDiscoveryInputData.outputPath, interpretationAndAssemblyEvidence);
+        if (svDiscoveryInputMetaData.discoverStageArgs.outputCpxResultsInHumanReadableFormat) {
+            writeResultsForHumanConsumption(svDiscoveryInputMetaData.outputPath, interpretationAndAssemblyEvidence);
         }
 
         return interpretationAndAssemblyEvidence.map(pair -> turnIntoVariantContext(pair, referenceBroadcast)).collect();

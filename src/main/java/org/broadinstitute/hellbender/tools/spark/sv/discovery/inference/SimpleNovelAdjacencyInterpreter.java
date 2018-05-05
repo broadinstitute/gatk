@@ -32,13 +32,13 @@ public final class SimpleNovelAdjacencyInterpreter {
 
     public JavaPairRDD<SimpleNovelAdjacencyAndChimericAlignmentEvidence, List<SvType>>
     inferTypeFromSingleContigSimpleChimera(final JavaRDD<AssemblyContigWithFineTunedAlignments> assemblyContigs,
-                                           final SvDiscoveryInputData svDiscoveryInputData) {
+                                           final SvDiscoveryInputMetaData svDiscoveryInputMetaData) {
 
-        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceData.referenceSequenceDictionaryBroadcast;
-        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputData.referenceData.referenceBroadcast;
+        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputMetaData.referenceData.referenceSequenceDictionaryBroadcast;
+        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputMetaData.referenceData.referenceBroadcast;
 
         final JavaRDD<SimpleNovelAdjacencyAndChimericAlignmentEvidence> simpleNovelAdjacencies =
-                getSimpleNovelAdjacencyAndChimeraEvidence(assemblyContigs, svDiscoveryInputData);
+                getSimpleNovelAdjacencyAndChimeraEvidence(assemblyContigs, svDiscoveryInputMetaData);
 
         return simpleNovelAdjacencies
                         .mapToPair(simpleNovelAdjacencyAndChimericAlignmentEvidence ->
@@ -55,11 +55,11 @@ public final class SimpleNovelAdjacencyInterpreter {
      */
     private JavaRDD<SimpleNovelAdjacencyAndChimericAlignmentEvidence>
     getSimpleNovelAdjacencyAndChimeraEvidence(final JavaRDD<AssemblyContigWithFineTunedAlignments> assemblyContigs,
-                                              final SvDiscoveryInputData svDiscoveryInputData) {
-        final Logger toolLogger = svDiscoveryInputData.toolLogger;
-        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputData.referenceData.referenceSequenceDictionaryBroadcast;
-        final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs = svDiscoveryInputData.discoverStageArgs;
-        final List<SVInterval> assembledIntervals = svDiscoveryInputData.sampleSpecificData.assembledIntervals;
+                                              final SvDiscoveryInputMetaData svDiscoveryInputMetaData) {
+        final Logger toolLogger = svDiscoveryInputMetaData.toolLogger;
+        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputMetaData.referenceData.referenceSequenceDictionaryBroadcast;
+        final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs = svDiscoveryInputMetaData.discoverStageArgs;
+        final List<SVInterval> assembledIntervals = svDiscoveryInputMetaData.sampleSpecificData.assembledIntervals;
 
         final JavaRDD<SimpleNovelAdjacencyAndChimericAlignmentEvidence> simpleNovelAdjacencies =
                 assemblyContigs
