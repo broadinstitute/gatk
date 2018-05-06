@@ -31,7 +31,7 @@ import java.util.Set;
 @DefaultSerializer(AssemblyContigWithFineTunedAlignments.Serializer.class)
 public final class AssemblyContigWithFineTunedAlignments {
     private static final AlignedContig.Serializer contigSerializer = new AlignedContig.Serializer();
-    public static final List<String> emptyInsertionMappings = Collections.emptyList();
+    private static final List<String> emptyInsertionMappings = Collections.emptyList();
 
     private final AlignedContig sourceTig;
     // alignments that were given by aligner but thought to be non-good,
@@ -48,7 +48,8 @@ public final class AssemblyContigWithFineTunedAlignments {
     private final String saTAGForGoodMappingToNonCanonicalChromosome;
 
     public enum AlignmentSignatureBasicType {
-        UNKNOWN, SIMPLE, COMPLEX;
+        NORMAL, // contigs with just one regular alignment
+        UNKNOWN, SIMPLE_CHIMERA, COMPLEX;
     }
 
     public enum ReasonForAlignmentClassificationFailure {
@@ -138,17 +139,21 @@ public final class AssemblyContigWithFineTunedAlignments {
     }
 
     public AlignmentSignatureBasicType getAlignmentSignatureBasicType() {
-        if ( hasEquallyGoodAlnConfigurations || hasIncompletePicture() || (! isInformative()) ) {
+        if ( hasEquallyGoodAlnConfigurations || hasIncompletePicture() ) {
             return AlignmentSignatureBasicType.UNKNOWN;
+        } else if ( getAlignments().size() < 2 ) {
+            if ( getAlignments().size() == 1 && insertionMappings.isEmpty() )
+                return AlignmentSignatureBasicType.NORMAL;
+            else
+                return AlignmentSignatureBasicType.UNKNOWN;
         } else if ( hasOnly2GoodAlignments() ) {
-            return AlignmentSignatureBasicType.SIMPLE;
+            return AlignmentSignatureBasicType.SIMPLE_CHIMERA;
         } else {
             return AlignmentSignatureBasicType.COMPLEX;
         }
     }
 
     public ReasonForAlignmentClassificationFailure getReasonForAlignmentClassificationFailure() {
-
         if ( hasEquallyGoodAlnConfigurations ) { // ambiguous
             return ReasonForAlignmentClassificationFailure.AMBIGUOUS;
         } else if ( hasIncompletePicture() ) {
@@ -175,13 +180,13 @@ public final class AssemblyContigWithFineTunedAlignments {
      * significantly.
      */
     final boolean hasIncompletePicture() {
-        if ( hasOnly2GoodAlignments() )
+        if ( ! isInformative() )
+            return false;
+        else if ( hasOnly2GoodAlignments() )
             return hasIncompletePictureFromTwoAlignments(getHeadAlignment(), getTailAlignment());
         else
             return hasIncompletePictureFromMultipleAlignments();
     }
-
-    //==================================================================================================================
 
     /**
      * This predicate tests if an assembly contig with two (picked) alignments has the
@@ -244,8 +249,6 @@ public final class AssemblyContigWithFineTunedAlignments {
             }
         }
     }
-
-    //==================================================================================================================
 
     /**
      * This predicate tests if an assembly contig has the full event (i.e. alt haplotype) assembled

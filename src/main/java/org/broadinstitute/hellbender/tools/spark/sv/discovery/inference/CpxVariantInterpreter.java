@@ -39,8 +39,8 @@ import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConsta
  */
 public final class CpxVariantInterpreter {
 
-    public static List<VariantContext> inferCpxVariant(final JavaRDD<AssemblyContigWithFineTunedAlignments> assemblyContigs,
-                                                       final SvDiscoveryInputMetaData svDiscoveryInputMetaData) {
+    public static List<VariantContext> makeInterpretation(final JavaRDD<AssemblyContigWithFineTunedAlignments> assemblyContigs,
+                                                          final SvDiscoveryInputMetaData svDiscoveryInputMetaData) {
 
         final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputMetaData.referenceData.referenceBroadcast;
         final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputMetaData.referenceData.referenceSequenceDictionaryBroadcast;
@@ -48,9 +48,7 @@ public final class CpxVariantInterpreter {
         // almost every thing happens in this series of maps
         final JavaPairRDD<CpxVariantCanonicalRepresentation, Iterable<CpxVariantInducingAssemblyContig>> interpretationAndAssemblyEvidence =
                 assemblyContigs
-                        .map(tig -> furtherPreprocess(tig, referenceSequenceDictionaryBroadcast.getValue()))
-                        .map(tig -> new CpxVariantInducingAssemblyContig(tig, referenceSequenceDictionaryBroadcast.getValue()))
-                        .mapToPair(tig -> new Tuple2<>(new CpxVariantCanonicalRepresentation(tig), tig))
+                        .mapToPair(tig -> getOneVariantFromOneContig(tig, referenceSequenceDictionaryBroadcast.getValue()))
                         .groupByKey(); // two contigs could give the same variant
 
         if (svDiscoveryInputMetaData.discoverStageArgs.outputCpxResultsInHumanReadableFormat) {
@@ -58,6 +56,17 @@ public final class CpxVariantInterpreter {
         }
 
         return interpretationAndAssemblyEvidence.map(pair -> turnIntoVariantContext(pair, referenceBroadcast)).collect();
+    }
+
+    private static Tuple2<CpxVariantCanonicalRepresentation, CpxVariantInducingAssemblyContig> getOneVariantFromOneContig
+            (final AssemblyContigWithFineTunedAlignments contigWithFineTunedAlignments,
+             final SAMSequenceDictionary refSequenceDictionary) {
+
+        final AssemblyContigWithFineTunedAlignments furtherProcessedContig =
+                furtherPreprocess(contigWithFineTunedAlignments, refSequenceDictionary);
+        final CpxVariantInducingAssemblyContig cpxVariantInducingAssemblyContig =
+                new CpxVariantInducingAssemblyContig(furtherProcessedContig, refSequenceDictionary);
+        return new Tuple2<>(new CpxVariantCanonicalRepresentation(cpxVariantInducingAssemblyContig), cpxVariantInducingAssemblyContig);
     }
 
     // =================================================================================================================

@@ -23,7 +23,10 @@ import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscovery
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AnnotatedVariantProducer;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoverFromLocalAssemblyContigAlignmentsSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryInputMetaData;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContigGenerator;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.ContigAlignmentsModifier;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ImpreciseVariantDetector;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
@@ -186,7 +189,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
 
         // TODO: 1/14/18 this is the next version of precise variant calling
         if ( expInterpret != null ) {
-            experimentalInterpretation(ctx, assembledEvidenceResults, svDiscoveryInputMetaData);
+            experimentalInterpretation(ctx, expInterpret, assembledEvidenceResults, svDiscoveryInputMetaData);
         }
     }
 
@@ -256,21 +259,36 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         return annotatedVariants;
     }
 
-    // hook up prototyping breakpoint and type inference tool
-    private void experimentalInterpretation(final JavaSparkContext ctx,
-                                            final FindBreakpointEvidenceSpark.AssembledEvidenceResults assembledEvidenceResults,
-                                            final SvDiscoveryInputMetaData svDiscoveryInputMetaData) {
+    private static void experimentalInterpretation(final JavaSparkContext ctx, final Boolean expInterpret,
+                                                   final FindBreakpointEvidenceSpark.AssembledEvidenceResults assembledEvidenceResults,
+                                                   final SvDiscoveryInputMetaData svDiscoveryInputMetaData) {
 
-        if ( ! expInterpret )
+        if ( !expInterpret)
             return;
 
-        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputMetaData.referenceData.referenceSequenceDictionaryBroadcast;
+        final JavaRDD<GATKRead> assemblyRawAlignments = getContigRawAlignments(ctx, assembledEvidenceResults, svDiscoveryInputMetaData);
+
+        final String updatedOutputPath = svDiscoveryInputMetaData.outputPath + "experimentalInterpretation_";
+        svDiscoveryInputMetaData.updateOutputPath(updatedOutputPath);
+
+        SvDiscoverFromLocalAssemblyContigAlignmentsSpark.AssemblyContigsClassifiedByAlignmentSignatures contigsByPossibleRawTypes
+                = SvDiscoverFromLocalAssemblyContigAlignmentsSpark.preprocess(svDiscoveryInputMetaData, assemblyRawAlignments);
+
+        SvDiscoverFromLocalAssemblyContigAlignmentsSpark.dispatchJobs(contigsByPossibleRawTypes, svDiscoveryInputMetaData,
+                assemblyRawAlignments, true);
+    }
+
+    private static JavaRDD<GATKRead> getContigRawAlignments(final JavaSparkContext ctx,
+                                                            final FindBreakpointEvidenceSpark.AssembledEvidenceResults assembledEvidenceResults,
+                                                            final SvDiscoveryInputMetaData svDiscoveryInputMetaData) {
+        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast =
+                svDiscoveryInputMetaData.referenceData.referenceSequenceDictionaryBroadcast;
         final Broadcast<SAMFileHeader> headerBroadcast = svDiscoveryInputMetaData.sampleSpecificData.headerBroadcast;
         final SAMFileHeader headerForReads = headerBroadcast.getValue();
         final SAMReadGroupRecord contigAlignmentsReadGroup = new SAMReadGroupRecord(SVUtils.GATKSV_CONTIG_ALIGNMENTS_READ_GROUP_ID);
         final List<String> refNames = SequenceDictionaryUtils.getContigNamesList(referenceSequenceDictionaryBroadcast.getValue());
 
-        final JavaRDD<GATKRead> assemblyRawAlignments = ctx.parallelize(
+        return ctx.parallelize(
                 assembledEvidenceResults
                         .getAlignedAssemblyOrExcuseList().stream()
                         .filter(AlignedAssemblyOrExcuse::isNotFailure)
@@ -278,14 +296,6 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                         .map(SAMRecordToGATKReadAdapter::new)
                         .collect(Collectors.toList())
         );
-
-        final String updatedOutputPath = svDiscoveryInputMetaData.outputPath + "experimentalInterpretation_";
-        svDiscoveryInputMetaData.updateOutputPath(updatedOutputPath);
-
-        SvDiscoverFromLocalAssemblyContigAlignmentsSpark.AssemblyContigsClassifiedByAlignmentSignatures contigsByPossibleRawTypes
-                = SvDiscoverFromLocalAssemblyContigAlignmentsSpark.preprocess(svDiscoveryInputMetaData, assemblyRawAlignments, true);
-
-        SvDiscoverFromLocalAssemblyContigAlignmentsSpark.dispatchJobs(contigsByPossibleRawTypes, svDiscoveryInputMetaData);
     }
 
     /**

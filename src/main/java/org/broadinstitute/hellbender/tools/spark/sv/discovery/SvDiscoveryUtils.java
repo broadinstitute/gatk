@@ -124,6 +124,12 @@ public class SvDiscoveryUtils {
      */
     public static void writeSAMRecords(final JavaRDD<GATKRead> originalAlignments, final Set<String> readNameToInclude,
                                        final String outputPath, final SAMFileHeader header) {
+        final List<GATKRead> reads = originalAlignments.collect();
+        writeSAMRecords(reads, readNameToInclude, outputPath, header);
+    }
+
+    public static void writeSAMRecords(final List<GATKRead> reads, final Set<String> readNameToInclude,
+                                       final String outputPath, final SAMFileHeader header) {
         final SAMFileHeader cloneHeader = header.clone();
         final SAMRecordComparator localComparator;
         if (outputPath.toLowerCase().endsWith("bam")) {
@@ -136,7 +142,6 @@ public class SvDiscoveryUtils {
             throw new IllegalArgumentException("Unsupported output format " + outputPath);
         }
 
-        final List<GATKRead> reads = originalAlignments.collect();
         final List<SAMRecord> samRecords = new ArrayList<>();
         reads.forEach(gatkRead -> {
             if ( readNameToInclude.contains(gatkRead.getName()) ) {
