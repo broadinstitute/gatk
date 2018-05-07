@@ -232,7 +232,7 @@ workflow CNVSomaticPairWorkflow {
     }
 
     # Changed by Marton
-    Int modeled_segments_tumor_disk = ceil(size(DenoiseReadCountsTumor.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsTumor.copy_ratio_only_segments, "GB")) + disk_pad
+    Int modeled_segments_tumor_disk = ceil(size(DenoiseReadCountsTumor.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsTumor.modeled_segments, "GB")) + disk_pad
     call CallModeledSegments as CallModeledSegmentsTumor {
         input:
             entity_id = CollectCountsTumor.entity_id,
@@ -371,7 +371,7 @@ workflow CNVSomaticPairWorkflow {
         }
 
         # changed by Marton
-        Int modeled_segments_normal_disk = ceil(size(DenoiseReadCountsNormal.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsNormal.copy_ratio_only_segments, "GB")) + disk_pad
+        Int modeled_segments_normal_disk = ceil(size(DenoiseReadCountsNormal.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsNormal.modeled_segments, "GB")) + disk_pad
         call CallModeledSegments as CallModeledSegmentsNormal {
             input:
             entity_id = CollectCountsTumor.entity_id,
@@ -450,7 +450,7 @@ workflow CNVSomaticPairWorkflow {
         File standardized_copy_ratios_tumor = DenoiseReadCountsTumor.standardized_copy_ratios
         File het_allelic_counts_tumor = ModelSegmentsTumor.het_allelic_counts
         File normal_het_allelic_counts_tumor = ModelSegmentsTumor.normal_het_allelic_counts
-        File copy_ratio_only_segments_tumor = ModelSegmentsTumor.copy_ratio_only_segments
+        File modeled_segments_tumor = ModelSegmentsTumor.modeled_segments
         File modeled_segments_begin_tumor = ModelSegmentsTumor.modeled_segments_begin
         File copy_ratio_parameters_begin_tumor = ModelSegmentsTumor.copy_ratio_parameters_begin
         File allele_fraction_parameters_begin_tumor = ModelSegmentsTumor.allele_fraction_parameters_begin
@@ -474,7 +474,7 @@ workflow CNVSomaticPairWorkflow {
         File? standardized_copy_ratios_normal = DenoiseReadCountsNormal.standardized_copy_ratios
         File? het_allelic_counts_normal = ModelSegmentsNormal.het_allelic_counts
         File? normal_het_allelic_counts_normal = ModelSegmentsNormal.normal_het_allelic_counts
-        File? copy_ratio_only_segments_normal = ModelSegmentsNormal.copy_ratio_only_segments
+        File? modeled_segments_normal = ModelSegmentsNormal.modeled_segments
         File? modeled_segments_begin_normal = ModelSegmentsNormal.modeled_segments_begin
         File? copy_ratio_parameters_begin_normal = ModelSegmentsNormal.copy_ratio_parameters_begin
         File? allele_fraction_parameters_begin_normal = ModelSegmentsNormal.allele_fraction_parameters_begin
