@@ -218,6 +218,14 @@ public final class CallModeledSegments extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
+        Utils.validateArg(normalMinorAlleleFractionThreshold < 0.5 && 0.0 <= normalMinorAlleleFractionThreshold,
+                "Minor allele fraction threshold for normal peaks has to be between 0 and 0.5.");
+        Utils.validateArg(copyRatioPeakMinWeight < 1.0 && 0.0 <= copyRatioPeakMinWeight,
+                "Weight threshold for copy ratio peaks considered to be normal needs to be between 0 and 1.");
+        Utils.validateArg(minFractionOfPointsInNormalAlleleFractionRegion < 1.0
+                                   && 0.0 <= minFractionOfPointsInNormalAlleleFractionRegion,
+                "The fraction of points in the range of allele fractions is always between 0 and 1.");
+
         final File inFile = inputFile.get(0);
         logger.info(String.format("Retrieving copy ratio and allele fraction data from %s...", inFile));
         final boolean loadCR = Boolean.parseBoolean(loadCopyRatio);
