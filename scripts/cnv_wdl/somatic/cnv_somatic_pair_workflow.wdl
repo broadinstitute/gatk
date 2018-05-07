@@ -97,16 +97,15 @@ workflow CNVSomaticPairWorkflow {
     Int? num_smoothing_iterations_per_fit
     Int? mem_gb_for_model_segments
 
+    # Modified by Marton
     ####################################################
     #### optional arguments for CallModeledSegments ####
     ####################################################
-    Float? neutral_segment_copy_ratio_lower_bound
-    Float? neutral_segment_copy_ratio_upper_bound
-    Float? outlier_neutral_segment_copy_ratio_z_score_threshold
-    Float? calling_copy_ratio_z_score_threshold
-    Int? mem_gb_for_call_copy_ratio_segments
-
-    # Marton -- change this
+    Float? normal_minor_allele_fraction_threshold
+    Float? copy_ratio_peak_min_weight
+    Float? min_fraction_of_points_in_normal_allele_fraction_region
+    Boolean? load_copy_ratio
+    Boolean? load_allele_fraction
 
     #########################################
     #### optional arguments for plotting ####
@@ -231,19 +230,29 @@ workflow CNVSomaticPairWorkflow {
             preemptible_attempts = preemptible_attempts
     }
 
-    Int copy_ratio_segments_tumor_disk = ceil(size(DenoiseReadCountsTumor.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsTumor.copy_ratio_only_segments, "GB")) + disk_pad
-    call CallCopyRatioSegments as CallCopyRatioSegmentsTumor {
+    # Changed by Marton
+    Int modeled_segments_tumor_disk = ceil(size(DenoiseReadCountsTumor.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsTumor.copy_ratio_only_segments, "GB")) + disk_pad
+    call CallModeledSegments as CallModeledSegmentsTumor {
         input:
             entity_id = CollectCountsTumor.entity_id,
-            copy_ratio_segments = ModelSegmentsTumor.copy_ratio_only_segments,
-            neutral_segment_copy_ratio_lower_bound = neutral_segment_copy_ratio_lower_bound,
-            neutral_segment_copy_ratio_upper_bound = neutral_segment_copy_ratio_upper_bound,
-            outlier_neutral_segment_copy_ratio_z_score_threshold = outlier_neutral_segment_copy_ratio_z_score_threshold,
-            calling_copy_ratio_z_score_threshold = calling_copy_ratio_z_score_threshold,
+            modeled_segments_input_file = modeled_segments_input_file,
+            load_copy_ratio = load_copy_ratio,
+            load_allele_fraction = load_allele_fraction,
+            output_image_dir = output_image_dir,
+            output_calls_dir = output_calls_dir,
+            output_log_dir = output_log_dir,
+            output_image_prefix = output_image_prefix,
+            output_calls_prefix = output_calls_prefix,
+            output_log_prefix = output_log_prefix,
+            normal_minor_allele_fraction_threshold = normal_minor_allele_fraction_threshold,
+            copy_ratio_peak_min_weight = copy_ratio_peak_min_weight,
+            min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
             mem_gb = mem_gb_for_call_copy_ratio_segments,
-            disk_space_gb = copy_ratio_segments_tumor_disk,
+            disk_space_gb = modeled_segments_tumor_disk,
+            use_ssd = use_ssd,
+            cpu = cpu,
             preemptible_attempts = preemptible_attempts
     }
     # Marton -- replace this and all other instances of CallCopyRatioSegments
@@ -360,20 +369,30 @@ workflow CNVSomaticPairWorkflow {
                 preemptible_attempts = preemptible_attempts
         }
 
-        Int copy_ratio_segments_normal_disk = ceil(size(DenoiseReadCountsNormal.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsNormal.copy_ratio_only_segments, "GB")) + disk_pad
-        call CallCopyRatioSegments as CallCopyRatioSegmentsNormal {
+        # changed by Marton
+        Int modeled_segments_normal_disk = ceil(size(DenoiseReadCountsNormal.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsNormal.copy_ratio_only_segments, "GB")) + disk_pad
+        call CallModeledSegments as CallModeledSegmentsNormal {
             input:
-                entity_id = CollectCountsNormal.entity_id,
-                copy_ratio_segments = ModelSegmentsNormal.copy_ratio_only_segments,
-                neutral_segment_copy_ratio_lower_bound = neutral_segment_copy_ratio_lower_bound,
-                neutral_segment_copy_ratio_upper_bound = neutral_segment_copy_ratio_upper_bound,
-                outlier_neutral_segment_copy_ratio_z_score_threshold = outlier_neutral_segment_copy_ratio_z_score_threshold,
-                calling_copy_ratio_z_score_threshold = calling_copy_ratio_z_score_threshold,
-                gatk4_jar_override = gatk4_jar_override,
-                gatk_docker = gatk_docker,
-                mem_gb = mem_gb_for_call_copy_ratio_segments,
-                disk_space_gb = copy_ratio_segments_normal_disk,
-                preemptible_attempts = preemptible_attempts
+            entity_id = CollectCountsTumor.entity_id,
+            modeled_segments_input_file = modeled_segments_input_file,
+            load_copy_ratio = load_copy_ratio,
+            load_allele_fraction = load_allele_fraction,
+            output_image_dir = output_image_dir,
+            output_calls_dir = output_calls_dir,
+            output_log_dir = output_log_dir,
+            output_image_prefix = output_image_prefix,
+            output_calls_prefix = output_calls_prefix,
+            output_log_prefix = output_log_prefix,
+            normal_minor_allele_fraction_threshold = normal_minor_allele_fraction_threshold,
+            copy_ratio_peak_min_weight = copy_ratio_peak_min_weight,
+            min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region,
+            gatk4_jar_override = gatk4_jar_override,
+            gatk_docker = gatk_docker,
+            mem_gb = mem_gb_for_call_copy_ratio_segments,
+            disk_space_gb = modeled_segments_normal_disk,
+            use_ssd = use_ssd,
+            cpu = cpu,
+            preemptible_attempts = preemptible_attempts
         }
 
         # The files from other tasks are small enough to just combine into one disk variable and pass to the normal plotting tasks
@@ -618,13 +637,21 @@ task ModelSegments {
     }
 }
 
-task CallCopyRatioSegments {
+# Modified by Marton
+task CallModeledSegments {
     String entity_id
-    File copy_ratio_segments
-    Float? neutral_segment_copy_ratio_lower_bound
-    Float? neutral_segment_copy_ratio_upper_bound
-    Float? outlier_neutral_segment_copy_ratio_z_score_threshold
-    Float? calling_copy_ratio_z_score_threshold
+    File modeled_segments_input_file
+    Bool? load_copy_ratio
+    Bool? load_allele_fraction
+    File? output_image_dir
+    File? output_calls_dir
+    File? output_log_dir
+    File? output_image_prefix
+    File? output_calls_prefix
+    File? output_log_prefix
+    Float? normal_minor_allele_fraction_threshold
+    Float? copy_ratio_peak_min_weight
+    Float? min_fraction_of_points_in_normal_allele_fraction_region
     File? gatk4_jar_override
 
     # Runtime parameters
@@ -638,17 +665,34 @@ task CallCopyRatioSegments {
     Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
     Int command_mem_mb = machine_mem_mb - 1000
 
+    File output_image_dir_ = select_first([output_image_dir, "org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/out"])
+    File output_calls_dir_ = select_first([output_calls_dir, "org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/out"])
+    File output_image_dir_ = select_first([output_image_dir, "org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/out"])
+
+    String output_image_prefix_ = select_first([output_image_prefix, entity_id])
+    String output_calls_prefix_ = select_first([output_calls_prefix, entity_id])
+    String output_log_prefix_ = select_first([output_log_prefix, entity_id])
+
     command <<<
         set -e
+        mkdir ${output_image_dir_}
+        mkdir ${output_calls_dir_}
+        mkdir ${output_image_dir_}
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
-        gatk --java-options "-Xmx${command_mem_mb}m" CallCopyRatioSegments \
-            --input ${copy_ratio_segments} \
-            --neutral-segment-copy-ratio-lower-bound ${default="0.9" neutral_segment_copy_ratio_lower_bound} \
-            --neutral-segment-copy-ratio-upper-bound ${default="1.1" neutral_segment_copy_ratio_upper_bound} \
-            --outlier-neutral-segment-copy-ratio-z-score-threshold ${default="2.0" outlier_neutral_segment_copy_ratio_z_score_threshold} \
-            --calling-copy-ratio-z-score-threshold ${default="2.0" calling_copy_ratio_z_score_threshold} \
-            --output ${entity_id}.called.seg
+        gatk --java-options "-Xmx${command_mem_mb}m" CallModeledSegments \
+            --input ${modeled_segments_input_file} \
+            --load-copy-ratio ${default="true" load_copy_ratio} \
+            --load-allele-fraction ${default="true" load_allele_fraction} \
+            --output-image-dir ${output_image_dir_} \
+            --output-calls-dir ${output_calls_dir_} \
+            --output-log-dir ${output_log_dir_} \
+            --output-image-prefix ${output_image_prefix} \
+            --output-calls-prefix ${output_calls_prefix} \
+            --output-log-prefix ${output_log_prefix} \
+            --normal-minor-allele-fraction-threshold ${default="0.475" normal_minor_allele_fraction_threshold} \
+            --copy-ratio-peak-min-weight ${default="0.03" copy_ratio_peak_min_weight} \
+            --min_fraction_of_points_in_normal_allele_fraction_region ${default="2.0" min_fraction_of_points_in_normal_allele_fraction_region}
     >>>
 
     runtime {
@@ -660,7 +704,7 @@ task CallCopyRatioSegments {
     }
 
     output {
-        File called_copy_ratio_segments = "${entity_id}.called.seg"
+        File called_modeled_segments_data = "${entity_id}.called.seg"
     }
 }
 
