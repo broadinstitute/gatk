@@ -114,6 +114,7 @@ workflow CNVSomaticPairWorkflow {
     Float? min_fraction_of_points_in_normal_allele_fraction_region
     Boolean? load_copy_ratio
     Boolean? load_allele_fraction
+    Int? mem_gb_for_call_modeled_segments
 
     #########################################
     #### optional arguments for plotting ####
@@ -258,7 +259,7 @@ workflow CNVSomaticPairWorkflow {
             min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            mem_gb = mem_gb_for_call_copy_ratio_segments,
+            mem_gb = mem_gb_for_call_modeled_segments,
             disk_space_gb = modeled_segments_tumor_disk,
             use_ssd = use_ssd,
             cpu = cpu,
@@ -397,7 +398,7 @@ workflow CNVSomaticPairWorkflow {
             min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            mem_gb = mem_gb_for_call_copy_ratio_segments,
+            mem_gb = mem_gb_for_call_modeled_segments,
             disk_space_gb = modeled_segments_normal_disk,
             use_ssd = use_ssd,
             cpu = cpu,
