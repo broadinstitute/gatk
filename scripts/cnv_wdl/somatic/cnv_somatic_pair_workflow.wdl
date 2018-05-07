@@ -431,7 +431,7 @@ workflow CNVSomaticPairWorkflow {
     if (select_first([is_run_oncotator, false])) {
         call CNVOncotator.CNVOncotatorWorkflow as CNVOncotatorWorkflow {
             input:
-                 called_file = CallCopyRatioSegmentsTumor.called_copy_ratio_segments,
+                 called_file = CallModeledSegmentsTumor.called_modeled_segments_data,
                  additional_args = additional_args_for_oncotator,
                  oncotator_docker = oncotator_docker,
                  mem_gb_for_oncotator = mem_gb_for_oncotator,
@@ -457,7 +457,7 @@ workflow CNVSomaticPairWorkflow {
         File modeled_segments_tumor = ModelSegmentsTumor.modeled_segments
         File copy_ratio_parameters_tumor = ModelSegmentsTumor.copy_ratio_parameters
         File allele_fraction_parameters_tumor = ModelSegmentsTumor.allele_fraction_parameters
-        File called_copy_ratio_segments_tumor = CallCopyRatioSegmentsTumor.called_copy_ratio_segments
+        File called_modeled_segments_data_tumor = CallModeledSegmentsTumor.called_modeled_segments_data
         File denoised_copy_ratios_plot_tumor = PlotDenoisedCopyRatiosTumor.denoised_copy_ratios_plot
         File denoised_copy_ratios_lim_4_plot_tumor = PlotDenoisedCopyRatiosTumor.denoised_copy_ratios_lim_4_plot
         File standardized_MAD_tumor = PlotDenoisedCopyRatiosTumor.standardized_MAD
@@ -481,7 +481,7 @@ workflow CNVSomaticPairWorkflow {
         File? modeled_segments_normal = ModelSegmentsNormal.modeled_segments
         File? copy_ratio_parameters_normal = ModelSegmentsNormal.copy_ratio_parameters
         File? allele_fraction_parameters_normal = ModelSegmentsNormal.allele_fraction_parameters
-        File? called_copy_ratio_segments_normal = CallModeledSegmentsNormal.called_copy_ratio_segments
+        File? called_modeled_segments_data_normal = CallModeledSegmentsNormal.called_modeled_segments_data
         File? denoised_copy_ratios_plot_normal = PlotDenoisedCopyRatiosNormal.denoised_copy_ratios_plot
         File? denoised_copy_ratios_lim_4_plot_normal = PlotDenoisedCopyRatiosNormal.denoised_copy_ratios_lim_4_plot
         File? standardized_MAD_normal = PlotDenoisedCopyRatiosNormal.standardized_MAD
@@ -668,7 +668,7 @@ task CallModeledSegments {
 
     File output_image_dir_ = select_first([output_image_dir, "org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/out"])
     File output_calls_dir_ = select_first([output_calls_dir, "org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/out"])
-    File output_image_dir_ = select_first([output_image_dir, "org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/out"])
+    File output_log_dir_ = select_first([output_image_dir, "org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/out"])
 
     String output_image_prefix_ = select_first([output_image_prefix, entity_id])
     String output_calls_prefix_ = select_first([output_calls_prefix, entity_id])
@@ -678,7 +678,7 @@ task CallModeledSegments {
         set -e
         mkdir ${output_image_dir_}
         mkdir ${output_calls_dir_}
-        mkdir ${output_image_dir_}
+        mkdir ${output_log_dir_}
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
         gatk --java-options "-Xmx${command_mem_mb}m" CallModeledSegments \
@@ -688,9 +688,9 @@ task CallModeledSegments {
             --output-image-dir ${output_image_dir_} \
             --output-calls-dir ${output_calls_dir_} \
             --output-log-dir ${output_log_dir_} \
-            --output-image-prefix ${output_image_prefix} \
-            --output-calls-prefix ${output_calls_prefix} \
-            --output-log-prefix ${output_log_prefix} \
+            --output-image-prefix ${output_image_prefix_} \
+            --output-calls-prefix ${output_calls_prefix_} \
+            --output-log-prefix ${output_log_prefix_} \
             --normal-minor-allele-fraction-threshold ${default="0.475" normal_minor_allele_fraction_threshold} \
             --copy-ratio-peak-min-weight ${default="0.03" copy_ratio_peak_min_weight} \
             --min_fraction_of_points_in_normal_allele_fraction_region ${default="2.0" min_fraction_of_points_in_normal_allele_fraction_region}
@@ -705,7 +705,7 @@ task CallModeledSegments {
     }
 
     output {
-        File called_modeled_segments_data = "${entity_id}.called.seg"
+        File called_modeled_segments_data = "${output_calls_dir_}${output_calls_prefix_}.called.seg"
     }
 }
 
