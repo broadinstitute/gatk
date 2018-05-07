@@ -6,6 +6,7 @@ import org.apache.commons.math3.exception.NotStrictlyPositiveException;
 import org.apache.commons.math3.exception.NumberIsTooLargeException;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.random.RandomGenerator;
+import org.apache.commons.math3.special.Beta;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
@@ -1015,6 +1016,9 @@ public final class MathUtils {
      */
     public static double log10BinomialProbability(final int n, final int k, final double log10p) {
         Utils.validateArg(log10p < 1.0e-18, "log10p: Log10-probability must be 0 or less");
+        if (log10p == Double.NEGATIVE_INFINITY){
+            return k == 0 ? 0 : Double.NEGATIVE_INFINITY;
+        }
         double log10OneMinusP = Math.log10(1 - Math.pow(10.0, log10p));
         return log10BinomialCoefficient(n, k) + log10p * k + log10OneMinusP * (n - k);
     }
@@ -1479,5 +1483,42 @@ public final class MathUtils {
             }
         }
         return true;
+    }
+
+    /**
+     *
+     * @param array array of integers
+     * @return index of the max. In case of a tie, return the smallest index
+     */
+    public static int maxElementIndex(final int[] array){
+        int maxIndex = 0;
+        int currentMax = Integer.MIN_VALUE;
+        for (int i = 0; i < array.length; i++){
+            if (array[i] > currentMax){
+                maxIndex = i;
+                currentMax = array[i];
+            }
+        }
+        return maxIndex;
+    }
+
+    /**
+     *
+     * Computes the log10 probability density of BetaBinomial(k|n, alpha, beta)
+     *
+     * @param alpha pseudocount of number of heads
+     * @param beta pseudocount of number of tails
+     * @param k value to evaluate
+     * @param n number of coin flips
+     * @return probability density function evaluated at k
+     */
+    public static double log10BetaBinomialProbability(final int k, final int n, final double alpha, final double beta){
+        Utils.validateArg(k <= n, String.format("k must be less than or equal to n but got k = %d, n = %d", k, n));
+        return log10BinomialCoefficient(n, k) + Beta.logBeta(k + alpha, n - k + beta) * LOG10_OF_E -
+                Beta.logBeta(alpha, beta) * LOG10_OF_E;
+    }
+
+    public static boolean isAProbability(final double p){
+        return p >= 0 && p <= 1;
     }
 }

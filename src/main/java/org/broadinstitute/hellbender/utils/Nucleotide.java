@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.LongStream;
 
 /**
@@ -16,7 +17,11 @@ import java.util.stream.LongStream;
 public enum Nucleotide {
     A, C, G, T, N, X, INVALID;
 
+    public static final List<Nucleotide> REGULAR_BASES = Arrays.asList(A, C, G, T);
+
     private static final Nucleotide[] baseToValue = new Nucleotide[Byte.MAX_VALUE + 1];
+
+    private static final Nucleotide[] reverseComplement = new Nucleotide[Byte.MAX_VALUE];
 
     static {
         Arrays.fill(baseToValue, INVALID);
@@ -27,6 +32,15 @@ public enum Nucleotide {
         baseToValue['u'] = baseToValue['U'] = T;
         baseToValue['x'] = baseToValue['X'] = X;
         baseToValue['n'] = baseToValue['N'] = N;
+
+        Arrays.fill(reverseComplement, INVALID);
+        reverseComplement['a'] = reverseComplement['A'] = T;
+        reverseComplement['c'] = reverseComplement['C'] = G;
+        reverseComplement['g'] = reverseComplement['G'] = C;
+        reverseComplement['t'] = reverseComplement['T'] = A;
+        reverseComplement['u'] = reverseComplement['U'] = A;
+        reverseComplement['x'] = reverseComplement['X'] = X;
+        reverseComplement['n'] = reverseComplement['N'] = N;
     }
 
     /**
@@ -58,6 +72,10 @@ public enum Nucleotide {
      */
     public static Nucleotide valueOf(final byte base) {
         return baseToValue[Utils.validIndex(base, baseToValue.length)];
+    }
+
+    public static Nucleotide complement(final byte base){
+        return reverseComplement[Utils.validIndex(base, reverseComplement.length)];
     }
 
     /**

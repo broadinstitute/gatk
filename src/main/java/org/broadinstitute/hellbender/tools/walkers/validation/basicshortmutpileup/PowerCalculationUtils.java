@@ -81,7 +81,7 @@ public class PowerCalculationUtils {
                 .filter(pe -> (GATKProtectedVariantContextUtils.doesReadContainAllele(pe, referenceAllele) == Trilean.TRUE)
                 && !pe.isBeforeDeletionStart() && !pe.isBeforeInsertion()).count();
 
-        return (double) numAlternate / ((double) numReference + (double) numAlternate);
+        return numReference + numAlternate == 0 ? 0.0 : (double) numAlternate / ((double) numReference + (double) numAlternate);
     }
 
     private static List<PileupElement> retrievePileupElements(final ReadPileup readPileup, final int minBaseQualityCutoff) {
