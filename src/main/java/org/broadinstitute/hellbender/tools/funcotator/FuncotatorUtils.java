@@ -15,13 +15,14 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
-import java.net.URISyntaxException;
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -1922,14 +1923,12 @@ public final class FuncotatorUtils {
 
         if ( B37_SEQUENCE_DICTIONARY == null ) {
             try {
-                final File b37SeqDictFile = new File(
-                        ClassLoader.class.getResource("/org/broadinstitute/hellbender/tools/funcotator/Homo_sapiens_assembly19.dict").toURI()
-                );
+                final File b37SeqDictFile = Resource.getResourceContentsAsFile("org/broadinstitute/hellbender/tools/funcotator/Homo_sapiens_assembly19.dict");
 
                 return ReferenceUtils.loadFastaDictionary(b37SeqDictFile);
             }
-            catch ( final URISyntaxException ex ) {
-                throw new GATKException("Unable to load b37 dict from jar resources!", ex);
+            catch ( final IOException ex ) {
+                throw new GATKException("Unable to load b37 dict from jar resources due to IO Exception!", ex);
             }
         }
         else {
