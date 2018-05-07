@@ -459,6 +459,7 @@ workflow CNVSomaticPairWorkflow {
         File called_modeled_segments_data_tumor = CallModeledSegmentsTumor.called_modeled_segments_data
         File copy_ratio_parameters_tumor = ModelSegmentsTumor.copy_ratio_parameters
         File allele_fraction_parameters_tumor = ModelSegmentsTumor.allele_fraction_parameters
+        File called_modeled_segments_data_tumor = CallModeledSegmentsTumor.called_modeled_segments_data
         File denoised_copy_ratios_plot_tumor = PlotDenoisedCopyRatiosTumor.denoised_copy_ratios_plot
         File denoised_copy_ratios_lim_4_plot_tumor = PlotDenoisedCopyRatiosTumor.denoised_copy_ratios_lim_4_plot
         File standardized_MAD_tumor = PlotDenoisedCopyRatiosTumor.standardized_MAD
