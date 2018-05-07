@@ -108,6 +108,7 @@ workflow CNVSomaticPairWorkflow {
     Boolean? load_allele_fraction
     Int? mem_gb_for_call_modeled_segments
 
+
     #########################################
     #### optional arguments for plotting ####
     #########################################
@@ -239,12 +240,6 @@ workflow CNVSomaticPairWorkflow {
             modeled_segments_input_file = ModelSegmentsTumor.modeled_segments,
             load_copy_ratio = load_copy_ratio,
             load_allele_fraction = load_allele_fraction,
-            output_image_dir = output_image_dir,
-            output_calls_dir = output_calls_dir,
-            output_log_dir = output_log_dir,
-            output_image_prefix = output_image_prefix,
-            output_calls_prefix = output_calls_prefix,
-            output_log_prefix = output_log_prefix,
             normal_minor_allele_fraction_threshold = normal_minor_allele_fraction_threshold,
             copy_ratio_peak_min_weight = copy_ratio_peak_min_weight,
             min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region,
@@ -252,11 +247,8 @@ workflow CNVSomaticPairWorkflow {
             gatk_docker = gatk_docker,
             mem_gb = mem_gb_for_call_modeled_segments,
             disk_space_gb = modeled_segments_tumor_disk,
-            use_ssd = use_ssd,
-            cpu = cpu,
             preemptible_attempts = preemptible_attempts
     }
-    # Marton -- replace this and all other instances of CallCopyRatioSegments
 
     # The F=files from other tasks are small enough to just combine into one disk variable and pass to the tumor plotting tasks
     Int plot_tumor_disk = ref_size + ceil(size(DenoiseReadCountsTumor.standardized_copy_ratios, "GB")) + ceil(size(DenoiseReadCountsTumor.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsTumor.het_allelic_counts, "GB")) + ceil(size(ModelSegmentsTumor.modeled_segments, "GB")) + disk_pad
@@ -378,12 +370,6 @@ workflow CNVSomaticPairWorkflow {
             modeled_segments_input_file = ModelSegmentsNormal.modeled_segments,
             load_copy_ratio = load_copy_ratio,
             load_allele_fraction = load_allele_fraction,
-            output_image_dir = output_image_dir,
-            output_calls_dir = output_calls_dir,
-            output_log_dir = output_log_dir,
-            output_image_prefix = output_image_prefix,
-            output_calls_prefix = output_calls_prefix,
-            output_log_prefix = output_log_prefix,
             normal_minor_allele_fraction_threshold = normal_minor_allele_fraction_threshold,
             copy_ratio_peak_min_weight = copy_ratio_peak_min_weight,
             min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region,
@@ -391,8 +377,6 @@ workflow CNVSomaticPairWorkflow {
             gatk_docker = gatk_docker,
             mem_gb = mem_gb_for_call_modeled_segments,
             disk_space_gb = modeled_segments_normal_disk,
-            use_ssd = use_ssd,
-            cpu = cpu,
             preemptible_attempts = preemptible_attempts
         }
 
@@ -454,10 +438,9 @@ workflow CNVSomaticPairWorkflow {
         File modeled_segments_begin_tumor = ModelSegmentsTumor.modeled_segments_begin
         File copy_ratio_parameters_begin_tumor = ModelSegmentsTumor.copy_ratio_parameters_begin
         File allele_fraction_parameters_begin_tumor = ModelSegmentsTumor.allele_fraction_parameters_begin
-        File modeled_segments_tumor = ModelSegmentsTumor.modeled_segments
+        File called_modeled_segments_data_tumor = CallModeledSegmentsTumor.called_modeled_segments_data
         File copy_ratio_parameters_tumor = ModelSegmentsTumor.copy_ratio_parameters
         File allele_fraction_parameters_tumor = ModelSegmentsTumor.allele_fraction_parameters
-        File called_modeled_segments_data_tumor = CallModeledSegmentsTumor.called_modeled_segments_data
         File denoised_copy_ratios_plot_tumor = PlotDenoisedCopyRatiosTumor.denoised_copy_ratios_plot
         File denoised_copy_ratios_lim_4_plot_tumor = PlotDenoisedCopyRatiosTumor.denoised_copy_ratios_lim_4_plot
         File standardized_MAD_tumor = PlotDenoisedCopyRatiosTumor.standardized_MAD
@@ -478,7 +461,7 @@ workflow CNVSomaticPairWorkflow {
         File? modeled_segments_begin_normal = ModelSegmentsNormal.modeled_segments_begin
         File? copy_ratio_parameters_begin_normal = ModelSegmentsNormal.copy_ratio_parameters_begin
         File? allele_fraction_parameters_begin_normal = ModelSegmentsNormal.allele_fraction_parameters_begin
-        File? modeled_segments_normal = ModelSegmentsNormal.modeled_segments
+        File? modeled_segments_normal_data = ModelSegmentsNormal.modeled_segments
         File? copy_ratio_parameters_normal = ModelSegmentsNormal.copy_ratio_parameters
         File? allele_fraction_parameters_normal = ModelSegmentsNormal.allele_fraction_parameters
         File? called_modeled_segments_data_normal = CallModeledSegmentsNormal.called_modeled_segments_data
@@ -647,9 +630,9 @@ task CallModeledSegments {
     File? output_image_dir
     File? output_calls_dir
     File? output_log_dir
-    File? output_image_prefix
-    File? output_calls_prefix
-    File? output_log_prefix
+    String? output_image_prefix
+    String? output_calls_prefix
+    String? output_log_prefix
     Float? normal_minor_allele_fraction_threshold
     Float? copy_ratio_peak_min_weight
     Float? min_fraction_of_points_in_normal_allele_fraction_region
@@ -666,9 +649,9 @@ task CallModeledSegments {
     Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
     Int command_mem_mb = machine_mem_mb - 1000
 
-    File output_image_dir_ = select_first([output_image_dir, "org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/out"])
-    File output_calls_dir_ = select_first([output_calls_dir, "org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/out"])
-    File output_log_dir_ = select_first([output_image_dir, "org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/out"])
+    File output_image_dir_ = select_first([output_image_dir, "out"])
+    File output_calls_dir_ = select_first([output_calls_dir, "out"])
+    File output_log_dir_ = select_first([output_image_dir, "out"])
 
     String output_image_prefix_ = select_first([output_image_prefix, entity_id])
     String output_calls_prefix_ = select_first([output_calls_prefix, entity_id])
