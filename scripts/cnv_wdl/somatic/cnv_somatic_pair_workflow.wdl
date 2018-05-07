@@ -494,7 +494,7 @@ workflow CNVSomaticPairWorkflow {
         File? modeled_segments_normal = ModelSegmentsNormal.modeled_segments
         File? copy_ratio_parameters_normal = ModelSegmentsNormal.copy_ratio_parameters
         File? allele_fraction_parameters_normal = ModelSegmentsNormal.allele_fraction_parameters
-        File? called_copy_ratio_segments_normal = CallCopyRatioSegmentsNormal.called_copy_ratio_segments
+        File? called_copy_ratio_segments_normal = CallModeledSegmentsNormal.called_copy_ratio_segments
         File? denoised_copy_ratios_plot_normal = PlotDenoisedCopyRatiosNormal.denoised_copy_ratios_plot
         File? denoised_copy_ratios_lim_4_plot_normal = PlotDenoisedCopyRatiosNormal.denoised_copy_ratios_lim_4_plot
         File? standardized_MAD_normal = PlotDenoisedCopyRatiosNormal.standardized_MAD
@@ -657,8 +657,8 @@ task ModelSegments {
 task CallModeledSegments {
     String entity_id
     File modeled_segments_input_file
-    Bool? load_copy_ratio
-    Bool? load_allele_fraction
+    Boolean? load_copy_ratio
+    Boolean? load_allele_fraction
     File? output_image_dir
     File? output_calls_dir
     File? output_log_dir
