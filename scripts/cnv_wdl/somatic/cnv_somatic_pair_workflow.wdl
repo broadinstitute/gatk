@@ -249,7 +249,7 @@ workflow CNVSomaticPairWorkflow {
     call CallModeledSegments as CallModeledSegmentsTumor {
         input:
             entity_id = CollectCountsTumor.entity_id,
-            modeled_segments_input_file = modeled_segments_input_file,
+            modeled_segments_input_file = ModelSegmentsTumor.modeled_segments,
             load_copy_ratio = load_copy_ratio,
             load_allele_fraction = load_allele_fraction,
             output_image_dir = output_image_dir,
@@ -388,7 +388,7 @@ workflow CNVSomaticPairWorkflow {
         call CallModeledSegments as CallModeledSegmentsNormal {
             input:
             entity_id = CollectCountsTumor.entity_id,
-            modeled_segments_input_file = modeled_segments_input_file,
+            modeled_segments_input_file = ModelSegmentsNormal.modeled_segments,
             load_copy_ratio = load_copy_ratio,
             load_allele_fraction = load_allele_fraction,
             output_image_dir = output_image_dir,
