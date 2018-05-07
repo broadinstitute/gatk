@@ -16,6 +16,7 @@ import scala.Tuple2;
 import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 final class ReadDepthCluster implements Serializable {
 
@@ -28,9 +29,9 @@ final class ReadDepthCluster implements Serializable {
         this.eventsList = events;
         this.eventsTree = getIntervalTree(eventsList);
         setCopyNumberInfo(copyRatioSegmentOverlapDetector, dictionary);
-        final List<CalledCopyRatioSegment> segments = events.stream()
+        final Set<CalledCopyRatioSegment> segments = events.stream()
                 .flatMap(event -> copyRatioSegmentOverlapDetector.getOverlaps(SVIntervalUtils.convertToSimpleInterval(event.getEvent().getInterval(), dictionary)).stream())
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
         setOverlapInfo(eventsTree, segments, dictionary);
         setNearestCallDistances(copyRatioSegmentOverlapDetector, dictionary);
         this.type = events.isEmpty() ? null : events.iterator().next().getEvent().getEventType();
@@ -78,66 +79,62 @@ final class ReadDepthCluster implements Serializable {
         optimizeOverlapInfo(Utils.stream(eventsTree.iterator()).map(SVIntervalTree.Entry::getValue).collect(Collectors.toList()));
     }
 
+    private static final class OverlappingEventBoundary {
+
+        public int pos;
+        public int index;
+
+        public OverlappingEventBoundary(final int pos, final int index) {
+            this.pos = pos;
+            this.index = index;
+        }
+    }
+
     private static void setOverlapInfoOnSegment(final CalledCopyRatioSegment segment, final List<ReadDepthEvent> overlappers) {
+
+        if (overlappers.isEmpty()) {
+            return;
+        }
 
         final double copyNumber = Math.pow(2.0, segment.getMeanLog2CopyRatio()) * 2;
         final Map<Integer, ReadDepthEvent> overlapperMap = overlappers.stream().collect(Collectors.toMap(event -> event.getId(), event -> event));
         final SimpleInterval interval = segment.getInterval();
-        final List<ReadDepthEvent> startSortedOverlappers = new ArrayList<>(overlappers);
-        Collections.sort(startSortedOverlappers, Comparator.comparingInt(event -> event.getEvent().getStart()));
+        final List<OverlappingEventBoundary> sortedOverlappers = overlappers.stream()
+                .flatMap(event -> Stream.of(new OverlappingEventBoundary(event.getEvent().getStart(), event.getId()), new OverlappingEventBoundary(event.getEvent().getEnd(), event.getId())))
+                .sorted(Comparator.comparingInt(boundary -> boundary.pos))
+                .collect(Collectors.toList());
 
-        final List<ReadDepthEvent> endSortedOverlappers = new ArrayList<>(overlappers);
-        Collections.sort(endSortedOverlappers, Comparator.comparingInt(event -> event.getEvent().getEnd()));
-
-        int lastStart = interval.getStart();
-        int startIndex = 0;
-        int endIndex = 0;
-        final List<Integer> openEvents = new ArrayList<>();
-        while (startIndex < overlappers.size() || endIndex < overlappers.size()) {
-            int nextStart;
-            if (startIndex < overlappers.size()) {
-                nextStart = startSortedOverlappers.get(startIndex).getEvent().getStart();
-                if (nextStart <= interval.getStart()) {
-                    openEvents.add(startSortedOverlappers.get(startIndex).getId());
-                    startIndex++;
-                    continue;
-                }
-            } else {
-                nextStart = interval.getEnd();
+        final Set<Integer> openEvents = new HashSet<>(SVUtils.hashMapCapacity(overlappers.size()));
+        int overlapperIndex = 0;
+        while (overlapperIndex < sortedOverlappers.size() && sortedOverlappers.get(overlapperIndex).pos < interval.getStart()) {
+            openEvents.add(sortedOverlappers.get(overlapperIndex).index);
+            overlapperIndex++;
+        }
+        int lastPos = interval.getStart();
+        boolean reachedEndOfInterval = false;
+        while (!reachedEndOfInterval && overlapperIndex < sortedOverlappers.size()) {
+            int currentPos = sortedOverlappers.get(overlapperIndex).pos;
+            if (currentPos >= interval.getEnd()) {
+                currentPos = interval.getEnd();
+                reachedEndOfInterval = true;
             }
-            int nextEnd;
-            if (endIndex < overlappers.size()) {
-                nextEnd = endSortedOverlappers.get(endIndex).getEvent().getEnd();
-            } else {
-                nextEnd = interval.getEnd();
-            }
-            final int subIntervalLength;
-            final List<Integer> currentOpenEvents = new ArrayList<>(openEvents);
-            if (startIndex < overlappers.size() && nextStart < nextEnd) {
-                subIntervalLength = nextStart - lastStart;
-                lastStart = nextStart;
-                openEvents.add(startSortedOverlappers.get(startIndex).getId());
-                startIndex++;
-            } else if (nextEnd >= interval.getEnd()) {
-                subIntervalLength = interval.getEnd() - lastStart;
-                lastStart = interval.getEnd();
-            } else {
-                subIntervalLength = nextEnd - lastStart;
-                lastStart = nextEnd;
-                openEvents.remove(Integer.valueOf(endSortedOverlappers.get(endIndex).getId()));
-                endIndex++;
-            }
-            for (final Integer id : currentOpenEvents) {
-                final double weight = subIntervalLength / (double) overlapperMap.get(id).getEvent().getSize();
-                final List<Tuple2<Integer,Integer>> overlappingIdsAndSigns = currentOpenEvents.stream()
-                        .filter(eventId -> !eventId.equals(id))
-                        .map(eventId -> new Tuple2<>(id, overlapperMap.get(id).getEvent().getEventType() == SimpleSVType.TYPES.DEL ? -1 : 1))
+            final int currentEventId = sortedOverlappers.get(overlapperIndex).index;
+            int length = currentPos - lastPos;
+            for (final Integer openEventId : openEvents) {
+                final double weight = length / (double) overlapperMap.get(openEventId).getEvent().getSize();
+                final List<Tuple2<Integer,Integer>> overlappingIdsAndSigns = openEvents.stream()
+                        .filter(eventId -> !eventId.equals(openEventId))
+                        .map(eventId -> new Tuple2<>(openEventId, overlapperMap.get(openEventId).getEvent().getEventType() == SimpleSVType.TYPES.DEL ? 1 : -1))
                         .collect(Collectors.toList());
-                overlapperMap.get(id).overlapInfoList.add(new ReadDepthModel.OverlapInfo(overlappingIdsAndSigns, weight, copyNumber));
+                overlapperMap.get(openEventId).overlapInfoList.add(new ReadDepthModel.OverlapInfo(overlappingIdsAndSigns, weight, copyNumber));
             }
-            if (lastStart == interval.getEnd()) {
-                break;
+            if (openEvents.contains(currentEventId)) {
+                openEvents.remove(currentEventId);
+            } else {
+                openEvents.add(currentEventId);
             }
+            lastPos = currentPos;
+            overlapperIndex++;
         }
     }
 

@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypesContext;
+import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFileReader;
 import org.apache.spark.api.java.JavaRDD;
@@ -25,11 +26,9 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSam
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatioSegment;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
-import org.broadinstitute.hellbender.utils.GenomeLocParser;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -41,6 +40,7 @@ import scala.Tuple2;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -142,28 +142,18 @@ public class DiscoverVariantsFromReadDepth extends GATKSparkTool {
     public static final String FILTERED_CALLS_LONG_NAME = "filtered-calls";
     public static final String HIGH_COVERAGE_INTERVALS_LONG_NAME = "high-coverage-intervals";
 
-    @Argument(doc = "Breakpoints list (.vcf)", fullName = BREAKPOINTS_LONG_NAME)
-    private String breakpointVCFPath;
-    @Argument(doc = "Structural variant calls list (.vcf)", fullName = SV_CALLS_LONG_NAME)
-    private String svCallVCFPath;
-    @Argument(doc = "Evidence target links file (.bedpe)", fullName = EVIDENCE_TARGET_LINKS_LONG_NAME)
-    private String evidenceTargetLinksFilePath;
+    @Argument(doc = "Event intervals (.bed)", fullName = "event-intervals")
+    private String eventIntervalsPath;
     @Argument(doc = "CNV segments calls (gCNV .vcf or ModelSegments .seg)", fullName = CNV_CALLS_LONG_NAME)
     private String segmentCallsFilePath;
     @Argument(doc = "Copy number ratio file (.tsv or .hdf5)", fullName = COPY_RATIOS_LONG_NAME)
     private String copyRatioFilePath;
     @Argument(doc = "Assembly contigs (.bam or .sam)", fullName = ASSEMBLY_CONTIGS_LONG_NAME, optional = true)
     private String assemblyBamPath;
-    @Argument(doc = "Output intervals path (.bed)", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
+    @Argument(doc = "Output directory", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String outputPath;
-    @Argument(doc = "Output filtered calls path (.vcf)",fullName = FILTERED_CALLS_LONG_NAME)
-    private String filteredCallsPath;
-    @Argument(doc = "High coverage intervals file path",fullName = HIGH_COVERAGE_INTERVALS_LONG_NAME)
-    private String highCoverageIntervalsPath;
-    @Argument(doc = "Mappable intervals file path",fullName = "mappable-intervals")
-    private String mappableIntervalsPath;
-    @Argument(doc = "One or more blacklisted intervals files",fullName = "blacklist")
-    private List<String > blacklistedPaths;
+    @Argument(doc = "Sample name for output",fullName = "sample-name")
+    private String sampleName;
     @Argument(doc = "Sequence dictionary",fullName = "sequence-dictionary")
     private String sequenceDictionaryPath;
     @Argument(doc = "Truth set (.vcf)",fullName = "truth-intervals", optional = true)
@@ -173,7 +163,6 @@ public class DiscoverVariantsFromReadDepth extends GATKSparkTool {
     private LargeSimpleSVCaller largeSimpleSVCaller;
     private SAMSequenceDictionary dictionary;
     private Collection<ReadDepthEvent> events;
-    private List<VariantContext> filteredCalls;
 
     @Override
     public void runTool(final JavaSparkContext ctx) {
@@ -183,15 +172,6 @@ public class DiscoverVariantsFromReadDepth extends GATKSparkTool {
         final JavaRDD<GATKRead> reads = getUnfilteredReads();
         logger.info("Loading assembly...");
         final Collection<GATKRead> assembly = getReads(assemblyBamPath);
-        logger.info("Loading high coverage intervals...");
-        final List<SVInterval> highCoverageIntervals = getIntervals(highCoverageIntervalsPath, dictionary);
-        logger.info("Loading high coverage intervals...");
-        final List<SVInterval> mappableIntervals = getIntervals(mappableIntervalsPath, dictionary);
-        final List<SVInterval> blacklist = new ArrayList<>();
-        for (final String path : blacklistedPaths) {
-            logger.info("Loading blacklist at " + path);
-            blacklist.addAll(getIntervals(path, dictionary));
-        }
         final Collection<VariantContext> truthSet;
         if (truthIntervalsPath == null) {
             truthSet = null;
@@ -199,40 +179,64 @@ public class DiscoverVariantsFromReadDepth extends GATKSparkTool {
             logger.info("Loading truth set...");
             truthSet = readVCF(truthIntervalsPath, dictionary);
         }
-        logger.info("Loading breakpoints...");
-        final Collection<VariantContext> breakpointCalls = readVCF(breakpointVCFPath, dictionary);
-        logger.info("Loading SV calls...");
-        final Collection<VariantContext> svCalls = readVCF(svCallVCFPath, dictionary);
         logger.info("Loading copy ratio segment calls...");
         final CalledCopyRatioSegmentCollection copyRatioSegments = getCalledCopyRatioSegments(segmentCallsFilePath, dictionary);
-        logger.info("Loading evidence target links...");
-        final Collection<EvidenceTargetLink> evidenceTargetLinks = getEvidenceTargetLinks(evidenceTargetLinksFilePath, dictionary);
         logger.info("Loading copy ratio bins...");
         final CopyRatioCollection copyRatios = getCopyRatios(copyRatioFilePath);
 
-        final List<LargeSimpleSV> largeSimpleSVs = Collections.emptyList(); //TODO
+        final Collection<TypedSVInterval> eventIntervals = getTypedIntervals(eventIntervalsPath, dictionary);
 
-        largeSimpleSVCaller = new LargeSimpleSVCaller(reads, largeSimpleSVs, svCalls, truthSet, assembly, evidenceTargetLinks, copyRatios, copyRatioSegments, highCoverageIntervals, mappableIntervals, blacklist, dictionary, arguments);
+        final List<LargeSimpleSV> largeSimpleSVs = eventIntervals.stream()
+                .map(interval -> {
+                    final SimpleSVType.TYPES type;
+                    if (interval.getType() == StructuralVariantType.DEL) {
+                        type = SimpleSVType.TYPES.DEL;
+                    } else if (interval.getType() == StructuralVariantType.DUP) {
+                        type = SimpleSVType.TYPES.DUP_TANDEM;
+                    } else {
+                        type = SimpleSVType.TYPES.valueOf(interval.getType().name());
+                    }
+                    return new LargeSimpleSV(type, LargeSimpleSV.EvidenceType.READ_PAIR, interval.getStart(), interval.getEnd(), interval.getContig(), 0, 0, 0, 0, null, Collections.emptyList());
+                })
+                .collect(Collectors.toList());
 
-        final Tuple2<Collection<ReadDepthEvent>,List<VariantContext>> result = largeSimpleSVCaller.callEvents(readArguments.getReadFilesNames().get(0), ctx, null);
+        largeSimpleSVCaller = new LargeSimpleSVCaller(reads, largeSimpleSVs, truthSet, assembly, copyRatios, copyRatioSegments, dictionary, arguments);
+
+        final Tuple2<List<ReadDepthEvent>,ReadDepthModel.ReadDepthModelParameters> result = largeSimpleSVCaller.callEvents(readArguments.getReadFilesNames().get(0), ctx, null);
         events = result._1;
-        filteredCalls = result._2;
+        final ReadDepthModel.ReadDepthModelParameters parameters = result._2;
 
-        writeEvents(outputPath, events, dictionary);
-        SVVCFWriter.writeVCF(filteredCalls, filteredCallsPath, dictionary, logger);
+        writeEvents();
+        writeParameters(parameters);
+        //SVVCFWriter.writeVCF(filteredCalls, filteredCallsPath, dictionary, logger);
     }
 
     /**
-     * Writes events collection to BED file
+     * Writes events collection to file
      */
-    private void writeEvents(final String outputPath, final Collection<ReadDepthEvent> events, final SAMSequenceDictionary dictionary) {
-        try (final OutputStream outputStream = BucketUtils.createFile(outputPath)) {
+    private void writeEvents() {
+        final String fileName = sampleName + "-calls.bed";
+        final String filePath = Paths.get(outputPath, fileName).toAbsolutePath().toString();
+        try (final OutputStream outputStream = BucketUtils.createFile(filePath)) {
             outputStream.write(("#" + ReadDepthEvent.getBedHeader() + "\n").getBytes());
             for (final ReadDepthEvent event : events) {
                 outputStream.write((event.toBedString(dictionary) + "\n").getBytes());
             }
         } catch (final IOException e) {
-            throw new GATKException("Error writing output BED file", e);
+            throw new GATKException("Error writing output calls file", e);
+        }
+    }
+
+    /**
+     * Writes parameters to file
+     */
+    private void writeParameters(final ReadDepthModel.ReadDepthModelParameters parameters) {
+        final String fileName = sampleName + "-params.txt";
+        final String filePath = Paths.get(outputPath, fileName).toAbsolutePath().toString();
+        try (final OutputStream outputStream = BucketUtils.createFile(filePath)) {
+            outputStream.write((parameters.toString()).getBytes());
+        } catch (final IOException e) {
+            throw new GATKException("Error writing output parameters file", e);
         }
     }
 
@@ -247,12 +251,23 @@ public class DiscoverVariantsFromReadDepth extends GATKSparkTool {
         }
     }
 
-    private static List<SVInterval> getIntervals(final String path, final SAMSequenceDictionary dictionary) {
+    private static List<TypedSVInterval> getTypedIntervals(final String path, final SAMSequenceDictionary dictionary) {
         if (path != null) {
-            final GenomeLocParser genomeLocParser = new GenomeLocParser(dictionary);
-            return IntervalUtils.parseIntervalArguments(genomeLocParser, path).stream()
-                    .map(genomeLoc -> new SVInterval(genomeLoc.getContigIndex(), genomeLoc.getStart(), genomeLoc.getEnd()))
-                    .collect(Collectors.toList());
+            final File file = new File(path);
+            final List<TypedSVInterval> intervals = new ArrayList<>();
+            final String[] lines = new String(IOUtils.readFileIntoByteArray(file)).split("\n");
+            for (final String line : lines) {
+                if (line.startsWith("#")) continue;
+                final String[] tokens = line.trim().split("\t");
+                final int contig = dictionary.getSequenceIndex(tokens[0]);
+                final int start = Integer.valueOf(tokens[1]);
+                final int end = Integer.valueOf(tokens[2]);
+                final SVInterval interval = new SVInterval(contig, start, end);
+                final StructuralVariantType type = StructuralVariantType.valueOf(tokens[3]);
+                final TypedSVInterval typedInterval = new TypedSVInterval(interval, type);
+                intervals.add(typedInterval);
+            }
+            return intervals;
         }
         return Collections.emptyList();
     }
@@ -291,7 +306,7 @@ public class DiscoverVariantsFromReadDepth extends GATKSparkTool {
                 }
                 final int copyNumber = Integer.valueOf((String) genotype.getExtendedAttribute("CN"));
                 final int numPoints = Integer.valueOf((String) genotype.getExtendedAttribute("NP"));
-                final CopyRatioSegment segment = new CopyRatioSegment(interval, numPoints, Math.log(copyNumber) / Math.log(2.0));
+                final CopyRatioSegment segment = new CopyRatioSegment(interval, numPoints, Math.log(Math.max(2e-29, copyNumber) / 2.0) / Math.log(2.0));
                 final CalledCopyRatioSegment.Call call;
                 if (copyNumber == 2) {
                     call = CalledCopyRatioSegment.Call.NEUTRAL;

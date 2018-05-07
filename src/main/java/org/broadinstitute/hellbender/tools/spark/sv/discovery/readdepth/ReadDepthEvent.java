@@ -28,7 +28,7 @@ final class ReadDepthEvent implements Serializable {
     public double splitReadEvidenceLikelihood;
     public double snpRate;
     public double probability;
-    public boolean isTruePositive;
+    public boolean isTrue;
     public List<ReadDepthModel.OverlapInfo> overlapInfoList;
     public List<Tuple2<Integer,Double>> optimizedOverlapInfoList;
 
@@ -37,7 +37,7 @@ final class ReadDepthEvent implements Serializable {
         this.id = id;
         this.state = 0;
         this.overlappingEventIds = new ArrayList<>();
-        this.isTruePositive = false;
+        this.isTrue = false;
     }
 
     public double getState() {
@@ -57,12 +57,12 @@ final class ReadDepthEvent implements Serializable {
     }
 
     public static String getBedHeader() {
-        return LargeSimpleSV.getBedHeader() + "\tID\tSTATE\tMEAN_CN\tDIST1\tDIST2\tLINK_DENSITY\tMAPPABILITY\tCALL_OVERLAP\tSNP_RATE\tCN_LIK\tDIST_LIK\tCALL_OVERLAP_LIK\tRP_LIK\tSR_LIK\tP\tIS_TP";
+        return LargeSimpleSV.getBedHeader() + "\tID\tSTATE\tMEAN_CN\tDIST1\tDIST2\tLINK_DENSITY\tMAPPABILITY\tCALL_OVERLAP\tSNP_RATE\tCN_LIK\tDIST_LIK\tCALL_OVERLAP_LIK\tRP_LIK\tSR_LIK\tP\tTRUTH";
     }
 
     public String toBedString(final SAMSequenceDictionary dictionary) {
         return event.toBedString(dictionary) + "\t" + id + "\t" + state + "\t" + observedCopyNumber
                 + "\t" + leftDistance + "\t" + rightDistance + "\t" + linkDensity + "\t" + mappabilityIndex + "\t" + copyNumberCallOverlap + "\t" + snpRate
-                + "\t" + copyNumberLikelihood + "\t" + distanceLikelihood + "\t" + copyNumberCallOverlapLikelihood + "\t" + readPairEvidenceLikelihood + "\t" + splitReadEvidenceLikelihood + "\t" + probability + "\t" + (isTruePositive ? 1 : 0);
+                + "\t" + copyNumberLikelihood + "\t" + distanceLikelihood + "\t" + copyNumberCallOverlapLikelihood + "\t" + readPairEvidenceLikelihood + "\t" + splitReadEvidenceLikelihood + "\t" + probability + "\t" + (isTrue ? 1 : 0);
     }
 }

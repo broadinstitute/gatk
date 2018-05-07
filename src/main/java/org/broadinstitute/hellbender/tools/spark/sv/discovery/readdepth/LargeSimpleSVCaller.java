@@ -40,11 +40,7 @@ public class LargeSimpleSVCaller {
     private static final Logger logger = LogManager.getLogger(LargeSimpleSVCaller.class);
 
     private final JavaRDD<GATKRead> reads;
-    private final SVIntervalTree<Object> highCoverageIntervalTree;
-    private final SVIntervalTree<Object> mappableIntervalTree;
-    private final SVIntervalTree<Object> blacklistTree;
     private final SVIntervalTree<LargeSimpleSV> largeSimpleSVSVIntervalTree;
-    private final SVIntervalTree<VariantContext> structuralVariantCallTree;
     private final SVIntervalTree<VariantContext> truthSetTree;
     private final SVIntervalTree<GATKRead> contigTree;
     private final List<Collection<SVCopyRatio>> copyRatios;
@@ -54,26 +50,19 @@ public class LargeSimpleSVCaller {
 
     public LargeSimpleSVCaller(final JavaRDD<GATKRead> reads,
                                final Collection<LargeSimpleSV> largeSimpleSVCollection,
-                               final Collection<VariantContext> structuralVariantCalls,
                                final Collection<VariantContext> truthSet,
                                final Collection<GATKRead> assembledContigs,
-                               final Collection<EvidenceTargetLink> evidenceTargetLinks,
                                final CopyRatioCollection copyRatios,
                                final CalledCopyRatioSegmentCollection copyRatioSegments,
-                               final List<SVInterval> highCoverageIntervals,
-                               final List<SVInterval> mappableIntervals,
-                               final List<SVInterval> blacklist,
                                final SAMSequenceDictionary dictionary,
                                final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments) {
         Utils.nonNull(reads, "Reads RDD cannot be null");
         Utils.nonNull(largeSimpleSVCollection, "SV collection cannot be null");
         Utils.nonNull(assembledContigs, "Contig collection cannot be null");
-        Utils.nonNull(evidenceTargetLinks, "Evidence target link collection cannot be null");
         Utils.nonNull(copyRatios, "Copy ratio collection cannot be null");
         Utils.nonNull(copyRatioSegments, "Copy ratio segments collection cannot be null");
         Utils.nonNull(dictionary, "Dictionary cannot be null");
         Utils.nonNull(arguments, "Parameter arguments collection cannot be null");
-        Utils.nonNull(highCoverageIntervals, "High coverage intervals list cannot be null");
 
         this.reads = reads;
         this.dictionary = dictionary;
@@ -82,18 +71,11 @@ public class LargeSimpleSVCaller {
         logger.info("Building interval trees...");
 
         largeSimpleSVSVIntervalTree = buildLargeSimpleSVTree(largeSimpleSVCollection);
-        structuralVariantCallTree = buildVariantIntervalTree(structuralVariantCalls);
         if (truthSet != null) {
             truthSetTree = buildVariantIntervalTree(truthSet);
         } else {
             truthSetTree = null;
         }
-        highCoverageIntervalTree = buildSVIntervalTree(highCoverageIntervals);
-        mappableIntervalTree = buildSVIntervalTree(mappableIntervals);
-        blacklistTree = buildSVIntervalTree(blacklist);
-
-        final Collection<EvidenceTargetLink> filteredEvidenceTargetLinks = new ArrayList<>(evidenceTargetLinks);
-
         contigTree = buildReadIntervalTree(assembledContigs);
         /* copyRatioOverlapDetector =  getMinimalCopyRatioCollection(copyRatios, copyRatios.getMetadata(),
                 filteredEvidenceTargetLinks, pairedBreakpoints, dictionary, arguments.smallEventSize, MAX_COPY_RATIO_EVENT_SIZE,
@@ -303,35 +285,29 @@ public class LargeSimpleSVCaller {
     /**
      * Returns all events. Searches by iterating over the breakpoint pairs and then the evidence target links.
      */
-    public Tuple2<Collection<ReadDepthEvent>, List<VariantContext>> callEvents(final String inputPath, final JavaSparkContext ctx, final ProgressMeter progressMeter) {
+    public Tuple2<List<ReadDepthEvent>, ReadDepthModel.ReadDepthModelParameters> callEvents(final String inputPath, final JavaSparkContext ctx, final ProgressMeter progressMeter) {
 
-        if (progressMeter != null) {
-            progressMeter.setRecordLabel("intervals");
-        }
 
-        final List<SimpleInterval> eventIntervals = Utils.stream(largeSimpleSVSVIntervalTree.iterator())
+        final SVIntervalTree<GATKRead> readsTree = new SVIntervalTree<>();
+        /*final List<SimpleInterval> eventIntervals = Utils.stream(largeSimpleSVSVIntervalTree.iterator())
                 .map(SVIntervalTree.Entry::getInterval)
                 .map(interval -> SVIntervalUtils.convertToSimpleInterval(interval, dictionary))
                 .collect(Collectors.toList());
-
         final List<Tuple2<SVInterval,GATKRead>> intervalsAndReads = getReads(inputPath, ctx, eventIntervals, dictionary);
-        final SVIntervalTree<GATKRead> readsTree = new SVIntervalTree<>();
         logger.info("Collecting reads...");
         for (final Tuple2<SVInterval,GATKRead> pair : intervalsAndReads) {
             readsTree.put(pair._1, pair._2);
         }
         logger.info("Retrieved " + intervalsAndReads.stream().mapToInt(pair -> pair._2.getLength()).sum() + " reads");
+        */
 
         logger.info("Running read depth model on " + largeSimpleSVSVIntervalTree.size() + " events");
-        final ReadDepthModel readDepthModel = new ReadDepthModel(readsTree, largeSimpleSVSVIntervalTree, copyRatioSegmentOverlapDetector, mappableIntervalTree, dictionary);
-        final Tuple2<Double,List<ReadDepthEvent>> result;
+        final ReadDepthModel readDepthModel = new ReadDepthModel(readsTree, largeSimpleSVSVIntervalTree, copyRatioSegmentOverlapDetector, dictionary);
         if (truthSetTree == null) {
-            result = readDepthModel.solve(ctx);
-        }  else {
-            result = readDepthModel.train(ctx, truthSetTree);
+            final List<ReadDepthEvent> result = readDepthModel.solve(ctx);
+            return new Tuple2<>(result, readDepthModel.getParameters());
         }
-        final Collection<ReadDepthEvent> finalResult = result._2;
-        return new Tuple2<>(finalResult, Collections.emptyList());
+        return readDepthModel.train(ctx, truthSetTree);
     }
 
     public static List<Tuple2<SVInterval,GATKRead>> getReads(final String inputPath, final JavaSparkContext ctx, final List<SimpleInterval> intervals, final SAMSequenceDictionary dictionary) {
