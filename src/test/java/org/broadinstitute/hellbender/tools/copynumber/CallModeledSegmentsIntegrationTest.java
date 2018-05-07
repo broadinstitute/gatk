@@ -52,7 +52,7 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
         return result.iterator();
     }
 
-    @Test(dataProvider = "simulatedData")
+    @Test(groups={"python"}, dataProvider = "simulatedData")
     public void testSimulatedData(final File inputFile,
                                   final File truthFile,
                                   final boolean loadCopyRatio,
