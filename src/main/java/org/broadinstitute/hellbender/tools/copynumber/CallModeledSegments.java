@@ -48,15 +48,22 @@ import java.util.*;
  * <pre>
  * gatk CallModeledSegments \
  *   --input somatic_modelFinal.seg \
- *   --load_copy_ratio true \
- *   --load_allele_fraction true \
- *   --output_image_dir output_fig_dir \
- *   --output_calls_dir output_file_dir \
- *   --output_image_prefix somatic_1 \
- *   --output_calls_prefix somatic_1
+ *   --load-copy-ratio true \
+ *   --load-allele-fraction true \
+ *   --output-image-dir output_fig_dir \
+ *   --output-calls-dir output_file_dir \
+ *   --output-log-dir output_log_dir \
+ *   --output-image-prefix my_somatic_run_001 \
+ *   --output-calls-prefix my_somatic_run_001 \
+ *   --output-log-prefix my_somatic_run_001 \
+ *   --normal-minor-allele-fraction-threshold 0.475 \
+ *   --copy-ratio-peak-min-weight 0.03 \
+ *   --min-fraction-of-points-in-normal-allele-fraction-region 0.15
+ *
  * </pre>
  * @author Marton Kanasz-Nagy &lt;mkanaszn@broadinstitute.org&gt;
  */
+
 @CommandLineProgramProperties(
         summary = "Determines the baseline contig ploidy for germline samples given counts data",
         oneLineSummary = "Determines the baseline contig ploidy for germline samples given counts data",
@@ -70,35 +77,34 @@ public final class CallModeledSegments extends CommandLineProgram {
     }
 
     // Arugments given by the user
-    private static final String SEGMENT_CALLER_PYTHON_SCRIPT = "modeled_segments_caller_cli.py";
-    public static final String LOAD_COPY_RATIO_LONG_NAME = "load_copy_ratio";
-    public static final String LOAD_ALLELE_FRACTION_LONG_NAME = "load_allele_fraction";
-    public static final String OUTPUT_IMAGE_DIR_LONG_NAME = "output_image_dir";
-    public static final String OUTPUT_CALLS_DIR_LONG_NAME = "output_calls_dir";
-    public static final String OUTPUT_LOG_DIR_LONG_NAME = "output_log_dir";
-    public static final String OUTPUT_IMAGE_PREFIX_LONG_NAME = "output_image_prefix";
-    public static final String OUTPUT_CALLS_PREFIX_LONG_NAME = "output_calls_prefix";
-    public static final String OUTPUT_LOG_PREFIX_LONG_NAME = "output_log_prefix";
-    public static final String OUTPUT_IMAGE_SUFFIX_LONG_NAME = "output_image_suffix";
-    public static final String OUTPUT_CALLS_SUFFIX_LONG_NAME = "output_calls_suffix";
+    private static final String SEGMENT_CALLER_PYTHON_SCRIPT = "modeled-segments-caller-cli.py";
+    public static final String LOAD_COPY_RATIO_LONG_NAME = "load-copy-ratio";
+    public static final String LOAD_ALLELE_FRACTION_LONG_NAME = "load-allele-fraction";
+    public static final String OUTPUT_IMAGE_DIR_LONG_NAME = "output-image-dir";
+    public static final String OUTPUT_CALLS_DIR_LONG_NAME = "output-calls-dir";
+    public static final String OUTPUT_LOG_DIR_LONG_NAME = "output-log-dir";
+    public static final String OUTPUT_IMAGE_PREFIX_LONG_NAME = "output-image-prefix";
+    public static final String OUTPUT_CALLS_PREFIX_LONG_NAME = "output-calls-prefix";
+    public static final String OUTPUT_LOG_PREFIX_LONG_NAME = "output-log-prefix";
+    public static final String OUTPUT_IMAGE_SUFFIX_LONG_NAME = "output-image-suffix";
+    public static final String OUTPUT_CALLS_SUFFIX_LONG_NAME = "output-calls-suffix";
+    public static final String NORMAL_MINOR_ALLELE_FRACTION_THRESHOLD = "normal-minor-allele-fraction-threshold";
+    public static final String COPY_RATIO_PEAK_MIN_WEIGHT = "copy-ratio-peak-min-weight";
+    public static final String MIN_FRACTION_OF_POINTS_IN_NORMAL_ALLELE_FRACTION_REGION = "min-fraction-of-points-in-normal-allele-fraction-region";
+    public static final String INTERACTIVE_RUN_LONG_NAME = "interactive";
+    private static final String INTERACTIVE_OUTPUT_DEL_AMPL_IMAGE_SUFFIX = "interactive-output-del-ampl-image-suffix";
+    private static final String INTERACTIVE_OUTPUT_SCATTER_PLOT_SUFFIX = "interactive-output-scatter-plot-suffix";
+    private static final String INTERACTIVE_OUTPUT_ALLELE_FRACTION_PLOT_SUFFIX = "interactive-output-allele-fraction-plot-suffix";
+    private static final String INTERACTIVE_OUTPUT_COPY_RATIO_SUFFIX = "interactive-output-copy-ratio-suffix";
+    private static final String INTERACTIVE_OUTPUT_COPY_RATIO_CLUSTERING_SUFFIX = "interactive-output-copy-ratio-clustering-suffix";
+
+    // Adiditional arguments and variables
     public static final String OUTPUT_IMAGE_SUFFIX_DEFAULT_VALUE = ".jpg";
     public static final String OUTPUT_CALLS_SUFFIX_DEFAULT_VALUE = ".called.seg";
-    public static final String INTERACTIVE_RUN_LONG_NAME = "interactive";
-
-    public static final String NORMAL_MINOR_ALLELE_FRACTION_THRESHOLD = "normal_minor_allele_fraction_threshold";
-    public static final String COPY_RATIO_PEAK_MIN_WEIGHT = "copy_ratio_peak_min_weight";
-    public static final String MIN_FRACTION_OF_POINTS_IN_NORMAL_ALLELE_FRACTION_REGION = "min_fraction_of_points_in_normal_allele_fraction_region";
-
-    // Adiditional arguments
-    private static final String INTERACTIVE_OUTPUT_DEL_AMPL_IMAGE_SUFFIX = "interactive_output_del_ampl_image_suffix";
     public static final String INTERACTIVE_OUTPUT_DEL_AMPL_IMAGE_SUFFIX_DEFAULT_VALUE = "_del_ampl.jpg";
-    private static final String INTERACTIVE_OUTPUT_SCATTER_PLOT_SUFFIX = "interactive_output_scatter_plot_suffix";
     public static final String INTERACTIVE_OUTPUT_SCATTER_PLOT_SUFFIX_DEFAULT_VALUE = "_scatter_plot.jpg";
-    private static final String INTERACTIVE_OUTPUT_ALLELE_FRACTION_PLOT_SUFFIX = "interactive_output_allele_fraction_plot_suffix";
     public static final String INTERACTIVE_OUTPUT_ALLELE_FRACTION_PLOT_SUFFIX_DEFAULT_VALUE = "_allele_fraction_CN1_and_CN2_candidate_intervals.jpg";
-    private static final String INTERACTIVE_OUTPUT_COPY_RATIO_SUFFIX = "interactive_output_copy_ratio_suffix";
     public static final String INTERACTIVE_OUTPUT_COPY_RATIO_SUFFIX_DEFAULT_VALUE = "_copy_ratio_fit.jpg";
-    private static final String INTERACTIVE_OUTPUT_COPY_RATIO_CLUSTERING_SUFFIX = "interactive_output_copy_ratio_clustering_suffix";
     public static final String INTERACTIVE_OUTPUT_COPY_RATIO_CLUSTERING_SUFFIX_DEFAULT_VALUE = "_copy_ratio_clusters.jpg";
 
     @Argument(

@@ -20,9 +20,6 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
     private static final File OUTPUT_IMAGE_DIR = createTempDir(SIMULATED_DATA_DIR.getAbsolutePath() + "/test/figs/");
     private static final File OUTPUT_CALL_DIR = createTempDir(SIMULATED_DATA_DIR.getAbsolutePath() + "/test/calls/");
     private static final File OUTPUT_LOG_DIR =  createTempDir(SIMULATED_DATA_DIR.getAbsolutePath() + "/test/logs/");
-    // private static final File OUTPUT_IMAGE_DIR = new File("/Users/mkanaszn/Desktop/tmp/figs/");
-    // private static final File OUTPUT_CALL_DIR = new File("/Users/mkanaszn/Desktop/tmp/calls/");
-    // private static final File OUTPUT_LOG_DIR =  new File("/Users/mkanaszn/Desktop/tmp/logs/");
     private static final File INPUT_SIMULATED_NORMAL_DATA = new File(SIMULATED_DATA_DIR, "normal_sample_data.seg");
     private static final File INPUT_SIMULATED_NORMAL_TRUTH = new File(SIMULATED_DATA_DIR, "normal_sample_truth.seg");
     private static final File INPUT_SIMULATED_NORMAL_NOISY_DATA = new File(SIMULATED_DATA_DIR, "normal_noisy_sample_data.seg");
