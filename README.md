@@ -54,17 +54,7 @@ releases of the toolkit.
     * Java 8
     * Python 2.6 or greater (required to run the `gatk` frontend script)
     * Python 3.6.2, along with a set of additional Python packages, is required to run some tools and workflows.
-      GATK uses the [Conda](https://conda.io/docs/index.html) package manager to establish and manage the
-      environment and dependencies required by these tools. The GATK Docker image comes with this environment
-      pre-configured. In order to establish an environment suitable to run these tools outside of the Docker image, the
-      conda [gatkcondaenv.yml](https://github.com/broadinstitute/gatk/blob/master/scripts/gatkcondaenv.yml) file is
-      provided. To establish the conda environment locally, [Conda](https://conda.io/docs/index.html) must first
-      be installed. Then, create the gatk environment by running the command ```conda env create -n gatk -f gatkcondaenv.yml```
-      (developers should run ```./gradlew createPythonPackageArchive```, followed by
-      ```conda env create -n gatk -f scripts/gatkcondaenv.yml``` from within the root of the repository clone).
-      To activate the environment once it has been created, run the command ```source activate gatk```. See the
-      [Conda](https://conda.io/docs/user-guide/tasks/manage-environments.html) documentation for
-      additional information about using and managing Conda environments.
+      See [Python Dependencies](#python) for more information.
     * R 3.2.5 (needed for producing plots in certain tools)
 * To build GATK:
     * A Java 8 JDK
@@ -82,6 +72,31 @@ releases of the toolkit.
 * Pre-packaged Docker images with all needed dependencies installed can be found on
   [our dockerhub repository](https://hub.docker.com/r/broadinstitute/gatk/). This requires a recent version of the
    docker client, which can be found on the [docker website](https://www.docker.com/get-docker).
+* Python Dependencies:<a name="python"></a>
+    * GATK4 uses the [Conda](https://conda.io/docs/index.html) package manager to establish and manage the
+      Python environment and dependencies required by GATK tools that have a Python dependency. There are two different
+      conda environments that can be used:
+        * The ```gatk``` environment, which has no special hardware requirements. The GATK Docker image comes with the
+          "gatk" environment pre-configured.
+        * The ```gatk-intel``` environment, which requires and uses Intel (AVX2 or AVX-512) hardware acceleration to
+          increase performance.
+    * To establish the conda environment when not using the Docker image, a conda environment must first be "created", and
+      then "activated":
+        * First, make sure [Miniconda or Conda](https://conda.io/docs/index.html) is installed (Miniconda is sufficient).
+        * To "create" the conda environment:
+            * If running from a zip or tar distribution, run the command ```conda env create -f gatkcondaenv.yml``` to
+              create the ```gatk``` environment, or the command ```conda env create -f gatkcondaenv.intel.yml``` to create
+              the ```gatk-intl``` environment.
+            * If running from a cloned repository, run ```./gradlew localDevCondaEnv```. This generates the Python
+              package archive and conda yml dependency file(s) in the build directory, and also creates (or updates)
+              the local  ```gatk``` conda environment. (To create the ```gatk-intel``` conda environment once the files
+              have been generated, run the command ```conda env create -f gatkcondaenv.intel.yml```).
+        * To "activate" the conda environment (the conda environment must be activated within the same shell from which
+          GATK is run):
+             * Execute the shell command ```source activate gatk``` to activate the ```gatk``` environment, or
+               ```source activate gatk-intel``` to activate the ```gatk-intel``` environment.
+        * See the [Conda](https://conda.io/docs/user-guide/tasks/manage-environments.html) documentation for
+          additional information about using and managing Conda environments.
 
 ## <a name="quickstart">Quick Start Guide</a>
 
