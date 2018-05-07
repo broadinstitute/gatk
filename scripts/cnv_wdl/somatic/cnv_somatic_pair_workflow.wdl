@@ -441,7 +441,6 @@ workflow CNVSomaticPairWorkflow {
 
     output {
         File preprocessed_intervals = PreprocessIntervals.preprocessed_intervals
-
         File read_counts_entity_id_tumor = CollectCountsTumor.entity_id
         File read_counts_tumor = CollectCountsTumor.counts
         File allelic_counts_entity_id_tumor = CollectAllelicCountsTumor.entity_id
