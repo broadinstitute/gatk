@@ -805,18 +805,24 @@ public abstract class GATKTool extends CommandLineProgram {
     /**
      * A method to allow a user to inject data sources after initialization that were not specified as command-line
      * arguments.
+     *
+     * @param filePath path to the Feature file to register
+     * @param name what to call the Feature input
+     * @param featureType class of features
+     * @param featureQueryLookahead look ahead this many bases during queries that produce cache misses
      * @return The {@link FeatureInput} used as the key for this data source.
      */
     protected FeatureInput<? extends Feature> addFeatureInputsAfterInitialization(final String filePath,
                                                                                   final String name,
-                                                                                  final Class<? extends Feature> featureType) {
+                                                                                  final Class<? extends Feature> featureType,
+                                                                                  final int featureQueryLookahead) {
 
-        final FeatureInput<? extends Feature> featureInput = new FeatureInput<>(name + FeatureInput.FEATURE_ARGUMENT_TAG_DELIMITER + filePath);
+        final FeatureInput<? extends Feature> featureInput = new FeatureInput<>(filePath, name);
 
         //Add datasource to the feature manager too so that it can be queried. Setting lookahead to 0 to avoid caching.
         //Note: we are disabling lookahead here because of windowed queries that need to "look behind" as well.
         features.addToFeatureSources(
-                0,
+                featureQueryLookahead,
                 featureInput,
                 featureType,
                 cloudPrefetchBuffer,
