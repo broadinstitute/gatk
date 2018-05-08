@@ -47,15 +47,11 @@ import java.util.*;
  *
  * <pre>
  * gatk CallModeledSegments \
- *   --input somatic_modelFinal.seg \
+ *   -I somatic_modelFinal.seg \
+ *   -O output_dir \
  *   --load-copy-ratio true \
  *   --load-allele-fraction true \
- *   --output-image-dir output_fig_dir \
- *   --output-calls-dir output_file_dir \
- *   --output-log-dir output_log_dir \
- *   --output-image-prefix my_somatic_run_001 \
- *   --output-calls-prefix my_somatic_run_001 \
- *   --output-log-prefix my_somatic_run_001 \
+ *   --output-prefix my_somatic_run_001 \
  *   --normal-minor-allele-fraction-threshold 0.475 \
  *   --copy-ratio-peak-min-weight 0.03 \
  *   --min-fraction-of-points-in-normal-allele-fraction-region 0.15
@@ -77,15 +73,10 @@ public final class CallModeledSegments extends CommandLineProgram {
     }
 
     // Arugments given by the user
-    private static final String SEGMENT_CALLER_PYTHON_SCRIPT = "modeled-segments-caller-cli.py";
+    private static final String SEGMENT_CALLER_PYTHON_SCRIPT = "modeled_segments_caller_cli.py";
     public static final String LOAD_COPY_RATIO_LONG_NAME = "load-copy-ratio";
     public static final String LOAD_ALLELE_FRACTION_LONG_NAME = "load-allele-fraction";
-    public static final String OUTPUT_IMAGE_DIR_LONG_NAME = "output-image-dir";
-    public static final String OUTPUT_CALLS_DIR_LONG_NAME = "output-calls-dir";
-    public static final String OUTPUT_LOG_DIR_LONG_NAME = "output-log-dir";
-    public static final String OUTPUT_IMAGE_PREFIX_LONG_NAME = "output-image-prefix";
-    public static final String OUTPUT_CALLS_PREFIX_LONG_NAME = "output-calls-prefix";
-    public static final String OUTPUT_LOG_PREFIX_LONG_NAME = "output-log-prefix";
+    public static final String OUTPUT_PREFIX_LONG_NAME = "output-prefix";
     public static final String OUTPUT_IMAGE_SUFFIX_LONG_NAME = "output-image-suffix";
     public static final String OUTPUT_CALLS_SUFFIX_LONG_NAME = "output-calls-suffix";
     public static final String NORMAL_MINOR_ALLELE_FRACTION_THRESHOLD = "normal-minor-allele-fraction-threshold";
@@ -95,7 +86,7 @@ public final class CallModeledSegments extends CommandLineProgram {
     private static final String INTERACTIVE_OUTPUT_DEL_AMPL_IMAGE_SUFFIX = "interactive-output-del-ampl-image-suffix";
     private static final String INTERACTIVE_OUTPUT_SCATTER_PLOT_SUFFIX = "interactive-output-scatter-plot-suffix";
     private static final String INTERACTIVE_OUTPUT_ALLELE_FRACTION_PLOT_SUFFIX = "interactive-output-allele-fraction-plot-suffix";
-    private static final String INTERACTIVE_OUTPUT_COPY_RATIO_SUFFIX = "interactive-output-copy-ratio-suffix";
+    private static final String INTERACTIVE_OUTPUT_COPY_RATIO_SUFFIX = "interactive_output_copy_ratio_suffix";
     private static final String INTERACTIVE_OUTPUT_COPY_RATIO_CLUSTERING_SUFFIX = "interactive-output-copy-ratio-clustering-suffix";
 
     // Adiditional arguments and variables
@@ -117,18 +108,18 @@ public final class CallModeledSegments extends CommandLineProgram {
     private List<File> inputFile = new ArrayList<>();
 
     @Argument(
-            doc = "Prefix of output image files.",
-            fullName = OUTPUT_IMAGE_PREFIX_LONG_NAME,
-            optional = false
+            doc = "Output directory for the called copy-ratio segments file, the plots and the log file.",
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
-    private String outputImagePrefix="";
+    private File outputDir;
 
     @Argument(
-            doc = "Prefix of output calls file.",
-            fullName = OUTPUT_CALLS_PREFIX_LONG_NAME,
+            doc = "Prefix of output files.",
+            fullName = OUTPUT_PREFIX_LONG_NAME,
             optional = false
     )
-    private String outputCallsPrefix="";
+    private String outputPrefix="";
 
     @Argument(
             doc = "Prefix of output image files.",
@@ -143,27 +134,6 @@ public final class CallModeledSegments extends CommandLineProgram {
             optional = true
     )
     private String outputCallsSuffix=OUTPUT_CALLS_SUFFIX_DEFAULT_VALUE;
-
-    @Argument(
-            doc = "Output directory for plots. ",
-            fullName = OUTPUT_IMAGE_DIR_LONG_NAME,
-            optional = false
-    )
-    private String outputImageDir="";
-
-    @Argument(
-            doc = "Output directory for the results file.",
-            fullName = OUTPUT_CALLS_DIR_LONG_NAME,
-            optional = false
-    )
-    private String outputCallsFileDir="";
-
-    @Argument(
-            doc = "Output directory for the log file.",
-            fullName = OUTPUT_LOG_DIR_LONG_NAME,
-            optional = true
-    )
-    private String outputLogDir="";
 
     @Argument(
             doc = "Whether auxiliary plots should be saved.",
@@ -185,13 +155,6 @@ public final class CallModeledSegments extends CommandLineProgram {
             optional = true
     )
     private String loadAlleleFraction="true";
-
-    @Argument(
-            doc = "Prefix of the log file.",
-            fullName = OUTPUT_LOG_PREFIX_LONG_NAME,
-            optional = true
-    )
-    private String logFilenamePrefix="";
 
     @Argument(
             doc = "If the allele fraction value of a peak fitted to the data is above this threshold and its copy ratio "
@@ -237,18 +200,11 @@ public final class CallModeledSegments extends CommandLineProgram {
         final boolean loadCR = Boolean.parseBoolean(loadCopyRatio);
         final boolean loadAF = Boolean.parseBoolean(loadAlleleFraction);
         final boolean interactive = Boolean.parseBoolean(interactiveRun);
-        if (interactive && outputImagePrefix.equals("")) {
+        if (interactive && outputPrefix.equals("")) {
                 // In case no name prefix is given to the images, we specify it using the input file's path
                 String strArray0[] = inFile.getAbsolutePath().split("/");
                 String strArray1[] = strArray0[strArray0.length - 1].split(".");
-                outputImagePrefix = strArray1[0];
-        }
-
-        if (interactive && outputCallsPrefix.equals("")) {
-            // In case no name prefix is given to the calls file, we specify it using the input file's path
-            String strArray0[] = inFile.getAbsolutePath().split("/");
-            String strArray1[] = strArray0[strArray0.length - 1].split(".");
-            outputCallsPrefix = strArray1[0];
+                outputPrefix = strArray1[0];
         }
 
         //call python inference code
@@ -266,42 +222,30 @@ public final class CallModeledSegments extends CommandLineProgram {
 
     private boolean executeSegmentCaller(final File inFile, boolean loadCR, boolean loadAF, boolean interactive) {
         final PythonScriptExecutor executor = new PythonScriptExecutor(true);
-        final String outputImageDirArg = Utils.nonEmpty(outputImageDir).endsWith(File.separator)
-                ? outputImageDir
-                : outputImageDir + File.separator;
-
-        final String outputFileDirArg = Utils.nonEmpty(outputCallsFileDir).endsWith(File.separator)
-                ? outputCallsFileDir
-                : outputCallsFileDir + File.separator;
-
-        final String outputLogDirArg = Utils.nonEmpty(outputLogDir).endsWith(File.separator)
-                ? outputLogDir
-                : outputLogDir + File.separator;
+        final String outputDirArg = Utils.nonEmpty(outputDir.getAbsolutePath()).endsWith(File.separator)
+                ? outputDir.getAbsolutePath()
+                : outputDir.getAbsolutePath() + File.separator;
 
         final String script;
         script = SEGMENT_CALLER_PYTHON_SCRIPT;
 
         final List<String> arguments = new ArrayList<>(Arrays.asList(
-                "--input_file=" + inFile.getAbsolutePath(),
-                "--" + OUTPUT_CALLS_DIR_LONG_NAME + "=" + outputFileDirArg,
-                "--" + OUTPUT_IMAGE_DIR_LONG_NAME + "=" + outputImageDirArg,
-                "--" + OUTPUT_LOG_DIR_LONG_NAME + "=" + outputLogDirArg,
-                "--" + OUTPUT_IMAGE_PREFIX_LONG_NAME + "=" + String.valueOf(outputImagePrefix),
-                "--" + OUTPUT_CALLS_PREFIX_LONG_NAME + "=" + String.valueOf(outputCallsPrefix),
-                "--" + OUTPUT_IMAGE_SUFFIX_LONG_NAME + "=" + String.valueOf(outputImageSuffix),
-                "--" + OUTPUT_CALLS_SUFFIX_LONG_NAME + "=" + String.valueOf(outputCallsSuffix),
-                "--" + LOAD_COPY_RATIO_LONG_NAME + "=" + String.valueOf(loadCR),
-                "--" + LOAD_ALLELE_FRACTION_LONG_NAME + "=" + String.valueOf(loadAF),
-                "--" + INTERACTIVE_RUN_LONG_NAME + "=" + String.valueOf(interactive),
-                "--" + INTERACTIVE_OUTPUT_DEL_AMPL_IMAGE_SUFFIX + "=" + INTERACTIVE_OUTPUT_DEL_AMPL_IMAGE_SUFFIX_DEFAULT_VALUE,
-                "--" + INTERACTIVE_OUTPUT_SCATTER_PLOT_SUFFIX + "=" + INTERACTIVE_OUTPUT_SCATTER_PLOT_SUFFIX_DEFAULT_VALUE,
-                "--" + INTERACTIVE_OUTPUT_ALLELE_FRACTION_PLOT_SUFFIX + "=" + INTERACTIVE_OUTPUT_ALLELE_FRACTION_PLOT_SUFFIX_DEFAULT_VALUE,
-                "--" + INTERACTIVE_OUTPUT_COPY_RATIO_SUFFIX + "=" + INTERACTIVE_OUTPUT_COPY_RATIO_SUFFIX_DEFAULT_VALUE,
-                "--" + INTERACTIVE_OUTPUT_COPY_RATIO_CLUSTERING_SUFFIX + "=" + INTERACTIVE_OUTPUT_COPY_RATIO_CLUSTERING_SUFFIX_DEFAULT_VALUE,
-                "--" + OUTPUT_LOG_PREFIX_LONG_NAME + "=" + String.valueOf(logFilenamePrefix),
-                "--" + NORMAL_MINOR_ALLELE_FRACTION_THRESHOLD + "=" + String.valueOf(normalMinorAlleleFractionThreshold),
-                "--" + COPY_RATIO_PEAK_MIN_WEIGHT + "=" + String.valueOf(copyRatioPeakMinWeight),
-                "--" + MIN_FRACTION_OF_POINTS_IN_NORMAL_ALLELE_FRACTION_REGION + "=" + String.valueOf(minFractionOfPointsInNormalAlleleFractionRegion)));
+                "--" + StandardArgumentDefinitions.INPUT_LONG_NAME + "=" + inFile.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME + "=" + outputDirArg,
+                "--" + OUTPUT_PREFIX_LONG_NAME.replace('-','_') + "=" + String.valueOf(outputPrefix),
+                "--" + OUTPUT_IMAGE_SUFFIX_LONG_NAME.replace('-','_') + "=" + String.valueOf(outputImageSuffix),
+                "--" + OUTPUT_CALLS_SUFFIX_LONG_NAME.replace('-','_') + "=" + String.valueOf(outputCallsSuffix),
+                "--" + LOAD_COPY_RATIO_LONG_NAME.replace('-','_') + "=" + String.valueOf(loadCR),
+                "--" + LOAD_ALLELE_FRACTION_LONG_NAME.replace('-','_') + "=" + String.valueOf(loadAF),
+                "--" + INTERACTIVE_RUN_LONG_NAME.replace('-','_') + "=" + String.valueOf(interactive),
+                "--" + INTERACTIVE_OUTPUT_DEL_AMPL_IMAGE_SUFFIX.replace('-','_') + "=" + INTERACTIVE_OUTPUT_DEL_AMPL_IMAGE_SUFFIX_DEFAULT_VALUE,
+                "--" + INTERACTIVE_OUTPUT_SCATTER_PLOT_SUFFIX.replace('-','_') + "=" + INTERACTIVE_OUTPUT_SCATTER_PLOT_SUFFIX_DEFAULT_VALUE,
+                "--" + INTERACTIVE_OUTPUT_ALLELE_FRACTION_PLOT_SUFFIX.replace('-','_') + "=" + INTERACTIVE_OUTPUT_ALLELE_FRACTION_PLOT_SUFFIX_DEFAULT_VALUE,
+                "--" + INTERACTIVE_OUTPUT_COPY_RATIO_SUFFIX.replace('-','_') + "=" + INTERACTIVE_OUTPUT_COPY_RATIO_SUFFIX_DEFAULT_VALUE,
+                "--" + INTERACTIVE_OUTPUT_COPY_RATIO_CLUSTERING_SUFFIX.replace('-','_') + "=" + INTERACTIVE_OUTPUT_COPY_RATIO_CLUSTERING_SUFFIX_DEFAULT_VALUE,
+                "--" + NORMAL_MINOR_ALLELE_FRACTION_THRESHOLD.replace('-','_') + "=" + String.valueOf(normalMinorAlleleFractionThreshold),
+                "--" + COPY_RATIO_PEAK_MIN_WEIGHT.replace('-','_') + "=" + String.valueOf(copyRatioPeakMinWeight),
+                "--" + MIN_FRACTION_OF_POINTS_IN_NORMAL_ALLELE_FRACTION_REGION.replace('-','_') + "=" + String.valueOf(minFractionOfPointsInNormalAlleleFractionRegion)));
 
         return executor.executeScript(
                 new Resource(script, CallModeledSegments.class),
