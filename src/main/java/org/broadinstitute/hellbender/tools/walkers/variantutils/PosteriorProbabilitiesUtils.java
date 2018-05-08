@@ -4,11 +4,14 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -18,51 +21,123 @@ public final class PosteriorProbabilitiesUtils {
     private PosteriorProbabilitiesUtils(){}
 
     /**
-     * Calculates phred-scaled posterior probabilities for genotypes given the data and allele frequency priors.
+     *  A class to wrangle all the various and sundry genotype posterior options,
+     *  mostly from CalculateGenotypePosteriors
      */
+    public final static class PosteriorProbabilitiesOptions {
+        double snpPriorDirichlet = HomoSapiensConstants.SNP_HETEROZYGOSITY;
+        double indelPriorDirichlet = HomoSapiensConstants.INDEL_HETEROZYGOSITY;
+        boolean useInputSamples = true;
+        boolean useMLEAC = true;
+        boolean ignoreInputSamplesForMissingResources = false;
+        boolean useFlatPriorsForIndels = false;
+        boolean addInfoAnnotations = true;
+
+        public PosteriorProbabilitiesOptions(final double snpPriorDirichlet,
+                                             final double indelPriorDirichlet,
+                                             final boolean useInputSamples,
+                                             final boolean useMLEAC,
+                                             final boolean ignoreInputSamplesForMissingResources,
+                                             final boolean useFlatPriorsForIndels,
+                                             final boolean addInfoAnnotations) {
+            this.snpPriorDirichlet = snpPriorDirichlet;
+            this.indelPriorDirichlet = indelPriorDirichlet;
+            this.useInputSamples = useInputSamples;
+            this.useMLEAC = useMLEAC;
+            this.ignoreInputSamplesForMissingResources = ignoreInputSamplesForMissingResources;
+            this.useFlatPriorsForIndels = useFlatPriorsForIndels;
+            this.addInfoAnnotations = addInfoAnnotations;
+        }
+    }
+
+         /**
+         * Calculates phred-scaled posterior probabilities for genotypes given the data and allele frequency priors.
+         *
+         * @param vc1 input variant context
+         * @param resources variants to use to calculate genotype priors (should already be checked for matching start position)
+         * @param numRefSamplesFromMissingResources the number of reference samples to use for the prior (already accounted for resource missingness)
+         * @return a VariantContext with PLs and PPs in the genotypes and a PG tag for the Phred-scaled prior in the INFO field if
+         */
     public static VariantContext calculatePosteriorProbs(final VariantContext vc1,
                                                          final Collection<VariantContext> resources,
                                                          final int numRefSamplesFromMissingResources,
-                                                         final double globalFrequencyPriorDirichlet,
-                                                         final boolean useInputSamples,
-                                                         final boolean useAC,
-                                                         final boolean useACoff) {
+                                                         final PosteriorProbabilitiesOptions opts) {
         Utils.nonNull(vc1, "VariantContext vc1 is null");
         final Map<Allele,Integer> totalAlleleCounts = new HashMap<>();
-        //only use discovered allele count if there are at least 10 samples
-        final boolean useDiscoveredAC = !useACoff && vc1.getNSamples() >= 10;
 
-        if(vc1.isSNP()) {
-            //store the allele counts for each allele in the variant priors
-            resources.forEach(r -> addAlleleCounts(totalAlleleCounts, r, useAC));
+        //only use discovered allele count for missing resources if there are at least 10 samples or if we have reference samples
+        final boolean useDiscoveredACForMissing = !opts.ignoreInputSamplesForMissingResources && (vc1.getNSamples() >= 10 || numRefSamplesFromMissingResources != 0);
+        int referenceAlleleCountForMissing = 0;
 
-            //add the allele counts from the input samples (if applicable)
-            if ( useInputSamples ) {
-                addAlleleCounts(totalAlleleCounts,vc1,useAC);
+        //deletions introduce ref allele padding issues
+        List<VariantContext> allAlleles = new ArrayList<>();
+        allAlleles.addAll(resources);
+        allAlleles.add(vc1);
+        final Allele commonRef = GATKVariantContextUtils.determineReferenceAllele(allAlleles, new SimpleInterval(vc1.getContig(), vc1.getStart(), vc1.getEnd()));
+        final List<Allele> origAllelesRemapped = ReferenceConfidenceVariantContextMerger.remapAlleles(vc1, commonRef);
+
+
+        if(resources.isEmpty()) {
+            referenceAlleleCountForMissing += HomoSapiensConstants.DEFAULT_PLOIDY*numRefSamplesFromMissingResources;  //because we're dealing with diploids
+        }
+        //store the allele counts for each allele in the variant priors
+        for (final VariantContext r : resources) {
+            if (r.getStart() == vc1.getStart()) {
+                final List<Allele> remappedAlleles = ReferenceConfidenceVariantContextMerger.remapAlleles(r, commonRef);
+                addAlleleCounts(totalAlleleCounts, r, remappedAlleles, !opts.useMLEAC);
             }
-
-            //add zero allele counts for any reference alleles not seen in priors (if applicable)
-            final int existingRefCounts = totalAlleleCounts.getOrDefault(vc1.getReference(), 0);
-            totalAlleleCounts.put(vc1.getReference(), existingRefCounts + numRefSamplesFromMissingResources);
         }
 
-        // now extract the counts of the alleles in vc1 in order
-        final double[] alleleCounts = vc1.getAlleles().stream()
-                .mapToDouble(a -> globalFrequencyPriorDirichlet + totalAlleleCounts.getOrDefault(a, 0)).toArray();
+        //add the allele counts from the input samples (if applicable)
+        if ( (opts.useInputSamples && !resources.isEmpty()) || (resources.isEmpty() && useDiscoveredACForMissing)) {
+            addAlleleCounts(totalAlleleCounts,vc1,origAllelesRemapped, !opts.useMLEAC);
+        }
 
-        final List<double[]> likelihoods = vc1.getGenotypes().stream().map(g -> parseLikelihoods(g)).collect(Collectors.toList());
+        //add zero allele counts for any reference alleles not seen in priors (if applicable)
+        final int existingRefCounts = totalAlleleCounts.getOrDefault(commonRef, 0);
+        totalAlleleCounts.put(commonRef, existingRefCounts + referenceAlleleCountForMissing);
 
-        //TODO: for now just use priors that are SNPs because indel priors will bias SNP calls
-        final boolean useFlatPriors = !vc1.isSNP() || (resources.isEmpty() && !useDiscoveredAC) || resources.stream().anyMatch(r -> !r.isSNP()) ;
 
-        final List<double[]> posteriors = calculatePosteriorProbs(likelihoods,alleleCounts,vc1.getMaxPloidy(2), useFlatPriors);
+
+        // now extract the counts of the alleles in vc1
+        //if we allow deletion priors, then we need to harmonize the allele representations between vc1 and totalAlleleCounts
+        final Set<Allele> allAllelesRemapped = totalAlleleCounts.keySet();
+        final Set<Allele> resourceOnlyAlleles = new HashSet<>(allAllelesRemapped);
+        resourceOnlyAlleles.removeAll(origAllelesRemapped);
+
+        //this array will have the same allele ordering as the VC
+        double[] alleleCounts = new double[origAllelesRemapped.size()];
+        for (int i=0; i<origAllelesRemapped.size(); i++) {
+            Allele a = origAllelesRemapped.get(i);
+            if (a.length() == commonRef.length()) {  //use SNP prior for SNPs
+                alleleCounts[i] = opts.snpPriorDirichlet + totalAlleleCounts.getOrDefault(a, 0);
+            }
+            else if (a.isSymbolic()) {   //use the greater of the priors for non-ref
+                alleleCounts[i] = Math.max(opts.snpPriorDirichlet, opts.indelPriorDirichlet) + totalAlleleCounts.getOrDefault(a, 0);
+            }
+            else {   //use indel prior for non-SNPs
+                alleleCounts[i] = opts.indelPriorDirichlet + totalAlleleCounts.getOrDefault(a, 0);
+            }
+        }
+
+        //put resource alleles not in input VC into non-ref, if applicable
+        int nonRefInd = vc1.getAlleleIndex(Allele.NON_REF_ALLELE);
+        if (nonRefInd != -1) {
+            alleleCounts[nonRefInd] = Math.max(opts.snpPriorDirichlet, opts.indelPriorDirichlet) + resourceOnlyAlleles.stream().mapToDouble(a -> totalAlleleCounts.get(a)).sum();
+        }
+
+        final List<double[]> likelihoods = vc1.getGenotypes().stream().map(g -> parsePosteriorsIntoProbSpace(g)).collect(Collectors.toList());
+
+        final boolean useFlatPriors = (!vc1.isSNP() && opts.useFlatPriorsForIndels) || (resources.isEmpty() && !useDiscoveredACForMissing && numRefSamplesFromMissingResources == 0);
+
+        final List<double[]> posteriors = calculatePosteriorProbs(likelihoods,alleleCounts,vc1.getMaxPloidy(HomoSapiensConstants.DEFAULT_PLOIDY), useFlatPriors);
 
         final GenotypesContext newContext = GenotypesContext.create();
         for ( int genoIdx = 0; genoIdx < vc1.getNSamples(); genoIdx ++ ) {
             final GenotypeBuilder builder = new GenotypeBuilder(vc1.getGenotype(genoIdx));
             builder.phased(vc1.getGenotype(genoIdx).isPhased());
             if ( posteriors.get(genoIdx) != null ) {
-                GATKVariantContextUtils.makeGenotypeCall(vc1.getMaxPloidy(2), builder,
+                GATKVariantContextUtils.makeGenotypeCall(vc1.getMaxPloidy(HomoSapiensConstants.DEFAULT_PLOIDY), builder,
                         GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, posteriors.get(genoIdx), vc1.getAlleles());
                 builder.attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY,
                         Utils.listFromPrimitives(GenotypeLikelihoods.fromLog10Likelihoods(posteriors.get(genoIdx)).getAsPLs()));
@@ -71,15 +146,35 @@ public final class PosteriorProbabilitiesUtils {
         }
 
         final List<Integer> priors = Utils.listFromPrimitives(
-                GenotypeLikelihoods.fromLog10Likelihoods(getDirichletPrior(alleleCounts, vc1.getMaxPloidy(2),useFlatPriors)).getAsPLs());
+                GenotypeLikelihoods.fromLog10Likelihoods(getDirichletPrior(alleleCounts, vc1.getMaxPloidy(HomoSapiensConstants.DEFAULT_PLOIDY),useFlatPriors)).getAsPLs());
 
-        final VariantContextBuilder builder = new VariantContextBuilder(vc1).genotypes(newContext).attribute(GATKVCFConstants.GENOTYPE_PRIOR_KEY, priors);
-        // add in the AC, AF, and AN attributes
-        VariantContextUtils.calculateChromosomeCounts(builder, true);
+        final VariantContextBuilder builder = new VariantContextBuilder(vc1).genotypes(newContext);
+        final boolean isHomRefBlock = vc1.getAlternateAlleles().size() == 1 && vc1.getAlleles().contains(Allele.NON_REF_ALLELE);
+        if (!isHomRefBlock) {
+            // update/add in the AC, AF, and AN attributes and genotype prior -- this is kind of a cheat because we're doing it
+            // outside the annotation engine, which has the header line responsibility for these fields.  For CGP the
+            // headers should already be there, but for HaplotypeCaller GVCF mode we'll add the headers in HaplotypeCallerEngine::makeVCFHeader.
+            VariantContextUtils.calculateChromosomeCounts(builder.attribute(GATKVCFConstants.GENOTYPE_PRIOR_KEY, priors), true);
+        }
         return builder.make();
     }
 
-    private static double[] parseLikelihoods(Genotype genotype) {
+    public static int[] parsePosteriorsIntoPhredSpace(Genotype genotype) {
+        final Object PPfromVCF = genotype.getExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
+
+        if (PPfromVCF == null){
+            return genotype.getPL();
+        } else if (PPfromVCF instanceof String) {
+            final String PPstring = (String) PPfromVCF;
+            //samples not in trios will have PP tag like ".,.,." if family priors are applied
+            return PPstring.charAt(0)=='.' ? genotype.getPL() :
+                    Arrays.stream(PPstring.split(",")).mapToInt(i -> Integer.parseInt(i)).toArray();
+        } else {
+            return Arrays.stream(extractInts(PPfromVCF)).toArray();
+        }
+    }
+
+    public static double[] parsePosteriorsIntoProbSpace(Genotype genotype) {
         final Object PPfromVCF = genotype.getExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
 
         if (PPfromVCF == null){
@@ -196,7 +291,7 @@ public final class PosteriorProbabilitiesUtils {
      * @param context - line to be parsed from the input VCF file
      * @param useAC - use allele count annotation value from VariantContext (vs. MLEAC)
      */
-    private static void addAlleleCounts(final Map<Allele,Integer> counts, final VariantContext context, final boolean useAC) {
+    private static void addAlleleCounts(final Map<Allele,Integer> counts, final VariantContext context, final List<Allele> remappedAlleles, final boolean useAC) {
         final int[] ac;
         //use MLEAC value...
         if ( context.hasAttribute(GATKVCFConstants.MLE_ALLELE_COUNT_KEY) && ! useAC ) {
@@ -215,18 +310,20 @@ public final class PosteriorProbabilitiesUtils {
             }
         }
 
-        //since the allele count for the reference allele is not given in the VCF format,
-        //calculate it from the allele number minus the total counts for alternate alleles
-        for ( final Allele allele : context.getAlleles() ) {
+        for ( int i = 0; i < context.getAlleles().size(); i++ ) {
+            final Allele allele = remappedAlleles.get(i);
+            final Allele origAllele = context.getAlleles().get(i);
             final int count;
             if ( allele.isReference() ) {
+                //since the allele count for the reference allele is not given in the VCF format,
+                //calculate it from the allele number minus the total counts for alternate alleles
                 if ( context.hasAttribute(VCFConstants.ALLELE_NUMBER_KEY) ) {
                     count = Math.max(context.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY,-1) - (int) MathUtils.sum(ac),0); //occasionally an MLEAC value will sneak in that's greater than the AN
                 } else {
                     count = Math.max(context.getCalledChrCount() - (int) MathUtils.sum(ac),0);
                 }
             } else {
-                count = ac[context.getAlternateAlleles().indexOf(allele)];
+                count = ac[context.getAlternateAlleles().indexOf(origAllele)];
             }
             //if this allele isn't in the map yet, add it
             if ( ! counts.containsKey(allele) ) {

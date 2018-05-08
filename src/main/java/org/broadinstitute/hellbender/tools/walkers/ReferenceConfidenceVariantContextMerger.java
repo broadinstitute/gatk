@@ -166,8 +166,7 @@ public final class ReferenceConfidenceVariantContextMerger {
      * @return never {@code null}
      */
     //TODO as part of a larger refactoring effort {@link #remapAlleles} can be merged with {@link GATKVariantContextUtils#remapAlleles}.
-    @VisibleForTesting
-    static List<Allele> remapAlleles(final VariantContext vc, final Allele refAllele) {
+    public static List<Allele> remapAlleles(final VariantContext vc, final Allele refAllele) {
         final Allele vcRef = vc.getReference();
         final byte[] refBases = refAllele.getBases();
         final int extraBaseCount = refBases.length - vcRef.getBases().length;

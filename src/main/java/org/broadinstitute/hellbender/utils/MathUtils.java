@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import org.apache.commons.math3.distribution.EnumeratedDistribution;
+import org.apache.commons.math3.exception.DimensionMismatchException;
 import org.apache.commons.math3.exception.NotStrictlyPositiveException;
 import org.apache.commons.math3.exception.NumberIsTooLargeException;
 import org.apache.commons.math3.linear.RealMatrix;
@@ -356,6 +357,28 @@ public final class MathUtils {
 
     public static double[] posteriors(double[] log10Priors, double[] log10Likelihoods) {
         return normalizeFromLog10ToLinearSpace(MathArrays.ebeAdd(log10Priors, log10Likelihoods));
+    }
+
+    public static int[] normalizePLs(int[] PLs) {
+        final int[] newPLs = new int[PLs.length];
+        final int smallest = arrayMin(PLs);
+        for(int i=0; i<PLs.length; i++) {
+            newPLs[i] = PLs[i]-smallest;
+        }
+        return newPLs;
+    }
+
+    public static int[] ebeAdd(final int[] a, final int[] b)
+        throws DimensionMismatchException {
+            if (a.length != b.length) {
+                throw new DimensionMismatchException(a.length, b.length);
+            }
+
+            final int[] result = a.clone();
+            for (int i = 0; i < a.length; i++) {
+                result[i] += b[i];
+            }
+            return result;
     }
 
     // sum of int -> double[] function mapped to an index range
@@ -1185,6 +1208,17 @@ public final class MathUtils {
     public static double arrayMax(final double[] array) {
         Utils.nonNull(array);
         return array[maxElementIndex(array)];
+    }
+
+    public static int arrayMin(final int[] array) {
+        Utils.nonNull(array);
+        int min=array[0];
+        for(int i=0; i<array.length; i++) {
+            if(array[i] < min) {
+                min = array[i];
+            }
+        }
+        return min;
     }
 
     /**

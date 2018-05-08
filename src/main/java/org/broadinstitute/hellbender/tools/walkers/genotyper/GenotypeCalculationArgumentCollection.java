@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
+import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 
@@ -34,6 +36,9 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
         this.MAX_ALTERNATE_ALLELES = other.MAX_ALTERNATE_ALLELES;
         this.inputPrior = new ArrayList<>(other.inputPrior);
         this.samplePloidy = other.samplePloidy;
+        this.applyPriors = other.applyPriors;
+        this.supportVariants = other.supportVariants;
+        this.numRefIfMissing = other.numRefIfMissing;
     }
 
     /**
@@ -165,4 +170,27 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      */
     @Argument(shortName="ploidy", fullName="sample-ploidy", doc="Ploidy (number of chromosomes) per sample. For pooled data, set to (Number of samples in each pool * Sample Ploidy).", optional=true)
     public int samplePloidy = HomoSapiensConstants.DEFAULT_PLOIDY;
+
+    /**
+     * Apply population priors to genotype likelihoods.  If specified, a population resource VCF must be supplied via the -supporting argument.
+     */
+    @Argument(fullName = "apply-priors", optional = true)
+    public boolean applyPriors = false;
+
+    /**
+     * Supporting external panel. Allele counts from this panel (taken from AC,AN or MLEAC,AN or raw genotypes) will
+     * be used to inform the frequency distribution underlying the genotype priors. These files must be VCF 4.2 spec or later.
+     * Note that unlike CalculateGenotypePosteriors, HaplotypeCaller only allows one supporting callset.
+     */
+    @Argument(fullName="supporting-callsets", shortName = "supporting", doc="Other callsets to use in generating genotype posteriors", optional=true)
+    public FeatureInput<VariantContext> supportVariants = null;
+
+    /**
+     * When a variant is not seen in a panel, this argument controls whether to infer (and with what effective strength)
+     * that only reference alleles were observed at that site. E.g. "If not seen in 1000Genomes, treat it as AC=0,
+     * AN=2000". This is applied across all external panels, so if numRefIsMissing = 10, and the variant is absent in
+     * two panels, this confers evidence of AC=0,AN=20.
+     */
+    @Argument(fullName="num-reference-samples-if-no-call",doc="Number of hom-ref genotypes to infer at sites not present in a panel",optional=true)
+    public int numRefIfMissing = 0;
 }

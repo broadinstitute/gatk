@@ -38,6 +38,8 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
 
     private final PloidyModel ploidyModel;
     private final ReferenceConfidenceMode referenceConfidenceMode;
+    protected final double snpHeterozygosity;
+    protected final double indelHeterozygosity;
 
     private final int maxGenotypeCountToEnumerate;
     private final Map<Integer, Integer> practicalAlleleCountForPloidy = new HashMap<>();
@@ -55,6 +57,8 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
         genotypingModel = new IndependentSampleGenotypesModel();
         maxGenotypeCountToEnumerate = configuration.genotypeArgs.MAX_GENOTYPE_COUNT;
         referenceConfidenceMode = configuration.emitReferenceConfidence;
+        snpHeterozygosity = configuration.genotypeArgs.snpHeterozygosity;
+        indelHeterozygosity = configuration.genotypeArgs.indelHeterozygosity;
     }
 
     @Override

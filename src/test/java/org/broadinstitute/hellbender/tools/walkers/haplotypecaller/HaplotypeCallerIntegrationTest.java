@@ -292,6 +292,36 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testGVCFModeGenotypePosteriors() throws Exception {
+        Utils.resetRandomGenerator();
+
+        final String inputFileName = NA12878_20_21_WGS_bam;
+        final String referenceFileName =b37_reference_20_21;
+
+        final File output = createTempFile("testGVCFModeIsConsistentWithPastResults", ".g.vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.testGVCFMode.gatk4.posteriors.g.vcf");
+
+        final String[] args = {
+                "-I", inputFileName,
+                "-R", referenceFileName,
+                "-L", "20:10000000-10100000",
+                "-O", output.getAbsolutePath(),
+                "-ERC", "GVCF",
+                "--apply-priors",
+                "-supporting", largeFileTestDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf",
+                "--num-reference-samples-if-no-call", "2500",
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "-lenient",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
+        };
+
+        runCommandLine(args);
+
+        // Test for an exact match against past results
+        IntegrationTestSpec.assertEqualTextFiles(output, expected);
+    }
+
+    @Test
     public void testGenotypeGivenAllelesMode() throws IOException {
         Utils.resetRandomGenerator();
 

@@ -12,6 +12,7 @@ import htsjdk.variant.vcf.VCFSimpleHeaderLine;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.PloidyModel;
+import org.broadinstitute.hellbender.tools.walkers.variantutils.PosteriorProbabilitiesUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -27,6 +28,7 @@ import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 
 import java.util.*;
 import java.util.stream.DoubleStream;
@@ -42,6 +44,9 @@ public final class ReferenceConfidenceModel {
 
     private final SampleList samples;
     private final int indelInformativeDepthIndelSize;
+    private final int numRefSamplesForPrior;
+
+    private final PosteriorProbabilitiesUtils.PosteriorProbabilitiesOptions options;
 
     /**
      * Surrogate quality score for no base calls.
@@ -156,7 +161,8 @@ public final class ReferenceConfidenceModel {
      */
     public ReferenceConfidenceModel(final SampleList samples,
                                     final SAMFileHeader header,
-                                    final int indelInformativeDepthIndelSize) {
+                                    final int indelInformativeDepthIndelSize,
+                                    final int numRefForPrior) {
         Utils.nonNull(samples, "samples cannot be null");
         Utils.validateArg( samples.numberOfSamples() > 0, "samples cannot be empty");
         Utils.nonNull(header, "header cannot be empty");
@@ -165,6 +171,15 @@ public final class ReferenceConfidenceModel {
 
         this.samples = samples;
         this.indelInformativeDepthIndelSize = indelInformativeDepthIndelSize;
+        this.numRefSamplesForPrior = numRefForPrior;
+        final boolean useInputSamples = false;  //by definition ref-conf will be single-sample; inputs should get ignored but let's be explicit
+        final boolean useMLEAC = true;
+        final boolean ignoreInputSamplesForMissingVariants = true;
+        final boolean useFlatPriorsForIndels = false;
+        final boolean applyInfoAnnotations = false;  //keep the homRef info field simple -- priors can be derived from PPs since we keep PLs
+        this.options = new PosteriorProbabilitiesUtils.PosteriorProbabilitiesOptions(HomoSapiensConstants.SNP_HETEROZYGOSITY,
+                HomoSapiensConstants.INDEL_HETEROZYGOSITY, useInputSamples, useMLEAC, ignoreInputSamplesForMissingVariants,
+                useFlatPriorsForIndels, applyInfoAnnotations);
     }
 
     /**
@@ -175,6 +190,17 @@ public final class ReferenceConfidenceModel {
         final Set<VCFHeaderLine> headerLines = new LinkedHashSet<>();
         headerLines.add(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE_NAME, "Represents any possible alternative allele at this location"));
         return headerLines;
+    }
+
+    public List<VariantContext> calculateRefConfidence(final Haplotype refHaplotype,
+                                                       final Collection<Haplotype> calledHaplotypes,
+                                                       final SimpleInterval paddedReferenceLoc,
+                                                       final AssemblyRegion activeRegion,
+                                                       final ReadLikelihoods<Haplotype> readLikelihoods,
+                                                       final PloidyModel ploidyModel,
+                                                       final List<VariantContext> variantCalls) {
+        return calculateRefConfidence(refHaplotype, calledHaplotypes, paddedReferenceLoc, activeRegion, readLikelihoods,
+                ploidyModel, variantCalls, false, Collections.emptyList(), -1, -1);
     }
 
     /**
@@ -204,7 +230,11 @@ public final class ReferenceConfidenceModel {
                                                        final AssemblyRegion activeRegion,
                                                        final ReadLikelihoods<Haplotype> readLikelihoods,
                                                        final PloidyModel ploidyModel,
-                                                       final List<VariantContext> variantCalls) {
+                                                       final List<VariantContext> variantCalls,
+                                                       final boolean applyPriors,
+                                                       final List<VariantContext> VCpriors,
+                                                       final double SNPdirichletPrior,
+                                                       final double INDELdirichletPrior) {
         Utils.nonNull(refHaplotype, "refHaplotype cannot be null");
         Utils.nonNull(calledHaplotypes, "calledHaplotypes cannot be null");
         Utils.validateArg(calledHaplotypes.contains(refHaplotype), "calledHaplotypes must contain the refHaplotype");
@@ -228,24 +258,34 @@ public final class ReferenceConfidenceModel {
             final int offset = curPos.getStart() - refSpan.getStart();
 
             final VariantContext overlappingSite = getOverlappingVariantContext(curPos, variantCalls);
+            final VariantContext currentPrior = getMatchingPrior(curPos, overlappingSite, VCpriors);
             if ( overlappingSite != null && overlappingSite.getStart() == curPos.getStart() ) {
-                results.add(overlappingSite);
+                if (applyPriors) {
+                    results.add(PosteriorProbabilitiesUtils.calculatePosteriorProbs(overlappingSite, currentPrior != null? Collections.singletonList(currentPrior) : Collections.emptyList(),
+                            numRefSamplesForPrior, options));
+                }
+                else {
+                    results.add(overlappingSite);
+                }
             } else {
                 // otherwise emit a reference confidence variant context
-                results.add(makeReferenceConfidenceVariantContext(ploidy, ref, sampleName, globalRefOffset, pileup, curPos, offset));
+                results.add(makeReferenceConfidenceVariantContext(ploidy, ref, sampleName, globalRefOffset, pileup, curPos, offset, applyPriors, currentPrior));
             }
         }
 
         return results;
     }
 
-    private VariantContext makeReferenceConfidenceVariantContext(final int ploidy,
+
+   private VariantContext makeReferenceConfidenceVariantContext(final int ploidy,
                                                                  final byte[] ref,
                                                                  final String sampleName,
                                                                  final int globalRefOffset,
                                                                  final ReadPileup pileup,
                                                                  final Locatable curPos,
-                                                                 final int offset) {
+                                                                 final int offset,
+                                                                 final boolean applyPriors,
+                                                                 final VariantContext VCprior) {
         // Assume infinite population on a single sample.
         final int refOffset = offset + globalRefOffset;
         final byte refBase = ref[refOffset];
@@ -275,8 +315,14 @@ public final class ReferenceConfidenceModel {
         gb.GQ(GATKVariantContextUtils.calculateGQFromPLs(leastConfidenceGLsAsPLs));
         gb.PL(leastConfidenceGLsAsPLs);
 
-        vcb.genotypes(gb.make());
-        return vcb.make();
+        if(!applyPriors) {
+            vcb.genotypes(gb.make());
+            return vcb.make();
+        }
+        else {
+            return PosteriorProbabilitiesUtils.calculatePosteriorProbs(vcb.genotypes(gb.make()).make(), VCprior != null? Collections.singletonList(VCprior) : Collections.emptyList(), numRefSamplesForPrior, options);
+            //TODO FIXME: after new-qual refactoring, these should be static calls to AF calculator
+        }
     }
 
     /**
@@ -460,6 +506,24 @@ public final class ReferenceConfidenceModel {
             }
         }
         return overlaps;
+    }
+
+    /**
+     * Assumes each variant in priorList has a different start
+     * Note that we don't have to match alleles because the PosteriorProbabilitesUtils will take care of that
+     * @param curPos position of interest for genotyping
+     * @param call (may be null)
+     * @param priorList priors within the current ActiveRegion
+     * @return prior VC representing the same variant position as call (may be null)
+     */
+    VariantContext getMatchingPrior(final Locatable curPos, final VariantContext call, final Collection<VariantContext> priorList) {
+        final int position = call != null? call.getStart() : curPos.getStart();
+        for ( final VariantContext vc : priorList ) {
+            if ( vc.getStart() == position ) {  //for deletions in priors, we only want to count them at the start position
+                return vc;
+            }
+        }
+        return null;
     }
 
     /**

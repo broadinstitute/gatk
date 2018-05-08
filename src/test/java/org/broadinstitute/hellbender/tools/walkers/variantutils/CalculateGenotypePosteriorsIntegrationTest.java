@@ -27,6 +27,35 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
     private String getThreeMemberNonTrioTest = dir + "threeMemberNonTrioTest_chr1.vcf";
 
     @Test
+    public void testDefaultsWithPanel() throws IOException {
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                " -O %s" +
+                        " -R " + b37_reference_20_21 +    //NOTE: we need a reference for -L
+                        " -L 20:10,000,000-10,010,000" +
+                        " -supporting " + largeDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf" +
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false" +
+                        " -V " + dir + "NA12878.Jan2013.haplotypeCaller.subset.indels.vcf",
+                Collections.singletonList(dir + "expectedCGP_testDefaultsWithPanel.vcf")
+        );
+        spec.executeTest("testDefaultsWithPanel", this);
+    }
+
+    @Test
+    public void testNumRefWithPanel() throws IOException {
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                " -O %s" +
+                        " -R " + b37_reference_20_21 +    //NOTE: we need a reference for -L
+                        " -L 20:10,000,000-10,010,000" +
+                        " -supporting " + largeDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf" +
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false" +
+                        " -V " + dir + "NA12878.Jan2013.haplotypeCaller.subset.indels.vcf" +
+                        " --num-reference-samples-if-no-call 2500",
+                Collections.singletonList(dir + "expectedCGP_testNumRefWithPanel.vcf")
+        );
+        spec.executeTest("testDefaultsWithPanel", this);
+    }
+
+    @Test
     //use the first 20 variants to save time; they have a nice range of AC from 4 to over 4000
     public void testUsingDiscoveredAF() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
