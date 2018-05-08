@@ -649,9 +649,9 @@ task CallModeledSegments {
     Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
     Int command_mem_mb = machine_mem_mb - 1000
 
-    File output_image_dir_ = select_first([output_image_dir, "out"])
-    File output_calls_dir_ = select_first([output_calls_dir, "out"])
-    File output_log_dir_ = select_first([output_image_dir, "out"])
+    File output_image_dir_ = select_first([output_image_dir, "out/out_image"])
+    File output_calls_dir_ = select_first([output_calls_dir, "out/out_calls"])
+    File output_log_dir_ = select_first([output_image_dir, "out/out_log"])
 
     String output_image_prefix_ = select_first([output_image_prefix, entity_id])
     String output_calls_prefix_ = select_first([output_calls_prefix, entity_id])
