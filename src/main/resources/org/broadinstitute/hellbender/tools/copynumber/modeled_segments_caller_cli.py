@@ -9,47 +9,23 @@ parser = argparse.ArgumentParser(description="gCNV contig ploidy and read depth 
 # add tool-specific args
 group = parser.add_argument_group(title="Required arguments")
 
-group.add_argument("--input_file",
+group.add_argument("--input",
                    type=str,
                    required=True,
                    default=argparse.SUPPRESS,
                    help="Input .seg file (which is an output of ModelSegments).")
 
-group.add_argument("--output_image_dir",
+group.add_argument("--output",
                    type=str,
                    required=False,
                    default=argparse.SUPPRESS,
-                   help="Output path to the image file showing the plots of the segments.")
+                   help="Directory containing all output files.")
 
-group.add_argument("--output_log_dir",
-                   type=str,
-                   required=False,
-                   default="",
-                   help="Directory containing the log file if specified.")
-
-group.add_argument("--output_calls_dir",
+group.add_argument("--output_prefix",
                    type=str,
                    required=True,
                    default=argparse.SUPPRESS,
-                   help="Output path to the file containing the list of called intervals.")
-
-group.add_argument("--output_image_prefix",
-                   type=str,
-                   required=True,
-                   default=argparse.SUPPRESS,
-                   help="Prefix of the output image filenames.")
-
-group.add_argument("--output_calls_prefix",
-                   type=str,
-                   required=True,
-                   default=argparse.SUPPRESS,
-                   help="Prefix of the output calls filenames.")
-
-group.add_argument("--output_log_prefix",
-                   type=str,
-                   required=False,
-                   default="",
-                   help="Prefix of the log file. If left empty, no logging will occur.")
+                   help="Prefix of the output filenames.")
 
 group.add_argument("--output_image_suffix",
                    type=str,
@@ -149,18 +125,18 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Run code
-    data = LoadAndSampleCrAndAf(args.input_file,
+    data = LoadAndSampleCrAndAf(args.input,
                                 load_CR=str2bool(args.load_copy_ratio),
                                 load_AF=str2bool(args.load_allele_fraction),
-                                output_log_dir=args.output_log_dir,
-                                output_log_prefix=args.output_log_prefix
+                                output_log_dir=args.output,
+                                output_log_prefix=args.output_prefix
                                 )
 
     caller = ModeledSegmentsCaller(data, interactive=args.interactive,
-                       output_image_dir=args.output_image_dir,
-                       output_calls_dir=args.output_calls_dir,
-                       output_image_prefix=args.output_image_prefix,
-                       output_calls_prefix=args.output_calls_prefix,
+                       output_image_dir=args.output,
+                       output_calls_dir=args.output,
+                       output_image_prefix=args.output_prefix,
+                       output_calls_prefix=args.output_prefix,
                        output_image_suffix=args.output_image_suffix,
                        output_calls_suffix=args.output_calls_suffix,
                        interactive_output_del_ampl_image_suffix=args.interactive_output_del_ampl_image_suffix,
