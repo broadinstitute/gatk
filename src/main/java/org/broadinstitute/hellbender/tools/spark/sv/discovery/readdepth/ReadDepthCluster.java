@@ -25,6 +25,8 @@ final class ReadDepthCluster implements Serializable {
     private final SVIntervalTree<ReadDepthEvent> eventsTree;
     private final SimpleSVType.TYPES type;
 
+    public static int MEAN_INSERT_SIZE = 500;
+
     public ReadDepthCluster(final List<ReadDepthEvent> events, final OverlapDetector<CalledCopyRatioSegment> copyRatioSegmentOverlapDetector, final SAMSequenceDictionary dictionary) {
         this.eventsList = events;
         this.eventsTree = getIntervalTree(eventsList);
@@ -197,8 +199,8 @@ final class ReadDepthCluster implements Serializable {
                         rightDistance = rightDistanceTest;
                     }
                 }
-                event.leftDistance = Math.log(1 + Math.abs(leftDistance));
-                event.rightDistance = Math.log(1 + Math.abs(rightDistance));
+                event.leftDistance = Math.abs(leftDistance) / (double) MEAN_INSERT_SIZE; //Math.log(1 + Math.abs(leftDistance));
+                event.rightDistance = Math.abs(rightDistance) / (double) MEAN_INSERT_SIZE; //Math.log(1 + Math.abs(rightDistance));
             }
         }
     }

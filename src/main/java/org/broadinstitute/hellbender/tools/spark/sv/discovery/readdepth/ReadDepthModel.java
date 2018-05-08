@@ -190,6 +190,7 @@ public final class ReadDepthModel implements Serializable {
     }
 
     public Tuple2<List<ReadDepthEvent>,ReadDepthModelParameters> train(final JavaSparkContext ctx, final SVIntervalTree<VariantContext> truthSetTree) {
+        setEventTrueFlags(getEvents(), truthSetTree);
         List<ReadDepthCluster> clusters = clusteredEvents.values().stream().flatMap(List::stream).collect(Collectors.toList());
         final int numEvents = clusters.stream().mapToInt(cluster -> cluster.getEventsTree().size()).sum();
         final JavaRDD<ReadDepthCluster> clustersRDD = ctx.parallelize(clusters);
@@ -209,7 +210,6 @@ public final class ReadDepthModel implements Serializable {
             event.readPairEvidenceLikelihood = computeReadPairEvidenceLikelihood(eventStates, event, parameters);
             event.splitReadEvidenceLikelihood = computeSplitReadEvidenceLikelihood(eventStates, event, parameters);
         }
-        setEventTrueFlags(events, truthSetTree);
         return new Tuple2<>(events,parameters);
     }
 
@@ -224,7 +224,7 @@ public final class ReadDepthModel implements Serializable {
 
         final Supplier<double[]> sampler = () -> parameterStepSampler(standardNormal);
         final SimulatedAnnealingSolver parameterSolver = new SimulatedAnnealingSolver(size, energyFunction, sampler, lowerBound, upperBound);
-        final double finalEnergy = parameterSolver.solve(x0, 10000, 10);
+        final double finalEnergy = parameterSolver.solve(x0, 1000, 10);
 
         //final GradientDescentSolver parameterSolver = new GradientDescentSolver(energyFunction, size, 0.1, 0.001);
         //final double finalEnergy = parameterSolver.solve(x0, 2000, 0.1, 1);
@@ -244,11 +244,12 @@ public final class ReadDepthModel implements Serializable {
             x[i] = Math.min(upperBounds[i], Math.max(lowerBounds[i], x[i]));
         }
         parametersX.setParameters(x);
+        System.out.println(parametersX.toString());
         final long seedX = seed + new Double(Arrays.stream(x).sum()).hashCode();
-        return clusters.map(cluster -> sampleStates(cluster, 10000, parametersX, seed + seedX)).mapToDouble(cluster -> computeTrainingError(cluster, truthSetTree.getValue())).sum() / numEvents;
+        return clusters.map(cluster -> sampleStates(cluster, 1000, parametersX, seed + seedX)).mapToDouble(cluster -> computeTrainingError(cluster, truthSetTree.getValue())).sum() / numEvents;
     }
 
-    public static void setEventTrueFlags(final List<ReadDepthEvent> events, final SVIntervalTree<VariantContext> truthSetTree) {
+    public static void setEventTrueFlags(final Collection<ReadDepthEvent> events, final SVIntervalTree<VariantContext> truthSetTree) {
         for (final ReadDepthEvent event : events) {
             event.isTrue = SVIntervalUtils.getIntervalsWithReciprocalOverlapInTree(event.getEvent().getInterval(), truthSetTree, 0.5).stream()
                     .anyMatch(entry -> (entry.getValue().getStructuralVariantType() == StructuralVariantType.DEL && event.getEvent().getEventType() == SimpleSVType.TYPES.DEL)
@@ -258,12 +259,12 @@ public final class ReadDepthModel implements Serializable {
 
     public static double computeTrainingError(final ReadDepthCluster cluster, final SVIntervalTree<VariantContext> truthSetTree) {
         final List<ReadDepthEvent> calledEvents = cluster.getEventsList();
-        final Set<ReadDepthEvent> trueCalls = calledEvents.stream()
-                .filter(event -> SVIntervalUtils.getIntervalsWithReciprocalOverlapInTree(event.getEvent().getInterval(), truthSetTree, 0.8).stream() //TODO try higher RO ?
-                        .anyMatch(entry -> (entry.getValue().getStructuralVariantType() == StructuralVariantType.DEL && event.getEvent().getEventType() == SimpleSVType.TYPES.DEL)
-                                || (entry.getValue().getStructuralVariantType() == StructuralVariantType.DUP && event.getEvent().getEventType() == SimpleSVType.TYPES.DUP_TANDEM)))
-                .collect(Collectors.toSet());
-        final List<ReadDepthEvent> falseCalls = calledEvents.stream().filter(event -> !trueCalls.contains(event)).collect(Collectors.toList());
+        final List<ReadDepthEvent> trueCalls = calledEvents.stream()
+                .filter(event -> event.isTrue)
+                .collect(Collectors.toList());
+        final List<ReadDepthEvent> falseCalls = calledEvents.stream()
+                .filter(event -> !event.isTrue)
+                .collect(Collectors.toList());
         final double crossEntropy = - trueCalls.stream().mapToDouble(event -> Math.log(Math.max(1e-8, event.probability))).sum()
                 - falseCalls.stream().mapToDouble(event -> Math.log(Math.max(1e-8, 1.0 - event.probability))).sum();
         return crossEntropy;
@@ -524,8 +525,8 @@ public final class ReadDepthModel implements Serializable {
         return unscaledLogNormal(excessPloidy, 0, PARAMETER_CONSTRAINT_STD);
     }
 
-    private static double getPloidy(final double val, final SimpleSVType.TYPES type) {
-        return type == SimpleSVType.TYPES.DUP_TANDEM ? Math.min(val, 1) : val;
+    private static double getPloidy(final double copyNumber, final SimpleSVType.TYPES type) {
+        return type == SimpleSVType.TYPES.DUP_TANDEM ? Math.min(copyNumber, 1) : copyNumber;
     }
 
     public final static class ReadDepthModelParameters implements Serializable {
@@ -559,10 +560,10 @@ public final class ReadDepthModel implements Serializable {
 
         public static final double DEFAULT_COPY_NUMBER_STD_0 = 1;
         public static final double DEFAULT_COPY_NUMBER_STD_1 = 1;
-        public static final double DEFAULT_CALL_START_DISTANCE_MEAN_0 = 9;
-        public static final double DEFAULT_CALL_START_DISTANCE_STD_0 = 2;
-        public static final double DEFAULT_CALL_START_DISTANCE_MEAN_1 = 4;
-        public static final double DEFAULT_CALL_START_DISTANCE_STD_1 = 2;
+        public static final double DEFAULT_CALL_START_DISTANCE_MEAN_0 = 4;
+        public static final double DEFAULT_CALL_START_DISTANCE_STD_0 = 1;
+        public static final double DEFAULT_CALL_START_DISTANCE_MEAN_1 = 1;
+        public static final double DEFAULT_CALL_START_DISTANCE_STD_1 = 1;
         public static final double DEFAULT_CALL_OVERLAP_MEAN_0 = 0.3;
         public static final double DEFAULT_CALL_OVERLAP_STD_0 = 1;
         public static final double DEFAULT_CALL_OVERLAP_MEAN_1 = 0.8;

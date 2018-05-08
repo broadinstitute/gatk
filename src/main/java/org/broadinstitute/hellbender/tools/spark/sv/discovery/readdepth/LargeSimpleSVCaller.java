@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopy
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatioSegment;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.utils.*;
@@ -70,7 +71,6 @@ public class LargeSimpleSVCaller {
 
         logger.info("Building interval trees...");
 
-        largeSimpleSVSVIntervalTree = buildLargeSimpleSVTree(largeSimpleSVCollection);
         if (truthSet != null) {
             truthSetTree = buildVariantIntervalTree(truthSet);
         } else {
@@ -100,6 +100,13 @@ public class LargeSimpleSVCaller {
         filledSegments.addAll(emptySegments);
         final CalledCopyRatioSegmentCollection filledSegmentCollection = new CalledCopyRatioSegmentCollection(copyRatioSegments.getMetadata(), filledSegments);
         copyRatioSegmentOverlapDetector = filledSegmentCollection.getOverlapDetector();
+
+        //Filter calls without overlapping segment support
+        final Collection<LargeSimpleSV> filteredCalls = largeSimpleSVCollection.stream().filter(event -> {
+            final Set<CalledCopyRatioSegment> overlappers = copyRatioSegmentOverlapDetector.getOverlaps(SVIntervalUtils.convertToSimpleInterval(event.getInterval(), dictionary));
+            return overlappers.stream().anyMatch(segment -> segment.getCall() == (event.getEventType() == SimpleSVType.TYPES.DEL ? CalledCopyRatioSegment.Call.DELETION : CalledCopyRatioSegment.Call.AMPLIFICATION));
+        }).collect(Collectors.toList());
+        largeSimpleSVSVIntervalTree = buildLargeSimpleSVTree(filteredCalls);
 
         logger.info("Partitioning copy ratios by contig...");
         this.copyRatios = new ArrayList<>(dictionary.size());

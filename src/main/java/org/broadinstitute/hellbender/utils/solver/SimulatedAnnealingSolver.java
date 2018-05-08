@@ -62,7 +62,7 @@ public class SimulatedAnnealingSolver {
     }
 
     public double solve(final double[] x0, final int numSteps, final int loggingInterval) {
-        final double T0 = 1;
+        final double T0 = 2.0;
         final Function<Integer,Double> temperatureSchedule = step -> T0 * (1 - (step / (double) numSteps));
         return solve(x0, numSteps, temperatureSchedule, loggingInterval);
     }
