@@ -17,9 +17,7 @@ import java.io.File;
 public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
     // Simulated samples
     private static final File SIMULATED_DATA_DIR = new File(GATKBaseTest.publicTestDir,"org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/");
-    private static final File OUTPUT_IMAGE_DIR = createTempDir(SIMULATED_DATA_DIR.getAbsolutePath() + "/test/figs/");
-    private static final File OUTPUT_CALL_DIR = createTempDir(SIMULATED_DATA_DIR.getAbsolutePath() + "/test/calls/");
-    private static final File OUTPUT_LOG_DIR =  createTempDir(SIMULATED_DATA_DIR.getAbsolutePath() + "/test/logs/");
+    private static final File OUTPUT_DIR = createTempDir(SIMULATED_DATA_DIR.getAbsolutePath() + "/test/out/");
     private static final File INPUT_SIMULATED_NORMAL_DATA = new File(SIMULATED_DATA_DIR, "normal_sample_data.seg");
     private static final File INPUT_SIMULATED_NORMAL_TRUTH = new File(SIMULATED_DATA_DIR, "normal_sample_truth.seg");
     private static final File INPUT_SIMULATED_NORMAL_NOISY_DATA = new File(SIMULATED_DATA_DIR, "normal_noisy_sample_data.seg");
@@ -37,15 +35,15 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
         // inputFile, truthFile, loadCopyRatio, loadAlleleFraction, interactiveMode
         List<Object[]> result = new LinkedList<>();
         result.add(new Object[] {INPUT_SIMULATED_NORMAL_DATA, INPUT_SIMULATED_NORMAL_TRUTH,
-                true, true, true, "normal_simulated_calls", "normal_simulated_image", "normal_simulated_log"});
+                true, true, true, "normal_simulated"});
         result.add(new Object[] {INPUT_SIMULATED_NORMAL_NOISY_DATA, INPUT_SIMULATED_NORMAL_NOISY_TRUTH,
-                true, true, true, "normal_noisy_simulated_calls", "normal_noisy_simulated_image", "normal_noisy_simulated_log"});
+                true, true, true, "normal_noisy_simulated"});
         result.add(new Object[] {INPUT_SIMULATED_SOMATIC_40P_PURITY_DATA, INPUT_SIMULATED_SOMATIC_40P_PURITY_TRUTH,
-                true, true, true, "somatic_40per_cent_calls", "somatic_40per_cent_image", "somatic_40per_cent_log"});
+                true, true, true, "somatic_40per_cent"});
         result.add(new Object[] {INPUT_SIMULATED_SOMATIC_60P_PURITY_DATA, INPUT_SIMULATED_SOMATIC_60P_PURITY_TRUTH,
-                true, true, true, "somatic_60per_cent_calls", "somatic_60per_cent_image", "somatic_60per_cent_log"});
+                true, true, true, "somatic_60per_cent"});
         result.add(new Object[] {INPUT_SIMULATED_SOMATIC_100P_PURITY_DATA, INPUT_SIMULATED_SOMATIC_100P_PURITY_TRUTH,
-                true, true, true, "somatic_100per_cent_calls", "somatic_100per_cent_image", "somatic_100per_cent_log"});
+                true, true, true, "somatic_100per_cent"});
         return result.iterator();
     }
 
@@ -55,13 +53,11 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
                                   final boolean loadCopyRatio,
                                   final boolean loadAlleleFraction,
                                   final boolean interactiveRun,
-                                  final String outputCallsPrefix,
-                                  final String outputImagePrefix,
-                                  final String outputLogPrefix) {
+                                  final String outputPrefix) {
         // Test running on the simulated data.
         runTest(inputFile, truthFile,
                 loadCopyRatio, loadAlleleFraction, interactiveRun,
-                outputCallsPrefix, outputImagePrefix, outputLogPrefix);
+                outputPrefix);
     }
 
     private void runTest(final File inputFile,
@@ -69,9 +65,7 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
                          final boolean loadCopyRatio,
                          final boolean loadAlleleFraction,
                          final boolean interactiveRun,
-                         final String outputCallsPrefix,
-                         final String outputImagePrefix,
-                         final String outputLogPrefix) {
+                         final String outputPrefix) {
         // Method running the tests.
 
         // Make sure that either the copy ratio or the allele fraction data is loaded
@@ -83,45 +77,39 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
         // Run clustering algorithm
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, inputFile.getAbsolutePath())
-                .addArgument(CallModeledSegments.OUTPUT_IMAGE_DIR_LONG_NAME, OUTPUT_IMAGE_DIR.getAbsolutePath())
-                .addArgument(CallModeledSegments.OUTPUT_CALLS_DIR_LONG_NAME, OUTPUT_CALL_DIR.getAbsolutePath())
-                .addArgument(CallModeledSegments.OUTPUT_LOG_DIR_LONG_NAME, OUTPUT_LOG_DIR.getAbsolutePath())
-                .addArgument(CallModeledSegments.OUTPUT_LOG_PREFIX_LONG_NAME, outputLogPrefix)
-                .addArgument(CallModeledSegments.OUTPUT_IMAGE_PREFIX_LONG_NAME, outputImagePrefix)
-                .addArgument(CallModeledSegments.OUTPUT_CALLS_PREFIX_LONG_NAME, outputCallsPrefix)
+                .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR.getAbsolutePath())
+                .addArgument(CallModeledSegments.OUTPUT_PREFIX_LONG_NAME, outputPrefix)
                 .addArgument(CallModeledSegments.LOAD_COPY_RATIO_LONG_NAME, String.valueOf(loadCopyRatio))
-                .addArgument(CallModeledSegments.LOAD_ALLELE_FRACTION_LONG_NAME, String.valueOf(loadCopyRatio))
+                .addArgument(CallModeledSegments.LOAD_ALLELE_FRACTION_LONG_NAME, String.valueOf(loadAlleleFraction))
                 .addArgument(CallModeledSegments.INTERACTIVE_RUN_LONG_NAME, String.valueOf(interactiveRun));
-        List<String> args = argsBuilder.getArgsList();
-        String outputCallsFilePath = (OUTPUT_CALL_DIR.getAbsolutePath() + "/" + outputCallsPrefix
+
+        String outputCallsFilePath = (OUTPUT_DIR.getAbsolutePath() + "/" + outputPrefix
                 + CallModeledSegments.OUTPUT_CALLS_SUFFIX_DEFAULT_VALUE);
-        String outputImageFilePath = (OUTPUT_IMAGE_DIR.getAbsolutePath() + "/" + outputImagePrefix
+        String outputImageFilePath = (OUTPUT_DIR.getAbsolutePath() + "/" + outputPrefix
                 + CallModeledSegments.OUTPUT_IMAGE_SUFFIX_DEFAULT_VALUE);
         File outputCallsFile = new File(outputCallsFilePath);
         File outputImageFile = new File(outputImageFilePath);
         runCommandLine(argsBuilder);
 
         // Make sure that output image file and calls file exist
-        assertOutputFiles(outputCallsFile, outputImageFile, OUTPUT_IMAGE_DIR, OUTPUT_CALL_DIR);
+        assertOutputFiles(outputCallsFile, outputImageFile, OUTPUT_DIR);
 
         // Make sure that the output calls agree with the truth data
         boolean onlyNormalSegments = compareCalledFiles(outputCallsFile, truthFile);
 
         // Make sure that the interactive images were indeed produced in interactive run
         if (interactiveRun) {
-            assertInteractiveFiles(OUTPUT_IMAGE_DIR, outputImagePrefix, onlyNormalSegments);
+            assertInteractiveFiles(OUTPUT_DIR, outputPrefix, onlyNormalSegments);
         }
     }
 
     private static void assertOutputFiles(final File outputCallsFile,
                                           final File outputImageFile,
-                                          final File outputImageDir,
-                                          final File outputCallsDir) {
+                                          final File outputDir) {
         // Make sure that these files and folders all exist.
+        Assert.assertTrue(outputDir.isDirectory());
         Assert.assertTrue(outputCallsFile.isFile());
         Assert.assertTrue(outputImageFile.isFile());
-        Assert.assertTrue(outputImageDir.isDirectory());
-        Assert.assertTrue(outputCallsDir.isDirectory());
     }
 
     private static void assertInteractiveFiles(final File outputImageDir,
