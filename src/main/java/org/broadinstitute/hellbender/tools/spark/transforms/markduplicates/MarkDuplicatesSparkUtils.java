@@ -137,7 +137,12 @@ public class MarkDuplicatesSparkUtils {
                 final IndexPair<GATKRead> firstRead = primaryReads.get(0);
                 final IndexPair<GATKRead> secondRead = primaryReads.get(1);
                 final Pair pair = MarkDuplicatesSparkRecord.newPair(firstRead.getValue(), secondRead.getValue(), header, secondRead.getIndex(), scoringStrategy);
-                pair.setReadGroup(headerReadGroupIndexMap.getValue().get(firstRead.getValue().getReadGroup())); //TODO figure out what to do in the case where there is no readgroup
+                final Short readGroup = headerReadGroupIndexMap.getValue().get(firstRead.getValue().getReadGroup());
+                if (readGroup != null) {
+                    pair.setReadGroup(readGroup);
+                } else {
+                    throw new UserException.HeaderMissingReadGroup(firstRead.getValue());
+                }
                 out.add(new Tuple2<>(pair.key(), pair));
 
             // If there is one paired read in the template this probably means the bam is missing its mate, don't duplicate mark it

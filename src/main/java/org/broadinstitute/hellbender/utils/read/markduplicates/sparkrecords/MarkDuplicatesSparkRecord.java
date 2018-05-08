@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
-import sun.invoke.empty.Empty;
 
 /**
  * A common interface for the data types that represent reads for mark duplicates spark. This is done to satisfy limitations

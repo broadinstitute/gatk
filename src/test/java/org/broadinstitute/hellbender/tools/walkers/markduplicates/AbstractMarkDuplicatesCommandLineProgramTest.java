@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.markduplicates;
 
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.CloserUtil;
 import org.apache.commons.io.FileUtils;
@@ -167,6 +164,30 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         tester.setExpectedOpticalDuplicate(0);
         tester.addMatePair("RUNID:7:1203:2886:82292", 1, 485253, 485253, false, false, true, true, "42M59S", "59S42M", false, true, false, false, false, DEFAULT_BASE_QUALITY);  // duplicate
         tester.addMatePair("RUNID:7:1203:2884:16834", 1, 485253, 485253, false, false, false, false, "59S42M", "42M59S", true, false, false, false, false, ELIGIBLE_BASE_QUALITY);
+        tester.runTest();
+    }
+
+    @Test
+    public void testOpticalDuplicatesDifferentReadGroups() {
+        final AbstractMarkDuplicatesTester tester = getTester();
+        tester.setExpectedOpticalDuplicate(0);
+        tester.addMatePair("RUNID:7:1203:2886:82292",  19, 19, 485253, 485253, false, false, true, true, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.2");  // duplicate
+        tester.addMatePair("RUNID:7:1203:2886:16834", 19, 19, 485253, 485253, false, false, false, false, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.1");
+        SAMFileHeader header = tester.getHeader();
+        header.addReadGroup(new SAMReadGroupRecord("H0164.2"));
+        header.addReadGroup(new SAMReadGroupRecord("H0164.1"));
+        tester.runTest();
+    }
+
+    @Test
+    public void testOpticalDuplicatesTheSameReadGroup() {
+        final AbstractMarkDuplicatesTester tester = getTester();
+        tester.setExpectedOpticalDuplicate(1);
+        tester.addMatePair("RUNID:7:1203:2886:82292",  19, 19, 485253, 485253, false, false, true, true, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.2");  // duplicate
+        tester.addMatePair("RUNID:7:1203:2886:16834", 19, 19, 485253, 485253, false, false, false, false, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.2");
+        SAMFileHeader header = tester.getHeader();
+        header.addReadGroup(new SAMReadGroupRecord("H0164.2"));
+        header.addReadGroup(new SAMReadGroupRecord("H0164.1"));
         tester.runTest();
     }
 
@@ -535,8 +556,8 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
     public void testDifferentChromosomesInOppositeOrder() {
         final AbstractMarkDuplicatesTester tester = getTester();
         tester.setExpectedOpticalDuplicate(1);
-        tester.addMatePair("RUNID:6:101:17642:6835", 0, 1, 123989, 18281, false, false, true, true, "37S64M", "52M49S", false, false, false, false, false, DEFAULT_BASE_QUALITY);
-        tester.addMatePair("RUNID:6:101:17616:6888", 1, 0, 18281, 123989, false, false, false, false, "52M49S", "37S64M", false, false, false, false, false, ELIGIBLE_BASE_QUALITY);
+        tester.addMatePair("RUNID:6:101:17642:6835", 0, 1, 123989, 18281, false, false, true, true, "37S64M", "52M49S", false, false, false, false, false, DEFAULT_BASE_QUALITY, null);
+        tester.addMatePair("RUNID:6:101:17616:6888", 1, 0, 18281, 123989, false, false, false, false, "52M49S", "37S64M", false, false, false, false, false, ELIGIBLE_BASE_QUALITY, null);
         tester.runTest();
     }
 

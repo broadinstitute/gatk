@@ -388,6 +388,14 @@ public class UserException extends RuntimeException {
         }
     }
 
+    public static final class HeaderMissingReadGroup extends MalformedBAM {
+        private static final long serialVersionUID = 0L;
+
+        public HeaderMissingReadGroup(final GATKRead read) {
+            super(read, String.format("Read %s contains an (RG) tag with the group %s which is not found in the file header.", read.getName(), read.getAttributeAsString("RG")));
+        }
+    }
+
     public static final class HardwareFeatureException extends UserException {
         private static final long serialVersionUID = 0L;
 
