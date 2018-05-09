@@ -336,6 +336,6 @@ public class ReadsSparkSourceUnitTest extends GATKBaseTest {
 
         JavaRDD<GATKRead> problemReads = ctx.parallelize(reads,5 );
         ReadsSparkSource readsSparkSource = new ReadsSparkSource(ctx);
-        readsSparkSource.putPairsInSamePartition(header, problemReads, ctx);
+        ReadsSparkSource.putPairsInSamePartition(header, problemReads, ctx);
     }
 }

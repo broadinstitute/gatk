@@ -93,12 +93,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         SAMFileHeader headerForTool = header.clone();
 
         // If the input isn't queryname sorted, sort it before duplicate marking
-        if (ReadUtils.isReadNameGroupedBam(header)) {
-            sortedReadsForMarking = reads;
-        } else {
-            headerForTool.setSortOrder(SAMFileHeader.SortOrder.queryname);
-            sortedReadsForMarking = ReadsSparkSource.putPairsInSamePartition(headerForTool, SparkUtils.querynameSortReads(reads, numReducers), new JavaSparkContext(reads.context()));
-        }
+        sortedReadsForMarking = querynameSortReadsIfNecessary(reads, numReducers, headerForTool);
 
         JavaPairRDD<MarkDuplicatesSparkUtils.IndexPair<String>, Integer> namesOfNonDuplicates = MarkDuplicatesSparkUtils.transformToDuplicateNames(headerForTool, scoringStrategy, opticalDuplicateFinder, sortedReadsForMarking, numReducers);
 
@@ -132,6 +127,21 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                 }
             }).iterator();
         });
+    }
+
+    /**
+     * Sort reads into queryname order if they are not already sorted
+     */
+    protected static JavaRDD<GATKRead> querynameSortReadsIfNecessary(JavaRDD<GATKRead> reads, int numReducers, SAMFileHeader headerForTool) {
+        JavaRDD<GATKRead> sortedReadsForMarking;
+        if (ReadUtils.isReadNameGroupedBam(headerForTool)) {
+            sortedReadsForMarking = reads;
+        } else {
+            headerForTool.setSortOrder(SAMFileHeader.SortOrder.queryname);
+            JavaRDD<GATKRead> sortedReads = SparkUtils.querynameSortReads(reads, numReducers);
+            sortedReadsForMarking = ReadsSparkSource.putPairsInSamePartition(headerForTool, sortedReads, new JavaSparkContext(reads.context()));
+        }
+        return sortedReadsForMarking;
     }
 
     /**

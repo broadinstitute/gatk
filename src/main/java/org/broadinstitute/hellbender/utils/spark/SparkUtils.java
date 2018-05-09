@@ -17,6 +17,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -136,12 +137,15 @@ public final class SparkUtils {
         // do a total sort so that all the reads in partition i are less than those in partition i+1
         final Comparator<GATKRead> comparator = new ReadCoordinateComparator(header);
         final JavaPairRDD<GATKRead, Void> readVoidPairs;
+        final JavaRDD<GATKRead> output;
         if (numReducers > 0) {
             readVoidPairs = rddReadPairs.sortByKey(comparator, true, numReducers);
+            output = ReadsSparkSource.putPairsInSamePartition(header, readVoidPairs.keys(), new JavaSparkContext(readVoidPairs.context()));
         } else {
             readVoidPairs = rddReadPairs.sortByKey(comparator);
+            output = readVoidPairs.keys();
         }
-        return readVoidPairs.keys();
+        return output;
     }
 
     /**

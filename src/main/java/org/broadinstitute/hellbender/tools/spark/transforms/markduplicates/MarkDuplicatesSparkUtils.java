@@ -172,7 +172,7 @@ public class MarkDuplicatesSparkUtils {
             keyedReads = spanReadsByKey(indexedReads);
         } else {
             // sort by group and name (incurs a shuffle)
-            throw new GATKException("MarkDuplicatesSparkUtils.mark() requires input reads to be queryname sorted, yet the header indicated otherwise");
+            throw new GATKException(String.format("MarkDuplicatesSparkUtils.mark() requires input reads to be queryname sorted or querygrouped, yet the header indicated it was in %s order instead", header.getSortOrder()));
         }
         return keyedReads;
     }
