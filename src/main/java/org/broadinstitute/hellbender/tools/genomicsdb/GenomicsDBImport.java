@@ -144,6 +144,7 @@ public final class GenomicsDBImport extends GATKTool {
     public static final String SAMPLE_NAME_MAP_LONG_NAME = "sample-name-map";
     public static final String VALIDATE_SAMPLE_MAP_LONG_NAME = "validate-sample-name-map";
     public static final String VCF_INITIALIZER_THREADS_LONG_NAME = "reader-threads";
+    public static final String MAX_NUM_INTERVALS_TO_IMPORT_IN_PARALLEL = "max-num-intervals-to-import-in-parallel";
 
     @Argument(fullName = WORKSPACE_ARG_LONG_NAME,
               doc = "Workspace for GenomicsDB. Must be a POSIX file system path, but can be a relative path." +
@@ -232,6 +233,14 @@ public final class GenomicsDBImport extends GATKTool {
             optional = true,
             minValue = 1)
     private int vcfInitializerThreads = 1;
+
+    @Advanced
+    @Argument(fullName = MAX_NUM_INTERVALS_TO_IMPORT_IN_PARALLEL,
+            shortName = MAX_NUM_INTERVALS_TO_IMPORT_IN_PARALLEL,
+            doc = "Max number of intervals to import in parallel; higher values may improve performance",
+            optional = true,
+            minValue = 1)
+    private int maxNumIntervalsToImportInParallel = 1;
 
     //executor service used when vcfInitializerThreads > 1
     private ExecutorService inputPreloadExecutorService;
@@ -532,13 +541,11 @@ public final class GenomicsDBImport extends GATKTool {
         GenomicsDBImporter importer;
         try {
             importer = new GenomicsDBImporter(importConfig);
-            importer.executeImport();
+            importer.executeImport(maxNumIntervalsToImportInParallel);
         } catch (final IOException e) {
             throw new UserException("Error initializing GenomicsDBImporter", e);
         } catch (final IllegalArgumentException iae) {
             throw new GATKException("Null feature reader found in sampleNameMap file: " + sampleNameMapFile, iae);
-        } catch (final InterruptedException ie) {
-            throw new GATKException("Error while executing a parallel import in GenomicsDBImporter", ie);
         }
     }
 
