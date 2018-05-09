@@ -173,9 +173,14 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         tester.setExpectedOpticalDuplicate(0);
         tester.addMatePair("RUNID:7:1203:2886:82292",  19, 19, 485253, 485253, false, false, true, true, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.2");  // duplicate
         tester.addMatePair("RUNID:7:1203:2886:16834", 19, 19, 485253, 485253, false, false, false, false, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.1");
+
         SAMFileHeader header = tester.getHeader();
-        header.addReadGroup(new SAMReadGroupRecord("H0164.2"));
-        header.addReadGroup(new SAMReadGroupRecord("H0164.1"));
+        SAMReadGroupRecord readGroup1 = new SAMReadGroupRecord("H0164.2");
+        SAMReadGroupRecord readGroup2 = new SAMReadGroupRecord("H0164.1");
+        readGroup1.setSample("test");
+        readGroup2.setSample("test");
+        header.addReadGroup(readGroup1);
+        header.addReadGroup(readGroup2);
         tester.runTest();
     }
 
@@ -185,9 +190,14 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         tester.setExpectedOpticalDuplicate(1);
         tester.addMatePair("RUNID:7:1203:2886:82292",  19, 19, 485253, 485253, false, false, true, true, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.2");  // duplicate
         tester.addMatePair("RUNID:7:1203:2886:16834", 19, 19, 485253, 485253, false, false, false, false, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.2");
+
         SAMFileHeader header = tester.getHeader();
-        header.addReadGroup(new SAMReadGroupRecord("H0164.2"));
-        header.addReadGroup(new SAMReadGroupRecord("H0164.1"));
+        SAMReadGroupRecord readGroup1 = new SAMReadGroupRecord("H0164.2");
+        SAMReadGroupRecord readGroup2 = new SAMReadGroupRecord("H0164.1");
+        readGroup1.setSample("test");
+        readGroup2.setSample("test");
+        header.addReadGroup(readGroup1);
+        header.addReadGroup(readGroup2);
         tester.runTest();
     }
 

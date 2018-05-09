@@ -14,4 +14,8 @@ public class SerializableOpticalDuplicatesFinder extends OpticalDuplicateFinder 
     public SerializableOpticalDuplicatesFinder(String read_name_regex, int optical_duplicate_pixel_distance) {
         super(read_name_regex, optical_duplicate_pixel_distance, null);
     }
+
+    public SerializableOpticalDuplicatesFinder() {
+        super();
+    }
 }
