@@ -139,7 +139,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         } else {
             headerForTool.setSortOrder(SAMFileHeader.SortOrder.queryname);
             JavaRDD<GATKRead> sortedReads = SparkUtils.querynameSortReads(reads, numReducers);
-            sortedReadsForMarking = ReadsSparkSource.putPairsInSamePartition(headerForTool, sortedReads, new JavaSparkContext(reads.context()));
+            sortedReadsForMarking = ReadsSparkSource.putPairsInSamePartition(headerForTool, sortedReads, JavaSparkContext.fromSparkContext(reads.context()));
         }
         return sortedReadsForMarking;
     }
