@@ -158,14 +158,44 @@ class LoadAndSampleCrAndAf:
         n_points_CR = []               # number of copy ratio data points taken from the segment
         n_points_AF = []               # number of allele fraction data points taken from the segment
 
-        # Sample data points from each segment
-        copy_ratio_sampled = []       # sampled copy ratio
-        allele_fraction_sampled = []  # sampled allele fraction
-
         # Read data from file
         file = open(self.__filename, "r")
         lines = file.readlines()
 
+        # Check the fraction of lines that are NaN
+        # Check the fraction of lines that are NaN
+        cr_NaN = 0
+        af_NaN = 0
+        all_sites = 0
+        for line in lines:
+            values = line.strip().split()
+            if is_number(values[0]):
+                if(len(values) >= 5):
+                    if not float(values[4]) == 0:
+                        segment_length = float(values[2]) - float(values[1])
+                        if math.isnan(float(values[5])) or math.isnan(float(values[6])) or math.isnan(float(values[7])):
+                            cr_NaN += segment_length
+                        if math.isnan(float(values[8])) or math.isnan(float(values[9])) or math.isnan(float(values[10])):
+                            af_NaN += segment_length
+                        all_sites += segment_length
+        cr_NaN_ratio_threshold = 0.80
+        af_NaN_ratio_threshold = 0.80
+        if all_sites == 0:
+            cr_NaN_ratio = 1
+            af_NaN_ratio = 1
+        else:
+            cr_NaN_ratio = cr_NaN / all_sites
+            af_NaN_ratio = af_NaN / all_sites
+        if cr_NaN_ratio >= cr_NaN_ratio_threshold:
+            if (self.__load_CR and not (self.__log_filename=="")):
+                logging.info("More than %s%% of the lines have NaN copy ratio values. We will thus not load copy ratio data." % (100 * cr_NaN_ratio_threshold))
+            self.__load_CR = False
+        if af_NaN_ratio >= af_NaN_ratio_threshold:
+            if (self.__load_CR and not (self.__log_filename=="")):
+                logging.info("More than %s%% of the lines have NaN allele fraction values. We will thus not load copy ratio data." % (100 * af_NaN_ratio_threshold))
+            self.__load_AF = False
+
+        # Load the data
         if self.__load_CR and self.__load_AF:
             for line in lines:
                 values = line.strip().split()
@@ -368,9 +398,15 @@ class LoadAndSampleCrAndAf:
         """ This function samples the posterior probability distribution of each segment,
             on average using 'avg_n_sampled_points_per_segment' points per segment
         """
-        avg_n_sampled_points_per_segment = 12
+        min_n_sampled_points_per_segment = 3
+        max_n_sampled_points_per_segment = 500
+        total_n_sampled_points = 5000
+        if self.__load_CR:
+            n_segments = len(self.__copy_ratio_median)
+        else:
+            n_segments = len(self.__allele_fraction_median)
+        avg_n_sampled_points_per_segment = min([max([total_n_sampled_points / n_segments, min_n_sampled_points_per_segment]), max_n_sampled_points_per_segment])
 
-        n_segments = len(self.__copy_ratio_median)
         total_length = np.sum(self.__segment_lengths)
         avg_segment_length = max(1, int(total_length / n_segments))
 
@@ -543,12 +579,8 @@ class ModeledSegmentsCaller:
         if not self.__log_filename=="":
             logging.info("Finished.\n\n\n")
 
-
     def set_output_filenames(self):
         """Set file names for all outputs."""
-        self.fig_normal_segments_filename = self.__output_image_dir + self.__output_image_prefix + self.__output_image_suffix
-        self.output_calls_filename = self.__output_calls_dir + self.__output_calls_prefix + self.__output_calls_suffix
-
         # Get input directory
         input_fname_ending = self.__CR_AF_data.get_input_filename().split("/")[-1]
         input_dir = self.__CR_AF_data.get_input_filename().split(input_fname_ending)[0]
@@ -561,21 +593,38 @@ class ModeledSegmentsCaller:
         if self.__output_calls_dir == "":
             self.__output_calls_dir = input_dir
 
+        # Set filenames for the regular output
+        self.output_calls_filename = self.__output_calls_dir + self.__output_calls_prefix + self.__output_calls_suffix
+
         # Set file names for images produced in interactive mode
         if self.__output_image_prefix == "":
             image_fname_prefix = self.__CR_AF_data.get_input_filename()
             image_fname_extension = image_fname_prefix.split(".")[-1]
             image_fname_prefix = image_fname_prefix.split("." + image_fname_extension)[0]
+            image_fname_prefix = image_fname_prefix.split("/")[-1]
         else:
             image_fname_prefix = self.__output_image_prefix
 
         # Set the names of the outputs used in interactive mode
-        image_fname_prefix = self.__output_image_dir +  image_fname_prefix
-        self.fig_del_ampl_filename = image_fname_prefix + self.__interactive_output_del_ampl_image_suffix
-        self.fig_scatter_plot = image_fname_prefix + self.__interactive_output_scatter_plot_suffix
-        self.fig_allele_fraction_CN1_CN2_intervals = image_fname_prefix + self.__interactive_output_allele_fraction_plot_suffix
-        self.fig_copy_ratio_fit = image_fname_prefix + self.__interactive_output_copy_ratio_suffix
-        self.fig_copy_ratio_clusters = image_fname_prefix + self.__interactive_output_copy_ratio_clustering_suffix
+        self.fig_normal_segments_filename = self.__output_image_dir + image_fname_prefix + self.__output_image_suffix
+        self.fig_del_ampl_filename = self.__output_image_dir +  image_fname_prefix + self.__interactive_output_del_ampl_image_suffix
+        self.fig_scatter_plot = self.__output_image_dir +  image_fname_prefix + self.__interactive_output_scatter_plot_suffix
+        self.fig_allele_fraction_CN1_CN2_intervals = self.__output_image_dir +  image_fname_prefix + self.__interactive_output_allele_fraction_plot_suffix
+        self.fig_copy_ratio_fit = self.__output_image_dir +  image_fname_prefix + self.__interactive_output_copy_ratio_suffix
+        self.fig_copy_ratio_clusters = self.__output_image_dir +  image_fname_prefix + self.__interactive_output_copy_ratio_clustering_suffix
+
+    def get_all_output_filenames(self):
+        fnames = []
+        fnames.append(self.output_calls_filename)
+        fnames.append(self.fig_normal_segments_filename)
+        if self.__interactive:
+            fnames.append(self.fig_normal_segments_filename)
+            fnames.append(self.fig_del_ampl_filename)
+            fnames.append(self.fig_scatter_plot)
+            fnames.append(self.fig_allele_fraction_CN1_CN2_intervals)
+            fnames.append(self.fig_copy_ratio_fit)
+        fnames.append(self.__log_filename)
+        return fnames
 
     def get_output_calls_filename(self):
         """Name of the output calls file."""
@@ -583,7 +632,7 @@ class ModeledSegmentsCaller:
 
     def get_all_output_fig_filenames(self):
         """Name of all filenames output by the tool."""
-        if not self.__interactive:
+        if self.__interactive:
             return [self.fig_normal_segments_filename,
                     self.fig_del_ampl_filename,
                     self.fig_scatter_plot,
