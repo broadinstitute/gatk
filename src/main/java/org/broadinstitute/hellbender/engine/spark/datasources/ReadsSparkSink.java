@@ -19,6 +19,7 @@ import org.apache.spark.broadcast.Broadcast;
 import org.bdgenomics.adam.models.RecordGroupDictionary;
 import org.bdgenomics.adam.models.SequenceDictionary;
 import org.bdgenomics.formats.avro.AlignmentRecord;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -122,7 +123,7 @@ public final class ReadsSparkSink {
     public static void writeReads(
             final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<GATKRead> reads,
             final SAMFileHeader header, ReadsWriteFormat format) throws IOException {
-        writeReads(ctx, outputFile, referenceFile, reads, header, format, 0);
+        writeReads(ctx, outputFile, referenceFile, reads, header, format, 0, null);
     }
 
     /**
@@ -135,10 +136,11 @@ public final class ReadsSparkSink {
      * @param format should the output be a single file, sharded, ADAM, etc.
      * @param numReducers the number of reducers to use when writing a single file. A value of zero indicates that the default
      *                    should be used.
+     * @param outputPartsDir directory for temporary files for SINGLE output format, should be null for default value of filename + .output
      */
     public static void writeReads(
             final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<GATKRead> reads,
-            final SAMFileHeader header, ReadsWriteFormat format, final int numReducers) throws IOException {
+            final SAMFileHeader header, ReadsWriteFormat format, final int numReducers, final String outputPartsDir) throws IOException {
 
         SAMFormat samOutputFormat = IOUtils.isCramFileName(outputFile) ? SAMFormat.CRAM : SAMFormat.BAM;
 
@@ -155,10 +157,16 @@ public final class ReadsSparkSink {
         final JavaRDD<SAMRecord> samReads = reads.map(read -> read.convertToSAMRecord(null));
 
         if (format == ReadsWriteFormat.SINGLE) {
-            writeReadsSingle(ctx, absoluteOutputFile, absoluteReferenceFile, samOutputFormat, samReads, header, numReducers);
+            writeReadsSingle(ctx, absoluteOutputFile, absoluteReferenceFile, samOutputFormat, samReads, header, numReducers, outputPartsDir);
         } else if (format == ReadsWriteFormat.SHARDED) {
+            if (outputPartsDir!=null) {
+                throw new  GATKException(String.format("You specified the bam output parts directory %s, but requested a sharded output format which does not use this option",outputPartsDir));
+            }
             saveAsShardedHadoopFiles(ctx, absoluteOutputFile, absoluteReferenceFile, samOutputFormat, samReads, header, true);
         } else if (format == ReadsWriteFormat.ADAM) {
+            if (outputPartsDir!=null) {
+                throw new  GATKException(String.format("You specified the bam output parts directory %s, but requested an ADAM output format which does not use this option",outputPartsDir));
+            }
             writeReadsADAM(ctx, absoluteOutputFile, samReads, header);
         }
     }
@@ -228,10 +236,10 @@ public final class ReadsSparkSink {
 
     private static void writeReadsSingle(
             final JavaSparkContext ctx, final String outputFile, final String referenceFile, final SAMFormat samOutputFormat, final JavaRDD<SAMRecord> reads,
-            final SAMFileHeader header, final int numReducers) throws IOException {
+            final SAMFileHeader header, final int numReducers, final String outputPartsDir) throws IOException {
 
         final JavaRDD<SAMRecord> sortedReads = SparkUtils.sortReads(reads, header, numReducers);
-        final String outputPartsDirectory = outputFile + ".parts/";
+        final String outputPartsDirectory = (outputPartsDir == null)? getDefaultPartsDirectory(outputFile)  : outputPartsDir;
         saveAsShardedHadoopFiles(ctx, outputPartsDirectory, referenceFile, samOutputFormat, sortedReads,  header, false);
         logger.info("Finished sorting the bam file and dumping read shards to disk, proceeding to merge the shards into a single file using the master thread");
         SAMFileMerger.mergeParts(outputPartsDirectory, outputFile, samOutputFormat, header);
@@ -299,6 +307,13 @@ public final class ReadsSparkSink {
                 }
             }
         }
+    }
+
+    /**
+     * Gets the default parts directory for a given file by appending .parts/ to the end of it
+     */
+    public static String getDefaultPartsDirectory(String file) {
+        return file + ".parts/";
     }
 
 }

@@ -67,7 +67,7 @@ public final class BwaAndMarkDuplicatesPipelineSpark extends GATKSparkTool {
                         referenceArguments.getReferencePath().toAbsolutePath().toUri().toString(),
                         markedReads, bwaEngine.getHeader(),
                         shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE,
-                        getRecommendedNumReducers());
+                        getRecommendedNumReducers(), shardedPartsDir);
             } catch (IOException e) {
                 throw new GATKException("unable to write bam: " + e);
             }
