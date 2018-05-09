@@ -30,10 +30,9 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.attribute.FileAttribute;
-import java.nio.file.attribute.PosixFilePermission;
-import java.nio.file.attribute.PosixFilePermissions;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 public class ReadsSparkSinkUnitTest extends GATKBaseTest {
     private MiniDFSCluster cluster;
@@ -98,19 +97,14 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
         final File outputFile = createTempFile(outputFileName, outputFileExtension);
         final File nonDefaultShardsDir = createTempDir(outputFileName + ".someOtherPlace");
 
-
         final java.nio.file.Path defaultPartsDir = IOUtils.getPath(ReadsSparkSink.getDefaultPartsDirectory(outputFile.getAbsolutePath()));
         final java.nio.file.Path subpath = defaultPartsDir.resolve("subpath");
 
-        // Make a directory with unusable permissions in place of where the default parts file will live
         try {
-            final Set<PosixFilePermission> readOnly = EnumSet.of(PosixFilePermission.OWNER_READ);
-            final FileAttribute<Set<PosixFilePermission>> readOnlyPermissions = PosixFilePermissions.asFileAttribute(readOnly);
-
+            // Make a directory with unusable permissions in place of where the default file will live
             Files.createDirectory(defaultPartsDir);
-            // An empty directory seems to be able to be deleted even with write permissions disabled, so put a file in it
-            Files.createFile(subpath, readOnlyPermissions);
-            Files.setPosixFilePermissions(defaultPartsDir, readOnly);
+            Files.createFile(subpath);
+            Runtime.getRuntime().exec("chmod a-w -R " + defaultPartsDir + "/");
 
             //assert it fails when writing to the default path
             Assert.assertThrows(() -> assertSingleShardedWritingWorks(inputBam, referenceFile, outputFile.getAbsolutePath(), null));
@@ -120,19 +114,10 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
 
             // Test that the file wasn't deleted when spark cleared its temp directory
             Assert.assertTrue(Files.exists(defaultPartsDir));
+
         } finally {
-            try {
-                final EnumSet<PosixFilePermission> readWriteExecute = EnumSet.of(PosixFilePermission.OWNER_READ,
-                        PosixFilePermission.OWNER_WRITE,
-                        PosixFilePermission.OWNER_EXECUTE);
-                Files.setPosixFilePermissions(defaultPartsDir, readWriteExecute);
-                Files.setPosixFilePermissions(subpath, readWriteExecute);
-                Files.deleteIfExists(subpath);
-                Files.deleteIfExists(defaultPartsDir);
-            } catch (IOException e) {
-                System.out.print("Failed to delete test file");
-                e.printStackTrace();
-            }
+            // Remove the file this time
+            Runtime.getRuntime().exec("rm -r " + defaultPartsDir );
         }
     }
 
