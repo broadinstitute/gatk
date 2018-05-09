@@ -97,10 +97,6 @@ public class GATKAnnotationPluginDescriptor  extends CommandLinePluginDescriptor
      * @param toolDefaultGroups List of tool specified default annotation group names. Annotations specified this way
      *                          will be instantiated with default arguments. may be null.
      */
-    public GATKAnnotationPluginDescriptor(final List<Annotation> toolDefaultAnnotations, final List<Class<? extends Annotation>> toolDefaultGroups) {
-        this(new DefaultGATKVariantAnnotationArgumentCollection(), toolDefaultAnnotations, toolDefaultGroups);
-    }
-
     public GATKAnnotationPluginDescriptor(final GATKAnnotationArgumentCollection userArgs, final List<Annotation> toolDefaultAnnotations, final List<Class<? extends Annotation>> toolDefaultGroups) {
         this.userArgs = userArgs;
         if (null != toolDefaultAnnotations) {
@@ -126,6 +122,10 @@ public class GATKAnnotationPluginDescriptor  extends CommandLinePluginDescriptor
             }
             });
         }
+    }
+    // Overload constructor
+    public GATKAnnotationPluginDescriptor(final List<Annotation> toolDefaultAnnotations, final List<Class<? extends Annotation>> toolDefaultGroups) {
+        this(new DefaultGATKVariantAnnotationArgumentCollection(), toolDefaultAnnotations, toolDefaultGroups);
     }
 
     @Override

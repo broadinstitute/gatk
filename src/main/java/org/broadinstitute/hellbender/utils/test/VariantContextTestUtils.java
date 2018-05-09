@@ -10,9 +10,14 @@ import com.google.common.collect.HashBiMap;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.io.output.NullOutputStream;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
+import org.broadinstitute.barclay.argparser.CommandLineParser;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -23,6 +28,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.testng.Assert;
 
+import java.io.PrintStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -492,5 +498,21 @@ public final class VariantContextTestUtils {
         lines.addAll(GATKVCFHeaderLines.getAllFilterLines());
 
         return new VCFHeader(lines);
+    }
+
+    public static List<Annotation> getAllAnnotations() {
+        CommandLineParser clp = new CommandLineArgumentParser(
+                new Object(),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor(null, null)),
+                Collections.emptySet());
+        List<String> args = new ArrayList<>();
+        args.add("--enable-all-annotations");
+        clp.parseArguments(new PrintStream(new NullOutputStream()), args.toArray(new String[args.size()]));
+        return instantiateAnnotations(clp);
+    }
+
+    private static List<Annotation> instantiateAnnotations(final CommandLineParser clp) {
+        GATKAnnotationPluginDescriptor annotationPlugin = clp.getPluginDescriptor(GATKAnnotationPluginDescriptor.class);
+        return annotationPlugin.getResolvedInstances();
     }
 }

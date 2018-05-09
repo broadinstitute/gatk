@@ -189,12 +189,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         initializeActiveRegionEvaluationGenotyperEngine();
 
-        //TODO this is getting pulled out but must ensure that it is indeed done
-//        if (annotationEngine == null) {
-//            annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(hcArgs.defaultGATKVariantAnnotationArgumentCollection, hcArgs.dbsnp.dbsnp, hcArgs.comps, emitReferenceConfidence());
-//
-//        }
-
         genotypingEngine = new HaplotypeCallerGenotypingEngine(hcArgs, samplesList, FixedAFCalculatorProvider.createThreadSafeProvider(hcArgs), ! hcArgs.doNotRunPhysicalPhasing);
         genotypingEngine.setAnnotationEngine(annotationEngine);
 

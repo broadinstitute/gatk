@@ -35,10 +35,6 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
     // null print stream for the tests
     private static final PrintStream nullMessageStream = new PrintStream(new NullOutputStream());
 
-    private GATKAnnotationArgumentCollection getEmptyArgs() {
-        return new DefaultGATKVariantAnnotationArgumentCollection();
-    }
-
 //======================================================================================================================
 // Methods for computing individual annotations
     private static final Allele Aref = Allele.create("A", true);
@@ -96,7 +92,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
     public void testGetAllowedValuesForDescriptorHelp(final List<Annotation> defaultAnnotations) {
         final CommandLineParser clp = new CommandLineArgumentParser(
                 new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(), defaultAnnotations, null)),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor(new DefaultGATKVariantAnnotationArgumentCollection(), defaultAnnotations, null)),
                 Collections.emptySet());
         clp.parseArguments(nullMessageStream, new String[]{});
 
@@ -119,7 +115,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
     public void testGetAllowedValuesForDescriptorHelpGroups() {
         final CommandLineParser clp = new CommandLineArgumentParser(
                 new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(), null, Collections.singletonList(AS_StandardAnnotation.class))),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor( null, Collections.singletonList(AS_StandardAnnotation.class))),
         Collections.emptySet());
         clp.parseArguments(nullMessageStream, new String[]{});
 
@@ -133,7 +129,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
     public void testGetDefaultInstances() {
         final CommandLineParser clp = new CommandLineArgumentParser(
                 new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(),  Collections.singletonList(RMSMappingQuality.getInstance()), Collections.singletonList(AS_StandardAnnotation.class))),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor(  Collections.singletonList(RMSMappingQuality.getInstance()), Collections.singletonList(AS_StandardAnnotation.class))),
                 Collections.emptySet());
         clp.parseArguments(nullMessageStream, new String[]{});
 
@@ -161,7 +157,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         //This test asserts that the plugin descriptor will throw if an invalid annotation group is requested
         new CommandLineArgumentParser(
                 new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(), null, testGroups)),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor( null, testGroups)),
                 Collections.emptySet());
     }
 
@@ -170,7 +166,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         //This test asserts that the plugin descriptor will throw if an invalid annotation group is requested
         CommandLineParser clp = new CommandLineArgumentParser(
                 new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(), null, null)),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor( null, null)),
                 Collections.emptySet());
         List<String> args = new ArrayList<>();
         for (Class<? extends Annotation> group : testGroups) {
@@ -198,7 +194,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         //This test asserts that the plugin descriptor will crash if an invalid annotation group is requested
         CommandLineParser clp = new CommandLineArgumentParser(
                 new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(), null, null)),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor( null, null)),
                 Collections.emptySet());
         String[] args = arguments.toArray(new String[arguments.size()]);
         clp.parseArguments(nullMessageStream, args);
@@ -219,7 +215,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
             final String[] argValue) { //unused
         CommandLineParser clp = new CommandLineArgumentParser(
                 new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(), null, null)),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor( null, null)),
                 Collections.emptySet());
 
         String[] args = {"--annotation", annot};  // no args, just enable annotations
@@ -234,7 +230,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
             final String argValue) {
         CommandLineParser clp = new CommandLineArgumentParser(
                 new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(), null, null)),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor( null, null)),
                 Collections.emptySet());
 
         String[] args = { argName, argValue }; // no annotation set
@@ -247,7 +243,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
     public void testAnnotationArguments() {
         CommandLineParser clp = new CommandLineArgumentParser(
                 new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(), null, null)),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor( null, null)),
                 Collections.emptySet());
 
         List<String> args = Stream.of("--annotation", InbreedingCoeff.class.getSimpleName() ).collect(Collectors.toList());
@@ -329,7 +325,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
     public void testMultipleOptionalArguments(final List<Annotation> toolDefaultAnnotations, final String[] arguments, final boolean expectingParent, final int expectedChild, final double inbreedingValue) {
         CommandLineParser clp = new CommandLineArgumentParser(
                 new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(), toolDefaultAnnotations, null)),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor( toolDefaultAnnotations, null)),
                 Collections.emptySet());
 
         clp.parseArguments(nullMessageStream, arguments);
@@ -345,7 +341,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
     @Test
     public void testHierarchicalAnnotationDiscovery() throws IllegalAccessException, InstantiationException {
         List<Class<? extends Annotation>> toolDefaultAnnotationGroups = Arrays.asList(InbreedingCoeff.class, RMSMappingQuality.class, testChildAnnotation.class, testParentAnnotation.class);
-        GATKAnnotationPluginDescriptor pluginDescriptor = new GATKAnnotationPluginDescriptor(getEmptyArgs(), null, Collections.singletonList(ParentAnnotationGroup.class));
+        GATKAnnotationPluginDescriptor pluginDescriptor = new GATKAnnotationPluginDescriptor( null, Collections.singletonList(ParentAnnotationGroup.class));
 
         toolDefaultAnnotationGroups.forEach(a -> {
             try {
@@ -373,12 +369,12 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
 
         CommandLineParser clp1 = new CommandLineArgumentParser(
                 new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(), Collections.singletonList(new InbreedingCoeff(Collections.emptySet())), null)),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor( Collections.singletonList(new InbreedingCoeff(Collections.emptySet())), null)),
                 Collections.emptySet());
         CommandLineParser clp2 = new CommandLineArgumentParser(
                 new Object(),
                 // Adding a default value which should result in different annotations
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(), Collections.singletonList(new InbreedingCoeff(new HashSet<>(Arrays.asList(goodArguments)))), null)),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor( Collections.singletonList(new InbreedingCoeff(new HashSet<>(Arrays.asList(goodArguments)))), null)),
                 Collections.emptySet());
 
         List<String> completeArguments = Lists.newArrayList("--annotation", InbreedingCoeff.class.getSimpleName());
@@ -408,7 +404,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
     public void testDisableDefaultsAndReplaceOnCommandLine() {
         CommandLineParser clp = new CommandLineArgumentParser(
                 new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(), Arrays.asList(new InbreedingCoeff(Sets.newSet("s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10")),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor( Arrays.asList(new InbreedingCoeff(Sets.newSet("s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10")),
                         new DepthPerSampleHC()), Collections.singletonList(StandardAnnotation.class))),
                 Collections.emptySet());
         List<String> args = Stream.of(StandardArgumentDefinitions.ANNOTATION_GROUP_SHORT_NAME, StandardAnnotation.class.getSimpleName(), "--"+ StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_ANNOTATIONS).collect(Collectors.toList());
@@ -430,7 +426,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
     public void testNoAnnotations(){
         CommandLineParser clp = new CommandLineArgumentParser(
                 new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(), null, null)),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor( null, null)),
                 Collections.emptySet());
         String[] args = {};
         clp.parseArguments(nullMessageStream, args);
@@ -444,7 +440,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
     public void testGetClassForPluginHelpFromReflection(){
         CommandLineParser clp = new CommandLineArgumentParser(
                 new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(), null, null)),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor( null, null)),
                 Collections.emptySet());
         String[] args = {};
         clp.parseArguments(nullMessageStream, args);
@@ -456,10 +452,38 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
     }
 
     @Test
+    public void testUseAllAnnotations(){
+        CommandLineParser clp = new CommandLineArgumentParser(
+                new Object(),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor(null, null)),
+                Collections.emptySet());
+        String[] args = {"--"+StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS};
+        clp.parseArguments(nullMessageStream, args);
+        List<Annotation> annots = instantiateAnnotations(clp);
+
+        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
+        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==ChromosomeCounts.class));
+    }
+
+    @Test
+    public void testIncludeAllExcludeIndividual(){
+        CommandLineParser clp = new CommandLineArgumentParser(
+                new Object(),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor(null, null)),
+                Collections.emptySet());
+        String[] args = {"--"+StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS, "-AX", "Coverage"};
+        clp.parseArguments(nullMessageStream, args);
+        List<Annotation> annots = instantiateAnnotations(clp);
+
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
+        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==ChromosomeCounts.class));
+    }
+
+    @Test
     public void testIncludeDefaultExcludeIndividual(){
         CommandLineParser clp = new CommandLineArgumentParser(
                 new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(), Collections.singletonList(new Coverage()), null)),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor( Collections.singletonList(new Coverage()), null)),
                 Collections.emptySet());
         String[] args = {"-AX", Coverage.class.getSimpleName()};
         clp.parseArguments(nullMessageStream, args);
@@ -473,7 +497,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
     public void testIncludeDefaultGroupExcludeIndividual(){
         CommandLineParser clp = new CommandLineArgumentParser(
                 new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(), null, Collections.singletonList(StandardAnnotation.class))),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor( null, Collections.singletonList(StandardAnnotation.class))),
                 Collections.emptySet());
         String[] args = {"--annotations-to-exclude", Coverage.class.getSimpleName()};
         clp.parseArguments(nullMessageStream, args);
@@ -490,7 +514,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
     public void testIncludeUserGroupExcludeIndividual(){
         CommandLineParser clp = new CommandLineArgumentParser(
                 new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(), null, null)),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor( null, null)),
                 Collections.emptySet());
         String[] args = {"--annotations-to-exclude", Coverage.class.getSimpleName(), "-"+StandardArgumentDefinitions.ANNOTATION_GROUP_SHORT_NAME, StandardAnnotation.class.getSimpleName()};
         clp.parseArguments(nullMessageStream, args);
@@ -507,7 +531,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
     public void testAnnotationGroupOverriding(){
         CommandLineParser clp = new CommandLineArgumentParser(
                 new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(), null, Collections.singletonList(StandardHCAnnotation.class))),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor( null, Collections.singletonList(StandardHCAnnotation.class))),
                 Collections.emptySet());
         String[] args = {"-"+StandardArgumentDefinitions.ANNOTATION_GROUP_SHORT_NAME, StandardAnnotation.class.getSimpleName()};
         clp.parseArguments(nullMessageStream, args);
@@ -541,7 +565,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         testParentAnnotation parentAnnotation = new testParentAnnotation();
         CommandLineParser clp = new CommandLineArgumentParser(
                 new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(), Arrays.asList(parentAnnotation, childAnnotation), null)),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor( Arrays.asList(parentAnnotation, childAnnotation), null)),
                 Collections.emptySet());
         clp.parseArguments(nullMessageStream, args);
         List<Annotation> annots = instantiateAnnotations(clp);
@@ -551,7 +575,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
 
     @Test
     public void testOverridingInstancesWithGetInstance() throws InstantiationException, IllegalAccessException {
-        GATKAnnotationPluginDescriptor pluginDescriptor = new GATKAnnotationPluginDescriptor(getEmptyArgs(), Collections.singletonList(new testParentAnnotation(true)), null);
+        GATKAnnotationPluginDescriptor pluginDescriptor = new GATKAnnotationPluginDescriptor( Collections.singletonList(new testParentAnnotation(true)), null);
         pluginDescriptor.createInstanceForPlugin(testParentAnnotation.class);
 
         Collection<Annotation> finalAnnotations = pluginDescriptor.getResolvedInstances();
@@ -601,47 +625,4 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         }
     }
 
-    @Test
-    public void testAll(){
-        CommandLineParser clp = new CommandLineArgumentParser(
-                new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(),null, null)),
-                Collections.emptySet());
-        String[] args = {"--use-all-annotations"};
-        clp.parseArguments(nullMessageStream, args);
-        List<Annotation> annots = instantiateAnnotations(clp);
-
-        final FeatureInput<VariantContext> dbSNPBinding = null;
-        final List<FeatureInput<VariantContext>> features = Collections.emptyList();
-        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(annots, dbSNPBinding, features, false);
-
-        final Set<VCFHeaderLine> vcfAnnotationDescriptions = vae.getVCFAnnotationDescriptions(false);
-        Assert.assertFalse(vcfAnnotationDescriptions.isEmpty());
-
-        Assert.assertFalse(vcfAnnotationDescriptions.contains(VCFStandardHeaderLines.getInfoLine(VCFConstants.DBSNP_KEY)));
-        Assert.assertTrue(vcfAnnotationDescriptions.contains(VCFStandardHeaderLines.getInfoLine(VCFConstants.DEPTH_KEY)));          //yes DP
-        Assert.assertTrue(vcfAnnotationDescriptions.contains(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_COUNT_KEY)));   //yes AC
-    }
-
-    @Test
-    public void testAllMinusCoverage(){
-        CommandLineParser clp = new CommandLineArgumentParser(
-                new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(getEmptyArgs(),null, null)),
-                Collections.emptySet());
-        String[] args = {"--use-all-annotations", "-AX", "Coverage"};
-        clp.parseArguments(nullMessageStream, args);
-        List<Annotation> annots = instantiateAnnotations(clp);
-
-        final FeatureInput<VariantContext> dbSNPBinding = null;
-        final List<FeatureInput<VariantContext>> features = Collections.emptyList();
-        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(annots, dbSNPBinding, features, false);
-
-        final Set<VCFHeaderLine> vcfAnnotationDescriptions = vae.getVCFAnnotationDescriptions(false);
-        Assert.assertFalse(vcfAnnotationDescriptions.isEmpty());
-
-        Assert.assertFalse(vcfAnnotationDescriptions.contains(VCFStandardHeaderLines.getInfoLine(VCFConstants.DBSNP_KEY)));
-        Assert.assertFalse(vcfAnnotationDescriptions.contains(VCFStandardHeaderLines.getInfoLine(VCFConstants.DEPTH_KEY))); //no DP
-        Assert.assertTrue(vcfAnnotationDescriptions.contains(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_COUNT_KEY)));  //yes AC
-    }
 }

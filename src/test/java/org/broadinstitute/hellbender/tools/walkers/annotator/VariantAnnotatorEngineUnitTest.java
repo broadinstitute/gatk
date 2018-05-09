@@ -4,11 +4,7 @@ import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
-import org.apache.commons.io.output.NullOutputStream;
 import org.apache.commons.lang3.ArrayUtils;
-import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
-import org.broadinstitute.barclay.argparser.CommandLineParser;
-import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.FeatureInput;
@@ -21,12 +17,12 @@ import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.PrintStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -36,23 +32,11 @@ import static org.mockito.Mockito.when;
 public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
 
     public static List<Annotation> ofAllMinusExcluded(List<Class<? extends Annotation>> toExclude) {
-        CommandLineParser clp = new CommandLineArgumentParser(
-                new Object(),
-                Collections.singletonList(new GATKAnnotationPluginDescriptor(null, null)),
-                Collections.emptySet());
-        List<String> args = new ArrayList<>();
-        args.add("--enable-all-annotations");
+        List<Annotation> allAnnotations = VariantContextTestUtils.getAllAnnotations();
         for (Class c : toExclude) {
-            args.add("-AX");
-            args.add(c.getSimpleName());
+            allAnnotations.removeIf(annotation -> annotation.getClass()==c);
         }
-        clp.parseArguments(new PrintStream(new NullOutputStream()), args.toArray(new String[args.size()]));
-        return instantiateAnnotations(clp);
-    }
-
-    private static List<Annotation> instantiateAnnotations(final CommandLineParser clp) {
-        GATKAnnotationPluginDescriptor annotationPlugin = clp.getPluginDescriptor(GATKAnnotationPluginDescriptor.class);
-        return annotationPlugin.getResolvedInstances();
+        return allAnnotations;
     }
 
     @Test
@@ -401,7 +385,7 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
         final FeatureInput<VariantContext> dbSNPBinding = null;
         final List<FeatureInput<VariantContext>> features = Collections.emptyList();
 
-        headerInfo.addAll(new VariantAnnotatorEngine(ofAllMinusExcluded(Collections.emptyList()), dbSNPBinding, features, false).getVCFAnnotationDescriptions(false));
+        headerInfo.addAll(new VariantAnnotatorEngine(VariantContextTestUtils.getAllAnnotations(), dbSNPBinding, features, false).getVCFAnnotationDescriptions(false));
 
         Assert.assertFalse(headerInfo.contains(null));
         new VCFHeader(headerInfo, sampleSet);//make sure this does not blow up: https://github.com/broadinstitute/gatk/issues/1713
@@ -412,7 +396,7 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
         final FeatureInput<VariantContext> dbSNPBinding = null;
         final List<FeatureInput<VariantContext>> features = Collections.emptyList();
 
-        final VariantAnnotatorEngine variantAnnotatorEngine = new VariantAnnotatorEngine(ofAllMinusExcluded(Collections.emptyList()), dbSNPBinding, features, false);
+        final VariantAnnotatorEngine variantAnnotatorEngine = new VariantAnnotatorEngine(VariantContextTestUtils.getAllAnnotations(), dbSNPBinding, features, false);
         for (GenotypeAnnotation ga : variantAnnotatorEngine.getGenotypeAnnotations()) {
             Assert.assertFalse(ga.getDescriptions().contains(null), "getDescriptions contains null:" + ga);
             Assert.assertFalse(ga.getKeyNames().contains(null), "getKeyNames contains null" + ga);
