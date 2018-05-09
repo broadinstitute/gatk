@@ -106,9 +106,6 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
             Files.createFile(subpath);
             Runtime.getRuntime().exec("chmod a-w -R " + defaultPartsDir + "/");
 
-            //assert it fails when writing to the default path
-            Assert.assertThrows(() -> assertSingleShardedWritingWorks(inputBam, referenceFile, outputFile.getAbsolutePath(), null));
-
             //show this succeeds when specifying a different path for the parts directory
             assertSingleShardedWritingWorks(inputBam, referenceFile, outputFile.getAbsolutePath(), nonDefaultShardsDir.getAbsolutePath());
 
