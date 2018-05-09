@@ -211,7 +211,7 @@ public class Funcotator extends VariantWalker {
     /**
      * The current version of {@link Funcotator}.
      */
-    public static final String VERSION = "0.0.2";
+    public static final String VERSION = "0.0.3";
 
     //==================================================================================================================
     // Arguments:
@@ -568,9 +568,9 @@ public class Funcotator extends VariantWalker {
         }
     }
 
-    private void addFeaturesForLocatableDataSource( final Path dataSourceFile,
-                                                    final Properties dataSourceProperties,
-                                                    final Class<? extends Feature> featureClazz ) {
+    private void addFeaturesForLocatableDataSource(final Path dataSourceFile,
+                                                   final Properties dataSourceProperties,
+                                                   final Class<? extends Feature> featureClazz) {
 
         final String name = dataSourceProperties.getProperty(DataSourceUtils.CONFIG_FILE_FIELD_NAME_NAME);
 
@@ -580,7 +580,8 @@ public class Funcotator extends VariantWalker {
                         IOUtils.getPath( dataSourceProperties.getProperty(DataSourceUtils.CONFIG_FILE_FIELD_NAME_SRC_FILE) )
                 ).toUri().toString(),
                 name,
-                featureClazz
+                featureClazz,
+                VariantWalkerBase.FEATURE_CACHE_LOOKAHEAD
         );
 
         // Add our feature input to our list of manual inputs:

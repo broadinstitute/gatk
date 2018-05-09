@@ -139,16 +139,9 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
         return new FeatureCodecHeader(readActualHeader(lineIterator), FeatureCodecHeader.NO_HEADER_END);
     }
 
-    @SuppressWarnings( "deprecation" )
     @Override
     public LocationAware makeIndexableSourceFromStream(final InputStream bufferedInputStream) {
-        final PositionalBufferedStream pbs;
-        if (bufferedInputStream instanceof PositionalBufferedStream) {
-            pbs = (PositionalBufferedStream) bufferedInputStream;
-        } else {
-            pbs = new PositionalBufferedStream(bufferedInputStream);
-        }
-        return new AsciiLineReaderIterator(new AsciiLineReader(pbs));
+        return new AsciiLineReaderIterator(AsciiLineReader.from(bufferedInputStream));
     }
 
     // ============================================================================================================
