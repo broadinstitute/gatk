@@ -627,12 +627,8 @@ task CallModeledSegments {
     File modeled_segments_input_file
     Boolean? load_copy_ratio
     Boolean? load_allele_fraction
-    File? output_image_dir
-    File? output_calls_dir
-    File? output_log_dir
-    String? output_image_prefix
-    String? output_calls_prefix
-    String? output_log_prefix
+    File? output_dir
+    String? output_prefix
     Float? normal_minor_allele_fraction_threshold
     Float? copy_ratio_peak_min_weight
     Float? min_fraction_of_points_in_normal_allele_fraction_region
@@ -649,34 +645,23 @@ task CallModeledSegments {
     Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
     Int command_mem_mb = machine_mem_mb - 1000
 
-    File output_image_dir_ = select_first([output_image_dir, "out/out_image"])
-    File output_calls_dir_ = select_first([output_calls_dir, "out/out_calls"])
-    File output_log_dir_ = select_first([output_image_dir, "out/out_log"])
-
-    String output_image_prefix_ = select_first([output_image_prefix, entity_id])
-    String output_calls_prefix_ = select_first([output_calls_prefix, entity_id])
-    String output_log_prefix_ = select_first([output_log_prefix, entity_id])
+    String output_dir_ = select_first([output_dir, "out"])
+    String output_prefix_ = select_first([output_prefix, entity_id])
 
     command <<<
         set -e
-        mkdir ${output_image_dir_}
-        mkdir ${output_calls_dir_}
-        mkdir ${output_log_dir_}
+        mkdir ${output_dir_}
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
         gatk --java-options "-Xmx${command_mem_mb}m" CallModeledSegments \
             --input ${modeled_segments_input_file} \
             --load-copy-ratio ${default="true" load_copy_ratio} \
             --load-allele-fraction ${default="true" load_allele_fraction} \
-            --output-image-dir ${output_image_dir_} \
-            --output-calls-dir ${output_calls_dir_} \
-            --output-log-dir ${output_log_dir_} \
-            --output-image-prefix ${output_image_prefix_} \
-            --output-calls-prefix ${output_calls_prefix_} \
-            --output-log-prefix ${output_log_prefix_} \
+            --output ${output_dir_} \
+            --output-prefix ${output_prefix_} \
             --normal-minor-allele-fraction-threshold ${default="0.475" normal_minor_allele_fraction_threshold} \
             --copy-ratio-peak-min-weight ${default="0.03" copy_ratio_peak_min_weight} \
-            --min_fraction_of_points_in_normal_allele_fraction_region ${default="2.0" min_fraction_of_points_in_normal_allele_fraction_region}
+            --min-fraction-of-points-in-normal-allele-fraction-region ${default="0.15" min_fraction_of_points_in_normal_allele_fraction_region}
     >>>
 
     runtime {
@@ -688,7 +673,7 @@ task CallModeledSegments {
     }
 
     output {
-        File called_modeled_segments_data = "${output_calls_dir_}${output_calls_prefix_}.called.seg"
+        File called_modeled_segments_data = "${output_dir_}${output_prefix_}.called.seg"
     }
 }
 
