@@ -17,6 +17,8 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicat
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -24,6 +26,7 @@ import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
+import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import scala.Tuple2;
 
@@ -64,22 +67,45 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         return Collections.singletonList(ReadFilterLibrary.ALLOW_ALL_READS);
     }
 
+    /**
+     * Main method for marking duplicates, takes an JavaRDD of GATKRead and an associated SAMFileHeader with corresponding
+     * sorting information and returns a new JavaRDD\<GATKRead\> in which all read templates have been marked as duplicates
+     *
+     * NOTE: This method expects the incoming reads to be grouped by read name (queryname sorted/querygrouped) and for this
+     *       to be explicitly be set in the the provided header. Furthermore, all the reads in a template must be grouped
+     *       into the same partition or there may be problems duplicate marking.
+     *       If MarkDuplicates detects reads are sorted in some other way, it will perform an extra sort operation first,
+     *       thus it is preferable to input reads to this method sorted for performance reasons.
+     *
+     * @param reads input reads to be duplicate marked
+     * @param header header corresponding to the input reads
+     * @param scoringStrategy method by which duplicates are detected
+     * @param opticalDuplicateFinder
+     * @param numReducers number of partitions to separate the data into
+     * @param dontMarkUnmappedMates when true, unmapped mates of duplicate fragments will be marked as non-duplicates
+     * @return A JavaRDD of GATKReads where duplicate flags have been set
+     */
     public static JavaRDD<GATKRead> mark(final JavaRDD<GATKRead> reads, final SAMFileHeader header,
                                          final MarkDuplicatesScoringStrategy scoringStrategy,
                                          final OpticalDuplicateFinder opticalDuplicateFinder,
                                          final int numReducers, final boolean dontMarkUnmappedMates) {
+        JavaRDD<GATKRead> sortedReadsForMarking;
+        SAMFileHeader headerForTool = header.clone();
 
-        JavaPairRDD<MarkDuplicatesSparkUtils.IndexPair<String>, Integer> namesOfNonDuplicates = MarkDuplicatesSparkUtils.transformToDuplicateNames(header, scoringStrategy, opticalDuplicateFinder, reads, numReducers);
+        // If the input isn't queryname sorted, sort it before duplicate marking
+        sortedReadsForMarking = querynameSortReadsIfNecessary(reads, numReducers, headerForTool);
+
+        JavaPairRDD<MarkDuplicatesSparkUtils.IndexPair<String>, Integer> namesOfNonDuplicates = MarkDuplicatesSparkUtils.transformToDuplicateNames(headerForTool, scoringStrategy, opticalDuplicateFinder, sortedReadsForMarking, numReducers);
 
         // Here we explicitly repartition the read names of the unmarked reads to match the partitioning of the original bam
         final JavaRDD<Tuple2<String,Integer>> repartitionedReadNames = namesOfNonDuplicates
                 .mapToPair(pair -> new Tuple2<>(pair._1.getIndex(), new Tuple2<>(pair._1.getValue(),pair._2)))
-                .partitionBy(new KnownIndexPartitioner(reads.getNumPartitions()))
+                .partitionBy(new KnownIndexPartitioner(sortedReadsForMarking.getNumPartitions()))
                 .values();
 
         // Here we combine the original bam with the repartitioned unmarked readnames to produce our marked reads
-        return reads.zipPartitions(repartitionedReadNames, (readsIter, readNamesIter)  -> {
-            final Map<String,Integer> namesOfNonDuplicateReadsAndOpticalCounts = Utils.stream(readNamesIter).collect(Collectors.toMap(Tuple2::_1,Tuple2::_2));
+        return sortedReadsForMarking.zipPartitions(repartitionedReadNames, (readsIter, readNamesIter)  -> {
+            final Map<String,Integer> namesOfNonDuplicateReadsAndOpticalCounts = Utils.stream(readNamesIter).collect(Collectors.toMap(Tuple2::_1,Tuple2::_2, (t1,t2) -> {throw new GATKException("Detected multiple mark duplicate records objects corresponding to read with name, this could be the result of readnames spanning more than one partition");}));
             return Utils.stream(readsIter).peek(read -> {
                 // Handle reads that have been marked as non-duplicates (which also get tagged with optical duplicate summary statistics)
                 if( namesOfNonDuplicateReadsAndOpticalCounts.containsKey(read.getName())) {
@@ -101,6 +127,21 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                 }
             }).iterator();
         });
+    }
+
+    /**
+     * Sort reads into queryname order if they are not already sorted
+     */
+    protected static JavaRDD<GATKRead> querynameSortReadsIfNecessary(JavaRDD<GATKRead> reads, int numReducers, SAMFileHeader headerForTool) {
+        JavaRDD<GATKRead> sortedReadsForMarking;
+        if (ReadUtils.isReadNameGroupedBam(headerForTool)) {
+            sortedReadsForMarking = reads;
+        } else {
+            headerForTool.setSortOrder(SAMFileHeader.SortOrder.queryname);
+            JavaRDD<GATKRead> sortedReads = SparkUtils.querynameSortReads(reads, numReducers);
+            sortedReadsForMarking = ReadsSparkSource.putPairsInSamePartition(headerForTool, sortedReads, JavaSparkContext.fromSparkContext(reads.context()));
+        }
+        return sortedReadsForMarking;
     }
 
     /**

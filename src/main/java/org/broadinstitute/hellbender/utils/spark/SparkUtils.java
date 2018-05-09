@@ -17,6 +17,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -135,6 +136,31 @@ public final class SparkUtils {
 
         // do a total sort so that all the reads in partition i are less than those in partition i+1
         final Comparator<GATKRead> comparator = new ReadCoordinateComparator(header);
+        final JavaPairRDD<GATKRead, Void> readVoidPairs;
+        final JavaRDD<GATKRead> output;
+        if (numReducers > 0) {
+            readVoidPairs = rddReadPairs.sortByKey(comparator, true, numReducers);
+            output = ReadsSparkSource.putPairsInSamePartition(header, readVoidPairs.keys(), new JavaSparkContext(readVoidPairs.context()));
+        } else {
+            readVoidPairs = rddReadPairs.sortByKey(comparator);
+            output = readVoidPairs.keys();
+        }
+        return output;
+    }
+
+    /**
+     * Sorts the given reads in queryname sort order.
+     * @param reads the reads to sort
+     * @param numReducers the number of reducers to use; a value of 0 means use the default number of reducers
+     * @return a sorted RDD of reads
+     */
+    public static JavaRDD<GATKRead> querynameSortReads(final JavaRDD<GATKRead> reads, final int numReducers) {
+        // Turn into key-value pairs so we can sort (by key). Values are null so there is no overhead in the amount
+        // of data going through the shuffle.
+        final JavaPairRDD<GATKRead, Void> rddReadPairs = reads.mapToPair(read -> new Tuple2<>(read, (Void) null));
+
+        // do a total sort so that all the reads in partition i are less than those in partition i+1
+        final Comparator<GATKRead> comparator = new ReadQueryNameComparator();
         final JavaPairRDD<GATKRead, Void> readVoidPairs;
         if (numReducers > 0) {
             readVoidPairs = rddReadPairs.sortByKey(comparator, true, numReducers);
