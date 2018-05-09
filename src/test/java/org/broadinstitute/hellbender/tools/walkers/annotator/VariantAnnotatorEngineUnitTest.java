@@ -33,7 +33,7 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
 
     public static List<Annotation> ofAllMinusExcluded(List<Class<? extends Annotation>> toExclude) {
         List<Annotation> allAnnotations = VariantContextTestUtils.getAllAnnotations();
-        for (Class c : toExclude) {
+        for (Class<? extends Annotation> c : toExclude) {
             allAnnotations.removeIf(annotation -> annotation.getClass()==c);
         }
         return allAnnotations;
