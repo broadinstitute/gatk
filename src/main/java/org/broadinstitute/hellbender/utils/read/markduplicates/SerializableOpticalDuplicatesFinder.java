@@ -5,7 +5,8 @@ import java.io.Serializable;
 
 /**
  * An intermediate class flagged as being serializable so that the Picard OpticalDuplicateFinder can be serialized despite
- * it not being marked as such. There is not state outside of construction at the time of creating this pr.
+ * it not being marked as such. Since there is no internal state beyond initialization settings in the picard OpticalDuplicates
+ * finder this should not cause serialization problems.
  */
 public class SerializableOpticalDuplicatesFinder extends OpticalDuplicateFinder implements Serializable{
     private static final long serialVersionUID = 1L;

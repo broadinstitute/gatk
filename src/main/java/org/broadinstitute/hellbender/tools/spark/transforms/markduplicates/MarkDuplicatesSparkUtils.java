@@ -97,8 +97,7 @@ public class MarkDuplicatesSparkUtils {
 
         final JavaPairRDD<String, Iterable<IndexPair<GATKRead>>> keyedReads = getReadsGroupedByName(header, mappedReads, numReducers);
 
-        //TODO why in the world does a JavaRDD return a normal sparkcontext instead of the nice wrapped one...?
-        final Broadcast<Map<String, Short>> headerReadGroupIndexMap = new JavaSparkContext(reads.context()).broadcast( getHeaderReadGroupIndexMap(header));
+        final Broadcast<Map<String, Short>> headerReadGroupIndexMap = JavaSparkContext.fromSparkContext(reads.context()).broadcast( getHeaderReadGroupIndexMap(header));
 
         // Place all the reads into a single RDD of MarkDuplicatesSparkRecord objects
         final JavaPairRDD<Integer, MarkDuplicatesSparkRecord> pairedEnds = keyedReads.flatMapToPair(keyedRead -> {

@@ -23,6 +23,7 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.AbstractOpticalDu
 import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
 import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
+import picard.sam.util.PhysicalLocation;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -142,7 +143,7 @@ public final class EstimateLibraryComplexityGATK extends AbstractOpticalDuplicat
     /**
      * Little class to hold the sequence of a pair of reads and tile location information.
      */
-    static class PairedReadSequence implements picard.sam.util.PhysicalLocation {
+    static class PairedReadSequence implements PhysicalLocation {
         static int size_in_bytes = 2 + 1 + 4 + 1 + 300; // rough guess at memory footprint
         short readGroup = -1;
         short tile = -1;

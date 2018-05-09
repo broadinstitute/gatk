@@ -218,7 +218,7 @@ public abstract class SamFileTester implements CommandLineProgramTester {
                             final boolean record1NonPrimary,
                             final boolean record2NonPrimary,
                             final int defaultQuality,
-                            final String readGorup) {
+                            final String readGroup) {
         final List<SAMRecord> samRecordList = samRecordSetBuilder.addPair(readName, referenceSequenceIndex1, referenceSequenceIndex2, alignmentStart1, alignmentStart2,
                 record1Unmapped, record2Unmapped, cigar1, cigar2, strand1, strand2, record1NonPrimary, record2NonPrimary, defaultQuality);
 
@@ -230,9 +230,9 @@ public abstract class SamFileTester implements CommandLineProgramTester {
             record2.setAttribute("MC", null);
         }
 
-        if (readGorup!=null) {
-            record1.setAttribute("RG", readGorup);
-            record2.setAttribute("RG", readGorup);
+        if (readGroup!=null) {
+            record1.setAttribute("RG", readGroup);
+            record2.setAttribute("RG", readGroup);
         }
 
         if (firstOnly) {

@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadEnds;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
+import picard.sam.util.PhysicalLocation;
 
 /**
  * Class representing a pair of reads together with accompanying optical duplicate marking information.
@@ -19,7 +20,7 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
  * during the processing step of MarkDuplicatesSpark
  */
 @DefaultSerializer(Pair.Serializer.class)
-public final class Pair extends PairedEnds implements picard.sam.util.PhysicalLocation {
+public final class Pair extends PairedEnds implements PhysicalLocation {
     protected transient int key;
 
     private final int firstStartPosition;

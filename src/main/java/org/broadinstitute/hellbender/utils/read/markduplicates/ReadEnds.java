@@ -1,7 +1,10 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates;
 
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import picard.sam.util.PhysicalLocation;
+
 /** Little struct-like class to hold read pair (and fragment) end data for duplicate marking. */
-public abstract class ReadEnds implements picard.sam.util.PhysicalLocation {
+public abstract class ReadEnds implements PhysicalLocation {
 
     public static final byte F = 0, R = 1, FF = 2, FR = 3, RR = 4, RF = 5;
 
@@ -38,14 +41,32 @@ public abstract class ReadEnds implements picard.sam.util.PhysicalLocation {
     @Override
     public int getX() { return this.x; }
 
+    /**
+     * Note, this is actually stored internally as a short in gatk and will throw an exception if provided with a value greater than @Short.MAX_VALUE
+     */
     @Override
-    public void setX(final int x) { this.x = (short)x; }
+    public void setX(final int x) {
+        if (x<Short.MAX_VALUE) {
+            this.x = (short) x;
+        } else {
+            throw new GATKException(String.format("Tried to provide value %d to a Physical location %s, this is internally stored as a short so the max value is 32767", y, this));
+        }
+    }
 
     @Override
     public int getY() { return this.y; }
 
+    /**
+     * Note, this is actually stored internally as a short in gatk and will throw an exception if provided with a value greater than @Short.MAX_VALUE
+     */
     @Override
-    public void setY(final int y) { this.y = (short)y; }
+    public void setY(final int y) {
+        if (y<Short.MAX_VALUE) {
+            this.y = (short) y;
+        } else {
+            throw new GATKException(String.format("Tried to provide value %d to a Physical location %s, this is internally stored as a short so the max value is 32767", y, this));
+        }
+    }
 
     @Override
     public short getLibraryId() { return this.libraryId; }
