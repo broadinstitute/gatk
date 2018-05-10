@@ -41,7 +41,7 @@ SV_ARGS=${*:-${SV_ARGS:-""}}
 # get appropriate ZONE for cluster
 echo "CLUSTER_INFO=\$(gcloud dataproc clusters list --project=${PROJECT_NAME} --filter='clusterName=${CLUSTER_NAME}')"
 CLUSTER_INFO=$(gcloud dataproc clusters list --project=${PROJECT_NAME} --filter="clusterName=${CLUSTER_NAME}")
-ZONE=$(echo "${CLUSTER_INFO}" | awk 'NR==1 { for (i=1; i<=NF; i++) { f[$i] = i } } { print $(f["ZONE"]) }' | tail -1)
+ZONE=$(echo "${CLUSTER_INFO}" | tail -1 | awk '{print $NF}')
 echo "Zone = $ZONE"
 if [ -z "${ZONE}" ]; then
     # cluster is down.
@@ -72,7 +72,7 @@ else
     COUNT_FILES_CMD="hadoop fs -count /${RESULTS_DIR}/ | tr -s ' ' | cut -d ' ' -f 3"
     NUM_FILES=$(gcloud compute ssh ${MASTER} --zone ${ZONE} --project ${PROJECT_NAME} --command="${COUNT_FILES_CMD}")
     # 2) get the number of instances
-    NUM_INSTANCES=$(echo "${CLUSTER_INFO}" | awk 'NR==1 { for (i=1; i<=NF; i++) { f[$i] = i } } { print $(f["WORKER_COUNT"]) + $(f["PREEMPTIBLE_WORKER_COUNT"]) }' | tail -1)
+    NUM_INSTANCES=`echo "${NUM_SV_WORKERS:-10} + ${NUM_SV_PREEMPTIBLE_WORKERS:-0} | bc`
     echo "Num Instances: $NUM_INSTANCES"
     # 3) choose number of maps as min of NUM_FILES or NUM_INSTANCES * MAPS_PER_INSTANCE
     MAPS_PER_INSTANCE=10
