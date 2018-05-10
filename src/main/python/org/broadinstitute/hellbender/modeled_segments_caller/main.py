@@ -6,11 +6,11 @@ from sklearn import mixture, cluster
 import math
 import random
 import matplotlib
+matplotlib.use('Agg')
 from matplotlib.collections import LineCollection
 from matplotlib import pyplot as plt
 from matplotlib.colors import LogNorm
 from matplotlib import  ticker
-matplotlib.use('Agg')
 from copy import deepcopy
 from typing import List
 import logging
