@@ -431,9 +431,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         String[] args = {};
         clp.parseArguments(nullMessageStream, args);
         List<Annotation> annots = instantiateAnnotations(clp);
-        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(annots, null, Collections.emptyList(), false);
-        Assert.assertTrue(vae.getGenotypeAnnotations().isEmpty());
-        Assert.assertTrue(vae.getInfoAnnotations().isEmpty());
+        Assert.assertTrue(annots.isEmpty());
     }
 
     @Test
@@ -477,6 +475,12 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
 
         Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
         Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==ChromosomeCounts.class));
+        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==AS_RMSMappingQuality.class));
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==AS_StandardAnnotation.class));
+        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==RMSMappingQuality.class));
+        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==QualByDepth.class));
+        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==ReadPosRankSumTest.class));
+        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==StrandOddsRatio.class));
     }
 
     @Test
@@ -488,9 +492,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         String[] args = {"-AX", Coverage.class.getSimpleName()};
         clp.parseArguments(nullMessageStream, args);
         List<Annotation> annots = instantiateAnnotations(clp);
-        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(annots, null, Collections.emptyList(), false);
-        Assert.assertTrue(vae.getGenotypeAnnotations().isEmpty());
-        Assert.assertTrue(vae.getInfoAnnotations().isEmpty());
+        Assert.assertTrue(annots.isEmpty());
     }
 
     @Test
@@ -502,12 +504,10 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         String[] args = {"--annotations-to-exclude", Coverage.class.getSimpleName()};
         clp.parseArguments(nullMessageStream, args);
         List<Annotation> annots = instantiateAnnotations(clp);
-        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(annots, null, Collections.emptyList(), false);
 
-        Assert.assertFalse(vae.getGenotypeAnnotations().isEmpty());
-        Assert.assertFalse(vae.getInfoAnnotations().isEmpty());
+        Assert.assertFalse(annots.isEmpty());
         //check that Coverage is out
-        Assert.assertTrue(vae.getInfoAnnotations().stream().noneMatch(a -> a.getClass().getSimpleName().equals(Coverage.class.getSimpleName())));
+        Assert.assertTrue(annots.stream().noneMatch(a -> a.getClass().getSimpleName().equals(Coverage.class.getSimpleName())));
     }
 
     @Test
@@ -519,12 +519,10 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         String[] args = {"--annotations-to-exclude", Coverage.class.getSimpleName(), "-"+StandardArgumentDefinitions.ANNOTATION_GROUP_SHORT_NAME, StandardAnnotation.class.getSimpleName()};
         clp.parseArguments(nullMessageStream, args);
         List<Annotation> annots = instantiateAnnotations(clp);
-        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(annots, null, Collections.emptyList(), false);
 
-        Assert.assertFalse(vae.getGenotypeAnnotations().isEmpty());
-        Assert.assertFalse(vae.getInfoAnnotations().isEmpty());
+        Assert.assertFalse(annots.isEmpty());
         //check that Coverage is out
-        Assert.assertTrue(vae.getInfoAnnotations().stream().noneMatch(a -> a.getClass().getSimpleName().equals(Coverage.class.getSimpleName())));
+        Assert.assertTrue(annots.stream().noneMatch(a -> a.getClass().getSimpleName().equals(Coverage.class.getSimpleName())));
     }
 
     @Test
@@ -536,14 +534,12 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         String[] args = {"-"+StandardArgumentDefinitions.ANNOTATION_GROUP_SHORT_NAME, StandardAnnotation.class.getSimpleName()};
         clp.parseArguments(nullMessageStream, args);
         List<Annotation> annots = instantiateAnnotations(clp);
-        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(annots, null, Collections.emptyList(), false);
 
-        Assert.assertFalse(vae.getGenotypeAnnotations().isEmpty());
-        Assert.assertFalse(vae.getInfoAnnotations().isEmpty());
+        Assert.assertFalse(annots.isEmpty());
 
         //check that Coverage is in and ClippingRankSum is out
-        Assert.assertTrue(vae.getInfoAnnotations().stream().anyMatch(a -> a.getClass().getSimpleName().equals(Coverage.class.getSimpleName())));
-        Assert.assertTrue(vae.getInfoAnnotations().stream().anyMatch(a -> a.getClass().getSimpleName().equals(ClippingRankSumTest.class.getSimpleName())));
+        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass().getSimpleName().equals(Coverage.class.getSimpleName())));
+        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass().getSimpleName().equals(ClippingRankSumTest.class.getSimpleName())));
     }
 
     @DataProvider

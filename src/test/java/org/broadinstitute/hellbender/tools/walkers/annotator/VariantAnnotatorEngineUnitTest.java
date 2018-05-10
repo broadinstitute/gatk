@@ -31,14 +31,6 @@ import static org.mockito.Mockito.when;
 
 public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
 
-    public static List<Annotation> ofAllMinusExcluded(List<Class<? extends Annotation>> toExclude) {
-        List<Annotation> allAnnotations = VariantContextTestUtils.getAllAnnotations();
-        for (Class<? extends Annotation> c : toExclude) {
-            allAnnotations.removeIf(annotation -> annotation.getClass()==c);
-        }
-        return allAnnotations;
-    }
-
     @Test
     public void testCombineAnnotations() throws Exception {
         final FeatureInput<VariantContext> dbSNPBinding = null;
@@ -170,10 +162,9 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
         /**
          * exclude {@link ReferenceBases} until https://github.com/broadinstitute/gatk/issues/2799 is fixed
          * */
-        final List<Class<? extends Annotation>> annotationsToExclude= Arrays.asList( ReferenceBases.class);
         final FeatureInput<VariantContext> dbSNPBinding = null;
         final List<FeatureInput<VariantContext>> features = Collections.emptyList();
-        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(ofAllMinusExcluded(annotationsToExclude), dbSNPBinding, features, false);
+        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(VariantContextTestUtils.getAllAnnotations().stream().filter(a -> a.getClass()!=ReferenceBases.class).collect(Collectors.toList()), dbSNPBinding, features, false);
         Assert.assertFalse(vae.getVCFAnnotationDescriptions(false).contains(null));
 
         final int alt = 5;
