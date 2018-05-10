@@ -1,10 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriter;
-import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
@@ -26,6 +23,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.CpxVariantInterpreter;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SegmentedCpxVariantSimpleVariantExtractor;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleNovelAdjacencyInterpreter;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFileUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
@@ -151,7 +149,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         final AssemblyContigsClassifiedByAlignmentSignatures contigsByPossibleRawTypes =
                 preprocess(svDiscoveryInputMetaData, assemblyRawAlignments);
 
-        dispatchJobs(contigsByPossibleRawTypes, svDiscoveryInputMetaData, assemblyRawAlignments, writeSAMFiles);
+        dispatchJobs(ctx, contigsByPossibleRawTypes, svDiscoveryInputMetaData, assemblyRawAlignments, writeSAMFiles);
     }
 
     //==================================================================================================================
@@ -243,7 +241,8 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
      * {@link AssemblyContigWithFineTunedAlignments.AlignmentSignatureBasicType#UNKNOWN}
      * currently DO NOT generate any VCF yet.
      */
-    public static void dispatchJobs(final AssemblyContigsClassifiedByAlignmentSignatures contigsByPossibleRawTypes,
+    public static void dispatchJobs(final JavaSparkContext ctx,
+                                    final AssemblyContigsClassifiedByAlignmentSignatures contigsByPossibleRawTypes,
                                     final SvDiscoveryInputMetaData svDiscoveryInputMetaData,
                                     final JavaRDD<GATKRead> assemblyRawAlignments,
                                     final boolean writeSAMFiles) {
@@ -270,6 +269,16 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
             contigsByPossibleRawTypes.writeSAMfilesForUnknown(outputPrefixWithSampleName, assemblyRawAlignments,
                     svDiscoveryInputMetaData.getSampleSpecificData().getHeaderBroadcast().getValue());
         }
+
+        final JavaRDD<VariantContext> complexVariantsRDD = ctx.parallelize(complexVariants);
+        final SegmentedCpxVariantSimpleVariantExtractor.ExtractedSimpleVariants reInterpretedSimple =
+                SegmentedCpxVariantSimpleVariantExtractor.extract(complexVariantsRDD, svDiscoveryInputMetaData, assemblyRawAlignments);
+        final SAMSequenceDictionary refSeqDict = svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast().getValue();
+        final Logger toolLogger = svDiscoveryInputMetaData.getToolLogger();
+        final String derivedOneSegmentSimpleVCF = outputPrefixWithSampleName + "cpx_reinterpreted_simple_1_seg.vcf";
+        final String derivedMultiSegmentSimpleVCF = outputPrefixWithSampleName + "cpx_reinterpreted_simple_multi_seg.vcf";
+        SVVCFWriter.writeVCF(reInterpretedSimple.getReInterpretZeroOrOneSegmentCalls(), derivedOneSegmentSimpleVCF, refSeqDict, toolLogger);
+        SVVCFWriter.writeVCF(reInterpretedSimple.getReInterpretMultiSegmentsCalls(), derivedMultiSegmentSimpleVCF, refSeqDict, toolLogger);
     }
 
     //==================================================================================================================

@@ -271,8 +271,8 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         SvDiscoverFromLocalAssemblyContigAlignmentsSpark.AssemblyContigsClassifiedByAlignmentSignatures contigsByPossibleRawTypes
                 = SvDiscoverFromLocalAssemblyContigAlignmentsSpark.preprocess(svDiscoveryInputMetaData, assemblyRawAlignments);
 
-        SvDiscoverFromLocalAssemblyContigAlignmentsSpark.dispatchJobs(contigsByPossibleRawTypes, svDiscoveryInputMetaData,
-                assemblyRawAlignments, true);
+        SvDiscoverFromLocalAssemblyContigAlignmentsSpark.dispatchJobs(ctx, contigsByPossibleRawTypes,
+                svDiscoveryInputMetaData, assemblyRawAlignments, true);
     }
 
     private static JavaRDD<GATKRead> getContigRawAlignments(final JavaSparkContext ctx,
