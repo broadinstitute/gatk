@@ -115,8 +115,9 @@ public final class CopyNumberArgumentValidationUtils {
         logger.info("Reading and validating GC-content annotations for intervals...");
         final AnnotatedIntervalCollection annotatedIntervals = new AnnotatedIntervalCollection(annotatedIntervalsFile);
         final SAMSequenceDictionary sequenceDictionary = locatableCollection.getMetadata().getSequenceDictionary();
-        Utils.validateArg(annotatedIntervals.getMetadata().getSequenceDictionary().isSameDictionary(sequenceDictionary),
-                "Annotated-intervals file contains incorrect sequence dictionary.");
+        if (!CopyNumberArgumentValidationUtils.isSameDictionary(annotatedIntervals.getMetadata().getSequenceDictionary(), sequenceDictionary)) {
+            logger.warn("Sequence dictionary in annotated-intervals file does not match the master sequence dictionary.");
+        }
         Utils.validateArg(annotatedIntervals.getIntervals().equals(locatableCollection.getIntervals()),
                 "Annotated intervals do not match provided intervals.");
         return annotatedIntervals;
@@ -140,8 +141,9 @@ public final class CopyNumberArgumentValidationUtils {
         IOUtils.canReadFile(annotatedIntervalsFile);
         final AnnotatedIntervalCollection annotatedIntervals = new AnnotatedIntervalCollection(annotatedIntervalsFile);
         final SAMSequenceDictionary sequenceDictionary = locatableCollection.getMetadata().getSequenceDictionary();
-        Utils.validateArg(annotatedIntervals.getMetadata().getSequenceDictionary().isSameDictionary(sequenceDictionary),
-                "Annotated-intervals file contains incorrect sequence dictionary.");
+        if (!CopyNumberArgumentValidationUtils.isSameDictionary(annotatedIntervals.getMetadata().getSequenceDictionary(), sequenceDictionary)) {
+            logger.warn("Sequence dictionary in annotated-intervals file does not match the master sequence dictionary.");
+        }
         final Set<SimpleInterval> intervalsSubset = new HashSet<>(locatableCollection.getIntervals());
         Utils.validateArg(annotatedIntervals.getIntervals().containsAll(intervalsSubset),
                 "Annotated intervals do not contain all specified intervals.");

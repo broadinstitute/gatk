@@ -634,10 +634,11 @@ public final class ModelSegments extends CommandLineProgram {
                         "Run CollectAllelicCounts using the same interval list of sites for both samples.");
             }
             final SampleLocatableMetadata normalMetadata = normalAllelicCounts.getMetadata();
-            Utils.validateArg(CopyNumberArgumentValidationUtils.isSameDictionary(
+            if (!CopyNumberArgumentValidationUtils.isSameDictionary(
                     normalMetadata.getSequenceDictionary(),
-                    metadata.getSequenceDictionary()),
-                    "Sequence dictionaries in allelic-count files do not match.");
+                    metadata.getSequenceDictionary())) {
+                logger.warn("Sequence dictionaries in allelic-count files do not match.");
+            }
 
             //filter on total count in matched normal
             logger.info(String.format("Filtering allelic counts in matched normal with total count less than %d...", minTotalAlleleCount));
