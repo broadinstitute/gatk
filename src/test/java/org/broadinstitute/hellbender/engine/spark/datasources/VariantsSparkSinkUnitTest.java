@@ -67,20 +67,20 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
         };
     }
 
-    //@Test(dataProvider = "loadVariants", groups = "spark")
+    @Test(dataProvider = "loadVariants", groups = "spark")
     public void variantsSinkTest(String vcf, String outputFileExtension) throws IOException {
         final File outputFile = createTempFile(outputFileName, outputFileExtension);
         assertSingleShardedWritingWorks(vcf, outputFile.getAbsolutePath());
     }
 
-    //@Test(dataProvider = "loadVariants", groups = "spark")
+    @Test(dataProvider = "loadVariants", groups = "spark")
     public void variantsSinkHDFSTest(String vcf, String outputFileExtension) throws IOException {
         final String outputHDFSPath = MiniClusterUtils.getTempPath(cluster, outputFileName, outputFileExtension).toString();
         Assert.assertTrue(BucketUtils.isHadoopUrl(outputHDFSPath));
         assertSingleShardedWritingWorks(vcf, outputHDFSPath);
     }
 
-    //@Test(dataProvider = "loadVariants", groups = "spark")
+    @Test(dataProvider = "loadVariants", groups = "spark")
     public void testWritingToAnExistingFileHDFS(String vcf, String outputFileExtension) throws IOException {
         final Path outputPath = MiniClusterUtils.getTempPath(cluster, outputFileName, outputFileExtension);
         final FileSystem fs = outputPath.getFileSystem(new Configuration());
@@ -89,7 +89,7 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
         assertSingleShardedWritingWorks(vcf, outputPath.toString());
     }
 
-    //@Test(dataProvider = "loadVariants", groups = "spark")
+    @Test(dataProvider = "loadVariants", groups = "spark")
     public void testWritingToFileURL(String vcf, String outputFileExtension) throws IOException {
         String outputUrl = "file://" + createTempFile(outputFileName, outputFileExtension).getAbsolutePath();
         assertSingleShardedWritingWorks(vcf, outputUrl);
