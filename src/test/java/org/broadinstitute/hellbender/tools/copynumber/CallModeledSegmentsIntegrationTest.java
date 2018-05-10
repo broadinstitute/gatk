@@ -17,7 +17,7 @@ import java.io.File;
 public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
     // Simulated samples
     private static final File SIMULATED_DATA_DIR = new File(GATKBaseTest.publicTestDir,"org/broadinstitute/hellbender/tools/copynumber/modeled-segments-caller-sim-data/");
-    private static final File OUTPUT_DIR = createTempDir(SIMULATED_DATA_DIR.getAbsolutePath() + "/test/out/");
+    private static final File OUTPUT_DIR = createTempDir("out");
     private static final File INPUT_SIMULATED_NORMAL_DATA = new File(SIMULATED_DATA_DIR, "normal_sample_data.seg");
     private static final File INPUT_SIMULATED_NORMAL_TRUTH = new File(SIMULATED_DATA_DIR, "normal_sample_truth.seg");
     private static final File INPUT_SIMULATED_NORMAL_NOISY_DATA = new File(SIMULATED_DATA_DIR, "normal_noisy_sample_data.seg");
