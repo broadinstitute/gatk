@@ -22,6 +22,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Represents a sequence dictionary, an immutable, coordinate-sorted (with no overlaps allowed) collection of records
@@ -77,6 +78,15 @@ public abstract class AbstractLocatableCollection<METADATA extends LocatableMeta
         return getRecords().stream()
                 .map(r -> new SimpleInterval(r.getContig(), r.getStart(), r.getEnd()))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * @return  a new stream of {@link SimpleInterval}s corresponding to the {@link Locatable}s
+     *          for each record contained in the collection
+     */
+    public Stream<SimpleInterval> getIntervalsStream() {
+        return getRecords().stream()
+                .map(r -> new SimpleInterval(r.getContig(), r.getStart(), r.getEnd()));
     }
 
     /**

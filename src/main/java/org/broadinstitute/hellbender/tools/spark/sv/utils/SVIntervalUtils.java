@@ -45,9 +45,9 @@ public class SVIntervalUtils {
         if (sequence == null) {
             throw new IllegalArgumentException("Could not find interval contig with index " + interval.getContig() + " in the sequence dictionary");
         }
-        final int leftBoundary = Math.max(0, interval.getStart() - padding);
+        final int leftBoundary = Math.max(1, interval.getStart() - padding);
         final int contigLength = dictionary.getSequence(interval.getContig()).getSequenceLength();
-        final int rightBoundary = Math.min(contigLength - 1, interval.getEnd() + padding);
+        final int rightBoundary = Math.min(contigLength, interval.getEnd() + padding);
         return new SVInterval(interval.getContig(), leftBoundary, rightBoundary);
     }
 

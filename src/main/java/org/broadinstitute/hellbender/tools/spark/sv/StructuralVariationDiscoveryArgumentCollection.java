@@ -247,13 +247,49 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         public boolean outputCpxResultsInHumanReadableFormat = false;
     }
 
+    public static class PreprocessSVCohortIntervals implements Serializable {
+        private static final long serialVersionUID = 1L;
+
+        public final int DEFAULT_SMALL_BIN_SIZE = 100;
+        public final int DEFAULT_MEDIUM_BIN_SIZE = 1000;
+        public final int DEFAULT_LARGE_BIN_SIZE = 10000;
+        public final int DEFAULT_XLARGE_BIN_SIZE = 100000;
+        public final int DEFAULT_PADDING = 100;
+
+        public static final String DEFAULT_SMALL_BIN_SIZE_LONG_NAME = "small-size";
+        public static final String DEFAULT_MEDIUM_BIN_SIZE_LONG_NAME = "medium-size";
+        public static final String DEFAULT_LARGE_BIN_SIZE_LONG_NAME = "large-size";
+        public static final String DEFAULT_PADDING_LONG_NAME = "padding";
+
+        @Argument(doc = "Minimum small bin size",
+                fullName = DEFAULT_SMALL_BIN_SIZE_LONG_NAME, optional = true)
+        public int smallBinSize = DEFAULT_SMALL_BIN_SIZE;
+
+        @Argument(doc = "Minimum medium bin size",
+                fullName = DEFAULT_MEDIUM_BIN_SIZE_LONG_NAME, optional = true)
+        public int mediumBinSize = DEFAULT_MEDIUM_BIN_SIZE;
+
+        @Argument(doc = "Minimum large bin size",
+                fullName = DEFAULT_LARGE_BIN_SIZE_LONG_NAME, optional = true)
+        public int largeBinSize = DEFAULT_LARGE_BIN_SIZE;
+
+        @Argument(doc = "Minimum extra-large bin size",
+                fullName = DEFAULT_LARGE_BIN_SIZE_LONG_NAME, optional = true)
+        public int xlargeBinSize = DEFAULT_XLARGE_BIN_SIZE;
+
+        @Argument(doc = "Bins to pad each event interval",
+                fullName = DEFAULT_PADDING_LONG_NAME, optional = true)
+        public int breakpointPadding = DEFAULT_PADDING;
+
+    }
+
     public static class StructuralVariantIntervalsForCNV implements Serializable {
         private static final long serialVersionUID = 1L;
 
-        public final int DEFAULT_SMALL_EVENT_SIZE = 100;
-        public final int DEFAULT_MEDIUM_EVENT_SIZE = 1000;
-        public final int DEFAULT_LARGE_EVENT_SIZE = 10000;
-        public final int DEFAULT_XLARGE_EVENT_SIZE = 100000;
+        public final int DEFAULT_SMALL_EVENT_SIZE = 1;
+        public final int DEFAULT_MEDIUM_EVENT_SIZE = 10;
+        public final int DEFAULT_LARGE_EVENT_SIZE = 100;
+        public final int DEFAULT_XLARGE_EVENT_SIZE = 1000;
 
         public final int DEFAULT_BREAKPOINT_PADDING = 0;
         public final int DEFAULT_EVIDENCE_TARGET_LINK_PADDING = 0;

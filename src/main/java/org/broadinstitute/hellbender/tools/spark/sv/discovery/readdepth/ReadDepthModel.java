@@ -189,6 +189,36 @@ public final class ReadDepthModel implements Serializable {
         return events;
     }
 
+    public Tuple2<List<ReadDepthEvent>,ReadDepthModelParameters> expectationMaximization(final JavaSparkContext ctx) {
+        List<ReadDepthCluster> clusters = clusteredEvents.values().stream().flatMap(List::stream).collect(Collectors.toList());
+        for (int i = 0; i < 10; i++) {
+            final JavaRDD<ReadDepthCluster> clustersRDD = ctx.parallelize(clusters);
+            expectationStep(clustersRDD, parameters, + i * 738232L, logger);
+            clusters = clustersRDD.collect();
+            final double energy = maximizationStep(clusters, parameters, seed + i * 928384L, logger);
+            logger.info("EM iteration " + i + ": f = " + energy);
+        }
+
+        final List<ReadDepthEvent> events = solve(ctx);
+        final double[] eventStates = events.stream().mapToDouble(ReadDepthEvent::getState).toArray();
+        for (final ReadDepthEvent event : events) {
+            event.copyNumberCallOverlapLikelihood = computeCallOverlapLikelihood(eventStates, event, parameters);
+            event.distanceLikelihood = computeCallDistanceLikelihood(eventStates, event, parameters);
+            event.copyNumberLikelihood = computeCopyNumberLikelihood(eventStates, event, parameters);
+            event.readPairEvidenceLikelihood = computeReadPairEvidenceLikelihood(eventStates, event, parameters);
+            event.splitReadEvidenceLikelihood = computeSplitReadEvidenceLikelihood(eventStates, event, parameters);
+        }
+        return new Tuple2<>(events,parameters);
+    }
+
+    public static void expectationStep(final JavaRDD<ReadDepthCluster> clusterRdd, final ReadDepthModelParameters parameters, final long seed, final Logger logger) {
+        clusterRdd.map(cluster -> sampleStates(cluster, 100000, parameters, seed + cluster.hashCode())).collect();
+    }
+
+    public static double maximizationStep(final List<ReadDepthCluster> clusters, final ReadDepthModelParameters parameters, final long seed, final Logger logger) {
+        return solveParameterMaximumPosterior(clusters, parameters, seed, logger);
+    }
+
     public Tuple2<List<ReadDepthEvent>,ReadDepthModelParameters> train(final JavaSparkContext ctx, final SVIntervalTree<VariantContext> truthSetTree) {
         setEventTrueFlags(getEvents(), truthSetTree);
         List<ReadDepthCluster> clusters = clusteredEvents.values().stream().flatMap(List::stream).collect(Collectors.toList());
@@ -560,14 +590,14 @@ public final class ReadDepthModel implements Serializable {
 
         public static final double DEFAULT_COPY_NUMBER_STD_0 = 1;
         public static final double DEFAULT_COPY_NUMBER_STD_1 = 1;
-        public static final double DEFAULT_CALL_START_DISTANCE_MEAN_0 = 4;
+        public static final double DEFAULT_CALL_START_DISTANCE_MEAN_0 = 1.5;
         public static final double DEFAULT_CALL_START_DISTANCE_STD_0 = 1;
-        public static final double DEFAULT_CALL_START_DISTANCE_MEAN_1 = 1;
+        public static final double DEFAULT_CALL_START_DISTANCE_MEAN_1 = 0.5;
         public static final double DEFAULT_CALL_START_DISTANCE_STD_1 = 1;
-        public static final double DEFAULT_CALL_OVERLAP_MEAN_0 = 0.3;
+        public static final double DEFAULT_CALL_OVERLAP_MEAN_0 = 0;
         public static final double DEFAULT_CALL_OVERLAP_STD_0 = 1;
-        public static final double DEFAULT_CALL_OVERLAP_MEAN_1 = 0.8;
-        public static final double DEFAULT_CALL_OVERLAP_STD_1 = 0.5;
+        public static final double DEFAULT_CALL_OVERLAP_MEAN_1 = 1;
+        public static final double DEFAULT_CALL_OVERLAP_STD_1 = 1;
 
         public static final double DEFAULT_SNP_RATE_MEAN_0 = 5.0;
         public static final double DEFAULT_SNP_RATE_STD_0 = 2.0;

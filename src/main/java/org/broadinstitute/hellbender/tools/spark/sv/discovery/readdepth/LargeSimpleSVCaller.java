@@ -314,7 +314,8 @@ public class LargeSimpleSVCaller {
             final List<ReadDepthEvent> result = readDepthModel.solve(ctx);
             return new Tuple2<>(result, readDepthModel.getParameters());
         }
-        return readDepthModel.train(ctx, truthSetTree);
+        //return readDepthModel.train(ctx, truthSetTree);
+        return readDepthModel.expectationMaximization(ctx);
     }
 
     public static List<Tuple2<SVInterval,GATKRead>> getReads(final String inputPath, final JavaSparkContext ctx, final List<SimpleInterval> intervals, final SAMSequenceDictionary dictionary) {
