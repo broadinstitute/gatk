@@ -8,13 +8,13 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import java.util.stream.StreamSupport;
 
 /**
- * A modification of a VariantWalker that makes two passes through the variants.
- * This allows the user to store internal states during the first pass, which the user then
- * can process and access during the second pass
+ * A VariantWalker that makes two passes through the variants.
+ * This allows the user to store internal states during the first pass, which the user can then
+ * process and access during the second pass
  **/
 public abstract class TwoPassVariantWalker extends VariantWalker {
     /**
-     * Overrides the traversal framework of {@link VariantWalkerBase}
+     * Overrides the default, single-pass traversal framework of {@link VariantWalkerBase}
      */
     @Override
     public void traverse(){
@@ -31,15 +31,14 @@ public abstract class TwoPassVariantWalker extends VariantWalker {
         // Second pass
         logger.info("Starting second pass through the variants");
         traverseVariants(variantContextFilter, readFilter, this::secondPassApply);
-        logger.info(readFilter.getSummaryLine());
     }
 
     /**
      *
-     * First pass through the variants. Store relevant data as a private member of the walker
-     * and process it in {@link #afterFirstPass} before making a second pass
+     * First pass through the variants. The user may store data in instance variables of the walker as you go
+     * and process them in {@link #afterFirstPass} before making a second pass
      *
-     * @param variant A variant record in vcf
+     * @param variant A variant record in a vcf
      * @param readsContext Reads overlapping the current variant. Will be empty if a read source (e.g. bam) isn't provided
      * @param referenceContext Reference bases spanning the current variant
      * @param featureContext A vcf record overlapping the current variant from an auxiliary data source (e.g. gnomad)
@@ -53,11 +52,8 @@ public abstract class TwoPassVariantWalker extends VariantWalker {
      *
      * Having seen all of the variants in a vcf, make a second pass through the variants
      *
-     * @param variant A variant record in vcf
-     * @param readsContext Reads overlapping the current variant. Will be empty if a read source (e.g. bam) isn't provided
-     * @param referenceContext Reference bases spanning the current variant
-     * @param featureContext A vcf record overlapping the current variant from an auxiliary data source (e.g. gnomad)
-     */
+     * See argument docs of {@link #firstPassApply} and {@link VariantWalkerBase#apply}
+     **/
     protected abstract void secondPassApply(final VariantContext variant,
                                             final ReadsContext readsContext,
                                             final ReferenceContext referenceContext,
@@ -85,8 +81,7 @@ public abstract class TwoPassVariantWalker extends VariantWalker {
     private interface VariantConsumer {
         void consume(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext reference, final FeatureContext features);
     }
-
-
+    
     /**
      * Make final to hide it from subclasses
      */
