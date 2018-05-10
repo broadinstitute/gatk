@@ -538,7 +538,7 @@ class ModeledSegmentsCaller:
 
         # Set the filenames for the output data
         if not self.__log_filename=="":
-            logging.info("Setting output filenames.")
+            logging.info("Setting output filenames:")
         self.set_output_filenames()
         if not self.__log_filename=="":
             logging.info("   Normal segments image file : %s" % self.fig_normal_segments_filename)
