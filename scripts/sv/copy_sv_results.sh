@@ -72,7 +72,7 @@ else
     COUNT_FILES_CMD="hadoop fs -count /${RESULTS_DIR}/ | tr -s ' ' | cut -d ' ' -f 3"
     NUM_FILES=$(gcloud compute ssh ${MASTER} --zone ${ZONE} --project ${PROJECT_NAME} --command="${COUNT_FILES_CMD}")
     # 2) get the number of instances
-    NUM_INSTANCES=`echo "${NUM_SV_WORKERS:-10} + ${NUM_SV_PREEMPTIBLE_WORKERS:-0} | bc`
+    NUM_INSTANCES=`echo "${NUM_SV_WORKERS:-10} + ${NUM_SV_PREEMPTIBLE_WORKERS:-0}" | bc`
     echo "Num Instances: $NUM_INSTANCES"
     # 3) choose number of maps as min of NUM_FILES or NUM_INSTANCES * MAPS_PER_INSTANCE
     MAPS_PER_INSTANCE=10
