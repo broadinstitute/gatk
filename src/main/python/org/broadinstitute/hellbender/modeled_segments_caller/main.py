@@ -171,7 +171,7 @@ class LoadAndSampleCrAndAf:
             values = line.strip().split()
             if is_number(values[0]):
                 if(len(values) >= 5):
-                    if not float(values[4]) == 0:
+                    #if not float(values[4]) == 0:
                         segment_length = float(values[2]) - float(values[1])
                         if math.isnan(float(values[5])) or math.isnan(float(values[6])) or math.isnan(float(values[7])):
                             cr_NaN += segment_length
@@ -201,7 +201,7 @@ class LoadAndSampleCrAndAf:
                 values = line.strip().split()
                 if is_number(values[0]):
                     if(len(values) >= 5):
-                        if not float(values[4]) == 0 and not math.isnan(float(values[9])):
+                        if not (math.isnan(float(values[8])) or math.isnan(float(values[9])) or math.isnan(float(values[10]))):
                             copy_ratio_median.append(2**float(values[6]))
                             copy_ratio_10th_perc.append(2**float(values[5]))
                             copy_ratio_90th_perc.append(2**float(values[7]))
