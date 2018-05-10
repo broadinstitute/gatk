@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
-import org.seqdoop.hadoop_bam.util.VCFHeaderReader;
+import htsjdk.variant.utils.VCFHeaderReader;
 
 import java.io.IOException;
 import java.util.List;
