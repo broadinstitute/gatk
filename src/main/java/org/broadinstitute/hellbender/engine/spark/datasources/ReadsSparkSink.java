@@ -22,12 +22,10 @@ import org.bdgenomics.adam.models.SequenceDictionary;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.GATKReadToBDGAlignmentRecordConverter;
-import org.broadinstitute.hellbender.utils.read.HeaderlessSAMRecordCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import org.seqdoop.hadoop_bam.*;
@@ -36,7 +34,6 @@ import scala.Tuple2;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Comparator;
 
 /**
  * ReadsSparkSink writes GATKReads to a file. This code lifts from the HadoopGenomics/Hadoop-BAM
@@ -287,7 +284,7 @@ public final class ReadsSparkSink {
             final JavaSparkContext ctx, final String outputFile, final String referenceFile, final SAMFormat samOutputFormat, final JavaRDD<SAMRecord> reads,
             final SAMFileHeader header, final int numReducers, final String outputPartsDir) throws IOException {
 
-        final JavaRDD<SAMRecord> sortedReads = SparkUtils.sortReads(reads, header, numReducers);
+        final JavaRDD<SAMRecord> sortedReads = SparkUtils.sortSamRecordsToMatchHeader(reads, header, numReducers);
         final String outputPartsDirectory = (outputPartsDir == null)? getDefaultPartsDirectory(outputFile)  : outputPartsDir;
         saveAsShardedHadoopFiles(ctx, outputPartsDirectory, referenceFile, samOutputFormat, sortedReads,  header, false);
         logger.info("Finished sorting the bam file and dumping read shards to disk, proceeding to merge the shards into a single file using the master thread");

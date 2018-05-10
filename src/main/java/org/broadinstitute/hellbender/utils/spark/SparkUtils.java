@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.utils.spark;
 
+import com.google.common.collect.Iterators;
+import com.google.common.collect.PeekingIterator;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceRecord;
@@ -15,9 +17,10 @@ import org.apache.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.FlatMapFunction2;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -25,7 +28,10 @@ import scala.Tuple2;
 
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * Miscellaneous Spark-related utilities
@@ -130,79 +136,132 @@ public final class SparkUtils {
     public static JavaRDD<GATKRead> coordinateSortReads(final JavaRDD<GATKRead> reads, final SAMFileHeader header, final int numReducers) {
         Utils.validate(header.getSortOrder().equals(SAMFileHeader.SortOrder.coordinate), "Header must specify coordinate sort order, but was" + header.getSortOrder());
 
-        // Turn into key-value pairs so we can sort (by key). Values are null so there is no overhead in the amount
-        // of data going through the shuffle.
-        final JavaPairRDD<GATKRead, Void> rddReadPairs = reads.mapToPair(read -> new Tuple2<>(read, (Void) null));
-
-        // do a total sort so that all the reads in partition i are less than those in partition i+1
-        final Comparator<GATKRead> comparator = new ReadCoordinateComparator(header);
-        final JavaPairRDD<GATKRead, Void> readVoidPairs;
-        final JavaRDD<GATKRead> output;
-        if (numReducers > 0) {
-            readVoidPairs = rddReadPairs.sortByKey(comparator, true, numReducers);
-            output = ReadsSparkSource.putPairsInSamePartition(header, readVoidPairs.keys(), new JavaSparkContext(readVoidPairs.context()));
-        } else {
-            readVoidPairs = rddReadPairs.sortByKey(comparator);
-            output = readVoidPairs.keys();
-        }
-        return output;
+        return sort(reads, new ReadCoordinateComparator(header), numReducers);
     }
 
     /**
      * Sorts the given reads in queryname sort order.
+     * This guarantees that all reads that have the same read name are placed into the same partition
      * @param reads the reads to sort
+     * @param header header of the bam, the header is required to have been set to queryname order
      * @param numReducers the number of reducers to use; a value of 0 means use the default number of reducers
      * @return a sorted RDD of reads
      */
-    public static JavaRDD<GATKRead> querynameSortReads(final JavaRDD<GATKRead> reads, final int numReducers) {
-        // Turn into key-value pairs so we can sort (by key). Values are null so there is no overhead in the amount
-        // of data going through the shuffle.
-        final JavaPairRDD<GATKRead, Void> rddReadPairs = reads.mapToPair(read -> new Tuple2<>(read, (Void) null));
+    public static JavaRDD<GATKRead> querynameSortReads(final JavaRDD<GATKRead> reads, SAMFileHeader header, final int numReducers) {
+        Utils.validate(header.getSortOrder().equals(SAMFileHeader.SortOrder.queryname), "Header must specify queryname sort order, but was " + header.getSortOrder());
 
-        // do a total sort so that all the reads in partition i are less than those in partition i+1
-        final Comparator<GATKRead> comparator = new ReadQueryNameComparator();
-        final JavaPairRDD<GATKRead, Void> readVoidPairs;
-        if (numReducers > 0) {
-            readVoidPairs = rddReadPairs.sortByKey(comparator, true, numReducers);
-        } else {
-            readVoidPairs = rddReadPairs.sortByKey(comparator);
-        }
-        return readVoidPairs.keys();
+        final JavaRDD<GATKRead> sortedReads = sort(reads, new ReadQueryNameComparator(), numReducers);
+        return putReadsWithTheSameNameInTheSamePartition(header, sortedReads, JavaSparkContext.fromSparkContext(reads.context()));
     }
 
     /**
      * Sorts the given reads according to the sort order in the header.
      * @param reads the reads to sort
-     * @param header the header specifying the sort order
-     * @param numReducers the number of reducers to use; a vlue of 0 means use the default number of reducers
+     * @param header the header specifying the sort order,
+     *               if the header specifies {@link SAMFileHeader.SortOrder#unsorted} or {@link SAMFileHeader.SortOrder#unknown}
+     *               then no sort will be performed
+     * @param numReducers the number of reducers to use; a value of 0 means use the default number of reducers
      * @return a sorted RDD of reads
      */
-    public static JavaRDD<SAMRecord> sortReads(final JavaRDD<SAMRecord> reads, final SAMFileHeader header, final int numReducers) {
-        // Turn into key-value pairs so we can sort (by key). Values are null so there is no overhead in the amount
-        // of data going through the shuffle.
-        final JavaPairRDD<SAMRecord, Void> rddReadPairs = reads.mapToPair(read -> new Tuple2<>(read, (Void) null));
-
-        // do a total sort so that all the reads in partition i are less than those in partition i+1
+    public static JavaRDD<SAMRecord> sortSamRecordsToMatchHeader(final JavaRDD<SAMRecord> reads, final SAMFileHeader header, final int numReducers) {
         final Comparator<SAMRecord> comparator = getSAMRecordComparator(header);
-        final JavaPairRDD<SAMRecord, Void> readVoidPairs;
-        if (comparator == null){
-            readVoidPairs = rddReadPairs; //no sort
-        } else if (numReducers > 0) {
-            readVoidPairs = rddReadPairs.sortByKey(comparator, true, numReducers);
+        if ( comparator == null ) {
+            return reads;
         } else {
-            readVoidPairs = rddReadPairs.sortByKey(comparator);
+            return sort(reads, comparator, numReducers);
         }
-        return readVoidPairs.keys();
     }
 
     //Returns the comparator to use or null if no sorting is required.
     private static Comparator<SAMRecord> getSAMRecordComparator(final SAMFileHeader header) {
         switch (header.getSortOrder()){
             case coordinate: return new HeaderlessSAMRecordCoordinateComparator(header);
-            case duplicate:
+            //duplicate isn't supported because it doesn't work right on headerless SAMRecords
+            case duplicate: throw new UserException.UnimplementedFeature("The sort order \"duplicate\" is not supported in Spark.");
             case queryname:
             case unsorted:   return header.getSortOrder().getComparatorInstance();
             default:         return null; //NOTE: javac warns if you have this (useless) default BUT it errors out if you remove this default.
         }
+    }
+
+    /**
+     *   do a total sort of an RDD so that all the elements in partition i are less than those in partition i+1 according to the given comparator
+     */
+    private static <T> JavaRDD<T> sort(JavaRDD<T> reads, Comparator<T> comparator, int numReducers) {
+        Utils.nonNull(comparator);
+        Utils.nonNull(reads);
+
+        // Turn into key-value pairs so we can sort (by key). Values are null so there is no overhead in the amount
+        // of data going through the shuffle.
+        final JavaPairRDD<T, Void> rddReadPairs = reads.mapToPair(read -> new Tuple2<>(read, (Void) null));
+
+        final JavaPairRDD<T, Void> readVoidPairs;
+        if (numReducers > 0) {
+            readVoidPairs = rddReadPairs.sortByKey(comparator, true, numReducers);
+        } else {
+            readVoidPairs = rddReadPairs.sortByKey(comparator);
+        }
+        return readVoidPairs.keys();
+    }
+
+    /**
+     * Ensure all reads with the same name appear in the same partition.
+     * Requires that the No shuffle is needed.
+
+     */
+    public static JavaRDD<GATKRead> putReadsWithTheSameNameInTheSamePartition(final SAMFileHeader header, final JavaRDD<GATKRead> reads, final JavaSparkContext ctx) {
+        Utils.validateArg(ReadUtils.isReadNameGroupedBam(header), () -> "Reads must be queryname grouped or sorted. " +
+                "Actual sort:" + header.getSortOrder() + "  Actual grouping:" +header.getGroupOrder());
+        int numPartitions = reads.getNumPartitions();
+        final String firstGroupInBam = reads.first().getName();
+        // Find the first group in each partition
+        List<List<GATKRead>> firstReadNamesInEachPartition = reads
+                .mapPartitions(it -> { PeekingIterator<GATKRead> current = Iterators.peekingIterator(it);
+                                List<GATKRead> firstGroup = new ArrayList<>(2);
+                                firstGroup.add(current.next());
+                                String name = firstGroup.get(0).getName();
+                                while (current.hasNext() && current.peek().getName().equals(name)) {
+                                    firstGroup.add(current.next());
+                                }
+                                return Iterators.singletonIterator(firstGroup);
+                                })
+                .collect();
+
+        // Checking for pathological cases (read name groups that span more than 2 partitions)
+        String groupName = null;
+        for (List<GATKRead> group : firstReadNamesInEachPartition) {
+            if (group!=null && !group.isEmpty()) {
+                // If a read spans multiple partitions we expect its name to show up multiple times and we don't expect this to work properly
+                if (groupName != null && group.get(0).getName().equals(groupName)) {
+                    throw new GATKException(String.format("The read name '%s' appeared across multiple partitions this could indicate there was a problem " +
+                            "with the sorting or that the rdd has too many partitions, check that the file is queryname sorted and consider decreasing the number of partitions", groupName));
+                }
+                groupName =  group.get(0).getName();
+            }
+        }
+
+        // Shift left, so that each partition will be joined with the first read group from the _next_ partition
+        List<List<GATKRead>> firstReadInNextPartition = new ArrayList<>(firstReadNamesInEachPartition.subList(1, numPartitions));
+        firstReadInNextPartition.add(null); // the last partition does not have any reads to add to it
+
+        // Join the reads with the first read from the _next_ partition, then filter out the first and/or last read if not in a pair
+        return reads.zipPartitions(ctx.parallelize(firstReadInNextPartition, numPartitions),
+                (FlatMapFunction2<Iterator<GATKRead>, Iterator<List<GATKRead>>, GATKRead>) (it1, it2) -> {
+            PeekingIterator<GATKRead> current = Iterators.peekingIterator(it1);
+            String firstName = current.peek().getName();
+            // Make sure we don't remove reads from the first partition
+            if (!firstGroupInBam.equals(firstName)) {
+                // skip the first read name group in the _current_ partition if it is the second in a pair since it will be handled in the previous partition
+                while (current.hasNext() && current.peek() != null && current.peek().getName().equals(firstName)) {
+                    current.next();
+                }
+            }
+            // append the first reads in the _next_ partition to the _current_ partition
+            PeekingIterator<List<GATKRead>> next = Iterators.peekingIterator(it2);
+            if (next.hasNext() && next.peek() != null) {
+                return Iterators.concat(current, next.peek().iterator());
+            }
+            return current;
+        });
     }
 }

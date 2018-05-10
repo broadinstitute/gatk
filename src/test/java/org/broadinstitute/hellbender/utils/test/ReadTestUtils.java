@@ -1,15 +1,8 @@
 package org.broadinstitute.hellbender.utils.test;
 
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.*;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.util.SequenceUtil;
-import org.apache.commons.lang3.tuple.ImmutableTriple;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 

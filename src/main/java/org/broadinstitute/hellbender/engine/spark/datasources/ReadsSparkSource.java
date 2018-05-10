@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
-import com.google.common.collect.Iterators;
-import com.google.common.collect.PeekingIterator;
 import htsjdk.samtools.*;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -16,12 +14,10 @@ import org.apache.parquet.avro.AvroParquetInputFormat;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.FlatMapFunction2;
 import org.apache.spark.broadcast.Broadcast;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -37,9 +33,8 @@ import org.seqdoop.hadoop_bam.util.SAMHeaderReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
 /** Loads the reads from disk either serially (using samReaderFactory) or in parallel using Hadoop-BAM.
  * The parallel code is a modified version of the example writing code from Hadoop-BAM.
@@ -116,8 +111,17 @@ public final class ReadsSparkSource implements Serializable {
                 return (GATKRead) SAMRecordToGATKReadAdapter.headerlessReadAdapter(sam);
             }
             return null;
-        }).filter(v1 -> v1 != null);
-        return putPairsInSamePartition(header, reads, ctx);
+        }).filter(Objects::nonNull);
+
+        return fixPartitionsIfQueryGrouped(ctx, header, reads);
+    }
+
+    private static JavaRDD<GATKRead> fixPartitionsIfQueryGrouped(JavaSparkContext ctx, SAMFileHeader header, JavaRDD<GATKRead> reads) {
+        if( ReadUtils.isReadNameGroupedBam(header)) {
+            return SparkUtils.putReadsWithTheSameNameInTheSamePartition(header, reads, ctx);
+        } else {
+            return reads;
+        }
     }
 
     /**
@@ -164,7 +168,8 @@ public final class ReadsSparkSource implements Serializable {
                 .values();
         JavaRDD<GATKRead> readsRdd = recordsRdd.map(record -> new BDGAlignmentRecordToGATKReadAdapter(record, bHeader.getValue()));
         JavaRDD<GATKRead> filteredRdd = readsRdd.filter(record -> samRecordOverlaps(record.convertToSAMRecord(header), traversalParameters));
-        return putPairsInSamePartition(header, filteredRdd, ctx);
+
+        return fixPartitionsIfQueryGrouped(ctx, header, filteredRdd);
     }
 
     /**
@@ -203,67 +208,6 @@ public final class ReadsSparkSource implements Serializable {
         } catch (IOException | IllegalArgumentException e) {
             throw new UserException("Failed to read bam header from " + filePath + "\n Caused by:" + e.getMessage(), e);
         }
-    }
-
-    /**
-     * Ensure reads in a pair fall in the same partition (input split), if the reads are queryname-sorted,
-     * or querygroup sorted, so they are processed together. No shuffle is needed.
-     */
-    public static JavaRDD<GATKRead> putPairsInSamePartition(final SAMFileHeader header, final JavaRDD<GATKRead> reads, final JavaSparkContext ctx) {
-        if (!ReadUtils.isReadNameGroupedBam(header)) {
-            return reads;
-        }
-        int numPartitions = reads.getNumPartitions();
-        final String firstGroupInBam = reads.first().getName();
-        // Find the first group in each partition
-        List<List<GATKRead>> firstReadNamesInEachPartition = reads
-                .mapPartitions(it -> { PeekingIterator<GATKRead> current = Iterators.peekingIterator(it);
-                                List<GATKRead> firstGroup = new ArrayList<>(2);
-                                firstGroup.add(current.next());
-                                String name = firstGroup.get(0).getName();
-                                while (current.hasNext() && current.peek().getName().equals(name)) {
-                                    firstGroup.add(current.next());
-                                }
-                                return Iterators.singletonIterator(firstGroup);
-                                })
-                .collect();
-
-        // Checking for pathological cases (read name groups that span more than 2 partitions)
-        String groupName = null;
-        for (List<GATKRead> group : firstReadNamesInEachPartition) {
-            if (group!=null && !group.isEmpty()) {
-                // If a read spans multiple partitions we expect its name to show up multiple times and we don't expect this to work properly
-                if (groupName != null && group.get(0).getName().equals(groupName)) {
-                    throw new GATKException(String.format("The read name '%s' appeared across multiple partitions this could indicate there was a problem " +
-                            "with the sorting or that the rdd has too many partitions, check that the file is queryname sorted and consider decreasing the number of partitions", groupName));
-                }
-                groupName =  group.get(0).getName();
-            }
-        }
-
-        // Shift left, so that each partition will be joined with the first read group from the _next_ partition
-        List<List<GATKRead>> firstReadInNextPartition = new ArrayList<>(firstReadNamesInEachPartition.subList(1, numPartitions));
-        firstReadInNextPartition.add(null); // the last partition does not have any reads to add to it
-
-        // Join the reads with the first read from the _next_ partition, then filter out the first and/or last read if not in a pair
-        return reads.zipPartitions(ctx.parallelize(firstReadInNextPartition, numPartitions),
-                (FlatMapFunction2<Iterator<GATKRead>, Iterator<List<GATKRead>>, GATKRead>) (it1, it2) -> {
-            PeekingIterator<GATKRead> current = Iterators.peekingIterator(it1);
-            String firstName = current.peek().getName();
-            // Make sure we don't remove reads from the first partition
-            if (!firstGroupInBam.equals(firstName)) {
-                // skip the first read name group in the _current_ partition if it is the second in a pair since it will be handled in the previous partition
-                while (current.hasNext() && current.peek() != null && current.peek().getName().equals(firstName)) {
-                    current.next();
-                }
-            }
-            // append the first reads in the _next_ partition to the _current_ partition
-            PeekingIterator<List<GATKRead>> next = Iterators.peekingIterator(it2);
-            if (next.hasNext() && next.peek() != null) {
-                return Iterators.concat(current, next.peek().iterator());
-            }
-            return current;
-        });
     }
 
     /**

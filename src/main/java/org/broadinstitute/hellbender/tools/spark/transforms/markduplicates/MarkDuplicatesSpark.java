@@ -133,14 +133,13 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
     /**
      * Sort reads into queryname order if they are not already sorted
      */
-    protected static JavaRDD<GATKRead> querynameSortReadsIfNecessary(JavaRDD<GATKRead> reads, int numReducers, SAMFileHeader headerForTool) {
+    private static JavaRDD<GATKRead> querynameSortReadsIfNecessary(JavaRDD<GATKRead> reads, int numReducers, SAMFileHeader headerForTool) {
         JavaRDD<GATKRead> sortedReadsForMarking;
         if (ReadUtils.isReadNameGroupedBam(headerForTool)) {
             sortedReadsForMarking = reads;
         } else {
             headerForTool.setSortOrder(SAMFileHeader.SortOrder.queryname);
-            JavaRDD<GATKRead> sortedReads = SparkUtils.querynameSortReads(reads, numReducers);
-            sortedReadsForMarking = ReadsSparkSource.putPairsInSamePartition(headerForTool, sortedReads, JavaSparkContext.fromSparkContext(reads.context()));
+            sortedReadsForMarking = SparkUtils.querynameSortReads(reads, headerForTool, numReducers);
         }
         return sortedReadsForMarking;
     }
