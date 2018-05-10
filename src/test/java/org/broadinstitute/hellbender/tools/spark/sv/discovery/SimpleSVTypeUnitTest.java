@@ -39,7 +39,7 @@ public class SimpleSVTypeUnitTest extends GATKBaseTest {
                                                                  final int expectedSvLen,
                                                                  final String expectedTypeInfoInIdString) throws IOException {
 
-        final List<Allele> producedAlleles = AnnotatedVariantProducer.produceAlleles(novelAdjacencyReferenceLocations.getLeftJustifiedLeftRefLoc(), b37_reference, simpleType);
+        final List<Allele> producedAlleles = AnnotatedVariantProducer.produceAlleles(novelAdjacencyReferenceLocations.getLeftJustifiedLeftRefLoc(), SVDiscoveryTestUtilsAndCommonDataProvider.b37_reference_20_21, simpleType);
 
         Assert.assertEquals(producedAlleles.size(), 2);
         Assert.assertTrue(producedAlleles.get(0).isReference() && producedAlleles.get(1).isNonReference() && producedAlleles.get(1).isSymbolic());
@@ -136,7 +136,7 @@ public class SimpleSVTypeUnitTest extends GATKBaseTest {
                                                               final String expectedSymbolicAltAlleleStringWithoutBracket,
                                                               final int expectedSvLen,
                                                               final String expectedTypeInfoInIdString) throws IOException {
-        final List<Allele> producedAlleles = AnnotatedVariantProducer.produceAlleles(novelAdjacencyReferenceLocations.getLeftJustifiedLeftRefLoc(), b37_reference, simpleType);
+        final List<Allele> producedAlleles = AnnotatedVariantProducer.produceAlleles(novelAdjacencyReferenceLocations.getLeftJustifiedLeftRefLoc(), SVDiscoveryTestUtilsAndCommonDataProvider.b37_reference_20_21, simpleType);
 
         Assert.assertEquals(producedAlleles.size(), 2);
         Assert.assertTrue(producedAlleles.get(0).isReference() && producedAlleles.get(1).isNonReference() && producedAlleles.get(1).isSymbolic());
@@ -164,84 +164,84 @@ public class SimpleSVTypeUnitTest extends GATKBaseTest {
         // no inversion case because new code path doesn't call inversion (instead, BND)
 
         // simple deletion
-        data.add(new Object[]{forSimpleDeletion_plus.biPathBubble, forSimpleDeletion_plus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
+        data.add(new Object[]{forSimpleDeletion_plus.biPathBubble, forSimpleDeletion_plus.biPathBubble.toSimpleOrBNDTypes(SVDiscoveryTestUtilsAndCommonDataProvider.b37_reference_20_21, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21).get(0),
                 SYMB_ALT_ALLELE_DEL, -20, SimpleSVType.TYPES.DEL.name()});
 
         // simple insertion
-        data.add(new Object[]{forSimpleInsertion_minus.biPathBubble, forSimpleInsertion_minus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
+        data.add(new Object[]{forSimpleInsertion_minus.biPathBubble, forSimpleInsertion_minus.biPathBubble.toSimpleOrBNDTypes(SVDiscoveryTestUtilsAndCommonDataProvider.b37_reference_20_21, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21).get(0),
                 SYMB_ALT_ALLELE_INS, 50, SimpleSVType.TYPES.INS.name()});
 
         // long range substitution fudged del
-        data.add(new Object[]{forLongRangeSubstitution_fudgedDel_plus.biPathBubble, forLongRangeSubstitution_fudgedDel_plus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
+        data.add(new Object[]{forLongRangeSubstitution_fudgedDel_plus.biPathBubble, forLongRangeSubstitution_fudgedDel_plus.biPathBubble.toSimpleOrBNDTypes(SVDiscoveryTestUtilsAndCommonDataProvider.b37_reference_20_21, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21).get(0),
                 SYMB_ALT_ALLELE_DEL, -60, SimpleSVType.TYPES.DEL.name()});
 
         // long range substitution fat ins
-        data.add(new Object[]{forLongRangeSubstitution_fatIns_minus.biPathBubble, forLongRangeSubstitution_fatIns_plus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
+        data.add(new Object[]{forLongRangeSubstitution_fatIns_minus.biPathBubble, forLongRangeSubstitution_fatIns_plus.biPathBubble.toSimpleOrBNDTypes(SVDiscoveryTestUtilsAndCommonDataProvider.b37_reference_20_21, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21).get(0),
                 SYMB_ALT_ALLELE_INS, 60, SimpleSVType.TYPES.INS.name()});
 
         // long range substitution fat ins
-        List<SvType> svTypes = forLongRangeSubstitution_DelAndIns_plus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict);
+        List<SvType> svTypes = forLongRangeSubstitution_DelAndIns_plus.biPathBubble.toSimpleOrBNDTypes(SVDiscoveryTestUtilsAndCommonDataProvider.b37_reference_20_21, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21);
         data.add(new Object[]{forLongRangeSubstitution_DelAndIns_plus.biPathBubble, svTypes.get(0),
                 SYMB_ALT_ALLELE_DEL, -60, SimpleSVType.TYPES.DEL.name()});
         data.add(new Object[]{forLongRangeSubstitution_DelAndIns_plus.biPathBubble, svTypes.get(1),
                 SYMB_ALT_ALLELE_INS, 55, SimpleSVType.TYPES.INS.name()});
 
         // simple deletion with homology
-        data.add(new Object[]{forDeletionWithHomology_minus.biPathBubble, forDeletionWithHomology_minus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
+        data.add(new Object[]{forDeletionWithHomology_minus.biPathBubble, forDeletionWithHomology_minus.biPathBubble.toSimpleOrBNDTypes(SVDiscoveryTestUtilsAndCommonDataProvider.b37_reference_20_21, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21).get(0),
                 SYMB_ALT_ALLELE_DEL, -38, SimpleSVType.TYPES.DEL.name()});
 
         // simple tandem dup contraction from 2 units to 1 unit
-        data.add(new Object[]{forSimpleTanDupContraction_plus.biPathBubble, forSimpleTanDupContraction_plus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
+        data.add(new Object[]{forSimpleTanDupContraction_plus.biPathBubble, forSimpleTanDupContraction_plus.biPathBubble.toSimpleOrBNDTypes(SVDiscoveryTestUtilsAndCommonDataProvider.b37_reference_20_21, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21).get(0),
                 SYMB_ALT_ALLELE_DEL, -10,
                 DUP_TAN_CONTRACTION_INTERNAL_ID_START_STRING});
 
         // simple tandem dup expansion from 1 unit to 2 units that will be called as insertion
-        data.add(new Object[]{forSimpleTanDupExpansion_ins_minus.biPathBubble, forSimpleTanDupExpansion_ins_minus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
+        data.add(new Object[]{forSimpleTanDupExpansion_ins_minus.biPathBubble, forSimpleTanDupExpansion_ins_minus.biPathBubble.toSimpleOrBNDTypes(SVDiscoveryTestUtilsAndCommonDataProvider.b37_reference_20_21, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21).get(0),
                 SYMB_ALT_ALLELE_INS, 10,
                 SimpleSVType.TYPES.INS.name()});
 
         // simple tandem dup expansion from 1 unit to 2 units that will be called as duplication
-        data.add(new Object[]{forSimpleTanDupExpansion_dup_minus.biPathBubble, forSimpleTanDupExpansion_dup_minus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
+        data.add(new Object[]{forSimpleTanDupExpansion_dup_minus.biPathBubble, forSimpleTanDupExpansion_dup_minus.biPathBubble.toSimpleOrBNDTypes(SVDiscoveryTestUtilsAndCommonDataProvider.b37_reference_20_21, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21).get(0),
                 SYMB_ALT_ALLELE_DUP, 55,
                 DUP_TAN_EXPANSION_INTERNAL_ID_START_STRING});
 
         // simple tandem dup expansion from 1 unit to 2 units and novel insertion that will be called as insertion
-        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_ins_plus.biPathBubble, forSimpleTanDupExpansionWithNovelIns_ins_plus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
+        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_ins_plus.biPathBubble, forSimpleTanDupExpansionWithNovelIns_ins_plus.biPathBubble.toSimpleOrBNDTypes(SVDiscoveryTestUtilsAndCommonDataProvider.b37_reference_20_21, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21).get(0),
                 SYMB_ALT_ALLELE_INS, 326,
                 SimpleSVType.TYPES.INS.name()});
 
         // simple tandem dup expansion from 1 unit to 2 units and novel insertion that will be called as duplication
-        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_dup_plus.biPathBubble, forSimpleTanDupExpansionWithNovelIns_dup_plus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
+        data.add(new Object[]{forSimpleTanDupExpansionWithNovelIns_dup_plus.biPathBubble, forSimpleTanDupExpansionWithNovelIns_dup_plus.biPathBubble.toSimpleOrBNDTypes(SVDiscoveryTestUtilsAndCommonDataProvider.b37_reference_20_21, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21).get(0),
                 SYMB_ALT_ALLELE_DUP, 99,
                 DUP_TAN_EXPANSION_INTERNAL_ID_START_STRING});
 
         // tandem dup expansion from 1 unit to 2 units with pseudo-homology
-        data.add(new Object[]{forComplexTanDup_1to2_pseudoHom_minus.biPathBubble, forComplexTanDup_1to2_pseudoHom_minus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
+        data.add(new Object[]{forComplexTanDup_1to2_pseudoHom_minus.biPathBubble, forComplexTanDup_1to2_pseudoHom_minus.biPathBubble.toSimpleOrBNDTypes(SVDiscoveryTestUtilsAndCommonDataProvider.b37_reference_20_21, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21).get(0),
                 SYMB_ALT_ALLELE_DUP, 96,
                 DUP_TAN_EXPANSION_INTERNAL_ID_START_STRING});
 
         // tandem dup contraction from 2 units to 1 unit with pseudo-homology
-        data.add(new Object[]{forComplexTanDup_2to1_pseudoHom_plus.biPathBubble, forComplexTanDup_2to1_pseudoHom_plus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
+        data.add(new Object[]{forComplexTanDup_2to1_pseudoHom_plus.biPathBubble, forComplexTanDup_2to1_pseudoHom_plus.biPathBubble.toSimpleOrBNDTypes(SVDiscoveryTestUtilsAndCommonDataProvider.b37_reference_20_21, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21).get(0),
                 SYMB_ALT_ALLELE_DEL, -96,
                 DUP_TAN_CONTRACTION_INTERNAL_ID_START_STRING});
 
 
         // tandem dup contraction from 3 units to 2 units
-        data.add(new Object[]{forComplexTanDup_3to2_noPseudoHom_minus.biPathBubble, forComplexTanDup_3to2_noPseudoHom_minus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
+        data.add(new Object[]{forComplexTanDup_3to2_noPseudoHom_minus.biPathBubble, forComplexTanDup_3to2_noPseudoHom_minus.biPathBubble.toSimpleOrBNDTypes(SVDiscoveryTestUtilsAndCommonDataProvider.b37_reference_20_21, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21).get(0),
                 SYMB_ALT_ALLELE_DEL, -96,
                 DUP_TAN_CONTRACTION_INTERNAL_ID_START_STRING});
 
         // tandem dup expansion from 2 units to 3 units
-        data.add(new Object[]{forComplexTanDup_2to3_noPseudoHom_plus.biPathBubble, forComplexTanDup_2to3_noPseudoHom_plus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
+        data.add(new Object[]{forComplexTanDup_2to3_noPseudoHom_plus.biPathBubble, forComplexTanDup_2to3_noPseudoHom_plus.biPathBubble.toSimpleOrBNDTypes(SVDiscoveryTestUtilsAndCommonDataProvider.b37_reference_20_21, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21).get(0),
                 SYMB_ALT_ALLELE_DUP, 96,
                 DUP_TAN_EXPANSION_INTERNAL_ID_START_STRING});
 
         // short tandem dup expansion from 1 unit to 2 units with pseudo-homology
-        data.add(new Object[]{forComplexTanDup_1to2_short_pseudoHom_plus.biPathBubble, forComplexTanDup_1to2_short_pseudoHom_plus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
+        data.add(new Object[]{forComplexTanDup_1to2_short_pseudoHom_plus.biPathBubble, forComplexTanDup_1to2_short_pseudoHom_plus.biPathBubble.toSimpleOrBNDTypes(SVDiscoveryTestUtilsAndCommonDataProvider.b37_reference_20_21, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21).get(0),
                 SYMB_ALT_ALLELE_INS, 42,
                 SimpleSVType.TYPES.INS.name()});
         // short tandem dup expansion from 2 units to 3 units
-        data.add(new Object[]{forComplexTanDup_2to3_short_noPseudoHom_minus.biPathBubble, forComplexTanDup_2to3_short_noPseudoHom_minus.biPathBubble.toSimpleOrBNDTypes(b37_reference, b37_seqDict).get(0),
+        data.add(new Object[]{forComplexTanDup_2to3_short_noPseudoHom_minus.biPathBubble, forComplexTanDup_2to3_short_noPseudoHom_minus.biPathBubble.toSimpleOrBNDTypes(SVDiscoveryTestUtilsAndCommonDataProvider.b37_reference_20_21, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21).get(0),
                 SYMB_ALT_ALLELE_INS, 42,
                 SimpleSVType.TYPES.INS.name()});
 

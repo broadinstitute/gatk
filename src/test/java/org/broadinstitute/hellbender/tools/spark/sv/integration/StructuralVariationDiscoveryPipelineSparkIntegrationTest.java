@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv.integration;
 
 import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.CloserUtil;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFileReader;
 import org.apache.hadoop.fs.Path;
@@ -176,11 +175,12 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
                                               final String experimentalOutputPathForNonComplex,
                                               final List<String> attributesToIgnore, final boolean onHDFS) throws Exception {
 
-        final VCFFileReader fileReader = new VCFFileReader(new File(expectedVCFPath), false);
-        final CloseableIterator<VariantContext> iterator = fileReader.iterator();
-        final List<VariantContext> expectedVcs = Utils.stream(iterator).collect(Collectors.toList());
-        CloserUtil.close(iterator);
-        CloserUtil.close(fileReader);
+        List<VariantContext> expectedVcs;
+        try (final VCFFileReader fileReader = new VCFFileReader(new File(expectedVCFPath), false) ) {
+            try (final CloseableIterator<VariantContext> iterator = fileReader.iterator()) {
+                expectedVcs = Utils.stream(iterator).collect(Collectors.toList());
+            }
+        }
 
         List<VariantContext> actualVcs = extractActualVCs(generatedVCFPath, onHDFS);
 
@@ -200,23 +200,21 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
         }
     }
 
-    private static List<VariantContext> extractActualVCs(final String generatedVCFPath, final boolean onHDFS)
+    static List<VariantContext> extractActualVCs(final String generatedVCFPath, final boolean onHDFS)
             throws IOException {
 
-        final VCFFileReader fileReader;
+        final File appropriateVCF;
         if (onHDFS) {
-            final File tempLocalVCF = GATKBaseTest.createTempFile("variants", "vcf");
-            tempLocalVCF.deleteOnExit();
-            BucketUtils.copyFile(generatedVCFPath, tempLocalVCF.getAbsolutePath());
-            fileReader = new VCFFileReader(tempLocalVCF, false);
+            appropriateVCF = GATKBaseTest.createTempFile("variants", "vcf");
+            appropriateVCF.deleteOnExit();
+            BucketUtils.copyFile(generatedVCFPath, appropriateVCF.getAbsolutePath());
         } else {
-            fileReader = new VCFFileReader(new File(generatedVCFPath), false);
+            appropriateVCF = new File(generatedVCFPath);
         }
-        final CloseableIterator<VariantContext> iterator = fileReader.iterator();
-        final List<VariantContext> actualVcs = Utils.stream(iterator).collect(Collectors.toList());
-        CloserUtil.close(iterator);
-        CloserUtil.close(fileReader);
-
-        return actualVcs;
+        try (final VCFFileReader fileReader = new VCFFileReader(appropriateVCF, false)) {
+            try (final CloseableIterator<VariantContext> iterator = fileReader.iterator()) {
+                return Utils.stream(iterator).collect(Collectors.toList());
+            }
+        }
     }
 }

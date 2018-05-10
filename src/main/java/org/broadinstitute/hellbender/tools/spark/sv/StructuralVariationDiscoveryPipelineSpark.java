@@ -182,9 +182,9 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
 
         final List<VariantContext> annotatedVariants = processEvidenceTargetLinks(assemblyBasedVariants, svDiscoveryInputMetaData);
 
-        final String outputPath = svDiscoveryInputMetaData.outputPath;
-        final SAMSequenceDictionary refSeqDictionary = svDiscoveryInputMetaData.referenceData.referenceSequenceDictionaryBroadcast.getValue();
-        final Logger toolLogger = svDiscoveryInputMetaData.toolLogger;
+        final String outputPath = svDiscoveryInputMetaData.getOutputPath();
+        final SAMSequenceDictionary refSeqDictionary = svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast().getValue();
+        final Logger toolLogger = svDiscoveryInputMetaData.getToolLogger();
         SVVCFWriter.writeVCF(annotatedVariants, outputPath + "inv_del_ins.vcf", refSeqDictionary, toolLogger);
 
         // TODO: 1/14/18 this is the next version of precise variant calling
@@ -232,12 +232,12 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                                                                    final SvDiscoveryInputMetaData svDiscoveryInputMetaData) {
 
         final List<VariantContext> annotatedVariants;
-        if (svDiscoveryInputMetaData.sampleSpecificData.evidenceTargetLinks != null) {
-            final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks = svDiscoveryInputMetaData.sampleSpecificData.evidenceTargetLinks;
-            final ReadMetadata readMetadata = svDiscoveryInputMetaData.sampleSpecificData.readMetadata;
-            final ReferenceMultiSource reference = svDiscoveryInputMetaData.referenceData.referenceBroadcast.getValue();
-            final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs = svDiscoveryInputMetaData.discoverStageArgs;
-            final Logger toolLogger = svDiscoveryInputMetaData.toolLogger;
+        if (svDiscoveryInputMetaData.getSampleSpecificData().getEvidenceTargetLinks() != null) {
+            final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks = svDiscoveryInputMetaData.getSampleSpecificData().getEvidenceTargetLinks();
+            final ReadMetadata readMetadata = svDiscoveryInputMetaData.getSampleSpecificData().getReadMetadata();
+            final ReferenceMultiSource reference = svDiscoveryInputMetaData.getReferenceData().getReferenceBroadcast().getValue();
+            final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs = svDiscoveryInputMetaData.getDiscoverStageArgs();
+            final Logger toolLogger = svDiscoveryInputMetaData.getToolLogger();
 
             // annotate with evidence links
             annotatedVariants = AnnotatedVariantProducer.
@@ -265,7 +265,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
 
         final JavaRDD<GATKRead> assemblyRawAlignments = getContigRawAlignments(ctx, assembledEvidenceResults, svDiscoveryInputMetaData);
 
-        final String updatedOutputPath = svDiscoveryInputMetaData.outputPath + "experimentalInterpretation_";
+        final String updatedOutputPath = svDiscoveryInputMetaData.getOutputPath() + "experimentalInterpretation_";
         svDiscoveryInputMetaData.updateOutputPath(updatedOutputPath);
 
         SvDiscoverFromLocalAssemblyContigAlignmentsSpark.AssemblyContigsClassifiedByAlignmentSignatures contigsByPossibleRawTypes
@@ -279,8 +279,8 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                                                             final FindBreakpointEvidenceSpark.AssembledEvidenceResults assembledEvidenceResults,
                                                             final SvDiscoveryInputMetaData svDiscoveryInputMetaData) {
         final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast =
-                svDiscoveryInputMetaData.referenceData.referenceSequenceDictionaryBroadcast;
-        final Broadcast<SAMFileHeader> headerBroadcast = svDiscoveryInputMetaData.sampleSpecificData.headerBroadcast;
+                svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast();
+        final Broadcast<SAMFileHeader> headerBroadcast = svDiscoveryInputMetaData.getSampleSpecificData().getHeaderBroadcast();
         final SAMFileHeader headerForReads = headerBroadcast.getValue();
         final SAMReadGroupRecord contigAlignmentsReadGroup = new SAMReadGroupRecord(SVUtils.GATKSV_CONTIG_ALIGNMENTS_READ_GROUP_ID);
         final List<String> refNames = SequenceDictionaryUtils.getContigNamesList(referenceSequenceDictionaryBroadcast.getValue());

@@ -9,7 +9,7 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVTestUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestUtilsAndCommonDataProvider;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
@@ -457,7 +457,7 @@ public final class CpxSVInferenceTestUtils extends GATKBaseTest {
                                                                                  final Set<String> canonicalChromosomes,
                                                                                  final SAMSequenceDictionary refSeqDict) {
         final AlignedContig alignedContig =
-                SVTestUtils.fromPrimarySAMRecordString(primarySAMRecord, true);
+                SVDiscoveryTestUtilsAndCommonDataProvider.fromPrimarySAMRecordString(primarySAMRecord, true);
 
         final AssemblyContigWithFineTunedAlignments intermediate =
                 AssemblyContigAlignmentsConfigPicker.reConstructContigFromPickedConfiguration(
