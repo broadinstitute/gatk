@@ -7,7 +7,7 @@ import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestUtilsAndCommonDataProvider;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
@@ -48,12 +48,12 @@ public class AlignedAssemblyUnitTest extends GATKBaseTest {
         final Cigar[] cigars = Arrays.stream(cigarStrings).map(TextCigarCodec::decode).toArray(Cigar[]::new);
 
         // these sequence are technically wrong the for the inversion event, but the test purpose is for serialization so it is irrelevant
-        final byte[] dummySequenceForContigOne = SVDiscoveryTestUtilsAndCommonDataProvider.makeDummySequence(seqLen[0], (byte)'A');
+        final byte[] dummySequenceForContigOne = TestUtilsForAssemblyBasedSVDiscovery.makeDummySequence(seqLen[0], (byte)'A');
 
-        final byte[] dummySequenceForContigTwo = SVDiscoveryTestUtilsAndCommonDataProvider.makeDummySequence(seqLen[0], (byte)'T');
-        final byte[] dummySequenceForContigThree = SVDiscoveryTestUtilsAndCommonDataProvider.makeDummySequence(seqLen[0], (byte)'C');
+        final byte[] dummySequenceForContigTwo = TestUtilsForAssemblyBasedSVDiscovery.makeDummySequence(seqLen[0], (byte)'T');
+        final byte[] dummySequenceForContigThree = TestUtilsForAssemblyBasedSVDiscovery.makeDummySequence(seqLen[0], (byte)'C');
 
-        final byte[] dummySequenceForContigFour = SVDiscoveryTestUtilsAndCommonDataProvider.makeDummySequence(seqLen[0], (byte)'G');
+        final byte[] dummySequenceForContigFour = TestUtilsForAssemblyBasedSVDiscovery.makeDummySequence(seqLen[0], (byte)'G');
 
 
         final List<AlignedContig> allContigs = new ArrayList<>();

@@ -10,7 +10,6 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVariantsFromContigAlignmentsSAMSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoverFromLocalAssemblyContigAlignmentsSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryInputMetaData;
@@ -208,8 +207,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
                         .getContigsWithSignatureClassifiedAsComplex()
                         .map(AssemblyContigWithFineTunedAlignments::getSourceContig);
 
-        @SuppressWarnings("deprecation")
-        List<VariantContext> pairIterationReInterpreted = DiscoverVariantsFromContigAlignmentsSAMSpark
+        List<VariantContext> pairIterationReInterpreted = ContigChimericAlignmentIterativeInterpreter
                 .discoverVariantsFromChimeras(svDiscoveryInputMetaData, analysisReadyContigs);
 
         final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputMetaData.getReferenceData().getReferenceBroadcast();
@@ -244,7 +242,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
     @VisibleForTesting
     static VariantContext postProcessConvertShortDupToIns(final VariantContext simple) {
         final String type = simple.getAttributeAsString(SVTYPE, "");
-        if ( type.equals(SimpleSVType.TYPES.DUP.name()) ) {
+        if ( type.equals(SimpleSVType.SupportedType.DUP.name()) ) {
             final SimpleInterval duplicatedRegion = new SimpleInterval(simple.getAttributeAsString(DUP_REPEAT_UNIT_REF_SPAN, ""));
             if (duplicatedRegion.size() > EVENT_SIZE_THRESHOLD) {
                 return simple;
@@ -252,7 +250,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
                 return new VariantContextBuilder(simple)
                         .alleles(Arrays.asList(simple.getReference(), altSymbAlleleIns))
                         .rmAttribute(SVTYPE)
-                        .attribute(SVTYPE, SimpleSVType.TYPES.INS.name())
+                        .attribute(SVTYPE, SimpleSVType.SupportedType.INS.name())
                         .make();
             }
         } else
@@ -270,7 +268,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
     static Stream<VariantContext> postProcessConvertReplacementToFatInsOrInsAndDel(final VariantContext simple,
                                                                                    final ReferenceMultiSource reference) {
         final String type = simple.getAttributeAsString(SVTYPE, "");
-        if ( type.equals(SimpleSVType.TYPES.DEL.name()) ) {
+        if ( type.equals(SimpleSVType.SupportedType.DEL.name()) ) {
             final int deletionLen = - simple.getAttributeAsInt(SVLEN, 0);
             final int insLen = simple.getAttributeAsInt(INSERTED_SEQUENCE_LENGTH, 0);
             if (insLen > EVENT_SIZE_THRESHOLD && deletionLen > EVENT_SIZE_THRESHOLD) { // case 1: insertion and deletion, linked
@@ -290,8 +288,8 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
                 newDeletion.rmAttribute(INSERTED_SEQUENCE).rmAttribute(INSERTED_SEQUENCE_LENGTH).rmAttribute(SEQ_ALT_HAPLOTYPE);
 
                 // cross linking
-                newInsertion.attribute(LINK, makeID(SimpleSVType.TYPES.DEL.name(), simple.getContig(), simple.getStart(), simple.getEnd()));
-                newDeletion.attribute(LINK, makeID(SimpleSVType.TYPES.INS.name(), simple.getContig(), simple.getStart(), simple.getStart()));
+                newInsertion.attribute(LINK, makeID(SimpleSVType.SupportedType.DEL.name(), simple.getContig(), simple.getStart(), simple.getEnd()));
+                newDeletion.attribute(LINK, makeID(SimpleSVType.SupportedType.INS.name(), simple.getContig(), simple.getStart(), simple.getStart()));
 
                 return Stream.of(newDeletion.make(), newInsertion.make());
             } else if (insLen > EVENT_SIZE_THRESHOLD && deletionLen <= EVENT_SIZE_THRESHOLD) { // case 2: insertion with micro deletion
@@ -328,7 +326,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
 
         final String typeString = simple.getAttributeAsString(SVTYPE, "");
 
-        if ( typeString.equals(SimpleSVType.TYPES.DEL.name()) ) {
+        if ( typeString.equals(SimpleSVType.SupportedType.DEL.name()) ) {
             final List<SimpleInterval> refSegments = attributes.referenceSegments;
             final List<String> altArrangement = attributes.altArrangements;
 
@@ -337,7 +335,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
             final Set<SimpleInterval> missingSegments = missingAndPresentAndInvertedSegments._1();
 
             return deletionConsistencyCheck(simple, missingSegments);
-        } else if ( typeString.equals(SimpleSVType.TYPES.INV.name()) ) {
+        } else if ( typeString.equals(SimpleSVType.SupportedType.INV.name()) ) {
             return false;
         } else
             return true;
@@ -962,10 +960,10 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
         return new VariantContextBuilder()
                 .chr(delRange.getContig()).start(delRange.getStart()).stop(delRange.getEnd())
                 .alleles(Arrays.asList(refAllele, altSymbAlleleDel))
-                .id(makeID(SimpleSVType.TYPES.DEL.name(), delRange.getContig(), delRange.getStart(), delRange.getEnd()))
+                .id(makeID(SimpleSVType.SupportedType.DEL.name(), delRange.getContig(), delRange.getStart(), delRange.getEnd()))
                 .attribute(VCFConstants.END_KEY, delRange.getEnd())
                 .attribute(SVLEN, - delRange.size() + 1)
-                .attribute(SVTYPE, SimpleSVType.TYPES.DEL.name());
+                .attribute(SVTYPE, SimpleSVType.SupportedType.DEL.name());
     }
 
     @VisibleForTesting
@@ -974,10 +972,10 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
 
         return new VariantContextBuilder().chr(chr).start(pos).stop(end)
                 .alleles(Arrays.asList(refAllele, altSymbAlleleIns))
-                .id(makeID(SimpleSVType.TYPES.INS.name(), chr, pos, end))
+                .id(makeID(SimpleSVType.SupportedType.INS.name(), chr, pos, end))
                 .attribute(VCFConstants.END_KEY, end)
                 .attribute(SVLEN, svLen)
-                .attribute(SVTYPE, SimpleSVType.TYPES.INS.name());
+                .attribute(SVTYPE, SimpleSVType.SupportedType.INS.name());
     }
 
     @VisibleForTesting
@@ -985,9 +983,9 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
         return new VariantContextBuilder()
                 .chr(invertedRegion.getContig()).start(invertedRegion.getStart() - 1).stop(invertedRegion.getEnd())     // TODO: 5/2/18 VCF spec doesn't requst left shift by 1 for inversion POS
                 .alleles(Arrays.asList(refAllele, altSymbAlleleInv))
-                .id(makeID(SimpleSVType.TYPES.INV.name(), invertedRegion.getContig(), invertedRegion.getStart() - 1, invertedRegion.getEnd()))
+                .id(makeID(SimpleSVType.SupportedType.INV.name(), invertedRegion.getContig(), invertedRegion.getStart() - 1, invertedRegion.getEnd()))
                 .attribute(VCFConstants.END_KEY, invertedRegion.getEnd())
                 .attribute(SVLEN, 0)                                                                 // TODO: 5/2/18 this is following VCF spec,
-                .attribute(SVTYPE, SimpleSVType.TYPES.INV.name());
+                .attribute(SVTYPE, SimpleSVType.SupportedType.INV.name());
     }
 }

@@ -278,10 +278,10 @@ public final class AssemblyContigWithFineTunedAlignments {
      *         head and tail alignment contain each other in terms of their reference span
      *     </li>
      *     <li>
-     *         head and tail alignment mapped to different chromosome
+     *         head and tail alignment mapped to different chromosomes
      *     </li>
      *     <li>
-     *         head and tail alignment mapped to different strands
+     *         head and tail alignment mapped to opposite strands of the same chromosome
      *     </li>
      *     <li>
      *         head and tail alignment have reference order switch, indicating we have likely

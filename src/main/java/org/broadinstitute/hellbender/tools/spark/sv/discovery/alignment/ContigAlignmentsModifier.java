@@ -229,7 +229,7 @@ public final class ContigAlignmentsModifier {
         return new Cigar(SvCigarUtils.compactifyNeighboringSoftClippings(cigar.getCigarElements()));
     }
 
-    public static enum AlnModType {
+    public enum AlnModType {
         NONE, UNDERGONE_OVERLAP_REMOVAL, EXTRACTED_FROM_LARGER_ALIGNMENT, FROM_SPLIT_GAPPED_ALIGNMENT;
 
         public enum ModTypeString {

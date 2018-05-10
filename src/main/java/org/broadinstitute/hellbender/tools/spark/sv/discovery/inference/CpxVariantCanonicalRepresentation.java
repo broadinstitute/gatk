@@ -7,6 +7,7 @@ import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import htsjdk.samtools.util.SequenceUtil;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -310,8 +311,6 @@ final class CpxVariantCanonicalRepresentation {
 
         final AlignmentInterval head = tigWithInsMappings.getHeadAlignment();
         final AlignmentInterval tail = tigWithInsMappings.getTailAlignment();
-        if (head == null || tail == null)
-            throw new GATKException("Head or tail alignment is null from contig:\n" + tigWithInsMappings.toString());
 
         if (segments.isEmpty()) { // case where middle alignments all map to disjoint locations
             final int start = head.endInAssembledContig;
@@ -342,8 +341,9 @@ final class CpxVariantCanonicalRepresentation {
             final boolean firstSegmentNeighborsHeadAlignment = basicInfo.forwardStrandRep ? (firstSegment.getStart() - head.referenceSpan.getEnd() == 1)
                                                                                           : (head.referenceSpan.getStart() - firstSegment.getEnd() == 1);
             if ( ! firstSegmentNeighborsHeadAlignment )
-                throw new CpxVariantInterpreter.UnhandledCaseSeen("1st segment is not overlapping with head alignment but it is not immediately before/after the head alignment either\n"
-                        + tigWithInsMappings.toString() + "\nSegments:\t" + segments.toString());
+                throw new CpxVariantInterpreter.UnhandledCaseSeen(
+                        "1st segment is not overlapping with head alignment but it is not immediately before/after the head alignment either\n"
+                                + tigWithInsMappings.toString() + "\nSegments:\t" + segments.toString());
             start = head.endInAssembledContig;
         } else {
             final SimpleInterval intersect = firstSegment.intersect(head.referenceSpan);
@@ -356,7 +356,7 @@ final class CpxVariantCanonicalRepresentation {
 
         if ( !lastSegment.overlaps(tail.referenceSpan) ) {
             final boolean expectedCase = basicInfo.forwardStrandRep ? (tail.referenceSpan.getStart() - lastSegment.getEnd() == 1)
-                    : (lastSegment.getStart() - tail.referenceSpan.getEnd() == 1);
+                                                                    : (lastSegment.getStart() - tail.referenceSpan.getEnd() == 1);
             if ( ! expectedCase )
                 throw new CpxVariantInterpreter.UnhandledCaseSeen(tigWithInsMappings.toString());
             end = tail.startInAssembledContig;
@@ -380,31 +380,18 @@ final class CpxVariantCanonicalRepresentation {
 
     @VisibleForTesting
     VariantContextBuilder toVariantContext(final byte[] refBases) {
-
-        final CpxVariantType cpxVariant = new CpxVariantType(affectedRefRegion, altSeq.length, typeSpecificExtraAttributes());
-
-        final VariantContextBuilder vcBuilder = new VariantContextBuilder()
-                .chr(affectedRefRegion.getContig()).start(affectedRefRegion.getStart()).stop(affectedRefRegion.getEnd())
-                .alleles(AnnotatedVariantProducer.produceAlleles(refBases, cpxVariant))
-                .id(cpxVariant.getInternalVariantId())
-                .attribute(SVTYPE, cpxVariant.toString())
-                .attribute(VCFConstants.END_KEY, affectedRefRegion.getEnd())
-                .attribute(SVLEN, cpxVariant.getSVLength())
-                .attribute(SEQ_ALT_HAPLOTYPE, new String(altSeq));
-
-        cpxVariant.getTypeSpecificAttributes().forEach(vcBuilder::attribute);
-        return vcBuilder;
-    }
-
-    private Map<String, String> typeSpecificExtraAttributes() {
-        final Map<String, String> attributes = new HashMap<>();
-        attributes.put(CPX_EVENT_ALT_ARRANGEMENTS, String.join(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR, eventDescriptions));
+        final Map<String, Object> typeSpecificAttributes = new HashMap<>();
+        typeSpecificAttributes.put(CPX_EVENT_ALT_ARRANGEMENTS,
+                String.join(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR, eventDescriptions));
         if ( ! referenceSegments.isEmpty() ) {
-            attributes.put(CPX_SV_REF_SEGMENTS,
+            typeSpecificAttributes.put(CPX_SV_REF_SEGMENTS,
                     String.join(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR,
                             referenceSegments.stream().map(SimpleInterval::toString).collect(Collectors.toList())));
         }
-        return attributes;
+
+        return new CpxVariantType(affectedRefRegion, refBases, altSeq.length, typeSpecificAttributes)
+                .getBasicInformation()
+                .attribute(SEQ_ALT_HAPLOTYPE, new String(altSeq));
     }
 
     // =================================================================================================================

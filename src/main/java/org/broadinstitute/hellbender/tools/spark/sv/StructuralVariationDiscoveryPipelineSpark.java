@@ -27,6 +27,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedC
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContigGenerator;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.ContigAlignmentsModifier;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ContigChimericAlignmentIterativeInterpreter;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ImpreciseVariantDetector;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
@@ -176,10 +177,8 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         final SvDiscoveryInputMetaData svDiscoveryInputMetaData = getSvDiscoveryInputData(ctx, headerForReads, assembledEvidenceResults);
 
         // TODO: 1/14/18 this is to be phased-out: old way of calling precise variants
-        // assembled breakpoints
-        @SuppressWarnings("deprecation")
         List<VariantContext> assemblyBasedVariants =
-                org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVariantsFromContigAlignmentsSAMSpark
+                ContigChimericAlignmentIterativeInterpreter
                         .discoverVariantsFromChimeras(svDiscoveryInputMetaData, parsedAlignments);
 
         final List<VariantContext> annotatedVariants = processEvidenceTargetLinks(assemblyBasedVariants, svDiscoveryInputMetaData);

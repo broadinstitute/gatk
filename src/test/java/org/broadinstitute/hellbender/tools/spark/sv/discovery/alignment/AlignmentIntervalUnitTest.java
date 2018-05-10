@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment;
 
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestUtilsAndCommonDataProvider;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.Strand;
 import org.broadinstitute.hellbender.utils.RandomDNA;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -206,7 +206,7 @@ public class AlignmentIntervalUnitTest extends GATKBaseTest {
                                               final boolean expectedIsPositiveStrand, final int expectedStartOnContig_1BasedInclusive, final int expectedEndOnContig_1BasedInclusive,
                                               final int expectedContigLength, final int expectedMapQualInBwaMemAlignment, final AlignmentInterval expectedAlignmentInterval) {
 
-        final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", SVDiscoveryTestUtilsAndCommonDataProvider.makeDummySequence(expectedContigLength, (byte)'A'), null, null, bwaMemAlignment, refNames, hg19Header, false, false);
+        final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", TestUtilsForAssemblyBasedSVDiscovery.makeDummySequence(expectedContigLength, (byte)'A'), null, null, bwaMemAlignment, refNames, hg19Header, false, false);
         final AlignmentInterval alignmentInterval = new AlignmentInterval(samRecord);
         Assert.assertEquals(alignmentInterval.referenceSpan, expectedReferenceInterval);
         Assert.assertEquals(alignmentInterval.cigarAlong5to3DirectionOfContig, expectedCigar);
@@ -222,7 +222,7 @@ public class AlignmentIntervalUnitTest extends GATKBaseTest {
                                         final boolean expectedIsPositiveStrand, final int expectedStartOnContig_1BasedInclusive, final int expectedEndOnContig_1BasedInclusive,
                                         final int expectedContigLength, final int expectedMapQualInBwaMemAlignment, final AlignmentInterval expectedAlignmentInterval) {
 
-        final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", SVDiscoveryTestUtilsAndCommonDataProvider.makeDummySequence(expectedContigLength, (byte)'A'), null, null, bwaMemAlignment, refNames, hg19Header, false, false);
+        final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", TestUtilsForAssemblyBasedSVDiscovery.makeDummySequence(expectedContigLength, (byte)'A'), null, null, bwaMemAlignment, refNames, hg19Header, false, false);
         final StringBuilder strBuilder = new StringBuilder(String.join(",", samRecord.getContig(),
                 "" + samRecord.getStart(), samRecord.getReadNegativeStrandFlag() ? "-" : "+", samRecord.getCigarString(), "" + samRecord.getMappingQuality()));
         if (samRecord.getAttribute(SAMTag.NM.name()) != null || samRecord.getAttribute(SAMTag.AS.name()) != null) {
@@ -246,7 +246,7 @@ public class AlignmentIntervalUnitTest extends GATKBaseTest {
                                              final boolean expectedIsPositiveStrand, final int expectedStartOnContig_1BasedInclusive, final int expectedEndOnContig_1BasedInclusive,
                                              final int expectedContigLength, final int expectedMapQualInBwaMemAlignment, final AlignmentInterval expectedAlignmentInterval) {
 
-        final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", SVDiscoveryTestUtilsAndCommonDataProvider.makeDummySequence(expectedContigLength, (byte)'A'), null, null, bwaMemAlignment, refNames, hg19Header, false, false);
+        final SAMRecord samRecord = BwaMemAlignmentUtils.applyAlignment("whatever", TestUtilsForAssemblyBasedSVDiscovery.makeDummySequence(expectedContigLength, (byte)'A'), null, null, bwaMemAlignment, refNames, hg19Header, false, false);
         final GATKRead read = new SAMRecordToGATKReadAdapter(samRecord);
         final AlignmentInterval alignmentInterval = new AlignmentInterval(read);
         Assert.assertEquals(alignmentInterval.referenceSpan, expectedReferenceInterval);
@@ -410,15 +410,15 @@ public class AlignmentIntervalUnitTest extends GATKBaseTest {
     private Object[][] testDataForContainsGapOfEqualOrLargerSize(){
         final List<Object[]> data = new ArrayList<>(20);
 
-        final AlignmentInterval one = SVDiscoveryTestUtilsAndCommonDataProvider.fromSAMRecordString("asm000001:tig00002\t0\tchr1\t180969\t60\t400S237M58D320M4D76M\t*\t0\t0\tCCCTGCAATGTCCCTAGCTGCCAGCAGGCGGCGTGCCACCACTATACAGTAAGCAAGAGGGCCCTGCAGTGCCCCGGCGCCAGCAGGGGGCGCTGGCCACCACTCTAAGCAAGAGAGCCCTGCAGTTGCCCTAGTCGCCAGCAGGGGGCGCCCTGGCACAGCACCGTGAGCAAGCGGGTCCTGTAGTGCCCGGCTGCAAGCAAGGGGCTGTCGATCCCGGCGTTTCGGATTACTGAGGTTCCACCCGTCTCTGCGCCGCGCCGCCGTGACGTGAGTTTCTGCGCGTGCACGGCGCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCGCGCCCTCCCCTCCCCTCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCACCCCCAACCCTAACCCCAACCCTAACCCTAACCCTCGCGGTACCCTCAGCCGGCCCGCCCGCCCGGGTCTGACCTGAGGAGAACTGTGCTCCGCCTTCAGAGTACCACCGAAATCTGTGCAGAGGACAACGCAGCTCCGCCCTCGCGGTGCTCTCCGGGTCTGTGCTGAGGAGAACGCAACTCCGCCGGCGCAGGCGCAGAGAGGCGCGCCGCGCCGGCGCAGGCGCAGAGAGGCGCGCCGCGCCGGCGCAGGCGCAGAGAGGCGCGCCGCGCCGGCGCAGGCGCAGAGAGGCGCGCCGCGCCGGCGCAGGCGCAGAGACACATGCTAGCGCGTCCAGGGGAGGAGGCGTGGCACAGGCGCAGAGACACATGCTAGCGCGCCCAGGGGAGGAGGCGTGGCGCAGGCGCAGAGAGGCGCGCCGTGCTGCCGCAGGCGCAGAGACACATGCTAGCGCGTCCAGGGGGTGGAGGCGTGGCGCAGGCGCAGAGACGCACGCCTACGGGCGGGGTTGGGGGGGGCGTGTGTTACAGGAGCAAAGTCGCACGGCGCCGGGCTGGGGGCGGGGGCGGGGGGGCGCCGTGCACGCGCAGAAACTCACGTCACGGCGGCGCGGCGCAGAGACGGGTGGAACCTCAGT\t*\tSA:Z:chr1,181578,-,716S317M,6,1;chr2,32916352,-,640S99M294S,0,5;\tMD:Z:11T132A92^GCCGGCGCAGGCGCAGAGAGGCGCGCCTCGCCGGCGCAGGCGCAGAGAGGCGCGCCGG320^GGGG5G70\tRG:Z:GATKSVContigAlignments\tNM:i:65\tAS:i:524\tXS:i:426",
+        final AlignmentInterval one = TestUtilsForAssemblyBasedSVDiscovery.fromSAMRecordString("asm000001:tig00002\t0\tchr1\t180969\t60\t400S237M58D320M4D76M\t*\t0\t0\tCCCTGCAATGTCCCTAGCTGCCAGCAGGCGGCGTGCCACCACTATACAGTAAGCAAGAGGGCCCTGCAGTGCCCCGGCGCCAGCAGGGGGCGCTGGCCACCACTCTAAGCAAGAGAGCCCTGCAGTTGCCCTAGTCGCCAGCAGGGGGCGCCCTGGCACAGCACCGTGAGCAAGCGGGTCCTGTAGTGCCCGGCTGCAAGCAAGGGGCTGTCGATCCCGGCGTTTCGGATTACTGAGGTTCCACCCGTCTCTGCGCCGCGCCGCCGTGACGTGAGTTTCTGCGCGTGCACGGCGCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCGCGCCCTCCCCTCCCCTCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCACCCCCAACCCTAACCCCAACCCTAACCCTAACCCTCGCGGTACCCTCAGCCGGCCCGCCCGCCCGGGTCTGACCTGAGGAGAACTGTGCTCCGCCTTCAGAGTACCACCGAAATCTGTGCAGAGGACAACGCAGCTCCGCCCTCGCGGTGCTCTCCGGGTCTGTGCTGAGGAGAACGCAACTCCGCCGGCGCAGGCGCAGAGAGGCGCGCCGCGCCGGCGCAGGCGCAGAGAGGCGCGCCGCGCCGGCGCAGGCGCAGAGAGGCGCGCCGCGCCGGCGCAGGCGCAGAGAGGCGCGCCGCGCCGGCGCAGGCGCAGAGACACATGCTAGCGCGTCCAGGGGAGGAGGCGTGGCACAGGCGCAGAGACACATGCTAGCGCGCCCAGGGGAGGAGGCGTGGCGCAGGCGCAGAGAGGCGCGCCGTGCTGCCGCAGGCGCAGAGACACATGCTAGCGCGTCCAGGGGGTGGAGGCGTGGCGCAGGCGCAGAGACGCACGCCTACGGGCGGGGTTGGGGGGGGCGTGTGTTACAGGAGCAAAGTCGCACGGCGCCGGGCTGGGGGCGGGGGCGGGGGGGCGCCGTGCACGCGCAGAAACTCACGTCACGGCGGCGCGGCGCAGAGACGGGTGGAACCTCAGT\t*\tSA:Z:chr1,181578,-,716S317M,6,1;chr2,32916352,-,640S99M294S,0,5;\tMD:Z:11T132A92^GCCGGCGCAGGCGCAGAGAGGCGCGCCTCGCCGGCGCAGGCGCAGAGAGGCGCGCCGG320^GGGG5G70\tRG:Z:GATKSVContigAlignments\tNM:i:65\tAS:i:524\tXS:i:426",
                 true);
         data.add(new Object[]{one, 50, true});
 
-        final AlignmentInterval two = SVDiscoveryTestUtilsAndCommonDataProvider.fromSAMRecordString("asm000001:tig00005\t16\tchr2\t113602055\t60\t129M29D136M\t*\t0\t0\tCAAGAGGACCCTGCAATGTCCCTAGCTGCCAGCAGGCGGCGTGCCACCACTATACAGTAAGCAAGAGGGCCCTGCAGTGCCCCGGCGCCAGCAGGGGGCGCTGGCGACCACTGTAAGCAAGAGAGCCCTGCGCCTCTCTGCGCCGGCGCGGCGCGGGGTGCCTTTGCGACGGCGGAGTTGCGTTCTCCTCAGCACAGACCCGGAGAGCACCGCGAGGGCGGACCTGCGTTGTCCTCTGCACAGATTTCAGTGGTACTGCGAAGGC\t*\tMD:Z:129^GCGCCTCTCTGCGCCGGCGCCGGCGCGGC136\tRG:Z:GATKSVContigAlignments\tNM:i:29\tAS:i:2",
+        final AlignmentInterval two = TestUtilsForAssemblyBasedSVDiscovery.fromSAMRecordString("asm000001:tig00005\t16\tchr2\t113602055\t60\t129M29D136M\t*\t0\t0\tCAAGAGGACCCTGCAATGTCCCTAGCTGCCAGCAGGCGGCGTGCCACCACTATACAGTAAGCAAGAGGGCCCTGCAGTGCCCCGGCGCCAGCAGGGGGCGCTGGCGACCACTGTAAGCAAGAGAGCCCTGCGCCTCTCTGCGCCGGCGCGGCGCGGGGTGCCTTTGCGACGGCGGAGTTGCGTTCTCCTCAGCACAGACCCGGAGAGCACCGCGAGGGCGGACCTGCGTTGTCCTCTGCACAGATTTCAGTGGTACTGCGAAGGC\t*\tMD:Z:129^GCGCCTCTCTGCGCCGGCGCCGGCGCGGC136\tRG:Z:GATKSVContigAlignments\tNM:i:29\tAS:i:2",
                 false);
         data.add(new Object[]{two, 50, false});
 
-        final AlignmentInterval three = SVDiscoveryTestUtilsAndCommonDataProvider.fromSAMRecordString("asm000004:tig00026\t0\tchr1\t224015348\t40\t104S109M20I190M10D79M15D69M\t*\t0\t0\tAGGAGGGAATGTATTCGAGTGGAATGGAAAGGAATGGAATCAACCATAGTGGAATGGAAGGGAATGGAATGGAATGGTAACTAATAGAATGGAATCAACCCGAGTGGAATGGAATGGAAAGGACTGGAATGGAATGGAATGGAATGGAATGGACTCAGATGGAATGGAATGGAATGGACTCGAAAGGATTGGGATGGAATACAATGGAATGGTCTCGAATGGAATGGAATGGACTCGAATGGAATGGAATGCAATGGAATGGACTCAAATGGAATGGAATGGAACTGACTCGAATGGAATTGAATGGAATGGACCCGAATGGAATGGAATGGAATGGACTGGGCTCAAATTGAATGGAATGGAAAAGAATGGAATGGAATAGAATGGACTGGAATGTAATGAGTTTGGAATGGACTTGAATGCAATGGAATGGAATGGACTCAAATGGAATAGCATGGAATGGAATGGACTCAAATGCATTGGAATGGAATGGACTTGAATGGAATGGAATGGAGTTGAATGGACTCATATGGAATGGAATGGCATTGAATGGACTCGAATGGAATAGAAT\t*\tSA:Z:chr5,49661411,-,418S150M3S,4,9;chrUn_KN707896v1_decoy,5378,-,418S153M,0,3;\tMD:Z:7C7T5C277^AATGGAATGG79^GAATGGAATGGACTC69\tRG:Z:GATKSVContigAlignments\tNM:i:48\tAS:i:339\tXS:i:308",
+        final AlignmentInterval three = TestUtilsForAssemblyBasedSVDiscovery.fromSAMRecordString("asm000004:tig00026\t0\tchr1\t224015348\t40\t104S109M20I190M10D79M15D69M\t*\t0\t0\tAGGAGGGAATGTATTCGAGTGGAATGGAAAGGAATGGAATCAACCATAGTGGAATGGAAGGGAATGGAATGGAATGGTAACTAATAGAATGGAATCAACCCGAGTGGAATGGAATGGAAAGGACTGGAATGGAATGGAATGGAATGGAATGGACTCAGATGGAATGGAATGGAATGGACTCGAAAGGATTGGGATGGAATACAATGGAATGGTCTCGAATGGAATGGAATGGACTCGAATGGAATGGAATGCAATGGAATGGACTCAAATGGAATGGAATGGAACTGACTCGAATGGAATTGAATGGAATGGACCCGAATGGAATGGAATGGAATGGACTGGGCTCAAATTGAATGGAATGGAAAAGAATGGAATGGAATAGAATGGACTGGAATGTAATGAGTTTGGAATGGACTTGAATGCAATGGAATGGAATGGACTCAAATGGAATAGCATGGAATGGAATGGACTCAAATGCATTGGAATGGAATGGACTTGAATGGAATGGAATGGAGTTGAATGGACTCATATGGAATGGAATGGCATTGAATGGACTCGAATGGAATAGAAT\t*\tSA:Z:chr5,49661411,-,418S150M3S,4,9;chrUn_KN707896v1_decoy,5378,-,418S153M,0,3;\tMD:Z:7C7T5C277^AATGGAATGG79^GAATGGAATGGACTC69\tRG:Z:GATKSVContigAlignments\tNM:i:48\tAS:i:339\tXS:i:308",
                 true);
         data.add(new Object[]{three, 10, true});
         data.add(new Object[]{three, 20, true});

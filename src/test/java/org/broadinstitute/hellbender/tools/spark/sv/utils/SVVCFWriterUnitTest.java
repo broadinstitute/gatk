@@ -10,7 +10,7 @@ import htsjdk.variant.vcf.VCFIDHeaderLine;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestUtilsAndCommonDataProvider;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -27,8 +27,8 @@ public class SVVCFWriterUnitTest extends GATKBaseTest {
     @Test(groups = "sv")
     public void testSortVariantsByCoordinate(){
 
-        final String insOne = "AAA";new String(SVDiscoveryTestUtilsAndCommonDataProvider.makeDummySequence(100, (byte)'A'));
-        final String insTwo = "AAC";new String(SVDiscoveryTestUtilsAndCommonDataProvider.makeDummySequence(100, (byte)'C'));
+        final String insOne = "AAA";new String(TestUtilsForAssemblyBasedSVDiscovery.makeDummySequence(100, (byte)'A'));
+        final String insTwo = "AAC";new String(TestUtilsForAssemblyBasedSVDiscovery.makeDummySequence(100, (byte)'C'));
 
         final String contig = "21";
         final int pos = 100001;
