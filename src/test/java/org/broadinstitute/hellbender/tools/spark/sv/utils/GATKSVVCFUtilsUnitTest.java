@@ -29,7 +29,7 @@ public class GATKSVVCFUtilsUnitTest extends GATKBaseTest {
                         SEQ_ALT_HAPLOTYPE, INSERTED_SEQUENCE, INSERTED_SEQUENCE_LENGTH, INSERTED_SEQUENCE_MAPPINGS, HOMOLOGY, HOMOLOGY_LENGTH,
                         DUP_REPEAT_UNIT_REF_SPAN, DUP_SEQ_CIGARS, DUPLICATION_NUMBERS, DUP_ANNOTATIONS_IMPRECISE, DUP_IMPRECISE_AFFECTED_RANGE,
                         DUP_TAN_CONTRACTION_STRING, DUP_TAN_EXPANSION_STRING, DUP_ORIENTATIONS, INV33, INV55, EXTERNAL_CNV_CALLS,
-                        CTG_GOOD_NONCANONICAL_MAPPING)
+                        CTG_GOOD_NONCANONICAL_MAPPING, LINK)
                         .sorted().collect(Collectors.toList()));
     }
 
@@ -57,7 +57,7 @@ public class GATKSVVCFUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider = "svVcfFiles", groups = "sv")
-    public void testTestVcfFiles(final Path svVCFFilePath) {
+    public void checkTestVcfFiles(final Path svVCFFilePath) {
         try (final VCFFileReader reader = new VCFFileReader(svVCFFilePath.toFile(), false)) {
             final VCFHeader fileHeader = reader.getFileHeader();
             Assert.assertNotNull(fileHeader.getSequenceDictionary());

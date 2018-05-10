@@ -4,6 +4,7 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -17,12 +18,13 @@ import scala.Tuple2;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
+
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.STRUCTURAL_VARIANT_SIZE_LOWER_BOUND;
 
 /**
  * This class represents a pair of inferred genomic locations on the reference whose novel adjacency is generated
  * due to an SV event (in other words, a simple rearrangement between two genomic locations)
- * that is suggested by the input {@link ChimericAlignment},
+ * that is suggested by the input {@link SimpleChimera},
  * and complications as enclosed in {@link BreakpointComplications}
  * in pinning down the locations to exact base pair resolution.
  *
@@ -45,15 +47,15 @@ public class NovelAdjacencyAndAltHaplotype {
     private final TypeInferredFromSimpleChimera type;
     private final byte[] altHaplotypeSequence;
 
-    public NovelAdjacencyAndAltHaplotype(final ChimericAlignment chimericAlignment, final byte[] contigSequence,
+    public NovelAdjacencyAndAltHaplotype(final SimpleChimera simpleChimera, final byte[] contigSequence,
                                          final SAMSequenceDictionary referenceDictionary) {
 
-        strandSwitch = chimericAlignment.strandSwitch;
+        strandSwitch = simpleChimera.strandSwitch;
 
         try {
 
             final BreakpointsInference inferredClass =
-                    BreakpointsInference.getInferenceClass(chimericAlignment, contigSequence, referenceDictionary);
+                    BreakpointsInference.getInferenceClass(simpleChimera, contigSequence, referenceDictionary);
 
             final Tuple2<SimpleInterval, SimpleInterval> leftJustifiedBreakpoints = inferredClass.getLeftJustifiedBreakpoints();
             leftJustifiedLeftRefLoc = leftJustifiedBreakpoints._1();
@@ -61,13 +63,13 @@ public class NovelAdjacencyAndAltHaplotype {
 
             complication = inferredClass.getComplications();
 
-            type = BreakpointsInference.inferFromSimpleChimera(chimericAlignment);
+            type = simpleChimera.inferType();
 
             altHaplotypeSequence = inferredClass.getInferredAltHaplotypeSequence();
 
         } catch (final IllegalArgumentException iaex) { // catching IAEX specifically because it is the most likely exception thrown if there's bug, this helps quickly debugging what the problem is
             throw new GATKException("Erred when inferring breakpoint location and event type from chimeric alignment:\n" +
-                    chimericAlignment.toString(), iaex);
+                    simpleChimera.toString(), iaex);
         }
     }
 
@@ -180,17 +182,22 @@ public class NovelAdjacencyAndAltHaplotype {
     }
 
     /**
-     * @return the inferred type could be a single entry for simple variants, or a list of two entries with BND mates.
+     * @return the inferred type could be
+     *          1) a single entry for simple variants, or
+     *          2) a list of two entries for "replacement" case where the ref- and alt- path are both >= {@link STRUCTURAL_VARIANT_SIZE_LOWER_BOUND} bp long, or
+     *          3) a list of two entries with BND mates.
+     *          It is safe, for now, to assume that ({@link SimpleSVType} and {@link BreakEndVariantType} are never mixed)
      */
-    List<SvType> toSimpleOrBNDTypes(final ReferenceMultiSource reference, final SAMSequenceDictionary referenceDictionary) {
+    @VisibleForTesting
+    public List<SvType> toSimpleOrBNDTypes(final ReferenceMultiSource reference, final SAMSequenceDictionary referenceDictionary) {
 
         switch (type) {
-            case InterChromosome:
-            case IntraChrRefOrderSwap:
+            case INTER_CHROMOSOME:
+            case INTRA_CHR_REF_ORDER_SWAP:
                 final Tuple2<BreakEndVariantType, BreakEndVariantType> orderedMatesForTranslocSuspect =
                         BreakEndVariantType.TransLocBND.getOrderedMates(this, reference, referenceDictionary);
                 return Arrays.asList(orderedMatesForTranslocSuspect._1, orderedMatesForTranslocSuspect._2);
-            case IntraChrStrandSwitch:
+            case INTRA_CHR_STRAND_SWITCH:
                 if ( complication.indicatesRefSeqDuplicatedOnAlt() ) {
                     final int svLength =
                             ((BreakpointComplications.IntraChrStrandSwitchBreakpointComplications) this.getComplication())
@@ -208,8 +215,19 @@ public class NovelAdjacencyAndAltHaplotype {
             }
             case RPL:
             {
-                final int svLength = leftJustifiedLeftRefLoc.getEnd() - leftJustifiedRightRefLoc.getStart();
-                return Collections.singletonList( new SimpleSVType.Deletion(this, svLength) );
+                final int deletedLength = leftJustifiedRightRefLoc.getStart() - leftJustifiedLeftRefLoc.getEnd();
+                final int insertionLength = complication.getInsertedSequenceForwardStrandRep().length();
+                if ( deletedLength < STRUCTURAL_VARIANT_SIZE_LOWER_BOUND) { // "fat" insertion
+                    return Collections.singletonList( new SimpleSVType.Insertion(this, insertionLength) );
+                } else { // "DEL" record with insertion
+                    final SimpleSVType.Deletion deletion = new SimpleSVType.Deletion(this, - deletedLength);
+                    if ( insertionLength < STRUCTURAL_VARIANT_SIZE_LOWER_BOUND ){
+                        return Collections.singletonList( deletion );
+                    } else {
+                        final SimpleSVType.Insertion insertion = new SimpleSVType.Insertion(this, insertionLength);
+                        return Arrays.asList( deletion, insertion );
+                    }
+                }
             }
             case SIMPLE_INS:
             {
@@ -219,7 +237,13 @@ public class NovelAdjacencyAndAltHaplotype {
             case SMALL_DUP_EXPANSION:
             {
                 final int svLength = getLengthForDupTandem(this);
-                return Collections.singletonList( new SimpleSVType.DuplicationTandem(this, svLength) );
+                final BreakpointComplications.SmallDuplicationWithPreciseDupRangeBreakpointComplications duplicationComplication =
+                        (BreakpointComplications.SmallDuplicationWithPreciseDupRangeBreakpointComplications) this.getComplication();
+                if (duplicationComplication.getDupSeqRepeatUnitRefSpan().size() < STRUCTURAL_VARIANT_SIZE_LOWER_BOUND) {
+                    return Collections.singletonList( new SimpleSVType.Insertion(this, svLength));
+                } else {
+                    return Collections.singletonList( new SimpleSVType.DuplicationTandem(this, svLength) );
+                }
             }
             case DEL_DUP_CONTRACTION:
             {
@@ -228,13 +252,19 @@ public class NovelAdjacencyAndAltHaplotype {
             }
             case SMALL_DUP_CPX:
             {
-                if ( ((BreakpointComplications.SmallDuplicationWithImpreciseDupRangeBreakpointComplications)
-                        this.getComplication()).isDupContraction() ) {
+                final BreakpointComplications.SmallDuplicationWithImpreciseDupRangeBreakpointComplications duplicationComplication =
+                        (BreakpointComplications.SmallDuplicationWithImpreciseDupRangeBreakpointComplications)
+                        this.getComplication();
+                if ( duplicationComplication.isDupContraction() ) {
                     final int svLength = leftJustifiedLeftRefLoc.getEnd() - leftJustifiedRightRefLoc.getStart();
                     return Collections.singletonList( new SimpleSVType.Deletion(this, svLength) );
                 } else {
                     final int svLength = getLengthForDupTandem(this);
-                    return Collections.singletonList( new SimpleSVType.DuplicationTandem(this, svLength) );
+                    if (duplicationComplication.getDupSeqRepeatUnitRefSpan().size() < STRUCTURAL_VARIANT_SIZE_LOWER_BOUND) {
+                        return Collections.singletonList( new SimpleSVType.Insertion(this, svLength));
+                    } else {
+                        return Collections.singletonList( new SimpleSVType.DuplicationTandem(this, svLength) );
+                    }
                 }
             }
             default:

@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 import htsjdk.samtools.*;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.BreakpointComplications;
@@ -20,7 +19,10 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -124,6 +126,12 @@ public class SvDiscoveryUtils {
      */
     public static void writeSAMRecords(final JavaRDD<GATKRead> originalAlignments, final Set<String> readNameToInclude,
                                        final String outputPath, final SAMFileHeader header) {
+        final List<GATKRead> reads = originalAlignments.collect();
+        writeSAMRecords(reads, readNameToInclude, outputPath, header);
+    }
+
+    public static void writeSAMRecords(final List<GATKRead> reads, final Set<String> readNameToInclude,
+                                       final String outputPath, final SAMFileHeader header) {
         final SAMFileHeader cloneHeader = header.clone();
         final SAMRecordComparator localComparator;
         if (outputPath.toLowerCase().endsWith("bam")) {
@@ -136,7 +144,6 @@ public class SvDiscoveryUtils {
             throw new IllegalArgumentException("Unsupported output format " + outputPath);
         }
 
-        final List<GATKRead> reads = originalAlignments.collect();
         final List<SAMRecord> samRecords = new ArrayList<>();
         reads.forEach(gatkRead -> {
             if ( readNameToInclude.contains(gatkRead.getName()) ) {

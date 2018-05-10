@@ -18,8 +18,6 @@ import org.broadinstitute.hellbender.tools.spark.utils.FlatMapGluer;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 
-import java.util.List;
-
 import static org.broadinstitute.hellbender.tools.spark.sv.evidence.FindBreakpointEvidenceSpark.buildMetadata;
 import static org.broadinstitute.hellbender.tools.spark.sv.evidence.FindBreakpointEvidenceSpark.findGenomewideHighCoverageIntervalsToIgnore;
 

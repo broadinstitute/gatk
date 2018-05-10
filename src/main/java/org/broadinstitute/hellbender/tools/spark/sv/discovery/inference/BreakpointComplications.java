@@ -11,7 +11,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ChimericAlignment.DistancesBetweenAlignmentsOnRefAndOnRead;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleChimera.DistancesBetweenAlignmentsOnRefAndOnRead;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.Strand;
@@ -25,7 +25,31 @@ import java.util.stream.Collectors;
  * A helper struct for annotating complications that make the locations represented by its associated
  * {@link NovelAdjacencyAndAltHaplotype} a little ambiguous.
  *
- * We currently handle five types for simple chimera-induced precise variants:
+ * Inserted sequence contains portions of the contig that are aligned to neither region,
+ * and therefore may be inserted in the sample.
+ * For example, a translocation breakpoint with a micro-insertion:
+ *
+ * Contig:
+ * ACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTG
+ * Alignment regions:
+ * |-----1:100-200-------|
+ *                          |----2:100-200-----|
+ * Inserted sequence:
+ *  GA
+ *
+ * Homology represents ambiguity about the exact location of the breakpoint. For example, in this case one alignment
+ * region ends with "AC" and the next begins with AC, so we don't know if the AC truly belongs with the first or
+ * second alignment region.
+ *
+ * Contig:
+ * ACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTG
+ * Alignment regions:
+ * |-----1:100-200-------|
+ *                    |-----2:100-200----------|
+ * Homology:
+ *  AC
+ *
+ * We currently handle types for simple chimera-induced precise variants {@link TypeInferredFromSimpleChimera}:
  * <ul>
  *     <li>
  *         deletions
@@ -57,7 +81,7 @@ public abstract class BreakpointComplications {
     /**
      * '+' strand representations of micro-homology, inserted sequence and duplicated sequence on the reference.
      *
-     * If there is homologous sequence represented in the {@link ChimericAlignment},
+     * If there is homologous sequence represented in the {@link SimpleChimera},
      * it will be assigned to the side of the breakpoint with higher reference coordinates
      * (as judged by a {@link SAMSequenceDictionary}), i.e. we follow left alignment convention.
      */
@@ -154,7 +178,7 @@ public abstract class BreakpointComplications {
     }
 
     /**
-     * Note: not suitable for the most complicated case dealt with in {@link BreakpointComplications( ChimericAlignment )}
+     * Note: not suitable for the most complicated case dealt with in {@link BreakpointComplications( SimpleChimera )}
      * @return Inserted sequence using two alignments of the same contig: as indicated by their separation on the the contig itself.
      */
     @VisibleForTesting
@@ -197,7 +221,7 @@ public abstract class BreakpointComplications {
     @DefaultSerializer(SimpleInsDelOrReplacementBreakpointComplications.Serializer.class)
     static final class SimpleInsDelOrReplacementBreakpointComplications extends BreakpointComplications {
 
-        SimpleInsDelOrReplacementBreakpointComplications(final ChimericAlignment simpleChimera, final byte[] contigSeq) {
+        SimpleInsDelOrReplacementBreakpointComplications(final SimpleChimera simpleChimera, final byte[] contigSeq) {
 
             final DistancesBetweenAlignmentsOnRefAndOnRead distances = simpleChimera.getDistancesBetweenAlignmentsOnRefAndOnRead();
             final int distBetweenAlignRegionsOnRef = distances.distBetweenAlignRegionsOnRef, // distance-1 between the two regions on reference, denoted as d1 in the comments below
@@ -413,7 +437,7 @@ public abstract class BreakpointComplications {
             return parentAttributesToBeFilled;
         }
 
-        SmallDuplicationWithPreciseDupRangeBreakpointComplications(final ChimericAlignment simpleChimera, final byte[] contigSeq) {
+        SmallDuplicationWithPreciseDupRangeBreakpointComplications(final SimpleChimera simpleChimera, final byte[] contigSeq) {
             final DistancesBetweenAlignmentsOnRefAndOnRead distances = simpleChimera.getDistancesBetweenAlignmentsOnRefAndOnRead();
 
             if (distances.distBetweenAlignRegionsOnRef > 0)
@@ -452,7 +476,7 @@ public abstract class BreakpointComplications {
             }
         }
 
-        private void resolveComplicationForSimpleTandupExpansion(final ChimericAlignment simpleChimera,
+        private void resolveComplicationForSimpleTandupExpansion(final SimpleChimera simpleChimera,
                                                                  final DistancesBetweenAlignmentsOnRefAndOnRead distances,
                                                                  final byte[] contigSeq) {
 
@@ -483,7 +507,7 @@ public abstract class BreakpointComplications {
         }
 
         /**
-         * Given a {@link AlignmentInterval} from a pair of ARs that forms a {@link ChimericAlignment} signalling a tandem duplication,
+         * Given a {@link AlignmentInterval} from a pair of ARs that forms a {@link SimpleChimera} signalling a tandem duplication,
          * extract a CIGAR from the {@link AlignmentInterval#cigarAlong5to3DirectionOfContig}
          * that corresponds to the alignment between the suspected repeated sequence on reference between
          * [{@code alignmentIntervalTwoReferenceIntervalSpanBegin}, {@code alignmentIntervalOneReferenceIntervalSpanEnd}],
@@ -526,7 +550,7 @@ public abstract class BreakpointComplications {
             return new Cigar(result);
         }
 
-        private void resolveComplicationForSimpleTandupContraction(final ChimericAlignment simpleChimera,
+        private void resolveComplicationForSimpleTandupContraction(final SimpleChimera simpleChimera,
                                                                    final DistancesBetweenAlignmentsOnRefAndOnRead distances,
                                                                    final byte[] contigSeq) {
             final SimpleInterval leftReferenceInterval;
@@ -610,7 +634,7 @@ public abstract class BreakpointComplications {
             return parentAttributesToBeFilled;
         }
 
-        SmallDuplicationWithImpreciseDupRangeBreakpointComplications(final ChimericAlignment simpleChimera, final byte[] contigSeq) {
+        SmallDuplicationWithImpreciseDupRangeBreakpointComplications(final SimpleChimera simpleChimera, final byte[] contigSeq) {
             final DistancesBetweenAlignmentsOnRefAndOnRead distances = simpleChimera.getDistancesBetweenAlignmentsOnRefAndOnRead();
 
             if (distances.distBetweenAlignRegionsOnRef > 0)
@@ -803,7 +827,7 @@ public abstract class BreakpointComplications {
     abstract static class BNDTypeBreakpointComplications extends BreakpointComplications {
         protected BNDTypeBreakpointComplications() {}
 
-        protected BNDTypeBreakpointComplications(final ChimericAlignment simpleChimera, final byte[] contigSeq) {
+        protected BNDTypeBreakpointComplications(final SimpleChimera simpleChimera, final byte[] contigSeq) {
             homologyForwardStrandRep = inferHomology(simpleChimera.regionWithLowerCoordOnContig,
                                                     simpleChimera.regionWithHigherCoordOnContig, contigSeq);
             insertedSequenceForwardStrandRep = inferInsertedSequence(simpleChimera.regionWithLowerCoordOnContig,
@@ -839,7 +863,7 @@ public abstract class BreakpointComplications {
      * Seg.2 is inverted trans-inserted between the two copies (one of which is inverted).
      *
      * Yet because such contigs are currently defined to have an incomplete picture,
-     * {@link AssemblyContigAlignmentSignatureClassifier#hasIncompletePictureFromTwoAlignments(AlignmentInterval, AlignmentInterval)}
+     * {@link org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments#hasIncompletePictureFromTwoAlignments(AlignmentInterval, AlignmentInterval)}
      * the annotations are actually never used.
      */
     @DefaultSerializer(IntraChrStrandSwitchBreakpointComplications.Serializer.class)
@@ -907,18 +931,18 @@ public abstract class BreakpointComplications {
             return dupSeqRepeatUnitRefSpan != null;
         }
 
-        IntraChrStrandSwitchBreakpointComplications(final ChimericAlignment simpleChimera, final byte[] contigSeq) {
-            if ( simpleChimera.isLikelyInvertedDuplication() ) {
+        IntraChrStrandSwitchBreakpointComplications(final SimpleChimera simpleChimera, final byte[] contigSeq) {
+            if ( simpleChimera.isCandidateInvertedDuplication() ) {
                 resolveComplicationForInvDup(simpleChimera, contigSeq);
             } else {
                 resolveComplicationForSimpleStrandSwitch(simpleChimera, contigSeq);
             }
         }
 
-        void resolveComplicationForSimpleStrandSwitch(final ChimericAlignment chimericAlignment, final byte[] contigSeq) {
+        void resolveComplicationForSimpleStrandSwitch(final SimpleChimera simpleChimera, final byte[] contigSeq) {
 
-            final AlignmentInterval firstAlignmentInterval  = chimericAlignment.regionWithLowerCoordOnContig;
-            final AlignmentInterval secondAlignmentInterval = chimericAlignment.regionWithHigherCoordOnContig;
+            final AlignmentInterval firstAlignmentInterval  = simpleChimera.regionWithLowerCoordOnContig;
+            final AlignmentInterval secondAlignmentInterval = simpleChimera.regionWithHigherCoordOnContig;
 
             homologyForwardStrandRep = inferHomology(firstAlignmentInterval, secondAlignmentInterval, contigSeq);
             insertedSequenceForwardStrandRep = inferInsertedSequence(firstAlignmentInterval, secondAlignmentInterval, contigSeq);
@@ -926,13 +950,13 @@ public abstract class BreakpointComplications {
 
         /**
          * Initialize the fields in this object, assuming the input chimeric alignment is induced by two alignments with
-         * "significant" (see {@link ChimericAlignment#isLikelyInvertedDuplication()})
+         * "significant" (see {@link SimpleChimera#isCandidateInvertedDuplication()})
          * overlap on their reference spans.
          */
-        private void resolveComplicationForInvDup(final ChimericAlignment chimericAlignment, final byte[] contigSeq) {
+        private void resolveComplicationForInvDup(final SimpleChimera simpleChimera, final byte[] contigSeq) {
 
-            final AlignmentInterval firstAlignmentInterval  = chimericAlignment.regionWithLowerCoordOnContig;
-            final AlignmentInterval secondAlignmentInterval = chimericAlignment.regionWithHigherCoordOnContig;
+            final AlignmentInterval firstAlignmentInterval  = simpleChimera.regionWithLowerCoordOnContig;
+            final AlignmentInterval secondAlignmentInterval = simpleChimera.regionWithHigherCoordOnContig;
 
             // TODO: 8/8/17 this might be wrong regarding how strand is involved, fix it
             insertedSequenceForwardStrandRep = inferInsertedSequence(firstAlignmentInterval, secondAlignmentInterval, contigSeq);
@@ -1107,7 +1131,7 @@ public abstract class BreakpointComplications {
     @DefaultSerializer(IntraChrRefOrderSwapBreakpointComplications.Serializer.class)
     static final class IntraChrRefOrderSwapBreakpointComplications extends BNDTypeBreakpointComplications {
 
-        IntraChrRefOrderSwapBreakpointComplications(final ChimericAlignment simpleChimera, final byte[] contigSeq) {
+        IntraChrRefOrderSwapBreakpointComplications(final SimpleChimera simpleChimera, final byte[] contigSeq) {
             super(simpleChimera, contigSeq);
         }
 
@@ -1138,7 +1162,7 @@ public abstract class BreakpointComplications {
     @DefaultSerializer(InterChromosomeBreakpointComplications.Serializer.class)
     static final class InterChromosomeBreakpointComplications extends BNDTypeBreakpointComplications {
 
-        InterChromosomeBreakpointComplications(final ChimericAlignment simpleChimera, final byte[] contigSeq) {
+        InterChromosomeBreakpointComplications(final SimpleChimera simpleChimera, final byte[] contigSeq) {
             super(simpleChimera, contigSeq);
         }
 

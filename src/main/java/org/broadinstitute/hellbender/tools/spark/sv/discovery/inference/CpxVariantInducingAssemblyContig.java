@@ -14,7 +14,6 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSw
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import scala.Tuple2;
 
 import javax.annotation.Nonnull;
 import java.util.*;
@@ -432,7 +431,7 @@ final class CpxVariantInducingAssemblyContig {
             Utils.validateArg(AlignmentInterval.overlapOnContig(one, two) <=0,
                     "assumption that input alignments DO NOT overlap is violated.");
 
-            strandSwitch = ChimericAlignment.determineStrandSwitch(one, two);
+            strandSwitch = SimpleChimera.determineStrandSwitch(one, two);
 
             switch (strandSwitch){
                 case NO_SWITCH:

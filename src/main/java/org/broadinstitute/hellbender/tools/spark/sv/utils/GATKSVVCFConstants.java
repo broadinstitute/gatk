@@ -45,6 +45,7 @@ public final class GATKSVVCFConstants {
     public static final String INSERTED_SEQUENCE_MAPPINGS = "INSSEQ_MAP";
     public static final String HOMOLOGY = "HOMSEQ";
     public static final String HOMOLOGY_LENGTH = "HOMLEN";
+    public static final String LINK = "LINK";
 
     // type specific: tandem duplication
     public static final String DUP_REPEAT_UNIT_REF_SPAN = "DUP_REPEAT_UNIT_REF_SPAN";
@@ -83,7 +84,7 @@ public final class GATKSVVCFConstants {
 
     public static final List<String> expectedHeaderLinesInVCF
             = Stream.of("SVTYPE", "SVLEN", "MATEID", "INV", "DEL", "INS", "DUP", "DUP:INV",
-                    "CIPOS", "CIEND", "IMPRECISE", "READ_PAIR_SUPPORT", "SPLIT_READ_SUPPORT",
+                    "CIPOS", "CIEND", "IMPRECISE", "READ_PAIR_SUPPORT", "SPLIT_READ_SUPPORT", "LINK",
                     "CTG_NAMES", "TOTAL_MAPPINGS", "MAPPING_QUALITIES", "HQ_MAPPINGS", "ALIGN_LENGTHS", "MAX_ALIGN_LENGTH",
                     "SEQ_ALT_HAPLOTYPE", "INSSEQ", "INSLEN", "INSSEQ_MAP", "HOMSEQ", "HOMLEN", "DUP_REPEAT_UNIT_REF_SPAN",
                     "DUP_SEQ_CIGARS", "DUP_NUM", "DUP_ANNOTATIONS_IMPRECISE", "CONTRACTION", "EXPANSION", "DUP_ORIENTATIONS",

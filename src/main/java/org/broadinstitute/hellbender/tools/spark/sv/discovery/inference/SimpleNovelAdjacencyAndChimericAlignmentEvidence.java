@@ -6,19 +6,17 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.collect.Lists;
 import org.broadinstitute.hellbender.utils.Utils;
-import scala.Tuple2;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @DefaultSerializer(SimpleNovelAdjacencyAndChimericAlignmentEvidence.Serializer.class)
 public final class SimpleNovelAdjacencyAndChimericAlignmentEvidence {
-
     private static final NovelAdjacencyAndAltHaplotype.Serializer narlSerializer = new NovelAdjacencyAndAltHaplotype.Serializer();
-    private static final ChimericAlignment.Serializer caSerializer = new ChimericAlignment.Serializer();
+    private static final SimpleChimera.Serializer alignmentEvidenceSerializer = new SimpleChimera.Serializer();
 
     private final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype;
-    private final List<Tuple2<ChimericAlignment, String>> alignmentEvidence;
+    private final List<SimpleChimera> alignmentEvidence;
 
     public NovelAdjacencyAndAltHaplotype getNovelAdjacencyReferenceLocations() {
         return novelAdjacencyAndAltHaplotype;
@@ -26,12 +24,12 @@ public final class SimpleNovelAdjacencyAndChimericAlignmentEvidence {
     public byte[] getAltHaplotypeSequence() {
         return novelAdjacencyAndAltHaplotype.getAltHaplotypeSequence();
     }
-    public List<Tuple2<ChimericAlignment, String>> getAlignmentEvidence() {
+    public List<SimpleChimera> getAlignmentEvidence() {
         return alignmentEvidence;
     }
 
     SimpleNovelAdjacencyAndChimericAlignmentEvidence(final NovelAdjacencyAndAltHaplotype novelAdjacencyReferenceLocations,
-                                                     final Iterable<Tuple2<ChimericAlignment, String>> alignmentEvidence) {
+                                                     final Iterable<SimpleChimera> alignmentEvidence) {
         this.novelAdjacencyAndAltHaplotype = Utils.nonNull( novelAdjacencyReferenceLocations );
         this.alignmentEvidence = Lists.newArrayList( Utils.nonNull(alignmentEvidence) );
     }
@@ -41,19 +39,14 @@ public final class SimpleNovelAdjacencyAndChimericAlignmentEvidence {
         final int evidenceCount = input.readInt();
         alignmentEvidence = new ArrayList<>(evidenceCount);
         for (int i = 0; i < evidenceCount; ++i) {
-            final ChimericAlignment simpleChimera = caSerializer.read(kryo, input, ChimericAlignment.class);
-            final String s = input.readString();
-            alignmentEvidence.add(new Tuple2<>(simpleChimera, s));
+            alignmentEvidence.add( alignmentEvidenceSerializer.read(kryo, input, SimpleChimera.class) );
         }
     }
 
     private void serialize(final Kryo kryo, final Output output) {
         narlSerializer.write(kryo, output, novelAdjacencyAndAltHaplotype);
         output.writeInt(alignmentEvidence.size());
-        alignmentEvidence.forEach(pair -> {
-            caSerializer.write(kryo, output, pair._1);
-            output.writeString(pair._2);
-        });
+        alignmentEvidence.forEach(ev -> alignmentEvidenceSerializer.write(kryo, output, ev));
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<SimpleNovelAdjacencyAndChimericAlignmentEvidence> {
