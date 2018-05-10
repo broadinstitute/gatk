@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
@@ -909,7 +910,9 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         int concordant = 0;
         int discordant = 0;
 
-        try ( final FeatureDataSource<VariantContext> actualSource = new FeatureDataSource<>(actual);
+        // unzip to avoid https://github.com/broadinstitute/gatk/issues/4224
+        File actualUnzipped = IOUtils.gunzipToTempIfNeeded(actual);
+        try ( final FeatureDataSource<VariantContext> actualSource = new FeatureDataSource<>(actualUnzipped);
               final FeatureDataSource<VariantContext> expectedSource = new FeatureDataSource<>(expected) ) {
 
             for ( final VariantContext vc : actualSource ) {

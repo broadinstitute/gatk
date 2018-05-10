@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
@@ -92,16 +91,32 @@ public final class VariantsSparkSink {
 
         @Override
         public RecordWriter<NullWritable, VariantContextWritable> getRecordWriter(TaskAttemptContext ctx, Path out) throws IOException {
-            if (this.header == null)
-                throw new IOException(
-                        "Can't create a RecordWriter without the VCF header");
+            if (this.header == null) {
+                throw new IOException("Can't create a RecordWriter without the VCF header");
+            }
 
             final boolean wh = ctx.getConfiguration().getBoolean(
                     WRITE_HEADER_PROPERTY, true);
 
             switch (format) {
-                case BCF: return new KeyIgnoringBCFRecordWriter<NullWritable>(out, header, wh, ctx);
-                case VCF: return new GvcfKeyIgnoringVCFRecordWriter<NullWritable>(out,header,wh,ctx);
+                case BCF: return new KeyIgnoringBCFRecordWriter<>(out, header, wh, ctx);
+                case VCF: return new GvcfKeyIgnoringVCFRecordWriter<>(out, header, wh, ctx);
+                default: throw new IllegalStateException("Unrecognized variant format: " + format);
+            }
+        }
+
+        @Override
+        public RecordWriter<NullWritable, VariantContextWritable> getRecordWriter(TaskAttemptContext ctx, OutputStream outputStream) throws IOException {
+            if (this.header == null) {
+                throw new IOException("Can't create a RecordWriter without the VCF header");
+            }
+
+            final boolean wh = ctx.getConfiguration().getBoolean(
+                    WRITE_HEADER_PROPERTY, true);
+
+            switch (format) {
+                case BCF: return new KeyIgnoringBCFRecordWriter<>(outputStream, header, wh, ctx);
+                case VCF: return new GvcfKeyIgnoringVCFRecordWriter<>(outputStream, header, wh, ctx);
                 default: throw new IllegalStateException("Unrecognized variant format: " + format);
             }
         }
@@ -119,20 +134,30 @@ public final class VariantsSparkSink {
             super(output, header, writeHeader, ctx);
         }
 
+        public GvcfKeyIgnoringVCFRecordWriter(OutputStream outputStream, VCFHeader header, boolean writeHeader, TaskAttemptContext ctx) throws IOException {
+            super(outputStream, header, writeHeader, ctx);
+        }
+
         @Override
         protected VariantContextWriter createVariantContextWriter(Configuration conf,
                                                                   OutputStream out) {
-            VariantContextWriter writer = super.createVariantContextWriter(conf, out);
-            if (conf.getBoolean(SparkHeaderlessVCFOutputFormat.GVCF, false)) {
-                List<Integer> gqPartitions = StreamSupport.stream(
-                            Splitter.on(",").split(conf.get(SparkHeaderlessVCFOutputFormat.GQ_PARTITIONS)).spliterator(), false)
-                            .map(Integer::parseInt)
-                            .collect(Collectors.toList());
-                int defaultPloidy = conf.getInt(SparkHeaderlessVCFOutputFormat.DEFAULT_PLOIDY, HomoSapiensConstants.DEFAULT_PLOIDY);
-                writer = new GVCFWriter(writer, gqPartitions, defaultPloidy);
-            }
-            return writer;
+            return getVariantContextWriter(super.createVariantContextWriter(conf, out), conf);
         }
+    }
+
+    /**
+     * Wrap in a GVCF writer if GVCF output is configured.
+     */
+    private static VariantContextWriter getVariantContextWriter(VariantContextWriter writer, Configuration conf) {
+        if (conf.getBoolean(SparkHeaderlessVCFOutputFormat.GVCF, false)) {
+            List<Integer> gqPartitions = StreamSupport.stream(
+                    Splitter.on(",").split(conf.get(SparkHeaderlessVCFOutputFormat.GQ_PARTITIONS)).spliterator(), false)
+                    .map(Integer::parseInt)
+                    .collect(Collectors.toList());
+            int defaultPloidy = conf.getInt(SparkHeaderlessVCFOutputFormat.DEFAULT_PLOIDY, HomoSapiensConstants.DEFAULT_PLOIDY);
+            return new GVCFWriter(writer, gqPartitions, defaultPloidy);
+        }
+        return writer;
     }
 
     /**
@@ -179,9 +204,9 @@ public final class VariantsSparkSink {
 
         final Configuration conf = ctx.hadoopConfiguration();
 
-        //TODO remove me when https://github.com/broadinstitute/gatk/issues/4274 and https://github.com/broadinstitute/gatk/issues/4303 are fixed
-        if (writeGvcf && (AbstractFeatureReader.hasBlockCompressedExtension(outputFile) || outputFile.endsWith(IOUtil.BCF_FILE_EXTENSION))) {
-            throw new UserException.UnimplementedFeature("It is currently not possible to write a compressed g.vcf or any g.bcf on spark.  See https://github.com/broadinstitute/gatk/issues/4274 and https://github.com/broadinstitute/gatk/issues/4303 for more details .");
+        //TODO remove me when https://github.com/broadinstitute/gatk/issues/4303 are fixed
+        if (outputFile.endsWith(IOUtil.BCF_FILE_EXTENSION) || outputFile.endsWith(IOUtil.BCF_FILE_EXTENSION + ".gz")) {
+            throw new UserException.UnimplementedFeature("It is currently not possible to write a BCF file on spark.  See https://github.com/broadinstitute/gatk/issues/4303 for more details .");
         }
 
         if (outputFile.endsWith(BGZFCodec.DEFAULT_EXTENSION) || outputFile.endsWith(".gz")) {
