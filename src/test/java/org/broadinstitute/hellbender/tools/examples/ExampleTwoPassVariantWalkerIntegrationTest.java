@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.util.Iterator;
 
 import static org.broadinstitute.hellbender.tools.examples.ExampleTwoPassVariantWalker.COPY_OF_QD_KEY_NAME;
-import static org.broadinstitute.hellbender.tools.examples.ExampleTwoPassVariantWalker.QD_P_VALUE_KEY_NAME;
+import static org.broadinstitute.hellbender.tools.examples.ExampleTwoPassVariantWalker.QD_DISTANCE_FROM_MEAN;
 import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.QUAL_BY_DEPTH_KEY;
 
 public class ExampleTwoPassVariantWalkerIntegrationTest extends CommandLineProgramTest {
@@ -30,16 +30,17 @@ public class ExampleTwoPassVariantWalkerIntegrationTest extends CommandLineProgr
 
         final FeatureDataSource<VariantContext> variantsBefore = new FeatureDataSource<>(inputVcf);
         final FeatureDataSource<VariantContext> variantsAfter = new FeatureDataSource<>(outputVcf);
-        final Iterator<VariantContext> afterIterator = variantsAfter.iterator();
         final Iterator<VariantContext> beforeIterator = variantsBefore.iterator();
+        final Iterator<VariantContext> afterIterator = variantsAfter.iterator();
 
-        while (afterIterator.hasNext() && beforeIterator.hasNext()){
+
+        while (beforeIterator.hasNext() && afterIterator.hasNext()){
             final VariantContext before = beforeIterator.next();
             final VariantContext after = afterIterator.next();
 
             Assert.assertEquals(before.getAttributeAsDouble(QUAL_BY_DEPTH_KEY, -1.0),
                     after.getAttributeAsDouble(COPY_OF_QD_KEY_NAME, -2.0));
-            Assert.assertTrue(after.getAttributeAsDouble(QD_P_VALUE_KEY_NAME, -1.0) >= 0);
+            Assert.assertTrue(after.getAttributeAsDouble(QD_DISTANCE_FROM_MEAN, -1.0) > 0);
         }
 
         Assert.assertTrue(! afterIterator.hasNext() && ! beforeIterator.hasNext());

@@ -12,7 +12,6 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.TwoPassVariantWalker;
-import org.ojalgo.array.blas.COPY;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -35,20 +34,20 @@ public class ExampleTwoPassVariantWalker extends TwoPassVariantWalker {
 
     private VariantContextWriter vcfWriter;
 
-    public static String QD_P_VALUE_KEY_NAME = "P_VALUE";
+    public static String QD_DISTANCE_FROM_MEAN = "QD_DIST";
 
     public static String COPY_OF_QD_KEY_NAME = "QD_COPY";
 
     private double averageQualByDepth;
 
-    private double varianceOfQDs;
+    private double sampleVarianceOfQDs;
 
     int counter = 0;
 
     @Override
     public void onTraversalStart() {
         final VCFHeader inputHeader = getHeaderForVariants();
-        inputHeader.addMetaDataLine(new VCFInfoHeaderLine(QD_P_VALUE_KEY_NAME, 1, VCFHeaderLineType.Float, "p value of the quality by depth"));
+        inputHeader.addMetaDataLine(new VCFInfoHeaderLine(QD_DISTANCE_FROM_MEAN, 1, VCFHeaderLineType.Float, "distance from the average QD value in the units of standard deviations"));
         inputHeader.addMetaDataLine(new VCFInfoHeaderLine(COPY_OF_QD_KEY_NAME, 1, VCFHeaderLineType.Float, "copy of the QD INFO field"));
         vcfWriter = createVCFWriter(outputVcf);
         vcfWriter.writeHeader(inputHeader);
@@ -63,8 +62,8 @@ public class ExampleTwoPassVariantWalker extends TwoPassVariantWalker {
     protected void secondPassApply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
         VariantContextBuilder vcb = new VariantContextBuilder(variant);
         final double qualByDepth = qualByDepths.get(counter++);
-        final double pValue = 0.05;
-        vcb.attribute(QD_P_VALUE_KEY_NAME, pValue);
+        final double distanceFromMean = Math.abs((qualByDepth - averageQualByDepth)/ Math.sqrt(sampleVarianceOfQDs));
+        vcb.attribute(QD_DISTANCE_FROM_MEAN, distanceFromMean);
         vcb.attribute(COPY_OF_QD_KEY_NAME, qualByDepth);
 
         vcfWriter.add(vcb.make());
@@ -77,7 +76,7 @@ public class ExampleTwoPassVariantWalker extends TwoPassVariantWalker {
             return;
         }
         averageQualByDepth = qualByDepths.stream().mapToDouble(x -> x).average().orElse(0.0);
-        varianceOfQDs = (1/(n-1))* qualByDepths.stream().mapToDouble(x -> Math.pow((x - averageQualByDepth), 2.0)).sum();
+        sampleVarianceOfQDs = (1.0/(n - 1.0))* qualByDepths.stream().mapToDouble(x -> Math.pow((x - averageQualByDepth), 2.0)).sum();
     }
 
     @Override

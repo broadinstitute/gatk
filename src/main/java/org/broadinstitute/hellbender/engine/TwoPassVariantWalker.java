@@ -81,7 +81,7 @@ public abstract class TwoPassVariantWalker extends VariantWalker {
     private interface VariantConsumer {
         void consume(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext reference, final FeatureContext features);
     }
-    
+
     /**
      * Make final to hide it from subclasses
      */

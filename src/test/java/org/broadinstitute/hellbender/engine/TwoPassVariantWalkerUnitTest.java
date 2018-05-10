@@ -38,9 +38,7 @@ public class TwoPassVariantWalkerUnitTest {
         final DummyTwoPassVariantWalker walker = new DummyTwoPassVariantWalker();
         final String testVcf = "src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/VariantsToTable/multiallelic.vcf";
 
-        final String[] args = {
-                "-V", testVcf,
-        };
+        final String[] args = { "-V", testVcf };
 
         walker.instanceMain(args);
 
