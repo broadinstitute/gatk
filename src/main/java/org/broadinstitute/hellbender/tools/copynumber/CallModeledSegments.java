@@ -94,7 +94,7 @@ public final class CallModeledSegments extends CommandLineProgram {
     public static final String OUTPUT_CALLS_SUFFIX_DEFAULT_VALUE = ".called.seg";
     public static final String INTERACTIVE_OUTPUT_DEL_AMPL_IMAGE_SUFFIX_DEFAULT_VALUE = "_del_ampl.png";
     public static final String INTERACTIVE_OUTPUT_SCATTER_PLOT_SUFFIX_DEFAULT_VALUE = "_scatter_plot.png";
-    public static final String INTERACTIVE_OUTPUT_ALLELE_FRACTION_PLOT_SUFFIX_DEFAULT_VALUE = "_allele_fraction_CN1_and_CN2_candidate_intervals.jpg";
+    public static final String INTERACTIVE_OUTPUT_ALLELE_FRACTION_PLOT_SUFFIX_DEFAULT_VALUE = "_allele_fraction_CN1_and_CN2_candidate_intervals.png";
     public static final String INTERACTIVE_OUTPUT_COPY_RATIO_SUFFIX_DEFAULT_VALUE = "_copy_ratio_fit.png";
     public static final String INTERACTIVE_OUTPUT_COPY_RATIO_CLUSTERING_SUFFIX_DEFAULT_VALUE = "_copy_ratio_clusters.png";
 
