@@ -154,16 +154,17 @@ configurations.all {
         force 'org.testng:testng:' + testNGVersion
         force 'org.broadinstitute:barclay:' + barclayVersion
 
+        // force
         // make sure we don't pick up an incorrect version of the GATK variant of the google-nio library
         // via Picard, etc., or pick up the google variant of it
-        force googleCloudNioDependency
-        componentSelection {
+        // force googleCloudNioDependency
+        // componentSelection {
             // This feature is incubating, and although it works, when its triggered it doesnt propagate
             // the rejection message so the build fails saying it can't find google-cloud-nio.
-            withModule('com.google.cloud:google-cloud-nio') {
-                ComponentSelection selection -> selection.reject("The GATK version of this component is required")
-            }
-        }
+        //    withModule('com.google.cloud:google-cloud-nio') {
+        //        ComponentSelection selection -> selection.reject("The GATK version of this component is required")
+        //    }
+        //}
     }
     all*.exclude group: 'org.slf4j', module: 'slf4j-jdk14' //exclude this to prevent slf4j complaining about to many slf4j bindings
     all*.exclude group: 'com.google.guava', module: 'guava-jdk5'
@@ -245,13 +246,13 @@ dependencies {
     compile 'com.opencsv:opencsv:3.4'
     compile 'com.google.guava:guava:18.0'
     compile 'com.github.samtools:htsjdk:'+ htsjdkVersion
-    compile googleCloudNioDependency
 
     compile "gov.nist.math.jama:gov.nist.math.jama:1.1.1"
 
     // this comes built-in when running on Google Dataproc, but the library
     // allows us to read from GCS also when testing locally (or on non-Dataproc clusters,
     // should we want to)
+    compile 'com.google.cloud:google-cloud-nio:0.47.0-alpha:shaded'
     compile 'com.google.cloud.bigdataoss:gcs-connector:1.6.3-hadoop2'
     compile 'org.apache.logging.log4j:log4j-api:2.3'
     compile 'org.apache.logging.log4j:log4j-core:2.3'
