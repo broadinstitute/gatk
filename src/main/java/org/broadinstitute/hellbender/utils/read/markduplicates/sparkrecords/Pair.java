@@ -35,9 +35,10 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
 
     // Information used to detect optical dupes
     private short readGroupIndex = -1;
+
     private transient short tile = -1;
-    private transient short x = -1;
-    private transient short y = -1;
+    private transient int x = -1;
+    private transient int y = -1;
     private transient short libraryId = -1;
 
     public Pair(final GATKRead read1, final GATKRead read2, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
@@ -92,7 +93,6 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
         super(input.readInt(true), input.readString());
 
         // Information used to detect optical dupes
-        readGroupIndex = -1;
         tile = -1;
         x = -1;
         y = -1;
@@ -195,11 +195,11 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
     @Override
     public int getX() { return this.x; }
     @Override
-    public void setX(final int x) { this.x = (short)x; }
+    public void setX(final int x) { this.x = x; }
     @Override
     public int getY() { return this.y; }
     @Override
-    public void setY(final int y) { this.y = (short)y; }
+    public void setY(final int y) { this.y = y; }
     @Override
     public short getLibraryId() { return this.libraryId; }
     @Override

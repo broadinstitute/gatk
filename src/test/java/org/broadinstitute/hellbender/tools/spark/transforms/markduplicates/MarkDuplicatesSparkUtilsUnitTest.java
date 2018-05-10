@@ -67,9 +67,15 @@ public class MarkDuplicatesSparkUtilsUnitTest extends GATKBaseTest {
         JavaRDD<GATKRead> unsortedReads = generateReadsWithDuplicates(10000,3, ctx, 99, true);
         JavaRDD<GATKRead> pariedEndsQueryGrouped = generateReadsWithDuplicates(10000,3, ctx,1, false); //Use only one partition to avoid having to do edge fixing.
 
+        // Create headers reflecting the respective sort ordering of the trial reads
+        SAMReadGroupRecord readGroup1 = new SAMReadGroupRecord("1");
+        readGroup1.setAttribute(SAMReadGroupRecord.READ_GROUP_SAMPLE_TAG, "test");
+
         SAMFileHeader unsortedHeader = hg19Header.clone();
+        unsortedHeader.addReadGroup(readGroup1);
         unsortedHeader.setSortOrder(SAMFileHeader.SortOrder.unsorted);
         SAMFileHeader sortedHeader = hg19Header.clone();
+        sortedHeader.addReadGroup(readGroup1);
         sortedHeader.setSortOrder(SAMFileHeader.SortOrder.queryname);
 
         // Using the header flagged as unsorted will result in the reads being sorted again

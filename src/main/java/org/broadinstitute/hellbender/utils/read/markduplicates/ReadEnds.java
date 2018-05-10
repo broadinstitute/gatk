@@ -48,7 +48,7 @@ public abstract class ReadEnds implements PhysicalLocation {
     public int getY() { return this.y; }
 
     @Override
-    public void setY(final int y) { this.y = (short) y; }
+    public void setY(final int y) { this.y = y; }
 
     @Override
     public short getLibraryId() { return this.libraryId; }
