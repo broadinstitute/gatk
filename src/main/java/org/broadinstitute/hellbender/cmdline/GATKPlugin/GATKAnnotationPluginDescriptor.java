@@ -123,7 +123,15 @@ public class GATKAnnotationPluginDescriptor  extends CommandLinePluginDescriptor
             });
         }
     }
-    // Overload constructor
+    /**
+     * Constructor that allows client tools to specify what annotations (optionally with parameters specified) to use as their defaults
+     * before discovery of user specified annotations. Defaults to using an empty GATKAnnotationArgumentCollection object. 
+     *
+     * @param toolDefaultAnnotations Default annotations that may be supplied with arguments
+     *                               on the command line. May be null.
+     * @param toolDefaultGroups List of tool specified default annotation group names. Annotations specified this way
+     *                          will be instantiated with default arguments. may be null.
+     */
     public GATKAnnotationPluginDescriptor(final List<Annotation> toolDefaultAnnotations, final List<Class<? extends Annotation>> toolDefaultGroups) {
         this(new DefaultGATKVariantAnnotationArgumentCollection(), toolDefaultAnnotations, toolDefaultGroups);
     }

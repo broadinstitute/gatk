@@ -153,9 +153,6 @@ public class VariantAnnotator extends VariantWalker {
     @Argument(fullName="resource-allele-concordance", shortName="rac", doc="Check for allele concordances when using an external resource VCF file", optional=true)
     protected Boolean expressionAlleleConcordance = false;
 
-    @Override
-    public boolean useVariantAnnotations() { return true;}
-
     private VariantAnnotatorEngine annotatorEngine;
     private SampleList variantSamples;
 
@@ -220,6 +217,9 @@ public class VariantAnnotator extends VariantWalker {
                 ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK,
                 ReadFilterLibrary.MAPPED);
     }
+
+    @Override
+    public boolean useVariantAnnotations() { return true;}
 
     /**
      * Make sure that the writer is closed upon completing the tool.
