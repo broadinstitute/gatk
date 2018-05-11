@@ -76,6 +76,7 @@ public final class CallModeledSegments extends CommandLineProgram {
     private static final String SEGMENT_CALLER_PYTHON_SCRIPT = "modeled_segments_caller_cli.py";
     public static final String LOAD_COPY_RATIO_LONG_NAME = "load-copy-ratio";
     public static final String LOAD_ALLELE_FRACTION_LONG_NAME = "load-allele-fraction";
+    public static final String LOG_LONG_NAME = "log";
     public static final String OUTPUT_PREFIX_LONG_NAME = "output-prefix";
     public static final String OUTPUT_IMAGE_SUFFIX_LONG_NAME = "output-image-suffix";
     public static final String OUTPUT_CALLS_SUFFIX_LONG_NAME = "output-calls-suffix";
@@ -134,6 +135,13 @@ public final class CallModeledSegments extends CommandLineProgram {
             optional = true
     )
     private String outputCallsSuffix=OUTPUT_CALLS_SUFFIX_DEFAULT_VALUE;
+
+    @Argument(
+            doc = "Whether progress should be logged.",
+            fullName = LOG_LONG_NAME,
+            optional = true
+    )
+    private String doLogging="true";
 
     @Argument(
             doc = "Whether auxiliary plots should be saved.",
@@ -237,6 +245,7 @@ public final class CallModeledSegments extends CommandLineProgram {
                 "--" + OUTPUT_CALLS_SUFFIX_LONG_NAME.replace('-','_') + "=" + String.valueOf(outputCallsSuffix),
                 "--" + LOAD_COPY_RATIO_LONG_NAME.replace('-','_') + "=" + String.valueOf(loadCR),
                 "--" + LOAD_ALLELE_FRACTION_LONG_NAME.replace('-','_') + "=" + String.valueOf(loadAF),
+                "--" + LOG_LONG_NAME.replace('-','_') + "=" + String.valueOf(doLogging),
                 "--" + INTERACTIVE_RUN_LONG_NAME.replace('-','_') + "=" + String.valueOf(interactive),
                 "--" + INTERACTIVE_OUTPUT_DEL_AMPL_IMAGE_SUFFIX.replace('-','_') + "=" + INTERACTIVE_OUTPUT_DEL_AMPL_IMAGE_SUFFIX_DEFAULT_VALUE,
                 "--" + INTERACTIVE_OUTPUT_SCATTER_PLOT_SUFFIX.replace('-','_') + "=" + INTERACTIVE_OUTPUT_SCATTER_PLOT_SUFFIX_DEFAULT_VALUE,

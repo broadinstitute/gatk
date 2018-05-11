@@ -51,6 +51,12 @@ group.add_argument("--load_allele_fraction",
                    default="True",
                    help="Whether to load allele fraction data.")
 
+group.add_argument("--log",
+                   type=str,
+                   required=False,
+                   default="True",
+                   help="Whether to log the progress of the code.")
+
 group.add_argument("--interactive",
                    type=str,
                    required=False,
@@ -129,7 +135,8 @@ if __name__ == "__main__":
                                 load_CR=str2bool(args.load_copy_ratio),
                                 load_AF=str2bool(args.load_allele_fraction),
                                 output_log_dir=args.output,
-                                output_log_prefix=args.output_prefix
+                                output_log_prefix=args.output_prefix,
+                                do_logging=args.log
                                 )
 
     caller = ModeledSegmentsCaller(data, interactive=args.interactive,
