@@ -322,17 +322,20 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @return a VCF or GVCF writer as appropriate, ready to use
      */
     public VariantContextWriter makeVCFWriter( final String outputVCF, final SAMSequenceDictionary readsDictionary,
-                                               final boolean createOutputVariantIndex, final boolean  createOutputVariantMD5 ) {
+                                               final boolean createOutputVariantIndex, final boolean sitesOnlyMode,
+                                               final boolean  createOutputVariantMD5 ) {
         Utils.nonNull(outputVCF);
         Utils.nonNull(readsDictionary);
+
+        List<Options> options = new ArrayList<>(2);
+        if (createOutputVariantIndex) {options.add(Options.INDEX_ON_THE_FLY);}
+        if (sitesOnlyMode) {options.add(Options.DO_NOT_WRITE_GENOTYPES);}
 
         VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(
                 new File(outputVCF),
                 readsDictionary,
                 createOutputVariantMD5,
-                createOutputVariantIndex ?
-                        new Options[]{Options.INDEX_ON_THE_FLY} :
-                        new Options[0]
+                options.toArray(new Options[options.size()])
         );
 
         if ( hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF ) {
