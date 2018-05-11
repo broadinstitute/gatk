@@ -93,25 +93,6 @@ public final class FeatureSupportIntegrationTest extends CommandLineProgramTest 
     }
 
     @Test
-    public void testSitesOnlyMode() {
-        File out = createTempFile("GTStrippedOutput", "vcf");
-        String[] args = new String[] {
-                "-V",  FEATURE_INTEGRATION_TEST_DIRECTORY + "vcf_with_genotypes.vcf",
-                "--" + StandardArgumentDefinitions.SITES_ONLY_LONG_NAME,
-                "-O",
-                out.getAbsolutePath()};
-        new Main().instanceMain(makeCommandLineArgs(Arrays.asList(args), SelectVariants.class.getSimpleName()));
-
-        // Assert that the genotype field has been stripped from the file
-        Pair<VCFHeader, List<VariantContext>> results = VariantContextTestUtils.readEntireVCFIntoMemory(out.getAbsolutePath());
-
-        Assert.assertFalse(results.getLeft().hasGenotypingData());
-        for (VariantContext v: results.getRight()) {
-            Assert.assertFalse(v.hasGenotypes());
-        }
-    }
-
-    @Test
     // this test asserts that a helpful exception is thrown for blockZipped files lacking an index as they may not be fully supported
     //TODO this is a temporary fix until https://github.com/broadinstitute/gatk/issues/4224 has been resolved
     public void testUnindexedBZippedFile() throws IOException {

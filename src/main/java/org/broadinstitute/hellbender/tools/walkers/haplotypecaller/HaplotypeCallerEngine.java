@@ -327,7 +327,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         Utils.nonNull(outputVCF);
         Utils.nonNull(readsDictionary);
 
-        List<Options> options = new ArrayList<>(2);
+        final List<Options> options = new ArrayList<>(2);
         if (createOutputVariantIndex) {options.add(Options.INDEX_ON_THE_FLY);}
         if (sitesOnlyMode) {options.add(Options.DO_NOT_WRITE_GENOTYPES);}
 

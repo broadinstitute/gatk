@@ -12,11 +12,13 @@ import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
+import org.broadinstitute.hellbender.tools.walkers.variantutils.SelectVariants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -69,6 +71,30 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
         // Test for an exact match against past results
         IntegrationTestSpec.assertEqualTextFiles(output, expected);
+    }
+
+    @Test
+    public void testSitesOnlyMode() {
+        File out = createTempFile("GTStrippedOutput", "vcf");
+        final String[] args = {
+                "-I", NA12878_20_21_WGS_bam,
+                "-R", b37_reference_20_21,
+                "-L", "20:10000000-10100000",
+                "-O", out.getAbsolutePath(),
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "--" + StandardArgumentDefinitions.SITES_ONLY_LONG_NAME,
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
+        };
+
+        runCommandLine(args);
+
+        // Assert that the genotype field has been stripped from the file
+        Pair<VCFHeader, List<VariantContext>> results = VariantContextTestUtils.readEntireVCFIntoMemory(out.getAbsolutePath());
+
+        Assert.assertFalse(results.getLeft().hasGenotypingData());
+        for (VariantContext v: results.getRight()) {
+            Assert.assertFalse(v.hasGenotypes());
+        }
     }
 
     /*

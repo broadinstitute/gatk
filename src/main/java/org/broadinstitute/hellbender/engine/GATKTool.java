@@ -114,8 +114,8 @@ public abstract class GATKTool extends CommandLineProgram {
     public boolean disableBamIndexCaching = false;
 
     @Argument(fullName = StandardArgumentDefinitions.SITES_ONLY_LONG_NAME,
-            doc = "If true, don't emit GT fields when writing vcf file output.", optional = true)
-    public boolean sitesOnlyMode = false;
+            doc = "If true, don't emit genotype fields when writing vcf file output.", optional = true)
+    public boolean outputSitesOnlyVCFs = false;
 
     /**
      * Master sequence dictionary to be used instead of all other dictionaries (if provided).
@@ -732,7 +732,7 @@ public abstract class GATKTool extends CommandLineProgram {
             }
         }
 
-        if (sitesOnlyMode) {
+        if (outputSitesOnlyVCFs) {
             options.add(Options.DO_NOT_WRITE_GENOTYPES);
         }
 
