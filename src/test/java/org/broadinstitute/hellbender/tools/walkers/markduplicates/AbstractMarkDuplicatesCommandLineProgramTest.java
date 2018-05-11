@@ -172,7 +172,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         final AbstractMarkDuplicatesTester tester = getTester();
         tester.setExpectedOpticalDuplicate(0);
         tester.addMatePair("RUNID:7:1203:2886:82292",  19, 19, 485253, 485253, false, false, true, true, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.2");  // duplicate
-        tester.addMatePair("RUNID:7:1203:2886:16834", 19, 19, 485253, 485253, false, false, false, false, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.1");
+        tester.addMatePair("RUNID:7:1203:2886:82242", 19, 19, 485253, 485253, false, false, false, false, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.1");
 
         SAMFileHeader header = tester.getHeader();
         SAMReadGroupRecord readGroup1 = new SAMReadGroupRecord("H0164.2");
@@ -189,7 +189,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         final AbstractMarkDuplicatesTester tester = getTester();
         tester.setExpectedOpticalDuplicate(1);
         tester.addMatePair("RUNID:7:1203:2886:82292",  19, 19, 485253, 485253, false, false, true, true, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.2");  // duplicate
-        tester.addMatePair("RUNID:7:1203:2886:16834", 19, 19, 485253, 485253, false, false, false, false, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.2");
+        tester.addMatePair("RUNID:7:1203:2886:82242", 19, 19, 485253, 485253, false, false, false, false, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.2");
 
         SAMFileHeader header = tester.getHeader();
         SAMReadGroupRecord readGroup1 = new SAMReadGroupRecord("H0164.2");
