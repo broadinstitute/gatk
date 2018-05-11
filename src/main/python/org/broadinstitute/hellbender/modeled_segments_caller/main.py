@@ -8,9 +8,9 @@ import random
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib.collections import LineCollection
-from matplotlib import pyplot as plt
 from matplotlib.colors import LogNorm
 from matplotlib import  ticker
+from matplotlib import pyplot as plt
 from copy import deepcopy
 from typing import List
 import logging
@@ -26,7 +26,6 @@ def is_number(s):
     except ValueError:
         return False
 
-
 class LoadAndSampleCrAndAf:
     """ Class to load the copy ratio and allele fraction data from .seg files.
         Both the copy ratio and the allele fraction posterior distribution is
@@ -34,7 +33,7 @@ class LoadAndSampleCrAndAf:
         We read these data from the file on initialization and then sample
         the distribution using self.sample_data_points().
     """
-    def __init__(self, filename: str, load_CR: bool = True, load_AF: bool=True,
+    def __init__(self, filename: str, load_CR: bool = True, load_AF: bool=True, do_logging: bool=True,
                  output_log_dir: str= "", output_log_prefix: str= ""):
         """ Inputs:
             - filename: '.seg' file characterizing the posterior distribution of the
@@ -44,28 +43,44 @@ class LoadAndSampleCrAndAf:
         """
 
         # Start logging
-        if output_log_dir=="":
-            input_fname_ending = filename.split("/")[-1]
-            input_dir = filename.split(input_fname_ending)[0]
-            self.__output_log_dir=input_dir
-        else:
-            self.__output_log_dir=output_log_dir
-
-        # We only log if the prefix is not an empty string
-        if not (output_log_prefix==""):
-            now = str(datetime.datetime.now())
-            now2 = now.replace(" ", "_")
-            now2 = now2.replace(":", "_")
-            now2 = now2.replace(".", "_")
-            self.__log_filename = output_log_dir + "/" + output_log_prefix + "_" + now2 + ".log"
-            logging.basicConfig(filename=self.__log_filename, level=logging.DEBUG)
-            logging.info("* ---- %s ---- *" % now)
-            logging.info("Initializing class LoadAndSampleCrAndAf")
-            logging.info("Input file: %s" % filename)
-            logging.info("load_copy_ratio: %s" % load_CR)
-            logging.info("load_allele_fraction: %s" % load_AF)
+        if do_logging:
+            if output_log_dir=="":
+                input_fname_ending = filename.split("/")[-1]
+                input_dir = filename.split(input_fname_ending)[0]
+                self.__output_log_dir=input_dir
+            else:
+                self.__output_log_dir = output_log_dir
+                if output_log_dir[-1] != "/":
+                    self.__output_log_dir += "/"
+            if output_log_prefix == "":
+                log_fname_prefix = filename
+                log_fname_extension = log_fname_prefix.split(".")[-1]
+                log_fname_prefix = log_fname_prefix.split("." + log_fname_extension)[0]
+                log_fname_prefix = log_fname_prefix.split("/")[-1]
+                self.__output_log_prefix = log_fname_prefix
+            else:
+                self.__output_log_prefix = output_log_prefix
+            self.__log_filename = self.__output_log_dir + self.__output_log_prefix + ".log"
+            self.__logger = logging.getLogger()
+            self.__logger.setLevel(logging.INFO)
+            logging_handler = logging.FileHandler(filename=self.__log_filename, mode="w")
+            logging_handler.setLevel(logging.INFO)
+            logging_formatter = logging.Formatter(
+                fmt='%(asctime)s %(levelname)s: %(message)s',
+                datefmt='%Y-%m-%d %H:%M:%S'
+            )
+            logging_handler.setFormatter(logging_formatter)
+            self.__logger.addHandler(logging_handler)
+            self.__logger.info("* ---- %s ---- *" % str(datetime.datetime.now()))
+            self.__logger.info("Initializing class LoadAndSampleCrAndAf")
+            self.__logger.info("Input file: %s" % filename)
+            self.__logger.info("load_copy_ratio: %s" % load_CR)
+            self.__logger.info("load_allele_fraction: %s" % load_AF)
         else:
             self.__log_filename= ""
+            self.__output_log_dir = ""
+            self.__output_log_prefix = ""
+            self.__logger = None
 
         # Initialize
         np.random.seed(RANDOM_SEED)
@@ -75,7 +90,7 @@ class LoadAndSampleCrAndAf:
 
         # Load data from file
         if not (output_log_prefix==""):
-            logging.info("Loading data from file.")
+            self.__logger.info("Loading data from file.")
         [self.__copy_ratio_median,           # median of the copy ratio posterior for each segment
          self.__copy_ratio_10th_perc,        # 10th percentile ...
          self.__copy_ratio_90th_perc,        # 90th percentile ...
@@ -93,7 +108,7 @@ class LoadAndSampleCrAndAf:
         # Sample posterior distributions
         # Returns list of samples for each segment
         if not (output_log_prefix==""):
-            logging.info("Sampling data points.")
+            self.__logger.info("Sampling data points.")
         [self.__copy_ratio_sampled_per_segment,       # sampled copy ratio values
          self.__allele_fraction_sampled_per_segment   # sampled allele fraction values
          ] = self.sample_data_points()
@@ -103,7 +118,7 @@ class LoadAndSampleCrAndAf:
         self.__allele_fraction_sampled = [i for sublist in self.__allele_fraction_sampled_per_segment for i in sublist]
 
         if not (output_log_prefix==""):
-            logging.info("Finished.\n\n\n")
+            self.__logger.info("Finished.\n\n\n")
 
     def get_data_from_file(self):
         """ Return data loaded from the file."""
@@ -144,6 +159,10 @@ class LoadAndSampleCrAndAf:
         """ Return log file name. """
         return self.__log_filename
 
+    def get_logger(self):
+        """Return the logger handler."""
+        return self.__logger
+
     def __import_copy_ratio_and_allele_fraction(self):
         """ Read data related to the copy ratio and allele fraction distributions from file.
         """
@@ -165,7 +184,6 @@ class LoadAndSampleCrAndAf:
         lines = file.readlines()
 
         # Check the fraction of lines that are NaN
-        # Check the fraction of lines that are NaN
         cr_NaN = 0
         af_NaN = 0
         all_sites = 0
@@ -173,13 +191,12 @@ class LoadAndSampleCrAndAf:
             values = line.strip().split()
             if is_number(values[0]):
                 if(len(values) >= 5):
-                    #if not float(values[4]) == 0:
-                        segment_length = float(values[2]) - float(values[1])
-                        if math.isnan(float(values[5])) or math.isnan(float(values[6])) or math.isnan(float(values[7])):
-                            cr_NaN += segment_length
-                        if math.isnan(float(values[8])) or math.isnan(float(values[9])) or math.isnan(float(values[10])):
-                            af_NaN += segment_length
-                        all_sites += segment_length
+                    segment_length = float(values[2]) - float(values[1])
+                    if math.isnan(float(values[5])) or math.isnan(float(values[6])) or math.isnan(float(values[7])):
+                        cr_NaN += segment_length
+                    if math.isnan(float(values[8])) or math.isnan(float(values[9])) or math.isnan(float(values[10])):
+                        af_NaN += segment_length
+                    all_sites += segment_length
         cr_NaN_ratio_threshold = 0.80
         af_NaN_ratio_threshold = 0.80
         if all_sites == 0:
@@ -190,12 +207,14 @@ class LoadAndSampleCrAndAf:
             af_NaN_ratio = af_NaN / all_sites
         if cr_NaN_ratio >= cr_NaN_ratio_threshold:
             if (self.__load_CR and not (self.__log_filename=="")):
-                logging.info("More than %s%% of the lines have NaN copy ratio values. We will thus not load copy ratio data." % (100 * cr_NaN_ratio_threshold))
+                self.__logger.info("More than %s%% of the lines have NaN copy ratio values. We will thus not load copy ratio data." % (100 * cr_NaN_ratio_threshold))
             self.__load_CR = False
         if af_NaN_ratio >= af_NaN_ratio_threshold:
             if (self.__load_CR and not (self.__log_filename=="")):
-                logging.info("More than %s%% of the lines have NaN allele fraction values. We will thus not load copy ratio data." % (100 * af_NaN_ratio_threshold))
+                self.__logger.info("More than %s%% of the lines have NaN allele fraction values. We will thus not load copy ratio data." % (100 * af_NaN_ratio_threshold))
             self.__load_AF = False
+        if (self.__load_CR == False) and (self.__load_AF == False) and (not self.__log_filename==""):
+            self.__logger.info("Error: No copy ratio and no allele fraction data will be loaded")
 
         # Load the data
         if self.__load_CR and self.__load_AF:
@@ -203,53 +222,67 @@ class LoadAndSampleCrAndAf:
                 values = line.strip().split()
                 if is_number(values[0]):
                     if(len(values) >= 5):
-                        if not (math.isnan(float(values[8])) or math.isnan(float(values[9])) or math.isnan(float(values[10]))):
-                            copy_ratio_median.append(2**float(values[6]))
-                            copy_ratio_10th_perc.append(2**float(values[5]))
-                            copy_ratio_90th_perc.append(2**float(values[7]))
-                            allele_fraction_median.append(float(values[9]))
-                            allele_fraction_10th_perc.append(float(values[8]))
-                            allele_fraction_90th_perc.append(float(values[10].rstrip("\\")))
+                        if (not math.isnan(float(values[5]))
+                            and not math.isnan(float(values[6]))
+                            and not math.isnan(float(values[7]))
+                            and not math.isnan(float(values[8]))
+                            and not math.isnan(float(values[9]))
+                            and not math.isnan(float(values[10]))
+                            ):
                             contig.append(int(values[0]))
                             segment_start.append(int(values[1]))
                             segment_end.append(int(values[2]))
                             segment_lengths.append(int(values[2]) - int(values[1]))
                             n_points_CR.append(int(values[3]))
                             n_points_AF.append(int(values[4]))
+                            copy_ratio_10th_perc.append(2**float(values[5]))
+                            copy_ratio_median.append(2**float(values[6]))
+                            copy_ratio_90th_perc.append(2**float(values[7]))
+                            allele_fraction_10th_perc.append(float(values[8]))
+                            allele_fraction_median.append(float(values[9]))
+                            allele_fraction_90th_perc.append(float(values[10].rstrip("\\")))
         elif self.__load_CR:
             for line in lines:
                 values = line.strip().split()
                 if is_number(values[0]):
                     if(len(values) >= 5):
-                        copy_ratio_median.append(2**float(values[6]))
-                        copy_ratio_10th_perc.append(2**float(values[5]))
-                        copy_ratio_90th_perc.append(2**float(values[7]))
-                        allele_fraction_median.append(float('nan'))
-                        allele_fraction_10th_perc.append(float('nan'))
-                        allele_fraction_90th_perc.append(float('nan'))
-                        contig.append(int(values[0]))
-                        segment_start.append(int(values[1]))
-                        segment_end.append(int(values[2]))
-                        segment_lengths.append(int(values[2]) - int(values[1]))
-                        n_points_CR.append(int(values[3]))
-                        n_points_AF.append(0)
+                        if (not math.isnan(float(values[5]))
+                            and not math.isnan(float(values[6]))
+                            and not math.isnan(float(values[7]))
+                            ):
+                            contig.append(int(values[0]))
+                            segment_start.append(int(values[1]))
+                            segment_end.append(int(values[2]))
+                            segment_lengths.append(int(values[2]) - int(values[1]))
+                            n_points_CR.append(int(values[3]))
+                            n_points_AF.append(0)
+                            copy_ratio_10th_perc.append(2**float(values[5]))
+                            copy_ratio_median.append(2**float(values[6]))
+                            copy_ratio_90th_perc.append(2**float(values[7]))
+                            allele_fraction_10th_perc.append(float('nan'))
+                            allele_fraction_median.append(float('nan'))
+                            allele_fraction_90th_perc.append(float('nan'))
         elif self.__load_AF:
             for line in lines:
                 values = line.strip().split()
                 if is_number(values[0]):
                     if(len(values) >= 5):
-                        copy_ratio_median.append(float('nan'))
-                        copy_ratio_10th_perc.append(float('nan'))
-                        copy_ratio_90th_perc.append(float('nan'))
-                        allele_fraction_median.append(float(values[9]))
-                        allele_fraction_10th_perc.append(float(values[8]))
-                        allele_fraction_90th_perc.append(float(values[10].rstrip("\\")))
-                        contig.append(int(values[0]))
-                        segment_start.append(int(values[1]))
-                        segment_end.append(int(values[2]))
-                        segment_lengths.append(int(values[2]) - int(values[1]))
-                        n_points_CR.append(0)
-                        n_points_AF.append(int(values[4]))
+                        if (not math.isnan(float(values[8]))
+                            and not math.isnan(float(values[9]))
+                            and not math.isnan(float(values[10]))
+                            ):
+                            contig.append(int(values[0]))
+                            segment_start.append(int(values[1]))
+                            segment_end.append(int(values[2]))
+                            segment_lengths.append(int(values[2]) - int(values[1]))
+                            n_points_CR.append(0)
+                            n_points_AF.append(int(values[4]))
+                            copy_ratio_median.append(float('nan'))
+                            copy_ratio_10th_perc.append(float('nan'))
+                            copy_ratio_90th_perc.append(float('nan'))
+                            allele_fraction_10th_perc.append(float(values[8]))
+                            allele_fraction_median.append(float(values[9]))
+                            allele_fraction_90th_perc.append(float(values[10].rstrip("\\")))
 
         return [copy_ratio_median, copy_ratio_10th_perc,
                 copy_ratio_90th_perc, allele_fraction_median,
@@ -462,7 +495,7 @@ class ModeledSegmentsCaller:
         (and optionally other plots about the fitting procedure) and saves the results
         into files.
     """
-    def __init__(self, CR_AF_data: LoadAndSampleCrAndAf, interactive: bool=False,
+    def __init__(self, CR_AF_data: LoadAndSampleCrAndAf, interactive: bool=True,
                  output_image_dir: str= "",
                  output_calls_dir: str= "",
                  output_image_prefix:str= "",
@@ -476,7 +509,8 @@ class ModeledSegmentsCaller:
                  interactive_output_copy_ratio_clustering_suffix:str="_copy_ratio_clusters.png",
                  normal_minor_allele_fraction_threshold: float=0.475,
                  copy_ratio_peak_min_weight: float=0.03,
-                 min_fraction_of_points_in_normal_allele_fraction_region: float=0.15
+                 min_fraction_of_points_in_normal_allele_fraction_region: float=0.15,
+                 responsibility_threshold_normal: float=0.5
                  ):
         """ On initialization, the caller loads the copy ratio and allele fraction data from
             the LoadAndSampleCrAndAf class. It then identifies normal segments and saves the
@@ -488,9 +522,10 @@ class ModeledSegmentsCaller:
 
         # Start logging
         self.__log_filename=CR_AF_data.get_log_filename()
+        self.__logger=CR_AF_data.get_logger()
         if not (self.__log_filename==""):
-            logging.info("* ---- %s ---- *" % str(datetime.datetime.now()))
-            logging.info("Initializing class CNVCaller")
+            self.__logger.info("* ---- %s ---- *" % str(datetime.datetime.now()))
+            self.__logger.info("Initializing class CNVCaller")
 
         # Copy input data
         self.__CR_AF_data = CR_AF_data
@@ -498,7 +533,11 @@ class ModeledSegmentsCaller:
         self.__load_AF = CR_AF_data.get_load_AF()
         self.__interactive = interactive
         self.__output_image_dir = output_image_dir
+        if (output_image_dir != "") and (output_image_dir[-1] != "/"):
+            self.__output_image_dir += "/"
         self.__output_calls_dir = output_calls_dir
+        if (output_calls_dir != "") and (output_calls_dir[-1] != "/"):
+            self.__output_calls_dir += "/"
         self.__output_calls_prefix = output_calls_prefix
         self.__output_image_prefix = output_image_prefix
         self.__output_calls_suffix = output_calls_suffix
@@ -511,6 +550,7 @@ class ModeledSegmentsCaller:
         self.__normal_minor_allele_fraction_threshold = normal_minor_allele_fraction_threshold
         self.__copy_ratio_peak_min_weight = copy_ratio_peak_min_weight
         self.__min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region
+        self.__responsibility_threshold_normal = responsibility_threshold_normal
 
         # Set the maximal value of the PHRED score we allow (since we don't want it to be off the scale on the plots)
         self.__max_PHRED_score = 100.
@@ -538,23 +578,24 @@ class ModeledSegmentsCaller:
 
         # Set the filenames for the output data
         if not self.__log_filename=="":
-            logging.info("Setting output filenames:")
+            self.__logger.info("Setting output filenames:")
         self.set_output_filenames()
         if not self.__log_filename=="":
-            logging.info("   Normal segments image file : %s" % self.fig_normal_segments_filename)
-            logging.info("   Calls file : %s" % self.output_calls_filename)
+            self.__logger.info("   Normal segments image file : %s" % self.fig_normal_segments_filename)
+            self.__logger.info("   Calls file : %s" % self.output_calls_filename)
             if self.__interactive:
-                logging.info("   (interactive mode) Image of deletions and amplifications: %s"
-                             % self.fig_del_ampl_filename)
-                logging.info("   (interactive mode) Scatter plot of segments: %s" % self.fig_scatter_plot)
-                logging.info("   (interactive mode) Plots of allele fraction data with copy ratios in the " +
-                             "copy number 1 and 2 candidate intervals: %s"
-                             % self.fig_allele_fraction_CN1_CN2_intervals)
-                logging.info("   (interactive mode) Gaussian fit to the copy ratio data: %s" % self.fig_copy_ratio_fit)
+                self.__logger.info("   (interactive mode) Image of deletions and amplifications: %s"
+                                   % self.fig_del_ampl_filename)
+                self.__logger.info("   (interactive mode) Scatter plot of segments: %s" % self.fig_scatter_plot)
+                self.__logger.info("   (interactive mode) Plots of allele fraction data with copy ratios in the " +
+                                   "copy number 1 and 2 candidate intervals: %s"
+                                   % self.fig_allele_fraction_CN1_CN2_intervals)
+                self.__logger.info("   (interactive mode) Gaussian fit to the copy ratio data: %s" % self.fig_copy_ratio_fit)
 
         # Find normal segments
         if not self.__log_filename=="":
-            logging.info("Determining normal segments.")
+            self.__logger.info("Determining normal segments.")
+
         if self.__load_CR and self.__load_AF:
             [self.__responsibilities_normal,
              self.__normal_peak_indices,
@@ -562,24 +603,32 @@ class ModeledSegmentsCaller:
         elif self.__load_CR:
             [self.__responsibilities_normal,
              self.__normal_segment_indices] = self.__choose_normal_segments__CR_data_only()
+        elif self.__load_AF:
+            [self.__responsibilities_normal,
+             self.__normal_segment_indices] = self.__choose_normal_segments__AF_data_only()
+        else:
+            self.__responsibilities_normal = None
+            self.__normal_segment_indices = None
 
         # Save plots of the segments
         if not self.__log_filename=="":
-            logging.info("Plotting and saving segments.")
+            self.__logger.info("Plotting and saving segments.")
         self.__plot_and_save_segments()
 
         # Create auxiliary plots when needed
         if self.__load_CR and self.__load_AF and self.__interactive:
             if not self.__log_filename=="":
-                logging.info("Creating auxiliary plots in interactive mode.")
+                self.__logger.info("Creating auxiliary plots in interactive mode.")
             self.__plot_clustering()
 
         # Save the results in a file
         if not self.__log_filename=="":
-            logging.info("Saving results.")
+            self.__logger.info("Saving results.")
         self.__save_calls_to_file()
+
+        # Finish logging
         if not self.__log_filename=="":
-            logging.info("Finished.\n\n\n")
+            self.__logger.info("Finished.\n\n\n")
 
     def set_output_filenames(self):
         """Set file names for all outputs."""
@@ -596,7 +645,14 @@ class ModeledSegmentsCaller:
             self.__output_calls_dir = input_dir
 
         # Set filenames for the regular output
-        self.output_calls_filename = self.__output_calls_dir + self.__output_calls_prefix + self.__output_calls_suffix
+        if self.__output_calls_prefix == "":
+            calls_fname_prefix = self.__CR_AF_data.get_input_filename()
+            calls_fname_extension = calls_fname_prefix.split(".")[-1]
+            calls_fname_prefix = calls_fname_prefix.split("." + calls_fname_extension)[0]
+            calls_fname_prefix = calls_fname_prefix.split("/")[-1]
+        else:
+            calls_fname_prefix = self.__output_calls_prefix
+        self.output_calls_filename = self.__output_calls_dir + calls_fname_prefix + self.__output_calls_suffix
 
         # Set file names for images produced in interactive mode
         if self.__output_image_prefix == "":
@@ -700,7 +756,7 @@ class ModeledSegmentsCaller:
         normal_peak_indices = []
         for i in range(len(gmix.weights_)):
             if ((normal_range_CR[0]-np.sqrt(gmix.covariances_[i, 0]) <= gmix.means_[i, 0]
-                <= normal_range_CR[1]+np.sqrt(gmix.covariances_[i, 0]))
+                     <= normal_range_CR[1]+np.sqrt(gmix.covariances_[i, 0]))
                 and (normal_range_AF[0] <= gmix.means_[i, 1] + np.sqrt(gmix.covariances_[i, 1]))
                 and (gmix.means_[i, 1] <= normal_range_AF[1])):
                 normal_peak_indices.append(i)
@@ -712,6 +768,24 @@ class ModeledSegmentsCaller:
                                                                           classification,
                                                                           normal_peak_indices)
         return [responsibilities_normal, normal_peak_indices, gmix]
+
+    def __choose_normal_segments__AF_data_only(self):
+        """ This function tries to determine which segments are normal relying only on allele fraction data.
+            It simply assumes that the allele fraction simply needs to be above a certain threshold so that
+            it is considered normal.
+        """
+        responsibilities_normal = [0] * len(self.__allele_fraction_median)
+        normal_peak_indices = []
+        for i in range(len(self.__allele_fraction_median)):
+            p = np.sum([1
+                        if a0 > self.__normal_minor_allele_fraction_threshold
+                        else 0
+                        for a0 in self.__allele_fraction_sampled_per_segment[i]
+                        ]) / len(self.__allele_fraction_sampled_per_segment[i])
+            responsibilities_normal[i] = p
+            if p >= self.__responsibility_threshold_normal:
+                normal_peak_indices.append(i)
+        return [responsibilities_normal, normal_peak_indices]
 
     def __choose_normal_segments__CR_data_only(self):
         """ This function determines which peak in the 1D copy ratio data is the copy number 2 peak.
@@ -790,8 +864,8 @@ class ModeledSegmentsCaller:
         n_peaks_initial_fit, _, _, _ = self.__estimate_number_of_CR_clusters(max_n_Gaussians = n_peaks_initial_fit + 2,
                                                                              alpha = 0.8, min_std_dev = 0.03)
         n_peaks_initial_fit, _, mu_peaks_initial_fit, _ = self.__estimate_number_of_CR_clusters(
-                                                                             max_n_Gaussians = n_peaks_initial_fit + 2,
-                                                                             alpha = 0.5, min_std_dev = 0.05)
+            max_n_Gaussians = n_peaks_initial_fit + 2,
+            alpha = 0.5, min_std_dev = 0.05)
 
         ordering = self.__indices_increasing_order(list(mu_peaks_initial_fit))
         mu_peaks_initial_fit = [mu_peaks_initial_fit[i] for i in ordering]
@@ -802,7 +876,8 @@ class ModeledSegmentsCaller:
         else:
             d_mean = 100000
             o_mean = 0
-            logging.info("Only a single copy ratio peak found. %s was not created." % self.fig_allele_fraction_CN1_CN2_intervals)
+            if not self.__log_filename == "":
+                self.__logger.info("Only a single copy ratio peak found. %s was not created." % self.fig_allele_fraction_CN1_CN2_intervals)
             return [o_mean, d_mean]
 
         n_intervals_needed = n_peaks_initial_fit + 2
@@ -864,11 +939,11 @@ class ModeledSegmentsCaller:
         if (n_points_in_normal_range__CN1_interval_candidate / len(AF__CN1_interval_candidate) > self.__min_fraction_of_points_in_normal_allele_fraction_region):
             CN2_interval = CN1_interval_candidate
             if self.__interactive and self.__log_filename!="":
-                logging.info("We chose the 1st interval to be of copy number 2.")
+                self.__logger.info("We chose the 1st interval to be of copy number 2.")
         else:
             CN2_interval = CN2_interval_candidate
             if self.__interactive and self.__log_filename!="":
-                logging.info("We chose the 2nd interval to be of copy number 2.")
+                self.__logger.info("We chose the 2nd interval to be of copy number 2.")
 
         # Plot histograms of AF data falling in the intervals 'CN1_interval_candidate' and 'CN2_interval_candidate'
         if self.__interactive:
@@ -881,6 +956,7 @@ class ModeledSegmentsCaller:
             plt.hist(AF__CN2_interval_candidate, bins=50)
             plt.xlim(0, 0.5)
             plt.xlabel("Allele fraction of the second interval")
+            plt.subplots_adjust(hspace=0.5)
             plt.savefig(self.fig_allele_fraction_CN1_CN2_intervals)
             plt.close(fig)
 
@@ -1044,7 +1120,7 @@ class ModeledSegmentsCaller:
                 y_color.append((1.0, 0.0, 1.0))
             elif n_d_a == "0":
                 y_color.append((0.0, 1.0, 0.0))
-            elif n_d_a == "-":
+            elif n_d_a == "CNLOH":
                 y_color.append((0.0, 0.0, 1.0))
             else:
                 y_color.append((0.4, 0.4, 0.4))
@@ -1216,6 +1292,7 @@ class ModeledSegmentsCaller:
         plt.xlim((0, 5))
         plt.xticks(np.arange(0, 6, 1))
 
+        plt.subplots_adjust(hspace=0.5)
         plt.savefig(self.fig_scatter_plot)
         plt.close(fig)
 
@@ -1292,34 +1369,70 @@ class ModeledSegmentsCaller:
             if not is_number(values[0]):
                 file_header += line
             else:
-                if not math.isnan(float(values[9])):
-                    file_data += line.strip() + "\t" + str(self.__normal_del_ampl(self.__copy_ratio_median[i],
-                                                                                  avg_normal_CR, std_dev_normal_CR,
-                                                                                  self.__responsibilities_normal[i]))
-                    file_data += "\t"
-                    file_data += str(self.__get_phred_score(probability=self.__responsibilities_normal[i],
-                                                            max_phred_score=self.__max_PHRED_score))
-                    file_data += "\n"
-                    i += 1
+                if self.__load_CR and self.__load_AF:
+                    if(len(values) >= 5
+                       and not math.isnan(float(values[5]))
+                       and not math.isnan(float(values[6]))
+                       and not math.isnan(float(values[7]))
+                       and not math.isnan(float(values[8]))
+                       and not math.isnan(float(values[9]))
+                       and not math.isnan(float(values[10]))):
+                        file_data += line.strip() + "\t" + str(self.__normal_del_ampl(self.__copy_ratio_median[i],
+                                                                                      avg_normal_CR, std_dev_normal_CR,
+                                                                                      self.__responsibilities_normal[i]))
+                        file_data += "\t"
+                        file_data += str(self.__get_phred_score(probability=self.__responsibilities_normal[i],
+                                                                max_phred_score=self.__max_PHRED_score))
+                        file_data += "\n"
+                        i += 1
+                elif self.__load_CR:
+                    if(len(values) >= 5
+                       and not math.isnan(float(values[5]))
+                       and not math.isnan(float(values[6]))
+                       and not math.isnan(float(values[7]))):
+                        file_data += line.strip() + "\t" + str(self.__normal_del_ampl(self.__copy_ratio_median[i],
+                                                                                      avg_normal_CR, std_dev_normal_CR,
+                                                                                      self.__responsibilities_normal[i]))
+                        file_data += "\t"
+                        file_data += str(self.__get_phred_score(probability=self.__responsibilities_normal[i],
+                                                                max_phred_score=self.__max_PHRED_score))
+                        file_data += "\n"
+                        i += 1
+                elif self.__load_AF:
+                    if(len(values) >= 5
+                       and not math.isnan(float(values[8]))
+                       and not math.isnan(float(values[9]))
+                       and not math.isnan(float(values[10]))):
+                        file_data += line.strip() + "\t" + str(self.__normal_del_ampl(self.__copy_ratio_median[i],
+                                                                                      avg_normal_CR, std_dev_normal_CR,
+                                                                                      self.__responsibilities_normal[i]))
+                        file_data += "\t"
+                        file_data += str(self.__get_phred_score(probability=self.__responsibilities_normal[i],
+                                                                max_phred_score=self.__max_PHRED_score))
+                        file_data += "\n"
+                        i += 1
         file_header = file_header[0:-1] + "\tCALL\tPHRED\n"
-
         output_file = open(self.output_calls_filename, "w")
         output_file.write(file_header + file_data)
         output_file.close()
 
     def __normal_del_ampl(self, CR: float, avg_normal_CR: float, std_dev_normal_CR: float,
-                          responsibility_normal: float, responsibility_threshold: float=0.5):
+                          responsibility_normal: float):
         """ Determine if the copy ratio value CR corresponds to a deletion (-),
-            an amplification (+), a normal segment (0) or a normal copy ratio
-            with imbalanced allele fraction (/).
+            an amplification (+), a normal segment (0), a normal copy ratio
+            with imbalanced allele fraction (CNLOH) or we cannot decide but not
+            normal (/).
         """
-        if responsibility_normal > responsibility_threshold:
+        if responsibility_normal > self.__responsibility_threshold_normal:
             return "0"
         else:
-            if CR > avg_normal_CR + 2 * std_dev_normal_CR:
-                return "+"
-            elif CR < avg_normal_CR - 2 * std_dev_normal_CR:
-                return "-"
+            if self.__load_CR:
+                if CR > avg_normal_CR + 2 * std_dev_normal_CR:
+                    return "+"
+                elif CR < avg_normal_CR - 2 * std_dev_normal_CR:
+                    return "-"
+                else:
+                    return "CNLOH"
             else:
                 return "/"
 

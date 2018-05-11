@@ -81,7 +81,8 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
                 .addArgument(CallModeledSegments.OUTPUT_PREFIX_LONG_NAME, outputPrefix)
                 .addArgument(CallModeledSegments.LOAD_COPY_RATIO_LONG_NAME, String.valueOf(loadCopyRatio))
                 .addArgument(CallModeledSegments.LOAD_ALLELE_FRACTION_LONG_NAME, String.valueOf(loadAlleleFraction))
-                .addArgument(CallModeledSegments.INTERACTIVE_RUN_LONG_NAME, String.valueOf(interactiveRun));
+                .addArgument(CallModeledSegments.INTERACTIVE_RUN_LONG_NAME, String.valueOf(interactiveRun))
+                .addArgument(CallModeledSegments.LOG_LONG_NAME, String.valueOf(true));
 
         String outputCallsFilePath = (OUTPUT_DIR.getAbsolutePath() + "/" + outputPrefix
                 + CallModeledSegments.OUTPUT_CALLS_SUFFIX_DEFAULT_VALUE);
