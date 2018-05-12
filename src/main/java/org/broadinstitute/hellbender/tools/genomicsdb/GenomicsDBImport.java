@@ -7,6 +7,7 @@ import com.intel.genomicsdb.model.Coordinates;
 import com.intel.genomicsdb.model.GenomicsDBCallsetsMapProto;
 import com.intel.genomicsdb.model.GenomicsDBImportConfiguration;
 import com.intel.genomicsdb.model.ImportConfig;
+import com.intel.genomicsdb.model.BatchCompletionCallbackFunctionArgument;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.AbstractFeatureReader;
@@ -300,6 +301,9 @@ public final class GenomicsDBImport extends GATKTool {
     // used to write the callset json file on traversal success
     private GenomicsDBCallsetsMapProto.CallsetMappingPB callsetMappingPB;
 
+    //in-progress batchCount
+    private int batchCount = 1;
+
     /**
      * Before traversal starts, create the feature readers
      * for all the input GVCFs, create the merged header and
@@ -487,6 +491,13 @@ public final class GenomicsDBImport extends GATKTool {
                 : getFeatureReadersSerially(sampleNameToVcfPath, batchSize, index);
     }
 
+    private Void logMessageOnBatchCompletion(final BatchCompletionCallbackFunctionArgument arg) {
+        progressMeter.update(intervals.get(0));
+        logger.info("Done importing batch " + arg.batchCount + "/" + arg.totalBatchCount);
+        this.batchCount = arg.batchCount + 1;
+        return null;
+    }
+
     private List<GenomicsDBImportConfiguration.Partition> generatePartitionListFromIntervals(List<ChromosomeInterval> chromosomeIntervals) {
         return chromosomeIntervals.stream().map(interval -> {
             GenomicsDBImportConfiguration.Partition.Builder partitionBuilder = GenomicsDBImportConfiguration.Partition.newBuilder();
@@ -521,6 +532,7 @@ public final class GenomicsDBImport extends GATKTool {
         importConfig.setOutputVidmapJsonFile(vidMapJSONFile.getAbsolutePath());
         importConfig.setOutputVcfHeaderFile(vcfHeaderFile.getAbsolutePath());
         importConfig.setUseSamplesInOrder(true);
+        importConfig.setFunctionToCallOnBatchCompletion(this::logMessageOnBatchCompletion);
         return importConfig;
     }
 
@@ -596,6 +608,7 @@ public final class GenomicsDBImport extends GATKTool {
             }
         });
         logger.info("Finished batch preload");
+        logger.info("Importing batch " + this.batchCount + " with " + sampleToReaderMap.size() + " samples");
         return sampleToReaderMap;
     }
 
@@ -608,6 +621,7 @@ public final class GenomicsDBImport extends GATKTool {
             final AbstractFeatureReader<VariantContext, LineIterator> reader = getReaderFromPath(sampleNameToPath.get(sampleName));
             sampleToReaderMap.put(sampleName, reader);
         }
+        logger.info("Importing batch " + this.batchCount + " with " + sampleToReaderMap.size() + " samples");
         return sampleToReaderMap;
     }
 
