@@ -149,6 +149,14 @@ public class CNNScoreVariants extends VariantWalker {
     private int transferBatchSize = 512;
 
     @Advanced
+    @Argument(fullName = "inter-op-threads", shortName = "inter-op-threads", doc = "Number of inter-op parallelism threads to use for Tensorflow", minValue = 0, maxValue = 4096, optional = true)
+    private int interOpThreads = 0;
+
+    @Advanced
+    @Argument(fullName = "intra-op-threads", shortName = "intra-op-threads", doc = "Number of inter-op parallelism threads to use for Tensorflow", minValue = 0, maxValue = 4096, optional = true)
+    private int intraOpThreads = 0;
+
+    @Advanced
     @Argument(fullName = "output-tensor-dir", shortName = "output-tensor-dir", doc = "Optional directory where tensors can be saved for debugging or visualization.", optional = true)
     private String outputTensorsDir = "";
 
@@ -245,7 +253,7 @@ public class CNNScoreVariants extends VariantWalker {
             }
 
             pythonExecutor.sendSynchronousCommand("from keras import backend" + NL);
-            pythonExecutor.sendSynchronousCommand(String.format("backend.set_session(backend.tf.Session(config=backend.tf.ConfigProto(intra_op_parallelism_threads=%d, inter_op_parallelism_threads=%d)))" + NL, 0, 2));
+            pythonExecutor.sendSynchronousCommand(String.format("backend.set_session(backend.tf.Session(config=backend.tf.ConfigProto(intra_op_parallelism_threads=%d, inter_op_parallelism_threads=%d)))" + NL, intraOpThreads, interOpThreads));
 
             pythonExecutor.sendSynchronousCommand(String.format("tempFile = open('%s', 'w+')" + NL, scoreFile.getAbsolutePath()));
             pythonExecutor.sendSynchronousCommand("import vqsr_cnn" + NL);
@@ -337,13 +345,7 @@ public class CNNScoreVariants extends VariantWalker {
         StringBuilder sb = new StringBuilder(FIFO_STRING_INITIAL_CAPACITY);
         sb.append(read.getBasesString() + "\t");
 
-        //sb.append(baseQualityBytesToString(read.getBaseQualities()) + "\t");
-        byte[] qualities = read.getBaseQualities();
-        for (int i = 0; i < qualities.length - 1; i++) {
-            sb.append(Integer.toString(qualities[i]) + ",");
-        }
-        sb.append(Integer.toString(qualities[qualities.length - 1]) + "\t");
-
+        appendQualityBytes(sb, read.getBaseQualities());
         sb.append(read.getCigar().toString() + "\t");
         sb.append(read.isReverseStrand() + "\t");
         sb.append((read.isPaired() ? read.mateIsReverseStrand() : "false") + "\t");
@@ -353,12 +355,16 @@ public class CNNScoreVariants extends VariantWalker {
         return sb.toString();
     }
 
-    private String baseQualityBytesToString(byte[] qualities) {
-        String qualityString = "";
-        for (int i = 0; i < qualities.length; i++) {
-            qualityString += Integer.toString(qualities[i]) + ",";
+    private void appendQualityBytes(StringBuilder sb, byte[] qualities) {
+        if(qualities.length == 0) {
+            sb.append("\t");
+            return;
         }
-        return qualityString.substring(0, qualityString.length() - 1);
+
+        for (int i = 0; i < qualities.length - 1; i++) {
+            sb.append(Integer.toString(qualities[i]) + ",");
+        }
+        sb.append(Integer.toString(qualities[qualities.length - 1]) + "\t");
     }
 
     private String getVariantDataString(final VariantContext variant) {
