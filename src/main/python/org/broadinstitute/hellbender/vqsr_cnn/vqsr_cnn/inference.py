@@ -103,6 +103,8 @@ def reference_string_to_tensor(reference):
             dna_data[i, defines.DNA_SYMBOLS[b]] = 1.0
         elif b in defines.AMBIGUITY_CODES:
             dna_data[i] = defines.AMBIGUITY_CODES[b]
+        elif b == '\x00':
+            break
         else:
             raise ValueError('Error! Unknown code:', b)
 

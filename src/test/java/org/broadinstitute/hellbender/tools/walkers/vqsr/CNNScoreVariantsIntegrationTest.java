@@ -99,6 +99,19 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
         spec.executeTest("testInference", this);
     }
 
+    @Test(groups = {"python"})
+    public void testOnContigEdge() throws IOException{
+        final String edgeVcf = toolsTestDir + "walkers/VQSR/variantNearContigEdge.vcf";
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
+        argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, edgeVcf)
+                .addArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, hg19MiniReference)
+                .addArgument("architecture", architecture1D)
+                .addArgument(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+
+        argsBuilder.addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, largeFileTestDir + "VQSR/expected/chrM.vcf");
+        runCommandLine(argsBuilder);
+    }
+
     /**
      * Run the 2D Model on a small test VCF.
      */
