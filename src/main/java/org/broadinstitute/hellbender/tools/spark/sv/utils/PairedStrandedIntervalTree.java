@@ -4,74 +4,118 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import scala.Tuple2;
 
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 @DefaultSerializer(PairedStrandedIntervalTree.Serializer.class)
 public class PairedStrandedIntervalTree<V> implements Iterable<Tuple2<PairedStrandedIntervals, V>> {
 
-    private SVIntervalTree<Tuple2<Boolean, SVIntervalTree<Tuple2<Boolean,V>>>> leftEnds = new SVIntervalTree<>();
+    private SVIntervalTree<LeftEndEntry<V>> leftEnds = new SVIntervalTree<>();
+    private int size = 0;
 
     public PairedStrandedIntervalTree() {}
 
     @SuppressWarnings("unchecked")
     public PairedStrandedIntervalTree(final Kryo kryo, final Input input) {
-        leftEnds = (SVIntervalTree<Tuple2<Boolean, SVIntervalTree<Tuple2<Boolean, V>>>>) kryo.readClassAndObject(input);
+        leftEnds = (SVIntervalTree<LeftEndEntry<V>>) kryo.readClassAndObject(input);
     }
 
-    public boolean put(PairedStrandedIntervals pair, V value) {
-        if (contains(pair)) return false;
-
-        final SVIntervalTree.Entry<Tuple2<Boolean, SVIntervalTree<Tuple2<Boolean,V>>>> leftEntry = leftEnds.find(pair.getLeft().getInterval());
-        if (leftEntry != null) {
-            leftEntry.getValue()._2().put(pair.getRight().getInterval(), new Tuple2<>(pair.getRight().getStrand(), value));
+    public V put(PairedStrandedIntervals pair, V value) {
+        final SVIntervalTree.Entry<LeftEndEntry<V>> leftEndEntry = leftEnds.find(pair.getLeft().getInterval());
+        final LeftEndEntry<V> leftEntryValue;
+        if (leftEndEntry == null) {
+            leftEntryValue = new LeftEndEntry<>();
+            leftEnds.put(pair.getLeft().getInterval(), leftEntryValue);
         } else {
-            final SVIntervalTree<Tuple2<Boolean, V>> rightEnds = new SVIntervalTree<>();
-            rightEnds.put(pair.getRight().getInterval(), new Tuple2<>(pair.getRight().getStrand(), value));
-            leftEnds.put(pair.getLeft().getInterval(), new Tuple2<>(pair.getLeft().getStrand(), rightEnds));
+            leftEntryValue = leftEndEntry.getValue();
         }
 
-        return true;
+        RightEndEntry<V> rightValue;
+        final SVIntervalTree<RightEndEntry<V>> rightEntryTree =
+                pair.getLeft().getStrand() ? leftEntryValue.getPosStrandEntries() : leftEntryValue.getNegStrandEntries();
+        final SVIntervalTree.Entry<RightEndEntry<V>> rightEndEntry = rightEntryTree.find(pair.getRight().getInterval());
+
+        if (rightEndEntry == null) {
+            rightValue = new RightEndEntry<>();
+            rightEntryTree.put(pair.getRight().getInterval(), rightValue);
+        } else {
+            rightValue = rightEndEntry.getValue();
+        }
+
+        size = size + 1;
+        if (pair.getRight().getStrand()) {
+            final V existingValue = rightValue.getPosStrandValue();
+            rightValue.setPosStrandValue(value);
+            return existingValue;
+        } else {
+            final V existingValue = rightValue.getNegStrandValue();
+            rightValue.setNegStrandValue(value);
+            return existingValue;
+        }
+
     }
 
     public int size() {
-        return Utils.stream(leftEnds).mapToInt(e -> e.getValue()._2.size()).sum();
+        return size;
     }
 
     public final class PairedStrandedIntervalTreeOverlapperIterator implements Iterator<Tuple2<PairedStrandedIntervals, V>> {
 
-        private Iterator<SVIntervalTree.Entry<Tuple2<Boolean, SVIntervalTree<Tuple2<Boolean, V>>>>> leftOverlappers;
-        private Iterator<SVIntervalTree.Entry<Tuple2<Boolean, V>>> rightOverlappers;
+        private Iterator<SVIntervalTree.Entry<LeftEndEntry<V>>> leftOverlappers;
+        private Iterator<SVIntervalTree.Entry<RightEndEntry<V>>> rightOverlappers;
 
-        private SVIntervalTree.Entry<Tuple2<Boolean, SVIntervalTree<Tuple2<Boolean, V>>>> leftEntry;
-        private SVIntervalTree.Entry<Tuple2<Boolean, V>> rightEntry;
+        private SVIntervalTree.Entry<LeftEndEntry<V>> leftEntry;
+        private SVIntervalTree.Entry<RightEndEntry<V>> rightEntry;
 
         private final PairedStrandedIntervals query;
 
-        public PairedStrandedIntervalTreeOverlapperIterator(PairedStrandedIntervalTree<V> tree, PairedStrandedIntervals query) {
+        boolean emittedThisValue = false;
+        boolean canRemove = false;
+
+        public PairedStrandedIntervalTreeOverlapperIterator(final PairedStrandedIntervalTree<V> tree,
+                                                            final PairedStrandedIntervals query) {
             this.query = query;
             leftOverlappers = tree.leftEnds.overlappers(query.getLeft().getInterval());
+            if (leftOverlappers.hasNext()) {
+                leftEntry = leftOverlappers.next();
+
+                final SVIntervalTree<RightEndEntry<V>> rightEntries =
+                        query.getLeft().getStrand() ? leftEntry.getValue().getPosStrandEntries() : leftEntry.getValue().getNegStrandEntries();
+                rightOverlappers = rightEntries.overlappers(query.getRight().getInterval());
+            } else {
+                rightOverlappers = Collections.emptyIterator();
+            }
+
+            advance(query);
         }
 
         private void advance(PairedStrandedIntervals query) {
-            leftEntry = null;
-            rightEntry = null;
+            emittedThisValue = false;
+            while (rightOverlappers.hasNext()) {
+                rightEntry = this.rightOverlappers.next();
+                final V value = query.getRight().getStrand() ? rightEntry.getValue().getPosStrandValue() : rightEntry.getValue().getNegStrandValue();
+                if (value != null) {
+                    return;
+                }
+            }
 
             while (leftOverlappers.hasNext()) {
                 leftEntry = leftOverlappers.next();
-                if (! leftEntry.getValue()._1() == query.getLeft().getStrand()) {
-                    continue;
-                }
-                rightOverlappers = leftEntry.getValue()._2().overlappers(query.getRight().getInterval());
+                final SVIntervalTree<RightEndEntry<V>> rightEntries =
+                        query.getLeft().getStrand() ? leftEntry.getValue().getPosStrandEntries() : leftEntry.getValue().getNegStrandEntries();
+
+                rightOverlappers = rightEntries.overlappers(query.getRight().getInterval());
+
                 while (rightOverlappers.hasNext()) {
-                    rightEntry = rightOverlappers.next();
-                    if (! rightEntry.getValue()._1() == query.getRight().getStrand()) {
-                        continue;
+                    rightEntry = this.rightOverlappers.next();
+                    final V value = query.getRight().getStrand() ? rightEntry.getValue().getPosStrandValue() : rightEntry.getValue().getNegStrandValue();
+                    if (value != null) {
+                        return;
                     }
-                    return;
                 }
             }
             rightEntry = null;
@@ -79,28 +123,49 @@ public class PairedStrandedIntervalTree<V> implements Iterable<Tuple2<PairedStra
 
         @Override
         public boolean hasNext() {
-            advance(query);
-            return leftEntry != null && rightEntry != null;
+            canRemove = false;
+            if (emittedThisValue) {
+                advance(query);
+            }
+            return rightEntry != null;
         }
 
         @Override
         public Tuple2<PairedStrandedIntervals, V> next() {
+            if (rightEntry == null) {
+                throw new NoSuchElementException();
+            }
             Tuple2<PairedStrandedIntervals, V> nextVal = new Tuple2<>(
                     new PairedStrandedIntervals(
                             new StrandedInterval(leftEntry.getInterval(),
-                                    leftEntry.getValue()._1()),
+                                    query.getLeft().getStrand()),
                             new StrandedInterval(rightEntry.getInterval(),
-                                    rightEntry.getValue()._1())),
-                    rightEntry.getValue()._2);
+                                    query.getRight().getStrand())),
+                    query.getRight().getStrand() ? rightEntry.getValue().getPosStrandValue() : rightEntry.getValue().getNegStrandValue());
+            emittedThisValue = true;
+            canRemove = true;
             return nextVal;
         }
 
         @Override
         public void remove() {
-            rightOverlappers.remove();
-            if (leftEntry.getValue()._2().size() == 0) {
+            if (! canRemove) {
+                throw new UnsupportedOperationException("Remove can only be called on this iterator immediately after a call to next. Calling remove after hasNext is unsupported.");
+            }
+            if (query.getRight().getStrand()) {
+                rightEntry.getValue().setPosStrandValue(null);
+            } else {
+                rightEntry.getValue().setNegStrandValue(null);
+            }
+            if (rightEntry.getValue().isEmpty()) {
+                rightOverlappers.remove();
+            }
+            if (leftEntry.getValue().getPosStrandEntries().size() == 0 &&
+                    leftEntry.getValue().getNegStrandEntries().size() == 0) {
                 leftOverlappers.remove();
             }
+            canRemove = false;
+            size = size - 1;
         }
     }
 
@@ -110,15 +175,19 @@ public class PairedStrandedIntervalTree<V> implements Iterable<Tuple2<PairedStra
 
     public final class PairedStrandedIntervalTreeIterator implements Iterator<Tuple2<PairedStrandedIntervals, V>> {
 
-        private final Iterator<SVIntervalTree.Entry<Tuple2<Boolean, SVIntervalTree<Tuple2<Boolean, V>>>>> leftEndIterator;
-        private Iterator<SVIntervalTree.Entry<Tuple2<Boolean, V>>> rightEndIterator;
-        private SVIntervalTree.Entry<Tuple2<Boolean, SVIntervalTree<Tuple2<Boolean, V>>>> leftEntry;
+        private final Iterator<SVIntervalTree.Entry<LeftEndEntry<V>>> leftEndIterator;
+        private Iterator<SVIntervalTree.Entry<RightEndEntry<V>>> rightEndIterator;
+        private SVIntervalTree.Entry<RightEndEntry<V>> rightEndEntry;
+        private SVIntervalTree.Entry<LeftEndEntry<V>> leftEntry;
+        private boolean posLeftStrand;
+        private boolean posRightStrand;
 
         PairedStrandedIntervalTreeIterator(PairedStrandedIntervalTree<V> tree) {
             leftEndIterator = tree.leftEnds.iterator();
             if (leftEndIterator.hasNext()) {
                 leftEntry = leftEndIterator.next();
-                rightEndIterator = leftEntry.getValue()._2().iterator();
+                posLeftStrand = true;
+                rightEndIterator = leftEntry.getValue().getPosStrandEntries().iterator();
             } else {
                 leftEntry = null;
                 rightEndIterator = Collections.emptyIterator();
@@ -127,31 +196,89 @@ public class PairedStrandedIntervalTree<V> implements Iterable<Tuple2<PairedStra
 
         @Override
         public boolean hasNext() {
-            return rightEndIterator.hasNext() || leftEndIterator.hasNext();
+            if (rightEndEntry != null && posRightStrand && rightEndEntry.getValue().getNegStrandValue() != null) return true;
+            final boolean rightIteratorHasNext = rightEndIterator.hasNext();
+            if (rightIteratorHasNext) return true;
+            if (posLeftStrand && leftEntry.getValue().getNegStrandEntries().iterator().hasNext()) return true;
+            return leftEndIterator.hasNext();
+        }
+
+        private void advance() {
+            // check if there's a neg strand value on the right entry
+            if (rightEndEntry != null && posRightStrand && rightEndEntry.getValue().getNegStrandValue() != null) {
+                posRightStrand = false;
+                return;
+            }
+
+            // advance to the next right entry
+            if (rightEndIterator.hasNext()) {
+                rightEndEntry = rightEndIterator.next();
+                posRightStrand = rightEndEntry.getValue().getPosStrandValue() != null;
+                return;
+            }
+
+            // out of stuff from right end iterator
+            if (posLeftStrand) {
+                // check the neg strand entries on the left entry
+                rightEndIterator = leftEntry.getValue().getNegStrandEntries().iterator();
+                posLeftStrand = false;
+                if (rightEndIterator.hasNext()) {
+                    rightEndEntry = rightEndIterator.next();
+                    posRightStrand = rightEndEntry.getValue().getPosStrandValue() != null;
+                    return;
+                }
+            }
+
+            // otherwise move to the next left entry
+            if (leftEndIterator.hasNext()) {
+                leftEntry = leftEndIterator.next();
+                rightEndIterator = leftEntry.getValue().getPosStrandEntries().iterator();
+                posLeftStrand = true;
+                if (! rightEndIterator.hasNext()) {
+                    rightEndIterator = leftEntry.getValue().getNegStrandEntries().iterator();
+                    posLeftStrand = false;
+                }
+                if (rightEndIterator.hasNext()) {
+                    rightEndEntry = rightEndIterator.next();
+                    posRightStrand = rightEndEntry.getValue().getPosStrandValue() != null;
+                    return;
+                }
+            }
+
+            throw new GATKException.ShouldNeverReachHereException("Couldn't find a next element to advance too");
         }
 
         @Override
         public Tuple2<PairedStrandedIntervals, V> next() {
-            SVIntervalTree.Entry<Tuple2<Boolean, V>> rightEntry;
-            if (!rightEndIterator.hasNext()) {
-                leftEntry = leftEndIterator.next();
-                rightEndIterator = leftEntry.getValue()._2().iterator();
+            advance();
+            if (rightEndEntry == null) {
+                throw new NoSuchElementException();
             }
-            rightEntry = rightEndIterator.next();
-            return new Tuple2<>(new PairedStrandedIntervals(
+            final V value = posRightStrand ? rightEndEntry.getValue().getPosStrandValue() : rightEndEntry.getValue().getNegStrandValue();
+            final Tuple2<PairedStrandedIntervals, V> next = new Tuple2<>(new PairedStrandedIntervals(
                     new StrandedInterval(leftEntry.getInterval(),
-                            leftEntry.getValue()._1()),
-                    new StrandedInterval(rightEntry.getInterval(),
-                            rightEntry.getValue()._1())),
-                    rightEntry.getValue()._2());
+                            posLeftStrand),
+                    new StrandedInterval(rightEndEntry.getInterval(),
+                            posRightStrand)),
+                    value);
+            return next;
         }
 
         @Override
         public void remove() {
-            rightEndIterator.remove();
-            if (leftEntry.getValue()._2().size() == 0) {
+            if (posRightStrand) {
+                rightEndEntry.getValue().setPosStrandValue(null);
+            } else {
+                rightEndEntry.getValue().setNegStrandValue(null);
+            }
+            if (rightEndEntry.getValue().isEmpty()) {
+                rightEndIterator.remove();
+            }
+            if (leftEntry.getValue().getPosStrandEntries().size() == 0 &&
+                    leftEntry.getValue().getNegStrandEntries().size() == 0) {
                 leftEndIterator.remove();
             }
+            size = size - 1;
         }
 
     }
@@ -163,14 +290,13 @@ public class PairedStrandedIntervalTree<V> implements Iterable<Tuple2<PairedStra
     public boolean contains(PairedStrandedIntervals pair) {
         final int leftEndIndex = leftEnds.getIndex(pair.getLeft().getInterval());
         if (leftEndIndex == -1) return false;
-        final SVIntervalTree.Entry<Tuple2<Boolean, SVIntervalTree<Tuple2<Boolean, V>>>> leftEndEntry = leftEnds.findByIndex(leftEndIndex);
-        final Tuple2<Boolean, SVIntervalTree<Tuple2<Boolean, V>>> storedValue = leftEndEntry.getValue();
+        final SVIntervalTree.Entry<LeftEndEntry<V>> leftEndEntry = leftEnds.findByIndex(leftEndIndex);
+        final LeftEndEntry<V> leftEndEntryValue = leftEndEntry.getValue();
 
-        if (pair.getLeft().getStrand() != storedValue._1()) return false;
-
-        final SVIntervalTree<Tuple2<Boolean, V>> rightEnds = storedValue._2();
-        final int rightIndex = rightEnds.getIndex(pair.getRight().getInterval());
-        return rightIndex != -1 && (pair.getRight().getStrand() == rightEnds.findByIndex(rightIndex).getValue()._1());
+        final SVIntervalTree<RightEndEntry<V>> rightEntries = pair.getLeft().getStrand() ? leftEndEntryValue.getPosStrandEntries() : leftEndEntryValue.getNegStrandEntries();
+        final int rightIndex = rightEntries.getIndex(pair.getRight().getInterval());
+        final SVIntervalTree.Entry<RightEndEntry<V>> rightEndEntry = rightEntries.findByIndex(rightIndex);
+        return rightIndex != -1 && (pair.getRight().getStrand() ? rightEndEntry.getValue().getPosStrandValue() != null : rightEndEntry.getValue().getNegStrandValue() != null);
     }
 
     public static final class Serializer<T> extends com.esotericsoftware.kryo.Serializer<PairedStrandedIntervalTree<T>> {
@@ -182,6 +308,44 @@ public class PairedStrandedIntervalTree<V> implements Iterable<Tuple2<PairedStra
         @Override
         public PairedStrandedIntervalTree<T> read(final Kryo kryo, final Input input, final Class<PairedStrandedIntervalTree<T>> klass ) {
             return new PairedStrandedIntervalTree<>(kryo, input);
+        }
+    }
+
+    static final class LeftEndEntry<V> {
+        final SVIntervalTree<RightEndEntry<V>> posStrandEntries = new SVIntervalTree<>();
+        final SVIntervalTree<RightEndEntry<V>> negStrandEntries = new SVIntervalTree<>();
+
+        public SVIntervalTree<RightEndEntry<V>> getPosStrandEntries() {
+            return posStrandEntries;
+        }
+
+        public SVIntervalTree<RightEndEntry<V>> getNegStrandEntries() {
+            return negStrandEntries;
+        }
+    }
+
+    static final class RightEndEntry<V> {
+        V posStrandValue;
+        V negStrandValue;
+
+        public V getPosStrandValue() {
+            return posStrandValue;
+        }
+
+        public void setPosStrandValue(final V posStrandValue) {
+            this.posStrandValue = posStrandValue;
+        }
+
+        public V getNegStrandValue() {
+            return negStrandValue;
+        }
+
+        public void setNegStrandValue(final V negStrandValue) {
+            this.negStrandValue = negStrandValue;
+        }
+
+        public boolean isEmpty() {
+            return posStrandValue == null && negStrandValue == null;
         }
     }
 
