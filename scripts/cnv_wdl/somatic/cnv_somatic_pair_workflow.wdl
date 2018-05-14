@@ -109,7 +109,6 @@ workflow CNVSomaticPairWorkflow {
     Int? num_smoothing_iterations_per_fit
     Int? mem_gb_for_model_segments
 
-    # Modified by Marton
     ####################################################
     #### optional arguments for CallModeledSegments ####
     ####################################################
