@@ -109,7 +109,6 @@ workflow CNVSomaticPairWorkflow {
     Int? num_smoothing_iterations_per_fit
     Int? mem_gb_for_model_segments
 
-    # Modified by Marton
     ####################################################
     #### optional arguments for CallModeledSegments ####
     ####################################################
@@ -245,7 +244,6 @@ workflow CNVSomaticPairWorkflow {
             preemptible_attempts = preemptible_attempts
     }
 
-    # Changed by Marton
     Int modeled_segments_tumor_disk = ceil(size(DenoiseReadCountsTumor.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsTumor.modeled_segments, "GB")) + disk_pad
     call CallModeledSegments as CallModeledSegmentsTumor {
         input:
@@ -375,7 +373,6 @@ workflow CNVSomaticPairWorkflow {
                 preemptible_attempts = preemptible_attempts
         }
 
-        # changed by Marton
         Int modeled_segments_normal_disk = ceil(size(DenoiseReadCountsNormal.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsNormal.modeled_segments, "GB")) + disk_pad
         call CallModeledSegments as CallModeledSegmentsNormal {
             input:
@@ -579,7 +576,7 @@ task ModelSegments {
     Int command_mem_mb = machine_mem_mb - 3000
 
     # If optional output_dir not specified, use "out"
-    String output_dir_ = select_first([output_dir, "out"])
+    String output_dir_ = select_first([output_dir, "out/"])
 
     command <<<
         set -e
@@ -640,7 +637,6 @@ task ModelSegments {
     }
 }
 
-# Modified by Marton
 task CallModeledSegments {
     String entity_id
     File modeled_segments_input_file
@@ -664,7 +660,7 @@ task CallModeledSegments {
     Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
     Int command_mem_mb = machine_mem_mb - 1000
 
-    String output_dir_ = select_first([output_dir, "out"])
+    String output_dir_ = select_first([output_dir, "out/"])
     String output_prefix_ = select_first([output_prefix, entity_id])
 
     command <<<
@@ -717,7 +713,7 @@ task PlotDenoisedCopyRatios {
     Int command_mem_mb = machine_mem_mb - 1000
 
     # If optional output_dir not specified, use "out"
-    String output_dir_ = select_first([output_dir, "out"])
+    String output_dir_ = select_first([output_dir, "out/"])
 
     command <<<
         set -e
@@ -773,7 +769,7 @@ task PlotModeledSegments {
     Int command_mem_mb = machine_mem_mb - 1000
 
     # If optional output_dir not specified, use "out"
-    String output_dir_ = select_first([output_dir, "out"])
+    String output_dir_ = select_first([output_dir, "out/"])
 
     command <<<
         set -e
