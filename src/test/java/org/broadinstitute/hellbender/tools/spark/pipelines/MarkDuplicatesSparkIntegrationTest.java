@@ -3,10 +3,12 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.metrics.MetricsFile;
+import org.apache.spark.SparkException;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.markduplicates.MarkDuplicatesGATKIntegrationTest;
 import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSpark;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -169,13 +171,31 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         tester.addMappedFragment(1, 10040, true, DEFAULT_BASE_QUALITY); // duplicate
         tester.runTest();
     }
+
     @Test
-    public void testMappedPairAndMappedFragmentAndMatePairFirstUnmapped() {
+    public void testNonExistantReadGroupInRead() {
         final AbstractMarkDuplicatesTester tester = new MarkDuplicatesSparkTester(true);
-        tester.addMatePair(1, 10040, 10040, true, false, true, true, null, "76M", false, false, false, false, false, DEFAULT_BASE_QUALITY); // first a duplicate,
-        // first end unmapped
-        tester.addMappedPair(1, 10189, 10040, false, false, "41S35M", "65M11S", true, false, false, ELIGIBLE_BASE_QUALITY); // mapped OK
-        tester.addMappedFragment(1, 10040, true, DEFAULT_BASE_QUALITY); // duplicate
-        tester.runTest();
+        tester.addMatePair("RUNID:7:1203:2886:82292",  19, 19, 485253, 485253, false, false, true, true, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "NotADuplicateGroup");
+        try {
+            tester.runTest();
+            Assert.fail("Should have thrown an exception");
+        } catch (Exception e){
+           Assert.assertTrue(e instanceof SparkException);
+           Assert.assertTrue(e.getCause() instanceof UserException.HeaderMissingReadGroup);
+        }
+    }
+
+    @Test
+    public void testNoReadGroupInRead() {
+        final AbstractMarkDuplicatesTester tester = new MarkDuplicatesSparkTester(true);
+        tester.addMatePair("RUNID:7:1203:2886:82292",  19, 19, 485253, 485253, false, false, true, true, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, null);
+
+        try {
+            tester.runTest();
+            Assert.fail("Should have thrown an exception");
+        } catch (Exception e){
+            Assert.assertTrue(e instanceof SparkException);
+            Assert.assertTrue(e.getCause() instanceof UserException.ReadMissingReadGroup);
+        }
     }
 }

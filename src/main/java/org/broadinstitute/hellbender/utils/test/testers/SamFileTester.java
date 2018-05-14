@@ -230,10 +230,8 @@ public abstract class SamFileTester implements CommandLineProgramTester {
             record2.setAttribute("MC", null);
         }
 
-        if (readGroup!=null) {
-            record1.setAttribute("RG", readGroup);
-            record2.setAttribute("RG", readGroup);
-        }
+        record1.setAttribute("RG", readGroup);
+        record2.setAttribute("RG", readGroup);
 
         if (firstOnly) {
             samRecordSetBuilder.getRecords().remove(record2);
@@ -260,7 +258,7 @@ public abstract class SamFileTester implements CommandLineProgramTester {
                             final boolean record2NonPrimary,
                             final int defaultQuality) {
         addMatePair(readName, referenceSequenceIndex,referenceSequenceIndex, alignmentStart1, alignmentStart2, record1Unmapped, record2Unmapped,
-                isDuplicate1, isDuplicate2, cigar1, cigar2, strand1, strand2, firstOnly, record1NonPrimary, record2NonPrimary, defaultQuality, null);
+                isDuplicate1, isDuplicate2, cigar1, cigar2, strand1, strand2, firstOnly, record1NonPrimary, record2NonPrimary, defaultQuality, "1");
     }
 
     protected abstract void test();
