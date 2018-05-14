@@ -133,14 +133,17 @@ public class MarkDuplicatesSparkUtils {
 
             // If there are two primary reads in the group pass them as a pair
             } else if (primaryReads.size()==2) {
-                final IndexPair<GATKRead> firstRead = primaryReads.get(0);
+                final GATKRead firstRead = primaryReads.get(0).getValue();
                 final IndexPair<GATKRead> secondRead = primaryReads.get(1);
-                final Pair pair = MarkDuplicatesSparkRecord.newPair(firstRead.getValue(), secondRead.getValue(), header, secondRead.getIndex(), scoringStrategy);
-                final Short readGroup = headerReadGroupIndexMap.getValue().get(firstRead.getValue().getReadGroup());
+                final Pair pair = MarkDuplicatesSparkRecord.newPair(firstRead, secondRead.getValue(), header, secondRead.getIndex(), scoringStrategy);
+                // Validate and add the read group to the pair
+                final Short readGroup = headerReadGroupIndexMap.getValue().get(firstRead.getReadGroup());
                 if (readGroup != null) {
                     pair.setReadGroup(readGroup);
                 } else {
-                    throw new UserException.HeaderMissingReadGroup(firstRead.getValue());
+                    throw (firstRead.getReadGroup()==null) ?
+                            new UserException.ReadMissingReadGroup(firstRead) :
+                            new UserException.HeaderMissingReadGroup(firstRead);
                 }
                 out.add(new Tuple2<>(pair.key(), pair));
 
