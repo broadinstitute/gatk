@@ -1,0 +1,6 @@
+1:200-299 (1:200-299 padded): 3 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {SNP=4, INDEL=3}.
+1:400-499 (1:400-499 padded): 0 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {}.
+1:600-699 (1:600-699 padded): 0 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {}.
+1:800-899 (1:800-899 padded): 0 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {}.
+1:1000-1099 (1:1000-1099 padded): 1 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {SNP=2, INDEL=1}.
+4:15951-16000 (4:15951-16000 padded): 0 reads. ACGT reference bases {A=12, C=4, G=25, T=9}. Variants: {}.

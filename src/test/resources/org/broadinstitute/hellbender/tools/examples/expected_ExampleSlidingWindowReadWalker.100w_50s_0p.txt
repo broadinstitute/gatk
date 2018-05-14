@@ -1,0 +1,20 @@
+1:200-299 (1:200-299 padded): 3 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {SNP=4, INDEL=3}.
+1:250-349 (1:250-349 padded): 3 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {SNP=3, INDEL=1}.
+1:300-399 (1:300-399 padded): 0 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {}.
+1:350-449 (1:350-449 padded): 0 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {}.
+1:400-499 (1:400-499 padded): 0 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {}.
+1:450-549 (1:450-549 padded): 0 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {}.
+1:500-599 (1:500-599 padded): 0 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {}.
+1:550-649 (1:550-649 padded): 0 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {}.
+1:600-699 (1:600-699 padded): 0 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {}.
+1:650-749 (1:650-749 padded): 0 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {}.
+1:700-799 (1:700-799 padded): 0 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {}.
+1:750-849 (1:750-849 padded): 0 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {}.
+1:800-899 (1:800-899 padded): 0 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {}.
+1:850-949 (1:850-949 padded): 0 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {}.
+1:900-999 (1:900-999 padded): 0 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {SNP=1}.
+1:950-1049 (1:950-1049 padded): 1 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {SNP=2, INDEL=1}.
+1:1000-1099 (1:1000-1099 padded): 1 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {SNP=2, INDEL=1}.
+1:1050-1125 (1:1050-1125 padded): 2 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {SNP=1}.
+1:1100-1125 (1:1100-1125 padded): 1 reads. ACGT reference bases {A=0, C=0, G=0, T=0}. Variants: {}.
+4:15951-16000 (4:15951-16000 padded): 0 reads. ACGT reference bases {A=12, C=4, G=25, T=9}. Variants: {}.

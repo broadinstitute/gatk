@@ -8,11 +8,12 @@ import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 
 /**
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
-public class ExampleReadSliderWalkerIntegrationTest extends CommandLineProgramTest {
+public class ExampleSlidingWindowReadWalkerIntegrationTest extends CommandLineProgramTest {
 
     private static final String TEST_DATA_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
     private static final String TEST_OUTPUT_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/examples/";
@@ -21,25 +22,25 @@ public class ExampleReadSliderWalkerIntegrationTest extends CommandLineProgramTe
     public Object[][] testWindowArguments() {
         return new Object[][] {
                 // default values (overlapping windows without padding)
-                {ExampleReadSliderWalker.DEFAULT_WINDOW_SIZE, ExampleReadSliderWalker.DEFAULT_WINDOW_STEP, ExampleReadSliderWalker.DEFAULT_WINDOW_PAD},
+                {ExampleSlidingWindowReadWalker.DEFAULT_WINDOW_SIZE, ExampleSlidingWindowReadWalker.DEFAULT_WINDOW_STEP, ExampleSlidingWindowReadWalker.DEFAULT_WINDOW_PAD},
                 // non-overlapping windows (without padding)
-                {ExampleReadSliderWalker.DEFAULT_WINDOW_SIZE, ExampleReadSliderWalker.DEFAULT_WINDOW_SIZE, 0},
+                {ExampleSlidingWindowReadWalker.DEFAULT_WINDOW_SIZE, ExampleSlidingWindowReadWalker.DEFAULT_WINDOW_SIZE, 0},
                 // non-overlapping windows (but padding adds overlaps)
-                {ExampleReadSliderWalker.DEFAULT_WINDOW_SIZE, ExampleReadSliderWalker.DEFAULT_WINDOW_SIZE, ExampleReadSliderWalker.DEFAULT_WINDOW_STEP},
+                {ExampleSlidingWindowReadWalker.DEFAULT_WINDOW_SIZE, ExampleSlidingWindowReadWalker.DEFAULT_WINDOW_SIZE, ExampleSlidingWindowReadWalker.DEFAULT_WINDOW_STEP},
                 // jumping windows (without padding)
-                {ExampleReadSliderWalker.DEFAULT_WINDOW_SIZE, ExampleReadSliderWalker.DEFAULT_WINDOW_SIZE * 2, 0},
+                {ExampleSlidingWindowReadWalker.DEFAULT_WINDOW_SIZE, ExampleSlidingWindowReadWalker.DEFAULT_WINDOW_SIZE * 2, 0},
         };
     }
 
     @Test(dataProvider = "testWindowArguments")
-    public void testExampleReadSliderWalker(final int windowSize, final int stepSize, final int windowPad) throws IOException {
+    public void testExampleSlidingWindowReadWalker(final int windowSize, final int stepSize, final int windowPad) throws IOException {
         final String expectedOutput = String.format("%sexpected_%s.%sw_%ss_%sp.txt",
                 TEST_OUTPUT_DIRECTORY, getTestedToolName(),
                 windowSize, stepSize, windowPad);
         IntegrationTestSpec testSpec = new IntegrationTestSpec(
                         String.format(" --%s %s ", ShardingArgumentCollection.WINDOW_SIZE_NAME, windowSize) +
                         String.format(" --%s %s ", ShardingArgumentCollection.WINDOW_STEP_NAME, stepSize) +
-                        String.format(" --%s %s ", ShardingArgumentCollection.WINDOW_PAD_NAME, windowPad) +
+                        String.format(" --%s %s ", ShardingArgumentCollection.WINDOW_PADDING_NAME, windowPad) +
                         " -L 1:200-1125" + // region with variants/reads
                         " -L 4:15951-16000" + // region with reference bases
                         " -R " + hg19MiniReference +
@@ -48,6 +49,6 @@ public class ExampleReadSliderWalkerIntegrationTest extends CommandLineProgramTe
                         " -O %s",
                 Arrays.asList(expectedOutput)
         );
-        testSpec.executeTest("testExampleReadSliderWalker", this);
+        testSpec.executeTest("testExampleSlidingWindowReadWalker", this);
     }
 }

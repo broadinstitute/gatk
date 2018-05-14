@@ -19,6 +19,9 @@ import java.util.Queue;
 /**
  * Iterator over shards/windows (overlapping or not) of sorted {@link Locatable}.
  *
+ * <p>Returned {@link Shard<T>} would be filled with {@link Locatable} overlapping the provided
+ * {@link ShardBoundary}. If no {@link Locatable} overlaps, an empty {@link Shard<T>} would be returned.
+ *
  * <p>Warning: for overlapping shards, the objects stored in the {@link Shard<T>} returned by
  * {@link #next()} are not clones, and thus shards are not independent. If the objects are modified
  * in each shard, the caller should clone to safely operate on the objects.
@@ -31,7 +34,7 @@ public final class ShardingIterator<T extends Locatable> implements Iterator<Sha
     private final PeekableIterator<T> it;
     // queuing the shards - should be sorted by coordinate
     private final Queue<ShardBoundary> shards;
-    // this wil be fill with the data for the shard in the first position of the shard queue
+    // this wil be filled with the data for the shard in the first position of the shard queue
     private final Queue<T> nextData;
     // required to check sort order
     private final SAMSequenceDictionary dictionary;
@@ -51,10 +54,8 @@ public final class ShardingIterator<T extends Locatable> implements Iterator<Sha
         Utils.nonEmpty(boundaries, "Empty shard boundaries");
         Utils.nonNull(dictionary, "null dictionary");
 
-        // TODO: avoid new object creation for already PeekableIterator and LinkedList args
         // store the iterator and allow peek()
         this.it = new PeekableIterator<>(iterator);
-        // TODO: avoid new object creation for already LinkedList and LinkedList args
         // convert the boundaries into a queue
         this.shards = new LinkedList<>(boundaries);
         // store the dictionary
@@ -95,7 +96,6 @@ public final class ShardingIterator<T extends Locatable> implements Iterator<Sha
     private void advance() {
         // if we already finished the iteration, we clean up the data
         if (shards.isEmpty()) {
-            // TODO: should we also close the iterator?
             nextData.clear();
         } else {
             // first we empty the queue if it has non-overlapping data with the next shard

@@ -2,10 +2,10 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.ShardingArgumentCollection;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.examples.ExampleSlidingWindowReadWalker;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -16,23 +16,27 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A {@link ReadSliderWalker} is a tool that processes a single {@link Shard<GATKRead>} window over
+ * A {@link SlidingWindowReadWalker} is a tool that processes a single {@link Shard<GATKRead>} window over
  * the genome/intervals at a time, with the ability to query overlapping optional sources (reference
  * data and/or variants/features).
  *
- * <p>Windows are constructed over each interval, using the window-size, window-step and window-padding
- * provided by the {@link #getShardingArgs()} arguments.
+ * <p>Windows are constructed using the window size, step and padding provided by the
+ * {@link #getShardingArgs()} arguments. Each interval provided by the user with the <code>-L</code>
+ * option (or per-chromosome from the sequence dictionary if not provided) is divided into windows
+ * up to <b>window size</b> base pairs if larger than that size. Each window will overlap
+ * <b>window step</b> base pairs with the contiguous one (without window padding), and is extended
+ * in both sides by <b>window padding</b> base pairs.
  *
- * <p>{@link ReadSliderWalker} authors must implement the {@link #apply(Shard, ReferenceContext, FeatureContext)}
+ * <p>{@link SlidingWindowReadWalker} authors must implement the {@link #apply(Shard, ReferenceContext, FeatureContext)}
  * and {@link #getShardingArgs()} methods, and optionally implement {@link #onTraversalStart()}
  * and/or {@link #onTraversalSuccess()}. For closing other sources, such as output writers,
  * {@link #closeTool()} might be implemented.
  *
- * <p>For an example walker, see {@link org.broadinstitute.hellbender.tools.examples.ExampleReadSliderWalker}.
+ * <p>For an example walker, see {@link ExampleSlidingWindowReadWalker}.
  *
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
-public abstract class ReadSliderWalker extends GATKTool {
+public abstract class SlidingWindowReadWalker extends GATKTool {
 
     /**
      * Argument collection for sliding window traversal.
@@ -78,19 +82,19 @@ public abstract class ReadSliderWalker extends GATKTool {
         // get the dictionary and check that it is provided
         final SAMSequenceDictionary dictionary = getBestAvailableSequenceDictionary();
         if (dictionary == null) {
-            throw new UserException(String.format("Could not find sequence dictionary in data sources.A dictionary file is necessary for {}",
+            throw new UserException(String.format("Could not find sequence dictionary in data sources. A dictionary file is necessary for %s",
                     this.getToolName()));
         }
 
         // set traversal bounds if necessary
-        if (hasIntervals() && hasReads()) {
+        if (hasIntervals()) {
             reads.setTraversalBounds(intervalArgumentCollection.getTraversalParameters(dictionary));
         }
 
         // generate the windows
         windows = makeWindows((hasIntervals()) ? intervalsForTraversal : IntervalUtils.getAllIntervalsForReference(dictionary),
                 dictionary,
-                shardingArgs.getWindowSize(), shardingArgs.getWindowStep(), shardingArgs.getWindowPad());
+                shardingArgs.getWindowSize(), shardingArgs.getWindowStep(), shardingArgs.getWindowPadding());
     }
 
     // generate the windows
@@ -131,13 +135,13 @@ public abstract class ReadSliderWalker extends GATKTool {
      * <p>Must be implemented by tool authors. In general, tool authors should simply stream
      * their output from apply(), and maintain as little internal state as possible.
      *
-     * <p>Warning: if overlapping windows are processed, modifying in-place reads on the shard
+     * <p>Warning: if overlapping windows are processed, modifying reads in-place on the shard
      * will affect the next iteration. In some cases this is desirable (e.g., cached per-read
      * statistic); otherwise, developers should perform a copy of the object before modification.
      *
      * @param reads            Non-null shard object with the window information (interval and
-     *                         padded interval), containing reads overlapping it (might be empty if
-     *                         no reads overlaps).
+     *                         padded interval), containing reads overlapping the padded interal
+     *                         (might be empty if no reads overlaps).
      * @param referenceContext Reference bases spanning the current window (including padded bases).
      *                         Will be an empty, but non-null, context object if there is no backing
      *                         source of reference data (in which case all queries on it will return
