@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.readdepth;
 
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -12,6 +13,7 @@ import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.MetadataUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
@@ -21,12 +23,16 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import scala.Tuple2;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -127,12 +133,10 @@ public class StructuralVariantIntervalsForCNV extends GATKTool {
     private String svCallVCFPath;
     @Argument(doc = "Evidence target links file (.bedpe)", fullName = EVIDENCE_TARGET_LINKS_LONG_NAME)
     private String evidenceTargetLinksFilePath;
-    @Argument(doc = "Assembly contigs (.bam or .sam)", fullName = ASSEMBLY_CONTIGS_LONG_NAME, optional = true)
+    @Argument(doc = "Assembly contigs (.bam or .sam)", fullName = ASSEMBLY_CONTIGS_LONG_NAME)
     private String assemblyBamPath;
     @Argument(doc = "Output directory", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String outputPath;
-    @Argument(doc = "Sample name for output",fullName = "sample-name")
-    private String sampleName;
     @Argument(doc = "High coverage intervals file path",fullName = HIGH_COVERAGE_INTERVALS_LONG_NAME)
     private String highCoverageIntervalsPath;
     @Argument(doc = "Mappable intervals file path",fullName = "mappable-intervals")
@@ -150,7 +154,10 @@ public class StructuralVariantIntervalsForCNV extends GATKTool {
         //ctx.hadoopConfiguration().set("google.cloud.auth.service.account.json.keyfile", "/Users/markw/IdeaProjects/gatk/DSDE-Methods-2fcf61fced3a.json");
         dictionary = getBestAvailableSequenceDictionary();
         logger.info("Loading assembly...");
-        final Collection<GATKRead> assembly = getReads(assemblyBamPath);
+        final Tuple2<SAMFileHeader,Collection<GATKRead>> assemblyData = getReads(assemblyBamPath);
+        final SAMFileHeader header = assemblyData._1;
+        final Collection<GATKRead> assemblyContigs = assemblyData._2;
+        final String sampleName = MetadataUtils.readSampleName(header);
         logger.info("Loading high coverage intervals...");
         final List<SVInterval> highCoverageIntervals = getIntervals(highCoverageIntervalsPath, dictionary);
         logger.info("Loading high coverage intervals...");
@@ -167,26 +174,24 @@ public class StructuralVariantIntervalsForCNV extends GATKTool {
         logger.info("Loading evidence target links...");
         final Collection<EvidenceTargetLink> evidenceTargetLinks = getEvidenceTargetLinks(evidenceTargetLinksFilePath, dictionary);
 
-        structuralVariantIntervalFinder = new StructuralVariantIntervalFinder(breakpointCalls, svCalls, assembly, evidenceTargetLinks, highCoverageIntervals, mappableIntervals, blacklist, dictionary, arguments);
-        final Map<String,List<TypedSVInterval>> svIntervals = structuralVariantIntervalFinder.getIntervals(progressMeter);
-        writeEvents(outputPath, svIntervals);
+        structuralVariantIntervalFinder = new StructuralVariantIntervalFinder(breakpointCalls, svCalls, assemblyContigs, evidenceTargetLinks, highCoverageIntervals, mappableIntervals, blacklist, dictionary, arguments);
+        final List<TypedSVInterval> svIntervals = structuralVariantIntervalFinder.getIntervals(progressMeter);
+        writeEvents(outputPath, svIntervals, sampleName);
     }
 
     /**
      * Writes events collection to BED file
      */
-    private void writeEvents(final String outputDirectory, final Map<String,List<TypedSVInterval>> svIntervals) {
-        for (final String key : svIntervals.keySet()) {
-            final String fileName = sampleName + "-" + key + ".bed";
-            final String outputPath = Paths.get(outputDirectory, fileName).toAbsolutePath().toString();
-            try (final OutputStream outputStream = BucketUtils.createFile(outputPath)) {
-                outputStream.write(("#CHR\tPOS\tEND\tTYPE\n").getBytes());
-                for (final TypedSVInterval interval : svIntervals.get(key)) {
-                    outputStream.write((dictionary.getSequence(interval.getContig()).getSequenceName() + "\t" + interval.getStart() + "\t" + interval.getEnd() + "\t" + interval.getType().name() + "\n").getBytes());
-                }
-            } catch (final IOException e) {
-                throw new GATKException("Error writing output to " + outputPath, e);
+    private void writeEvents(final String outputDirectory, final List<TypedSVInterval> svIntervals, final String sampleName) {
+        final String fileName = sampleName + "-events.bed";
+        final String outputPath = Paths.get(outputDirectory, fileName).toAbsolutePath().toString();
+        try (final OutputStream outputStream = BucketUtils.createFile(outputPath)) {
+            outputStream.write(("#CHR\tPOS\tEND\tTYPE\n").getBytes());
+            for (final TypedSVInterval interval : svIntervals) {
+                outputStream.write((dictionary.getSequence(interval.getContig()).getSequenceName() + "\t" + interval.getStart() + "\t" + interval.getEnd() + "\t" + interval.getType().name() + "\n").getBytes());
             }
+        } catch (final IOException e) {
+            throw new GATKException("Error writing output to " + outputPath, e);
         }
     }
 
@@ -211,12 +216,9 @@ public class StructuralVariantIntervalsForCNV extends GATKTool {
         return Collections.emptyList();
     }
 
-    private static Collection<GATKRead> getReads(final String bamPath) {
-        if (bamPath != null) {
-            final ReadsDataSource reads = new ReadsDataSource(IOUtils.getPath(bamPath));
-            return Utils.stream(reads.iterator()).collect(Collectors.toList());
-        }
-        return Collections.emptyList();
+    private static Tuple2<SAMFileHeader,Collection<GATKRead>> getReads(final String bamPath) {
+        final ReadsDataSource reads = new ReadsDataSource(IOUtils.getPath(bamPath));
+        return new Tuple2<>(reads.getHeader(),Utils.stream(reads.iterator()).collect(Collectors.toList()));
     }
 
     private static Collection<EvidenceTargetLink> getEvidenceTargetLinks(final String path, final SAMSequenceDictionary dictionary) {

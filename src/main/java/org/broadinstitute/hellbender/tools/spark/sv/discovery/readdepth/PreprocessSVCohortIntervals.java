@@ -44,25 +44,19 @@ public class PreprocessSVCohortIntervals extends GATKTool {
 
     private static final long serialVersionUID = 1L;
 
+    @Argument(doc = "Event intervals file", fullName = "event-intervals")
+    private String eventIntervalsPath;
     @Argument(doc = "Sample counts files", fullName = "counts")
     private List<String> countsPathList;
 
     @Argument(doc = "Output directory", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String outputPath;
 
-    @Argument(doc = "Sample names", fullName = "sample-name")
-    private List<String> sampleNameList;
-
     private final StructuralVariationDiscoveryArgumentCollection.PreprocessSVCohortIntervals arguments = new StructuralVariationDiscoveryArgumentCollection.PreprocessSVCohortIntervals();
     private SAMSequenceDictionary dictionary;
 
     public static final List<Integer> BIN_SIZES = Lists.newArrayList(100, 1000, 10000);
     public static final int MIN_BINS_PER_EVENT = 10;
-
-    @Override
-    public boolean requiresIntervals() {
-        return true;
-    }
 
     private String getBinDirectory(final int binSize) {
         return Paths.get(outputPath, "bin-" + binSize + "bp").toAbsolutePath().toString();
@@ -75,7 +69,8 @@ public class PreprocessSVCohortIntervals extends GATKTool {
     @Override
     public void traverse() {
         dictionary = getBestAvailableSequenceDictionary();
-        final List<SimpleInterval> intervals = intervalArgumentCollection.getIntervals(dictionary); // intervalPathList.stream().map(path -> getIntervals(path, dictionary)).collect(Collectors.toList());
+        //Note we cannot use -L because it automatically merges the intervals
+        final List<SimpleInterval> intervals = getIntervals(eventIntervalsPath, dictionary); // intervalPathList.stream().map(path -> getIntervals(path, dictionary)).collect(Collectors.toList());
         final List<Tuple2<Integer,List<SimpleInterval>>> binsSizesAndIntervals = stratifyAndBinIntervals(intervals);
         for (final Tuple2<Integer,List<SimpleInterval>> pair : binsSizesAndIntervals) {
             logger.info("Generated " + pair._2.size() + " intervals at bin size " + pair._1);
@@ -113,9 +108,9 @@ public class PreprocessSVCohortIntervals extends GATKTool {
 
         for (int i = 0; i < countsPathList.size(); i++) {
             final String countsPath = countsPathList.get(i);
-            final String sampleName = sampleNameList.get(i);
             logger.info("Loading " + countsPath);
             final SimpleCountCollection counts = SimpleCountCollection.read(new File(countsPath));
+            final String sampleName = counts.getMetadata().getSampleName();
             validateCountCollection(counts);
             for (final Tuple2<Integer,List<SimpleInterval>> pair : binsSizesAndIntervals) {
                 final int binSize = pair._1;
@@ -134,10 +129,21 @@ public class PreprocessSVCohortIntervals extends GATKTool {
                         rebinnedIntervals.addall(rebinnedCounts.getIntervalsStream().map(interval -> new Interval(interval.getContig(), interval.getStart(), interval.getEnd())).collect(Collectors.toList()));
                         final Path sampleIntervalOutput = Paths.get(binDirName, "SV-intervals-" + key + ".interval_list");
                         rebinnedIntervals.write(sampleIntervalOutput.toFile());
+                        //new SimpleIntervalCollection(rebinnedCounts.getMetadata(), pair._2).write(sampleIntervalOutput.toFile());
                     }
                 }
             }
         }
+    }
+
+    private static List<SimpleInterval> getIntervals(final String path, final SAMSequenceDictionary dictionary) {
+        if (path != null) {
+            final GenomeLocParser genomeLocParser = new GenomeLocParser(dictionary);
+            return IntervalUtils.parseIntervalArguments(genomeLocParser, path).stream()
+                    .map(genomeLoc -> new SimpleInterval(genomeLoc.getContig(), genomeLoc.getStart(), genomeLoc.getEnd()))
+                    .collect(Collectors.toList());
+        }
+        return Collections.emptyList();
     }
 
     private Map<String,SimpleCountCollection> rebinCounts(final SimpleCountCollection counts, final List<SimpleInterval> bins) {

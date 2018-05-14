@@ -259,7 +259,9 @@ public final class StructuralVariantIntervalFinder {
     /**
      * Returns all events. Searches by iterating over the breakpoint pairs and then the evidence target links.
      */
-    public Map<String,List<TypedSVInterval>> getIntervals(final ProgressMeter progressMeter) {
+    public List<TypedSVInterval> getIntervals(final ProgressMeter progressMeter) {
+
+        logger.info("Processing intervals...");
 
         if (progressMeter != null) {
             progressMeter.setRecordLabel("intervals");
@@ -345,12 +347,13 @@ public final class StructuralVariantIntervalFinder {
                 .filter(entry -> entry.getValue().getReadPairEvidence() > 0)
                 .filter(entry -> entry.getValue().getReadPairEvidence() > Math.log10(entry.getInterval().getLength()) - 2)
                 .filter(entry -> !blacklistTree.hasOverlapper(entry.getInterval()))
-                .filter(entry -> {
+                /*.filter(entry -> {
                     final SVInterval interval = entry.getInterval();
                     final SVInterval start = new SVInterval(interval.getContig(), interval.getStart(), interval.getStart());
                     final SVInterval end = new SVInterval(interval.getContig(), interval.getEnd(), interval.getEnd());
                     return mappableIntervalTree.hasOverlapper(start) && mappableIntervalTree.hasOverlapper(end);
-                }).filter(entry -> {
+                })*/
+                .filter(entry -> {
             final SVInterval interval = entry.getInterval();
             final SVInterval start = new SVInterval(interval.getContig(), interval.getStart(), interval.getStart());
             final SVInterval end = new SVInterval(interval.getContig(), interval.getEnd(), interval.getEnd());
@@ -365,6 +368,8 @@ public final class StructuralVariantIntervalFinder {
                 .collect(Collectors.toList());
 
         intervals.addAll(duplicationIntervals);
+
+        return intervals;
         /*
         final List<GenomeLoc> eventIntervals = Utils.stream(filteredCalls.iterator()).flatMap(call -> {
             final int padding = 1000;
@@ -374,7 +379,7 @@ public final class StructuralVariantIntervalFinder {
         }).collect(Collectors.toList());
         */
 
-        final List<TypedSVInterval> smallIntervals = getIntervalsInSizeRange(intervals, arguments.smallEventSize, arguments.mediumEventSize);
+        /*final List<TypedSVInterval> smallIntervals = getIntervalsInSizeRange(intervals, arguments.smallEventSize, arguments.mediumEventSize);
         final List<TypedSVInterval> mediumIntervals = getIntervalsInSizeRange(intervals, arguments.mediumEventSize, arguments.largeEventSize);
         final List<TypedSVInterval> largeIntervals = getIntervalsInSizeRange(intervals, arguments.largeEventSize, arguments.xlargeEventSize);
         final List<TypedSVInterval> extraLargeIntervals = getIntervalsInSizeRange(intervals, arguments.xlargeEventSize, Integer.MAX_VALUE);
@@ -389,7 +394,7 @@ public final class StructuralVariantIntervalFinder {
             logger.info(key + " events: " + intervalsMap.get(key).size() + " intervals, " + intervalsMap.get(key).stream().mapToInt(TypedSVInterval::getLength).sum() + " bp");
         }
 
-        return intervalsMap;
+        return intervalsMap;*/
     }
 
     private static List<SimpleInterval> mergeIntervals(final Collection<SVInterval> intervals, final SAMSequenceDictionary dictionary) {
