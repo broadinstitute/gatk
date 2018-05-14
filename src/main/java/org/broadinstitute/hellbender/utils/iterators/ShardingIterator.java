@@ -9,9 +9,10 @@ import org.broadinstitute.hellbender.engine.ShardBoundaryShard;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Queue;
@@ -50,18 +51,18 @@ public final class ShardingIterator<T extends Locatable> implements Iterator<Sha
             final List<ShardBoundary> boundaries,
             final SAMSequenceDictionary dictionary) {
         // check arguments
-        Utils.validateArg(Utils.nonNull(iterator, "null iterator").hasNext(), "empty iterator");
+        Utils.nonNull(iterator, "null iterator");
         Utils.nonEmpty(boundaries, "Empty shard boundaries");
         Utils.nonNull(dictionary, "null dictionary");
 
         // store the iterator and allow peek()
         this.it = new PeekableIterator<>(iterator);
         // convert the boundaries into a queue
-        this.shards = new LinkedList<>(boundaries);
+        this.shards = new ArrayDeque<>(boundaries);
         // store the dictionary
         this.dictionary = dictionary;
         // create a new queue for the next data
-        this.nextData = new LinkedList<>();
+        this.nextData = new ArrayDeque<>();
 
         // start the iteration
         advance();
@@ -87,7 +88,7 @@ public final class ShardingIterator<T extends Locatable> implements Iterator<Sha
         }
         // copying the deque to being able to remove unnecesary data and fill in with the next
         final Shard<T> next = new ShardBoundaryShard<T>(shards.poll(),
-                nextData.isEmpty() ? Collections.emptyList() : new LinkedList<>(nextData));
+                nextData.isEmpty() ? Collections.emptyList() : new ArrayList<>(nextData));
         advance();
         return next;
     }

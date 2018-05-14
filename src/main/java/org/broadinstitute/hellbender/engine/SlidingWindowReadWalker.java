@@ -4,6 +4,9 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.ShardingArgumentCollection;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.examples.ExampleSlidingWindowReadWalker;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -13,6 +16,7 @@ import org.broadinstitute.hellbender.utils.iterators.ShardingIterator;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -61,6 +65,12 @@ public abstract class SlidingWindowReadWalker extends GATKTool {
     @Override
     public final boolean requiresReads() {
         return true;
+    }
+
+    @Override
+    public List<ReadFilter> getDefaultReadFilters() {
+        // include the MappedReadFilter
+        return Arrays.asList(new WellformedReadFilter(), new ReadFilterLibrary.MappedReadFilter());
     }
 
     // list of shard boundaries to iterate over
