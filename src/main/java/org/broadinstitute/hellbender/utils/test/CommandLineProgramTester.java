@@ -84,6 +84,13 @@ public interface CommandLineProgramTester {
         return new Main().instanceMain(makeCommandLineArgs(args));
     }
 
+    /**
+     * Lets you explicitly specify a tool tool to run with the provided arguments
+     */
+    default Object runCommandLine(final List<String> args, final String toolName) {
+        return new Main().instanceMain(makeCommandLineArgs(args, toolName));
+    }
+
     default Object runCommandLine(final String[] args) {
         return runCommandLine(Arrays.asList(args));
     }

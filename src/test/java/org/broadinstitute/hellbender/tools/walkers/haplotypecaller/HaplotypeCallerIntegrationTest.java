@@ -73,30 +73,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         IntegrationTestSpec.assertEqualTextFiles(output, expected);
     }
 
-    @Test
-    public void testSitesOnlyMode() {
-        File out = createTempFile("GTStrippedOutput", "vcf");
-        final String[] args = {
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_reference_20_21,
-                "-L", "20:10000000-10100000",
-                "-O", out.getAbsolutePath(),
-                "-pairHMM", "AVX_LOGLESS_CACHING",
-                "--" + StandardArgumentDefinitions.SITES_ONLY_LONG_NAME,
-                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
-        };
-
-        runCommandLine(args);
-
-        // Assert that the genotype field has been stripped from the file
-        Pair<VCFHeader, List<VariantContext>> results = VariantContextTestUtils.readEntireVCFIntoMemory(out.getAbsolutePath());
-
-        Assert.assertFalse(results.getLeft().hasGenotypingData());
-        for (VariantContext v: results.getRight()) {
-            Assert.assertFalse(v.hasGenotypes());
-        }
-    }
-
     /*
      * Test that in VCF mode we're consistent with past GATK4 results
      *
@@ -400,6 +376,32 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
             final int readCountDifference = Math.abs(actualBamoutNumReads - gatk3BamoutNumReads);
             Assert.assertTrue(((double)readCountDifference / gatk3BamoutNumReads) < 0.10,
                     "-bamout produced a bam with over 10% fewer/more reads than expected");
+        }
+    }
+
+
+    @Test
+    public void testSitesOnlyMode() {
+        Utils.resetRandomGenerator();
+        File out = createTempFile("GTStrippedOutput", "vcf");
+        final String[] args = {
+                "-I", NA12878_20_21_WGS_bam,
+                "-R", b37_reference_20_21,
+                "-L", "20:10000000-10010000",
+                "-O", out.getAbsolutePath(),
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "--" + StandardArgumentDefinitions.SITES_ONLY_LONG_NAME,
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
+        };
+
+        runCommandLine(args);
+
+        // Assert that the genotype field has been stripped from the file
+        Pair<VCFHeader, List<VariantContext>> results = VariantContextTestUtils.readEntireVCFIntoMemory(out.getAbsolutePath());
+
+        Assert.assertFalse(results.getLeft().hasGenotypingData());
+        for (VariantContext v: results.getRight()) {
+            Assert.assertFalse(v.hasGenotypes());
         }
     }
 

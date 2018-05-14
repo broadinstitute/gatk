@@ -1,8 +1,9 @@
-package org.broadinstitute.hellbender;
+package org.broadinstitute.hellbender.engine;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.SelectVariants;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
@@ -24,7 +25,7 @@ public class GatkToolIntegrationTest extends CommandLineProgramTest {
                 "--" + StandardArgumentDefinitions.SITES_ONLY_LONG_NAME,
                 "-O",
                 out.getAbsolutePath()};
-        new Main().instanceMain(makeCommandLineArgs(Arrays.asList(args), SelectVariants.class.getSimpleName()));
+        runCommandLine(Arrays.asList(args), SelectVariants.class.getSimpleName());
 
         // Assert that the genotype field has been stripped from the file
         Pair<VCFHeader, List<VariantContext>> results = VariantContextTestUtils.readEntireVCFIntoMemory(out.getAbsolutePath());

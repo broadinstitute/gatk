@@ -322,8 +322,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @return a VCF or GVCF writer as appropriate, ready to use
      */
     public VariantContextWriter makeVCFWriter( final String outputVCF, final SAMSequenceDictionary readsDictionary,
-                                               final boolean createOutputVariantIndex, final boolean sitesOnlyMode,
-                                               final boolean  createOutputVariantMD5 ) {
+                                               final boolean createOutputVariantIndex, final boolean  createOutputVariantMD5,
+                                               final boolean sitesOnlyMode ) {
         Utils.nonNull(outputVCF);
         Utils.nonNull(readsDictionary);
 
