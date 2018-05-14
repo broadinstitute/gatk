@@ -218,6 +218,7 @@ configurations {
         exclude module: 'spark-mllib_2.11'
         exclude group: 'org.scala-lang'
         exclude module: 'kryo'
+        exclude module: 'gcs-connector'
     }
 }
 
