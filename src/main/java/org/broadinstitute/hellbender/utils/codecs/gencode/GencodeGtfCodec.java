@@ -63,7 +63,7 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
     static final Logger logger = LogManager.getLogger(GencodeGtfCodec.class);
 
     public static final int GENCODE_GTF_MIN_VERSION_NUM_INCLUSIVE = 19;
-    public static final int GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE = 27;
+    public static final int GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE = 28;
 
     public static final String GENCODE_GTF_FILE_EXTENSION = "gtf";
     public static final String GENCODE_GTF_FILE_PREFIX = "gencode";
@@ -610,7 +610,8 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
             }
         }
 
-        if ( !header.get(2).endsWith("@sanger.ac.uk") ) {
+        if ( !header.get(2).endsWith("@sanger.ac.uk") &&
+             !header.get(2).endsWith("@ebi.ac.uk") ) {
             if ( throwIfInvalid ) {
                 throw new UserException.MalformedFile(
                         "GENCODE GTF Header line 2 does not contain expected contact email address (" +

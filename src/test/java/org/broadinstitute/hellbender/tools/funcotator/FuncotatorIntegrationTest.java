@@ -29,7 +29,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
     // Whether to do debug output (i.e. leave output around).
     // This should always be false when checked in.
-    private static final boolean doDebugTests           = false;
+    private static final boolean doDebugTests             = false;
     private static final String  LARGE_DATASOURCES_FOLDER = "funcotator_dataSources_latest";
 
     static {
@@ -181,20 +181,26 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     @DataProvider
     public Object[][] provideForLargeDataValidationTest() {
         return new Object[][] {
+//                {
+//                        "M2_01115161-TA1-filtered.vcf",
+//                        "Homo_sapiens_assembly19.fasta",
+//                        true,
+//                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+//                },
+//                {
+//                        "C828.TCGA-D3-A2JP-06A-11D-A19A-08.3-filtered.PASS.vcf",
+//                        "Homo_sapiens_assembly19.fasta",
+//                        true,
+//                        FuncotatorTestConstants.REFERENCE_VERSION_HG19
+//                },
+//                {
+//                        "hg38_test_variants.vcf",
+//                        "Homo_sapiens_assembly38.fasta",
+//                        false,
+//                        FuncotatorTestConstants.REFERENCE_VERSION_HG38
+//                },
                 {
-                        "M2_01115161-TA1-filtered.vcf",
-                        "Homo_sapiens_assembly19.fasta",
-                        true,
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
-                },
-                {
-                        "C828.TCGA-D3-A2JP-06A-11D-A19A-08.3-filtered.PASS.vcf",
-                        "Homo_sapiens_assembly19.fasta",
-                        true,
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG19
-                },
-                {
-                        "hg38_test_variants.vcf",
+                        "sample21.trimmed.vcf",
                         "Homo_sapiens_assembly38.fasta",
                         false,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG38

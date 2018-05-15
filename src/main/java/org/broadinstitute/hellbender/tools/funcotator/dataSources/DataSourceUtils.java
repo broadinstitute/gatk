@@ -589,12 +589,15 @@ final public class DataSourceUtils {
             return false;
         }
 
-        if ( month < MIN_MONTH_RELEASED ) {
-            return false;
-        }
-
-        if ( day < MIN_DAY_RELEASED ) {
-            return false;
+        else if ( year == MIN_YEAR_RELEASED ) {
+            if ( month < MIN_MONTH_RELEASED ) {
+                return false;
+            }
+            else if ( month == MIN_MONTH_RELEASED ) {
+                if ( day < MIN_DAY_RELEASED ) {
+                    return false;
+                }
+            }
         }
 
         return true;

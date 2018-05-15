@@ -1049,7 +1049,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Get the strand-corrected alleles from the inputs.
         // Also get the reference sequence for the variant region.
         // (spanning the entire length of both the reference and the variant, regardless of which is longer).
-        final Allele strandCorrectedRefAllele = FuncotatorUtils.getStrandCorrectedAllele(variant.getReference(), strand);
         final Allele strandCorrectedAltAllele = FuncotatorUtils.getStrandCorrectedAllele(altAllele, strand);
         final String referenceBases = getReferenceBases(variant.getReference(), altAllele, reference, strand);
 
@@ -1074,32 +1073,38 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             // Get the 5' UTR sequence here.
             // Note: We grab 3 extra bases at the end (from the coding sequence) so that we can check for denovo starts
             //       even if the variant occurs in the last base of the UTR.
+            final int numExtraLeadingBases = 2;
+            final int numExtraTrailingBases = variant.getReference().length() < 3 ? 3 : variant.getReference().length() + 1;
             final String fivePrimeUtrCodingSequence =
-                    getFivePrimeUtrSequenceFromTranscriptFasta( transcript.getTranscriptId(), transcriptIdMap, transcriptFastaReferenceDataSource, 3);
+                    getFivePrimeUtrSequenceFromTranscriptFasta( transcript.getTranscriptId(), transcriptIdMap, transcriptFastaReferenceDataSource, numExtraTrailingBases);
 
             final int codingStartPos = FuncotatorUtils.getStartPositionInTranscript(variant, activeRegions, strand);
 
-            // Get the number of bases we need to add to the start position of the variant to get it in frame:
-            final int alignedAlleleOffset = FuncotatorUtils.getAlignedPosition(variant.getStart()) - variant.getStart();
-
             // But we can really just use the referenceBases to do this:
-            final String altAlleleCodon = (referenceBases.substring(referenceWindow-2, referenceWindow) +
-                    strandCorrectedAltAllele +
-                    referenceBases.substring(referenceWindow+strandCorrectedAltAllele.length(), referenceWindow + 3)).substring(2 + alignedAlleleOffset,5 + alignedAlleleOffset);
+            final String rawAltUtrSubSequence = (referenceBases.substring(referenceWindow-numExtraLeadingBases, referenceWindow) +
+                                    strandCorrectedAltAllele +
+                                    referenceBases.substring(referenceWindow + variant.getReference().length(), referenceWindow + numExtraTrailingBases));
 
-            // Check for de novo starts:
-            // NOTE: Subtract 1 to account for the 1-based, inclusive nature of genetic coordinates:
-            if ( FuncotatorUtils.getEukaryoticAminoAcidByCodon( altAlleleCodon ) == AminoAcid.METHIONINE ) {
-
-                // We know we have a new start.
-                // Is it in frame or out of frame?
-                if ( FuncotatorUtils.isInFrameWithEndOfRegion(codingStartPos, fivePrimeUtrCodingSequence.length()) ) {
+            // Check for de novo starts in the raw sequence:
+            boolean startFound = false;
+            int codingRegionOffset = -numExtraLeadingBases;
+            for ( int i = 0; (i+3 < rawAltUtrSubSequence.length()) ; ++i ) {
+                startFound = FuncotatorUtils.getEukaryoticAminoAcidByCodon( rawAltUtrSubSequence.substring(i, i+3) ) == AminoAcid.METHIONINE;
+                if (startFound) {
+                    codingRegionOffset += i;
+                    break;
+                }
+            }
+            // If we found a start codon, we should set the variant classification as such:
+            if ( startFound ) {
+                if ( FuncotatorUtils.isInFrameWithEndOfRegion(codingStartPos + codingRegionOffset, fivePrimeUtrCodingSequence.length()) ) {
                     gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME);
                 }
                 else {
                     gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME);
                 }
             }
+            // Just a normal 5' variant:
             else {
                 gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR);
             }
@@ -1425,9 +1430,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         if ( processSequenceInformation ) {
             if ( transcriptIdMap.containsKey(transcript.getTranscriptId()) ) {
 
-                final String transcriptSequence;
                 // NOTE: This can't be null because of the Funcotator input args.
-                transcriptSequence = getCodingSequenceFromTranscriptFasta(transcript.getTranscriptId(), transcriptIdMap, transcriptFastaReferenceDataSource);
+                final String transcriptSequence = getCodingSequenceFromTranscriptFasta(transcript.getTranscriptId(), transcriptIdMap, transcriptFastaReferenceDataSource);
 
                 // Get the transcript sequence as described by the given exonPositionList:
                 sequenceComparison.setTranscriptCodingSequence(new ReferenceSequence(transcript.getTranscriptId(), transcript.getStart(), transcriptSequence.getBytes()));
