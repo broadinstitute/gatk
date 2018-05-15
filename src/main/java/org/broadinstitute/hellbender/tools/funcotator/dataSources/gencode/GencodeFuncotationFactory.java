@@ -57,6 +57,18 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     private static final int gcContentWindowSizeBases = 200;
 
     /**
+     * The number of leading bases to include when building the variant sequence for UTR variants.
+     * Used to determine if there is a de novo start.
+     */
+    private static final int numLeadingBasesForUtrAnnotationSequenceConstruction = 2;
+
+    /**
+     * The number of leading bases to include when building the variant sequence for UTR variants.
+     * * Used to determine if there is a de novo start.
+     */
+    private static final int defaultNumTrailingBasesForUtrAnnotationSequenceConstruction = 3;
+
+    /**
      * The window around a variant to include in the reference context annotation.
      * Also used for context from which to get surrounding codon changes and protein changes.
      */
@@ -1073,21 +1085,20 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             // Get the 5' UTR sequence here.
             // Note: We grab 3 extra bases at the end (from the coding sequence) so that we can check for denovo starts
             //       even if the variant occurs in the last base of the UTR.
-            final int numExtraLeadingBases = 2;
-            final int numExtraTrailingBases = variant.getReference().length() < 3 ? 3 : variant.getReference().length() + 1;
+            final int numExtraTrailingBases = variant.getReference().length() < defaultNumTrailingBasesForUtrAnnotationSequenceConstruction ? defaultNumTrailingBasesForUtrAnnotationSequenceConstruction : variant.getReference().length() + 1;
             final String fivePrimeUtrCodingSequence =
                     getFivePrimeUtrSequenceFromTranscriptFasta( transcript.getTranscriptId(), transcriptIdMap, transcriptFastaReferenceDataSource, numExtraTrailingBases);
 
             final int codingStartPos = FuncotatorUtils.getStartPositionInTranscript(variant, activeRegions, strand);
 
             // But we can really just use the referenceBases to do this:
-            final String rawAltUtrSubSequence = (referenceBases.substring(referenceWindow-numExtraLeadingBases, referenceWindow) +
+            final String rawAltUtrSubSequence = (referenceBases.substring(referenceWindow-numLeadingBasesForUtrAnnotationSequenceConstruction, referenceWindow) +
                                     strandCorrectedAltAllele +
                                     referenceBases.substring(referenceWindow + variant.getReference().length(), referenceWindow + numExtraTrailingBases));
 
             // Check for de novo starts in the raw sequence:
             boolean startFound = false;
-            int codingRegionOffset = -numExtraLeadingBases;
+            int codingRegionOffset = -numLeadingBasesForUtrAnnotationSequenceConstruction;
             for ( int i = 0; (i+3 < rawAltUtrSubSequence.length()) ; ++i ) {
                 startFound = FuncotatorUtils.getEukaryoticAminoAcidByCodon( rawAltUtrSubSequence.substring(i, i+3) ) == AminoAcid.METHIONINE;
                 if (startFound) {
