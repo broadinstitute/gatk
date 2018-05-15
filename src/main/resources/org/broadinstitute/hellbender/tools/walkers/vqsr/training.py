@@ -1,10 +1,8 @@
 # Imports
 import os
-import sys
 import vcf
 import math
 import h5py
-import time
 import pysam
 import vqsr_cnn
 import numpy as np
@@ -14,20 +12,21 @@ from collections import Counter
 # Keras Imports
 import keras.backend as K
 
+
 def run():
     args = vqsr_cnn.parse_args()
     if 'write_reference_and_annotation_tensors' == args.mode:
         write_reference_and_annotation_tensors(args)
     elif 'write_read_and_annotation_tensors' == args.mode:
         write_read_and_annotation_tensors(args)
-    elif 'train_on_reference_tensors_and_annotations' == args.mode:
-        train_on_reference_tensors_and_annotations(args)
-    elif 'train_on_read_tensors_and_annotations' == args.mode:
-        train_on_read_tensors_and_annotations(args)
-    elif 'train_tiny_model_on_read_tensors_and_annotations' == args.mode:
-        train_tiny_model_on_read_tensors_and_annotations(args)
-    elif 'train_small_model_on_read_tensors_and_annotations' == args.mode:
-        train_small_model_on_read_tensors_and_annotations(args)
+    elif 'train_default_1d_model' == args.mode:
+        train_default_1d_model(args)
+    elif 'train_default_2d_model' == args.mode:
+        train_default_2d_model(args)
+    elif 'train_args_model_on_read_tensors_and_annotations' == args.mode:
+        train_args_model_on_read_tensors_and_annotations(args)
+    elif 'train_args_model_on_reference_and_annotations' == args.mode:
+        train_args_model_on_read_tensors_and_annotations(args)
     else:
         raise ValueError('Unknown training mode:', args.mode)
 
@@ -37,21 +36,15 @@ def write_reference_and_annotation_tensors(args, include_dna=True, include_annot
         raise ValueError('Unknown tensor name:', args.tensor_name, '1d maps must be in:', str(vqsr_cnn.TENSOR_MAPS_1D))
 
     record_dict = SeqIO.to_dict(SeqIO.parse(args.reference_fasta, "fasta"))
-    if os.path.splitext(args.input_vcf)[-1].lower() == '.gz':
-        vcf_reader = vcf.Reader(open(args.input_vcf, 'rb'))
-    else:
-        vcf_reader = vcf.Reader(open(args.input_vcf, 'r'))
 
-    if os.path.splitext(args.train_vcf)[-1].lower() == '.gz':
-        vcf_ram = vcf.Reader(open(args.train_vcf, 'rb'))
-    else:
-        vcf_ram = vcf.Reader(open(args.train_vcf, 'r'))
+    vcf_reader = get_vcf_reader(args.input_vcf)
+    vcf_ram = get_vcf_reader(args.train_vcf)
 
     bed_dict = bed_file_to_dict(args.bed_file)
     stats = Counter()
 
     if args.chrom:
-        variants  = vcf_reader.fetch(args.chrom, args.start_pos, args.end_pos)
+        variants = vcf_reader.fetch(args.chrom, args.start_pos, args.end_pos)
     else:
         variants = vcf_reader
 
@@ -106,7 +99,6 @@ def write_reference_and_annotation_tensors(args, include_dna=True, include_annot
         print(k, ' has:', stats[k])
 
 
-
 def write_read_and_annotation_tensors(args, include_annotations=True, pileup=False):
     '''Create tensors structured as tensor map of reads organized by labels in the data directory.
 
@@ -134,8 +126,8 @@ def write_read_and_annotation_tensors(args, include_annotations=True, pileup=Fal
     samfile = pysam.AlignmentFile(args.bam_file, "rb")
     bed_dict = bed_file_to_dict(args.bed_file)
     record_dict = SeqIO.to_dict(SeqIO.parse(args.reference_fasta, "fasta"))
-    vcf_reader = vcf.Reader(open(args.input_vcf, 'r'))
-    vcf_ram = vcf.Reader(open(args.train_vcf, 'rb'))
+    vcf_reader = get_vcf_reader(args.input_vcf)
+    vcf_ram = get_vcf_reader(args.train_vcf)
 
     if args.chrom:
         variants = vcf_reader.fetch(args.chrom, args.start_pos, args.end_pos)
@@ -205,7 +197,7 @@ def write_read_and_annotation_tensors(args, include_annotations=True, pileup=Fal
         print('Done generating tensors. Last variant:', str(variant), 'from vcf:', args.input_vcf)
 
 
-def train_on_reference_tensors_and_annotations(args):
+def train_default_1d_model(args):
     '''Train a 1D Convolution plus reference tracks and MLP Annotation architecture.
 
     Arguments:
@@ -223,7 +215,7 @@ def train_on_reference_tensors_and_annotations(args):
     generate_valid = dna_annotation_generator(args, valid_paths)
 
     weight_path = vqsr_cnn.weight_path_from_args(args)
-    model = vqsr_cnn.build_reference_annotation_model(args)
+    model = vqsr_cnn.build_default_1d_annotation_model(args)
     model = vqsr_cnn.train_model_from_generators(args, model, generate_train, generate_valid, weight_path)
 
     test = load_dna_annotations_positions_from_class_dirs(args, test_paths, per_class_max=args.samples)
@@ -231,8 +223,7 @@ def train_on_reference_tensors_and_annotations(args):
         vqsr_cnn.plot_roc_per_class(model, [test[0], test[1]], test[2], args.labels, args.id, prefix=args.image_dir)
 
 
-
-def train_on_read_tensors_and_annotations(args):
+def train_default_2d_model(args):
     '''Trains a reference, read, and annotation CNN architecture on tensors at the supplied data directory.
 
     This architecture looks at reads, read flags, reference sequence, and variant annotations.
@@ -251,7 +242,7 @@ def train_on_read_tensors_and_annotations(args):
     generate_valid = tensor_generator_from_label_dirs_and_args(args, valid_paths)
 
     weight_path = vqsr_cnn.weight_path_from_args(args)
-    model = vqsr_cnn.build_read_tensor_2d_and_annotations_model(args)
+    model = vqsr_cnn.build_default_2d_annotation_model(args)
     model = vqsr_cnn.train_model_from_generators(args, model, generate_train, generate_valid, weight_path)
 
     test = load_tensors_and_annotations_from_class_dirs(args, test_paths, per_class_max=args.samples)
@@ -260,7 +251,7 @@ def train_on_read_tensors_and_annotations(args):
                                     prefix=args.image_dir, batch_size=args.batch_size)
 
 
-def train_tiny_model_on_read_tensors_and_annotations(args):
+def train_args_model_on_read_tensors_and_annotations(args):
     '''Trains a reference, read, and annotation CNN architecture on tensors at the supplied data directory.
 
     This architecture looks at reads, read flags, reference sequence, and variant annotations.
@@ -279,7 +270,7 @@ def train_tiny_model_on_read_tensors_and_annotations(args):
     generate_valid = tensor_generator_from_label_dirs_and_args(args, valid_paths)
 
     weight_path = vqsr_cnn.weight_path_from_args(args)
-    model = vqsr_cnn.build_tiny_2d_annotation_model(args)
+    model = vqsr_cnn.build_2d_annotation_model_from_args(args)
     model = vqsr_cnn.train_model_from_generators(args, model, generate_train, generate_valid, weight_path)
 
     test = load_tensors_and_annotations_from_class_dirs(args, test_paths, per_class_max=args.samples)
@@ -712,6 +703,7 @@ def get_true_label(allele, variant, bed_dict, truth_vcf, stats):
             NOT_INDEL if variant is indel and not in truth vcf
     '''
     in_bed = in_bed_file(bed_dict, variant.CHROM, variant.POS)
+
     if allele_in_vcf(allele, variant, truth_vcf) and in_bed:
         class_prefix = ''
     elif in_bed:
@@ -815,9 +807,14 @@ def bed_file_to_dict(bed_file):
 
 
 def in_bed_file(bed_dict, contig, pos):
-    # Exclusive
+
+    if not contig in bed_dict:
+        return False
+
     lows = bed_dict[contig][0]
     ups = bed_dict[contig][1]
+
+    # Half open interval [#,#)
     return np.any((lows <= pos) & (pos < ups))
 
 
@@ -832,7 +829,14 @@ def allele_in_vcf(allele, variant, vcf_ram):
     Returns
         variant if it is found otherwise None
     '''
-    variants = vcf_ram.fetch(variant.CHROM, variant.POS-1, variant.POS)
+    if not variant.CHROM in vcf_ram.contigs:
+        return None
+
+    try:
+        variants = vcf_ram.fetch(variant.CHROM, variant.POS-1, variant.POS)
+    except ValueError as e:
+        print('catching value error on fetch')
+        return None
 
     for v in variants:
         if v.CHROM == variant.CHROM and v.POS == variant.POS and allele in v.ALT:
@@ -1144,6 +1148,12 @@ def get_train_valid_test_paths(args):
 def plain_name(full_name):
     name = os.path.basename(full_name)
     return name.split('.')[0]
+
+def get_vcf_reader(my_vcf):
+    if os.path.splitext(my_vcf)[-1].lower() == '.gz':
+        return vcf.Reader(open(my_vcf, 'rb'))
+    else:
+        return vcf.Reader(open(my_vcf, 'r'))
 
 
 # Back to the top!
