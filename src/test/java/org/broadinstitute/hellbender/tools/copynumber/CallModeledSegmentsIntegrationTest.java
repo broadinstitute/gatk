@@ -54,7 +54,6 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
                                   final boolean loadAlleleFraction,
                                   final boolean interactiveRun,
                                   final String outputPrefix) {
-        // Test running on the simulated data.
         runTest(inputFile, truthFile,
                 loadCopyRatio, loadAlleleFraction, interactiveRun,
                 outputPrefix);
@@ -117,19 +116,26 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
                                                final String outputImagePrefix,
                                                boolean onlyNormalSegments) {
         // Make sure that all images were generated, including the ones in interactive mode.
+        // Input onlyNormalSegments is true iff the algorithm only found a normal segments.
         Assert.assertTrue(outputImageDir.isDirectory());
 
+        // Images generated in interactive mode:
+        // Image showing deletions, amplifications and CNLOH.
         final File delAmplPlot = new File(outputImageDir, outputImagePrefix
-                + CallModeledSegments.INTERACTIVE_OUTPUT_DEL_AMPL_IMAGE_SUFFIX_DEFAULT_VALUE);
+                + CallModeledSegments.INTERACTIVE_OUTPUT_CLASSIFICATION_IMAGE_SUFFIX_DEFAULT_VALUE);
+        // Summary plot showing copy ratio, allele fraction histograms as well as the the segments in
+        // (copy ratio, allele fraction plane), indicating which ones are normal
         final File scatterPlot = new File(outputImageDir, outputImagePrefix
-                + CallModeledSegments.INTERACTIVE_OUTPUT_SCATTER_PLOT_SUFFIX_DEFAULT_VALUE);
+                + CallModeledSegments.INTERACTIVE_OUTPUT_SUMMARY_PLOT_SUFFIX_DEFAULT_VALUE);
+        // 1D fit to copy ratio data
         final File copyRatioFitPlot = new File(outputImageDir, outputImagePrefix
-                + CallModeledSegments.INTERACTIVE_OUTPUT_COPY_RATIO_SUFFIX_DEFAULT_VALUE);
+                + CallModeledSegments.INTERACTIVE_OUTPUT_COPY_RATIO_PLOT_SUFFIX_DEFAULT_VALUE);
 
         Assert.assertTrue(delAmplPlot.isFile());
         Assert.assertTrue(scatterPlot.isFile());
         Assert.assertTrue(copyRatioFitPlot.isFile());
 
+        //
         if (!onlyNormalSegments) {
             final File alleleFractionPlot = new File(outputImageDir.getAbsolutePath() + "/" + outputImagePrefix
                     + CallModeledSegments.INTERACTIVE_OUTPUT_ALLELE_FRACTION_PLOT_SUFFIX_DEFAULT_VALUE);
@@ -142,8 +148,8 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
     }
 
     private static boolean compareCalledFiles(final File outputFile, final File truthFile) {
-        // Make sure that the truth file's and the output file's calls dusagree at most in errorTolerance fraction of
-        // the base pairs.
+        // Make sure that the truth file's and the output file's calls disagree at most in errorTolerance fraction of
+        // the base pairs, where errorTolerances is specified as:
         double errorTolerance = 0.02;
 
         CalledModeledSegmentCollection outputData = new CalledModeledSegmentCollection(outputFile);
@@ -151,7 +157,8 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
         List<CalledModeledSegment> outputDataRecords = outputData.getRecords();
         List<CalledModeledSegment> truthDataRecords = truthData.getRecords();
 
-        boolean onlyNormaSegments = true;
+        // Calculating the frequency of disagreeing base pairs between the output and the truth data
+        boolean onlyNormaSegments = true;   // True iff the algorithm has found normal segments only
         int basePairsDifferent = 0;
         int totalBasePairs = 0;
         int segmentLength;
