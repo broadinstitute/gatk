@@ -228,7 +228,8 @@ class LoadAndSampleCrAndAf:
         if (not self.__load_cr) and (not self.__load_af) and (not self.__log_filename == ""):
             self.__logger.info("Error: No copy ratio and no allele fraction data will be loaded.")
 
-        # Load the data
+        # Load data
+        max_copy_ratio_possible = 40   # we do not load any copy ratio value that is larger than this
         if self.__load_cr and self.__load_af:
             for line in lines:
                 values = line.strip().split()
@@ -241,18 +242,25 @@ class LoadAndSampleCrAndAf:
                             and not math.isnan(float(values[9]))
                             and not math.isnan(float(values[10]))
                         ):
-                            contig.append(int(values[0]))
-                            segment_start.append(int(values[1]))
-                            segment_end.append(int(values[2]))
-                            segment_lengths.append(int(values[2]) - int(values[1]))
-                            n_points_cr.append(int(values[3]))
-                            n_points_af.append(int(values[4]))
-                            copy_ratio_10th_perc.append(2**float(values[5]))
-                            copy_ratio_median.append(2**float(values[6]))
-                            copy_ratio_90th_perc.append(2**float(values[7]))
-                            allele_fraction_10th_perc.append(float(values[8]))
-                            allele_fraction_median.append(float(values[9]))
-                            allele_fraction_90th_perc.append(float(values[10].rstrip("\\")))
+                            if (2**float(values[5]) <= max_copy_ratio_possible
+                                and 2**float(values[6]) <= max_copy_ratio_possible
+                                and 2**float(values[7]) <= max_copy_ratio_possible
+                                and 0. <= float(values[8]) <= 0.5
+                                and 0. <= float(values[9]) <= 0.5
+                                and 0. <= float(values[10]) <= 0.5
+                                ):
+                                contig.append(int(values[0]))
+                                segment_start.append(int(values[1]))
+                                segment_end.append(int(values[2]))
+                                segment_lengths.append(int(values[2]) - int(values[1]))
+                                n_points_cr.append(int(values[3]))
+                                n_points_af.append(int(values[4]))
+                                copy_ratio_10th_perc.append(2**float(values[5]))
+                                copy_ratio_median.append(2**float(values[6]))
+                                copy_ratio_90th_perc.append(2**float(values[7]))
+                                allele_fraction_10th_perc.append(float(values[8]))
+                                allele_fraction_median.append(float(values[9]))
+                                allele_fraction_90th_perc.append(float(values[10].rstrip("\\")))
         elif self.__load_cr:
             for line in lines:
                 values = line.strip().split()
@@ -262,18 +270,22 @@ class LoadAndSampleCrAndAf:
                             and not math.isnan(float(values[6]))
                             and not math.isnan(float(values[7]))
                         ):
-                            contig.append(int(values[0]))
-                            segment_start.append(int(values[1]))
-                            segment_end.append(int(values[2]))
-                            segment_lengths.append(int(values[2]) - int(values[1]))
-                            n_points_cr.append(int(values[3]))
-                            n_points_af.append(0)
-                            copy_ratio_10th_perc.append(2**float(values[5]))
-                            copy_ratio_median.append(2**float(values[6]))
-                            copy_ratio_90th_perc.append(2**float(values[7]))
-                            allele_fraction_10th_perc.append(float('nan'))
-                            allele_fraction_median.append(float('nan'))
-                            allele_fraction_90th_perc.append(float('nan'))
+                            if (2**float(values[5]) <= max_copy_ratio_possible
+                                and 2**float(values[6]) <= max_copy_ratio_possible
+                                and 2**float(values[7]) <= max_copy_ratio_possible
+                                ):
+                                contig.append(int(values[0]))
+                                segment_start.append(int(values[1]))
+                                segment_end.append(int(values[2]))
+                                segment_lengths.append(int(values[2]) - int(values[1]))
+                                n_points_cr.append(int(values[3]))
+                                n_points_af.append(0)
+                                copy_ratio_10th_perc.append(2**float(values[5]))
+                                copy_ratio_median.append(2**float(values[6]))
+                                copy_ratio_90th_perc.append(2**float(values[7]))
+                                allele_fraction_10th_perc.append(float('nan'))
+                                allele_fraction_median.append(float('nan'))
+                                allele_fraction_90th_perc.append(float('nan'))
         elif self.__load_af:
             for line in lines:
                 values = line.strip().split()
@@ -283,18 +295,22 @@ class LoadAndSampleCrAndAf:
                             and not math.isnan(float(values[9]))
                             and not math.isnan(float(values[10]))
                         ):
-                            contig.append(int(values[0]))
-                            segment_start.append(int(values[1]))
-                            segment_end.append(int(values[2]))
-                            segment_lengths.append(int(values[2]) - int(values[1]))
-                            n_points_cr.append(0)
-                            n_points_af.append(int(values[4]))
-                            copy_ratio_median.append(float('nan'))
-                            copy_ratio_10th_perc.append(float('nan'))
-                            copy_ratio_90th_perc.append(float('nan'))
-                            allele_fraction_10th_perc.append(float(values[8]))
-                            allele_fraction_median.append(float(values[9]))
-                            allele_fraction_90th_perc.append(float(values[10].rstrip("\\")))
+                            if(0. <= float(values[8]) <= 0.5
+                               and 0. <= float(values[9]) <= 0.5
+                               and 0. <= float(values[10]) <= 0.5
+                               ):
+                                contig.append(int(values[0]))
+                                segment_start.append(int(values[1]))
+                                segment_end.append(int(values[2]))
+                                segment_lengths.append(int(values[2]) - int(values[1]))
+                                n_points_cr.append(0)
+                                n_points_af.append(int(values[4]))
+                                copy_ratio_median.append(float('nan'))
+                                copy_ratio_10th_perc.append(float('nan'))
+                                copy_ratio_90th_perc.append(float('nan'))
+                                allele_fraction_10th_perc.append(float(values[8]))
+                                allele_fraction_median.append(float(values[9]))
+                                allele_fraction_90th_perc.append(float(values[10].rstrip("\\")))
 
         return [copy_ratio_median, copy_ratio_10th_perc,
                 copy_ratio_90th_perc, allele_fraction_median,
@@ -307,16 +323,16 @@ class LoadAndSampleCrAndAf:
             when the 50th (median), 10th and 90th percentiles are known.
         """
 
-        def __find_beta_percentile(a: float, b: float, perc: float):
+        def __find_beta_percentile(a_: float, b_: float, perc_: float):
             # Get the value corresponding to percentile perc from
             # the beta distribution with parameters a and b
-            if perc < 0.:
+            if perc_ < 0.:
                 return 0.
-            if perc > 1.:
+            if perc_ > 1.:
                 return 1.
-            return scipy.special.betaincinv(a, b, perc)
+            return scipy.special.betaincinv(a_, b_, perc_)
 
-        def __find_initial_ab(af_median: float, af_10: float, af_90: float):
+        def __find_initial_ab(af_median_: float, af_10_: float, af_90_: float):
             """ In this method, we set the initial conditions for the
                 minimization algorithm that fits the parameters
                 of the beta distribution that best describe the
@@ -335,13 +351,13 @@ class LoadAndSampleCrAndAf:
                 We solve the approximate equations for the mean and the variance
                 and get a and b from there.
             """
-            std_dev_estimate = 0.5 * (af_90 - af_10)
+            std_dev_estimate = 0.5 * (af_90_ - af_10_)
             var_estimate = std_dev_estimate ** 2
-            a0 = (af_median**2 * (1 - af_median)) / var_estimate - af_median
-            b0 = a0 * (1 - af_median) / af_median
-            a0 = min(max(0.001, a0), 10000)
-            b0 = min(max(0.001, b0), 10000)
-            return [a0, b0]
+            a0_ = (af_median_**2 * (1 - af_median_)) / var_estimate - af_median_
+            b0_ = a0_ * (1 - af_median_) / af_median_
+            a0_ = min(max(0.001, a0_), 10000)
+            b0_ = min(max(0.001, b0_), 10000)
+            return [a0_, b0_]
 
         def __beta_err(ab):
             """ This function defines the fitting error. We require that the median
@@ -352,11 +368,11 @@ class LoadAndSampleCrAndAf:
             # The reason for this choice is that the errors in the 10th and 90th
             # percentile can be much larger than those of the median, as these are
             # at the tails of the distribution.
-            a = ab[0]
-            b = ab[1]
-            af_median_prediction = __find_beta_percentile(a, b, 0.5)
-            af_10_prediction = __find_beta_percentile(a, b, 0.1)
-            af_90_prediction = __find_beta_percentile(a, b, 0.9)
+            a_ = ab[0]
+            b_ = ab[1]
+            af_median_prediction = __find_beta_percentile(a_, b_, 0.5)
+            af_10_prediction = __find_beta_percentile(a_, b_, 0.1)
+            af_90_prediction = __find_beta_percentile(a_, b_, 0.9)
 
             objective = (abs((af_90 - af_10) - (af_90_prediction - af_10_prediction))**2
                          + abs(af_median - af_median_prediction)**2)
@@ -611,7 +627,7 @@ class ModeledSegmentsCaller:
 
         if self.__load_cr and self.__load_af:
             [self.__responsibilities_normal,
-             self.__normal_peak_indices,
+             self.__normal_segment_indices,
              self.__gaussian_mixture_fit] = self.__choose_normal_segments__cr_af_data()
         elif self.__load_cr:
             [self.__responsibilities_normal,
@@ -758,7 +774,7 @@ class ModeledSegmentsCaller:
             init_params="random", tol=1e-4, n_init=2,
             max_iter=1500,
             covariance_prior=np.asarray([sigma_cr_normal, sigma_af_normal]),
-            weight_concentration_prior=1000.0/n_Gaussians
+            weight_concentration_prior=20.0/n_Gaussians
         )
         gmix.fit(samples)
 
@@ -770,20 +786,24 @@ class ModeledSegmentsCaller:
 
         normal_peak_indices = []
         for i in range(len(gmix.weights_)):
-            if ((normal_range_cr[0] - np.sqrt(gmix.covariances_[i, 0]) <= gmix.means_[i, 0]
-                     <= normal_range_cr[1] + np.sqrt(gmix.covariances_[i, 0]))
-                     and (normal_range_af[0] <= gmix.means_[i, 1] + np.sqrt(gmix.covariances_[i, 1]))
-                     and (gmix.means_[i, 1] <= normal_range_af[1])
+            if (normal_range_cr[0] - min(np.sqrt(gmix.covariances_[i, 0]), 0.25) <= gmix.means_[i, 0]
+                and gmix.means_[i, 0] <= normal_range_cr[1] + min(np.sqrt(gmix.covariances_[i, 0]), 0.25)
+                and (normal_range_af[0] <= gmix.means_[i, 1] + np.sqrt(gmix.covariances_[i, 1]))
+                and (gmix.means_[i, 1] <= normal_range_af[1])
                 ):
                 normal_peak_indices.append(i)
 
         classification = gmix.predict(samples)
-        responsibilities_normal = self.__responsibility_segment_is_normal(gmix.weights_,
-                                                                          gmix.means_,
-                                                                          gmix.covariances_,
-                                                                          classification,
-                                                                          normal_peak_indices)
-        return [responsibilities_normal, normal_peak_indices, gmix]
+        responsibilities_normal = self.__responsibility_segments_are_normal(gmix.weights_,
+                                                                            gmix.means_,
+                                                                            gmix.covariances_,
+                                                                            classification,
+                                                                            normal_peak_indices)
+        normal_segment_indices = []
+        for i in range(len(responsibilities_normal)):
+            if responsibilities_normal[i] >= self.__responsibility_threshold_normal:
+                normal_segment_indices.append(i)
+        return [responsibilities_normal, normal_segment_indices, gmix]
 
     def __choose_normal_segments__af_data_only(self):
         """ This function tries to determine which segments are normal relying only on allele fraction data.
@@ -791,7 +811,7 @@ class ModeledSegmentsCaller:
             it is considered normal.
         """
         responsibilities_normal = [0] * len(self.__allele_fraction_median)
-        normal_peak_indices = []
+        normal_segment_indices = []
         for i in range(len(self.__allele_fraction_median)):
             p = np.sum([1
                         if a0 > self.__normal_minor_allele_fraction_threshold
@@ -800,8 +820,8 @@ class ModeledSegmentsCaller:
                         ]) / len(self.__allele_fraction_sampled_per_segment[i])
             responsibilities_normal[i] = p
             if p >= self.__responsibility_threshold_normal:
-                normal_peak_indices.append(i)
-        return [responsibilities_normal, normal_peak_indices]
+                normal_segment_indices.append(i)
+        return [responsibilities_normal, normal_segment_indices]
 
     def __choose_normal_segments__cr_data_only(self):
         """ This function determines which peak in the 1D copy ratio data is the copy number 2 peak.
@@ -820,12 +840,13 @@ class ModeledSegmentsCaller:
         mu_peaks_initial_fit = [mu_peaks_initial_fit[i] for i in ordering]
 
         if n_peaks_initial_fit <= 1:
-            cn2_interval = [0, 100000]
+            cn2_interval = [0, 1.05 * max(self.__copy_ratio_sampled)]
         elif n_peaks_initial_fit == 2:
             if w_peaks_initial_fit[0] >= w_peaks_initial_fit[1]:
                 cn2_interval = [0, 0.5 * (mu_peaks_initial_fit[0] + mu_peaks_initial_fit[1])]
             else:
-                cn2_interval = [0.5 * (mu_peaks_initial_fit[0] + mu_peaks_initial_fit[1]), 100000]
+                cn2_interval = [0.5 * (mu_peaks_initial_fit[0] + mu_peaks_initial_fit[1]),
+                                1.05 * max(self.__copy_ratio_sampled)]
         else:
             if w_peaks_initial_fit[0] >= w_peaks_initial_fit[1]:
                 cn2_interval = [0, 0.5 * (mu_peaks_initial_fit[0] + mu_peaks_initial_fit[1])]
@@ -834,18 +855,18 @@ class ModeledSegmentsCaller:
                                 0.5 * (mu_peaks_initial_fit[1] + mu_peaks_initial_fit[2])]
 
         responsibilities_normal = [0] * len(self.__copy_ratio_median)
-        normal_peak_indices = []
+        normal_segment_indices = []
         for i in range(len(self.__copy_ratio_median)):
             if cn2_interval[0] <= self.__copy_ratio_median[i] <= cn2_interval[1]:
                 responsibilities_normal[i] = 1
-                normal_peak_indices.append(i)
+                normal_segment_indices.append(i)
             else:
                 responsibilities_normal[i] = 0
 
-        return [responsibilities_normal, normal_peak_indices]
+        return [responsibilities_normal, normal_segment_indices]
 
-    def __responsibility_segment_is_normal(self, gmix_weights, gmix_means,
-                                           gmix_covariances, gmix_classification, normal_peak_indices):
+    def __responsibility_segments_are_normal(self, gmix_weights, gmix_means,
+                                             gmix_covariances, gmix_classification, normal_peak_indices):
         """ Based on a Gaussian fit to the clusters in copy ratio and allele fraction space,
             figure out the responsibilities of a segment being normal.
         """
@@ -860,7 +881,7 @@ class ModeledSegmentsCaller:
             pts = np.array([self.__copy_ratio_sampled_per_segment[i],
                             self.__allele_fraction_sampled_per_segment[i]]).T
             normal_pdf = np.sum([gmix_weights[j] * scipy.stats.multivariate_normal.pdf(
-                pts[k], gmix_means[j], gmix_covariances[j])
+                                 pts[k], gmix_means[j], gmix_covariances[j])
                                  for j in normal_peak_indices
                                  for k in range(len(pts))]) / len(pts)
             total_pdf = np.sum([gmix_weights[j] * scipy.stats.multivariate_normal.pdf(
@@ -874,6 +895,9 @@ class ModeledSegmentsCaller:
         """ This function determines which peak in the 1D copy ratio data is the copy number 2 peak.
             It also makes use of the allele fraction data to make this decision.
         """
+        normal_cr_segment_min = max([0, 0.9 * min(self.__copy_ratio_sampled)])
+        normal_cr_segment_max = min([1.1 * max(self.__copy_ratio_sampled), 100])
+
         n_peaks_initial_fit, _, _, _ = self.__estimate_number_of_cr_clusters(max_n_Gaussians=10, alpha=0.1,
                                                                              min_std_dev=0.05)
         n_peaks_initial_fit, _, _, _ = self.__estimate_number_of_cr_clusters(max_n_Gaussians=n_peaks_initial_fit+2,
@@ -889,12 +913,10 @@ class ModeledSegmentsCaller:
             d_mean = mu_peaks_initial_fit[1] - mu_peaks_initial_fit[0]
             o_mean = mu_peaks_initial_fit[0]
         else:
-            d_mean = 100000
-            o_mean = 0
             if not self.__log_filename == "":
                 self.__logger.info("Only a single copy ratio peak found. %s was not created."
                                    % self.__fig_allele_fraction_cn1_cn2_intervals)
-            return [o_mean, d_mean]
+            return [0, normal_cr_segment_max]
 
         n_intervals_needed = n_peaks_initial_fit + 2
 
@@ -978,6 +1000,8 @@ class ModeledSegmentsCaller:
             plt.savefig(self.__fig_allele_fraction_cn1_cn2_intervals)
             plt.close(fig)
 
+        cn2_interval[0] = max(cn2_interval[0], normal_cr_segment_min)
+        cn2_interval[1] = min(cn2_interval[1], normal_cr_segment_max)
         return cn2_interval
 
     def __indices_increasing_order(self, ls: List):
@@ -996,7 +1020,7 @@ class ModeledSegmentsCaller:
         random.seed(RANDOM_SEED)
         gmix = mixture.BayesianGaussianMixture(n_components=n_Gaussians,
                                                weight_concentration_prior_type="dirichlet_distribution",
-                                               weight_concentration_prior = 0.001 / n_Gaussians,
+                                               weight_concentration_prior = 0.01 / n_Gaussians,
                                                covariance_prior = np.array([[0.01]]),
                                                max_iter = n_iterations)
         gmix.fit(np.asarray(data).reshape(-1,1))
@@ -1024,7 +1048,9 @@ class ModeledSegmentsCaller:
                 return True
             return False
 
-        [w, mu, cov] = self.__fit_normal_1d(self.__copy_ratio_sampled, max_n_Gaussians, 10000)
+        [w, mu, cov] = self.__fit_normal_1d(data=self.__copy_ratio_sampled,
+                                            n_Gaussians=max_n_Gaussians,
+                                            n_iterations=10000)
         weight_threshold = max(0.25 / max_n_Gaussians, 0.08)
         peak_indices = []
         for i in range(max_n_Gaussians):
@@ -1320,7 +1346,7 @@ class ModeledSegmentsCaller:
         """
         samples = np.asarray([self.__copy_ratio_sampled, self.__allele_fraction_sampled]).T
         classification = self.__gaussian_mixture_fit.predict(samples)
-        colors = ["k" if i in self.__normal_peak_indices else "r" for i in classification]
+        colors = ["k" if i in self.__normal_segment_indices else "r" for i in classification]
         plt.scatter(samples[:,0], samples[:,1], c=colors, alpha=0.8, s=10)
 
     def __plot_Gaussian_mixture_fit(self):
