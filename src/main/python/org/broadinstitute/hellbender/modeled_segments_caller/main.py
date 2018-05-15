@@ -98,6 +98,8 @@ class LoadAndSampleCrAndAf:
         # Load data from file
         if not output_log_prefix == "":
             self.__logger.info("Loading data from file.")
+
+        self.__max_copy_ratio_possible = 40   # we do not load any copy ratio value that is larger than this
         [self.__copy_ratio_median,           # median of the copy ratio posterior for each segment
          self.__copy_ratio_10th_perc,        # 10th percentile ...
          self.__copy_ratio_90th_perc,        # 90th percentile ...
@@ -127,7 +129,7 @@ class LoadAndSampleCrAndAf:
         if not output_log_prefix == "":
             self.__logger.info("Finished.\n\n\n")
 
-    def get_data_from_file(self):
+    def get_data(self):
         """ Return data loaded from the file."""
         return [self.__copy_ratio_median,
                 self.__copy_ratio_10th_perc,
@@ -140,7 +142,8 @@ class LoadAndSampleCrAndAf:
                 self.__segment_end,
                 self.__segment_lengths,
                 self.__n_points_cr,
-                self.__n_points_af]
+                self.__n_points_af,
+                self.__max_copy_ratio_possible]
 
     def get_input_filename(self):
         """Return input filename."""
@@ -200,9 +203,19 @@ class LoadAndSampleCrAndAf:
             if is_number(values[0]):
                 if len(values) >= 5:
                     segment_length = float(values[2]) - float(values[1])
-                    if math.isnan(float(values[5])) or math.isnan(float(values[6])) or math.isnan(float(values[7])):
+                    if (math.isnan(float(values[5]))
+                        or math.isnan(float(values[6]))
+                        or math.isnan(float(values[7]))
+                        or 2**float(values[5]) > self.__max_copy_ratio_possible
+                        or 2**float(values[6]) > self.__max_copy_ratio_possible
+                        or 2**float(values[7]) > self.__max_copy_ratio_possible):
                         cr_nan += segment_length
-                    if math.isnan(float(values[8])) or math.isnan(float(values[9])) or math.isnan(float(values[10])):
+                    if (math.isnan(float(values[8]))
+                        or math.isnan(float(values[9]))
+                        or math.isnan(float(values[10]))
+                        or not (0. <= float(values[8]) <= 0.5)
+                        or not (0. <= float(values[9]) <= 0.5)
+                        or not (0. <= float(values[10]) <= 0.5)):
                         af_nan += segment_length
                     all_sites += segment_length
         cr_nan_ratio_threshold = 0.80
@@ -229,7 +242,6 @@ class LoadAndSampleCrAndAf:
             self.__logger.info("Error: No copy ratio and no allele fraction data will be loaded.")
 
         # Load data
-        max_copy_ratio_possible = 40   # we do not load any copy ratio value that is larger than this
         if self.__load_cr and self.__load_af:
             for line in lines:
                 values = line.strip().split()
@@ -241,10 +253,10 @@ class LoadAndSampleCrAndAf:
                             and not math.isnan(float(values[8]))
                             and not math.isnan(float(values[9]))
                             and not math.isnan(float(values[10]))
-                        ):
-                            if (2**float(values[5]) <= max_copy_ratio_possible
-                                and 2**float(values[6]) <= max_copy_ratio_possible
-                                and 2**float(values[7]) <= max_copy_ratio_possible
+                            ):
+                            if (2**float(values[5]) <= self.__max_copy_ratio_possible
+                                and 2**float(values[6]) <= self.__max_copy_ratio_possible
+                                and 2**float(values[7]) <= self.__max_copy_ratio_possible
                                 and 0. <= float(values[8]) <= 0.5
                                 and 0. <= float(values[9]) <= 0.5
                                 and 0. <= float(values[10]) <= 0.5
@@ -270,9 +282,9 @@ class LoadAndSampleCrAndAf:
                             and not math.isnan(float(values[6]))
                             and not math.isnan(float(values[7]))
                         ):
-                            if (2**float(values[5]) <= max_copy_ratio_possible
-                                and 2**float(values[6]) <= max_copy_ratio_possible
-                                and 2**float(values[7]) <= max_copy_ratio_possible
+                            if (2**float(values[5]) <= self.__max_copy_ratio_possible
+                                and 2**float(values[6]) <= self.__max_copy_ratio_possible
+                                and 2**float(values[7]) <= self.__max_copy_ratio_possible
                                 ):
                                 contig.append(int(values[0]))
                                 segment_start.append(int(values[1]))
@@ -595,7 +607,8 @@ class ModeledSegmentsCaller:
          self.__segment_end,
          self.__segment_lengths,
          self.__n_points_cr,
-         self.__n_points_af] = self.__cr_af_data.get_data_from_file()
+         self.__n_points_af,
+         self.__max_copy_ratio_possible] = self.__cr_af_data.get_data()
 
         # Sample copy ratio and allele fraction points according to the distribution specified in
         # the input file. Number of points sampled is proportional to the segment lengths
@@ -1415,12 +1428,19 @@ class ModeledSegmentsCaller:
             else:
                 if self.__load_cr and self.__load_af:
                     if(len(values) >= 5
-                       and not math.isnan(float(values[5]))
-                       and not math.isnan(float(values[6]))
-                       and not math.isnan(float(values[7]))
-                       and not math.isnan(float(values[8]))
-                       and not math.isnan(float(values[9]))
-                       and not math.isnan(float(values[10]))):
+                        and not math.isnan(float(values[5]))
+                        and not math.isnan(float(values[6]))
+                        and not math.isnan(float(values[7]))
+                        and not math.isnan(float(values[8]))
+                        and not math.isnan(float(values[9]))
+                        and not math.isnan(float(values[10]))
+                        and 2**float(values[5]) <= self.__max_copy_ratio_possible
+                        and 2**float(values[6]) <= self.__max_copy_ratio_possible
+                        and 2**float(values[7]) <= self.__max_copy_ratio_possible
+                        and 0. <= float(values[8]) <= 0.5
+                        and 0. <= float(values[9]) <= 0.5
+                        and 0. <= float(values[10]) <= 0.5
+                        ):
                         file_data += line.strip() + "\t" + str(self.__normal_del_ampl(self.__copy_ratio_median[i],
                                                                                       avg_normal_cr, std_dev_normal_cr,
                                                                                       self.__responsibilities_normal[i]))
@@ -1433,7 +1453,11 @@ class ModeledSegmentsCaller:
                     if(len(values) >= 5
                        and not math.isnan(float(values[5]))
                        and not math.isnan(float(values[6]))
-                       and not math.isnan(float(values[7]))):
+                       and not math.isnan(float(values[7]))
+                       and 2**float(values[5]) <= self.__max_copy_ratio_possible
+                       and 2**float(values[6]) <= self.__max_copy_ratio_possible
+                       and 2**float(values[7]) <= self.__max_copy_ratio_possible
+                       ):
                         file_data += line.strip() + "\t" + str(self.__normal_del_ampl(self.__copy_ratio_median[i],
                                                                                       avg_normal_cr, std_dev_normal_cr,
                                                                                       self.__responsibilities_normal[i]))
@@ -1446,7 +1470,11 @@ class ModeledSegmentsCaller:
                     if(len(values) >= 5
                        and not math.isnan(float(values[8]))
                        and not math.isnan(float(values[9]))
-                       and not math.isnan(float(values[10]))):
+                       and not math.isnan(float(values[10]))
+                       and 0. <= float(values[8]) <= 0.5
+                       and 0. <= float(values[9]) <= 0.5
+                       and 0. <= float(values[10]) <= 0.5
+                       ):
                         file_data += line.strip() + "\t" + str(self.__normal_del_ampl(self.__copy_ratio_median[i],
                                                                                       avg_normal_cr, std_dev_normal_cr,
                                                                                       self.__responsibilities_normal[i]))
