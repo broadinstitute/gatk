@@ -327,15 +327,20 @@ public final class FuncotatorUtils {
     /**
      * Gets the sequence aligned position (1-based, inclusive) for the given coding sequence position.
      * This will produce the next lowest position evenly divisible by 3, such that a codon starting at this returned
-     * position would include the given position.
-     * @param position A sequence starting coordinate for which to produce an coding-aligned position.  Must be > 0.
+     * position would include the given position.  This can be a negative number, in which case the codon would start
+     * at the given position relative to the normal starting position (1).
+     * @param position A sequence starting coordinate for which to produce an coding-aligned position.
      * @return A coding-aligned position (1-based, inclusive) corresponding to the given {@code position}.
      */
     public static int getAlignedPosition(final int position) {
 
-        ParamUtils.isPositive( position, "Genomic positions must be > 0." );
-
-        return position - ((position - 1) % 3);
+        if ( position > 0 ) {
+            return position - ((position - 1) % 3);
+        }
+        else {
+            final int adjustedPos = 1 - position;
+            return -(adjustedPos - ((adjustedPos - 1) % 3) + 1);
+        }
     }
 
     /**
@@ -346,10 +351,21 @@ public final class FuncotatorUtils {
      */
     public static boolean isInFrameWithEndOfRegion(final int startPosition, final int regionLength) {
 
-        ParamUtils.isPositive( startPosition, "Genomic positions must be > 0." );
         ParamUtils.isPositiveOrZero( regionLength, "Region length must be >= 0." );
 
-        return (((regionLength - startPosition + 1) % 3) == 0);
+        // Micro-optimization to split the return statements based on
+        // the if statement so we don't have to do unnecessary math in the "normal" case:
+        if ( startPosition > 0 ) {
+            return (((regionLength - startPosition + 1) % 3) == 0);
+        }
+        else {
+            // If we have a position before our region starts, we must calculate an offset
+            // between the position and the actual start.
+            // We can then add this offset to the start and region length to simplify the calculation.
+            final int preFlankOffset = 1 - startPosition;
+
+            return ((((regionLength + preFlankOffset) - (startPosition + preFlankOffset) + 1) % 3) == 0);
+        }
     }
 
     /**
@@ -1387,11 +1403,12 @@ public final class FuncotatorUtils {
 
     /**
      * Get the aligned coding sequence for the given reference allele.
+     * NOTE: alignedRefAlleleStart must be less than or equal to codingSequenceRefAlleleStart.
      * @param referenceSnippet {@link String} containing a short excerpt of the reference sequence around the given reference allele.  Must not be {@code null}.
      * @param referencePadding Number of bases in {@code referenceSnippet} before the reference allele starts.  This padding exists at the end as well (plus some other bases to account for the length of the alternate allele if it is longer than the reference).  Must be >= 0.
      * @param refAllele The reference {@link Allele}.  Must not be {@code null}.
-     * @param codingSequenceRefAlleleStart The position (1-based, inclusive) in the coding sequence where the {@code refAllele} starts.  Must be > 0.
-     * @param alignedRefAlleleStart The in-frame position (1-based, inclusive) of the first base of the codon containing the reference allele.  Must be > 0.
+     * @param codingSequenceRefAlleleStart The position (1-based, inclusive) in the coding sequence where the {@code refAllele} starts.
+     * @param alignedRefAlleleStart The in-frame position (1-based, inclusive) of the first base of the codon containing the reference allele.
      * @return A {@link String} of in-frame codons that contain the entire reference allele.
      */
     public static String getAlignedRefAllele(final String referenceSnippet,
@@ -1402,14 +1419,14 @@ public final class FuncotatorUtils {
 
         Utils.nonNull(referenceSnippet);
         Utils.nonNull(refAllele);
-
         ParamUtils.isPositiveOrZero( referencePadding, "Padding must be >= 0." );
-        ParamUtils.isPositive( codingSequenceRefAlleleStart, "Genome positions must be > 0." );
-        ParamUtils.isPositive( alignedRefAlleleStart, "Genome positions must be > 0." );
+        Utils.validate( alignedRefAlleleStart <= codingSequenceRefAlleleStart, "The alignedRefAlleleStart must be less than or equal to codingSequenceRefAlleleStart!" );
+
 
         final int extraBasesNeeded = (codingSequenceRefAlleleStart - alignedRefAlleleStart);
         int refStartPos = referencePadding - extraBasesNeeded;
 
+        // TODO: This should probably be an error condition:
         if ( refStartPos < 0 ) {
             refStartPos = 0;
         }
@@ -1489,6 +1506,7 @@ public final class FuncotatorUtils {
 
         Utils.nonNull(alignedCodingSequenceAlleleStart);
         ParamUtils.isPositive( alignedCodingSequenceAlleleStart, "Genome positions must be > 0." );
+
         return ((alignedCodingSequenceAlleleStart-1) / 3) + 1; // Add 1 because we're 1-based.
     }
 

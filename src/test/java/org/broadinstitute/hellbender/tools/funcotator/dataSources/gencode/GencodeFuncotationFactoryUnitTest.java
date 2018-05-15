@@ -196,7 +196,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     // Data Providers:
 
     @DataProvider
-    Object[][] provideTranscriptForGetSortedExonAndStartStopPositions() {
+    Object[][] provideTranscriptForGetSortedCdsAndStartStopPositions() {
         return new Object[][] {
                 {
                         DataProviderForExampleGencodeGtfGene.createGencodeGtfGeneFeature().getTranscripts().get(0),
@@ -1005,10 +1005,10 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     //==================================================================================================================
     // Tests:
 
-    @Test ( dataProvider = "provideTranscriptForGetSortedExonAndStartStopPositions")
+    @Test ( dataProvider = "provideTranscriptForGetSortedCdsAndStartStopPositions")
     void testGetSortedExonAndStartStopPositions(final GencodeGtfTranscriptFeature transcript, final List<? extends Locatable> expected) {
 
-        final List<? extends Locatable> exons = GencodeFuncotationFactory.getSortedExonAndStartStopPositions(transcript);
+        final List<? extends Locatable> exons = GencodeFuncotationFactory.getSortedCdsAndStartStopPositions(transcript);
 
         Assert.assertEquals(exons.size(), expected.size());
 
@@ -1077,7 +1077,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
         final ReferenceContext referenceContext = new ReferenceContext( refDataSourceHg19Ch19, variantInterval );
 
-        final List<? extends Locatable> exonPositionList = GencodeFuncotationFactory.getSortedExonAndStartStopPositions(transcript);
+        final List<? extends Locatable> exonPositionList = GencodeFuncotationFactory.getSortedCdsAndStartStopPositions(transcript);
 
         final ReferenceDataSource muc16TranscriptDataSource = ReferenceDataSource.of(new File(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE).toPath());
         final Map<String, GencodeFuncotationFactory.MappedTranscriptIdInfo> muc16TranscriptIdMap = GencodeFuncotationFactory. createTranscriptIdMap(muc16TranscriptDataSource);

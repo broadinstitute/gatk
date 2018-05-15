@@ -323,6 +323,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
         helpPopulateDataForCreateFuncotations(outList, FuncotatorTestConstants.XSV_CSV_FILE_PATH, ",");
         helpPopulateDataForCreateFuncotations(outList, FuncotatorTestConstants.XSV_TSV_FILE_PATH, "\t");
         helpPopulateDataForCreateFuncotations(outList, FuncotatorTestConstants.XSV_DEADBEEFSV_FILE_PATH, "DEADBEEF");
+        helpPopulateDataForCreateFuncotations(outList, FuncotatorTestConstants.XSV_PIPESV_FILE_PATH, "|");
 
         return outList.iterator();
     }
