@@ -12,16 +12,23 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.TwoPassVariantWalker;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.QUAL_BY_DEPTH_KEY;
 
+/**
+ * This walker makes two traversals through variants in a vcf. During the first pass, it collects the qual-by-depth (QD) annotation
+ * of each variant and stores it in a list. After the first traversal, it computes the vcf-wide average and variance of QD's.
+ * The walker will then traverse the variants the second time and annotate each variant with the distance of its QD from the mean
+ * in units of standard deviations.
+ *
+ */
 @CommandLineProgramProperties(
         summary = "Example variant walker that makes two passes through a vcf",
-        oneLineSummary = "Example two variant walker",
+        oneLineSummary = "Example two-pass variant walker",
         programGroup = ExampleProgramGroup.class,
         omitFromCommandLine = true
 )
@@ -30,19 +37,19 @@ public class ExampleTwoPassVariantWalker extends TwoPassVariantWalker {
             doc = "Output vcf", optional = true)
     private File outputVcf = null;
 
-    final List<Double> qualByDepths = new ArrayList<>();
+    private final List<Double> qualByDepths = new ArrayList<>();
 
     private VariantContextWriter vcfWriter;
 
-    public static String QD_DISTANCE_FROM_MEAN = "QD_DIST";
+    static String QD_DISTANCE_FROM_MEAN = "QD_DIST";
 
-    public static String COPY_OF_QD_KEY_NAME = "QD_COPY";
+    static String COPY_OF_QD_KEY_NAME = "QD_COPY";
 
     private double averageQualByDepth;
 
     private double sampleVarianceOfQDs;
 
-    int counter = 0;
+    private int counter = 0;
 
     @Override
     public void onTraversalStart() {
@@ -55,7 +62,17 @@ public class ExampleTwoPassVariantWalker extends TwoPassVariantWalker {
 
     @Override
     protected void firstPassApply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
-        qualByDepths.add(variant.getAttributeAsDouble(QUAL_BY_DEPTH_KEY, 0.0));
+        qualByDepths.add(variant.getAttributeAsDouble(GATKVCFConstants.QUAL_BY_DEPTH_KEY, 0.0));
+    }
+
+    @Override
+    protected void afterFirstPass() {
+        final int n = qualByDepths.size();
+        if (n == 1){
+            return;
+        }
+        averageQualByDepth = qualByDepths.stream().mapToDouble(x -> x).average().orElse(0.0);
+        sampleVarianceOfQDs = (1.0/(n - 1.0))* qualByDepths.stream().mapToDouble(x -> Math.pow((x - averageQualByDepth), 2.0)).sum();
     }
 
     @Override
@@ -67,16 +84,6 @@ public class ExampleTwoPassVariantWalker extends TwoPassVariantWalker {
         vcb.attribute(COPY_OF_QD_KEY_NAME, qualByDepth);
 
         vcfWriter.add(vcb.make());
-    }
-
-    @Override
-    protected void afterFirstPass() {
-        final int n = qualByDepths.size();
-        if (n == 1){
-            return;
-        }
-        averageQualByDepth = qualByDepths.stream().mapToDouble(x -> x).average().orElse(0.0);
-        sampleVarianceOfQDs = (1.0/(n - 1.0))* qualByDepths.stream().mapToDouble(x -> Math.pow((x - averageQualByDepth), 2.0)).sum();
     }
 
     @Override

@@ -21,7 +21,8 @@ public abstract class TwoPassVariantWalker extends VariantWalker {
         final VariantFilter variantContextFilter = makeVariantFilter();
         final CountingReadFilter readFilter = makeReadFilter();
 
-        // First pass through the variant
+        // First pass through the variants
+        logger.info("Starting first pass through the variants");
         traverseVariants(variantContextFilter, readFilter, this::firstPassApply);
         logger.info("Finished first pass through the variants");
 
@@ -31,22 +32,28 @@ public abstract class TwoPassVariantWalker extends VariantWalker {
         // Second pass
         logger.info("Starting second pass through the variants");
         traverseVariants(variantContextFilter, readFilter, this::secondPassApply);
+
+        logger.info(readFilter.getSummaryLine());
     }
 
     /**
      *
-     * First pass through the variants. The user may store data in instance variables of the walker as you go
-     * and process them in {@link #afterFirstPass} before making a second pass
+     * First pass through the variants. The user may store data in instance variables of the walker as they traverse the
+     * vcf the first time and process them in {@link #afterFirstPass} before making a second pass
      *
      * @param variant A variant record in a vcf
      * @param readsContext Reads overlapping the current variant. Will be empty if a read source (e.g. bam) isn't provided
      * @param referenceContext Reference bases spanning the current variant
-     * @param featureContext A vcf record overlapping the current variant from an auxiliary data source (e.g. gnomad)
+     * @param featureContext A record overlapping the current variant from an auxiliary data source (e.g. gnomad)
      */
     protected abstract void firstPassApply(final VariantContext variant,
                                            final ReadsContext readsContext,
                                            final ReferenceContext referenceContext,
                                            final FeatureContext featureContext );
+    /**
+     * Process the data collected during the first pass. This method is called between the two traversals
+     */
+    protected abstract void afterFirstPass();
 
     /**
      *
@@ -58,11 +65,6 @@ public abstract class TwoPassVariantWalker extends VariantWalker {
                                             final ReadsContext readsContext,
                                             final ReferenceContext referenceContext,
                                             final FeatureContext featureContext);
-
-    /**
-     * Process the data collected during the first pass
-     */
-    protected abstract void afterFirstPass();
 
     private void traverseVariants(final VariantFilter variantFilter, final CountingReadFilter readFilter, final VariantConsumer variantConsumer){
         StreamSupport.stream(getSpliteratorForDrivingVariants(), false)
