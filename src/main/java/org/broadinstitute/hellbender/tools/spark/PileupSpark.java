@@ -154,7 +154,11 @@ public final class PileupSpark extends LocusWalkerSpark {
 
     @Override
     protected void processAlignments(JavaRDD<LocusWalkerContext> rdd, JavaSparkContext ctx) {
-        rdd.map(pileupFunction(metadata, outputInsertLength, showVerbose)).saveAsTextFile(outputFile);
+        JavaRDD<String> lines = rdd.map(pileupFunction(metadata, outputInsertLength, showVerbose));
+        if (numReducers != 0) {
+            lines = lines.coalesce(numReducers);
+        }
+        lines.saveAsTextFile(outputFile);
     }
 
     private static Function<LocusWalkerContext, String> pileupFunction(List<FeatureInput<Feature>> metadata,
