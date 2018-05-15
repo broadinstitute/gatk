@@ -308,6 +308,14 @@ public class LargeSimpleSVCaller {
         logger.info("Retrieved " + intervalsAndReads.stream().mapToInt(pair -> pair._2.getLength()).sum() + " reads");
         */
 
+        final List<ReadDepthEvent> filteredCalls = Utils.stream(largeSimpleSVSVIntervalTree.iterator())
+                .filter(entry -> copyRatioSegmentOverlapDetector.getOverlaps(SVIntervalUtils.convertToSimpleInterval(entry.getInterval(), dictionary)).stream().anyMatch(overlapper -> (overlapper.getCall() == CalledCopyRatioSegment.Call.AMPLIFICATION && (entry.getValue().getEventType() == SimpleSVType.TYPES.DUP_TANDEM || entry.getValue().getEventType() == SimpleSVType.TYPES.DUP) || (overlapper.getCall() == CalledCopyRatioSegment.Call.DELETION && entry.getValue().getEventType() == SimpleSVType.TYPES.DEL)) && SVIntervalUtils.hasReciprocalOverlap(entry.getInterval(), SVIntervalUtils.convertToSVInterval(overlapper.getInterval(), dictionary), 0.5)))
+                .map(entry -> new ReadDepthEvent(0, entry.getValue()))
+                .collect(Collectors.toList());
+
+        return new Tuple2<>(filteredCalls, new ReadDepthModel.ReadDepthModelParameters());
+
+        /*
         logger.info("Running read depth model on " + largeSimpleSVSVIntervalTree.size() + " events");
         final ReadDepthModel readDepthModel = new ReadDepthModel(readsTree, largeSimpleSVSVIntervalTree, copyRatioSegmentOverlapDetector, dictionary);
         if (truthSetTree == null) {
@@ -316,6 +324,7 @@ public class LargeSimpleSVCaller {
         }
         //return readDepthModel.train(ctx, truthSetTree);
         return readDepthModel.expectationMaximization(ctx);
+        */
     }
 
     public static List<Tuple2<SVInterval,GATKRead>> getReads(final String inputPath, final JavaSparkContext ctx, final List<SimpleInterval> intervals, final SAMSequenceDictionary dictionary) {

@@ -247,35 +247,27 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         public boolean outputCpxResultsInHumanReadableFormat = false;
     }
 
-    public static class PreprocessSVCohortIntervals implements Serializable {
+    public static final class PreprocessSVCohortIntervals implements Serializable {
         private static final long serialVersionUID = 1L;
 
-        public final int DEFAULT_SMALL_BIN_SIZE = 100;
-        public final int DEFAULT_MEDIUM_BIN_SIZE = 1000;
-        public final int DEFAULT_LARGE_BIN_SIZE = 10000;
-        public final int DEFAULT_XLARGE_BIN_SIZE = 100000;
-        public final int DEFAULT_PADDING = 100;
+        public static final int DEFAULT_PADDING = 100;
 
-        public static final String DEFAULT_SMALL_BIN_SIZE_LONG_NAME = "small-size";
-        public static final String DEFAULT_MEDIUM_BIN_SIZE_LONG_NAME = "medium-size";
-        public static final String DEFAULT_LARGE_BIN_SIZE_LONG_NAME = "large-size";
+        public static final String DEFAULT_BIN_SIZE_LONG_NAME = "bin-size";
+        public static final String DEFAULT_MIN_BINS_LONG_NAME = "min-bins";
+        public static final String DEFAULT_MAX_BINS_LONG_NAME = "max-bins";
         public static final String DEFAULT_PADDING_LONG_NAME = "padding";
 
-        @Argument(doc = "Minimum small bin size",
-                fullName = DEFAULT_SMALL_BIN_SIZE_LONG_NAME, optional = true)
-        public int smallBinSize = DEFAULT_SMALL_BIN_SIZE;
+        @Argument(doc = "Bin size in bp",
+                fullName = DEFAULT_BIN_SIZE_LONG_NAME)
+        public int binSize;
 
-        @Argument(doc = "Minimum medium bin size",
-                fullName = DEFAULT_MEDIUM_BIN_SIZE_LONG_NAME, optional = true)
-        public int mediumBinSize = DEFAULT_MEDIUM_BIN_SIZE;
+        @Argument(doc = "Min bins per event",
+                fullName = DEFAULT_MIN_BINS_LONG_NAME)
+        public int minBins;
 
-        @Argument(doc = "Minimum large bin size",
-                fullName = DEFAULT_LARGE_BIN_SIZE_LONG_NAME, optional = true)
-        public int largeBinSize = DEFAULT_LARGE_BIN_SIZE;
-
-        @Argument(doc = "Minimum extra-large bin size",
-                fullName = DEFAULT_LARGE_BIN_SIZE_LONG_NAME, optional = true)
-        public int xlargeBinSize = DEFAULT_XLARGE_BIN_SIZE;
+        @Argument(doc = "Max bins per event (-1 for infinity)",
+                fullName = DEFAULT_MAX_BINS_LONG_NAME)
+        public int maxBins;
 
         @Argument(doc = "Bins to pad each event interval",
                 fullName = DEFAULT_PADDING_LONG_NAME, optional = true)
@@ -283,7 +275,7 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
 
     }
 
-    public static class StructuralVariantIntervalsForCNV implements Serializable {
+    public static final class StructuralVariantIntervalsForCNV implements Serializable {
         private static final long serialVersionUID = 1L;
 
         public final int DEFAULT_SMALL_EVENT_SIZE = 1;
