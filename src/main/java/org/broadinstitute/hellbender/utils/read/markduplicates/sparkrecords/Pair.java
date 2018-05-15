@@ -9,9 +9,9 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
-import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadEnds;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
+import picard.sam.util.PhysicalLocation;
 
 /**
  * Class representing a pair of reads together with accompanying optical duplicate marking information.
@@ -20,7 +20,7 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
  * during the processing step of MarkDuplicatesSpark
  */
 @DefaultSerializer(Pair.Serializer.class)
-public final class Pair extends PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
+public final class Pair extends PairedEnds implements PhysicalLocation {
     protected transient int key;
 
     private final int firstStartPosition;
@@ -34,10 +34,11 @@ public final class Pair extends PairedEnds implements OpticalDuplicateFinder.Phy
     private final int score;
 
     // Information used to detect optical dupes
-    private transient short readGroup = -1;
+    private short readGroupIndex = -1;
+
     private transient short tile = -1;
-    private transient short x = -1;
-    private transient short y = -1;
+    private transient int x = -1;
+    private transient int y = -1;
     private transient short libraryId = -1;
 
     public Pair(final GATKRead read1, final GATKRead read2, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
@@ -92,7 +93,6 @@ public final class Pair extends PairedEnds implements OpticalDuplicateFinder.Phy
         super(input.readInt(true), input.readString());
 
         // Information used to detect optical dupes
-        readGroup = -1;
         tile = -1;
         x = -1;
         y = -1;
@@ -109,6 +109,7 @@ public final class Pair extends PairedEnds implements OpticalDuplicateFinder.Phy
         secondRefIndex = input.readShort();
         R2R = input.readBoolean();
 
+        readGroupIndex = input.readShort();
     }
 
     protected void serialize(Kryo kryo, Output output) {
@@ -125,6 +126,8 @@ public final class Pair extends PairedEnds implements OpticalDuplicateFinder.Phy
         output.writeInt(secondUnclippedStartPosition);
         output.writeShort(secondRefIndex);
         output.writeBoolean(R2R);
+
+        output.writeShort(readGroupIndex);
     }
 
     @Override
@@ -182,21 +185,21 @@ public final class Pair extends PairedEnds implements OpticalDuplicateFinder.Phy
 
     // Methods for OpticalDuplicateFinder.PhysicalLocation
     @Override
-    public short getReadGroup() { return this.readGroup; }
+    public short getReadGroup() { return this.readGroupIndex; }
     @Override
-    public void setReadGroup(final short readGroup) { this.readGroup = readGroup; }
+    public void setReadGroup(final short readGroup) { this.readGroupIndex = readGroup; }
     @Override
     public short getTile() { return this.tile; }
     @Override
     public void setTile(final short tile) { this.tile = tile; }
     @Override
-    public short getX() { return this.x; }
+    public int getX() { return this.x; }
     @Override
-    public void setX(final short x) { this.x = x; }
+    public void setX(final int x) { this.x = x; }
     @Override
-    public short getY() { return this.y; }
+    public int getY() { return this.y; }
     @Override
-    public void setY(final short y) { this.y = y; }
+    public void setY(final int y) { this.y = y; }
     @Override
     public short getLibraryId() { return this.libraryId; }
     @Override

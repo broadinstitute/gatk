@@ -38,6 +38,10 @@ public abstract class SamFileTester implements CommandLineProgramTester {
         this.samRecordSetBuilder.setHeader(header);
     }
 
+    public SAMFileHeader getHeader() {
+        return this.samRecordSetBuilder.getHeader();
+    }
+
     public void addRecord(final SAMRecord record) {
         this.duplicateFlags.put(samRecordToDuplicatesFlagsKey(record), record.getDuplicateReadFlag());
         this.samRecordSetBuilder.addRecord(record);
@@ -213,7 +217,8 @@ public abstract class SamFileTester implements CommandLineProgramTester {
                             final boolean firstOnly,
                             final boolean record1NonPrimary,
                             final boolean record2NonPrimary,
-                            final int defaultQuality) {
+                            final int defaultQuality,
+                            final String readGroup) {
         final List<SAMRecord> samRecordList = samRecordSetBuilder.addPair(readName, referenceSequenceIndex1, referenceSequenceIndex2, alignmentStart1, alignmentStart2,
                 record1Unmapped, record2Unmapped, cigar1, cigar2, strand1, strand2, record1NonPrimary, record2NonPrimary, defaultQuality);
 
@@ -224,6 +229,9 @@ public abstract class SamFileTester implements CommandLineProgramTester {
             record1.setAttribute("MC", null);
             record2.setAttribute("MC", null);
         }
+
+        record1.setAttribute("RG", readGroup);
+        record2.setAttribute("RG", readGroup);
 
         if (firstOnly) {
             samRecordSetBuilder.getRecords().remove(record2);
@@ -250,7 +258,7 @@ public abstract class SamFileTester implements CommandLineProgramTester {
                             final boolean record2NonPrimary,
                             final int defaultQuality) {
         addMatePair(readName, referenceSequenceIndex,referenceSequenceIndex, alignmentStart1, alignmentStart2, record1Unmapped, record2Unmapped,
-                isDuplicate1, isDuplicate2, cigar1, cigar2, strand1, strand2, firstOnly, record1NonPrimary, record2NonPrimary, defaultQuality);
+                isDuplicate1, isDuplicate2, cigar1, cigar2, strand1, strand2, firstOnly, record1NonPrimary, record2NonPrimary, defaultQuality, "1");
     }
 
     protected abstract void test();

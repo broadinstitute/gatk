@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
+import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 
 import java.io.Serializable;
 

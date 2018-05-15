@@ -1,15 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.markduplicates;
 
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.CloserUtil;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.pipelines.MarkDuplicatesSparkIntegrationTest;
 import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSpark;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
@@ -171,6 +169,40 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
     }
 
     @Test
+    public void testOpticalDuplicatesDifferentReadGroups() {
+        final AbstractMarkDuplicatesTester tester = getTester();
+        tester.setExpectedOpticalDuplicate(0);
+        tester.addMatePair("RUNID:7:1203:2886:82292",  19, 19, 485253, 485253, false, false, true, true, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.2");  // duplicate
+        tester.addMatePair("RUNID:7:1203:2886:82242", 19, 19, 485253, 485253, false, false, false, false, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.1");
+
+        SAMFileHeader header = tester.getHeader();
+        SAMReadGroupRecord readGroup1 = new SAMReadGroupRecord("H0164.2");
+        SAMReadGroupRecord readGroup2 = new SAMReadGroupRecord("H0164.1");
+        readGroup1.setSample("test");
+        readGroup2.setSample("test");
+        header.addReadGroup(readGroup1);
+        header.addReadGroup(readGroup2);
+        tester.runTest();
+    }
+
+    @Test
+    public void testOpticalDuplicatesTheSameReadGroup() {
+        final AbstractMarkDuplicatesTester tester = getTester();
+        tester.setExpectedOpticalDuplicate(1);
+        tester.addMatePair("RUNID:7:1203:2886:82292",  19, 19, 485253, 485253, false, false, true, true, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.2");  // duplicate
+        tester.addMatePair("RUNID:7:1203:2886:82242", 19, 19, 485253, 485253, false, false, false, false, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "H0164.2");
+
+        SAMFileHeader header = tester.getHeader();
+        SAMReadGroupRecord readGroup1 = new SAMReadGroupRecord("H0164.2");
+        SAMReadGroupRecord readGroup2 = new SAMReadGroupRecord("H0164.1");
+        readGroup1.setSample("test");
+        readGroup2.setSample("test");
+        header.addReadGroup(readGroup1);
+        header.addReadGroup(readGroup2);
+        tester.runTest();
+    }
+
+    @Test
     public void testOpticalDuplicateClusterSamePositionNoOpticalDuplicatesWithinPixelDistance() {
         final AbstractMarkDuplicatesTester tester = getTester();
         tester.setExpectedOpticalDuplicate(0);
@@ -319,7 +351,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         tester.addMappedPair(1, 10189, 10040, false, false, "41S35M", "65M11S", true, false, false, ELIGIBLE_BASE_QUALITY); // mapped OK
         tester.addMappedFragment(1, 10040, true, DEFAULT_BASE_QUALITY); // duplicate
         if (this instanceof MarkDuplicatesSparkIntegrationTest) {
-            tester.addArg("--do_not_mark_unmapped_mates");
+            tester.addArg("--"+ MarkDuplicatesSparkArgumentCollection.DO_NOT_MARK_UNMAPPED_MATES_LONG_NAME);
         }
         tester.runTest();
     }
@@ -332,7 +364,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         tester.addMappedPair(1, 10189, 10040, false, false, "41S35M", "65M11S", true, false, false, ELIGIBLE_BASE_QUALITY); // mapped OK
         tester.addMappedFragment(1, 10040, true, DEFAULT_BASE_QUALITY); // duplicate
         if (this instanceof MarkDuplicatesSparkIntegrationTest) {
-            tester.addArg("--do_not_mark_unmapped_mates");
+            tester.addArg("--"+ MarkDuplicatesSparkArgumentCollection.DO_NOT_MARK_UNMAPPED_MATES_LONG_NAME);
         }
         tester.runTest();
     }
@@ -535,8 +567,8 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
     public void testDifferentChromosomesInOppositeOrder() {
         final AbstractMarkDuplicatesTester tester = getTester();
         tester.setExpectedOpticalDuplicate(1);
-        tester.addMatePair("RUNID:6:101:17642:6835", 0, 1, 123989, 18281, false, false, true, true, "37S64M", "52M49S", false, false, false, false, false, DEFAULT_BASE_QUALITY);
-        tester.addMatePair("RUNID:6:101:17616:6888", 1, 0, 18281, 123989, false, false, false, false, "52M49S", "37S64M", false, false, false, false, false, ELIGIBLE_BASE_QUALITY);
+        tester.addMatePair("RUNID:6:101:17642:6835", 0, 1, 123989, 18281, false, false, true, true, "37S64M", "52M49S", false, false, false, false, false, DEFAULT_BASE_QUALITY, "1");
+        tester.addMatePair("RUNID:6:101:17616:6888", 1, 0, 18281, 123989, false, false, false, false, "52M49S", "37S64M", false, false, false, false, false, ELIGIBLE_BASE_QUALITY, "1");
         tester.runTest();
     }
 

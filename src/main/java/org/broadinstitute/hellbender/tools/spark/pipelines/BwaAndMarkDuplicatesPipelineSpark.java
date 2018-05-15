@@ -9,6 +9,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
+import org.broadinstitute.hellbender.utils.read.markduplicates.SerializableOpticalDuplicatesFinder;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -20,7 +21,7 @@ import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkD
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
-import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
+import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 
 import java.io.IOException;
 
@@ -61,7 +62,7 @@ public final class BwaAndMarkDuplicatesPipelineSpark extends GATKSparkTool {
         try (final BwaSparkEngine bwaEngine = new BwaSparkEngine(ctx, referenceArguments.getReferenceFileName(), bwaArgs.indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary())) {
             final ReadFilter filter = makeReadFilter(bwaEngine.getHeader());
             final JavaRDD<GATKRead> alignedReads = bwaEngine.alignPaired(getUnfilteredReads()).filter(filter::test);
-            final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.mark(alignedReads, bwaEngine.getHeader(), markDuplicatesSparkArgumentCollection.duplicatesScoringStrategy, new OpticalDuplicateFinder(), getRecommendedNumReducers(), markDuplicatesSparkArgumentCollection.dontMarkUnmappedMates);
+            final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.mark(alignedReads, bwaEngine.getHeader(), markDuplicatesSparkArgumentCollection.duplicatesScoringStrategy, new SerializableOpticalDuplicatesFinder(), getRecommendedNumReducers(), markDuplicatesSparkArgumentCollection.dontMarkUnmappedMates);
             try {
                 ReadsSparkSink.writeReads(ctx, output,
                         referenceArguments.getReferencePath().toAbsolutePath().toUri().toString(),
