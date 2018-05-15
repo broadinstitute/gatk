@@ -1,16 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.inference;
 
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.readdepth.LargeSimpleSV;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.IntrachromosomalBreakpointPair;
-import org.testng.Assert;
-import org.testng.annotations.Test;
-
-import java.util.Collections;
-import java.util.List;
-
 public class LargeSimpleSVTest {
-
+/*
     @Test(groups = "sv")
     public void testGetters() {
         final List<String> firstContigs = Collections.singletonList("assembly_contig_1");
@@ -39,4 +30,5 @@ public class LargeSimpleSVTest {
         Assert.assertEquals(sv2.getScore(1.0), expectedScore2);
         Assert.assertEquals(LargeSimpleSV.computeScore(1, 2, 0, 0, 1.0), expectedScore2);
     }
+    */
 }

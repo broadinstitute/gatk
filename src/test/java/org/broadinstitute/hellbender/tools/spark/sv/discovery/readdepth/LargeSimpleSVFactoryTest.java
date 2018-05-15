@@ -1,32 +1,10 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery.readdepth;
 
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.util.OverlapDetector;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CalledCopyRatioSegmentCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatioSegment;
-import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.StrandedInterval;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.testng.Assert;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
-
-import java.util.*;
 
 public class LargeSimpleSVFactoryTest extends BaseTest {
 
+    /*
     private static LargeSimpleSVFactory getEmptyTandemDuplicationFactory(final List<EvidenceTargetLink> intrachromosomalEvidenceTargetLinks,
                                                                          final List<CopyRatio> copyRatioList,
                                                                          final List<CalledCopyRatioSegment> copyRatioSegmentList,
@@ -279,4 +257,5 @@ public class LargeSimpleSVFactoryTest extends BaseTest {
         }
         return copyRatiosList;
     }
+    */
 }
