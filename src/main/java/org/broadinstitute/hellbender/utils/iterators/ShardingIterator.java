@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.engine.Shard;
 import org.broadinstitute.hellbender.engine.ShardBoundary;
 import org.broadinstitute.hellbender.engine.ShardBoundaryShard;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayDeque;
@@ -108,9 +109,29 @@ public final class ShardingIterator<T extends Locatable> implements Iterator<Sha
 
     // assumes that shards are not empty
     private void removeNonOverlapping() {
-        while (!nextData.isEmpty() && !nextData.peek()
-                .overlaps(shards.peek().getPaddedInterval())) {
+        final SimpleInterval nextInterval = shards.peek().getPaddedInterval();
+        // first remove all the data that does not overlap
+        // (e.g., different contig or before the start of the next interval)
+        while (!nextData.isEmpty() && !nextData.peek().overlaps(nextInterval)) {
             nextData.poll();
+        }
+
+
+        // we should also check all the data coming from the iterator that is before the start
+        // (and in the same contig) to ensure that it overlaps
+        // we keep that data in the overlapping list, discarding the rest
+        // this follows a similar approach as the FeatureCache.trimToNewStartPosition
+        final List<T> overlapping = new ArrayList<>(128);
+        while (!nextData.isEmpty() && nextData.peek().contigsMatch(nextInterval) && nextData.peek().getStart() < nextInterval.getStart()) {
+            T beforeStart = nextData.poll();
+            if (beforeStart.overlaps(nextInterval)) {
+                overlapping.add(beforeStart);
+            }
+        }
+
+        // now we add back the data which overlaps, in the same order
+        for (int i = overlapping.size() - 1; i >= 0; --i) {
+            nextData.add(overlapping.get(i));
         }
     }
 
