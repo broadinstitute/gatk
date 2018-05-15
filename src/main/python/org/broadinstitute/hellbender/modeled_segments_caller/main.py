@@ -47,7 +47,7 @@ class LoadAndSampleCrAndAf:
         # Start logging
         if do_logging:
             # Set log filename and create log file
-            if output_log_dir=="":
+            if output_log_dir == "":
                 # If no directory is given for logging, we use the input file's directory
                 input_filename_ending = filename.split("/")[-1]
                 input_dir = filename.split(input_filename_ending)[0]
@@ -96,7 +96,7 @@ class LoadAndSampleCrAndAf:
         self.__load_af = load_af
 
         # Load data from file
-        if not (output_log_prefix==""):
+        if not output_log_prefix == "":
             self.__logger.info("Loading data from file.")
         [self.__copy_ratio_median,           # median of the copy ratio posterior for each segment
          self.__copy_ratio_10th_perc,        # 10th percentile ...
@@ -214,16 +214,18 @@ class LoadAndSampleCrAndAf:
             cr_nan_ratio = cr_nan / all_sites
             af_nan_ratio = af_nan / all_sites
         if cr_nan_ratio >= cr_nan_ratio_threshold:
-            if self.__load_cr and not (self.__log_filename==""):
-                self.__logger.info("More than %s%% of the lines have NaN copy ratio values. We will thus not load " +
-                                   "copy ratio data." % (100 * cr_nan_ratio_threshold))
+            if self.__load_cr and not self.__log_filename == "":
+                self.__logger.info("More than %s%% " % (100 * cr_nan_ratio_threshold) +
+                                   "of the lines have NaN copy ratio values. " +
+                                   "We will thus not load copy ratio data.")
             self.__load_cr = False
         if af_nan_ratio >= af_nan_ratio_threshold:
-            if self.__load_cr and not (self.__log_filename==""):
-                self.__logger.info("More than %s%% of the lines have NaN allele fraction values. We will thus not " +
-                                   "load copy ratio data." % (100 * af_nan_ratio_threshold))
+            if self.__load_cr and not self.__log_filename == "":
+                self.__logger.info("More than %s%% " % (100 * af_nan_ratio_threshold) +
+                                   "of the lines have NaN allele fraction values. " +
+                                   "We will thus not load copy ratio data.")
             self.__load_af = False
-        if (not self.__load_cr) and (not self.__load_af) and (not self.__log_filename==""):
+        if (not self.__load_cr) and (not self.__load_af) and (not self.__log_filename == ""):
             self.__logger.info("Error: No copy ratio and no allele fraction data will be loaded.")
 
         # Load the data
@@ -276,7 +278,7 @@ class LoadAndSampleCrAndAf:
             for line in lines:
                 values = line.strip().split()
                 if is_number(values[0]):
-                    if(len(values) >= 5):
+                    if len(values) >= 5:
                         if (not math.isnan(float(values[8]))
                             and not math.isnan(float(values[9]))
                             and not math.isnan(float(values[10]))
@@ -484,7 +486,6 @@ class LoadAndSampleCrAndAf:
         # expanded two-fold, so that instead of the usual [0, 0.5] range for the allele fraction,
         # data, we get a [0, 1] range of the beta distribution.
         if self.__load_cr:
-            print([cr_median, cr_10, cr_90])
             [cr_a, cr_b] = self.fit_gamma_distribution(cr_median=cr_median, cr_10=cr_10, cr_90=cr_90)
             cr = np.random.gamma(cr_a, 1 / cr_b, n_points)
         else:
@@ -534,7 +535,7 @@ class ModeledSegmentsCaller:
         # Start logging, continuing the log file that was written when cr_af_data was created
         self.__log_filename=cr_af_data.get_log_filename()
         self.__logger=cr_af_data.get_logger()
-        if not (self.__log_filename==""):
+        if not self.__log_filename == "":
             self.__logger.info("* ---- %s ---- *" % str(datetime.datetime.now()))
             self.__logger.info("Initializing class CNVCaller")
 
@@ -591,7 +592,7 @@ class ModeledSegmentsCaller:
         [self.__output_calls_filename, self.__fig_normal_segments_filename, self.__fig_del_ampl_filename,
          self.__fig_scatter_plot, self.__fig_allele_fraction_cn1_cn2_intervals, self.__fig_copy_ratio_fit,
          self.__fig_copy_ratio_clusters] = self.__set_output_filenames()
-        if not self.__log_filename=="":
+        if not self.__log_filename == "":
             self.__logger.info("Setting output filenames:")
             self.__logger.info("   Normal segments image file : %s" % self.__fig_normal_segments_filename)
             self.__logger.info("   Calls file : %s" % self.__output_calls_filename)
@@ -605,7 +606,7 @@ class ModeledSegmentsCaller:
                 self.__logger.info("   (interactive mode) Gaussian fit to the copy ratio data: %s" % self.__fig_copy_ratio_fit)
 
         # Find normal segments
-        if not self.__log_filename=="":
+        if not self.__log_filename == "":
             self.__logger.info("Determining normal segments.")
 
         if self.__load_cr and self.__load_af:
@@ -623,23 +624,23 @@ class ModeledSegmentsCaller:
             self.__normal_segment_indices = None
 
         # Save plots of the segments
-        if not self.__log_filename=="":
+        if not self.__log_filename == "":
             self.__logger.info("Plotting and saving segments.")
         self.__plot_and_save_segments()
 
         # Create auxiliary plots if in interactive mode
         if self.__load_cr and self.__load_af and self.__interactive:
-            if not self.__log_filename=="":
+            if not self.__log_filename == "":
                 self.__logger.info("Creating auxiliary plots in interactive mode.")
             self.__plot_clustering()
 
         # Save the results to a file
-        if not self.__log_filename=="":
+        if not self.__log_filename == "":
             self.__logger.info("Saving results.")
         self.__save_calls_to_file()
 
         # Finish logging
-        if not self.__log_filename=="":
+        if not self.__log_filename == "":
             self.__logger.info("Finished.\n\n\n")
 
     def __set_output_filenames(self):
