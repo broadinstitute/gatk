@@ -43,6 +43,7 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
         args.add("-L 20:9999900-10000000");
         if (useShuffle) {
             args.add("--shuffle");
+            args.add("--num-reducers").add("1");
         }
         this.runCommandLine(args.getArgsArray());
         File expected = new File(TEST_DATA_DIR, "expectedSimplePileup.txt");
@@ -63,6 +64,7 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
         args.add("-verbose");
         if (useShuffle) {
             args.add("--shuffle");
+            args.add("--num-reducers").add("1");
         }
         this.runCommandLine(args.getArgsArray());
         File expected = new File(TEST_DATA_DIR, "expectedVerbosePileup.txt");
@@ -83,6 +85,7 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
         args.add("-metadata " + dbsnp_138_b37_20_21_vcf);
         if (useShuffle) {
             args.add("--shuffle");
+            args.add("--num-reducers").add("1");
         }
         this.runCommandLine(args.getArgsArray());
         File expected = new File(TEST_DATA_DIR, "expectedFeaturesPileup.txt");
@@ -103,6 +106,7 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
         args.add("--output-insert-length");
         if (useShuffle) {
             args.add("--shuffle");
+            args.add("--num-reducers").add("1");
         }
         this.runCommandLine(args.getArgsArray());
         File expected = new File(TEST_DATA_DIR, "expectedInsertLengthPileup.txt");
@@ -131,6 +135,7 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
             args.add("-metadata " + vcfPath.toString());
             if (useShuffle) {
                 args.add("--shuffle");
+                args.add("--num-reducers").add("1");
             }
             this.runCommandLine(args.getArgsArray());
             File expected = new File(TEST_DATA_DIR, "expectedFeaturesPileup.txt");
