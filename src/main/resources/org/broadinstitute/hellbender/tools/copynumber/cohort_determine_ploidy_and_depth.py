@@ -58,11 +58,11 @@ gcnvkernel.HybridInferenceParameters.expose_args(
         "--log_emission_samples_per_round": 1000,
         "--log_emission_sampling_rounds": 50,
         "--log_emission_sampling_median_rel_error": 1e-3,
-        "--max_advi_iter_first_epoch": 1000,
+        "--max_advi_iter_first_epoch": 5000,
         "--max_advi_iter_subsequent_epochs": 1000,
         "--convergence_snr_averaging_window": 5000,
         "--convergence_snr_countdown_window": 100,
-        "--num_thermal_epochs": 10,
+        "--num_thermal_advi_iters": 10000,
         "--max_calling_iters": 1,
         "--caller_update_convergence_threshold": 1e-3
     })

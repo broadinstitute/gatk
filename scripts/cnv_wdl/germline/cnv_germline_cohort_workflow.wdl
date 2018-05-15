@@ -99,13 +99,14 @@ workflow CNVGermlineCohortWorkflow {
     Int? gcnv_min_training_epochs
     Int? gcnv_max_training_epochs
     Float? gcnv_initial_temperature
-    Int? gcnv_num_thermal_epochs
+    Int? gcnv_num_thermal_advi_iters
     Int? gcnv_convergence_snr_averaging_window
     Float? gcnv_convergence_snr_trigger_threshold
     Int? gcnv_convergence_snr_countdown_window
     Int? gcnv_max_calling_iters
     Float? gcnv_caller_update_convergence_threshold
-    Float? gcnv_caller_admixing_rate
+    Float? gcnv_caller_internal_admixing_rate
+    Float? gcnv_caller_external_admixing_rate
     Boolean? gcnv_disable_annealing
 
     ###################################################
@@ -224,13 +225,14 @@ workflow CNVGermlineCohortWorkflow {
                 min_training_epochs = gcnv_min_training_epochs,
                 max_training_epochs = gcnv_max_training_epochs,
                 initial_temperature = gcnv_initial_temperature,
-                num_thermal_epochs = gcnv_num_thermal_epochs,
+                num_thermal_advi_iters = gcnv_num_thermal_advi_iters,
                 convergence_snr_averaging_window = gcnv_convergence_snr_averaging_window,
                 convergence_snr_trigger_threshold = gcnv_convergence_snr_trigger_threshold,
                 convergence_snr_countdown_window = gcnv_convergence_snr_countdown_window,
                 max_calling_iters = gcnv_max_calling_iters,
                 caller_update_convergence_threshold = gcnv_caller_update_convergence_threshold,
-                caller_admixing_rate = gcnv_caller_admixing_rate,
+                caller_internal_admixing_rate = gcnv_caller_internal_admixing_rate,
+                caller_external_admixing_rate = gcnv_caller_external_admixing_rate,
                 disable_annealing = gcnv_disable_annealing,
                 preemptible_attempts = preemptible_attempts
         }
@@ -260,6 +262,7 @@ workflow CNVGermlineCohortWorkflow {
         File contig_ploidy_calls_tar = DetermineGermlineContigPloidyCohortMode.contig_ploidy_calls_tar
         Array[File] gcnv_model_tars = GermlineCNVCallerCohortMode.gcnv_model_tar
         Array[File] gcnv_calls_tars = GermlineCNVCallerCohortMode.gcnv_calls_tar
+        Array[File] gcnv_tracking_tars = GermlineCNVCallerCohortMode.gcnv_tracking_tar
         Array[File] genotyped_intervals_vcfs = PostprocessGermlineCNVCalls.genotyped_intervals_vcf
         Array[File] genotyped_segments_vcfs = PostprocessGermlineCNVCalls.genotyped_segments_vcf
     }
@@ -381,13 +384,14 @@ task GermlineCNVCallerCohortMode {
     Int? min_training_epochs
     Int? max_training_epochs
     Float? initial_temperature
-    Int? num_thermal_epochs
+    Int? num_thermal_advi_iters
     Int? convergence_snr_averaging_window
     Float? convergence_snr_trigger_threshold
     Int? convergence_snr_countdown_window
     Int? max_calling_iters
     Float? caller_update_convergence_threshold
-    Float? caller_admixing_rate
+    Float? caller_internal_admixing_rate
+    Float? caller_external_admixing_rate
     Boolean? disable_annealing
 
     Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
@@ -439,22 +443,24 @@ task GermlineCNVCallerCohortMode {
             --log-emission-samples-per-round ${default="50" log_emission_samples_per_round} \
             --log-emission-sampling-median-rel-error ${default="0.005" log_emission_sampling_median_rel_error} \
             --log-emission-sampling-rounds ${default="10" log_emission_sampling_rounds} \
-            --max-advi-iter-first-epoch ${default="100" max_advi_iter_first_epoch} \
+            --max-advi-iter-first-epoch ${default="5000" max_advi_iter_first_epoch} \
             --max-advi-iter-subsequent-epochs ${default="100" max_advi_iter_subsequent_epochs} \
             --min-training-epochs ${default="10" min_training_epochs} \
             --max-training-epochs ${default="100" max_training_epochs} \
             --initial-temperature ${default="2.0" initial_temperature} \
-            --num-thermal-epochs ${default="50" num_thermal_epochs} \
+            --num-thermal-advi-iters ${default="2500" num_thermal_advi_iters} \
             --convergence-snr-averaging-window ${default="500" convergence_snr_averaging_window} \
             --convergence-snr-trigger-threshold ${default="0.1" convergence_snr_trigger_threshold} \
             --convergence-snr-countdown-window ${default="10" convergence_snr_countdown_window} \
             --max-calling-iters ${default="10" max_calling_iters} \
             --caller-update-convergence-threshold ${default="0.001" caller_update_convergence_threshold} \
-            --caller-admixing-rate ${default="0.75" caller_admixing_rate} \
+            --caller-internal-admixing-rate ${default="0.75" caller_internal_admixing_rate} \
+            --caller-external-admixing-rate ${default="1.00" caller_external_admixing_rate} \
             --disable-annealing ${default="false" disable_annealing}
 
         tar czf ${cohort_entity_id}-gcnv-model-${scatter_index}.tar.gz -C ${output_dir_}/${cohort_entity_id}-model .
         tar czf ${cohort_entity_id}-gcnv-calls-${scatter_index}.tar.gz -C ${output_dir_}/${cohort_entity_id}-calls .
+        tar czf ${cohort_entity_id}-gcnv-tracking-${scatter_index}.tar.gz -C ${output_dir_}/${cohort_entity_id}-tracking .
     >>>
 
     runtime {
@@ -468,5 +474,6 @@ task GermlineCNVCallerCohortMode {
     output {
         File gcnv_model_tar = "${cohort_entity_id}-gcnv-model-${scatter_index}.tar.gz"
         File gcnv_calls_tar = "${cohort_entity_id}-gcnv-calls-${scatter_index}.tar.gz"
+        File gcnv_tracking_tar = "${cohort_entity_id}-gcnv-tracking-${scatter_index}.tar.gz"
     }
 }

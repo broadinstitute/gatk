@@ -94,8 +94,7 @@ public final class GermlineCNVSegmentVariantComposer extends GermlineCNVVariantC
                 VCFHeaderLineType.Integer, "Number of points (i.e. targets or bins) in the segment"));
         result.addMetaDataLine(new VCFFormatHeaderLine(QS, 1,
                 VCFHeaderLineType.Integer, "Complementary Phred-scaled probability that at least one point " +
-                "(i.e. target or bin) in the segment agrees with the segment copy-number call, divided by " +
-                "the number of points in the segment"));
+                "(i.e. target or bin) in the segment agrees with the segment copy-number call"));
         result.addMetaDataLine(new VCFFormatHeaderLine(QA, 1,
                 VCFHeaderLineType.Integer, "Complementary Phred-scaled probability that all points " +
                 "(i.e. targets or bins) in the segment agree with the segment copy-number call"));

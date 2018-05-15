@@ -1,5 +1,6 @@
 import numpy as np
 from pymc3.variational.callbacks import Callback
+
 from ..utils.rls import NonStationaryLinearRegression
 
 
@@ -65,7 +66,10 @@ class NoisyELBOConvergenceTracker(Callback):
                 self._n_obs_snr_under_threshold += 1
             else:  # reset countdown
                 self._n_obs_snr_under_threshold = 0
-            if self._n_obs_snr_under_threshold == self.stop_countdown_window:
+            if self._n_obs_snr_under_threshold >= self.stop_countdown_window:
                 raise StopIteration("Convergence criterion satisfied: SNR remained below {0} for "
                                     "{1} iterations.".format(self.snr_stop_trigger_threshold,
                                                              self.stop_countdown_window))
+
+    def reset_convergence_counter(self):
+        self._n_obs_snr_under_threshold = 0

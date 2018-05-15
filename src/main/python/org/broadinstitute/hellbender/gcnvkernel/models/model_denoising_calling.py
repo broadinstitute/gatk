@@ -197,7 +197,6 @@ class CopyNumberCallingConfig:
                  cnv_coherence_length: float = 10000.0,
                  class_coherence_length: float = 10000.0,
                  max_copy_number: int = 5,
-                 initialize_to_active_class: bool = True,
                  num_calling_processes: int = 1):
         """See `expose_args` for the description of arguments"""
         assert 0.0 <= p_alt <= 1.0
@@ -213,7 +212,6 @@ class CopyNumberCallingConfig:
         self.cnv_coherence_length = cnv_coherence_length
         self.class_coherence_length = class_coherence_length
         self.max_copy_number = max_copy_number
-        self.initialize_to_active_class = initialize_to_active_class
         self.num_calling_processes = num_calling_processes
 
         self.num_copy_number_states = max_copy_number + 1
@@ -277,10 +275,6 @@ class CopyNumberCallingConfig:
                               type=int,
                               help="Highest called copy number state")
 
-        process_and_maybe_add("initialize_to_active_class",
-                              type=str_to_bool,
-                              help="Initialize all intervals as CNV-active")
-
         process_and_maybe_add("num_calling_processes",
                               type=int,
                               help="Number of concurrent forward-backward threads (not implemented yet)")
@@ -324,28 +318,23 @@ class TrivialPosteriorInitializer(PosteriorInitializer):
                              calling_config: CopyNumberCallingConfig,
                              shared_workspace: 'DenoisingCallingWorkspace'):
         # interval class log posterior probs
-        if calling_config.initialize_to_active_class:
-            log_q_tau_tk = (-np.log(calling_config.num_copy_number_classes - 1)
-                            * np.ones((shared_workspace.num_intervals, calling_config.num_copy_number_classes),
-                                      dtype=types.floatX))
-            log_q_tau_tk[:, 0] = -np.inf
-        else:
-            log_q_tau_tk = np.tile(np.log(shared_workspace.class_probs_k.get_value(borrow=True)),
-                                   (shared_workspace.num_intervals, 1))
+        class_probs_k = np.asarray([1.0 - calling_config.p_active, calling_config.p_active], dtype=types.floatX)
+        log_q_tau_tk = np.tile(np.log(class_probs_k), (shared_workspace.num_intervals, 1))
         shared_workspace.log_q_tau_tk = th.shared(log_q_tau_tk, name="log_q_tau_tk", borrow=config.borrow_numpy)
 
         # copy number log posterior probs
         log_q_c_stc = np.zeros((shared_workspace.num_samples, shared_workspace.num_intervals,
                                 calling_config.num_copy_number_states), dtype=types.floatX)
-
-        log_p_alt = np.log(calling_config.p_alt)
-        log_p_baseline = np.log(1.0 - calling_config.max_copy_number * calling_config.p_alt)
         t_to_j_map = shared_workspace.t_to_j_map.get_value(borrow=True)
         for si in range(shared_workspace.num_samples):
             sample_baseline_copy_number_j = shared_workspace.baseline_copy_number_sj[si, :]
-            log_q_c_stc[si, :, :] = log_p_alt
+            sample_pi_jkc = HHMMClassAndCopyNumberBasicCaller.get_copy_number_prior_for_sample_jkc(
+                calling_config.num_copy_number_states,
+                calling_config.p_alt,
+                sample_baseline_copy_number_j)
+            sample_log_pi_jc = np.log(np.sum(sample_pi_jkc * class_probs_k[np.newaxis, :, np.newaxis], axis=1))
             for ti in range(shared_workspace.num_intervals):
-                log_q_c_stc[si, ti, sample_baseline_copy_number_j[t_to_j_map[ti]]] = log_p_baseline
+                log_q_c_stc[si, ti, :] = sample_log_pi_jc[t_to_j_map[ti], :]
         shared_workspace.log_q_c_stc = th.shared(log_q_c_stc, name="log_q_c_stc", borrow=config.borrow_numpy)
 
 
@@ -456,10 +445,9 @@ class DenoisingCallingWorkspace:
         self.interval_neighbor_index_list: Optional[List[List[int]]] = None
 
         # initialize posterior
-        if posterior_initializer is not None:
-            posterior_initializer.initialize_posterior(denoising_config, calling_config, self)
-            self.initialize_bias_inference_vars()
-            self.update_auxiliary_vars()
+        posterior_initializer.initialize_posterior(denoising_config, calling_config, self)
+        self.initialize_bias_inference_vars()
+        self.update_auxiliary_vars()
 
     def initialize_copy_number_class_inference_vars(self):
         """Initializes members required for copy number class inference (must be called in the cohort mode).
@@ -688,7 +676,6 @@ class TrivialInitialModelParametersSupplier(InitialModelParametersSupplier):
         return self.denoising_model_config.psi_t_scale * np.ones(
             (self.shared_workspace.num_intervals,), dtype=types.floatX)
 
-    # todo better initialization?
     def get_init_log_mean_bias_t(self) -> np.ndarray:
         return np.zeros((self.shared_workspace.num_intervals,), dtype=types.floatX)
 
@@ -847,6 +834,14 @@ class DenoisingModel(GeneralizedContinuousModel):
                 silent_class_logp = tt.sum(commons.negative_binomial_logp(mu_silent_st, alpha_silent_st, n_silent_st))
 
                 return active_class_logp + silent_class_logp
+
+        elif denoising_model_config.q_c_expectation_mode == 'marginalize':
+            def _copy_number_emission_logp(_n_st):
+                _log_copy_number_emission_stc = commons.negative_binomial_logp(
+                    mu_stc,
+                    alpha_st.dimshuffle(0, 1, 'x'),
+                    _n_st.dimshuffle(0, 1, 'x'))
+                return pm.math.logsumexp(shared_workspace.log_q_c_stc + _log_copy_number_emission_stc, axis=2)
 
         else:
             raise Exception("Unknown q_c expectation mode; an exception should have been raised earlier")
@@ -1079,10 +1074,8 @@ class HHMMClassAndCopyNumberBasicCaller:
             _fb_result = self._hmm_q_copy_number.perform_forward_backward(
                 log_prior_c, log_trans_tcc, log_copy_number_emission_tc,
                 prev_log_posterior_tc=prev_log_posterior_tc,
-                admixing_rate=self.inference_params.caller_admixing_rate,
+                admixing_rate=self.inference_params.caller_internal_admixing_rate,
                 temperature=self.temperature.get_value()[0])
-            del log_prior_c
-            del log_trans_tcc
             new_log_posterior_tc = _fb_result.log_posterior_probs_tc
             copy_number_update_size = copy_number_update_summary_statistic_reducer(_fb_result.update_norm_t)
             log_likelihood = float(_fb_result.log_data_likelihood)
@@ -1126,7 +1119,7 @@ class HHMMClassAndCopyNumberBasicCaller:
             self.shared_workspace.log_trans_tkk,
             self.shared_workspace.log_class_emission_tk.get_value(borrow=True),
             prev_log_posterior_tc=self.shared_workspace.log_q_tau_tk.get_value(borrow=True),
-            admixing_rate=self.inference_params.caller_admixing_rate,
+            admixing_rate=self.inference_params.caller_internal_admixing_rate,
             temperature=self.temperature.get_value()[0])
         class_update_size = class_update_summary_statistic_reducer(fb_result.update_norm_t)
         log_likelihood = float(fb_result.log_data_likelihood)

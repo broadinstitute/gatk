@@ -1,12 +1,13 @@
 import argparse
 import inspect
 import logging
+from typing import List, Dict, Set, Tuple
+
 import numpy as np
 import pymc3 as pm
 import theano as th
 import theano.tensor as tt
 from pymc3 import Normal, Deterministic, DensityDist, Bound, Exponential
-from typing import List, Dict, Set, Tuple
 
 from . import commons
 from .fancy_model import GeneralizedContinuousModel
@@ -322,8 +323,8 @@ class PloidyBasicCaller:
         new_log_q_ploidy_sjk -= pm.logsumexp(new_log_q_ploidy_sjk, axis=2)
         old_log_q_ploidy_sjk = self.ploidy_workspace.log_q_ploidy_sjk
         admixed_new_log_q_ploidy_sjk = commons.safe_logaddexp(
-            new_log_q_ploidy_sjk + np.log(self.inference_params.caller_admixing_rate),
-            old_log_q_ploidy_sjk + np.log(1.0 - self.inference_params.caller_admixing_rate))
+            new_log_q_ploidy_sjk + np.log(self.inference_params.caller_external_admixing_rate),
+            old_log_q_ploidy_sjk + np.log(1.0 - self.inference_params.caller_external_admixing_rate))
         update_norm_sj = commons.get_hellinger_distance(admixed_new_log_q_ploidy_sjk, old_log_q_ploidy_sjk)
         return th.function(inputs=[],
                            outputs=[update_norm_sj],

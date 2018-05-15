@@ -9,7 +9,7 @@
   "CNVGermlineCohortWorkflow.gcnv_initial_temperature": 1.0,
   "CNVGermlineCohortWorkflow.gcnv_max_training_epochs": 1,
   "CNVGermlineCohortWorkflow.gcnv_min_training_epochs": 1,
-  "CNVGermlineCohortWorkflow.gcnv_num_thermal_epochs": 1,
+  "CNVGermlineCohortWorkflow.gcnv_num_thermal_advi_iters": 1,
   "CNVGermlineCohortWorkflow.intervals": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/chr20xy.interval_list",
   "CNVGermlineCohortWorkflow.normal_bais": [
     "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74NEG_20xy-downsampled.bam.bai",

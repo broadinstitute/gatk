@@ -1,12 +1,13 @@
+from abc import abstractmethod
+from collections import OrderedDict
+from functools import partial
+from typing import List
+
 import numpy as np
 import pymc3 as pm
 import theano as th
 import theano.tensor as tt
-from abc import abstractmethod
-from collections import OrderedDict
-from functools import partial
 from pymc3.variational.updates import get_or_compute_grads
-from typing import List
 
 from .. import types
 from ..io import io_commons
@@ -241,3 +242,11 @@ class FancyAdamax(FancyStochasticOptimizer):
         """
         from ..io import io_adamax  # lazy import to break import cycle
         io_adamax.AdamaxStateReader(self, input_path)()
+
+    def initialize_state_from_instance(self, instance: 'FancyAdamax'):
+        self.get_mu_m().set_value(instance.get_mu_m().get_value())
+        self.get_mu_u().set_value(instance.get_mu_u().get_value())
+        self.get_rho_m().set_value(instance.get_rho_m().get_value())
+        self.get_rho_u().set_value(instance.get_rho_u().get_value())
+        if not self.disable_bias_correction:
+            self.get_res_tensor().set_value(instance.get_res_tensor().get_value())

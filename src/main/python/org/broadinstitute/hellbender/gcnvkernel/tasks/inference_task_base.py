@@ -1,22 +1,24 @@
+import argparse
+import inspect
+import io
+import logging
+import time
+from abc import abstractmethod
+from typing import List, Callable, Optional, Set, Tuple, Any, Dict
+
 import numpy as np
 import pymc3 as pm
 import theano as th
 import theano.tensor as tt
-import inspect
-import io
-
-import logging
-import time
 import tqdm
-import argparse
-from .. models.fancy_model import GeneralizedContinuousModel
-from typing import List, Callable, Optional, Set, Tuple, Any, Dict
-from abc import abstractmethod
-from ..inference.convergence_tracker import NoisyELBOConvergenceTracker
-from ..inference.param_tracker import VariationalParameterTrackerConfig, VariationalParameterTracker
-from ..inference import fancy_optimizers
-from ..inference.deterministic_annealing import ADVIDeterministicAnnealing
+
 from .. import types
+from ..inference import fancy_optimizers
+from ..inference.convergence_tracker import NoisyELBOConvergenceTracker
+from ..inference.deterministic_annealing import ADVIDeterministicAnnealing
+from ..inference.param_tracker import VariationalParameterTrackerConfig, VariationalParameterTracker
+from ..io import io_commons
+from ..models.fancy_model import GeneralizedContinuousModel
 
 _logger = logging.getLogger(__name__)
 
@@ -62,10 +64,23 @@ class Sampler:
 class Caller:
     """Base class for callers, i.e. routines that update the posterior of discrete RVs, to be used in the
     hybrid ADVI scheme."""
+
+    @abstractmethod
+    def snapshot(self) -> None:
+        """Takes a snapshot of the variables that change by `call` method. Taking a snapshot is useful if
+        several calls are necessary to achieve convergence among discrete variables themselves.
+        `finalize` may then admix the snapshot with the converged result."""
+        raise NotImplementedError
+
     @abstractmethod
     def call(self) -> 'CallerUpdateSummary':
         """Update the posterior of discrete RVs and return a summary"""
         raise NotImplementedError
+
+    @abstractmethod
+    def finalize(self) -> None:
+        """This method is called after exiting the call internal loop and before `update_auxiliary_vars` for
+        finalizing the posteriors (e.g. admixing with the snapshot)."""
 
     @abstractmethod
     def update_auxiliary_vars(self) -> None:
@@ -249,10 +264,8 @@ class HybridInferenceTask(InferenceTask):
                 temperature_update = None
             else:
                 # linear annealing
-                max_thermal_advi_iterations = self.hybrid_inference_params.max_advi_iter_first_epoch
-                max_thermal_advi_iterations += ((self.hybrid_inference_params.num_thermal_epochs - 1)
-                                                * self.hybrid_inference_params.max_advi_iter_first_epoch)
-                temperature_drop_per_iter = (initial_temperature - 1.0) / max_thermal_advi_iterations
+                temperature_drop_per_iter = ((initial_temperature - 1.0) /
+                                             self.hybrid_inference_params.num_thermal_advi_iters)
                 temperature_update = [(self.temperature,
                                        tt.maximum(1.0, self.temperature - temperature_drop_per_iter))]
 
@@ -334,6 +347,8 @@ class HybridInferenceTask(InferenceTask):
                 self.i_epoch += 1
                 if all_converged and not self._premature_convergence():
                     break
+                else:  # reset ADVI convergence tracker so that ADVI is run again
+                    self.advi_convergence_tracker.reset_convergence_counter()
             if all_converged:
                 _logger.info("Inference task completed successfully and convergence achieved.")
             else:
@@ -378,11 +393,15 @@ class HybridInferenceTask(InferenceTask):
                 for _ in progress_bar:
                     loss = self.continuous_model_step_func() / self.elbo_normalization_factor
                     self.i_advi += 1
+
                     try:
                         self.advi_convergence_tracker(self.continuous_model_advi.approx, loss, self.i_advi)
                     except StopIteration:
                         if not self._premature_convergence():  # suppress signal if deemed premature
                             raise StopIteration
+                        else:
+                            self.advi_convergence_tracker.reset_convergence_counter()
+
                     snr = self.advi_convergence_tracker.snr
                     elbo_mean = self.advi_convergence_tracker.mean
                     elbo_variance = self.advi_convergence_tracker.variance
@@ -428,14 +447,22 @@ class HybridInferenceTask(InferenceTask):
                          file=self.tqdm_out) as progress_bar:
             try:
                 for i_round in progress_bar:
+
+                    # draw new log emission posterior samples
                     update_to_estimator = self.sampler.draw()
+
+                    # update the estimator
                     latest_estimator = self.sampler.get_latest_log_emission_posterior_mean_estimator()
                     update_to_estimator = (update_to_estimator - latest_estimator) / (i_round + 1 + lag)
                     self.sampler.increment(update_to_estimator)
+
+                    # relative update (and ensuring no NaNs are present, which can occur if latest_estimator
+                    # has zero entries)
                     latest_estimator = self.sampler.get_latest_log_emission_posterior_mean_estimator()
-                    median_rel_err = np.median(np.abs(update_to_estimator / latest_estimator).flatten())
-                    std_rel_err = np.std(np.abs(update_to_estimator / latest_estimator).flatten())
-                    del update_to_estimator
+                    rel_update = np.nan_to_num(np.abs(update_to_estimator / latest_estimator).flatten())
+                    median_rel_err = np.median(rel_update)
+                    std_rel_err = np.std(rel_update)
+
                     progress_bar.set_description("({0} epoch {1}) relative error: {2:2.4f} +/- {3:2.4f}".format(
                         self.sampling_task_name, self.i_epoch, median_rel_err, std_rel_err),
                         refresh=False)
@@ -474,6 +501,8 @@ class HybridInferenceTask(InferenceTask):
                          desc="({0} epoch {1})".format(self.calling_task_name, self.i_epoch),
                          file=self.tqdm_out) as progress_bar:
             try:
+                # take a snapshot of the posteriors before running the internal convergence loop
+                self.caller.snapshot()
                 for i_calling_iter in progress_bar:
                     caller_summary = self.caller.call()
                     self.latest_caller_update_summary = caller_summary
@@ -498,6 +527,7 @@ class HybridInferenceTask(InferenceTask):
                 raise KeyboardInterrupt
 
             finally:
+                self.caller.finalize()
                 self.caller.update_auxiliary_vars()
                 self.calling_hist.append((self.i_advi, iters_converged, first_call_converged))
                 # if there is a self-consistency loop and not converged ...
@@ -506,7 +536,10 @@ class HybridInferenceTask(InferenceTask):
                                     'if this behavior persists.'.format(
                         self.calling_task_name, self.hybrid_inference_params.max_calling_iters))
 
-        return first_call_converged
+        return iters_converged
+
+    def save_elbo_history(self, output_file):
+        io_commons.write_ndarray_to_tsv(output_file, np.asarray(self.elbo_hist), write_shape_info=False)
 
 
 class HybridInferenceParameters:
@@ -521,12 +554,12 @@ class HybridInferenceParameters:
                  log_emission_samples_per_round: int = 50,
                  log_emission_sampling_median_rel_error: float = 5e-3,
                  log_emission_sampling_rounds: int = 10,
-                 max_advi_iter_first_epoch: int = 100,
+                 max_advi_iter_first_epoch: int = 1000,
                  max_advi_iter_subsequent_epochs: int = 100,
                  min_training_epochs: int = 5,
                  max_training_epochs: int = 50,
                  initial_temperature: float = 2.0,
-                 num_thermal_epochs: int = 20,
+                 num_thermal_advi_iters: int = 500,
                  track_model_params: bool = False,
                  track_model_params_every: int = 10,
                  param_tracker_config: Optional['VariationalParameterTrackerConfig'] = None,
@@ -535,7 +568,8 @@ class HybridInferenceParameters:
                  convergence_snr_countdown_window: int = 10,
                  max_calling_iters: int = 10,
                  caller_update_convergence_threshold: float = 1e-3,
-                 caller_admixing_rate: float = 0.75,
+                 caller_internal_admixing_rate: float = 0.75,
+                 caller_external_admixing_rate: float = 0.75,
                  sampler_smoothing_window: int = 0,
                  caller_summary_statistics_reducer: Callable[[np.ndarray], float] = np.mean,
                  disable_sampler: bool = False,
@@ -556,7 +590,7 @@ class HybridInferenceParameters:
         self.min_training_epochs = min_training_epochs
         self.max_training_epochs = max_training_epochs
         self.initial_temperature = initial_temperature
-        self.num_thermal_epochs = num_thermal_epochs
+        self.num_thermal_advi_iters = num_thermal_advi_iters
         self.track_model_params = track_model_params
         self.track_model_params_every = track_model_params_every
         self.param_tracker_config = param_tracker_config
@@ -565,7 +599,8 @@ class HybridInferenceParameters:
         self.convergence_snr_countdown_window = convergence_snr_countdown_window
         self.max_calling_iters = max_calling_iters
         self.caller_update_convergence_threshold = caller_update_convergence_threshold
-        self.caller_admixing_rate = caller_admixing_rate
+        self.caller_internal_admixing_rate = caller_internal_admixing_rate
+        self.caller_external_admixing_rate = caller_external_admixing_rate
         self.sampler_smoothing_window = sampler_smoothing_window
         self.caller_summary_statistics_reducer = caller_summary_statistics_reducer
         self.disable_sampler = disable_sampler
@@ -582,20 +617,23 @@ class HybridInferenceParameters:
         assert self.log_emission_samples_per_round > 0
         assert 0.0 < self.log_emission_sampling_median_rel_error < 1.0
         assert self.log_emission_sampling_rounds > 0
-        assert self.max_advi_iter_first_epoch > 0
-        assert self.max_advi_iter_subsequent_epochs > 0
+        assert self.max_advi_iter_first_epoch >= 0
+        assert self.max_advi_iter_subsequent_epochs >= 0
         assert self.min_training_epochs > 0
         assert self.max_training_epochs > 0
         assert self.max_training_epochs >= self.min_training_epochs
-        assert self.num_thermal_epochs <= self.max_training_epochs
+        total_max_advi_iters = (self.max_advi_iter_first_epoch +
+                                (self.max_training_epochs - 1) * self.max_advi_iter_subsequent_epochs)
+        assert self.num_thermal_advi_iters <= total_max_advi_iters
         assert self.initial_temperature >= 1.0
-        assert self.disable_annealing or self.num_thermal_epochs > 0
+        assert self.disable_annealing or self.num_thermal_advi_iters > 0
         assert self.track_model_params_every > 0
         assert self.convergence_snr_averaging_window > 0
         assert self.convergence_snr_trigger_threshold > 0
         assert self.max_calling_iters > 0
         assert self.caller_update_convergence_threshold > 0
-        assert self.caller_admixing_rate > 0
+        assert self.caller_internal_admixing_rate > 0
+        assert self.caller_external_admixing_rate > 0
         assert self.sampler_smoothing_window >= 0
 
         if self.track_model_params:
@@ -633,8 +671,8 @@ class HybridInferenceParameters:
                 "choices are: {1}".format(hidden_arg, valid_args)
         for override_default_arg in override_default.keys():
             assert override_default_arg in valid_args, \
-                "Initializer argument of which the default is to be overridden {0} is not a valid initializer " \
-                "arguments; possible choices are: {1}".format(override_default_arg, valid_args)
+                "Initializer argument of which the default is to be overridden {0} is not a valid; possible " \
+                "choices are: {1}".format(override_default_arg, valid_args)
 
         def process_and_maybe_add(arg, **kwargs):
             full_arg = "--" + arg
@@ -698,9 +736,9 @@ class HybridInferenceParameters:
                               type=float,
                               help="Initial temperature for deterministic annealing (must be >= 1.0)")
 
-        process_and_maybe_add("num_thermal_epochs",
+        process_and_maybe_add("num_thermal_advi_iters",
                               type=int,
-                              help="Annealing duration (in the units of training epochs)")
+                              help="Annealing duration (in the units of ADVI iterations)")
 
         process_and_maybe_add("convergence_snr_averaging_window",
                               type=int,
@@ -723,10 +761,15 @@ class HybridInferenceParameters:
                               type=float,
                               help="Maximum tolerated calling update size for convergence")
 
-        process_and_maybe_add("caller_admixing_rate",
+        process_and_maybe_add("caller_internal_admixing_rate",
                               type=float,
                               help="Admixing ratio of new and old caller posteriors (between 0 and 1; higher means "
-                                   "using more of the new posterior)")
+                                   "using more of the new posterior) in internal calling loops")
+
+        process_and_maybe_add("caller_external_admixing_rate",
+                              type=float,
+                              help="Admixing ratio of new and old caller posteriors (between 0 and 1; higher means "
+                                   "using more of the new posterior) after internal convergence")
 
         process_and_maybe_add("disable_sampler",
                               type=str_to_bool,

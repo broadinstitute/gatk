@@ -50,6 +50,12 @@ group.add_argument("--output_calls_path",
                    default=argparse.SUPPRESS,
                    help="Output path to write CNV calls")
 
+group.add_argument("--output_tracking_path",
+                   type=str,
+                   required=True,
+                   default=argparse.SUPPRESS,
+                   help="Output path to write tracked parameters, ELBO, etc.")
+
 group.add_argument("--output_opt_path",
                    type=str,
                    required=False,
@@ -106,48 +112,69 @@ if __name__ == "__main__":
     # setup the inference task
     args_dict = args.__dict__
 
-    # instantiate config classes
-    denoising_config = gcnvkernel.DenoisingModelConfig.from_args_dict(args_dict)
-    calling_config = gcnvkernel.CopyNumberCallingConfig.from_args_dict(args_dict)
-    inference_params = gcnvkernel.HybridInferenceParameters.from_args_dict(args_dict)
+    # instantiate config classes for the main task
+    main_calling_config = gcnvkernel.CopyNumberCallingConfig.from_args_dict(args_dict)
+    main_denoising_config = gcnvkernel.DenoisingModelConfig.from_args_dict(args_dict)
+    main_inference_params = gcnvkernel.HybridInferenceParameters.from_args_dict(args_dict)
+
+    # instantiate config classes for the warm-up task
+    warm_up_denoising_config = gcnvkernel.DenoisingModelConfig.from_args_dict(args_dict)
+    warm_up_inference_params = gcnvkernel.HybridInferenceParameters.from_args_dict(args_dict)
+
+    # update the contigs for the two-stage task
+    warm_up_inference_params.min_training_epochs = 1
+    warm_up_inference_params.max_training_epochs = 1
+    warm_up_denoising_config.q_c_expectation_mode = 'marginalize'
+    main_inference_params.max_advi_iter_first_epoch = 0  # the main task should start from sampling and calling
 
     # instantiate and initialize the workspace
     shared_workspace = gcnvkernel.DenoisingCallingWorkspace(
-        denoising_config, calling_config, modeling_interval_list,
+        main_denoising_config, main_calling_config, modeling_interval_list,
         n_st, sample_names, sample_metadata_collection)
+
     shared_workspace.initialize_copy_number_class_inference_vars()
 
     initial_params_supplier = gcnvkernel.DefaultDenoisingModelInitializer(
-        denoising_config, calling_config, shared_workspace)
+        main_denoising_config, main_calling_config, shared_workspace)
 
-    task = gcnvkernel.CohortDenoisingAndCallingTask(
-        denoising_config, calling_config, inference_params,
+    # warm-up task
+    warm_up_task = gcnvkernel.CohortDenoisingAndCallingWarmUpTask(
+        warm_up_denoising_config, warm_up_inference_params,
         shared_workspace, initial_params_supplier)
 
     if hasattr(args, 'input_model_path'):
         logger.info("A model path was provided to use as starting point...")
         gcnvkernel.io_denoising_calling.DenoisingModelReader(
-            denoising_config, calling_config, shared_workspace, task.continuous_model,
-            task.continuous_model_approx, args.input_model_path)()
+            warm_up_denoising_config, main_calling_config, shared_workspace, warm_up_task.continuous_model,
+            warm_up_task.continuous_model_approx, args.input_model_path)()
 
     if hasattr(args, 'input_calls_path'):
         logger.info("A call path was provided to use as starting point...")
         gcnvkernel.io_denoising_calling.SampleDenoisingAndCallingPosteriorsReader(
-            shared_workspace, task.continuous_model, task.continuous_model_approx,
+            shared_workspace, warm_up_task.continuous_model, warm_up_task.continuous_model_approx,
             args.input_calls_path)()
 
     if hasattr(args, 'input_opt_path'):
         logger.info("A saved optimizer state was provided to use as starting point...")
-        task.fancy_opt.load(args.input_opt_path)
+        warm_up_task.fancy_opt.load(args.input_opt_path)
 
     # go!
-    task.engage()
-    task.disengage()
+    warm_up_task.engage()
+    warm_up_task.disengage()
+
+    # main task
+    main_task = gcnvkernel.CohortDenoisingAndCallingMainTask(
+        main_denoising_config, main_calling_config, main_inference_params,
+        shared_workspace, initial_params_supplier, warm_up_task)
+
+    # go!
+    main_task.engage()
+    main_task.disengage()
 
     # save model
     gcnvkernel.io_denoising_calling.DenoisingModelWriter(
-        denoising_config, calling_config,
-        shared_workspace, task.continuous_model, task.continuous_model_approx,
+        main_denoising_config, main_calling_config,
+        shared_workspace, main_task.continuous_model, main_task.continuous_model_approx,
         args.output_model_path)()
 
     # save a copy of targets in the model path
@@ -156,8 +183,8 @@ if __name__ == "__main__":
 
     # save calls
     gcnvkernel.io_denoising_calling.SampleDenoisingAndCallingPosteriorsWriter(
-        denoising_config, calling_config, shared_workspace, task.continuous_model, task.continuous_model_approx,
-        args.output_calls_path)()
+        main_denoising_config, main_calling_config, shared_workspace, main_task.continuous_model,
+        main_task.continuous_model_approx, args.output_calls_path)()
 
     # save a copy of targets in the calls path
     shutil.copy(args.modeling_interval_list,
@@ -165,4 +192,14 @@ if __name__ == "__main__":
 
     # save optimizer state
     if hasattr(args, 'output_opt_path'):
-        task.fancy_opt.save(args.output_opt_path)
+        main_task.fancy_opt.save(args.output_opt_path)
+
+    # save ELBO history
+    if hasattr(args, 'output_tracking_path'):
+        gcnvkernel.io_commons.assert_output_path_writable(args.output_tracking_path)
+
+        warm_up_elbo_hist_file = os.path.join(args.output_tracking_path, "warm_up_elbo_history.tsv")
+        warm_up_task.save_elbo_history(warm_up_elbo_hist_file)
+
+        main_elbo_hist_file = os.path.join(args.output_tracking_path, "main_elbo_history.tsv")
+        main_task.save_elbo_history(main_elbo_hist_file)
