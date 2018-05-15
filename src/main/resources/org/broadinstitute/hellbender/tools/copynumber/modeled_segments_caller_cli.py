@@ -2,9 +2,7 @@ import argparse
 from modeled_segments_caller import LoadAndSampleCrAndAf
 from modeled_segments_caller import ModeledSegmentsCaller
 
-
-
-parser = argparse.ArgumentParser(description="gCNV contig ploidy and read depth determination tool")
+parser = argparse.ArgumentParser(description="CNV caller tool")
 
 # add tool-specific args
 group = parser.add_argument_group(title="Required arguments")
@@ -13,7 +11,7 @@ group.add_argument("--input",
                    type=str,
                    required=True,
                    default=argparse.SUPPRESS,
-                   help="Input .seg file (which is an output of ModelSegments).")
+                   help="Input modelFinal.seg file (which is an output of ModelSegments).")
 
 group.add_argument("--output",
                    type=str,
@@ -31,13 +29,13 @@ group.add_argument("--output_image_suffix",
                    type=str,
                    required=True,
                    default=argparse.SUPPRESS,
-                   help="Suffix of the output image filenames.")
+                   help="Suffix of the output image filename.")
 
 group.add_argument("--output_calls_suffix",
                    type=str,
                    required=True,
                    default=argparse.SUPPRESS,
-                   help="Suffix of the output calls filenames.")
+                   help="Suffix of the output calls filename.")
 
 group.add_argument("--load_copy_ratio",
                    type=str,
@@ -63,25 +61,26 @@ group.add_argument("--interactive",
                    default="True",
                    help="Whether auxiliary plots should be saved.")
 
-group.add_argument("--interactive_output_del_ampl_image_suffix",
+group.add_argument("--interactive_output_calls_image_suffix",
                    type=str,
                    required=False,
                    default="",
                    help="[Interactive mode only:] Suffix of plot showing deletions and insertions across the genome.")
 
-group.add_argument("--interactive_output_scatter_plot_suffix",
+group.add_argument("--interactive_output_summary_plot_suffix",
                    type=str,
                    required=False,
                    default="",
-                   help="[Interactive mode only:] Suffix of plot showing the normal and not normal segments on" +
-                        " a scatter plot in copy ratio and allele fraction spaces.")
+                   help="[Interactive mode only:] Suffix of plot showing the histograms of copy ratio and " +
+                        "allele fraction data as well as scatter plot of normal and not normal segments " +
+                        "in copy ratio and allele fraction spaces.")
 
 group.add_argument("--interactive_output_allele_fraction_plot_suffix",
                    type=str,
                    required=False,
                    default="",
-                   help="[Interactive mode only:] Suffix of the plot showing allele fraction histograms of the" +
-                        " data falling in the first and second segment of the copy ratio data.")
+                   help="[Interactive mode only:] Suffix of the plot showing allele fraction histograms of the " +
+                        "segments whose copy ratio falls within the regions where we think normal segments should be.")
 
 group.add_argument("--interactive_output_copy_ratio_suffix",
                    type=str,
@@ -95,7 +94,7 @@ group.add_argument("--interactive_output_copy_ratio_clustering_suffix",
                    required=False,
                    default="",
                    help="[Interactive mode only:] Suffix of the plot showing the histogram of copy ratio data and" +
-                        "the first two copy ratio clusters.")
+                        "the two segments that contain the clusters of the two lowest average copy ratio values.")
 
 group.add_argument("--normal_minor_allele_fraction_threshold",
                    type=float,
@@ -130,28 +129,30 @@ if __name__ == "__main__":
     # parse arguments
     args = parser.parse_args()
 
-    # Run code
+    # Load data from the input file and sample data points
     data = LoadAndSampleCrAndAf(args.input,
-                                load_CR=str2bool(args.load_copy_ratio),
-                                load_AF=str2bool(args.load_allele_fraction),
+                                load_cr=str2bool(args.load_copy_ratio),
+                                load_af=str2bool(args.load_allele_fraction),
                                 output_log_dir=args.output,
                                 output_log_prefix=args.output_prefix,
                                 do_logging=args.log
                                 )
 
-    caller = ModeledSegmentsCaller(data, interactive=args.interactive,
-                       output_image_dir=args.output,
-                       output_calls_dir=args.output,
-                       output_image_prefix=args.output_prefix,
-                       output_calls_prefix=args.output_prefix,
-                       output_image_suffix=args.output_image_suffix,
-                       output_calls_suffix=args.output_calls_suffix,
-                       interactive_output_del_ampl_image_suffix=args.interactive_output_del_ampl_image_suffix,
-                       interactive_output_scatter_plot_suffix=args.interactive_output_scatter_plot_suffix,
-                       interactive_output_allele_fraction_plot_suffix=args.interactive_output_allele_fraction_plot_suffix,
-                       interactive_output_copy_ratio_suffix=args.interactive_output_copy_ratio_suffix,
-                       interactive_output_copy_ratio_clustering_suffix=args.interactive_output_copy_ratio_clustering_suffix,
-                       normal_minor_allele_fraction_threshold=args.normal_minor_allele_fraction_threshold,
-                       copy_ratio_peak_min_weight=args.copy_ratio_peak_min_weight,
-                       min_fraction_of_points_in_normal_allele_fraction_region=args.min_fraction_of_points_in_normal_allele_fraction_region
-                       )
+    # Run the caller
+    caller = ModeledSegmentsCaller(data,
+                                   interactive=args.interactive,
+                                   output_image_dir=args.output,
+                                   output_calls_dir=args.output,
+                                   output_image_prefix=args.output_prefix,
+                                   output_calls_prefix=args.output_prefix,
+                                   output_image_suffix=args.output_image_suffix,
+                                   output_calls_suffix=args.output_calls_suffix,
+                                   interactive_output_calls_image_suffix=args.interactive_output_calls_image_suffix,
+                                   interactive_output_summary_plot_suffix=args.interactive_output_summary_plot_suffix,
+                                   interactive_output_allele_fraction_plot_suffix=args.interactive_output_allele_fraction_plot_suffix,
+                                   interactive_output_copy_ratio_suffix=args.interactive_output_copy_ratio_suffix,
+                                   interactive_output_copy_ratio_clustering_suffix=args.interactive_output_copy_ratio_clustering_suffix,
+                                   normal_minor_allele_fraction_threshold=args.normal_minor_allele_fraction_threshold,
+                                   copy_ratio_peak_min_weight=args.copy_ratio_peak_min_weight,
+                                   min_fraction_of_points_in_normal_allele_fraction_region=args.min_fraction_of_points_in_normal_allele_fraction_region
+                                   )
