@@ -38,8 +38,8 @@ public abstract class TwoPassVariantWalker extends VariantWalker {
 
     /**
      *
-     * First pass through the variants. The user may store data in instance variables of the walker as they traverse the
-     * vcf the first time and process them in {@link #afterFirstPass} before making a second pass
+     * First pass through the variants. The user may store data in instance variables of the walker
+     * and process them in {@link #afterFirstPass} before making a second pass
      *
      * @param variant A variant record in a vcf
      * @param readsContext Reads overlapping the current variant. Will be empty if a read source (e.g. bam) isn't provided
