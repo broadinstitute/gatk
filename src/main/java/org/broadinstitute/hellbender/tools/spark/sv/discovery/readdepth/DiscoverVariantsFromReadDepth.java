@@ -145,7 +145,7 @@ public class DiscoverVariantsFromReadDepth extends GATKSparkTool {
     @Argument(doc = "Event intervals (.bed)", fullName = "event-intervals")
     private String eventIntervalsPath;
     @Argument(doc = "CNV segments calls (gCNV .vcf or ModelSegments .seg)", fullName = CNV_CALLS_LONG_NAME)
-    private String segmentCallsFilePath;
+    private List<String> segmentCallsFileList;
     @Argument(doc = "Copy number ratio file (.tsv or .hdf5)", fullName = COPY_RATIOS_LONG_NAME)
     private String copyRatioFilePath;
     @Argument(doc = "Assembly contigs (.bam or .sam)", fullName = ASSEMBLY_CONTIGS_LONG_NAME, optional = true)
@@ -180,7 +180,10 @@ public class DiscoverVariantsFromReadDepth extends GATKSparkTool {
             truthSet = readVCF(truthIntervalsPath, dictionary);
         }
         logger.info("Loading copy ratio segment calls...");
-        final CalledCopyRatioSegmentCollection copyRatioSegments = getCalledCopyRatioSegments(segmentCallsFilePath, dictionary);
+        final List<CalledCopyRatioSegmentCollection> copyRatioSegmentCollections = segmentCallsFileList.stream()
+                .map(segmentCallsFilePath -> getCalledCopyRatioSegments(segmentCallsFilePath, dictionary))
+                .collect(Collectors.toList());
+        final List<CalledCopyRatioSegment> copyRatioSegments = copyRatioSegmentCollections.stream().flatMap(copyRatios -> copyRatios.getRecords().stream()).collect(Collectors.toList());
         logger.info("Loading copy ratio bins...");
         final CopyRatioCollection copyRatios = getCopyRatios(copyRatioFilePath);
 
@@ -287,9 +290,9 @@ public class DiscoverVariantsFromReadDepth extends GATKSparkTool {
 
     private static CalledCopyRatioSegmentCollection getCalledCopyRatioSegments(final String path, final SAMSequenceDictionary dictionary) {
         final File file = new File(path);
-        if (path.toLowerCase().endsWith(ModelSegments.SEGMENTS_FILE_SUFFIX.toLowerCase())) {
+        if (path.toLowerCase().endsWith(ModelSegments.SEGMENTS_FILE_SUFFIX.toLowerCase()) || path.toLowerCase().endsWith(ModelSegments.SEGMENTS_FILE_SUFFIX.toLowerCase() + ".gz")) {
             return new CalledCopyRatioSegmentCollection(file);
-        } else if (path.toLowerCase().endsWith(IOUtil.VCF_FILE_EXTENSION.toLowerCase())) {
+        } else if (path.toLowerCase().endsWith(IOUtil.VCF_FILE_EXTENSION.toLowerCase()) || path.toLowerCase().endsWith(IOUtil.VCF_FILE_EXTENSION.toLowerCase() + ".gz")) {
             final VCFFileReader reader = new VCFFileReader(file, false);
             final List<CalledCopyRatioSegment> segments = Utils.stream(reader.iterator()).map(variantContext ->  {
                 final SimpleInterval interval = new SimpleInterval(variantContext.getContig(), variantContext.getStart(), variantContext.getEnd());

@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CalledCopyRatioSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
@@ -54,7 +53,7 @@ public class LargeSimpleSVCaller {
                                final Collection<VariantContext> truthSet,
                                final Collection<GATKRead> assembledContigs,
                                final CopyRatioCollection copyRatios,
-                               final CalledCopyRatioSegmentCollection copyRatioSegments,
+                               final List<CalledCopyRatioSegment> copyRatioSegments,
                                final SAMSequenceDictionary dictionary,
                                final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromReadDepthArgumentCollection arguments) {
         Utils.nonNull(reads, "Reads RDD cannot be null");
@@ -83,23 +82,21 @@ public class LargeSimpleSVCaller {
                 arguments.evidenceTargetLinkPadding + arguments.hmmPadding).getOverlapDetector();*/
 
         //Fill empty intervals with neutral calls
-        final List<CalledCopyRatioSegment> segments = new ArrayList<>(copyRatioSegments.getRecords());
-        Collections.sort(segments, IntervalUtils.getDictionaryOrderComparator(dictionary));
-        final List<CalledCopyRatioSegment> emptySegments = new ArrayList<>(segments.size());
-        for (int i = 0; i < segments.size() - 1; i++) {
-            final CalledCopyRatioSegment currentSegment = segments.get(i);
-            final CalledCopyRatioSegment nextSegment = segments.get(i + 1);
+        Collections.sort(copyRatioSegments, IntervalUtils.getDictionaryOrderComparator(dictionary));
+        final List<CalledCopyRatioSegment> emptySegments = new ArrayList<>(copyRatioSegments.size());
+        for (int i = 0; i < copyRatioSegments.size() - 1; i++) {
+            final CalledCopyRatioSegment currentSegment = copyRatioSegments.get(i);
+            final CalledCopyRatioSegment nextSegment = copyRatioSegments.get(i + 1);
             if (currentSegment.getContig().equals(nextSegment.getContig())
                     && currentSegment.getEnd() + 1 < nextSegment.getStart()) {
                 final SimpleInterval newInterval = new SimpleInterval(currentSegment.getContig(), currentSegment.getEnd() + 1, nextSegment.getStart() - 1);
                 emptySegments.add(new CalledCopyRatioSegment(new CopyRatioSegment(newInterval, 0, 0), CalledCopyRatioSegment.Call.NEUTRAL));
             }
         }
-        final List<CalledCopyRatioSegment> filledSegments = new ArrayList<>(segments.size() + emptySegments.size());
-        filledSegments.addAll(segments);
+        final List<CalledCopyRatioSegment> filledSegments = new ArrayList<>(copyRatioSegments.size() + emptySegments.size());
+        filledSegments.addAll(copyRatioSegments);
         filledSegments.addAll(emptySegments);
-        final CalledCopyRatioSegmentCollection filledSegmentCollection = new CalledCopyRatioSegmentCollection(copyRatioSegments.getMetadata(), filledSegments);
-        copyRatioSegmentOverlapDetector = filledSegmentCollection.getOverlapDetector();
+        copyRatioSegmentOverlapDetector = OverlapDetector.create(filledSegments);
 
         //Filter calls without overlapping segment support
         final Collection<LargeSimpleSV> filteredCalls = largeSimpleSVCollection.stream().filter(event -> {
