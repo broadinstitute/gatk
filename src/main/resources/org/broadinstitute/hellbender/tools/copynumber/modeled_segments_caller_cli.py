@@ -110,6 +110,14 @@ group.add_argument("--copy_ratio_peak_min_weight",
                    help="During the copy ratio clustering, peaks with weights smaller than this ratio are not "
                         "taken into account.")
 
+group.add_argument("--min_weight_first_cr_peak_cr_data_only",
+                   type=float,
+                   required=False,
+                   default=0.35,
+                   help="If only copy ratio data is taken into account, and we find more than one cluster in the "
+                        "data, then the first peak is considered normal if its weight is above this threshold (or if "
+                        "the weight of the second peak is smaller than 5%.")
+
 group.add_argument("--min_fraction_of_points_in_normal_allele_fraction_region",
                    type=float,
                    required=False,
@@ -154,5 +162,6 @@ if __name__ == "__main__":
                                    interactive_output_copy_ratio_clustering_suffix=args.interactive_output_copy_ratio_clustering_suffix,
                                    normal_minor_allele_fraction_threshold=args.normal_minor_allele_fraction_threshold,
                                    copy_ratio_peak_min_weight=args.copy_ratio_peak_min_weight,
+                                   min_weight_first_cr_peak_cr_data_only=args.min_weight_first_cr_peak_cr_data_only,
                                    min_fraction_of_points_in_normal_allele_fraction_region=args.min_fraction_of_points_in_normal_allele_fraction_region
                                    )
