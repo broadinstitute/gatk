@@ -84,6 +84,7 @@ public final class CallModeledSegments extends CommandLineProgram {
     public static final String OUTPUT_CALLS_SUFFIX_LONG_NAME = "output-calls-suffix";
     public static final String NORMAL_MINOR_ALLELE_FRACTION_THRESHOLD = "normal-minor-allele-fraction-threshold";
     public static final String COPY_RATIO_PEAK_MIN_WEIGHT = "copy-ratio-peak-min-weight";
+    public static final String MIN_WEIGHT_FIRST_CR_PEAK_CR_DATA_ONLY = "min-weight-first-cr-peak-cr-data-only";
     public static final String MIN_FRACTION_OF_POINTS_IN_NORMAL_ALLELE_FRACTION_REGION = "min-fraction-of-points-in-normal-allele-fraction-region";
     public static final String INTERACTIVE_RUN_LONG_NAME = "interactive";
     private static final String INTERACTIVE_OUTPUT_CALLS_IMAGE_SUFFIX = "interactive-output-calls-image-suffix";
@@ -183,6 +184,15 @@ public final class CallModeledSegments extends CommandLineProgram {
     private double copyRatioPeakMinWeight=0.03;
 
     @Argument(
+            doc = "If only copy ratio data is taken into account, and we find more than one cluster in the "
+                    + "data, then the first peak is considered normal if its weight is above this threshold (or if "
+                    + "the weight of the second peak is smaller than 5%.",
+            fullName = MIN_WEIGHT_FIRST_CR_PEAK_CR_DATA_ONLY,
+            optional = true
+    )
+    private double minWeightFirstCrPeakCrDataOnly=0.35;
+
+    @Argument(
             doc = "As a first step of finding the normal segments, the clusters of data in copy ratio space are " +
                     "identified. An interval containing such a cluster can be considered normal only if at least " +
                     "this fraction of data points are above the normalMinorAlleleFractionThreshold.",
@@ -256,6 +266,7 @@ public final class CallModeledSegments extends CommandLineProgram {
                 "--" + INTERACTIVE_OUTPUT_COPY_RATIO_CLUSTERING_SUFFIX.replace('-','_') + "=" + INTERACTIVE_OUTPUT_COPY_RATIO_CLUSTERING_SUFFIX_DEFAULT_VALUE,
                 "--" + NORMAL_MINOR_ALLELE_FRACTION_THRESHOLD.replace('-','_') + "=" + String.valueOf(normalMinorAlleleFractionThreshold),
                 "--" + COPY_RATIO_PEAK_MIN_WEIGHT.replace('-','_') + "=" + String.valueOf(copyRatioPeakMinWeight),
+                "--" + MIN_WEIGHT_FIRST_CR_PEAK_CR_DATA_ONLY.replace('-','_') + "=" + String.valueOf(minWeightFirstCrPeakCrDataOnly),
                 "--" + MIN_FRACTION_OF_POINTS_IN_NORMAL_ALLELE_FRACTION_REGION.replace('-','_') + "=" + String.valueOf(minFractionOfPointsInNormalAlleleFractionRegion)));
 
         return executor.executeScript(
