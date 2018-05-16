@@ -2,7 +2,9 @@ package org.broadinstitute.hellbender.engine.spark;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.serializers.FieldSerializer;
+import com.google.common.collect.ImmutableMap;
 import de.javakaffee.kryoserializers.UnmodifiableCollectionsSerializer;
+import de.javakaffee.kryoserializers.guava.ImmutableMapSerializer;
 import htsjdk.samtools.*;
 import org.apache.spark.serializer.KryoRegistrator;
 import org.bdgenomics.adam.serialization.ADAMKryoRegistrator;
@@ -67,6 +69,10 @@ public class GATKRegistrator implements KryoRegistrator {
         kryo.register(Collections.unmodifiableMap(Collections.EMPTY_MAP).getClass(), new UnmodifiableCollectionsSerializer());
 
         kryo.register(Collections.unmodifiableList(Collections.EMPTY_LIST).getClass(), new UnmodifiableCollectionsSerializer());
+
+        kryo.register(ImmutableMap.of().getClass(), new ImmutableMapSerializer());
+        kryo.register(ImmutableMap.of("one","element").getClass(), new ImmutableMapSerializer());
+        kryo.register(ImmutableMap.of("map","with","multiple","elements").getClass(), new ImmutableMapSerializer());
 
         kryo.register(SAMRecordToGATKReadAdapter.class, new SAMRecordToGATKReadAdapterSerializer());
 
