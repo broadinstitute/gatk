@@ -175,6 +175,12 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
 
     private void validateParams() {
         discoverStageArgs.validate();
+
+        if (nonCanonicalChromosomeNamesFile!=null)
+            IOUtils.assertFileIsReadable(IOUtils.getPath(nonCanonicalChromosomeNamesFile));
+
+        if ( fastqDir != null && Files.notExists(IOUtils.getPath(fastqDir)) )
+            throw new UserException("Provided fastq dir: " + fastqDir + " doesn't exist");
     }
 
     /**
