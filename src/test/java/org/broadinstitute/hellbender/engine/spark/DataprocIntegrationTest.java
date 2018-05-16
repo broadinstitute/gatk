@@ -104,7 +104,7 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
     }
 
     //test that MarkDuplicatesSpark doesn't explode on a tiny file
-    @Test
+    @Test(groups = {"cloud", "bucket"})
     public void markDuplicatesSparkOnDataproc() throws IOException {
         final String gcsInputPath = getGCPTestInputPath() + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.tiny.queryname.noMD.bam";
         final String bamOut = BucketUtils.getTempFilePath(getGCPTestStaging(), ".bam");
