@@ -549,7 +549,7 @@ class ModeledSegmentsCaller:
                  interactive_output_copy_ratio_clustering_suffix:str="_copy_ratio_clusters.png",
                  normal_minor_allele_fraction_threshold: float=0.475,
                  copy_ratio_peak_min_weight: float=0.03,
-                 min_weight_first_cr_peak_cr_data_only: float=0.40,
+                 min_weight_first_cr_peak_cr_data_only: float=0.35,
                  min_fraction_of_points_in_normal_allele_fraction_region: float=0.15,
                  responsibility_threshold_normal: float=0.5
                  ):
@@ -864,7 +864,8 @@ class ModeledSegmentsCaller:
                 cn2_interval = [0.5 * (mu_peaks_initial_fit[0] + mu_peaks_initial_fit[1]),
                                 1.1 * max(self.__copy_ratio_sampled)]
         else:
-            if ((w_peaks_initial_fit[0] / np.sum(w_peaks_initial_fit) >= self.__min_weight_first_cr_peak_cr_data_only)
+            if ((w_peaks_initial_fit[0] / (w_peaks_initial_fit[0] + w_peaks_initial_fit[1])
+               >= self.__min_weight_first_cr_peak_cr_data_only)
                or (w_peaks_initial_fit[1] / np.sum(w_peaks_initial_fit) < 0.05)):
                 cn2_interval = [0, 0.5 * (mu_peaks_initial_fit[0] + mu_peaks_initial_fit[1])]
             else:
