@@ -238,8 +238,8 @@ public final class GenomicsDBImport extends GATKTool {
     @Advanced
     @Argument(fullName = MAX_NUM_INTERVALS_TO_IMPORT_IN_PARALLEL,
             shortName = MAX_NUM_INTERVALS_TO_IMPORT_IN_PARALLEL,
-            doc = "Max number of intervals to import in parallel; higher values may improve performance, but require more"+
-            +" memory and a higher number of file descriptors open at the same time",
+            doc = "Max number of intervals to import in parallel; higher values may improve performance, but require more" +
+                  " memory and a higher number of file descriptors open at the same time",
             optional = true,
             minValue = 1)
     private int maxNumIntervalsToImportInParallel = 1;

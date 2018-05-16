@@ -74,6 +74,12 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         new SimpleInterval("chr20", 17970001, 17980000),
         new SimpleInterval("chr20", 17980001, 17981445)
     ));
+    private static final ArrayList<SimpleInterval> MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS =
+        new ArrayList<SimpleInterval>(Arrays.asList(
+            new SimpleInterval("chr20", 17960187, 17969999),
+            new SimpleInterval("chr20", 17970000, 17980000),
+            new SimpleInterval("chr20", 17980001, 17981445)
+    ));
     private static final ArrayList<SimpleInterval> INTERVAL_3736 =
             new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("chr6",130365070,146544250)));
     private static final ArrayList<SimpleInterval> INTERVAL_NONDIPLOID =
@@ -117,7 +123,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     @Test
     public void testGenomicsDBImportFileInputsAgainstCombineGVCFWithMultipleIntervals() throws IOException {
-        testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS, MULTIPLE_INTERVALS, b38_reference_20_21, new String[0]);
+        testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS, MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, b38_reference_20_21, new String[0]);
     }
 
     @Test
