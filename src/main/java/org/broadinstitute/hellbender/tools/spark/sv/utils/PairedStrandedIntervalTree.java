@@ -11,6 +11,14 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
+/**
+ * This class is a structure for holding values that are linked to pairs of StrandedIntervals (PairedStrandedIntervals).
+ * This makes it roughly equivalent to data stored in a BEDPE file. Such data is frequently useful for storing
+ * structural variation related information -- for example, aligned read pairs can be represented as PairedStrandedIntervals
+ * and stored in a PairedStrandedIntervalTree. Internally, it uses SVIntervalTrees to store its data, making lookup and
+ * overlap calculations efficient.
+ * @param <V> The value type to be associated with each PairedStrandedInterval.
+ */
 @DefaultSerializer(PairedStrandedIntervalTree.Serializer.class)
 public class PairedStrandedIntervalTree<V> implements Iterable<Tuple2<PairedStrandedIntervals, V>> {
 
@@ -24,6 +32,10 @@ public class PairedStrandedIntervalTree<V> implements Iterable<Tuple2<PairedStra
         leftEnds = (SVIntervalTree<LeftEndEntry<V>>) kryo.readClassAndObject(input);
     }
 
+    /**
+     * Add a value associated with a PairedStrandedInterval
+     * @return the old value associated with the interval, or null if none existed
+     */
     public V put(PairedStrandedIntervals pair, V value) {
         final SVIntervalTree.Entry<LeftEndEntry<V>> leftEndEntry = leftEnds.find(pair.getLeft().getInterval());
         final LeftEndEntry<V> leftEntryValue;
@@ -59,6 +71,9 @@ public class PairedStrandedIntervalTree<V> implements Iterable<Tuple2<PairedStra
 
     }
 
+    /**
+     * Returns the total number of items stored in the structure.
+     */
     public int size() {
         return size;
     }
@@ -169,8 +184,15 @@ public class PairedStrandedIntervalTree<V> implements Iterable<Tuple2<PairedStra
         }
     }
 
-    public Iterator<Tuple2<PairedStrandedIntervals,V>> overlappers(PairedStrandedIntervals pair) {
-        return new PairedStrandedIntervalTreeOverlapperIterator(this, pair);
+    /**
+     * Finds all items with \code{PairedStrandedIntervals} that overlap the query, overlap between two \code{PairedStrandedIntervals} being
+     * defined as: (overlap between the left \code{SVIntervals}, left strand agreement, overlap between the right \code{SVIntervals}, and
+     * right strand agreement). Returns an iterator over \code{PairedStrandedInterval}, \code{V} pairs. The iterator has
+     * limited support for \code{remove()}: \code{remove()} can only be called immediately after calling \code{next()}; a call
+     * to \code{hasNext()} or \code{remove()} causes the iterator to look ahead and thereafter \code{remove} is not supported.
+     */
+    public Iterator<Tuple2<PairedStrandedIntervals,V>> overlappers(PairedStrandedIntervals query) {
+        return new PairedStrandedIntervalTreeOverlapperIterator(this, query);
     }
 
     public final class PairedStrandedIntervalTreeIterator implements Iterator<Tuple2<PairedStrandedIntervals, V>> {
@@ -283,6 +305,11 @@ public class PairedStrandedIntervalTree<V> implements Iterable<Tuple2<PairedStra
 
     }
 
+    /**
+     * Returns an iterator over all \code{PairedStrandedInterval}, \code{V} pairs in the tree. The results will be ordered by
+     * left interval, then by left strand, then by right interval, and finally by right strand. \code{remove()} is a supported
+     * operation.
+     */
     public Iterator<Tuple2<PairedStrandedIntervals, V>> iterator() {
         return new PairedStrandedIntervalTreeIterator(this);
     }
