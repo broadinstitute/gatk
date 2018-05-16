@@ -194,4 +194,31 @@ public final class RandomDNA {
             }
         }
     }
+
+    /**
+     * Generates a random mutation given the original base.
+     * @param base
+     * @return
+     */
+    public byte mutate(final byte base) {
+        final int type = random.nextInt(3);
+        final Nucleotide original = Nucleotide.decode(base);
+        if (type == 0) {
+            return original.transition().encodeAsByte();
+        }
+        final Nucleotide result = type == 0 ? original.transition()
+                : original.transversion(type == 1);
+        return result.encodeAsByte(Character.isLowerCase((char) base));
+    }
+
+    public byte nextBase() {
+        switch (random.nextInt(4)) {
+            case 0: return Nucleotide.A.encodeAsByte();
+            case 1: return Nucleotide.C.encodeAsByte();
+            case 2: return Nucleotide.G.encodeAsByte();
+            case 3: return Nucleotide.T.encodeAsByte();
+            default:
+                throw new RuntimeException("unexpected int");
+        }
+    }
 }
