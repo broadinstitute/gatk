@@ -549,6 +549,7 @@ class ModeledSegmentsCaller:
                  interactive_output_copy_ratio_clustering_suffix:str="_copy_ratio_clusters.png",
                  normal_minor_allele_fraction_threshold: float=0.475,
                  copy_ratio_peak_min_weight: float=0.03,
+                 min_weight_first_cr_peak_cr_data_only: float=0.40,
                  min_fraction_of_points_in_normal_allele_fraction_region: float=0.15,
                  responsibility_threshold_normal: float=0.5
                  ):
@@ -591,6 +592,7 @@ class ModeledSegmentsCaller:
         self.__copy_ratio_peak_min_weight = copy_ratio_peak_min_weight
         self.__min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region
         self.__responsibility_threshold_normal = responsibility_threshold_normal
+        self.__min_weight_first_cr_peak_cr_data_only = min_weight_first_cr_peak_cr_data_only
 
         # Set the maximal value of the PHRED score we allow (since we don't want it to be off the scale on the plots)
         self.__max_PHRED_score = 100.
@@ -853,15 +855,17 @@ class ModeledSegmentsCaller:
         mu_peaks_initial_fit = [mu_peaks_initial_fit[i] for i in ordering]
 
         if n_peaks_initial_fit <= 1:
-            cn2_interval = [0, 1.05 * max(self.__copy_ratio_sampled)]
+            cn2_interval = [0, 1.1 * max(self.__copy_ratio_sampled)]
         elif n_peaks_initial_fit == 2:
-            if w_peaks_initial_fit[0] >= w_peaks_initial_fit[1]:
+            if (w_peaks_initial_fit[0] / (w_peaks_initial_fit[0] + w_peaks_initial_fit[1])
+                    >= self.__min_weight_first_cr_peak_cr_data_only):
                 cn2_interval = [0, 0.5 * (mu_peaks_initial_fit[0] + mu_peaks_initial_fit[1])]
             else:
                 cn2_interval = [0.5 * (mu_peaks_initial_fit[0] + mu_peaks_initial_fit[1]),
-                                1.05 * max(self.__copy_ratio_sampled)]
+                                1.1 * max(self.__copy_ratio_sampled)]
         else:
-            if w_peaks_initial_fit[0] >= w_peaks_initial_fit[1]:
+            if ((w_peaks_initial_fit[0] / np.sum(w_peaks_initial_fit) >= self.__min_weight_first_cr_peak_cr_data_only)
+               or (w_peaks_initial_fit[1] / np.sum(w_peaks_initial_fit) < 0.05)):
                 cn2_interval = [0, 0.5 * (mu_peaks_initial_fit[0] + mu_peaks_initial_fit[1])]
             else:
                 cn2_interval = [0.5 * (mu_peaks_initial_fit[0] + mu_peaks_initial_fit[1]),
