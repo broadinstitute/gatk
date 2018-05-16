@@ -1,8 +1,11 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates;
 
+import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.util.Histogram;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import picard.sam.DuplicationMetrics;
 
 import java.io.Serializable;
@@ -13,6 +16,7 @@ import java.io.Serializable;
  */
 @SuppressWarnings("serial")
 public final class GATKDuplicationMetrics extends DuplicationMetrics implements Serializable {
+
     public GATKDuplicationMetrics copy() {
         final GATKDuplicationMetrics copy = new GATKDuplicationMetrics();
         copy.LIBRARY = this.LIBRARY;
@@ -27,6 +31,36 @@ public final class GATKDuplicationMetrics extends DuplicationMetrics implements 
         copy.ESTIMATED_LIBRARY_SIZE = this.ESTIMATED_LIBRARY_SIZE;
 
         return copy;
+    }
+
+    /**
+     * Update metrics given a record or GATKRead
+     */
+    public void updateMetrics(SAMRecord rec) {
+        update(rec.getReadUnmappedFlag(), rec.isSecondaryOrSupplementary(), ReadUtils.readHasMappedMate(rec), rec.getDuplicateReadFlag() );
+    }
+    public void updateMetrics(GATKRead read) {
+        update(read.isUnmapped(), read.isSecondaryAlignment() || read.isSupplementaryAlignment(), ReadUtils.readHasMappedMate(read), read.isDuplicate() );
+    }
+
+    private void update(boolean readUnmappedFlag, boolean secondaryOrSupplementary, boolean mappedMate, boolean isDuplicate) {
+        if (readUnmappedFlag) {
+            ++this.UNMAPPED_READS;
+        } else if(secondaryOrSupplementary) {
+            ++this.SECONDARY_OR_SUPPLEMENTARY_RDS;
+        } else if (!mappedMate) {
+            ++this.UNPAIRED_READS_EXAMINED;
+        } else {
+            ++this.READ_PAIRS_EXAMINED; // will need to be divided by 2 at the end
+        }
+        // Update the duplication metrics
+        if (isDuplicate && !secondaryOrSupplementary) {
+            if (!mappedMate) {
+                ++this.UNPAIRED_READ_DUPLICATES;
+            } else {
+                ++this.READ_PAIR_DUPLICATES;// will need to be divided by 2 at the end
+            }
+        }
     }
 
 }

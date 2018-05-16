@@ -43,6 +43,9 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         return new MarkDuplicatesSpark();
     }
 
+    @Override
+    protected boolean markSecondaryAndSupplementaryRecordsLikeTheCanonical() { return true; }
+
     @Test(dataProvider = "testMDdata", groups = "spark")
     @Override
     public void testMDOrder(final File input, final File expectedOutput) throws Exception {

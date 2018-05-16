@@ -324,6 +324,14 @@ public final class ReadUtils {
     }
 
     /**
+     * @param read read to check
+     * @return true if the read is paired and has a mapped mate, otherwise false
+     */
+    public static boolean readHasMappedMate( final SAMRecord read ) {
+        return read.getReadPairedFlag() && ! read.getMateUnmappedFlag();
+    }
+
+    /**
      * Check whether the given String represents a legal attribute name according to the SAM spec,
      * and throw an exception if it doesn't.
      *
