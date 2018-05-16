@@ -29,21 +29,20 @@ import static org.broadinstitute.hellbender.tools.spark.sv.utils.SVLocalContext.
  * Strategy is to perform pre-filtering upfront because they are likely to be artifact or different types:
  *
  * 1) first filter out BND records that are (see {@link PrimitiveFilteringResult}):
- *      a) inter-chromosome, no SS, 2nd in mate (redundant),
- *      b) badly supported by MQ,
- *      c) mates too far away,
- *      d) covered by CPX variants
+ *      a) badly supported by MQ,
+ *      b) mates too far away,
+ *      c) covered by CPX variants
  *
  * then convert the paired mate locations into boundaries of an interval, then
  *
- * 2) filter out intervals that are (see {@link OverlapBasedFilteringResult}:
+ * 2) filter out intervals which (see {@link OverlapBasedFilteringResult}:
  *      a) overlaps with multiple other intervals
  *      b) overlaps with no other intervals (including those that only overlaps with the "popular" ones mentioned above)
  *      c) overlaps with one other interval of the same type (INV55/55 or INV33/33 pairs)
  *
- * The resulting INV33/55 pairs are then returned.
+ * The resulting INV33/55 pairs are then returned via {@link OverlappingPair}.
  */
-final class InversionBreakendPreFilter {
+public final class InversionBreakendPreFilter {
 
     private enum ReasonForFilter {
         LOW_MQ, MATE_DISTANCE, COVERED_BY_CPX,
@@ -51,17 +50,22 @@ final class InversionBreakendPreFilter {
         SAME_DIRECTION_OVERLAPPER // INV55/33 overlapping with INV55/33
     }
 
+    /**
+     * Holding information on two BND records
+     * (INV55 and INV33, can NOT be INV33/INV33 or INV55/INV55)
+     * whose mates' spanning intervals overlap.
+     */
     public static final class OverlappingPair implements Serializable {
         private static final long serialVersionUID = 1L;
 
-        protected final InvBreakEndContext fivePrimeBreakEnd;
-        protected final InvBreakEndContext threePrimeBreakEnd;
+        final InvBreakEndContext fivePrimeBreakEnd;
+        final InvBreakEndContext threePrimeBreakEnd;
 
-        protected final String chr;
-        protected final int fiveIntervalLeftBoundary;
-        protected final int fiveIntervalRightBoundary;
-        protected final int threeIntervalLeftBoundary;
-        protected final int threeIntervalRightBoundary;
+        final String chr;
+        final int fiveIntervalLeftBoundary;
+        final int fiveIntervalRightBoundary;
+        final int threeIntervalLeftBoundary;
+        final int threeIntervalRightBoundary;
 
         OverlappingPair(final SVLocalContext.InvBreakEndContext first, final SVLocalContext.InvBreakEndContext second) {
 
@@ -78,23 +82,64 @@ final class InversionBreakendPreFilter {
             threeIntervalLeftBoundary = threePrimeBreakEnd.getStart();
             threeIntervalRightBoundary = threePrimeBreakEnd.getMateRefLoc().getEnd();
         }
+
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            final OverlappingPair that = (OverlappingPair) o;
+
+            if (fiveIntervalLeftBoundary != that.fiveIntervalLeftBoundary) return false;
+            if (fiveIntervalRightBoundary != that.fiveIntervalRightBoundary) return false;
+            if (threeIntervalLeftBoundary != that.threeIntervalLeftBoundary) return false;
+            if (threeIntervalRightBoundary != that.threeIntervalRightBoundary) return false;
+            if (!fivePrimeBreakEnd.equals(that.fivePrimeBreakEnd)) return false;
+            if (!threePrimeBreakEnd.equals(that.threePrimeBreakEnd)) return false;
+            return chr.equals(that.chr);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = fivePrimeBreakEnd.hashCode();
+            result = 31 * result + threePrimeBreakEnd.hashCode();
+            result = 31 * result + chr.hashCode();
+            result = 31 * result + fiveIntervalLeftBoundary;
+            result = 31 * result + fiveIntervalRightBoundary;
+            result = 31 * result + threeIntervalLeftBoundary;
+            result = 31 * result + threeIntervalRightBoundary;
+            return result;
+        }
     }
 
-    // note: this function takes lists because we know there's going to be only ~500 mate pairs on a particular sample,
-    // so paralleling with RDD may hurt performance
-    static List<OverlappingPair> preprocess(final List<InvBreakEndContext> inversionBreakends,
-                                            final List<VariantContext> complexVariants,
-                                            final Integer mateDistanceThreshold,
-                                            final Integer contigContigMQFilter,
-                                            final String outputPrefix,
-                                            final SAMSequenceDictionary refDict,
-                                            final Logger toolLogger) {
+    /**
+     * Main interface.
+     *
+     * <p>
+     *     Note: this function takes lists because we know
+     *     only ~500 mate pairs on one sample to be pre-processed,
+     *     so paralleling with RDD may hurt performance.
+     * </p>
+     */
+    public static List<OverlappingPair> preprocess(final List<InvBreakEndContext> inversionBreakends,
+                                                   final List<VariantContext> complexVariants,
+                                                   final Integer mateDistanceThreshold,
+                                                   final Integer contigContigMQFilter,
+                                                   final String outputPrefix,
+                                                   final SAMSequenceDictionary refDict,
+                                                   final Logger toolLogger) {
 
-        final PrimitiveFilteringResult preprocessed;
+        final PrimitiveFilteringResult preprocessed =
+                applyPrimitiveFilter(inversionBreakends, complexVariants, contigContigMQFilter, mateDistanceThreshold, refDict);
 
         final Comparator<InvBreakEndContext> invBreakEndContextComparator = InvBreakEndContext.makeComparator(refDict);
 
-        final OverlapBasedFilteringResult overlapBasedFilteringResult;
+        final OverlapBasedFilteringResult overlapBasedFilteringResult =
+                applyOverlapBasedFilter(preprocessed.picked, invBreakEndContextComparator);
+
+        writeBedFileForFilteredVariants(outputPrefix,
+                Stream.concat(preprocessed.getFilteredVariants(), overlapBasedFilteringResult.getFilteredVariants())
+                        .sorted((one, two) -> one.compareTo(two, refDict)));
 
         return overlapBasedFilteringResult.uniqueHetOverlappers.stream()
                 .sorted((pair1, pair2) -> {
@@ -126,7 +171,7 @@ final class InversionBreakendPreFilter {
 
     private static void writeBedFileForFilteredVariants(final String outputPrefix,
                                                         final Stream<AnnotatedFilteredInterval> annotatedMateIntervals) {
-        final String bedOutput = outputPrefix + ".bed";
+        final String bedOutput = outputPrefix + "filter.bed";
         try {
             Files.write(IOUtils.getPath(bedOutput),
                     annotatedMateIntervals
@@ -151,25 +196,12 @@ final class InversionBreakendPreFilter {
 
         private final SVIntervalTree<InvBreakEndContext> picked;                // variants picked for downstream analysis
 
-        private PrimitiveFilteringResult(final List<InvBreakEndContext> filteredAwayDueToMQ,
-                                         final List<InvBreakEndContext> filteredAwayDueToSize,
-                                         final SVIntervalTree<InvBreakEndContext> picked) {
+        PrimitiveFilteringResult(final List<InvBreakEndContext> filteredAwayDueToMQ, final List<InvBreakEndContext> filteredAwayDueToSize,
+                                 final Map<InvBreakEndContext, String> coveredByComplexVariants, final SVIntervalTree<InvBreakEndContext> picked) {
             this.filteredAwayDueToMQ = filteredAwayDueToMQ;
             this.filteredAwayDueToSize = filteredAwayDueToSize;
+            this.coveredByComplexVariants = coveredByComplexVariants;
             this.picked = picked;
-            coveredByComplexVariants = new HashMap<>();
-        }
-
-        private void moveFromPickedIfCoveredByComplex(final VariantContext complexVC, final SAMSequenceDictionary refDict) {
-            final SVInterval cpxInterval = new SVInterval(refDict.getSequenceIndex(complexVC.getContig()),
-                    complexVC.getStart() - 1, complexVC.getEnd());
-            if ( picked.hasOverlapper(cpxInterval) ) {
-                picked.overlappers(cpxInterval)
-                        .forEachRemaining(bnd -> {
-                            picked.remove(bnd.getInterval());
-                            coveredByComplexVariants.put(bnd.getValue(), complexVC.getID());
-                        });
-            }
         }
 
         private Stream<AnnotatedFilteredInterval> getFilteredVariants() {
@@ -192,6 +224,73 @@ final class InversionBreakendPreFilter {
         }
     }
 
+    /**
+     * Parse provided input VCF files,
+     * split the variants by cases as designed in {@link PrimitiveFilteringResult}.
+     *
+     * Extract the relevant BND's
+     *   turn those BND's into SVIntervals
+     *   filter by evidence local assembly contigs' MQ (max of the MQ's must be >= {@code primitiveContigMQFilter})
+     *   filter by size (if mate's distance is > {@code mateDistanceFilterThreshold})
+     */
+    private static PrimitiveFilteringResult applyPrimitiveFilter(final List<InvBreakEndContext> nonComplexVariants,
+                                                                 final List<VariantContext> complexVariants,
+                                                                 final int primitiveContigMQFilter,
+                                                                 final int mateDistanceFilterThreshold,
+                                                                 final SAMSequenceDictionary refDict) {
+
+        final SVIntervalTree<VariantContext> complexVariantSVIntervalTree = new SVIntervalTree<>();
+        complexVariants.forEach(complexVC -> {
+            final SVInterval cpxInterval = new SVInterval(refDict.getSequenceIndex(complexVC.getContig()),
+                    complexVC.getStart() - 1, complexVC.getEnd());
+            complexVariantSVIntervalTree.put(cpxInterval, complexVC);
+        });
+
+        final List<InvBreakEndContext> filteredAwayDueToMQ = new ArrayList<>();
+        final List<InvBreakEndContext> filteredAwayDueToSize = new ArrayList<>();
+        final Map<InvBreakEndContext, String> coveredByComplexVariants = new HashMap<>();
+        final SVIntervalTree<InvBreakEndContext> picked = new SVIntervalTree<>();
+        nonComplexVariants.stream()
+                .filter(SVLocalContext.BreakEndSVContext::isUpstreamMate)
+                .forEach(vc -> classifyVC(vc,
+                        filteredAwayDueToMQ, filteredAwayDueToSize, coveredByComplexVariants, picked,
+                        mateDistanceFilterThreshold, primitiveContigMQFilter, complexVariantSVIntervalTree, refDict));
+
+        return new PrimitiveFilteringResult(filteredAwayDueToMQ, filteredAwayDueToSize, coveredByComplexVariants, picked);
+    }
+
+    private static void classifyVC(final InvBreakEndContext invBreakEndContext,
+                                   final List<InvBreakEndContext> targetContainerFilteredAwayDueToMQ,
+                                   final List<InvBreakEndContext> targetContainerFilteredAwayDueToSize,
+                                   final Map<InvBreakEndContext, String> targetContainerCoveredByComplexVariants,
+                                   final SVIntervalTree<InvBreakEndContext> targetContainerPicked,
+                                   final int mateDistanceFilterThreshold,
+                                   final int primitiveContigMQFilter,
+                                   final SVIntervalTree<VariantContext> complexVariantSVIntervalTree,
+                                   final SAMSequenceDictionary refDict) {
+        final boolean hasGoodMappings =
+                invBreakEndContext.makeSureAttributeIsList(GATKSVVCFConstants.MAPPING_QUALITIES)
+                        .map(Integer::valueOf).anyMatch(mq -> mq >= primitiveContigMQFilter);
+        if ( ! hasGoodMappings ) {
+            targetContainerFilteredAwayDueToMQ.add(invBreakEndContext);
+        } else { // filter using MQ
+            final SimpleInterval mateRefLoc = invBreakEndContext.getMateRefLoc();
+            final SVInterval svInterval = new SVInterval(refDict.getSequenceIndex(invBreakEndContext.getContig()),
+                    invBreakEndContext.getStart() - 1, mateRefLoc.getEnd());
+            if (svInterval.getLength() > mateDistanceFilterThreshold)
+                targetContainerFilteredAwayDueToSize.add(invBreakEndContext); // filter using size
+            else {
+                if (complexVariantSVIntervalTree.hasOverlapper(svInterval)) {
+                    final StringBuilder stringBuilder = new StringBuilder();
+                    complexVariantSVIntervalTree.overlappers(svInterval)
+                            .forEachRemaining(variantContextEntry -> stringBuilder.append(variantContextEntry.getValue().getID()).append(";"));
+                    targetContainerCoveredByComplexVariants.put(invBreakEndContext, stringBuilder.toString());
+                } else {
+                    targetContainerPicked.put(svInterval, invBreakEndContext);
+                }
+            }
+        }
+    }
 
     //==================================================================================================================
 
@@ -241,6 +340,100 @@ final class InversionBreakendPreFilter {
             });
 
             return Stream.of(lonely, tooPopular).flatMap(Function.identity());
+        }
+    }
+
+    /**
+     * Classify preprocessed variants as designed by {@link OverlapBasedFilteringResult}.
+     */
+    private static OverlapBasedFilteringResult applyOverlapBasedFilter(final SVIntervalTree<InvBreakEndContext> picked,
+                                                                       final Comparator<InvBreakEndContext> invBreakEndContextComparator) {
+
+        final Set<InvBreakEndContext> noOverlappers = new HashSet<>();
+        final Map<InvBreakEndContext, List<String>> multipleOverlappers = new HashMap<>();
+        final Set<Tuple2<InvBreakEndContext, InvBreakEndContext>> uniqueStrangeOverlappers = new HashSet<>();
+
+        final Set<OverlappingPair> uniqueHetOverlappers = new HashSet<>();
+
+        picked.forEach(e -> classifyIntervals(e, picked, noOverlappers, multipleOverlappers, uniqueStrangeOverlappers, uniqueHetOverlappers, invBreakEndContextComparator));
+
+        // one more traverse to avoid cases that some entry's unique overlapper is records in {@code multipleOverlappers},
+        // if so, reclassify that entry as having no overlapper
+        postProcess(noOverlappers, multipleOverlappers, uniqueStrangeOverlappers, uniqueHetOverlappers);
+
+        return new OverlapBasedFilteringResult(noOverlappers, multipleOverlappers, uniqueStrangeOverlappers, uniqueHetOverlappers);
+    }
+
+    private static void classifyIntervals(final SVIntervalTree.Entry<InvBreakEndContext> treeNode,
+                                          final SVIntervalTree<InvBreakEndContext> pickedFromPrimitiveFiltering,
+                                          final Set<InvBreakEndContext> targetContainerNoOverlappers,
+                                          final Map<InvBreakEndContext, List<String>> targetContainerMultipleOverlappers,
+                                          final Set<Tuple2<InvBreakEndContext, InvBreakEndContext>> targetContainerUniqueStrangeOverlappers,
+                                          final Set<OverlappingPair> targetContainerUniqueHetOverlappers,
+                                          final Comparator<InvBreakEndContext> invBreakEndContextComparator) {
+
+        final SVInterval interval = treeNode.getInterval();
+        final InvBreakEndContext variant = treeNode.getValue();
+
+        final List<InvBreakEndContext> overlappers =
+                Utils.stream(pickedFromPrimitiveFiltering.overlappers(interval))
+                        .map(SVIntervalTree.Entry::getValue)
+                        .filter(other -> !variant.equals(other)) // remove self overlap
+                        .collect(Collectors.toList());
+
+        if (overlappers.size() == 0) {
+            targetContainerNoOverlappers.add(variant);
+        } else if (overlappers.size() > 1) {
+            targetContainerMultipleOverlappers.put(variant, overlappers.stream().map(InvBreakEndContext::getID).collect(Collectors.toList()));
+        } else {
+            final InvBreakEndContext uniqueOverlapper = overlappers.iterator().next();
+            final int compare = invBreakEndContextComparator.compare(variant, uniqueOverlapper);
+
+            if (variant.isType33() == uniqueOverlapper.isType33()) { // INV55/55 or INV33/33 overlapper pair
+                // sorting to avoid duplicate entries in set
+                if ( compare < 0 )
+                    targetContainerUniqueStrangeOverlappers.add(new Tuple2<>(variant, uniqueOverlapper));
+                else
+                    targetContainerUniqueStrangeOverlappers.add(new Tuple2<>(uniqueOverlapper, variant));
+            } else {
+                if ( compare < 0 )
+                    targetContainerUniqueHetOverlappers.add(new OverlappingPair(variant, uniqueOverlapper));
+                else
+                    targetContainerUniqueHetOverlappers.add(new OverlappingPair(uniqueOverlapper, variant));
+            }
+        }
+    }
+
+    private static void postProcess(final Set<InvBreakEndContext> noOverlappers,
+                                    final Map<InvBreakEndContext, List<String>> multipleOverlappers,
+                                    final Set<Tuple2<InvBreakEndContext, InvBreakEndContext>> uniqueStrangeOverlappers,
+                                    final Set<OverlappingPair> uniqueHetOverlappers) {
+        final Set<InvBreakEndContext> popularOnes = multipleOverlappers.keySet();
+
+        for (final OverlappingPair pair : uniqueHetOverlappers) {
+            if (popularOnes.contains(pair.fivePrimeBreakEnd)) {
+                multipleOverlappers.get(pair.fivePrimeBreakEnd).add(pair.threePrimeBreakEnd.getID());
+                noOverlappers.add(pair.threePrimeBreakEnd);
+                uniqueHetOverlappers.remove(pair);
+            }
+            if (popularOnes.contains(pair.threePrimeBreakEnd)) {
+                multipleOverlappers.get(pair.threePrimeBreakEnd).add(pair.fivePrimeBreakEnd.getID());
+                noOverlappers.add(pair.fivePrimeBreakEnd);
+                uniqueHetOverlappers.remove(pair);
+            }
+        }
+
+        for (final Tuple2<InvBreakEndContext, InvBreakEndContext> pair : uniqueStrangeOverlappers) {
+            if (popularOnes.contains(pair._1)) {
+                multipleOverlappers.get(pair._1).add(pair._2.getID());
+                noOverlappers.add(pair._2);
+                uniqueStrangeOverlappers.remove(pair);
+            }
+            if (popularOnes.contains(pair._2)) {
+                multipleOverlappers.get(pair._2).add(pair._1.getID());
+                noOverlappers.add(pair._1);
+                uniqueStrangeOverlappers.remove(pair);
+            }
         }
     }
 
