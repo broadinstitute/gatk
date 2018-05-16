@@ -115,8 +115,8 @@ group.add_argument("--min_weight_first_cr_peak_cr_data_only",
                    required=False,
                    default=0.35,
                    help="If only copy ratio data is taken into account, and we find more than one cluster in the "
-                        "data, then the first peak is considered normal if its weight is above this threshold (or if "
-                        "the weight of the second peak is smaller than 5%.")
+                        "data, then the first peak is considered normal if its relative weight compared to the second"
+                        "peak is above this threshold (or if the weight of the second peak is smaller than 5%.")
 
 group.add_argument("--min_fraction_of_points_in_normal_allele_fraction_region",
                    type=float,
