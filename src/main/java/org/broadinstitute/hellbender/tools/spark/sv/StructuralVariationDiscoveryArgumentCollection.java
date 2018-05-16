@@ -262,12 +262,12 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         public int binSize;
 
         @Argument(doc = "Min bins per event",
-                fullName = DEFAULT_MIN_BINS_LONG_NAME)
-        public int minBins;
+                fullName = DEFAULT_MIN_BINS_LONG_NAME, optional = true)
+        public int minBins = 0;
 
         @Argument(doc = "Max bins per event (-1 for infinity)",
-                fullName = DEFAULT_MAX_BINS_LONG_NAME)
-        public int maxBins;
+                fullName = DEFAULT_MAX_BINS_LONG_NAME, optional = true)
+        public int maxBins = -1;
 
         @Argument(doc = "Bins to pad each event interval",
                 fullName = DEFAULT_PADDING_LONG_NAME, optional = true)

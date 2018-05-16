@@ -306,7 +306,9 @@ public class LargeSimpleSVCaller {
         */
 
         final List<ReadDepthEvent> filteredCalls = Utils.stream(largeSimpleSVSVIntervalTree.iterator())
-                .filter(entry -> copyRatioSegmentOverlapDetector.getOverlaps(SVIntervalUtils.convertToSimpleInterval(entry.getInterval(), dictionary)).stream().anyMatch(overlapper -> (overlapper.getCall() == CalledCopyRatioSegment.Call.AMPLIFICATION && (entry.getValue().getEventType() == SimpleSVType.TYPES.DUP_TANDEM || entry.getValue().getEventType() == SimpleSVType.TYPES.DUP) || (overlapper.getCall() == CalledCopyRatioSegment.Call.DELETION && entry.getValue().getEventType() == SimpleSVType.TYPES.DEL)) && SVIntervalUtils.hasReciprocalOverlap(entry.getInterval(), SVIntervalUtils.convertToSVInterval(overlapper.getInterval(), dictionary), 0.5)))
+                .filter(entry -> copyRatioSegmentOverlapDetector.getOverlaps(SVIntervalUtils.convertToSimpleInterval(entry.getInterval(), dictionary)).stream()
+                        .filter(overlapper -> (overlapper.getCall() == CalledCopyRatioSegment.Call.AMPLIFICATION && (entry.getValue().getEventType() == SimpleSVType.TYPES.DUP_TANDEM || entry.getValue().getEventType() == SimpleSVType.TYPES.DUP) || (overlapper.getCall() == CalledCopyRatioSegment.Call.DELETION && entry.getValue().getEventType() == SimpleSVType.TYPES.DEL)))
+                        .anyMatch(overlapper -> SVIntervalUtils.hasReciprocalOverlap(entry.getInterval(), SVIntervalUtils.convertToSVInterval(overlapper.getInterval(), dictionary), 0.8)))
                 .map(entry -> new ReadDepthEvent(0, entry.getValue()))
                 .collect(Collectors.toList());
 

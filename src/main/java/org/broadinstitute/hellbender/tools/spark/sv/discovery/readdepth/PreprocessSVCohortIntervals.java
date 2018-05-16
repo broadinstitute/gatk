@@ -42,10 +42,10 @@ public class PreprocessSVCohortIntervals extends GATKTool {
 
     private static final long serialVersionUID = 1L;
 
-    @Argument(doc = "Event intervals file", fullName = "event-intervals")
+    @Argument(doc = "Intervals over which to generate bins", fullName = "target-intervals", optional = true)
     private String eventIntervalsPath;
 
-    @Argument(doc = "Sample counts files", fullName = "counts")
+    @Argument(doc = "Sample counts files", fullName = "counts", optional = true)
     private List<String> countsPathList;
 
     @Argument(doc = "Output directory", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
@@ -60,9 +60,33 @@ public class PreprocessSVCohortIntervals extends GATKTool {
     public void traverse() {
         dictionary = getBestAvailableSequenceDictionary();
         //Note we cannot use -L because it automatically merges the intervals
-        final List<SimpleInterval> intervals = getIntervals(eventIntervalsPath, dictionary); // intervalPathList.stream().map(path -> getIntervals(path, dictionary)).collect(Collectors.toList());
+        final List<SimpleInterval> intervals;
+        if (eventIntervalsPath != null) {
+            intervals = getIntervals(eventIntervalsPath, dictionary);
+        } else {
+            intervals = dictionary.getSequences().stream()
+                    .map(sequence -> new SimpleInterval(sequence.getSequenceName(), 1, sequence.getSequenceLength()))
+                    .collect(Collectors.toList());
+        }
         final List<SimpleInterval> binIntervals = stratifyAndBinIntervals(intervals);
         logger.info("Generated " + binIntervals.size() + " intervals at bin size " + arguments.binSize);
+
+        final IntervalList allRebinnedIntervals = new IntervalList(dictionary);
+        allRebinnedIntervals.addall(binIntervals.stream()
+                .map(interval -> new Interval(interval.getContig(), interval.getStart(), interval.getEnd()))
+                .collect(Collectors.toList()));
+        final Path allIntervalsOutput = Paths.get(outputPath, "SV-intervals.interval_list");
+        allRebinnedIntervals.write(allIntervalsOutput.toFile());
+
+        final Map<String, List<SimpleInterval>> contigToIntervalMap = binIntervals.stream().collect(Collectors.groupingBy(SimpleInterval::getContig));
+        for (final String key : contigToIntervalMap.keySet()) {
+            final IntervalList rebinnedIntervals = new IntervalList(dictionary);
+            rebinnedIntervals.addall(contigToIntervalMap.get(key).stream()
+                    .map(interval -> new Interval(interval.getContig(), interval.getStart(), interval.getEnd()))
+                    .collect(Collectors.toList()));
+            final Path sampleIntervalOutput = Paths.get(outputPath, "SV-intervals-" + key + ".interval_list");
+            rebinnedIntervals.write(sampleIntervalOutput.toFile());
+        }
 
         for (int i = 0; i < countsPathList.size(); i++) {
             final String countsPath = countsPathList.get(i);
@@ -75,18 +99,6 @@ public class PreprocessSVCohortIntervals extends GATKTool {
             final SimpleCountCollection rebinnedCountCollection = new SimpleCountCollection(counts.getMetadata(), rebinnedCounts);
             final Path sampleCountsOutput = Paths.get(outputPath, sampleName + "-counts.tsv");
             rebinnedCountCollection.write(sampleCountsOutput.toFile());
-            final List<String> contigs = rebinnedCounts.stream().map(SimpleCount::getContig).distinct().collect(Collectors.toList());
-            if (i == 0) { //TODO assuming for now that counts have exact same bins for all samples
-                for (final String contig : contigs) {
-                    final IntervalList rebinnedIntervals = new IntervalList(dictionary);
-                    rebinnedIntervals.addall(rebinnedCounts.stream()
-                            .filter(count -> count.getContig().equals(contig))
-                            .map(interval -> new Interval(interval.getContig(), interval.getStart(), interval.getEnd()))
-                            .collect(Collectors.toList()));
-                    final Path sampleIntervalOutput = Paths.get(outputPath, "SV-intervals-" + contig + ".interval_list");
-                    rebinnedIntervals.write(sampleIntervalOutput.toFile());
-                }
-            }
         }
     }
 
