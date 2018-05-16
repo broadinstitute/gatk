@@ -118,48 +118,29 @@ public final class MarkDuplicatesGATK extends AbstractMarkDuplicatesCommandLineP
                 try (final CloseableIterator<SAMRecord> iterator = headerAndIterator.iterator) {
                     while (iterator.hasNext()) {
                         final SAMRecord rec = iterator.next();
-                        if (!rec.isSecondaryOrSupplementary()) {
-                            final String library = LibraryIdGenerator.getLibraryName(header, rec);
-                            GATKDuplicationMetrics metrics = libraryIdGenerator.getMetricsByLibrary(library);
-                            if (metrics == null) {
-                                metrics = new GATKDuplicationMetrics();
-                                metrics.LIBRARY = library;
-                                libraryIdGenerator.addMetricsByLibrary(library, metrics);
-                            }
-
-                            //todo have to update the new field in the metrics
-
-                            // First bring the simple metrics up to date
-                            if (rec.getReadUnmappedFlag()) {
-                                ++metrics.UNMAPPED_READS;
-                            } else if (!rec.getReadPairedFlag() || rec.getMateUnmappedFlag()) {
-                                ++metrics.UNPAIRED_READS_EXAMINED;
-                            } else {
-                                ++metrics.READ_PAIRS_EXAMINED; // will need to be divided by 2 at the end
-                            }
-
-
-                            if (recordInFileIndex == nextDuplicateIndex) {
-                                rec.setDuplicateReadFlag(true);
-
-                                // Update the duplication metrics
-                                if (!rec.getReadPairedFlag() || rec.getMateUnmappedFlag()) {
-                                    ++metrics.UNPAIRED_READ_DUPLICATES;
-                                } else {
-                                    ++metrics.READ_PAIR_DUPLICATES;// will need to be divided by 2 at the end
-                                }
-
-                                // Now try and figure out the next duplicate index
-                                if (this.duplicateIndexes.hasNext()) {
-                                    nextDuplicateIndex = this.duplicateIndexes.next();
-                                } else {
-                                    // Only happens once we've marked all the duplicates
-                                    nextDuplicateIndex = -1;
-                                }
-                            } else {
-                                rec.setDuplicateReadFlag(false);
-                            }
+                        final String library = LibraryIdGenerator.getLibraryName(header, rec);
+                        GATKDuplicationMetrics metrics = libraryIdGenerator.getMetricsByLibrary(library);
+                        if (metrics == null) {
+                            metrics = new GATKDuplicationMetrics();
+                            metrics.LIBRARY = library;
+                            libraryIdGenerator.addMetricsByLibrary(library, metrics);
                         }
+
+                        if (recordInFileIndex == nextDuplicateIndex) {
+                            rec.setDuplicateReadFlag(true);
+                            // Now try and figure out the next duplicate index
+                            if (this.duplicateIndexes.hasNext()) {
+                                nextDuplicateIndex = this.duplicateIndexes.next();
+                            } else {
+                                // Only happens once we've marked all the duplicates
+                                nextDuplicateIndex = -1;
+                            }
+                        } else {
+                            rec.setDuplicateReadFlag(false);
+                        }
+
+                        metrics.updateMetrics(rec);
+
                         recordInFileIndex++;
 
                         if (!this.REMOVE_DUPLICATES || !rec.getDuplicateReadFlag()) {

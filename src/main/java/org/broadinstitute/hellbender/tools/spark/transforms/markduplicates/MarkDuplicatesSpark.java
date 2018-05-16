@@ -90,6 +90,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                                          final MarkDuplicatesScoringStrategy scoringStrategy,
                                          final OpticalDuplicateFinder opticalDuplicateFinder,
                                          final int numReducers, final boolean dontMarkUnmappedMates) {
+        final boolean markUnmappedMates = !dontMarkUnmappedMates;
         JavaRDD<GATKRead> sortedReadsForMarking;
         SAMFileHeader headerForTool = header.clone();
 
@@ -107,11 +108,13 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         // Here we combine the original bam with the repartitioned unmarked readnames to produce our marked reads
         return sortedReadsForMarking.zipPartitions(repartitionedReadNames, (readsIter, readNamesIter)  -> {
             final Map<String,Integer> namesOfNonDuplicateReadsAndOpticalCounts = Utils.stream(readNamesIter).collect(Collectors.toMap(Tuple2::_1,Tuple2::_2, (t1,t2) -> {throw new GATKException("Detected multiple mark duplicate records objects corresponding to read with name, this could be the result of readnames spanning more than one partition");}));
-            return Utils.stream(readsIter).peek(read -> {
+            return Utils.stream(readsIter)
+                    .peek(read -> read.setIsDuplicate(false))
+                    .peek(read -> {
                 // Handle reads that have been marked as non-duplicates (which also get tagged with optical duplicate summary statistics)
                 if( namesOfNonDuplicateReadsAndOpticalCounts.containsKey(read.getName())) {
                     read.setIsDuplicate(false);
-                    if (!(dontMarkUnmappedMates && read.isUnmapped())) {
+                    if ( markUnmappedMates || !read.isUnmapped()) {
                         int dupCount = namesOfNonDuplicateReadsAndOpticalCounts.replace(read.getName(), -1);
                         if (dupCount > -1) {
                             ((SAMRecordToGATKReadAdapter) read).setTransientAttribute(MarkDuplicatesSparkUtils.OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, dupCount);
@@ -122,8 +125,10 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                     read.setIsDuplicate(false);
                     // Everything else is a duplicate
                 } else{
-                    if (!(dontMarkUnmappedMates && read.isUnmapped())) {
+                    if ( markUnmappedMates || !read.isUnmapped()) {
                         read.setIsDuplicate(true);
+                    } else {
+                        read.setIsDuplicate(false);
                     }
                 }
             }).iterator();

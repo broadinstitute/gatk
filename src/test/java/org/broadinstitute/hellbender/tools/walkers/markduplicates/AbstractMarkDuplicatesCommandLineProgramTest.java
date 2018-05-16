@@ -38,8 +38,6 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
 
     protected boolean markSecondaryAndSupplementaryRecordsLikeTheCanonical() { return false; }
 
-    protected boolean markUnmappedRecordsLikeTheirMates() { return false; }
-
     // ELIGIBLE_BASE_QUALITY is the minimum quality considered by the dataflow version
     // for marking a specific pair as best. We use it to ensure that the expected
     // pair wins the tie so that the tie is not broken randomly.
@@ -239,6 +237,9 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         tester.addMappedPair(1, 1, 100, false, false, ELIGIBLE_BASE_QUALITY);
         tester.addMappedPair(1, 1, 100, true, true, DEFAULT_BASE_QUALITY); // duplicate!!!
         tester.addMappedFragment(1, 200, false, DEFAULT_BASE_QUALITY, true); // mapped non-primary fragment
+        if (this instanceof MarkDuplicatesSparkIntegrationTest) {
+            tester.addArg("--"+ MarkDuplicatesSparkArgumentCollection.DO_NOT_MARK_UNMAPPED_MATES_LONG_NAME);
+        }
         tester.runTest();
     }
 
@@ -248,6 +249,9 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         tester.getSamRecordSetBuilder().setReadLength(76);
         tester.addMappedFragment(1, 1, false, ELIGIBLE_BASE_QUALITY);
         tester.addMatePair(1, 200, 0, false, true, false, false, "54M22S", null, false, false, true, true, false, DEFAULT_BASE_QUALITY);
+        if (this instanceof MarkDuplicatesSparkIntegrationTest) {
+            tester.addArg("--"+ MarkDuplicatesSparkArgumentCollection.DO_NOT_MARK_UNMAPPED_MATES_LONG_NAME);
+        }
         tester.runTest();
     }
 
@@ -374,7 +378,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
     public void testMappedPairAndMappedFragmentAndMatePairSecondUnmapped() {
         final AbstractMarkDuplicatesTester tester = getTester();
         tester.getSamRecordSetBuilder().setReadLength(76);
-        tester.addMatePair(1, 10040, 10040, false, true, true, markUnmappedRecordsLikeTheirMates(), "76M", null, false, false, false, false, false, DEFAULT_BASE_QUALITY); // first a duplicate,
+        tester.addMatePair(1, 10040, 10040, false, true, true, false, "76M", null, false, false, false, false, false, DEFAULT_BASE_QUALITY); // first a duplicate,
         // second end unmapped
         tester.addMappedPair(1, 10189, 10040, false, false, "41S35M", "65M11S", true, false, false, ELIGIBLE_BASE_QUALITY); // mapped OK
         tester.addMappedFragment(1, 10040, true, DEFAULT_BASE_QUALITY); // duplicate
@@ -388,7 +392,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
     public void testMappedPairAndMappedFragmentAndMatePairFirstUnmapped() {
         final AbstractMarkDuplicatesTester tester = getTester();
         tester.getSamRecordSetBuilder().setReadLength(76);
-        tester.addMatePair(1, 10040, 10040, true, false, markUnmappedRecordsLikeTheirMates(), true, null, "76M", false, false, false, false, false, DEFAULT_BASE_QUALITY); // first a duplicate,
+        tester.addMatePair(1, 10040, 10040, true, false, false, true, null, "76M", false, false, false, false, false, DEFAULT_BASE_QUALITY); // first a duplicate,
         // first end unmapped
         tester.addMappedPair(1, 10189, 10040, false, false, "41S35M", "65M11S", true, false, false, ELIGIBLE_BASE_QUALITY); // mapped OK
         tester.addMappedFragment(1, 10040, true, DEFAULT_BASE_QUALITY); // duplicate
@@ -643,18 +647,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         tester.getSamRecordSetBuilder().setReadLength(68);
         tester.setExpectedOpticalDuplicate(1);
         tester.addMatePair("RUNID:1:1:15993:13361", 2, 41212324, 41212310, false, false, false, false, "33S35M", "19S49M", true, true, false, false, false, DEFAULT_BASE_QUALITY);
-        tester.addMatePair("RUNID:1:1:16020:13352", 2, 41212324, 41212319, false, false, true, true, "33S35M", "28S40M", true, true, false, false, false, DEFAULT_BASE_QUALITY);
-        tester.addMappedFragment(fragLikeFirst ? "RUNID:1:1:15993:13361" : "RUNID:1:1:16020:13352", 1, 400, markSecondaryAndSupplementaryRecordsLikeTheCanonical() && !fragLikeFirst, null, null, additionalFragSecondary, additionalFragSupplementary, DEFAULT_BASE_QUALITY);
-        tester.runTest();
-    }
-
-    @Test(dataProvider = "secondarySupplementaryData")
-    public void testTwoMappedPairsWithSupplementaryReadsAfterCanonical(final Boolean additionalFragSecondary, final Boolean additionalFragSupplementary, final Boolean fragLikeFirst) {
-        final AbstractMarkDuplicatesTester tester = getTester();
-        tester.getSamRecordSetBuilder().setReadLength(68);
-        tester.setExpectedOpticalDuplicate(1);
-        tester.addMatePair("RUNID:1:1:15993:13361", 2, 41212324, 41212310, false, false, false, false, "33S35M", "19S49M", true, true, false, false, false, DEFAULT_BASE_QUALITY);
-        tester.addMatePair("RUNID:1:1:16020:13352", 2, 41212324, 41212319, false, false, true, true, "33S35M", "28S40M", true, true, false, false, false, DEFAULT_BASE_QUALITY);
+        tester.addMatePair("RUNID:1:1:16020:13352", 2, 41212324, 41212319, false, false, true, true, "33S35M", "28S40M", true, true, false, false, false, DEFAULT_BASE_QUALITY); // duplicate pair
         tester.addMappedFragment(fragLikeFirst ? "RUNID:1:1:15993:13361" : "RUNID:1:1:16020:13352", 1, 400, markSecondaryAndSupplementaryRecordsLikeTheCanonical() && !fragLikeFirst, null, null, additionalFragSecondary, additionalFragSupplementary, DEFAULT_BASE_QUALITY);
         tester.runTest();
     }

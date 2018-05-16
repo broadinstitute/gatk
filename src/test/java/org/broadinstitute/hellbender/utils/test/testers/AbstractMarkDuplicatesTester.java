@@ -104,7 +104,7 @@ public abstract class AbstractMarkDuplicatesTester extends SamFileTester {
             updateExpectedDuplicationMetrics();
             // Read the output and check the duplicate flag
             int outputRecords = 0;
-            final SamReader reader = SamReaderFactory.makeDefault().open(getOutput());
+            final SamReader reader = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.LENIENT).open(getOutput());
             for (final SAMRecord record : reader) {
                 outputRecords++;
                 final String key = samRecordToDuplicatesFlagsKey(record);
