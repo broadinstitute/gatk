@@ -311,9 +311,25 @@ public class PairedStrandedIntervalTree<V> implements Iterable<Tuple2<PairedStra
         }
     }
 
+    private void serialize(final Kryo kryo, final Output output) {
+        kryo.writeClassAndObject(output, this);
+    }
+
+    @DefaultSerializer(PairedStrandedIntervalTree.LeftEndEntry.Serializer.class)
     static final class LeftEndEntry<V> {
-        final SVIntervalTree<RightEndEntry<V>> posStrandEntries = new SVIntervalTree<>();
-        final SVIntervalTree<RightEndEntry<V>> negStrandEntries = new SVIntervalTree<>();
+        final SVIntervalTree<RightEndEntry<V>> posStrandEntries;
+        final SVIntervalTree<RightEndEntry<V>> negStrandEntries;
+
+        public LeftEndEntry() {
+            posStrandEntries = new SVIntervalTree<>();
+            negStrandEntries = new SVIntervalTree<>();
+        }
+
+        @SuppressWarnings("unchecked")
+        public LeftEndEntry(final Kryo kryo, final Input input) {
+            posStrandEntries = (SVIntervalTree<RightEndEntry<V>>) kryo.readClassAndObject(input);
+            negStrandEntries = (SVIntervalTree<RightEndEntry<V>>) kryo.readClassAndObject(input);
+        }
 
         public SVIntervalTree<RightEndEntry<V>> getPosStrandEntries() {
             return posStrandEntries;
@@ -322,11 +338,38 @@ public class PairedStrandedIntervalTree<V> implements Iterable<Tuple2<PairedStra
         public SVIntervalTree<RightEndEntry<V>> getNegStrandEntries() {
             return negStrandEntries;
         }
+
+        public static final class Serializer<V> extends com.esotericsoftware.kryo.Serializer<PairedStrandedIntervalTree.LeftEndEntry<V>> {
+            @Override
+            public void write(final Kryo kryo, final Output output, final LeftEndEntry<V> entry) {
+                entry.serialize(kryo, output);
+            }
+
+            @Override
+            public LeftEndEntry<V> read(final Kryo kryo, final Input input, final Class<LeftEndEntry<V>> type) {
+                return new LeftEndEntry<>(kryo, input);
+            }
+        }
+
+        private void serialize(final Kryo kryo, final Output output) {
+            kryo.writeClassAndObject(output, posStrandEntries);
+            kryo.writeClassAndObject(output, negStrandEntries);
+        }
     }
 
+    @DefaultSerializer(PairedStrandedIntervalTree.RightEndEntry.Serializer.class)
     static final class RightEndEntry<V> {
         V posStrandValue;
         V negStrandValue;
+
+        public RightEndEntry() {
+        }
+
+        @SuppressWarnings("unchecked")
+        public RightEndEntry(final Kryo kryo, final Input input) {
+            posStrandValue = (V) kryo.readClassAndObject(input);
+            negStrandValue = (V) kryo.readClassAndObject(input);
+        }
 
         public V getPosStrandValue() {
             return posStrandValue;
@@ -347,9 +390,23 @@ public class PairedStrandedIntervalTree<V> implements Iterable<Tuple2<PairedStra
         public boolean isEmpty() {
             return posStrandValue == null && negStrandValue == null;
         }
+
+        public static final class Serializer<V> extends com.esotericsoftware.kryo.Serializer<PairedStrandedIntervalTree.RightEndEntry<V>> {
+            @Override
+            public void write(final Kryo kryo, final Output output, final RightEndEntry<V> entry) {
+                entry.serialize(kryo, output);
+            }
+
+            @Override
+            public RightEndEntry<V> read(final Kryo kryo, final Input input, final Class<RightEndEntry<V>> type) {
+                return new RightEndEntry<>(kryo, input);
+            }
+        }
+
+        private void serialize(final Kryo kryo, final Output output) {
+            kryo.writeClassAndObject(output, posStrandValue);
+            kryo.writeClassAndObject(output, negStrandValue);
+        }
     }
 
-    private void serialize(final Kryo kryo, final Output output) {
-        kryo.writeClassAndObject(output, this);
-    }
 }
