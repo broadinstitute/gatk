@@ -4,6 +4,7 @@ import com.google.common.collect.Iterators;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.commons.collections.IteratorUtils;
+import org.apache.parquet.Strings;
 import org.apache.spark.Partitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -111,8 +112,8 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         return sortedReadsForMarking.zipPartitions(repartitionedReadNames, (readsIter, readNamesIter)  -> {
             final List<Tuple2<String, Integer>> list = new ArrayList<>();
             readNamesIter.forEachRemaining(list::add);
-            System.out.println(list);
-            final Map<String,Integer> namesOfNonDuplicateReadsAndOpticalCounts = Utils.stream(list).collect(Collectors.toMap(Tuple2::_1,Tuple2::_2, (t1,t2) -> {throw new GATKException("Detected multiple mark duplicate records objects corresponding to read with name, this could be the result of readnames spanning more than one partition");}));
+            final String errtxt = list.stream().map(Tuple2::toString).collect(Collectors.joining(" "));
+            final Map<String,Integer> namesOfNonDuplicateReadsAndOpticalCounts = Utils.stream(list).collect(Collectors.toMap(Tuple2::_1,Tuple2::_2, (t1,t2) -> {throw new GATKException("Detected multiple mark duplicate records objects corresponding to read with name, this could be the result of readnames spanning more than one partition \n" + errtxt);}));
             return Utils.stream(readsIter)
                     .peek(read -> read.setIsDuplicate(false))
                     .peek(read -> {
