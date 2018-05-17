@@ -1,11 +1,13 @@
 package org.broadinstitute.hellbender.engine.spark;
 
+import com.google.common.collect.Iterators;
 import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.tools.spark.pipelines.PrintReadsSpark;
 import org.broadinstitute.hellbender.tools.spark.pipelines.PrintVariantsSpark;
+import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSpark;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -99,5 +101,31 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
         Files.delete(output);
         Files.copy(input, output);
         return output.toFile();
+    }
+
+    //test that MarkDuplicatesSpark doesn't explode on a tiny file
+    @Test(groups = {"cloud", "bucket"})
+    public void markDuplicatesSparkOnDataproc() throws IOException {
+        final String gcsInputPath = getGCPTestInputPath() + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.tiny.queryname.noMD.bam";
+        final String bamOut = BucketUtils.getTempFilePath(getGCPTestStaging(), ".bam");
+        final String metricsOut = BucketUtils.getTempFilePath(getGCPTestStaging(), ".metrics");
+
+        final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
+        argBuilder.addArgument("I", gcsInputPath)
+                .addArgument("O", bamOut)
+                .addArgument("M", metricsOut);
+
+        DataprocTestUtils.launchGatkTool(MarkDuplicatesSpark.class.getSimpleName(), argBuilder.getArgsList(), clusterName);
+        final File actual = copyLocally(bamOut, "actual");
+
+        //assert that the output has the right number of reads and they're ordered correctly
+        assertReadsAreInCoordinatishOrder(actual);
+        try( ReadsDataSource reader = new ReadsDataSource(actual.toPath())){
+            Assert.assertEquals(Iterators.size(reader.iterator()), 1838);
+        }
+
+        //and that the metrics file is not empty
+        Assert.assertTrue( Files.size(IOUtils.getPath(metricsOut)) > 0);
+
     }
 }
