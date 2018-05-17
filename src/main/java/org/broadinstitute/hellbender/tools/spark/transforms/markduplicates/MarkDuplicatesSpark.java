@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.transforms.markduplicates;
 import com.google.common.collect.Iterators;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.metrics.MetricsFile;
+import org.apache.commons.collections.IteratorUtils;
 import org.apache.spark.Partitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -27,15 +28,14 @@ import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.markduplicates.GATKDuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.SerializableOpticalDuplicatesFinder;
+import org.testng.collections.Lists;
 import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import scala.Tuple2;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @DocumentedFeature
@@ -109,7 +109,10 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
 
         // Here we combine the original bam with the repartitioned unmarked readnames to produce our marked reads
         return sortedReadsForMarking.zipPartitions(repartitionedReadNames, (readsIter, readNamesIter)  -> {
-            final Map<String,Integer> namesOfNonDuplicateReadsAndOpticalCounts = Utils.stream(readNamesIter).collect(Collectors.toMap(Tuple2::_1,Tuple2::_2, (t1,t2) -> {throw new GATKException("Detected multiple mark duplicate records objects corresponding to read with name, this could be the result of readnames spanning more than one partition");}));
+            final List<Tuple2<String, Integer>> list = new ArrayList<>();
+            readNamesIter.forEachRemaining(list::add);
+            System.out.println(list);
+            final Map<String,Integer> namesOfNonDuplicateReadsAndOpticalCounts = Utils.stream(list).collect(Collectors.toMap(Tuple2::_1,Tuple2::_2, (t1,t2) -> {throw new GATKException("Detected multiple mark duplicate records objects corresponding to read with name, this could be the result of readnames spanning more than one partition");}));
             return Utils.stream(readsIter)
                     .peek(read -> read.setIsDuplicate(false))
                     .peek(read -> {
