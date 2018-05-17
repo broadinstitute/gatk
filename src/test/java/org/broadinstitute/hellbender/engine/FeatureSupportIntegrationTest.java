@@ -6,7 +6,6 @@ import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.tools.examples.ExampleReadWalkerWithVariants;
 import org.testng.annotations.Test;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 

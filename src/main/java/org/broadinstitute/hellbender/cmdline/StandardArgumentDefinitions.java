@@ -37,6 +37,7 @@ public final class StandardArgumentDefinitions {
     public static final String ANNOTATIONS_TO_EXCLUDE_LONG_NAME = "annotations-to-exclude";
     public static final String SAMPLE_NAME_LONG_NAME = "sample-name";
     public static final String PEDIGREE_FILE_LONG_NAME = "pedigree";
+    public static final String SITES_ONLY_LONG_NAME = "sites-only-vcf-output";
 
     public static final String INPUT_SHORT_NAME = "I";
     public static final String OUTPUT_SHORT_NAME = "O";

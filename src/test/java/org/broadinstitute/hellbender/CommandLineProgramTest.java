@@ -32,4 +32,9 @@ public abstract class CommandLineProgramTest extends GATKBaseTest implements Com
         return new Main().instanceMain(makeCommandLineArgs(args));
     }
 
+    @Override
+    public Object runCommandLine(final List<String> args, final String toolName) {
+        return new Main().instanceMain(makeCommandLineArgs(args, toolName));
+    }
+
 }

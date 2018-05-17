@@ -78,10 +78,19 @@ public interface CommandLineProgramTester {
     /**
      * Runs the command line implemented by this test.
      *
-     * Default behaviour uses {@link Main} with the command line arguments created by {@link #makeCommandLineArgs(List)}.
+     * Default behavior uses {@link Main} with the command line arguments created by {@link #makeCommandLineArgs(List)}.
      */
     default Object runCommandLine(final List<String> args) {
         return new Main().instanceMain(makeCommandLineArgs(args));
+    }
+
+    /**
+     * Lets you explicitly specify a tool to run with the provided arguments
+     *
+     * Default behavior uses {@link Main} with the command line arguments created by {@link #makeCommandLineArgs(List, String)}.
+     */
+    default Object runCommandLine(final List<String> args, final String toolName) {
+        return new Main().instanceMain(makeCommandLineArgs(args, toolName));
     }
 
     default Object runCommandLine(final String[] args) {

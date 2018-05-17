@@ -113,6 +113,10 @@ public abstract class GATKTool extends CommandLineProgram {
             optional = true)
     public boolean disableBamIndexCaching = false;
 
+    @Argument(fullName = StandardArgumentDefinitions.SITES_ONLY_LONG_NAME,
+            doc = "If true, don't emit genotype fields when writing vcf file output.", optional = true)
+    public boolean outputSitesOnlyVCFs = false;
+
     /**
      * Master sequence dictionary to be used instead of all other dictionaries (if provided).
      */
@@ -726,6 +730,10 @@ public abstract class GATKTool extends CommandLineProgram {
             } else {
                 options.add(Options.INDEX_ON_THE_FLY);
             }
+        }
+
+        if (outputSitesOnlyVCFs) {
+            options.add(Options.DO_NOT_WRITE_GENOTYPES);
         }
 
         return GATKVariantContextUtils.createVCFWriter(
