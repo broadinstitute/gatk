@@ -41,9 +41,9 @@ public class ExampleTwoPassVariantWalker extends TwoPassVariantWalker {
 
     private VariantContextWriter vcfWriter;
 
-    static String QD_DISTANCE_FROM_MEAN = "QD_DIST";
+    public static final String QD_DISTANCE_FROM_MEAN = "QD_DIST";
 
-    static String COPY_OF_QD_KEY_NAME = "QD_COPY";
+    public static final String COPY_OF_QD_KEY_NAME = "QD_COPY";
 
     private double averageQualByDepth;
 
