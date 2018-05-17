@@ -6,17 +6,16 @@ import htsjdk.samtools.*;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.spark.Partition;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadQueryNameComparator;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
@@ -163,8 +162,22 @@ public class SparkUtilsUnitTest extends GATKBaseTest {
         Assert.assertThrows(IllegalArgumentException.class, () -> SparkUtils.putReadsWithTheSameNameInTheSamePartition(header, readsRDD, ctx));
     }
 
+    @Test(expectedExceptions = GATKException.class)
+    public void testInvalidSort(){
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        header.setSortOrder(SAMFileHeader.SortOrder.unsorted);
+        List<GATKRead> reads = new ArrayList<>();
+        for(int i = 0; i < 10; i++){
+            //create reads with alternating contigs and  decreasing start position
+            reads.add(ArtificialReadUtils.createArtificialRead(header, "READ"+i, i % header.getSequenceDictionary().size() , 100, 100));
+        }
+        final JavaRDD<GATKRead> readsRDD = ctx.parallelize(reads);
+        SparkUtils.sortReadsAccordingToHeader(readsRDD, header, 0);
+    }
+
     @Test
-    public void testSortCoordinateSort() {
+    public void testSortCoordinateSortMatchesHtsjdk() {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
         List<GATKRead> reads = new ArrayList<>();
@@ -173,13 +186,13 @@ public class SparkUtilsUnitTest extends GATKBaseTest {
             reads.add(ArtificialReadUtils.createArtificialRead(header, "READ"+i, i % header.getSequenceDictionary().size() , 3000 - i, 100));
         }
         final JavaRDD<GATKRead> readsRDD = ctx.parallelize(reads);
-        final List<GATKRead> coordinateSorted = SparkUtils.coordinateSortReads(readsRDD, header, 0).collect();
+        final List<GATKRead> coordinateSorted = SparkUtils.sortReadsAccordingToHeader(readsRDD, header, 0).collect();
         assertSorted(coordinateSorted, new ReadCoordinateComparator(header));
         assertSorted(coordinateSorted.stream().map(read -> read.convertToSAMRecord(header)).collect(Collectors.toList()), new SAMRecordCoordinateComparator());
     }
 
     @Test
-    public void testSortQuerynameSort() {
+    public void testSortQuerynameSortMatchesHtsjdk() {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
         List<GATKRead> reads = new ArrayList<>();
@@ -195,7 +208,7 @@ public class SparkUtilsUnitTest extends GATKBaseTest {
         }
         header.setSortOrder(SAMFileHeader.SortOrder.queryname);
         final JavaRDD<GATKRead> readsRDD = ctx.parallelize(reads);
-        final List<GATKRead> querynameSorted = SparkUtils.querynameSortReads(readsRDD, header, 31).collect();
+        final List<GATKRead> querynameSorted = SparkUtils.sortReadsAccordingToHeader(readsRDD, header, 31).collect();
         assertSorted(querynameSorted, new ReadQueryNameComparator());
         assertSorted(querynameSorted.stream().map(read -> read.convertToSAMRecord(header)).collect(Collectors.toList()), new SAMRecordQueryNameComparator());
     }
@@ -224,7 +237,7 @@ public class SparkUtilsUnitTest extends GATKBaseTest {
                         //check that at least one partition was not correctly distributed
                 .anyMatch(size -> size != numReadsWithSameName), "The partitioning was correct before sorting so the test is meaningless.");
 
-        final JavaRDD<GATKRead> sorted = SparkUtils.querynameSortReads(reads, header, numPartitions);
+        final JavaRDD<GATKRead> sorted = SparkUtils.sortReadsAccordingToHeader(reads, header, numPartitions);
 
         //assert that the grouping is fixed after sorting
         final List<GATKRead>[] sortedPartitions = sorted.collectPartitions(IntStream.range(0, sorted.getNumPartitions()).toArray());
@@ -236,5 +249,14 @@ public class SparkUtilsUnitTest extends GATKBaseTest {
                         .map(List::size)
                 )
                 .allMatch(size -> size == numReadsWithSameName), "Some reads names were split between multiple partitions");
+    }
+
+    @Test
+    public void testSortUsingElementsAsKeys(){
+        final List<Integer> unsorted = Arrays.asList(4, 2, 6, 0, 8);
+        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        final JavaRDD<Integer> unsortedRDD = ctx.parallelize(unsorted);
+        final JavaRDD<Integer> sorted = SparkUtils.sortUsingElementsAsKeys(unsortedRDD, Comparator.naturalOrder(), 2);
+        assertSorted(sorted.collect(), Comparator.naturalOrder());
     }
 }

@@ -181,7 +181,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
             // the overlaps partitioner requires that reads are coordinate-sorted
             final SAMFileHeader readsHeader = header.clone();
             readsHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-            markedFilteredReadsForBQSR = SparkUtils.coordinateSortReads(markedFilteredReadsForBQSR, readsHeader, numReducers);
+            markedFilteredReadsForBQSR = SparkUtils.sortReadsAccordingToHeader(markedFilteredReadsForBQSR, readsHeader, numReducers);
         }
 
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);

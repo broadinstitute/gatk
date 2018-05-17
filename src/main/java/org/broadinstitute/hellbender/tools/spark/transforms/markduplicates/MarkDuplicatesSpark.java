@@ -90,13 +90,12 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                                          final MarkDuplicatesScoringStrategy scoringStrategy,
                                          final OpticalDuplicateFinder opticalDuplicateFinder,
                                          final int numReducers, final boolean dontMarkUnmappedMates) {
-        JavaRDD<GATKRead> sortedReadsForMarking;
         SAMFileHeader headerForTool = header.clone();
 
         // If the input isn't queryname sorted, sort it before duplicate marking
-        sortedReadsForMarking = querynameSortReadsIfNecessary(reads, numReducers, headerForTool);
+        final JavaRDD<GATKRead> sortedReadsForMarking = querynameSortReadsIfNecessary(reads, numReducers, headerForTool);
 
-        JavaPairRDD<MarkDuplicatesSparkUtils.IndexPair<String>, Integer> namesOfNonDuplicates = MarkDuplicatesSparkUtils.transformToDuplicateNames(headerForTool, scoringStrategy, opticalDuplicateFinder, sortedReadsForMarking, numReducers);
+        final JavaPairRDD<MarkDuplicatesSparkUtils.IndexPair<String>, Integer> namesOfNonDuplicates = MarkDuplicatesSparkUtils.transformToDuplicateNames(headerForTool, scoringStrategy, opticalDuplicateFinder, sortedReadsForMarking, numReducers);
 
         // Here we explicitly repartition the read names of the unmarked reads to match the partitioning of the original bam
         final JavaRDD<Tuple2<String,Integer>> repartitionedReadNames = namesOfNonDuplicates
@@ -139,7 +138,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
             sortedReadsForMarking = reads;
         } else {
             headerForTool.setSortOrder(SAMFileHeader.SortOrder.queryname);
-            sortedReadsForMarking = SparkUtils.querynameSortReads(reads, headerForTool, numReducers);
+            sortedReadsForMarking = SparkUtils.sortReadsAccordingToHeader(reads, headerForTool, numReducers);
         }
         return sortedReadsForMarking;
     }
