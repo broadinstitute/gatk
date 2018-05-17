@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.transforms.markduplicates;
 
+import com.google.common.collect.Iterators;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.Partitioner;
