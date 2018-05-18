@@ -12,7 +12,14 @@ public abstract class PairedEnds extends MarkDuplicatesSparkRecord {
     public abstract int getFirstStartPosition();
     public abstract int getUnclippedStartPosition();
     public abstract int getFirstRefIndex();
-    public abstract byte getPCROrientation();
     public abstract int getScore();
-    public abstract boolean isR1R();
+    public abstract boolean isRead1ReverseStrand();
+
+    /**
+     * This returns a byte summary spanning from 0-5 representing all combinations of single read or two read
+     * forward/reverse strand for the first and second read in the Pair. Note, for PCR Duplicates orientation
+     * that the 'first' read corresponds to the read that appears first by coordinate sorting order, which is
+     * distinct from optical sorting which considers the 'first' read to be the first in pair.
+     */
+    public abstract byte getOrientationForPCRDuplicates();
 }

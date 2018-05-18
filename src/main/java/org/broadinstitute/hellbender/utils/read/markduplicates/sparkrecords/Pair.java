@@ -26,11 +26,11 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
     private final int firstStartPosition;
     private final int firstUnclippedStartPosition;
     private final short firstRefIndex;
-    private final boolean R1R;
+    private final boolean isRead1ReverseStrand;
 
     private final int secondUnclippedStartPosition;
     private final short secondRefIndex;
-    private final boolean R2R;
+    private final boolean isRead2ReverseStrand;
     private final int score;
     private final boolean wasFlipped;
 
@@ -75,8 +75,8 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
         firstRefIndex = (short)ReadUtils.getReferenceIndex(first, header);
         secondRefIndex = (short)ReadUtils.getReferenceIndex(second, header);
 
-        R1R = first.isReverseStrand();
-        R2R = second.isReverseStrand();
+        isRead1ReverseStrand = first.isReverseStrand();
+        isRead2ReverseStrand = second.isReverseStrand();
 
         this.key = ReadsKey.hashKeyForPair(header, first, second);
     }
@@ -96,11 +96,11 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
         firstStartPosition = input.readInt();
         firstUnclippedStartPosition = input.readInt();
         firstRefIndex = input.readShort();
-        R1R = input.readBoolean();
+        isRead1ReverseStrand = input.readBoolean();
 
         secondUnclippedStartPosition = input.readInt();
         secondRefIndex = input.readShort();
-        R2R = input.readBoolean();
+        isRead2ReverseStrand = input.readBoolean();
 
         readGroupIndex = input.readShort();
         wasFlipped = input.readBoolean();
@@ -115,11 +115,11 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
         output.writeInt(firstStartPosition);
         output.writeInt(firstUnclippedStartPosition);
         output.writeShort(firstRefIndex);
-        output.writeBoolean(R1R);
+        output.writeBoolean(isRead1ReverseStrand);
 
         output.writeInt(secondUnclippedStartPosition);
         output.writeShort(secondRefIndex);
-        output.writeBoolean(R2R);
+        output.writeBoolean(isRead2ReverseStrand);
 
         output.writeShort(readGroupIndex);
         output.writeBoolean(wasFlipped);
@@ -147,8 +147,8 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
         return firstStartPosition;
     }
     @Override
-    public boolean isR1R() {
-        return R1R;
+    public boolean isRead1ReverseStrand() {
+        return isRead1ReverseStrand;
     }
     @Override
     public int getFirstRefIndex() {
@@ -170,21 +170,21 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
     }
 
     @Override
-    public byte getPCROrientation() {
+    public byte getOrientationForPCRDuplicates() {
         return getOrientation(false);
     }
 
     private byte getOrientation(final boolean optical) {
-        if (R1R && R2R) {
+        if (isRead1ReverseStrand && isRead2ReverseStrand) {
             return ReadEnds.RR;
         }
-        if (R1R) {
-            return (optical&&wasFlipped)? ReadEnds.FR : ReadEnds.RF; //at this point we know for sure R2R is false
+        if (isRead1ReverseStrand) {
+            return (optical && wasFlipped)? ReadEnds.FR : ReadEnds.RF; //at this point we know for sure isRead2ReverseStrand is false
         }
-        if (R2R) {
-            return (optical&&wasFlipped)? ReadEnds.RF :ReadEnds.FR; //at this point we know for sure R1R is false
+        if (isRead2ReverseStrand) {
+            return (optical && wasFlipped)? ReadEnds.RF :ReadEnds.FR; //at this point we know for sure isRead1ReverseStrand is false
         }
-        return ReadEnds.FF;  //at this point we know for sure R1R is false and R2R is false
+        return ReadEnds.FF;  //at this point we know for sure isRead1ReverseStrand is false and isRead2ReverseStrand is false
     }
 
     // Methods for OpticalDuplicateFinder.PhysicalLocation

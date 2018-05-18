@@ -32,7 +32,7 @@ public class Fragment extends PairedEnds {
         this.score = scoringStrategy.score(first);
         this.R1R = first.isReverseStrand();
         this.key = ReadsKey.hashKeyForFragment(firstUnclippedStartPosition,
-                isR1R(),
+                isRead1ReverseStrand(),
                 firstRefIndex,
                 ReadUtils.getLibrary(first, header));
     }
@@ -59,11 +59,11 @@ public class Fragment extends PairedEnds {
       return firstStartPosition;
     }
     @Override
-    public boolean isR1R() {
+    public boolean isRead1ReverseStrand() {
       return R1R;
     }
     @Override
-    public byte getPCROrientation() {
+    public byte getOrientationForPCRDuplicates() {
         return (R1R)? ReadEnds.R : ReadEnds.F;
     }
     @Override

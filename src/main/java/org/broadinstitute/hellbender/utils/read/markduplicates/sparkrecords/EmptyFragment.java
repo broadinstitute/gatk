@@ -34,7 +34,7 @@ public final class EmptyFragment extends PairedEnds {
         this.R1R = read.isReverseStrand();
         firstStartPosition = 0;
         this.key = ReadsKey.hashKeyForFragment(firstUnclippedStartPosition,
-                isR1R(),
+                isRead1ReverseStrand(),
                 firstRefIndex,
                 ReadUtils.getLibrary(read, header));
     }
@@ -61,11 +61,11 @@ public final class EmptyFragment extends PairedEnds {
         return firstStartPosition;
     }
     @Override
-    public boolean isR1R() {
+    public boolean isRead1ReverseStrand() {
         return R1R;
     }
     @Override
-    public byte getPCROrientation() {
+    public byte getOrientationForPCRDuplicates() {
         return (R1R)? ReadEnds.R : ReadEnds.F;
     }
     @Override
