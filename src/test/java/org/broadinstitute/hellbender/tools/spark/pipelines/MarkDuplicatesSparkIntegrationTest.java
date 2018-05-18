@@ -25,11 +25,12 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-
+@Test(groups = "spark")
 public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCommandLineProgramTest {
 
     @Override
@@ -84,7 +85,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         };
     }
 
-    @Test(groups = "spark", dataProvider = "md")
+    @Test( dataProvider = "md")
     public void testMarkDuplicatesSparkIntegrationTestLocal(
         final File input, final long totalExpected, final long dupsExpected,
         Map<String, List<String>> metricsExpected) throws IOException {
@@ -158,6 +159,25 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
             if (observedMetrics.ESTIMATED_LIBRARY_SIZE != null && (Long)expectedList.get(7) != 0L)  {
                 Assert.assertEquals(observedMetrics.ESTIMATED_LIBRARY_SIZE, expectedList.get(7));
             }
+        }
+    }
+
+    @Test
+    public void testSupplementaryReadUnmappedMate() {
+        File output = createTempFile("supplementaryReadUnmappedMate", "bam");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addOutput(output);
+        args.addInput(getTestFile("supplementaryReadUnmappedmate.bam"));
+        runCommandLine(args);
+
+        try ( final ReadsDataSource outputReadsSource = new ReadsDataSource(output.toPath()) ) {
+            final List<GATKRead> actualReads = new ArrayList<>();
+            for ( final GATKRead read : outputReadsSource ) {
+                Assert.assertFalse(read.isDuplicate());
+                actualReads.add(read);
+            }
+
+            Assert.assertEquals(actualReads.size(), 3, "Wrong number of reads output");
         }
     }
 
