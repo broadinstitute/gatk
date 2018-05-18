@@ -22,7 +22,6 @@ import org.bdgenomics.adam.models.SequenceDictionary;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -287,7 +286,7 @@ public final class ReadsSparkSink {
             final JavaSparkContext ctx, final String outputFile, final String referenceFile, final SAMFormat samOutputFormat, final JavaRDD<SAMRecord> reads,
             final SAMFileHeader header, final int numReducers, final String outputPartsDir) throws IOException {
 
-        final JavaRDD<SAMRecord> sortedReads = SparkUtils.sortReads(reads, header, numReducers);
+        final JavaRDD<SAMRecord> sortedReads = sortSamRecordsToMatchHeader(reads, header, numReducers);
         final String outputPartsDirectory = (outputPartsDir == null)? getDefaultPartsDirectory(outputFile)  : outputPartsDir;
         saveAsShardedHadoopFiles(ctx, outputPartsDirectory, referenceFile, samOutputFormat, sortedReads,  header, false);
         logger.info("Finished sorting the bam file and dumping read shards to disk, proceeding to merge the shards into a single file using the master thread");
@@ -364,6 +363,36 @@ public final class ReadsSparkSink {
      */
     public static String getDefaultPartsDirectory(String file) {
         return file + ".parts/";
+    }
+
+    /**
+     * Sorts the given reads according to the sort order in the header.
+     * @param reads the reads to sort
+     * @param header the header specifying the sort order,
+     *               if the header specifies {@link SAMFileHeader.SortOrder#unsorted} or {@link SAMFileHeader.SortOrder#unknown}
+     *               then no sort will be performed
+     * @param numReducers the number of reducers to use; a value of 0 means use the default number of reducers
+     * @return a sorted RDD of reads
+     */
+    private static JavaRDD<SAMRecord> sortSamRecordsToMatchHeader(final JavaRDD<SAMRecord> reads, final SAMFileHeader header, final int numReducers) {
+        final Comparator<SAMRecord> comparator = getSAMRecordComparator(header);
+        if ( comparator == null ) {
+            return reads;
+        } else {
+            return SparkUtils.sortUsingElementsAsKeys(reads, comparator, numReducers);
+        }
+    }
+
+    //Returns the comparator to use or null if no sorting is required.
+    private static Comparator<SAMRecord> getSAMRecordComparator(final SAMFileHeader header) {
+        switch (header.getSortOrder()){
+            case coordinate: return new HeaderlessSAMRecordCoordinateComparator(header);
+            //duplicate isn't supported because it doesn't work right on headerless SAMRecords
+            case duplicate: throw new UserException.UnimplementedFeature("The sort order \"duplicate\" is not supported in Spark.");
+            case queryname:
+            case unsorted:   return header.getSortOrder().getComparatorInstance();
+            default:         return null; //NOTE: javac warns if you have this (useless) default BUT it errors out if you remove this default.
+        }
     }
 
 }

@@ -400,6 +400,28 @@ public abstract class BaseTest {
     }
 
     /**
+     * assert that the iterable is sorted according to the comparator
+     */
+    public static <T> void assertSorted(Iterable<T> iterable, Comparator<T> comparator){
+        final Iterator<T> iter = iterable.iterator();
+        assertSorted(iter, comparator);
+    }
+
+    /**
+     * assert that the iterator is sorted according to the comparator
+     */
+    public static <T> void assertSorted(Iterator<T> iterator, Comparator<T> comparator){
+        T previous = null;
+        while(iterator.hasNext()){
+            T current = iterator.next();
+            if( previous != null) {
+                Assert.assertTrue(comparator.compare(previous, current) <= 0, "Expected " + previous + " to be <= " + current);
+            }
+            previous = current;
+        }
+    }
+
+    /**
      * Get a FileSystem that uses the explicit credentials instead of the default
      * credentials.
      *
