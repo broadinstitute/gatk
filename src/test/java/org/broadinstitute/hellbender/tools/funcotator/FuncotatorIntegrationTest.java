@@ -29,7 +29,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
     // Whether to do debug output (i.e. leave output around).
     // This should always be false when checked in.
-    private static final boolean doDebugTests           = false;
+    private static final boolean doDebugTests             = false;
     private static final String  LARGE_DATASOURCES_FOLDER = "funcotator_dataSources_latest";
 
     static {
@@ -195,6 +195,12 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 },
                 {
                         "hg38_test_variants.vcf",
+                        "Homo_sapiens_assembly38.fasta",
+                        false,
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG38
+                },
+                {
+                        "sample21.trimmed.vcf",
                         "Homo_sapiens_assembly38.fasta",
                         false,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG38
