@@ -45,36 +45,6 @@ public final class ReadsSparkSink {
 
     private final static Logger logger = LogManager.getLogger(ReadsSparkSink.class);
 
-    /**
-     * Sorts the given reads according to the sort order in the header.
-     * @param reads the reads to sort
-     * @param header the header specifying the sort order,
-     *               if the header specifies {@link SAMFileHeader.SortOrder#unsorted} or {@link SAMFileHeader.SortOrder#unknown}
-     *               then no sort will be performed
-     * @param numReducers the number of reducers to use; a value of 0 means use the default number of reducers
-     * @return a sorted RDD of reads
-     */
-    public static JavaRDD<SAMRecord> sortSamRecordsToMatchHeader(final JavaRDD<SAMRecord> reads, final SAMFileHeader header, final int numReducers) {
-        final Comparator<SAMRecord> comparator = getSAMRecordComparator(header);
-        if ( comparator == null ) {
-            return reads;
-        } else {
-            return SparkUtils.sortUsingElementsAsKeys(reads, comparator, numReducers);
-        }
-    }
-
-    //Returns the comparator to use or null if no sorting is required.
-    private static Comparator<SAMRecord> getSAMRecordComparator(final SAMFileHeader header) {
-        switch (header.getSortOrder()){
-            case coordinate: return new HeaderlessSAMRecordCoordinateComparator(header);
-            //duplicate isn't supported because it doesn't work right on headerless SAMRecords
-            case duplicate: throw new UserException.UnimplementedFeature("The sort order \"duplicate\" is not supported in Spark.");
-            case queryname:
-            case unsorted:   return header.getSortOrder().getComparatorInstance();
-            default:         return null; //NOTE: javac warns if you have this (useless) default BUT it errors out if you remove this default.
-        }
-    }
-
     // Output format class for writing BAM files through saveAsNewAPIHadoopFile. Must be public.
     public static class SparkBAMOutputFormat extends KeyIgnoringBAMOutputFormat<NullWritable> {
         public static SAMFileHeader bamHeader = null;
@@ -393,6 +363,36 @@ public final class ReadsSparkSink {
      */
     public static String getDefaultPartsDirectory(String file) {
         return file + ".parts/";
+    }
+
+    /**
+     * Sorts the given reads according to the sort order in the header.
+     * @param reads the reads to sort
+     * @param header the header specifying the sort order,
+     *               if the header specifies {@link SAMFileHeader.SortOrder#unsorted} or {@link SAMFileHeader.SortOrder#unknown}
+     *               then no sort will be performed
+     * @param numReducers the number of reducers to use; a value of 0 means use the default number of reducers
+     * @return a sorted RDD of reads
+     */
+    private static JavaRDD<SAMRecord> sortSamRecordsToMatchHeader(final JavaRDD<SAMRecord> reads, final SAMFileHeader header, final int numReducers) {
+        final Comparator<SAMRecord> comparator = getSAMRecordComparator(header);
+        if ( comparator == null ) {
+            return reads;
+        } else {
+            return SparkUtils.sortUsingElementsAsKeys(reads, comparator, numReducers);
+        }
+    }
+
+    //Returns the comparator to use or null if no sorting is required.
+    private static Comparator<SAMRecord> getSAMRecordComparator(final SAMFileHeader header) {
+        switch (header.getSortOrder()){
+            case coordinate: return new HeaderlessSAMRecordCoordinateComparator(header);
+            //duplicate isn't supported because it doesn't work right on headerless SAMRecords
+            case duplicate: throw new UserException.UnimplementedFeature("The sort order \"duplicate\" is not supported in Spark.");
+            case queryname:
+            case unsorted:   return header.getSortOrder().getComparatorInstance();
+            default:         return null; //NOTE: javac warns if you have this (useless) default BUT it errors out if you remove this default.
+        }
     }
 
 }
