@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates;
 
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.metrics.MetricBase;
-import htsjdk.samtools.util.Histogram;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import picard.sam.DuplicationMetrics;
@@ -15,7 +12,7 @@ import java.io.Serializable;
  * within a stream of SAMRecords.
  */
 public final class GATKDuplicationMetrics extends DuplicationMetrics implements Serializable {
-    @MergeByAssertEquals //Currently picard requires all fields to be annotated. 
+   @NoMergingKeepsValue //Currently picard requires all fields to be annotated.
     private static final long serialVersionUID = 1L;
 
     public GATKDuplicationMetrics copy() {
