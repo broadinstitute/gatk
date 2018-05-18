@@ -324,10 +324,14 @@ public class MarkDuplicatesSparkUtils {
 
     // Note, this uses bitshift operators in order to perform only a single groupBy operation for all the merged data
     private static long getGroupKey(MarkDuplicatesSparkRecord record) {
-        return record.getClass()==Passthrough.class?-1:
-                (((long)((PairedEnds)record).getUnclippedStartPosition()) << 32 |
-                        ((PairedEnds)record).getFirstRefIndex() << 16 );
-        //| ((PairedEnds)pe).getLibraryIndex())).values();
+        if ( record.getClass()==Passthrough.class) {
+            return -1;
+        } else {
+            final PairedEnds pairedEnds = (PairedEnds) record;
+            return ((((long) pairedEnds.getUnclippedStartPosition()) << 32) |
+                    (pairedEnds.getFirstRefIndex() << 16) |
+                    pairedEnds.getOrientationForPCRDuplicates() );
+        }
     }
 
     /**
@@ -519,8 +523,8 @@ public class MarkDuplicatesSparkUtils {
             }
 
             //This is done to mimic SAMRecordCoordinateComparator's behavior
-            if (first.isR1R() != second.isR1R()) {
-                return first.isR1R() ? -1: 1;
+            if (first.isRead1ReverseStrand() != second.isRead1ReverseStrand()) {
+                return first.isRead1ReverseStrand() ? -1: 1;
             }
 
             if ( first.getName() != null && second.getName() != null ) {
