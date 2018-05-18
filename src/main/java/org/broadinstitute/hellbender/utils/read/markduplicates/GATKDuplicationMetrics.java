@@ -14,8 +14,9 @@ import java.io.Serializable;
  * Metrics that are calculated during the process of marking duplicates
  * within a stream of SAMRecords.
  */
-@SuppressWarnings("serial")
 public final class GATKDuplicationMetrics extends DuplicationMetrics implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     public GATKDuplicationMetrics copy() {
         final GATKDuplicationMetrics copy = new GATKDuplicationMetrics();
@@ -39,6 +40,7 @@ public final class GATKDuplicationMetrics extends DuplicationMetrics implements 
     public void updateMetrics(SAMRecord rec) {
         update(rec.getReadUnmappedFlag(), rec.isSecondaryOrSupplementary(), ReadUtils.readHasMappedMate(rec), rec.getDuplicateReadFlag() );
     }
+
     public void updateMetrics(GATKRead read) {
         update(read.isUnmapped(), read.isSecondaryAlignment() || read.isSupplementaryAlignment(), ReadUtils.readHasMappedMate(read), read.isDuplicate() );
     }

@@ -6,6 +6,7 @@ import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.SparkException;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -40,6 +41,11 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
     @Override
     protected CommandLineProgram getCommandLineProgramInstance() {
         return new MarkDuplicatesSpark();
+    }
+
+    @Override
+    protected String[] getExtraArguments() {
+        return new String[]{"--"+ MarkDuplicatesSparkArgumentCollection.DO_NOT_MARK_UNMAPPED_MATES_LONG_NAME};
     }
 
     @Override
