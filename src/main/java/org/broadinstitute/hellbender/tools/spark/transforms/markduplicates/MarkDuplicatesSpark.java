@@ -93,7 +93,6 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                                          final OpticalDuplicateFinder opticalDuplicateFinder,
                                          final int numReducers, final boolean dontMarkUnmappedMates) {
         final boolean markUnmappedMates = !dontMarkUnmappedMates;
-        JavaRDD<GATKRead> sortedReadsForMarking;
         SAMFileHeader headerForTool = header.clone();
 
         // If the input isn't queryname sorted, sort it before duplicate marking
