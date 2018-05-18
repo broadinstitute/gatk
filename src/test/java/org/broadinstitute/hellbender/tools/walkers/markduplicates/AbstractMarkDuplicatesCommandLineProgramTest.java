@@ -36,10 +36,6 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
 
     protected abstract CommandLineProgram getCommandLineProgramInstance();
 
-    protected String[] getExtraArguments() {
-        return new String[0];
-    }
-
     protected boolean markSecondaryAndSupplementaryRecordsLikeTheCanonical() { return false; }
 
     // ELIGIBLE_BASE_QUALITY is the minimum quality considered by the dataflow version
@@ -250,9 +246,6 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         tester.addMappedPair(1, 1, 100, false, false, ELIGIBLE_BASE_QUALITY);
         tester.addMappedPair(1, 1, 100, true, true, DEFAULT_BASE_QUALITY); // duplicate!!!
         tester.addMappedFragment(1, 200, false, DEFAULT_BASE_QUALITY, true); // mapped non-primary fragment
-        for (String arg : getExtraArguments()) {
-            tester.addArg(arg);
-        }
         tester.runTest();
     }
 
@@ -262,9 +255,6 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         tester.getSamRecordSetBuilder().setReadLength(76);
         tester.addMappedFragment(1, 1, false, ELIGIBLE_BASE_QUALITY);
         tester.addMatePair(1, 200, 0, false, true, false, false, "54M22S", null, false, false, true, true, false, DEFAULT_BASE_QUALITY);
-        for (String arg : getExtraArguments()) {
-            tester.addArg(arg);
-        }
         tester.runTest();
     }
 
@@ -395,9 +385,6 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         // second end unmapped
         tester.addMappedPair(1, 10189, 10040, false, false, "41S35M", "65M11S", true, false, false, ELIGIBLE_BASE_QUALITY); // mapped OK
         tester.addMappedFragment(1, 10040, true, DEFAULT_BASE_QUALITY); // duplicate
-        for (String arg : getExtraArguments()) {
-            tester.addArg(arg);
-        }
         tester.runTest();
     }
 
@@ -409,9 +396,6 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         // first end unmapped
         tester.addMappedPair(1, 10189, 10040, false, false, "41S35M", "65M11S", true, false, false, ELIGIBLE_BASE_QUALITY); // mapped OK
         tester.addMappedFragment(1, 10040, true, DEFAULT_BASE_QUALITY); // duplicate
-        for (String arg : getExtraArguments()) {
-            tester.addArg(arg);
-        }
         tester.runTest();
     }
 

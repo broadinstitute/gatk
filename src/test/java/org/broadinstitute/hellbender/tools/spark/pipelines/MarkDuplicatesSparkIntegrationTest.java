@@ -36,17 +36,14 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
     @Override
     protected AbstractMarkDuplicatesTester getTester() {
-        return new MarkDuplicatesSparkTester();
+        MarkDuplicatesSparkTester markDuplicatesSparkTester = new MarkDuplicatesSparkTester();
+        markDuplicatesSparkTester.addArg("--"+ MarkDuplicatesSparkArgumentCollection.DO_NOT_MARK_UNMAPPED_MATES_LONG_NAME);
+        return markDuplicatesSparkTester;
     }
 
     @Override
     protected CommandLineProgram getCommandLineProgramInstance() {
         return new MarkDuplicatesSpark();
-    }
-
-    @Override
-    protected String[] getExtraArguments() {
-        return new String[]{"--"+ MarkDuplicatesSparkArgumentCollection.DO_NOT_MARK_UNMAPPED_MATES_LONG_NAME};
     }
 
     @Override
