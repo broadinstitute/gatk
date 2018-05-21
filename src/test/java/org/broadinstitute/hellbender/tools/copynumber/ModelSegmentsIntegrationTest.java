@@ -170,18 +170,6 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         runCommandLine(argsBuilder);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testSequenceDictionaryMismatch() {
-        final File outputDir = createTempDir("testDir");
-        final String outputPrefix = "test";
-        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
-                .addArgument(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
-                .addArgument(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE_WITH_SEQUENCE_DICTIONARY_MISMATCH.getAbsolutePath())
-                .addOutput(outputDir)
-                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
-        runCommandLine(argsBuilder);
-    }
-
     @Test(expectedExceptions = UserException.class)
     public void testOutputDirExists() {
         final String outputPrefix = "test";
