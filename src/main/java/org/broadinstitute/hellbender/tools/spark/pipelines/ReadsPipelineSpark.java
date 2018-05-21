@@ -143,6 +143,14 @@ public class ReadsPipelineSpark extends GATKSparkTool {
     }
 
     @Override
+    protected void validateSequenceDictionaries(){
+        //don't validate unaligned reads because we don't require them to have a sequence dictionary
+        if( !align ){
+            super.validateSequenceDictionaries();
+        }
+    }
+
+    @Override
     protected void runTool(final JavaSparkContext ctx) {
         if (joinStrategy == JoinStrategy.BROADCAST && ! getReference().isCompatibleWithSparkBroadcast()){
             throw new UserException.Require2BitReferenceForBroadcast();

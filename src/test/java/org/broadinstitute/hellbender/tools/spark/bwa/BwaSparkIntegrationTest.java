@@ -30,7 +30,6 @@ public final class BwaSparkIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addFileArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, ref);
         args.addFileArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, input);
-        args.addBooleanArgument(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true); // disable since input does not have a sequence dictionary
         args.addBooleanArgument(GATKSparkTool.SHARDED_OUTPUT_LONG_NAME, true);
         args.addArgument(GATKSparkTool.NUM_REDUCERS_LONG_NAME,"1");
         args.addOutput(output);
@@ -52,7 +51,6 @@ public final class BwaSparkIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addFileArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, ref);
         args.addFileArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, input);
-        args.addBooleanArgument(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME , true); // disable since input does not have a sequence dictionary
         args.addBooleanArgument(GATKSparkTool.SHARDED_OUTPUT_LONG_NAME, true);
         args.addArgument(GATKSparkTool.NUM_REDUCERS_LONG_NAME,"1");
         args.addOutput(output);

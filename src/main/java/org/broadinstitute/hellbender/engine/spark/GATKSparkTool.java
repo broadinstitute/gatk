@@ -8,7 +8,6 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
@@ -84,8 +83,9 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             optional = true)
     protected long bamPartitionSplitSize = 0;
 
-    @Argument(fullName = StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, shortName = StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, doc = "If specified, do not check the sequence dictionaries from our inputs for compatibility. Use at your own risk!", optional = true)
-    private boolean disableSequenceDictionaryValidation = false;
+
+    @ArgumentCollection
+    protected SequenceDictionaryValidationArgumentCollection sequenceDictionaryValidationArguments = getSequenceDictionaryValidationArgumentCollection();
 
     @Argument(doc = "For tools that write an output, write the output in multiple pieces (shards)",
             fullName = SHARDED_OUTPUT_LONG_NAME,
@@ -185,6 +185,14 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      */
     public SerializableFunction<GATKRead, SimpleInterval> getReferenceWindowFunction() {
         return ReferenceWindowFunctions.IDENTITY_FUNCTION;
+    }
+
+    /**
+     * subclasses can override this to provide different default behavior for sequence dictionary validation
+     * @return a SequenceDictionaryValidationArgumentCollection
+     */
+    protected SequenceDictionaryValidationArgumentCollection getSequenceDictionaryValidationArgumentCollection() {
+        return new SequenceDictionaryValidationArgumentCollection.StandardValidationCollection();
     }
 
     /**
@@ -391,7 +399,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     @Override
     protected void runPipeline( JavaSparkContext sparkContext ) {
         initializeToolInputs(sparkContext);
-        validateToolInputs();
+        validateSequenceDictionaries();
         runTool(sparkContext);
     }
 
@@ -485,8 +493,8 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     /**
      * Validates standard tool inputs against each other.
      */
-    private void validateToolInputs() {
-        if ( ! disableSequenceDictionaryValidation ) {
+    protected void validateSequenceDictionaries() {
+        if ( sequenceDictionaryValidationArguments.performSequenceDictionaryValidation() ) {
             // Validate the reference sequence dictionary against the reads sequence dictionary, if both are present,
             // using standard GATK validation settings (requiring a common subset of equivalent contigs without respect
             // to ordering).
@@ -510,4 +518,5 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * @param ctx our Spark context
      */
     protected abstract void runTool( JavaSparkContext ctx );
+
 }

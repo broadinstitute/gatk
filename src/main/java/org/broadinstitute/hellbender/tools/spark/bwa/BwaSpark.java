@@ -8,6 +8,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.SequenceDictionaryValidationArgumentCollection;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
@@ -22,8 +23,8 @@ import java.util.Arrays;
 import java.util.List;
 
 @DocumentedFeature
-@CommandLineProgramProperties(summary = "Runs BWA",
-        oneLineSummary = "BWA on Spark",
+@CommandLineProgramProperties(summary = "Align reads using BWA",
+        oneLineSummary = "Align reads to a given reference using BWA on Spark",
         programGroup = ReadDataManipulationProgramGroup.class)
 @BetaFeature
 public final class BwaSpark extends GATKSparkTool {
@@ -52,6 +53,11 @@ public final class BwaSpark extends GATKSparkTool {
     public List<ReadFilter> getDefaultReadFilters() {
         // 1) unmapped or neither secondary nor supplementary and 2) has some sequence
         return Arrays.asList(ReadFilterLibrary.PRIMARY_LINE, ReadFilterLibrary.SEQ_IS_STORED);
+    }
+
+    @Override
+    public SequenceDictionaryValidationArgumentCollection getSequenceDictionaryValidationArgumentCollection(){
+        return new SequenceDictionaryValidationArgumentCollection.NoValidationCollection();
     }
 
     @Override
