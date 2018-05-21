@@ -24,6 +24,7 @@ import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Iterator;
@@ -412,23 +413,22 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
                         .setProduceGTWithMinPLValueForSpanningDeletions(false)
                         .setSitesOnlyQuery(false)
                         .setMaxDiploidAltAllelesThatCanBeGenotyped(GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED);
-        File arrayFolder = new File(Paths.get(workspace.getAbsolutePath(), GenomicsDBConstants.DEFAULT_ARRAY_NAME)
-                .toAbsolutePath().toString());
+        Path arrayFolder = Paths.get(workspace.getAbsolutePath(), GenomicsDBConstants.DEFAULT_ARRAY_NAME).toAbsolutePath();
 
-        //For the multi-interval support, we create multiple arrays (directories) in a single workspace -
-        //one per interval. So, if you wish to import intervals ("chr1", [ 1, 100M ]) and ("chr2", [ 1, 100M ]),
-        //you end up with 2 directories named chr1$1$100M and chr2$1$100M. So, the array names depend on the
-        //partition bounds.
+        // For the multi-interval support, we create multiple arrays (directories) in a single workspace -
+        // one per interval. So, if you wish to import intervals ("chr1", [ 1, 100M ]) and ("chr2", [ 1, 100M ]),
+        // you end up with 2 directories named chr1$1$100M and chr2$1$100M. So, the array names depend on the
+        // partition bounds.
 
-        //During the read phase, the user only supplies the workspace. The array names are obtained by scanning
-        //the entries in the workspace and reading the right arrays. For example, if you wish to read ("chr2",
-        //50, 50M), then only the second array is queried.
+        // During the read phase, the user only supplies the workspace. The array names are obtained by scanning
+        // the entries in the workspace and reading the right arrays. For example, if you wish to read ("chr2",
+        // 50, 50M), then only the second array is queried.
 
-        //In the previous version of the tool, the array name was a constant - genomicsdb_array. The new version
-        //will be backward compatible with respect to reads. Hence, if a directory named genomicsdb_array is found,
-        //the array name is passed to the GenomicsDBFeatureReader otherwise the array names are generated from the
-        //directory entries.
-        if (arrayFolder.exists()) {
+        // In the previous version of the tool, the array name was a constant - genomicsdb_array. The new version
+        // will be backward compatible with respect to reads. Hence, if a directory named genomicsdb_array is found,
+        // the array name is passed to the GenomicsDBFeatureReader otherwise the array names are generated from the
+        // directory entries.
+        if (Files.exists(arrayFolder)) {
             exportConfigurationBuilder.setArrayName(GenomicsDBConstants.DEFAULT_ARRAY_NAME);
         } else {
             exportConfigurationBuilder.setGenerateArrayNameFromPartitionBounds(true);

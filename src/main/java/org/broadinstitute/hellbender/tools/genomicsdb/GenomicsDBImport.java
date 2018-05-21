@@ -486,7 +486,7 @@ public final class GenomicsDBImport extends GATKTool {
 
     private Map<String, FeatureReader<VariantContext>> createSampleToReaderMap(
             final Map<String, Path> sampleNameToVcfPath, final int batchSize, final int index) {
-        //TODO: fix casting since it's really ugly
+        // TODO: fix casting since it's really ugly
         return inputPreloadExecutorService != null ?
                 getFeatureReadersInParallel((SortedMap<String, Path>) sampleNameToVcfPath, batchSize, index)
                 : getFeatureReadersSerially(sampleNameToVcfPath, batchSize, index);
@@ -548,7 +548,6 @@ public final class GenomicsDBImport extends GATKTool {
 
         final int sampleCount = sampleNameToVcfPath.size();
         final int updatedBatchSize = (batchSize == DEFAULT_ZERO_BATCH_SIZE) ? sampleCount : batchSize;
-//        final int totalBatchCount = (sampleCount/updatedBatchSize) + (sampleCount%updatedBatchSize==0 ? 0 : 1);
         final ImportConfig importConfig = createImportConfig(updatedBatchSize);
 
         GenomicsDBImporter importer;
