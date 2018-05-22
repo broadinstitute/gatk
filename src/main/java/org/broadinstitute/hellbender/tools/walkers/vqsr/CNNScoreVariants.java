@@ -153,7 +153,7 @@ public class CNNScoreVariants extends VariantWalker {
     private int interOpThreads = 0;
 
     @Advanced
-    @Argument(fullName = "intra-op-threads", shortName = "intra-op-threads", doc = "Number of inter-op parallelism threads to use for Tensorflow", minValue = 0, maxValue = 4096, optional = true)
+    @Argument(fullName = "intra-op-threads", shortName = "intra-op-threads", doc = "Number of intra-op parallelism threads to use for Tensorflow", minValue = 0, maxValue = 4096, optional = true)
     private int intraOpThreads = 0;
 
     @Advanced
