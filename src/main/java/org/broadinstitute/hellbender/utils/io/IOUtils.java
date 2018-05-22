@@ -402,13 +402,26 @@ public final class IOUtils {
      * @return A file in the temporary directory starting with name, ending with extension, which will be deleted after the program exits.
      */
     public static File createTempFile(String name, String extension) {
+        return createTempFileInDirectory(name, extension, null);
+    }
+
+    /**
+     * Creates a temp file in a target directory that will be deleted on exit
+     *
+     * This will also mark the corresponding Tribble/Tabix/BAM indices matching the temp file for deletion.
+     * @param name Prefix of the file.
+     * @param extension Extension to concat to the end of the file name.
+     * @param targetDir Directory in which to create the temp file. If null, the default temp directory is used.
+     * @return A file in the temporary directory starting with name, ending with extension, which will be deleted after the program exits.
+     */
+    public static File createTempFileInDirectory(final String name, String extension, final File targetDir) {
         try {
 
             if ( !extension.startsWith(".") ) {
                 extension = "." + extension;
             }
 
-            final File file = File.createTempFile(name, extension);
+            final File file = File.createTempFile(name, extension, targetDir);
             file.deleteOnExit();
 
             // Mark corresponding indices for deletion on exit as well just in case an index is created for the temp file:
@@ -423,7 +436,6 @@ public final class IOUtils {
             throw new GATKException("Cannot create temp file: " + ex.getMessage(), ex);
         }
     }
-
 
     /**
      * @param extension a file extension, may include 0 or more leading dots which will be replaced with a single dot

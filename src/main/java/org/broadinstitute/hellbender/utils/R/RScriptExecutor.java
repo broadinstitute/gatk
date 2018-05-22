@@ -93,7 +93,7 @@ public final class RScriptExecutor extends ScriptExecutor {
             if (!this.libraries.isEmpty()) {
                 List<String> tempLibraryPaths = new ArrayList<>();
                 for (RScriptLibrary library: this.libraries) {
-                    final File tempLibrary = library.writeLibrary(tempLibSourceDir);
+                    final File tempLibrary = library.writeLibraryToTempFile(tempLibSourceDir);
                     tempLibraryPaths.add(tempLibrary.getAbsolutePath());
                 }
 
