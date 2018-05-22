@@ -326,7 +326,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
             if (isGVCFReferenceBlock(vc) ) {
                 Assert.assertTrue(!vc.hasAttribute(GATKVCFConstants.GENOTYPE_PRIOR_KEY));
             }
-            else {
+            else if (!vc.getAlternateAllele(0).equals(Allele.NON_REF_ALLELE)){      //there are some variants that don't have non-symbolic alts
                 Assert.assertTrue(vc.hasAttribute(GATKVCFConstants.GENOTYPE_PRIOR_KEY));
             }
         }

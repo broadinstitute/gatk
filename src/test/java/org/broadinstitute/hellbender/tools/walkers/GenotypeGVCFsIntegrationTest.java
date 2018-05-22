@@ -100,6 +100,14 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         };
     }
 
+    @DataProvider(name = "gvcfWithPPs")
+    public Object[][] gvcfWithPPs() {
+        return new Object[][] {
+                {getTestFile("../../haplotypecaller/expected.testGVCFMode.gatk4.posteriors.g.vcf"),
+                        getTestFile( "expected.posteriors.genotyped.vcf"), NO_EXTRA_ARGS, b37_reference_20_21}
+        };
+    }
+
 
     /*
     This test is useful for testing changes in GATK4 versus different versions of GATK3.
@@ -178,6 +186,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         assertVariantContextsMatch(input, expected, extraArgs, reference);
     }
 
+    @Test
     private void assertVariantContextsMatch(File input, File expected, List<String> extraArgs, String reference) throws IOException {
         try {
             final VCFHeader header = VCFHeaderReader.readHeaderFrom(new SeekablePathStream( IOUtils.getPath(expected.getAbsolutePath())));
@@ -186,6 +195,12 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
             throw new AssertionError("There was a problem reading your expected input file");
         }
     }
+
+    @Test(dataProvider = "gvcfWithPPs")
+    public void assertPPsAreStripped(File input, File expected, List<String> extraArgs, String reference) throws IOException {
+        runGenotypeGVCFSAndAssertSomething(input, expected, extraArgs, VariantContextTestUtils::assertGenotypeAttributeWasRemoved, reference);
+    }
+
     private void assertGenotypesMatch(File input, File expected, List<String> additionalArguments, String reference) throws IOException {
         runGenotypeGVCFSAndAssertSomething(input, expected, additionalArguments, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes,
                                            reference);

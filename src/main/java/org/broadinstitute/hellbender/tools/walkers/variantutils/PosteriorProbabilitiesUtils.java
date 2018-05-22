@@ -155,6 +155,9 @@ public final class PosteriorProbabilitiesUtils {
             // headers should already be there, but for HaplotypeCaller GVCF mode we'll add the headers in HaplotypeCallerEngine::makeVCFHeader.
             VariantContextUtils.calculateChromosomeCounts(builder.attribute(GATKVCFConstants.GENOTYPE_PRIOR_KEY, priors), true);
         }
+        else {  //correct non-ref calls
+
+        }
         return builder.make();
     }
 
