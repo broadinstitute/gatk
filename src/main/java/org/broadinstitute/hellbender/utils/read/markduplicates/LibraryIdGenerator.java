@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates;
 
+import htsjdk.samtools.ReservedTagConstants;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
@@ -7,6 +8,7 @@ import htsjdk.samtools.util.Histogram;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * A class to generate library Ids and keep duplication metrics by library IDs.
@@ -15,10 +17,12 @@ import java.util.Map;
  */
 public final class LibraryIdGenerator {
 
+    public static final String UNKNOWN_LIBRARY = "Unknown Library";
+
     private final SAMFileHeader header;
     private final Map<String, Short> libraryIds = new LinkedHashMap<>(); // from library string to library id
     private short nextLibraryId = 1;
-    private final Map<String, DuplicationMetrics> metricsByLibrary = new LinkedHashMap<>();
+    private final Map<String, GATKDuplicationMetrics> metricsByLibrary = new LinkedHashMap<>();
     private final Histogram<Short> opticalDuplicatesByLibraryId = new Histogram<>();
 
 
@@ -26,10 +30,10 @@ public final class LibraryIdGenerator {
         this.header = header;
 
         for (final SAMReadGroupRecord readGroup : header.getReadGroups()) {
-            final String library = readGroup.getLibrary();
-            DuplicationMetrics metrics = metricsByLibrary.get(library);
+            final String library = getReadGroupLibraryName(readGroup);
+            GATKDuplicationMetrics metrics = metricsByLibrary.get(library);
             if (metrics == null) {
-                metrics = new DuplicationMetrics();
+                metrics = new GATKDuplicationMetrics();
                 metrics.LIBRARY = library;
                 metricsByLibrary.put(library, metrics);
             }
@@ -38,9 +42,14 @@ public final class LibraryIdGenerator {
 
     public Map<String, Short> getLibraryIdsMap() { return this.libraryIds; }
 
-    public Map<String, DuplicationMetrics> getMetricsByLibraryMap() { return this.metricsByLibrary; }
+    public Map<String, GATKDuplicationMetrics> getMetricsByLibraryMap() { return this.metricsByLibrary; }
 
     public Histogram<Short> getOpticalDuplicatesByLibraryIdMap() { return this.opticalDuplicatesByLibraryId; }
+
+	public static String getReadGroupLibraryName(final SAMReadGroupRecord readGroup) {
+		return Optional.ofNullable(readGroup.getLibrary())
+				.orElse(UNKNOWN_LIBRARY);
+	}
 
     /**
      * Gets the library name from the header for the record. If the RG tag is not present on
@@ -48,7 +57,7 @@ public final class LibraryIdGenerator {
      * returned.
      */
     public static String getLibraryName(final SAMFileHeader header, final SAMRecord rec) {
-        final String readGroupId = (String) rec.getAttribute("RG");
+        final String readGroupId = (String) rec.getAttribute(ReservedTagConstants.READ_GROUP_ID);
         return getLibraryName(header, readGroupId);
     }
 
@@ -66,7 +75,7 @@ public final class LibraryIdGenerator {
             }
         }
 
-        return "Unknown Library";
+        return UNKNOWN_LIBRARY;
     }
 
     /** Get the library ID for the given SAM record. */
@@ -82,11 +91,11 @@ public final class LibraryIdGenerator {
         return libraryId;
     }
 
-    public DuplicationMetrics getMetricsByLibrary(final String library) {
+    public GATKDuplicationMetrics getMetricsByLibrary(final String library) {
         return this.metricsByLibrary.get(library);
     }
 
-    public void addMetricsByLibrary(final String library, final DuplicationMetrics metrics) {
+    public void addMetricsByLibrary(final String library, final GATKDuplicationMetrics metrics) {
         this.metricsByLibrary.put(library, metrics);
     }
 

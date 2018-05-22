@@ -17,19 +17,17 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicat
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
-import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
+import org.broadinstitute.hellbender.utils.read.markduplicates.GATKDuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.SerializableOpticalDuplicatesFinder;
-import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
-import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
+import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import scala.Tuple2;
 
 import java.util.Collections;
@@ -91,6 +89,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                                          final MarkDuplicatesScoringStrategy scoringStrategy,
                                          final OpticalDuplicateFinder opticalDuplicateFinder,
                                          final int numReducers, final boolean dontMarkUnmappedMates) {
+        final boolean markUnmappedMates = !dontMarkUnmappedMates;
         SAMFileHeader headerForTool = header.clone();
 
         // If the input isn't queryname sorted, sort it before duplicate marking
@@ -107,11 +106,13 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         // Here we combine the original bam with the repartitioned unmarked readnames to produce our marked reads
         return sortedReadsForMarking.zipPartitions(repartitionedReadNames, (readsIter, readNamesIter)  -> {
             final Map<String,Integer> namesOfNonDuplicateReadsAndOpticalCounts = Utils.stream(readNamesIter).collect(Collectors.toMap(Tuple2::_1,Tuple2::_2, (t1,t2) -> {throw new GATKException("Detected multiple mark duplicate records objects corresponding to read with name, this could be the result of readnames spanning more than one partition");}));
-            return Utils.stream(readsIter).peek(read -> {
+            return Utils.stream(readsIter)
+                    .peek(read -> read.setIsDuplicate(false))
+                    .peek(read -> {
                 // Handle reads that have been marked as non-duplicates (which also get tagged with optical duplicate summary statistics)
-                if( namesOfNonDuplicateReadsAndOpticalCounts.containsKey(read.getName())) {
+                if (namesOfNonDuplicateReadsAndOpticalCounts.containsKey(read.getName())) {
                     read.setIsDuplicate(false);
-                    if (!(dontMarkUnmappedMates && read.isUnmapped())) {
+                    if (markUnmappedMates || !read.isUnmapped()) {
                         int dupCount = namesOfNonDuplicateReadsAndOpticalCounts.replace(read.getName(), -1);
                         if (dupCount > -1) {
                             ((SAMRecordToGATKReadAdapter) read).setTransientAttribute(MarkDuplicatesSparkUtils.OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, dupCount);
@@ -121,9 +122,11 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                 } else if (ReadUtils.readAndMateAreUnmapped(read)) {
                     read.setIsDuplicate(false);
                     // Everything else is a duplicate
-                } else{
-                    if (!(dontMarkUnmappedMates && read.isUnmapped())) {
+                } else {
+                    if (markUnmappedMates || !read.isUnmapped()) {
                         read.setIsDuplicate(true);
+                    } else {
+                        read.setIsDuplicate(false);
                     }
                 }
             }).iterator();
@@ -182,9 +185,9 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         final JavaRDD<GATKRead> finalReadsForMetrics = mark(reads, header, markDuplicatesSparkArgumentCollection.duplicatesScoringStrategy, finder, getRecommendedNumReducers(),  markDuplicatesSparkArgumentCollection.dontMarkUnmappedMates);
 
         if (metricsFile != null) {
-            final JavaPairRDD<String, DuplicationMetrics> metricsByLibrary = MarkDuplicatesSparkUtils.generateMetrics(
+            final JavaPairRDD<String, GATKDuplicationMetrics> metricsByLibrary = MarkDuplicatesSparkUtils.generateMetrics(
                     header, finalReadsForMetrics);
-            final MetricsFile<DuplicationMetrics, Double> resultMetrics = getMetricsFile();
+            final MetricsFile<GATKDuplicationMetrics, Double> resultMetrics = getMetricsFile();
             MarkDuplicatesSparkUtils.saveMetricsRDD(resultMetrics, header, metricsByLibrary, metricsFile);
         }
         header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
