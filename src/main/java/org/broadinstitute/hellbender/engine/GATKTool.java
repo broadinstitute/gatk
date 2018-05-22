@@ -21,7 +21,6 @@ import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.SequenceDictionaryValidationArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
@@ -821,17 +820,6 @@ public abstract class GATKTool extends CommandLineProgram {
      * TODO: stored in the jar manifest, like {@link CommandLineProgram#getToolkitName}
      */
     protected String getToolkitShortName() { return "GATK"; }
-
-    /**
-     * Call {@link GATKTool#addFeatureInputsAfterInitialization(String, String, Class, int)} with no caching.
-     *
-     * @return The {@link FeatureInput} used as the key for this data source.
-     */
-    protected FeatureInput<? extends Feature> addFeatureInputsAfterInitialization(final String filePath, final String name,
-                                                                                  final Class<? extends Feature> featureType) {
-
-        return addFeatureInputsAfterInitialization(filePath, name, featureType, 0);
-    }
 
     /**
      * A method to allow a user to inject data sources after initialization that were not specified as command-line

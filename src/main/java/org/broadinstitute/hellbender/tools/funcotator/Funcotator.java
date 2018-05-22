@@ -246,11 +246,11 @@ public class Funcotator extends VariantWalker {
     // Optional args:
 
     @Argument(
-            fullName = FuncotatorArgumentDefinitions.IGNORE_FILTERED_VARIANTS_LONG_NAME,
+            fullName = FuncotatorArgumentDefinitions.REMOVE_FILTERED_VARIANTS_LONG_NAME,
             optional = true,
-            doc = "Ignore/drop variants that have been filtered in the input."
+            doc = "Ignore/drop variants that have been filtered in the input.  These variants will not appear in the output file."
     )
-    protected boolean ignoreFilteredVariants = false;
+    protected boolean removeFilteredVariants = false;
 
     @Argument(
             fullName  = FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME,
@@ -334,7 +334,7 @@ public class Funcotator extends VariantWalker {
                 DataSourceUtils.createDataSourceFuncotationFactoriesForDataSources(configData, annotationOverridesMap, transcriptSelectionMode, userTranscriptIdSet)
         );
 
-        // Sort our data source factories to ensure they're always in the same order:
+        // Sort our data source factories to ensure they're always in the same order:  gencode datasources first
         dataSourceFactories.sort(DataSourceUtils::datasourceComparator);
 
         // Determine which annotations are accounted for (by the funcotation factories) and which are not.
@@ -444,7 +444,7 @@ public class Funcotator extends VariantWalker {
     private void enqueueAndHandleVariant(final VariantContext variant, final ReferenceContext referenceContext, final FeatureContext featureContext) {
 
         // Check to see if we're annotating filtered variants and ignore this if we're told to:
-        if ( ignoreFilteredVariants && variant.isFiltered() ) {
+        if ( removeFilteredVariants && variant.isFiltered() ) {
             // We can ignore this variant since it was filtered out.
             return;
         }
@@ -471,7 +471,7 @@ public class Funcotator extends VariantWalker {
                 @SuppressWarnings("unchecked")
                 final List<Feature> featureList = (List<Feature>)featureContext.getValues(featureInput, hg19Interval);
 
-                // TODO: This is a little sloppy, since it checks every datasource twice.  Once for hg19 contig names and once for b37 contig names.
+                // TODO: This is a little sloppy, since it checks every datasource twice.  Once for hg19 contig names and once for b37 contig names.  See https://github.com/broadinstitute/gatk/issues/4798
                 featureList.addAll(featureContext.getValues(featureInput));
                 featureSourceMap.put( featureInput.getName(), featureList);
             }
@@ -493,7 +493,8 @@ public class Funcotator extends VariantWalker {
         // Create a list of GencodeFuncotation to use for other Data Sources:
         final List<GencodeFuncotation> gencodeFuncotations = new ArrayList<>();
 
-        // Perform the actual annotation.  Note that we leverage the ordering of datasources here.
+        // Perform the actual annotation.  Note that we leverage the ordering of datasources here (i.e. that gencode/transcript
+        //  datasources always appear first)
         for (final DataSourceFuncotationFactory funcotationFactory : dataSourceFactories ) {
             if (funcotationFactory.getType().equals(FuncotatorArgumentDefinitions.DataSourceType.GENCODE)) {
                 final List<Funcotation> funcotationsFromGencodeFactory = funcotationFactory.createFuncotations(variantContextFixedContigForDataSources, referenceContext, featureSourceMap);

@@ -382,8 +382,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
             variantContexts.add(vc);
         }
 
-        int NUM_VARIANTS = 21;
-        int NUM_CLINVAR_HITS = 4;
+        final int NUM_VARIANTS = 21;
+        final int NUM_CLINVAR_HITS = 4;
         Assert.assertEquals(variantContexts.size(), NUM_VARIANTS);
 
         // Look for "MedGen" to know that we have a clinvar hit.
@@ -415,8 +415,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
             variantContexts.add(vc);
         }
 
-        int NUM_VARIANTS = 100;
-        int NUM_CLINVAR_HITS = 1; // This was verified with SelectVariants
+        final int NUM_VARIANTS = 100;
+        final int NUM_CLINVAR_HITS = 1; // This was verified with SelectVariants
         Assert.assertEquals(variantContexts.size(), NUM_VARIANTS);
 
         // Look for "MedGen" to know that we have a clinvar hit.
