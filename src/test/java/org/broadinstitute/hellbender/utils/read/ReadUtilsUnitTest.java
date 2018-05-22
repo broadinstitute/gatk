@@ -5,10 +5,14 @@ import com.google.common.jimfs.Jimfs;
 import htsjdk.samtools.*;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.ReadsContext;
+import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.RandomDNA;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -22,6 +26,7 @@ import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 
@@ -815,5 +820,30 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
         }
 
         return result.toArray(new Object[result.size()][]);
+    }
+
+    @Test
+    public void testGetReadToMateMap() {
+        final String bam = largeFileTestDir + "mutect/dream_synthetic_bams/tumor_1.bam";
+        final ReadsDataSource readsDataSource = new ReadsDataSource(IOUtils.getPath(bam));
+
+        // to keep this example small, we choose a place that only four reads overlap
+        final SimpleInterval interval = new SimpleInterval("20", 576_940, 577_000);
+        final ReadsContext readsContext = new ReadsContext(readsDataSource, interval, ReadFilterLibrary.ALLOW_ALL_READS);
+
+        final Map<GATKRead, GATKRead> smallFragmentResult = ReadUtils.getReadToMateMap(readsContext, 10);
+        Assert.assertEquals(smallFragmentResult.size(), 1);
+        final Map.Entry<GATKRead, GATKRead> readAndMate = smallFragmentResult.entrySet().iterator().next();
+        Assert.assertEquals(readAndMate.getKey().getName(), "0685fae6-eddc-4257-81f5-c7b9eab84f2f");
+        Assert.assertTrue(readAndMate.getKey().isReverseStrand());
+
+        final Map<GATKRead, GATKRead> mediumFragmentResult = ReadUtils.getReadToMateMap(readsContext, 200);
+        Assert.assertEquals(mediumFragmentResult.size(), 2);
+        final List<Map.Entry<GATKRead, GATKRead>> readsAndMates = Utils.stream(mediumFragmentResult.entrySet().iterator()).collect(Collectors.toList());
+        Assert.assertTrue(readsAndMates.stream().anyMatch(pair -> pair.getKey().getName().equals("0685fae6-eddc-4257-81f5-c7b9eab84f2f")));
+        Assert.assertTrue(readsAndMates.stream().anyMatch(pair -> pair.getKey().getName().equals("9eaf071f-6c59-4f10-8b77-467d359ac702")));
+
+        final Map<GATKRead, GATKRead> bigFragmentResult = ReadUtils.getReadToMateMap(readsContext, 1000);
+        Assert.assertEquals(bigFragmentResult.size(), 4);
     }
 }

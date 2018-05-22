@@ -137,6 +137,7 @@ public final class GATKVCFConstants {
     public static final String CLUSTERED_EVENTS_FILTER_NAME =                 "clustered_events"; //M2
     public static final String GERMLINE_RISK_FILTER_NAME =                    "germline_risk"; //M2
     public static final String LOW_QUAL_FILTER_NAME =                         "LowQual";
+    public static final String ALIGNMENT_ARTIFACT_FILTER_NAME =               "alignment_artifact";
     public static final String PON_FILTER_NAME =                              "panel_of_normals"; //M2
     public static final String STR_CONTRACTION_FILTER_NAME =                  "str_contraction"; //M2
     public static final String TUMOR_LOD_FILTER_NAME =                        "t_lod"; //M2
