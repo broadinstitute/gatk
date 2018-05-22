@@ -91,7 +91,7 @@ final class HomRefBlock implements Locatable {
         gb.DP(getMedianDP());
         gb.attribute(GATKVCFConstants.MIN_DP_FORMAT_KEY, getMinDP());
         if (minPPs != null) {
-            gb.attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY, minPPs);
+            gb.attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY, Utils.listFromPrimitives(minPPs));
         }
 
         return gb.make();

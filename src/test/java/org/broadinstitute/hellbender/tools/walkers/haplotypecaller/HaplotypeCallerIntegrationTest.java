@@ -4,6 +4,7 @@ import htsjdk.samtools.SamFiles;
 import htsjdk.tribble.Tribble;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
@@ -16,6 +17,7 @@ import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
+import org.broadinstitute.hellbender.tools.walkers.variantutils.PosteriorProbabilitiesUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -23,6 +25,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -299,7 +302,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final String referenceFileName =b37_reference_20_21;
 
         final File output = createTempFile("testGVCFModeIsConsistentWithPastResults", ".g.vcf");
-        final File expected = new File(TEST_FILES_DIR, "expected.testGVCFMode.gatk4.posteriors.g.vcf");
 
         final String[] args = {
                 "-I", inputFileName,
@@ -311,14 +313,23 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-supporting", largeFileTestDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf",
                 "--num-reference-samples-if-no-call", "2500",
                 "-pairHMM", "AVX_LOGLESS_CACHING",
-                "-lenient",
                 "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
         };
 
         runCommandLine(args);
 
-        // Test for an exact match against past results
-        IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        Pair<VCFHeader, List<VariantContext>> results = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+
+        for (final VariantContext vc : results.getRight()) {
+            final Genotype g = vc.getGenotype(0);
+            Assert.assertTrue(g.hasExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY));
+            if (isGVCFReferenceBlock(vc) ) {
+                Assert.assertTrue(!vc.hasAttribute(GATKVCFConstants.GENOTYPE_PRIOR_KEY));
+            }
+            else {
+                Assert.assertTrue(vc.hasAttribute(GATKVCFConstants.GENOTYPE_PRIOR_KEY));
+            }
+        }
     }
 
     @Test

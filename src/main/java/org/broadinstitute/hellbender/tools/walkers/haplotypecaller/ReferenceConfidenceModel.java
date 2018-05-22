@@ -176,10 +176,9 @@ public final class ReferenceConfidenceModel {
         final boolean useMLEAC = true;
         final boolean ignoreInputSamplesForMissingVariants = true;
         final boolean useFlatPriorsForIndels = false;
-        final boolean applyInfoAnnotations = false;  //keep the homRef info field simple -- priors can be derived from PPs since we keep PLs
         this.options = new PosteriorProbabilitiesUtils.PosteriorProbabilitiesOptions(HomoSapiensConstants.SNP_HETEROZYGOSITY,
                 HomoSapiensConstants.INDEL_HETEROZYGOSITY, useInputSamples, useMLEAC, ignoreInputSamplesForMissingVariants,
-                useFlatPriorsForIndels, applyInfoAnnotations);
+                useFlatPriorsForIndels);
     }
 
     /**

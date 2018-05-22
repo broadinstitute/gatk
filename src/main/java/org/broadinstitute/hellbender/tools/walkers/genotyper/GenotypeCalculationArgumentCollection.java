@@ -95,7 +95,7 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      * The standard deviation of the distribution of alt allele fractions.  The above heterozygosity parameters give the
      * *mean* of this distribution; this parameter gives its spread.
      */
-    @Argument(fullName = "heterozygosity-stdev", doc = "Standard deviation of eterozygosity for SNP and indel calling.", optional = true)
+    @Argument(fullName = "heterozygosity-stdev", doc = "Standard deviation of heterozygosity for SNP and indel calling.", optional = true)
     public double heterozygosityStandardDeviation = 0.01;
 
     /**

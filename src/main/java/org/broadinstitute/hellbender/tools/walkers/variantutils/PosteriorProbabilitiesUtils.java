@@ -38,15 +38,13 @@ public final class PosteriorProbabilitiesUtils {
                                              final boolean useInputSamples,
                                              final boolean useMLEAC,
                                              final boolean ignoreInputSamplesForMissingResources,
-                                             final boolean useFlatPriorsForIndels,
-                                             final boolean addInfoAnnotations) {
+                                             final boolean useFlatPriorsForIndels) {
             this.snpPriorDirichlet = snpPriorDirichlet;
             this.indelPriorDirichlet = indelPriorDirichlet;
             this.useInputSamples = useInputSamples;
             this.useMLEAC = useMLEAC;
             this.ignoreInputSamplesForMissingResources = ignoreInputSamplesForMissingResources;
             this.useFlatPriorsForIndels = useFlatPriorsForIndels;
-            this.addInfoAnnotations = addInfoAnnotations;
         }
     }
 
@@ -123,6 +121,7 @@ public final class PosteriorProbabilitiesUtils {
         //put resource alleles not in input VC into non-ref, if applicable
         int nonRefInd = vc1.getAlleleIndex(Allele.NON_REF_ALLELE);
         if (nonRefInd != -1) {
+            //the non-ref "allele" gets a single pseudo count since in some ways it's one allele -- if we treated it as all alleles not present it would get infinite pseudocounts
             alleleCounts[nonRefInd] = Math.max(opts.snpPriorDirichlet, opts.indelPriorDirichlet) + resourceOnlyAlleles.stream().mapToDouble(a -> totalAlleleCounts.get(a)).sum();
         }
 

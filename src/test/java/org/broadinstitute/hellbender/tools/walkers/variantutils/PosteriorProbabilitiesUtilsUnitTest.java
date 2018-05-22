@@ -10,15 +10,17 @@ import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 
 @SuppressWarnings("unchecked")
 public final class PosteriorProbabilitiesUtilsUnitTest extends GATKBaseTest {
 
     final Allele Aref = Allele.create("A", true);
+    final Allele ATCref = Allele.create("ATC", true);
+    final Allele ATCTCref = Allele.create("ATCTC", true);
+    final Allele TTCTC = Allele.create("TTCTC", false);
+    final Allele Aalt = Allele.create("A", false);
     final Allele T = Allele.create("T");
     final Allele C = Allele.create("C");
     final Allele ATC = Allele.create("ATC");
@@ -28,10 +30,9 @@ public final class PosteriorProbabilitiesUtilsUnitTest extends GATKBaseTest {
     final boolean useMLEAC = true;
     final boolean useFlatPriorsForMissingResources = false;
     final boolean useFlatPriorsForIndels = false;
-    final boolean addInfoAnnotations = true;
 
     private PosteriorProbabilitiesUtils.PosteriorProbabilitiesOptions defaultOptions =
-            new PosteriorProbabilitiesUtils.PosteriorProbabilitiesOptions(0.001, 0.0001, useInputSamples, useMLEAC, useFlatPriorsForMissingResources, useFlatPriorsForIndels, addInfoAnnotations);
+            new PosteriorProbabilitiesUtils.PosteriorProbabilitiesOptions(0.001, 0.0001, useInputSamples, useMLEAC, useFlatPriorsForMissingResources, useFlatPriorsForIndels);
 
     private String arraysEq(final int[] a, final int[] b) {
         if ( a.length != b.length ) {
@@ -84,10 +85,28 @@ public final class PosteriorProbabilitiesUtilsUnitTest extends GATKBaseTest {
         return new GenotypeBuilder(sample, Arrays.asList(a1, a2)).PL(pls).make();
     }
 
+    //NOTE: for deletions use the method makeDeletionVC so stop position validates
     private VariantContext makeVC(final String source, final List<Allele> alleles, final Genotype... genotypes) {
         final int start = 10;
-        final int stop = start; // alleles.contains(ATC) ? start + 3 : start;
+        final int stop = start;
         return new VariantContextBuilder(source, "1", start, stop, alleles).genotypes(Arrays.asList(genotypes)).filters((String)null).make();
+    }
+
+    private VariantContext makeDeletionVC(final String source, final List<Allele> alleles, final int refLength, final Genotype... genotypes) {
+        final int start = 10;
+        final int stop = start+refLength-1;
+        return new VariantContextBuilder(source, "1", start, stop, alleles).genotypes(Arrays.asList(genotypes)).filters((String)null).make();
+    }
+
+    private VariantContext makeHomRefBlock(final String source, final Allele refAllele, final Genotype... genotypes) {
+        final int start = 10;
+        final int stop = start;
+        final Map<String, Object> infoMap = new HashMap<>();
+        infoMap.put(VCFConstants.END_KEY,100);
+        final List<Allele> alleles = new ArrayList<>();
+        alleles.add(refAllele);
+        alleles.add(Allele.NON_REF_ALLELE);
+        return new VariantContextBuilder(source, "1", start, stop, alleles).genotypes(Arrays.asList(genotypes)).filters((String)null).attributes(infoMap).make();
     }
 
     @Test
@@ -331,6 +350,45 @@ public final class PosteriorProbabilitiesUtilsUnitTest extends GATKBaseTest {
         final int[] sample2_PPs = _mleparse( (List<Integer>)test1result.getGenotype(2).getAnyAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY));
         final int[] sample2_expectedPPs = {25,0,13};
         Assert.assertEquals(sample2_PPs,sample2_expectedPPs);
+    }
+
+    @Test
+    public void testRefConfHomRefAttributes() {
+        //20      10001432        .       A       <NON_REF>       .       .       END=10001432    GT:DP:GQ:MIN_DP:PL:PP   0/0:56:40:56:0,18,270:0,40,320
+        final VariantContext homRefBlock = makeVC("1", Arrays.asList(Aref,Allele.NON_REF_ALLELE), makeG("s1",Aref,Aref,0,18,270));
+        final List<VariantContext> resource = new ArrayList<>(1);
+        resource.add(new VariantContextBuilder(makeVC("2", Arrays.asList(Aref,T))).attribute(GATKVCFConstants.MLE_ALLELE_COUNT_KEY, 16).attribute(VCFConstants.ALLELE_NUMBER_KEY,5060).make());
+        final VariantContext test1result = PosteriorProbabilitiesUtils.calculatePosteriorProbs(homRefBlock,resource,0,defaultOptions);
+
+        //Keep PLs and add PPs
+        final Genotype g = test1result.getGenotype(0);
+        Assert.assertTrue(g.hasPL());
+        Assert.assertTrue(g.hasExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY));
+        int[] PP = _mleparse( (List<Integer>)test1result.getGenotype(0).getAnyAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY));
+        //GQ should be based on PPs, not on PLs
+        Assert.assertTrue(g.hasGQ());
+        Assert.assertTrue(MathUtils.secondSmallestMinusSmallest(PP,0) == g.getGQ());
+
+    }
+
+    @Test
+    public void testDifferentRefAllelesAndNonRefCounts() {
+        final int[] sample1PLs = {934,0,1248,1042,1332,2374};
+        final int MLEAC1 = 43;
+        final int MLEAC2 = 4005;
+        final int MLEAC3 = 37;
+        final int AN = 5060;
+        final VariantContext inputDeletion = makeDeletionVC("1", Arrays.asList(ATCref,Aalt,Allele.NON_REF_ALLELE), 3, makeG("s1",ATCref,Aalt,sample1PLs));
+        final List<VariantContext> indelResource = new ArrayList<>(1);
+        indelResource.add(new VariantContextBuilder(makeDeletionVC("2", Arrays.asList(ATCTCref,ATC,Aalt,TTCTC),5)).
+                attribute(GATKVCFConstants.MLE_ALLELE_COUNT_KEY, Arrays.asList(MLEAC1,MLEAC2,MLEAC3)).attribute(VCFConstants.ALLELE_NUMBER_KEY,AN).make());
+        final double[] alleleCounts = {AN-MLEAC1-MLEAC2-MLEAC3+HomoSapiensConstants.SNP_HETEROZYGOSITY, MLEAC1+HomoSapiensConstants.INDEL_HETEROZYGOSITY, MLEAC2+MLEAC3+HomoSapiensConstants.SNP_HETEROZYGOSITY};
+
+        final VariantContext test1result = PosteriorProbabilitiesUtils.calculatePosteriorProbs(inputDeletion,indelResource,0,defaultOptions);
+        final int[] multiPrior = GenotypeLikelihoods.fromLog10Likelihoods(PosteriorProbabilitiesUtils.getDirichletPrior(alleleCounts, inputDeletion.getMaxPloidy(HomoSapiensConstants.DEFAULT_PLOIDY),false)).getAsPLs();
+        final int[] expectedPPs = MathUtils.normalizePLs(MathUtils.ebeAdd(sample1PLs, multiPrior));
+
+        Assert.assertEquals(arraysEq(expectedPPs, _mleparse((List<Integer>)test1result.getGenotype(0).getAnyAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY))), "");
     }
 
     private double[] pl2gl(final int[] pl) {

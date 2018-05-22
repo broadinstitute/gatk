@@ -11,6 +11,7 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -142,6 +143,16 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
         return vcb.genotypes(gb.make()).id(VCFConstants.EMPTY_ID_FIELD).make();
     }
 
+    private static VariantContext makeVariantContext(VariantContextBuilder vcb, List<Allele> alleles, int gq, int[] PPs) {
+        final GenotypeBuilder gb = new GenotypeBuilder(SAMPLE_NAME, alleles);
+        gb.DP(10);
+        gb.AD(new int[]{1, 2});
+        gb.PL(new int[]{0, gq, 20+gq});
+        gb.attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY, Utils.listFromPrimitives(PPs));
+        gb.GQ(MathUtils.secondSmallestMinusSmallest(PPs, gq));
+        return vcb.genotypes(gb.make()).id(VCFConstants.EMPTY_ID_FIELD).make();
+    }
+
     @Test
     public void testCloseEmitsLastVariant() {
         final MockWriter mockWriter = new MockWriter();
@@ -245,6 +256,18 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
         assertGoodVC(mockWriter.emitted.get(1), CHR2, 1, 1, true);
     }
 
+    private static void assertGoodVCwithPPs(final VariantContext vc, final String contig, final int start, final int stop, final boolean nonRef) {
+        final Genotype g = vc.getGenotype(SAMPLE_NAME);
+        Assert.assertTrue(g.hasExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY));
+        final List<Integer> PPs = (List<Integer>)vc.getGenotype(0).getAnyAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
+        if (!nonRef) {
+            Assert.assertTrue(PPs.size() == 3);
+            Assert.assertTrue(g.hasGQ());
+            Assert.assertTrue(PPs.get(1) == g.getGQ());
+        }
+        assertGoodVC(vc, contig, start, stop, nonRef);
+    }
+
     private static void assertGoodVC(final VariantContext vc, final String contig, final int start, final int stop, final boolean nonRef) {
         Assert.assertEquals(vc.getContig(), contig);
         Assert.assertEquals(vc.getStart(), start);
@@ -303,7 +326,19 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
     }
 
 
+    @Test
+    public void testBandingUsingPP() {
+        final MockWriter mockWriter = new MockWriter();
+        final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
 
+        int[] PPs1 = {0,63,128};
+        int[] PPs2 = {0,67,145};
+        writer.add(makeVariantContext(new VariantContextBuilder("test", CHR1, 10000, 10000, ALLELES), Arrays.asList(REF, REF), 2, PPs1));
+        writer.add(makeVariantContext(new VariantContextBuilder("test", CHR1, 10001, 10001, ALLELES), Arrays.asList(REF, REF), 21, PPs2));
+        writer.close();
+        Assert.assertEquals(mockWriter.emitted.size(), 1);
+        assertGoodVCwithPPs(mockWriter.emitted.get(0), CHR1, 10000, 10001, false);
+    }
 
 
     @Test

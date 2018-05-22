@@ -297,7 +297,7 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
         famUtils = new FamilyLikelihoods(sampleDB, deNovoPrior, vcfSamples, families);
 
         options = new PosteriorProbabilitiesUtils.PosteriorProbabilitiesOptions(globalPriorSnp, globalPriorIndel,
-                        !ignoreInputSamples, !defaultToAC, ignoreInputSamplesForMissingResources, useFlatPriorsForIndels, true);
+                        !ignoreInputSamples, !defaultToAC, ignoreInputSamplesForMissingResources, useFlatPriorsForIndels);
     }
 
     /**
