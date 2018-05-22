@@ -13,6 +13,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -25,9 +26,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
 import scala.Tuple2;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Determine if two potentially identical BAMs have the same duplicate reads. This tool is useful for checking if two
@@ -101,10 +100,18 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
     @Argument(doc="Throw error if any differences were found", fullName = THROW_ON_DIFF_LONG_NAME, optional = true)
     protected boolean throwOnDiff = false;
 
+    @Argument(doc = "If output is given, the tool will return a bam with all the mismatching duplicate groups in the specified file",
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = true)
+    protected String output;
+
+    @Argument(doc = "If output is given, the tool will return a bam with all the mismatching duplicate groups in the specified file",
+            shortName = "O2", fullName = "output2", optional = true)
+    protected String output2;
+
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-        JavaRDD<GATKRead> firstReads = filteredReads(getReads(), readArguments.getReadFilesNames().get(0));
+        JavaRDD<GATKRead> firstReads = getReads();
 
         ReadsSparkSource readsSource2 = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency());
         TraversalParameters traversalParameters;
@@ -113,7 +120,8 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
         } else {
             traversalParameters = null;
         }
-        JavaRDD<GATKRead> secondReads =  filteredReads(readsSource2.getParallelReads(input2, null, traversalParameters, bamPartitionSplitSize), input2);
+
+        JavaRDD<GATKRead> secondReads = readsSource2.getParallelReads(input2, null, traversalParameters, bamPartitionSplitSize);
 
         // Start by verifying that we have same number of reads and duplicates in each BAM.
         long firstBamSize = firstReads.count();
@@ -148,19 +156,66 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
                 ReadUtils.getLibrary(read, bHeader.getValue())), read));
         JavaPairRDD<Integer, Tuple2<Iterable<GATKRead>, Iterable<GATKRead>>> cogroup = firstKeyed.cogroup(secondKeyed, getRecommendedNumReducers());
 
-
-        // Produces an RDD of MatchTypes, e.g., EQUAL, DIFFERENT_REPRESENTATIVE_READ, etc. per MarkDuplicates key,
-        // which is approximately start position x strand.
-        JavaRDD<MatchType> tagged = cogroup.map(v1 -> {
-            SAMFileHeader header = bHeader.getValue();
+        JavaRDD<Tuple2<Iterable<GATKRead>, Iterable<GATKRead>>> subsettedByStart = cogroup.flatMap(v1 -> {
+            List<Tuple2<Iterable<GATKRead>, Iterable<GATKRead>>> out = new ArrayList<>();
 
             Iterable<GATKRead> iFirstReads = v1._2()._1();
             Iterable<GATKRead> iSecondReads = v1._2()._2();
 
+            Map<Integer, List<GATKRead>> firstReadsMap = splitByStart(iFirstReads);
+            Map<Integer, List<GATKRead>> secondReadsMap = splitByStart(iSecondReads);
+
+            for (Integer i : firstReadsMap.keySet()) {
+                out.add(new Tuple2<>(firstReadsMap.get(i), secondReadsMap.get(i)));
+            }
+            return out.iterator();
+        });
+
+        if (output!=null && output2!=null) {
+
+            JavaRDD<Tuple2<Iterable<GATKRead>, Iterable<GATKRead>>> unequalGroups = subsettedByStart.filter(v1 -> {
+                SAMFileHeader header = bHeader.getValue();
+
+                Iterable<GATKRead> iFirstReads = v1._1();
+                Iterable<GATKRead> iSecondReads = v1._2();
+
+                MatchType type = getDupes(iFirstReads, iSecondReads, header);
+
+                return type!=MatchType.EQUAL;
+            });
+
+            List<String> names = unequalGroups.flatMap(v1 -> {
+                Set<String> out = new HashSet<>();
+
+                Iterable<GATKRead> iFirstReads = v1._1();
+                Iterable<GATKRead> iSecondReads = v1._2();
+
+                iFirstReads.forEach(read -> out.add(read.getName()));
+                iSecondReads.forEach(read -> out.add(read.getName()));
+
+                return out.iterator();
+            }).collect();
+
+            Broadcast<Set<String>> nameSet = ctx.broadcast(new HashSet<>(names));
+
+            SAMFileHeader headerForwrite = bHeader.getValue();
+            headerForwrite.setAttribute("in","original read file source");
+
+            writeReads(ctx, output,  firstReads.filter(read -> nameSet.value().contains(read.getName())), headerForwrite);
+            writeReads(ctx, output2,  secondReads.filter(read -> nameSet.value().contains(read.getName())), headerForwrite);
+        }
+
+        // Produces an RDD of MatchTypes, e.g., EQUAL, DIFFERENT_REPRESENTATIVE_READ, etc. per MarkDuplicates key,
+        // which is approximately start position x strand.
+        JavaRDD<MatchType> tagged = subsettedByStart.map(v1 -> {
+            SAMFileHeader header = bHeader.getValue();
+
+            Iterable<GATKRead> iFirstReads = v1._1();
+            Iterable<GATKRead> iSecondReads = v1._2();
+
             return getDupes(iFirstReads, iSecondReads, header);
         });
 
-        // TODO: We should also produce examples of reads that don't match to make debugging easier (#1263).
         Map<MatchType, Integer> tagCountMap = tagged.mapToPair(v1 ->
                 new Tuple2<>(v1, 1)).reduceByKey((v1, v2) -> v1 + v2).collectAsMap();
 
@@ -185,6 +240,23 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
                 }
             }
         }
+    }
+
+    private static Map<Integer, List<GATKRead>> splitByStart(Iterable<GATKRead> duplicateGroup) {
+        final Map<Integer, List<GATKRead>> byType = new HashMap<>();
+        for(GATKRead read: duplicateGroup) {
+            byType.compute(ReadUtils.getStrandedUnclippedStart(read), (key, value) -> {
+                if (value == null) {
+                    final ArrayList<GATKRead> reads = new ArrayList<>();
+                    reads.add(read);
+                    return reads;
+                } else {
+                    value.add(read);
+                    return value;
+                }
+            });
+        }
+        return byType;
     }
 
     /**
@@ -226,21 +298,6 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
             return  MatchType.DIFFERENT_REPRESENTATIVE_READ;
         }
         return  MatchType.EQUAL;
-    }
-
-
-    static JavaRDD<GATKRead> filteredReads(JavaRDD<GATKRead> initialReads, String fileName) {
-        // We only need to compare duplicates that are "primary" (i.g., primary mapped read).
-        return initialReads.map((Function<GATKRead, GATKRead>) v1 -> {
-            v1.clearAttributes();
-            return v1;
-        }).filter(v1 -> {
-            if (ReadUtils.isNonPrimary(v1) && v1.isDuplicate()) {
-                throw new GATKException("found a non-primary read marked as a duplicate in the bam: "
-                        + fileName);
-            }
-            return !ReadUtils.isNonPrimary(v1);
-        });
     }
 
     enum MatchType {

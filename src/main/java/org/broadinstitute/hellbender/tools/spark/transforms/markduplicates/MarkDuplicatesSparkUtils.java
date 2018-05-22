@@ -287,7 +287,7 @@ public class MarkDuplicatesSparkUtils {
     private static JavaPairRDD<IndexPair<String>, Integer> markDuplicateRecords(final JavaPairRDD<Integer, Iterable<MarkDuplicatesSparkRecord>> keyedPairs,
                                                                                 final OpticalDuplicateFinder finder) {
         return keyedPairs.flatMapToPair(keyedPair -> {
-            Iterable<MarkDuplicatesSparkRecord> pairGroups = keyedPair._2();
+            List<MarkDuplicatesSparkRecord> pairGroups = Utils.stream(keyedPair._2()).collect(Collectors.toList());
 
             final List<Tuple2<IndexPair<String>, Integer>> nonDuplicates = Lists.newArrayList();
 

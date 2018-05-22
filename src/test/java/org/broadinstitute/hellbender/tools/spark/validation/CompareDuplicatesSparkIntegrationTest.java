@@ -53,16 +53,47 @@ public class CompareDuplicatesSparkIntegrationTest extends CommandLineProgramTes
     }
 
     @Test(dataProvider = "CompareDifferentDuplicatesProvider", expectedExceptions = UserException.class, groups = "spark")
-    public void differentBamTest(File firstBam, File secondBam) throws Exception {
+    public void differentBamTest(File firstBam, File secondBam, File firstBamDiffs, File secondBamDiffs) throws Exception {
         // These files are not the same and should throw an exception
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
         args.add(firstBam.getCanonicalPath());
         args.add("--" + CompareDuplicatesSpark.INPUT_2_SHORT_NAME);
         args.add(secondBam.getCanonicalPath());
-        args.add("--" + CompareDuplicatesSpark.THROW_ON_DIFF_LONG_NAME);
-        args.add("true");
+        if (firstBamDiffs != null && secondBamDiffs != null) {
+            args.add("-O");
+            args.add(createTempFile("differentBamTest1", ".bam"));
+            args.add("-O2");
+            args.add(createTempFile("differentBamTest2", ".bam"));
+        } else {
+            args.add("--" + CompareDuplicatesSpark.THROW_ON_DIFF_LONG_NAME);
+            args.add("true");
+        }
+
 
         this.runCommandLine(args.getArgsArray());
+    }
+
+    @Test( groups = "spark")
+    public void testOutputFile() throws Exception {
+        // These files are not the same and should throw an exception
+        final String resourceDir = getTestDataDir() + "/validation/";
+        try (final File gatk4Bam = new File(resourceDir, "tmp.gatk4.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam"),
+             final File dupfreeBam = new File(resourceDir, "clean.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam"),
+             final File validation1 = new File(resourceDir, "compareDuplicatesOutputTest.output1.bam"),
+             final File validation2 = new File(resourceDir, "compareDuplicatesOutputTest.output2.bam");) {
+
+            ArgumentsBuilder args = new ArgumentsBuilder();
+            args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+            args.add(gatk4Bam.getCanonicalPath());
+            args.add("--" + CompareDuplicatesSpark.INPUT_2_SHORT_NAME);
+            args.add(dupfreeBam.getCanonicalPath());
+            args.add("-O");
+            args.add(createTempFile("differentBamTest1", ".bam"));
+            args.add("-O2");
+            args.add(createTempFile("differentBamTest2", ".bam"));
+
+            this.runCommandLine(args.getArgsArray());
+        }
     }
 }
