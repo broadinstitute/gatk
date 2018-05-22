@@ -1,12 +1,14 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.commons.compress.archivers.ArchiveException;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyXsvFuncotationFactory;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.test.FuncotatorTestUtils;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -40,6 +42,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     private static final String PIK3CA_VCF_HG38 = toolsTestDir + "funcotator/hg38_trio.pik3ca.vcf";
     private static final String DS_PIK3CA_DIR = largeFileTestDir + "funcotator/small_ds/";
 
+    private static String hg38Chr3Ref;
+    private static String hg19Chr3Ref;
     static {
         if (!doDebugTests) {
             tmpOutDir = createTempDir("funcotatorTmpFolder");
@@ -48,6 +52,13 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
             if (!tmpOutDir.mkdirs() && !tmpOutDir.exists()) {
                 throw new GATKException("Error making output folder for test: " + FuncotatorIntegrationTest.class.getName());
             }
+        }
+        try {
+            hg38Chr3Ref = FuncotatorTestUtils.extractFastaTarGzToTemp(new File(FuncotatorTestConstants.HG38_3_REFERENCE_FILE_NAME), tmpOutDir.toPath());
+        } catch (final IOException ioe) {
+            throw new GATKException("Could not untar hg38 test reference.", ioe);
+        } catch (final ArchiveException ae) {
+            throw new GATKException("Could not untar hg38 test reference -- exception with archive.", ae);
         }
     }
 
@@ -402,7 +413,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
         arguments.addVCF(new File(PIK3CA_VCF_HG38));
         arguments.addOutput(outputFile);
-        arguments.addReference(new File(FuncotatorTestConstants.HG38_3_REFERENCE_FILE_NAME));
+        arguments.addReference(new File(hg38Chr3Ref));
         arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_PIK3CA_DIR);
         arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG38);
         arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
