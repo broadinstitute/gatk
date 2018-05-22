@@ -25,11 +25,11 @@ public abstract class AbstractMarkDuplicatesTester extends SamFileTester {
     final private File metricsFile;
     final DuplicationMetrics expectedMetrics;
 
-    public AbstractMarkDuplicatesTester(final ScoringStrategy duplicateScoringStrategy, SAMFileHeader.SortOrder sortOrder) {
+    public AbstractMarkDuplicatesTester(final ScoringStrategy duplicateScoringStrategy, final SAMFileHeader.SortOrder sortOrder) {
         this(duplicateScoringStrategy, sortOrder, true);
     }
 
-    public AbstractMarkDuplicatesTester(final ScoringStrategy duplicateScoringStrategy, SAMFileHeader.SortOrder sortOrder, boolean recordNeedSorting) {
+    public AbstractMarkDuplicatesTester(final ScoringStrategy duplicateScoringStrategy,  final SAMFileHeader.SortOrder sortOrder, final boolean recordNeedSorting) {
         super(50, true, SAMRecordSetBuilder.DEFAULT_CHROMOSOME_LENGTH, duplicateScoringStrategy, sortOrder, recordNeedSorting);
 
         expectedMetrics = new DuplicationMetrics();

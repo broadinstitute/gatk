@@ -34,18 +34,18 @@ public final class GATKDuplicationMetrics extends DuplicationMetrics implements 
     /**
      * Update metrics given a record or GATKRead
      */
-    public void updateMetrics(SAMRecord rec) {
+    public void updateMetrics(final SAMRecord rec) {
         update(rec.getReadUnmappedFlag(), rec.isSecondaryOrSupplementary(), ReadUtils.readHasMappedMate(rec), rec.getDuplicateReadFlag() );
     }
 
-    public void updateMetrics(GATKRead read) {
+    public void updateMetrics(final GATKRead read) {
         update(read.isUnmapped(), read.isSecondaryAlignment() || read.isSupplementaryAlignment(), ReadUtils.readHasMappedMate(read), read.isDuplicate() );
     }
 
-    private void update(boolean readUnmappedFlag, boolean secondaryOrSupplementary, boolean mappedMate, boolean isDuplicate) {
+    private void update(final boolean readUnmappedFlag, final boolean secondaryOrSupplementary, final boolean mappedMate, final boolean isDuplicate) {
         if (readUnmappedFlag) {
             ++this.UNMAPPED_READS;
-        } else if(secondaryOrSupplementary) {
+        } else if (secondaryOrSupplementary) {
             ++this.SECONDARY_OR_SUPPLEMENTARY_RDS;
         } else if (!mappedMate) {
             ++this.UNPAIRED_READS_EXAMINED;

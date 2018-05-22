@@ -24,7 +24,7 @@ public abstract class SamFileTester implements CommandLineProgramTester {
     private boolean deleteOnExit = true;
     protected final List<String> args = new ArrayList<>();
 
-    public SamFileTester(final int readLength, final boolean deleteOnExit, final int defaultChromosomeLength, final DuplicateScoringStrategy.ScoringStrategy duplicateScoringStrategy, final SAMFileHeader.SortOrder sortOrder, boolean recordsNeedSorting) {
+    public SamFileTester(final int readLength, final boolean deleteOnExit, final int defaultChromosomeLength, final DuplicateScoringStrategy.ScoringStrategy duplicateScoringStrategy, final SAMFileHeader.SortOrder sortOrder, final boolean recordsNeedSorting) {
         this.deleteOnExit = deleteOnExit;
         this.samRecordSetBuilder = new SAMRecordSetBuilder(recordsNeedSorting, sortOrder, true, defaultChromosomeLength, duplicateScoringStrategy);
         samRecordSetBuilder.setReadLength(readLength);

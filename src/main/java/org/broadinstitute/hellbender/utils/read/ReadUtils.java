@@ -316,16 +316,16 @@ public final class ReadUtils {
     }
 
     /**
-     * @param read read to check
-     * @return true if the read is paired and has a mapped mate, otherwise false
+     * @param read read to query
+     * @return true if the read has a mate and that mate is mapped, otherwise false
      */
     public static boolean readHasMappedMate( final GATKRead read ) {
         return read.isPaired() && ! read.mateIsUnmapped();
     }
 
     /**
-     * @param read read to check
-     * @return true if the read is paired and has a mapped mate, otherwise false
+     * @param read read to query
+     * @return true if the read has a mate and that mate is mapped, otherwise false
      */
     public static boolean readHasMappedMate( final SAMRecord read ) {
         return read.getReadPairedFlag() && ! read.getMateUnmappedFlag();

@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.transforms.markduplicates;
 
-import com.google.common.collect.Iterators;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.Partitioner;
@@ -18,7 +17,6 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicat
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -27,10 +25,9 @@ import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.markduplicates.GATKDuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.SerializableOpticalDuplicatesFinder;
-import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
-import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
+import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import scala.Tuple2;
 
 import java.util.Collections;
@@ -113,9 +110,9 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                     .peek(read -> read.setIsDuplicate(false))
                     .peek(read -> {
                 // Handle reads that have been marked as non-duplicates (which also get tagged with optical duplicate summary statistics)
-                if( namesOfNonDuplicateReadsAndOpticalCounts.containsKey(read.getName())) {
+                if (namesOfNonDuplicateReadsAndOpticalCounts.containsKey(read.getName())) {
                     read.setIsDuplicate(false);
-                    if ( markUnmappedMates || !read.isUnmapped()) {
+                    if (markUnmappedMates || !read.isUnmapped()) {
                         int dupCount = namesOfNonDuplicateReadsAndOpticalCounts.replace(read.getName(), -1);
                         if (dupCount > -1) {
                             ((SAMRecordToGATKReadAdapter) read).setTransientAttribute(MarkDuplicatesSparkUtils.OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, dupCount);
@@ -125,8 +122,8 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                 } else if (ReadUtils.readAndMateAreUnmapped(read)) {
                     read.setIsDuplicate(false);
                     // Everything else is a duplicate
-                } else{
-                    if ( markUnmappedMates || !read.isUnmapped()) {
+                } else {
+                    if (markUnmappedMates || !read.isUnmapped()) {
                         read.setIsDuplicate(true);
                     } else {
                         read.setIsDuplicate(false);

@@ -46,7 +46,7 @@ public final class LibraryIdGenerator {
 
     public Histogram<Short> getOpticalDuplicatesByLibraryIdMap() { return this.opticalDuplicatesByLibraryId; }
 
-	public static String getReadGroupLibraryName(SAMReadGroupRecord readGroup) {
+	public static String getReadGroupLibraryName(final SAMReadGroupRecord readGroup) {
 		return Optional.ofNullable(readGroup.getLibrary())
 				.orElse(UNKNOWN_LIBRARY);
 	}
