@@ -7,6 +7,7 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
+import java.nio.file.Path;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -18,6 +19,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
@@ -339,6 +341,18 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testBamoutProducesReasonablySizedOutput() {
+        final Path bamOutput = createTempFile("testBamoutProducesReasonablySizedOutput", ".bam").toPath();
+        innerTestBamoutProducesReasonablySizedOutput(bamOutput);
+    }
+
+    @Test(groups={"bucket"})
+    public void testBamoutOnGcs() {
+        final Path bamOutput = BucketUtils.getPathOnGcs(BucketUtils.getTempFilePath(
+            getGCPTestStaging() + "testBamoutProducesReasonablySizedOutput", ".bam"));
+        innerTestBamoutProducesReasonablySizedOutput(bamOutput);
+    }
+
+    public void innerTestBamoutProducesReasonablySizedOutput(Path bamOutput) {
         Utils.resetRandomGenerator();
 
         // We will test that when running with -bamout over the testInterval, we produce
@@ -351,7 +365,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final int gatk3BamoutNumReads = 5170;
 
         final File vcfOutput = createTempFile("testBamoutProducesReasonablySizedOutput", ".vcf");
-        final File bamOutput = createTempFile("testBamoutProducesReasonablySizedOutput", ".bam");
 
         ArgumentsBuilder argBuilder = new ArgumentsBuilder();
 
@@ -359,12 +372,12 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         argBuilder.addReference(new File(b37_reference_20_21));
         argBuilder.addOutput(new File(vcfOutput.getAbsolutePath()));
         argBuilder.addArgument("L", testInterval);
-        argBuilder.addArgument(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_SHORT_NAME, bamOutput.getAbsolutePath());
+        argBuilder.addArgument(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_SHORT_NAME, bamOutput.toUri().toString());
         argBuilder.addArgument("pairHMM", "AVX_LOGLESS_CACHING");
 
         runCommandLine(argBuilder.getArgsArray());
 
-        try ( final ReadsDataSource bamOutReadsSource = new ReadsDataSource(bamOutput.toPath()) ) {
+        try ( final ReadsDataSource bamOutReadsSource = new ReadsDataSource(bamOutput) ) {
             int actualBamoutNumReads = 0;
             for ( final GATKRead read : bamOutReadsSource ) {
                 ++actualBamoutNumReads;

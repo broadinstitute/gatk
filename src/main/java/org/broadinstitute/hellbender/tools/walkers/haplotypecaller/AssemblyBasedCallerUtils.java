@@ -197,7 +197,7 @@ public final class AssemblyBasedCallerUtils {
                                                                final boolean createBamOutMD5,
                                                                final SAMFileHeader header) {
         return args.bamOutputPath != null ?
-                Optional.of(HaplotypeBAMWriter.create(args.bamWriterType, new File(args.bamOutputPath), createBamOutIndex, createBamOutMD5, header)) :
+                Optional.of(HaplotypeBAMWriter.create(args.bamWriterType, IOUtils.getPath(args.bamOutputPath), createBamOutIndex, createBamOutMD5, header)) :
                 Optional.empty();
     }
 

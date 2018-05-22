@@ -10,6 +10,7 @@ import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.SamFiles;
 
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
@@ -71,9 +72,9 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
         ) throws IOException
     {
         // create OUTPUT SAM file
-        final File outFile = testWriteToFile(".sam", haplotypes, genomeLoc, readLikelihoods, false, false);
+        final Path outPath = testWriteToFile(".sam", haplotypes, genomeLoc, readLikelihoods, false, false);
         final File expectedFile = new File(expectedFilePath, "testSAM.sam");
-        IntegrationTestSpec.assertEqualTextFiles(outFile, expectedFile);
+        IntegrationTestSpec.assertEqualTextFiles(outPath.toFile(), expectedFile);
     }
 
     @Test(dataProvider = "ReadsLikelikhoodData")
@@ -86,9 +87,9 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
         ) throws IOException
     {
         // create OUTPUT BAM file
-        final File outFile = testWriteToFile(".bam", haplotypes, genomeLoc, readLikelihoods, false, false);
+        final Path outPath = testWriteToFile(".bam", haplotypes, genomeLoc, readLikelihoods, false, false);
         final File expectedFile = new File(expectedFilePath, "testBAM.bam");
-        SamAssertionUtils.assertEqualBamFiles(outFile, expectedFile, false, ValidationStringency.DEFAULT_STRINGENCY);
+        SamAssertionUtils.assertEqualBamFiles(outPath.toFile(), expectedFile, false, ValidationStringency.DEFAULT_STRINGENCY);
     }
 
     @Test(dataProvider = "ReadsLikelikhoodData")
@@ -101,9 +102,9 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
             ) throws IOException
     {
         // create OUTPUT BAM file
-        final File outFile = testWriteToFile(".bam", haplotypes, genomeLoc, readLikelihoods, true, false);
+        final Path outPath = testWriteToFile(".bam", haplotypes, genomeLoc, readLikelihoods, true, false);
         final File expectedFile = new File(expectedFilePath, "testBAM.bam");
-        SamAssertionUtils.assertEqualBamFiles(outFile, expectedFile, false, ValidationStringency.DEFAULT_STRINGENCY);
+        SamAssertionUtils.assertEqualBamFiles(outPath.toFile(), expectedFile, false, ValidationStringency.DEFAULT_STRINGENCY);
     }
 
     @Test(dataProvider = "ReadsLikelikhoodData")
@@ -116,12 +117,12 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
             ) throws IOException
     {
         // create OUTPUT BAM file
-        final File outFile = testWriteToFile(".bam", haplotypes, genomeLoc, readLikelihoods, false, true);
+        final Path outPath = testWriteToFile(".bam", haplotypes, genomeLoc, readLikelihoods, false, true);
         final File expectedFile = new File(expectedFilePath, "testBAM.bam");
-        SamAssertionUtils.assertEqualBamFiles(outFile, expectedFile, false, ValidationStringency.DEFAULT_STRINGENCY);
+        SamAssertionUtils.assertEqualBamFiles(outPath.toFile(), expectedFile, false, ValidationStringency.DEFAULT_STRINGENCY);
     }
 
-    private File testWriteToFile
+    private Path testWriteToFile
         (
             final String outputFileExtension,
             final List<Haplotype> haplotypes,
@@ -131,8 +132,8 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
             final boolean createMD5
         ) throws IOException
     {
-        final File outFile = GATKBaseTest.createTempFile("haplotypeBamWriterTest", outputFileExtension);
-        final HaplotypeBAMDestination fileDest = new SAMFileDestination(outFile, createIndex, createMD5, samHeader, "TestHaplotypeRG");
+        final Path outPath = GATKBaseTest.createTempFile("haplotypeBamWriterTest", outputFileExtension).toPath();
+        final HaplotypeBAMDestination fileDest = new SAMFileDestination(outPath, createIndex, createMD5, samHeader, "TestHaplotypeRG");
 
         try (final HaplotypeBAMWriter haplotypeBAMWriter = HaplotypeBAMWriter.create(HaplotypeBAMWriter.WriterType.ALL_POSSIBLE_HAPLOTYPES, fileDest)) {
             haplotypeBAMWriter.writeReadsAlignedToHaplotypes(
@@ -143,16 +144,16 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
                     readLikelihoods);
         }
 
-        Assert.assertEquals(getReadCounts(outFile.getAbsolutePath()), 5);
+        Assert.assertEquals(getReadCounts(outPath), 5);
 
-        final File expectedMD5File = new File(outFile.getAbsolutePath() + ".md5");
+        final File expectedMD5File = new File(outPath.toFile().getAbsolutePath() + ".md5");
         Assert.assertEquals(expectedMD5File.exists(), createMD5);
         if (createIndex) {
-            Assert.assertNotNull(SamFiles.findIndex(outFile));
+            Assert.assertNotNull(SamFiles.findIndex(outPath));
         } else {
-            Assert.assertNull(SamFiles.findIndex(outFile));
+            Assert.assertNull(SamFiles.findIndex(outPath));
         }
-        return outFile;
+        return outPath;
     }
 
     @Test(dataProvider = "ReadsLikelikhoodData")
@@ -162,9 +163,9 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
             final Locatable genomeLoc,
             final ReadLikelihoods <Haplotype> readLikelihoods
     ) throws IOException {
-        final File outputFile = GATKBaseTest.createTempFile("fromHeaderSAM", ".sam");
+        final Path outputPath = GATKBaseTest.createTempFile("fromHeaderSAM", ".sam").toPath();
 
-        try (HaplotypeBAMWriter haplotypeBAMWriter = HaplotypeBAMWriter.create(HaplotypeBAMWriter.WriterType.ALL_POSSIBLE_HAPLOTYPES, outputFile, false, false, samHeader)) {
+        try (HaplotypeBAMWriter haplotypeBAMWriter = HaplotypeBAMWriter.create(HaplotypeBAMWriter.WriterType.ALL_POSSIBLE_HAPLOTYPES, outputPath, false, false, samHeader)) {
             haplotypeBAMWriter.writeReadsAlignedToHaplotypes(
                     haplotypes,
                     genomeLoc,
@@ -174,7 +175,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
         }
 
         final File expectedFile = new File(expectedFilePath, "fromHeaderSAM.sam");
-        IntegrationTestSpec.assertEqualTextFiles(outputFile, expectedFile);
+        IntegrationTestSpec.assertEqualTextFiles(outputPath.toFile(), expectedFile);
     }
 
     @Test(dataProvider = "ReadsLikelikhoodData")
@@ -346,12 +347,11 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
         return reads;
     }
 
-    private int getReadCounts(final String resultFileName) throws IOException {
-        final File path = new File(resultFileName);
-        IOUtil.assertFileIsReadable(path);
+    private int getReadCounts(final Path result) throws IOException {
+        IOUtil.assertFileIsReadable(result);
 
         int count = 0;
-        try (final SamReader in = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT).open(path)) {
+        try (final SamReader in = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT).open(result)) {
             for (@SuppressWarnings("unused") final SAMRecord rec : in) {
                 count++;
             }
