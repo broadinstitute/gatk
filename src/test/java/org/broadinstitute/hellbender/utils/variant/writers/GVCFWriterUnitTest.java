@@ -256,6 +256,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
         assertGoodVC(mockWriter.emitted.get(1), CHR2, 1, 1, true);
     }
 
+    @SuppressWarnings("unchecked")
     private static void assertGoodVCwithPPs(final VariantContext vc, final String contig, final int start, final int stop, final boolean nonRef) {
         final Genotype g = vc.getGenotype(SAMPLE_NAME);
         Assert.assertTrue(g.hasExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY));
