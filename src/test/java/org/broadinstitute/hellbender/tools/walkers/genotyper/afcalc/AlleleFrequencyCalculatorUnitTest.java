@@ -170,6 +170,43 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
         }
     }
 
+    // spanning deletion alleles should be treated as non-variant, so we make a few random PLs and test that the
+    // qual is invariant to swapping the ref/ref PL with the ref/SPAN_DEL PL
+    @Test
+    public void testSpanningDeletionIsNotConsideredVariant() {
+        final int ploidy = 2;
+        final AlleleFrequencyCalculator afCalc = new AlleleFrequencyCalculator(1, 0.1, 0.1, ploidy);
+        final List<Allele> alleles = Arrays.asList(A, B, Allele.SPAN_DEL);
+
+        //{AA}, {AB}, {BB}, {AC}, {BC}, {CC}
+
+        // some pls that have high likelihood for span del allele but not for the non-symbolic alt allele
+        final int[] pls = new int[] {50, 100, 100, 0, 100, 100};
+        final Genotype genotype = makeGenotype(ploidy, pls);
+        final VariantContext vc = makeVC(alleles, Arrays.asList(genotype));
+        final double log10PVariant = afCalc.getLog10PNonRef(vc).getLog10LikelihoodOfAFGT0();
+        Assert.assertTrue(log10PVariant < - 10);
+    }
+
+    @Test
+    public void testPresenceOfUnlikelySpanningDeletionDoesntAffectResults() {
+        final int ploidy = 2;
+        final AlleleFrequencyCalculator afCalc = new AlleleFrequencyCalculator(1, 0.1, 0.1, ploidy);
+        final List<Allele> allelesWithoutSpanDel = Arrays.asList(A, B);
+        final List<Allele> allelesWithSpanDel = Arrays.asList(A, B, Allele.SPAN_DEL);
+        
+        // make PLs that support an A/B genotype
+        final int[] plsWithoutSpanDel = new int[] {50, 0, 50};
+        final int[] plsWithSpanDel = new int[] {50, 0, 50, 100, 100, 100};
+        final Genotype genotypeWithoutSpanDel = makeGenotype(ploidy, plsWithoutSpanDel);
+        final Genotype genotypeWithSpanDel = makeGenotype(ploidy, plsWithSpanDel);
+        final VariantContext vcWithoutSpanDel = makeVC(allelesWithoutSpanDel, Arrays.asList(genotypeWithoutSpanDel));
+        final VariantContext vcWithSpanDel = makeVC(allelesWithSpanDel, Arrays.asList(genotypeWithSpanDel));
+        final double log10PVariantWithoutSpanDel = afCalc.getLog10PNonRef(vcWithoutSpanDel).getLog10LikelihoodOfAFGT0();
+        final double log10PVariantWithSpanDel = afCalc.getLog10PNonRef(vcWithSpanDel).getLog10LikelihoodOfAFGT0();
+        Assert.assertEquals(log10PVariantWithoutSpanDel, log10PVariantWithSpanDel, 0.0001);
+    }
+
     // make PLs that correspond to an obvious call i.e. one PL is relatively big and the rest are zero
     // alleleCounts is the GenotypeAlleleCounts format for the obvious genotype, with repeats but in no particular order
     private static int[] PLsForObviousCall(final int ploidy, final int numAlleles, final int[] alleleCounts, final int PL)   {
