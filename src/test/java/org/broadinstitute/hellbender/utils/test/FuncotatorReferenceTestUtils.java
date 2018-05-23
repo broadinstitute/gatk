@@ -64,12 +64,12 @@ public class FuncotatorReferenceTestUtils {
                 final File f = new File(name);
                 if (entry.isDirectory()) {
                     if (!f.isDirectory() && !f.mkdirs()) {
-                        throw new IOException("failed to create directory " + f);
+                        throw new IOException("Failed to create directory " + f);
                     }
                 } else {
                     File parent = f.getParentFile();
                     if (!parent.isDirectory() && !parent.mkdirs()) {
-                        throw new IOException("failed to create directory " + parent);
+                        throw new IOException("Failed to create directory " + parent);
                     }
                     try (OutputStream o = Files.newOutputStream(f.toPath())) {
                         IOUtils.copy(i, o);
@@ -99,14 +99,10 @@ public class FuncotatorReferenceTestUtils {
     /**
      * @return a path (as String) to the b37 chromosome 3 only reference.  ("3")
      */
-    public static String retrieveB37Chr3Ref() {
-        return b37Chr3Ref.get();
-    }
+    public static String retrieveB37Chr3Ref() { return b37Chr3Ref.get(); }
 
     /**
      * @return a path (as String) to the hg38 chromosome 3 only reference.  ("chr3" in hg38)
      */
-    public static String retrieveHg38Chr3Ref() {
-        return hg38Chr3Ref.get();
-    }
+    public static String retrieveHg38Chr3Ref() { return hg38Chr3Ref.get(); }
 }
