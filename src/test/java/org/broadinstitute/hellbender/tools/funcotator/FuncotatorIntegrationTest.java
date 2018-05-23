@@ -1,14 +1,13 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import org.apache.commons.compress.archivers.ArchiveException;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyXsvFuncotationFactory;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.FuncotatorTestUtils;
+import org.broadinstitute.hellbender.utils.test.FuncotatorReferenceTestUtils;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -43,7 +42,9 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     private static final String DS_PIK3CA_DIR = largeFileTestDir + "funcotator/small_ds/";
 
     private static String hg38Chr3Ref;
+    private static String b37Chr3Ref;
     private static String hg19Chr3Ref;
+    private static String hg19Chr19Ref;
     static {
         if (!doDebugTests) {
             tmpOutDir = createTempDir("funcotatorTmpFolder");
@@ -53,13 +54,11 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 throw new GATKException("Error making output folder for test: " + FuncotatorIntegrationTest.class.getName());
             }
         }
-        try {
-            hg38Chr3Ref = FuncotatorTestUtils.extractFastaTarGzToTemp(new File(FuncotatorTestConstants.HG38_3_REFERENCE_FILE_NAME), tmpOutDir.toPath());
-        } catch (final IOException ioe) {
-            throw new GATKException("Could not untar hg38 test reference.", ioe);
-        } catch (final ArchiveException ae) {
-            throw new GATKException("Could not untar hg38 test reference -- exception with archive.", ae);
-        }
+
+        hg38Chr3Ref = FuncotatorReferenceTestUtils.retrieveHg38Chr3Ref();
+        b37Chr3Ref = FuncotatorReferenceTestUtils.retrieveB37Chr3Ref();
+        hg19Chr3Ref = FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref();
+        hg19Chr19Ref = FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref();
     }
 
     //==================================================================================================================
@@ -127,7 +126,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 //                        new Object[] {
 //                                FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
 //                                FuncotatorArgumentDefinitions.ReferenceVersionType.hg19,
-//                                FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME,
+//                                FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
 //                                FuncotatorTestConstants.PIK3CA_SNP_FILE_BASE_NAME + ".vcf",
 //                                FuncotatorTestConstants.PIK3CA_TRANSCRIPT,
 //                                keyType,
@@ -139,7 +138,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 //                        new Object[] {
 //                                FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
 //                                FuncotatorArgumentDefinitions.ReferenceVersionType.hg19,
-//                                FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME,
+//                                FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
 //                                FuncotatorTestConstants.MUC16_MNP_FILE_BASE_NAME + ".vcf",
 //                                FuncotatorTestConstants.MUC16_TRANSCRIPT,
 //                                keyType,
@@ -151,7 +150,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 //                        new Object[] {
 //                                FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
 //                                FuncotatorArgumentDefinitions.ReferenceVersionType.hg19,
-//                                FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME,
+//                                FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
 //                                FuncotatorTestConstants.PIK3CA_INDEL_FILE_BASE_NAME + ".vcf",
 //                                FuncotatorTestConstants.PIK3CA_TRANSCRIPT,
 //                                keyType,
@@ -169,7 +168,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                         new Object[]{
                                 FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
                                 FuncotatorTestConstants.REFERENCE_VERSION_HG19,
-                                FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME,
+                                hg19Chr3Ref,
                                 FuncotatorTestConstants.VARIANT_FILE_HG19_CHR3,
                                 FuncotatorTestConstants.PIK3CA_TRANSCRIPT,
                                 keyType,
@@ -181,7 +180,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                         new Object[]{
                                 FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
                                 FuncotatorTestConstants.REFERENCE_VERSION_HG19,
-                                FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME,
+                                hg19Chr19Ref,
                                 FuncotatorTestConstants.VARIANT_FILE_HG19_CHR19,
                                 FuncotatorTestConstants.MUC16_TRANSCRIPT,
                                 keyType,
@@ -379,7 +378,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
         arguments.addVCF(new File(PIK3CA_VCF_HG19));
         arguments.addOutput(outputFile);
-        arguments.addReference(new File(FuncotatorTestConstants.HG19_3_REFERENCE_FILE_NAME));
+        arguments.addReference(new File(b37Chr3Ref));
         arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_PIK3CA_DIR);
         arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19);
         arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());

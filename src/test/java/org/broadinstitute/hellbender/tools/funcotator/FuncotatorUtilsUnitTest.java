@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.test.FuncotatorReferenceTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -38,9 +39,14 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
 
     private static final ReferenceDataSource refDataSourceHg19Ch3;
 
+    private static String hg19Chr3Ref;
+
     // Initialization of static variables:
     static {
-        refDataSourceHg19Ch3 = ReferenceDataSource.of(IOUtils.getPath(FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME));
+
+        hg19Chr3Ref = FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref();
+
+        refDataSourceHg19Ch3 = ReferenceDataSource.of(IOUtils.getPath(hg19Chr3Ref));
     }
 
     //==================================================================================================================
@@ -112,7 +118,7 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
 
 //    @Test
 //    void createRefBaseFile() {
-////        printReferenceBases(new File(FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME), "chr3", 100000000, 110000000);
+////        printReferenceBases(new File(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref()), "chr3", 100000000, 110000000);
 ////        printReferenceBases(new File("/Users/jonn/Development/references/GRCh37.p13.genome.fasta"), "chr1", 860000,  880000);
 ////        printReferenceBases();
 //    }

@@ -9,12 +9,12 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
-import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.test.FuncotatorReferenceTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -46,11 +46,11 @@ public class CosmicFuncotationFactoryUnitTest extends GATKBaseTest {
     private static final VariantContext defaultVariantContext;
     private static final ReferenceContext defaultReferenceContext;
 
-    private static final ReferenceDataSource PIK3CA_REF_DATA_SOURCE = ReferenceDataSource.of( new File(FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME).toPath() );
+    private static final ReferenceDataSource PIK3CA_REF_DATA_SOURCE = ReferenceDataSource.of( new File(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref()).toPath() );
 
     static {
         final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(
-                FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME,
+                FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
                 PIK3CA_POSITION.getContig(),
                 PIK3CA_POSITION.getStart(),
                 PIK3CA_POSITION.getStart(),
@@ -80,7 +80,7 @@ public class CosmicFuncotationFactoryUnitTest extends GATKBaseTest {
         final Allele altAllele = Allele.create(altString);
 
         final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(
-                FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME,
+                FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
                 contig,
                 start,
                 end,
