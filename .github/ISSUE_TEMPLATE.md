@@ -1,11 +1,11 @@
 ### Instructions
 
 The github issue tracker is for bug reports, feature requests, and API documentation requests. General questions about how to use the GATK, how to interpret the output, etc should be asked on the [official support forum](http://gatkforums.broadinstitute.org/gatk).
-- Search the existing github issues to see if your issue (or something similar) has already been reported.  If the issue already exists, you may comment there to inquire about the progress.;
-- Determine whether your issue is a **bug report**, a **feature request**, or a **documentation request** (for tool gatkdocs only; for forum docs see [the support issues repo](https://github.com/broadinstitute/dsde-docs/issues));
-- Consider if your "issue" is better addressed on the GATK forum: http://gatkforums.broadinstitute.org/gatk  Post there if you have questions about expected tool behavior, output format, unexpected results or generally any question that does not fit the categories above;
-- Use a **concise** yet **descriptive** title;
-- Choose the corresponding template block below and fill it in, replacing or deleting text in italics (surrounded by `_`) as appropriate;
+- Search the existing github issues to see if your issue (or something similar) has already been reported.  If the issue already exists, you may comment there to inquire about the progress.
+- Determine whether your issue is a **bug report**, a **feature request**, or a **documentation request** (for tool gatkdocs only -- for forum docs see [the support issues repo](https://github.com/broadinstitute/dsde-docs/issues))
+- Consider if your "issue" is better addressed on the GATK forum: http://gatkforums.broadinstitute.org/gatk  Post there if you have questions about expected tool behavior, output format, unexpected results or generally any question that does not fit the categories above
+- Use a **concise** yet **descriptive** title
+- Choose the corresponding template block below and fill it in, replacing or deleting text in italics (surrounded by `_`) as appropriate
 - Delete the other template blocks and this header.
 
 ----
