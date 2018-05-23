@@ -38,16 +38,17 @@ public class FuncotatorReferenceTestUtils {
                 org.broadinstitute.hellbender.utils.io.IOUtils.createTempDir("funcotatorTmpFolder").toPath());
     }
     /**
-     * TODO: Finish docs (LTL)
+     * Extract a fasta tar.gz (should include only one fasta, the index, and a dict).  Though this is not enforced.
      *
      * Much of this code taken from: http://commons.apache.org/proper/commons-compress/examples.html
      *
-     * @param fastaTarGz Should include the dict file and index, though this is not enforced.  Never {@code null}
-     * @param destDir Where to store te untarred files.
+     * @param fastaTarGz Should include one fasta file, the associated dict file and the associated index, though this is not enforced.  Never {@code null}
+     * @param destDir Where to store te untarred files.  Never {@code null}
      * @return a path (as string) to the fasta file.  If multiple fasta files were in the tar gz, it will return that last one seen.
      */
     private static String extractFastaTarGzToTemp(final File fastaTarGz, final Path destDir) {
         Utils.nonNull(fastaTarGz);
+        Utils.nonNull(destDir);
         String result = null;
         try (final ArchiveInputStream i = new TarArchiveInputStream(new GzipCompressorInputStream(new FileInputStream(fastaTarGz)))) {
             ArchiveEntry entry = null;
