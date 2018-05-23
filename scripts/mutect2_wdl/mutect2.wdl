@@ -916,7 +916,7 @@ task Funcotate {
     String transcript_selection_arg = if defined(transcript_selection_list) then " --transcript-list " else ""
     String annotation_def_arg = if defined(annotation_defaults) then " --annotation-default " else ""
     String annotation_over_arg = if defined(annotation_overrides) then " --annotation-override " else ""
-    String filter_funcotations_args = if (filter_funcotations) then " --ignore-filtered-variants " else ""
+    String filter_funcotations_args = if (filter_funcotations) then " --remove-filtered-variants " else ""
     # ==============
 
     # runtime
