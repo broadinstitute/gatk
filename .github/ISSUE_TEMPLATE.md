@@ -1,10 +1,11 @@
 ### Instructions
 
+The github issue tracker is for bug reports, feature requests, and API documentation requests. General questions about how to use the GATK, how to interpret the output, etc should be asked on the [official support forum](http://gatkforums.broadinstitute.org/gatk).
+- Search the existing github issues to see if your issue (or something similar) has already been reported.  If the issue already exists, you may comment there to inquire about the progress.;
 - Determine whether your issue is a **bug report**, a **feature request**, or a **documentation request** (for tool gatkdocs only; for forum docs see [the support issues repo](https://github.com/broadinstitute/dsde-docs/issues));
 - Consider if your "issue" is better addressed on the GATK forum: http://gatkforums.broadinstitute.org/gatk  Post there if you have questions about expected tool behavior, output format, unexpected results or generally any question that does not fit the categories above;
 - Use a **concise** yet **descriptive** title;
 - Choose the corresponding template block below and fill it in, replacing or deleting text in italics (surrounded by `_`) as appropriate;
-- If the issue will be added to the public tracker (using the `public` label), it must conform to [these guidelines](http://gatkforums.broadinstitute.org/dsde/discussion/6801/guidelines-for-tagging-issues-with-the-public-tag#latest);
 - Delete the other template blocks and this header.
 
 ----
@@ -22,7 +23,7 @@ _Tool name(s), special parameters?_
 _Describe the problem below. Provide **screenshots** , **stacktrace** , **logs** where appropriate._
 
 #### Steps to reproduce
-_Tell us how to reproduce this issue. If possible, include command lines that reproduce the problem on a test case on one of the gsa* servers._
+_Tell us how to reproduce this issue. If possible, include command lines that reproduce the problem. (The support team may follow up to ask you to upload data to reproduce the issue.)_
 
 #### Expected behavior
 _Tell us what should happen_

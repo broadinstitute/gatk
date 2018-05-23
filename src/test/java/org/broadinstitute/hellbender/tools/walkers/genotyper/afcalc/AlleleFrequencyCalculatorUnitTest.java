@@ -170,6 +170,25 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
         }
     }
 
+    @Test
+    public void testPresenceOfUnlikelySpanningDeletionDoesntAffectResults() {
+        final int ploidy = 2;
+        final AlleleFrequencyCalculator afCalc = new AlleleFrequencyCalculator(1, 0.1, 0.1, ploidy);
+        final List<Allele> allelesWithoutSpanDel = Arrays.asList(A, B);
+        final List<Allele> allelesWithSpanDel = Arrays.asList(A, B, Allele.SPAN_DEL);
+
+        // make PLs that support an A/B genotype
+        final int[] plsWithoutSpanDel = new int[] {50, 0, 50};
+        final int[] plsWithSpanDel = new int[] {50, 0, 50, 100, 100, 100};
+        final Genotype genotypeWithoutSpanDel = makeGenotype(ploidy, plsWithoutSpanDel);
+        final Genotype genotypeWithSpanDel = makeGenotype(ploidy, plsWithSpanDel);
+        final VariantContext vcWithoutSpanDel = makeVC(allelesWithoutSpanDel, Arrays.asList(genotypeWithoutSpanDel));
+        final VariantContext vcWithSpanDel = makeVC(allelesWithSpanDel, Arrays.asList(genotypeWithSpanDel));
+        final double log10PVariantWithoutSpanDel = afCalc.getLog10PNonRef(vcWithoutSpanDel).getLog10LikelihoodOfAFGT0();
+        final double log10PVariantWithSpanDel = afCalc.getLog10PNonRef(vcWithSpanDel).getLog10LikelihoodOfAFGT0();
+        Assert.assertEquals(log10PVariantWithoutSpanDel, log10PVariantWithSpanDel, 0.0001);
+    }
+
     // make PLs that correspond to an obvious call i.e. one PL is relatively big and the rest are zero
     // alleleCounts is the GenotypeAlleleCounts format for the obvious genotype, with repeats but in no particular order
     private static int[] PLsForObviousCall(final int ploidy, final int numAlleles, final int[] alleleCounts, final int PL)   {
