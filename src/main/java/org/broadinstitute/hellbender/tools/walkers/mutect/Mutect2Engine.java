@@ -237,7 +237,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         final double tumorLog10Odds = -QualityUtils.qualToErrorProbLog10(tumorAltCountAndQualSum.getSecond()) +
                 MathUtils.log10Factorial(tumorAltCount) + MathUtils.log10Factorial(tumorRefCount) - MathUtils.log10Factorial(tumorPileup.size() + 1);
 
-        if (tumorLog10Odds < MTAC.initialTumorLodThreshold) {
+        if (tumorLog10Odds < MTAC.initialTumorLod) {
             return new ActivityProfileState(refInterval, 0.0);
         } else if (hasNormal() && !MTAC.genotypeGermlineSites) {
             final ReadPileup normalPileup = pileup.getPileupForSample(normalSample, header);
