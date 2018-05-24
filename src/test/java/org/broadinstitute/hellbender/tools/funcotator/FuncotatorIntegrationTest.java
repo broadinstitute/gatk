@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
-import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyXsvFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.mafOutput.MafOutputRendererConstants;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
@@ -53,8 +52,10 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     private static final String PIK3CA_VCF_HG38 = toolsTestDir + "funcotator/hg38_trio.pik3ca.vcf";
     private static final String PIK3CA_VCF_HG19_SNPS = toolsTestDir + "funcotator/PIK3CA_SNPS_3.vcf";
     private static final String PIK3CA_VCF_HG19_INDELS = toolsTestDir + "funcotator/PIK3CA_INDELS_3.vcf";
+    private static final String MUC16_VCF_HG19 = toolsTestDir + "funcotator/MUC16_MNP.vcf";
     private static final String PIK3CA_VCF_HG19_ALTS = toolsTestDir + "funcotator/PIK3CA_3_miss_clinvar_alt_only.vcf";
-    private static final String DS_PIK3CA_DIR = largeFileTestDir + "funcotator/small_ds/";
+    private static final String DS_PIK3CA_DIR = largeFileTestDir + "funcotator/small_ds_pik3ca/";
+    private static final String DS_MUC16_DIR = largeFileTestDir + "funcotator/small_ds_muc16/";
 
     private static String hg38Chr3Ref;
     private static String b37Chr3Ref;
@@ -453,8 +454,9 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     @DataProvider(name="provideForMafVcfConcordanceProteinChangePik3ca")
     final Object[][] provideForMafVcfConcordanceProteinChangePik3ca() {
         return new Object[][] {
-                {PIK3CA_VCF_HG19_SNPS, FuncotatorTestConstants.HG19_3_REFERENCE_FILE_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Arrays.asList("Gencode_19_proteinChange"), 15},
-                {PIK3CA_VCF_HG19_INDELS, FuncotatorTestConstants.HG19_3_REFERENCE_FILE_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Arrays.asList("Gencode_19_proteinChange"), 57}
+                {PIK3CA_VCF_HG19_SNPS, b37Chr3Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Arrays.asList("Gencode_19_proteinChange"), DS_PIK3CA_DIR, 15},
+                {PIK3CA_VCF_HG19_INDELS, b37Chr3Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Arrays.asList("Gencode_19_proteinChange"), DS_PIK3CA_DIR, 57},
+                {MUC16_VCF_HG19, hg19Chr19Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Arrays.asList("Gencode_19_proteinChange"), DS_MUC16_DIR, 2057}
         };
     }
 
@@ -464,6 +466,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     @Test(dataProvider="provideForMafVcfConcordanceProteinChangePik3ca")
     public void testVcfMafConcordanceForProteinChange(final String inputVcf, final String inputRef,
                                                           final String funcotatorRef, final List<String> annotationsToCheck,
+                                                          final String datasourceDir,
                                                           final int gtNumVariants) {
         final FuncotatorArgumentDefinitions.OutputFormatType vcfOutputFormatType = FuncotatorArgumentDefinitions.OutputFormatType.VCF;
         final File vcfOutputFile = getOutputFile(vcfOutputFormatType);
@@ -473,7 +476,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         argumentsVcf.addVCF(new File(inputVcf));
         argumentsVcf.addOutput(vcfOutputFile);
         argumentsVcf.addReference(new File(inputRef));
-        argumentsVcf.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_PIK3CA_DIR);
+        argumentsVcf.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, datasourceDir);
         argumentsVcf.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, funcotatorRef);
         argumentsVcf.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, vcfOutputFormatType.toString());
         argumentsVcf.addBooleanArgument(FuncotatorArgumentDefinitions.REMOVE_FILTERED_VARIANTS_LONG_NAME, false);
@@ -490,7 +493,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         argumentsMaf.addVCF(new File(inputVcf));
         argumentsMaf.addOutput(mafOutputFile);
         argumentsMaf.addReference(new File(inputRef));
-        argumentsMaf.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_PIK3CA_DIR);
+        argumentsMaf.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, datasourceDir);
         argumentsMaf.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, funcotatorRef);
         argumentsMaf.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, mafOutputFormatType.toString());
         argumentsMaf.addBooleanArgument(FuncotatorArgumentDefinitions.REMOVE_FILTERED_VARIANTS_LONG_NAME, false);
@@ -508,7 +511,10 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         final AnnotatedIntervalCollection maf = AnnotatedIntervalCollection.create(mafOutputFile.toPath(), null);
         Assert.assertEquals(maf.getRecords().size(), gtNumVariants);
         Assert.assertTrue(maf.getRecords().stream()
-                .anyMatch(v -> !v.getAnnotationValue(MafOutputRendererConstants.FieldName_Variant_Classification).equals(GencodeFuncotation.VariantClassification.IGR.toString())));
+                .anyMatch(v -> !v.getAnnotationValue(MafOutputRendererConstants.FieldName_Variant_Classification).equals("IGR")));
+        Assert.assertTrue(maf.getRecords().stream()
+                .anyMatch(v -> v.getAnnotationValue(MafOutputRendererConstants.FieldName_Variant_Classification).equals("Missense_Mutation") ||
+                        v.getAnnotationValue(MafOutputRendererConstants.FieldName_Variant_Classification).startsWith("Frame_Shift")));
 
         // Get the protein changes:
         final String[] funcotationKeys = extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription());
