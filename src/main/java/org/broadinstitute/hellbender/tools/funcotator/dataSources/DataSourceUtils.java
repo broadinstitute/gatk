@@ -1,8 +1,12 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.ReadsContext;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
@@ -698,6 +702,30 @@ final public class DataSourceUtils {
         else if ( !Files.isReadable(sourceFilePath) ) {
             throw new UserException.BadInput("ERROR in config file: " + filePath.toUri().toString() +
                     " - " + field + " is not readable: " + sourceFilePath);
+        }
+    }
+
+    /**
+     * Sort by putting gencode datasources first and then non-gencode in alphabetical order.
+     *
+     * Note that this must match how the datasources are being rendered in the {@link Funcotator#apply(VariantContext, ReadsContext, ReferenceContext, FeatureContext)}
+     * @param f1 datasource to compare.  Never {@code null}
+     * @param f2 datasource to compare.  Never {@code null}
+     * @return -1 if f1 should be put first, 1 if f2 should be put first.
+     */
+    public static int datasourceComparator(final DataSourceFuncotationFactory f1, final DataSourceFuncotationFactory f2) {
+        Utils.nonNull(f1);
+        Utils.nonNull(f2);
+        final boolean isF1Gencode = f1.getType().equals(FuncotatorArgumentDefinitions.DataSourceType.GENCODE);
+        final boolean isF2Gencode = f2.getType().equals(FuncotatorArgumentDefinitions.DataSourceType.GENCODE);
+        if (isF1Gencode == isF2Gencode) {
+            return f1.getInfoString().compareTo(f2.getInfoString());
+        } else {
+            if (isF1Gencode) {
+                return -1;
+            } else {
+                return 1;
+            }
         }
     }
 }

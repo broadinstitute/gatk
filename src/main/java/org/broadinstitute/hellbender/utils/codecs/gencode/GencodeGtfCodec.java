@@ -63,6 +63,10 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
     static final Logger logger = LogManager.getLogger(GencodeGtfCodec.class);
 
     public static final int GENCODE_GTF_MIN_VERSION_NUM_INCLUSIVE = 19;
+
+    /**
+     * Maximum version of gencode that will not generate a warning.  This parser will still attempt to parse versions above this number, but a warning about potential errors will appear.
+     */
     public static final int GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE = 28;
 
     public static final String GENCODE_GTF_FILE_EXTENSION = "gtf";
@@ -81,7 +85,7 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
     private static final int HEADER_NUM_LINES = 5;
 
     private static final Pattern VERSION_PATTERN = Pattern.compile("version (\\d+)");
-    private int versionNumber = GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE;
+    private int versionNumber;
 
     // ============================================================================================================
 
@@ -96,9 +100,8 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
      * @return The UCSC version in a {@link String} corresponding to the given gencode version.
      */
     private static String getUcscVersionFromGencodeVersion(final int gencodeVersion) {
-        if ((gencodeVersion < GENCODE_GTF_MIN_VERSION_NUM_INCLUSIVE ) ||
-                (gencodeVersion > GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE)) {
-            throw new GATKException("Gencode version is out of expected range.  Cannot decode: " + gencodeVersion);
+        if (gencodeVersion < GENCODE_GTF_MIN_VERSION_NUM_INCLUSIVE) {
+            throw new GATKException("Gencode version is too far out of date.  Cannot decode: " + gencodeVersion);
         }
 
         if ( gencodeVersion < 25 ) {
@@ -294,6 +297,9 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
      * Read the {@code header} from the given {@link LineIterator} for the GENCODE GTF File.
      * Will also validate this {@code header} for correctness before returning it.
      * Throws a {@link UserException.MalformedFile} if the header is malformed.
+     *
+     * This must be called before {@link GencodeGtfCodec#decode(LineIterator)}
+     *
      * @param reader The {@link LineIterator} from which to read the header.
      * @return The header as read from the {@code reader}
      */
@@ -303,7 +309,7 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
         header.clear();
 
         // Clear our version number too:
-        versionNumber = GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE;
+        versionNumber = -1;
 
         int numHeaderLinesRead = 0;
         while ( reader.hasNext() ) {
@@ -357,17 +363,6 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
     /**
      * Validates a given {@link GencodeGtfFeature} against a given version of the GENCODE GTF file spec.
      * This method ensures that all required fields are defined, but does not interrogate their values.
-     * Will validate against the newest possible GENCODE Gtf Version, {@link #GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE}
-     * @param feature A {@link GencodeGtfFeature} to validate.
-     * @return True if {@code feature} contains all required fields for the given GENCODE GTF version, {@code gtfVersion}
-     */
-    static public boolean validateGencodeGtfFeature(final GencodeGtfFeature feature) {
-        return validateGencodeGtfFeature(feature, GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE);
-    }
-
-    /**
-     * Validates a given {@link GencodeGtfFeature} against a given version of the GENCODE GTF file spec.
-     * This method ensures that all required fields are defined, but does not interrogate their values.
      * @param feature A {@link GencodeGtfFeature} to validate.
      * @param gtfVersion The GENCODE GTF version against which to validate {@code feature}
      * @return True if {@code feature} contains all required fields for the given GENCODE GTF version, {@code gtfVersion}
@@ -378,11 +373,9 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
             return false;
         }
 
-        if ( (gtfVersion < GencodeGtfCodec.GENCODE_GTF_MIN_VERSION_NUM_INCLUSIVE) ||
-                (gtfVersion > GencodeGtfCodec.GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE) ) {
+        if (gtfVersion < GencodeGtfCodec.GENCODE_GTF_MIN_VERSION_NUM_INCLUSIVE) {
             throw new GATKException("Invalid version number for validation: " + gtfVersion +
-                    " must be in acceptable range: " + GencodeGtfCodec.GENCODE_GTF_MIN_VERSION_NUM_INCLUSIVE +
-                    " - " + GencodeGtfCodec.GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE);
+                    " must be above: " + GencodeGtfCodec.GENCODE_GTF_MIN_VERSION_NUM_INCLUSIVE);
         }
 
         final GencodeGtfFeature.FeatureType featureType = feature.getFeatureType();
@@ -568,15 +561,19 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
 
         try {
             final int versionNumber = Integer.valueOf(versionMatcher.group(1));
-            if ((versionNumber < GENCODE_GTF_MIN_VERSION_NUM_INCLUSIVE) ||
-                    (versionNumber > GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE)) {
+            if (versionNumber < GENCODE_GTF_MIN_VERSION_NUM_INCLUSIVE) {
+                final String message = "GENCODE GTF Header line 1 has an out-of-date (< v" + GENCODE_GTF_MIN_VERSION_NUM_INCLUSIVE + " version number (" +
+                        versionNumber + "): " + header.get(0);
                 if (throwIfInvalid) {
-                    throw new UserException.MalformedFile(
-                            "GENCODE GTF Header line 1 has an incompatible version number (" +
-                                    versionNumber + "): " + header.get(0));
+                    throw new UserException.MalformedFile(message);
                 } else {
-                    return false;
+                    logger.warn(message + "   Continuing, but errors may occur.");
                 }
+            }
+
+            if (versionNumber > GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE) {
+                    logger.warn("GENCODE GTF Header line 1 has a version number that is above maximum tested version (v " + GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE + ") (given: " +
+                            versionNumber + "): " + header.get(0) + "   Continuing, but errors may occur.");
             }
         }
         catch (final NumberFormatException ex) {
@@ -604,18 +601,6 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
                 throw new UserException.MalformedFile(
                         "GENCODE GTF Header line 2 does not contain expected contact information (" +
                                 "##contact: gencode): " + header.get(2));
-            }
-            else {
-                return false;
-            }
-        }
-
-        if ( !header.get(2).endsWith("@sanger.ac.uk") &&
-             !header.get(2).endsWith("@ebi.ac.uk") ) {
-            if ( throwIfInvalid ) {
-                throw new UserException.MalformedFile(
-                        "GENCODE GTF Header line 2 does not contain expected contact email address (" +
-                                "@sanger.ac.uk): " + header.get(2));
             }
             else {
                 return false;

@@ -115,6 +115,8 @@ workflow Mutect2 {
     String oncotator_docker_or_default = select_first([oncotator_docker, "broadinstitute/oncotator:1.9.9.0"])
     Boolean? filter_oncotator_maf
     Boolean filter_oncotator_maf_or_default = select_first([filter_oncotator_maf, true])
+    Boolean? filter_funcotations
+    Boolean filter_funcotations_or_default = select_first([filter_funcotations, true])
     String? oncotator_extra_args
 
     Int? preemptible_attempts
@@ -341,7 +343,8 @@ workflow Mutect2 {
                 annotation_defaults = annotation_defaults,
                 annotation_overrides = annotation_overrides,
                 gatk_docker = gatk_docker,
-                gatk_override = gatk_override
+                gatk_override = gatk_override,
+                filter_funcotations = filter_funcotations_or_default
         }
     }
 
@@ -906,12 +909,14 @@ task Funcotate {
     Array[String]? transcript_selection_list
     Array[String]? annotation_defaults
     Array[String]? annotation_overrides
+    Boolean filter_funcotations
 
     # ==============
     # Process input args:
     String transcript_selection_arg = if defined(transcript_selection_list) then " --transcript-list " else ""
     String annotation_def_arg = if defined(annotation_defaults) then " --annotation-default " else ""
     String annotation_over_arg = if defined(annotation_overrides) then " --annotation-override " else ""
+    String filter_funcotations_args = if (filter_funcotations) then " --remove-filtered-variants " else ""
     # ==============
 
     # runtime
@@ -962,7 +967,8 @@ task Funcotate {
             ${"--transcript-selection-mode " + transcript_selection_mode} \
             ${transcript_selection_arg}${default="" sep=" --transcript-list " transcript_selection_list} \
             ${annotation_def_arg}${default="" sep=" --annotation-default " annotation_defaults} \
-            ${annotation_over_arg}${default="" sep=" --annotation-override " annotation_overrides}
+            ${annotation_over_arg}${default="" sep=" --annotation-override " annotation_overrides} \
+            ${filter_funcotations_args}
     >>>
 
     runtime {
