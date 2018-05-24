@@ -8,9 +8,9 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestUtilsAndCommonDataProvider;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryTestDataProvider;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.ContigAlignmentsModifier;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -37,100 +37,100 @@ public class SimpleChimeraUnitTest extends GATKBaseTest {
 
         // simple inversion
         TestDataForSimpleSVs testData = forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
         testData = forSimpleInversionWithHom_leftPlus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
         testData = forSimpleInversionWithHom_leftMinus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
         testData = forSimpleInversionWithHom_rightPlus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
         testData = forSimpleInversionWithHom_rightMinus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
         // simple deletion
         testData = SimpleSVDiscoveryTestDataProvider.forSimpleDeletion_plus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
         testData = SimpleSVDiscoveryTestDataProvider.forSimpleDeletion_minus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
         // simple insertion
         testData = SimpleSVDiscoveryTestDataProvider.forSimpleInsertion_plus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
         testData = SimpleSVDiscoveryTestDataProvider.forSimpleInsertion_minus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
         // long range substitution
         testData = SimpleSVDiscoveryTestDataProvider.forLongRangeSubstitution_fudgedDel_plus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
         testData = SimpleSVDiscoveryTestDataProvider.forLongRangeSubstitution_fudgedDel_minus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
         // simple deletion with homology
         testData = SimpleSVDiscoveryTestDataProvider.forDeletionWithHomology_plus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
         testData = SimpleSVDiscoveryTestDataProvider.forDeletionWithHomology_minus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
         // tandem duplication simple contraction
         testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupContraction_plus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
         testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupContraction_minus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
         // tandem duplication simple expansion
         testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansion_ins_plus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
         testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansion_ins_minus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
         // tandem duplication simple expansion with novel insertion
         testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_dup_plus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
         testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_dup_minus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
 
         // first test (the original observed event, but assigned to a different chromosome): expansion from 1 unit to 2 units with pseudo-homology
         testData = SimpleSVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_plus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
         testData = SimpleSVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_minus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
 
         // second test: contraction from 2 units to 1 unit with pseudo-homology
         testData = SimpleSVDiscoveryTestDataProvider.forComplexTanDup_2to1_pseudoHom_plus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
         testData = SimpleSVDiscoveryTestDataProvider.forComplexTanDup_2to1_pseudoHom_minus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
 
         // third test: contraction from 3 units to 2 units without pseudo-homology
         testData = SimpleSVDiscoveryTestDataProvider.forComplexTanDup_3to2_noPseudoHom_plus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
         testData = SimpleSVDiscoveryTestDataProvider.forComplexTanDup_3to2_noPseudoHom_minus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
 
         // fourth test: expansion from 2 units to 3 units without pseudo-homology
         testData = SimpleSVDiscoveryTestDataProvider.forComplexTanDup_2to3_noPseudoHom_plus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
         testData = SimpleSVDiscoveryTestDataProvider.forComplexTanDup_2to3_noPseudoHom_minus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SimpleSVDiscoveryTestDataProvider.b37_seqDict));
+        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
 
 
         ////////// ABOVE ARE FOR SIMPLE VARIANTS: INS/DEL, DUP EXPANSION, DUP CONTRACTION, INVERSION, BELOW ARE FOR TRANSLOCATION SUSPECTS AND INV DUP
@@ -156,36 +156,36 @@ public class SimpleChimeraUnitTest extends GATKBaseTest {
 
         AlignmentInterval intervalOne = new AlignmentInterval(one);
         AlignmentInterval intervalTwo = new AlignmentInterval(two);
-        result.add(new Tuple3<>(intervalOne, intervalTwo, SimpleSVDiscoveryTestDataProvider.b38_seqDict));
+        result.add(new Tuple3<>(intervalOne, intervalTwo, SVDiscoveryTestUtilsAndCommonDataProvider.b38_seqDict_chr20_chr21));
 
         intervalOne = new AlignmentInterval(new SimpleInterval("chr20", 48513458, 48513545), 1, 88, TextCigarCodec.decode("88M227H"), true, 39, 1, 83, ContigAlignmentsModifier.AlnModType.NONE);
         intervalTwo = new AlignmentInterval(new SimpleInterval("chr20", 48513297, 48513578), 84, 365, TextCigarCodec.decode("83S282M"), false, 60, 0, 282, ContigAlignmentsModifier.AlnModType.NONE);
-        result.add(new Tuple3<>(intervalOne, intervalTwo, SimpleSVDiscoveryTestDataProvider.b38_seqDict));
+        result.add(new Tuple3<>(intervalOne, intervalTwo, SVDiscoveryTestUtilsAndCommonDataProvider.b38_seqDict_chr20_chr21));
 
 
         // same-chr translocation suspect, forward and reverse representation
         intervalOne = new AlignmentInterval(new SimpleInterval("chr20", 61015129, 61015272), 1, 144, TextCigarCodec.decode("144M148H"), true, 60, 1, 139, ContigAlignmentsModifier.AlnModType.NONE);
         intervalTwo = new AlignmentInterval(new SimpleInterval("chr20", 60992732, 60992880), 144, 292, TextCigarCodec.decode("143S149M"), true, 60, 0, 149, ContigAlignmentsModifier.AlnModType.NONE);
-        result.add(new Tuple3<>(intervalOne, intervalTwo, SimpleSVDiscoveryTestDataProvider.b38_seqDict));
+        result.add(new Tuple3<>(intervalOne, intervalTwo, SVDiscoveryTestUtilsAndCommonDataProvider.b38_seqDict_chr20_chr21));
 
         intervalOne = new AlignmentInterval(new SimpleInterval("chr20", 28861368, 28861775), 1, 409, TextCigarCodec.decode("387M1I21M623H"), false, 60, 22, 286, ContigAlignmentsModifier.AlnModType.NONE);
         intervalTwo = new AlignmentInterval(new SimpleInterval("chr20", 28896473, 28897229), 276, 1032, TextCigarCodec.decode("275S757M"), false, 60, 1, 752, ContigAlignmentsModifier.AlnModType.NONE);
-        result.add(new Tuple3<>(intervalOne, intervalTwo, SimpleSVDiscoveryTestDataProvider.b38_seqDict));
+        result.add(new Tuple3<>(intervalOne, intervalTwo, SVDiscoveryTestUtilsAndCommonDataProvider.b38_seqDict_chr20_chr21));
 
         // diff-chr translocation suspect without SS
         intervalOne = new AlignmentInterval(new SimpleInterval("chr21", 24923683, 24923715), 1, 33, TextCigarCodec.decode("33M130H"), true, 60, 0, 33, ContigAlignmentsModifier.AlnModType.NONE);
         intervalTwo = new AlignmentInterval(new SimpleInterval("chr20", 11590055, 11590197), 21, 163, TextCigarCodec.decode("20S143M"), true, 60, 3, 128, ContigAlignmentsModifier.AlnModType.NONE);
-        result.add(new Tuple3<>(intervalOne, intervalTwo, SimpleSVDiscoveryTestDataProvider.b38_seqDict));
+        result.add(new Tuple3<>(intervalOne, intervalTwo, SVDiscoveryTestUtilsAndCommonDataProvider.b38_seqDict_chr20_chr21));
 
         // diff-chr translocation suspect with SS
         intervalOne = new AlignmentInterval(new SimpleInterval("chr21", 5374092, 5374747), 1, 656, TextCigarCodec.decode("656M322S"), true, 60, 14, 586, ContigAlignmentsModifier.AlnModType.NONE);
         intervalTwo = new AlignmentInterval(new SimpleInterval("chr20", 28764673, 28765145), 506, 978, TextCigarCodec.decode("473M505H"), false, 60, 16, 393, ContigAlignmentsModifier.AlnModType.NONE);
-        result.add(new Tuple3<>(intervalOne, intervalTwo, SimpleSVDiscoveryTestDataProvider.b38_seqDict));
+        result.add(new Tuple3<>(intervalOne, intervalTwo, SVDiscoveryTestUtilsAndCommonDataProvider.b38_seqDict_chr20_chr21));
 
         // same-chr reference order switch, but overlaps (hence incomplete picture)
         intervalOne = new AlignmentInterval(new SimpleInterval("20", 283, 651), 383, 751, TextCigarCodec.decode("382H369M274H"), true, 60, 23, 254, ContigAlignmentsModifier.AlnModType.NONE);
         intervalTwo = new AlignmentInterval(new SimpleInterval("20", 1, 413), 613, 1025, TextCigarCodec.decode("612H413M"), true, 60, 0, 413, ContigAlignmentsModifier.AlnModType.NONE);
-        result.add(new Tuple3<>(intervalOne, intervalTwo, SimpleSVDiscoveryTestDataProvider.b38_seqDict));
+        result.add(new Tuple3<>(intervalOne, intervalTwo, SVDiscoveryTestUtilsAndCommonDataProvider.b38_seqDict_chr20_chr21));
 
         return result;
     }

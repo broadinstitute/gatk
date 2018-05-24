@@ -70,8 +70,8 @@ public class SVVCFWriter {
     //       sorting these variants must take into account of such complications.
     // the solution below is hackish
     @VisibleForTesting
-    static List<VariantContext> sortVariantsByCoordinate(final List<VariantContext> variants,
-                                                         final SAMSequenceDictionary referenceSequenceDictionary) {
+    public static List<VariantContext> sortVariantsByCoordinate(final List<VariantContext> variants,
+                                                                final SAMSequenceDictionary referenceSequenceDictionary) {
         return variants.stream().sorted((VariantContext v1, VariantContext v2) -> {
             final int x = IntervalUtils.compareLocatables(v1, v2, referenceSequenceDictionary);
             if (x == 0) {

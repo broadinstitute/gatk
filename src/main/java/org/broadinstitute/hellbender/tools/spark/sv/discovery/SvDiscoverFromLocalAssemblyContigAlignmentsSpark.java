@@ -1,10 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriter;
-import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
@@ -26,6 +23,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.CpxVariantInterpreter;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SegmentedCpxVariantSimpleVariantExtractor;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleNovelAdjacencyInterpreter;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFileUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
@@ -151,20 +149,32 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         final AssemblyContigsClassifiedByAlignmentSignatures contigsByPossibleRawTypes =
                 preprocess(svDiscoveryInputMetaData, assemblyRawAlignments);
 
-        dispatchJobs(contigsByPossibleRawTypes, svDiscoveryInputMetaData, assemblyRawAlignments, writeSAMFiles);
+        dispatchJobs(ctx, contigsByPossibleRawTypes, svDiscoveryInputMetaData, assemblyRawAlignments, writeSAMFiles);
     }
 
     //==================================================================================================================
 
     public static final class AssemblyContigsClassifiedByAlignmentSignatures {
-        final JavaRDD<AssemblyContigWithFineTunedAlignments> unknown;
-        final JavaRDD<AssemblyContigWithFineTunedAlignments> simple;
-        final JavaRDD<AssemblyContigWithFineTunedAlignments> complex;
+        private final JavaRDD<AssemblyContigWithFineTunedAlignments> unknown;
+        private final JavaRDD<AssemblyContigWithFineTunedAlignments> simple;
+        private final JavaRDD<AssemblyContigWithFineTunedAlignments> complex;
 
         private AssemblyContigsClassifiedByAlignmentSignatures(final JavaRDD<AssemblyContigWithFineTunedAlignments> contigs) {
             unknown = contigs.filter(tig -> tig.getAlignmentSignatureBasicType().equals(UNKNOWN)).cache();
             simple = contigs.filter(tig -> tig.getAlignmentSignatureBasicType().equals(SIMPLE_CHIMERA)).cache();
             complex = contigs.filter(tig -> tig.getAlignmentSignatureBasicType().equals(COMPLEX)).cache();
+        }
+
+        public JavaRDD<AssemblyContigWithFineTunedAlignments> getContigsWithSignatureClassifiedAsUnknown() {
+            return unknown;
+        }
+
+        public JavaRDD<AssemblyContigWithFineTunedAlignments> getContigsWithSignatureClassifiedAsSimpleChimera() {
+            return simple;
+        }
+
+        public JavaRDD<AssemblyContigWithFineTunedAlignments> getContigsWithSignatureClassifiedAsComplex() {
+            return complex;
         }
 
         /**
@@ -206,9 +216,9 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
     public static AssemblyContigsClassifiedByAlignmentSignatures preprocess(final SvDiscoveryInputMetaData svDiscoveryInputMetaData,
                                                                             final JavaRDD<GATKRead> assemblyRawAlignments) {
 
-        final Broadcast<SAMFileHeader> headerBroadcast = svDiscoveryInputMetaData.sampleSpecificData.headerBroadcast;
-        final Broadcast<Set<String>> canonicalChromosomesBroadcast = svDiscoveryInputMetaData.referenceData.canonicalChromosomesBroadcast;
-        final Logger toolLogger = svDiscoveryInputMetaData.toolLogger;
+        final Broadcast<SAMFileHeader> headerBroadcast = svDiscoveryInputMetaData.getSampleSpecificData().getHeaderBroadcast();
+        final Broadcast<Set<String>> canonicalChromosomesBroadcast = svDiscoveryInputMetaData.getReferenceData().getCanonicalChromosomesBroadcast();
+        final Logger toolLogger = svDiscoveryInputMetaData.getToolLogger();
 
         final JavaRDD<AssemblyContigWithFineTunedAlignments> contigsWithChimericAlignmentsReconstructed =
                 AssemblyContigAlignmentsConfigPicker
@@ -231,12 +241,13 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
      * {@link AssemblyContigWithFineTunedAlignments.AlignmentSignatureBasicType#UNKNOWN}
      * currently DO NOT generate any VCF yet.
      */
-    public static void dispatchJobs(final AssemblyContigsClassifiedByAlignmentSignatures contigsByPossibleRawTypes,
+    public static void dispatchJobs(final JavaSparkContext ctx,
+                                    final AssemblyContigsClassifiedByAlignmentSignatures contigsByPossibleRawTypes,
                                     final SvDiscoveryInputMetaData svDiscoveryInputMetaData,
                                     final JavaRDD<GATKRead> assemblyRawAlignments,
                                     final boolean writeSAMFiles) {
 
-        final String outputPrefixWithSampleName = svDiscoveryInputMetaData.outputPath;
+        final String outputPrefixWithSampleName = svDiscoveryInputMetaData.getOutputPath();
 
         // TODO: 1/10/18 bring back read annotation, see ticket 4228
 
@@ -244,20 +255,30 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
                 SimpleNovelAdjacencyInterpreter.makeInterpretation(contigsByPossibleRawTypes.simple, svDiscoveryInputMetaData);
         contigsByPossibleRawTypes.simple.unpersist();
         SVVCFWriter.writeVCF(simpleVariants, outputPrefixWithSampleName + "NonComplex.vcf",
-                svDiscoveryInputMetaData.referenceData.referenceSequenceDictionaryBroadcast.getValue(),
-                svDiscoveryInputMetaData.toolLogger);
+                svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast().getValue(),
+                svDiscoveryInputMetaData.getToolLogger());
 
         final List<VariantContext> complexVariants =
                 CpxVariantInterpreter.makeInterpretation(contigsByPossibleRawTypes.complex, svDiscoveryInputMetaData);
         contigsByPossibleRawTypes.complex.unpersist();
         SVVCFWriter.writeVCF(complexVariants, outputPrefixWithSampleName + "Complex.vcf",
-                svDiscoveryInputMetaData.referenceData.referenceSequenceDictionaryBroadcast.getValue(),
-                svDiscoveryInputMetaData.toolLogger);
+                svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast().getValue(),
+                svDiscoveryInputMetaData.getToolLogger());
 
         if (writeSAMFiles) {
             contigsByPossibleRawTypes.writeSAMfilesForUnknown(outputPrefixWithSampleName, assemblyRawAlignments,
-                    svDiscoveryInputMetaData.sampleSpecificData.headerBroadcast.getValue());
+                    svDiscoveryInputMetaData.getSampleSpecificData().getHeaderBroadcast().getValue());
         }
+
+        final JavaRDD<VariantContext> complexVariantsRDD = ctx.parallelize(complexVariants);
+        final SegmentedCpxVariantSimpleVariantExtractor.ExtractedSimpleVariants reInterpretedSimple =
+                SegmentedCpxVariantSimpleVariantExtractor.extract(complexVariantsRDD, svDiscoveryInputMetaData, assemblyRawAlignments);
+        final SAMSequenceDictionary refSeqDict = svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast().getValue();
+        final Logger toolLogger = svDiscoveryInputMetaData.getToolLogger();
+        final String derivedOneSegmentSimpleVCF = outputPrefixWithSampleName + "cpx_reinterpreted_simple_1_seg.vcf";
+        final String derivedMultiSegmentSimpleVCF = outputPrefixWithSampleName + "cpx_reinterpreted_simple_multi_seg.vcf";
+        SVVCFWriter.writeVCF(reInterpretedSimple.getReInterpretZeroOrOneSegmentCalls(), derivedOneSegmentSimpleVCF, refSeqDict, toolLogger);
+        SVVCFWriter.writeVCF(reInterpretedSimple.getReInterpretMultiSegmentsCalls(), derivedMultiSegmentSimpleVCF, refSeqDict, toolLogger);
     }
 
     //==================================================================================================================

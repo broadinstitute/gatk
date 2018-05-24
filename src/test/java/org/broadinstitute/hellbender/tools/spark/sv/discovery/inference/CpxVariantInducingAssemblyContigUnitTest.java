@@ -6,7 +6,7 @@ import com.esotericsoftware.kryo.io.Output;
 import org.apache.commons.collections4.CollectionUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVTestUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestUtilsAndCommonDataProvider;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -58,8 +58,8 @@ public class CpxVariantInducingAssemblyContigUnitTest extends GATKBaseTest {
     private Object[][] forJumpCtor() {
         final List<Object[]> data = new ArrayList<>(20);
 
-        data.add(new Object[]{SVTestUtils.fromSAMRecordString("asm025517:tig00006\t2048\tchr17\t82596440\t60\t109M142H\t*\t0\t0\tAGCCTCAGAGGTGGCGTCAGGACGTGCCTGCCCCACCGGTTGCCCTGGTGCCCTCGTCACGCCCCGGGACCGTGCACACGTGGGGACTGTTTCCAGACGCACTTTCTGC\t*\tSA:Z:chr17,82596480,+,106S145M,60,0;\tMD:Z:72C36\tRG:Z:GATKSVContigAlignments\tNM:i:1\tAS:i:104\tXS:i:19", true),
-                              SVTestUtils.fromSAMRecordString("asm025517:tig00006\t0\tchr17\t82596480\t60\t106S145M\t*\t0\t0\tAGCCTCAGAGGTGGCGTCAGGACGTGCCTGCCCCACCGGTTGCCCTGGTGCCCTCGTCACGCCCCGGGACCGTGCACACGTGGGGACTGTTTCCAGACGCACTTTCTGCCCTGGTGCCCTCGTCACGCCCCGGGACCGCGCACACGTGGGGACTGTTTCCAGACGCACTTTCTGCGGGCAGTCTGTGTGGCAGGGCTCCCTGCCCAGCTCCTGCAGCCTCATCAAGTCTCCCACTAAGGAGGTGTCGCTCC\t*\tSA:Z:chr17,82596440,+,109M142S,60,1;\tMD:Z:145\tRG:Z:GATKSVContigAlignments\tNM:i:0\tAS:i:145\tXS:i:20", true),
+        data.add(new Object[]{SVDiscoveryTestUtilsAndCommonDataProvider.fromSAMRecordString("asm025517:tig00006\t2048\tchr17\t82596440\t60\t109M142H\t*\t0\t0\tAGCCTCAGAGGTGGCGTCAGGACGTGCCTGCCCCACCGGTTGCCCTGGTGCCCTCGTCACGCCCCGGGACCGTGCACACGTGGGGACTGTTTCCAGACGCACTTTCTGC\t*\tSA:Z:chr17,82596480,+,106S145M,60,0;\tMD:Z:72C36\tRG:Z:GATKSVContigAlignments\tNM:i:1\tAS:i:104\tXS:i:19", true),
+                              SVDiscoveryTestUtilsAndCommonDataProvider.fromSAMRecordString("asm025517:tig00006\t0\tchr17\t82596480\t60\t106S145M\t*\t0\t0\tAGCCTCAGAGGTGGCGTCAGGACGTGCCTGCCCCACCGGTTGCCCTGGTGCCCTCGTCACGCCCCGGGACCGTGCACACGTGGGGACTGTTTCCAGACGCACTTTCTGCCCTGGTGCCCTCGTCACGCCCCGGGACCGCGCACACGTGGGGACTGTTTCCAGACGCACTTTCTGCGGGCAGTCTGTGTGGCAGGGCTCCCTGCCCAGCTCCTGCAGCCTCATCAAGTCTCCCACTAAGGAGGTGTCGCTCC\t*\tSA:Z:chr17,82596440,+,109M142S,60,1;\tMD:Z:145\tRG:Z:GATKSVContigAlignments\tNM:i:0\tAS:i:145\tXS:i:20", true),
                               null,
                               IllegalArgumentException.class
         });

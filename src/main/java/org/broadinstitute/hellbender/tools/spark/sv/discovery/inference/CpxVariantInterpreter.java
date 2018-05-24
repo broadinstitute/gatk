@@ -42,8 +42,8 @@ public final class CpxVariantInterpreter {
     public static List<VariantContext> makeInterpretation(final JavaRDD<AssemblyContigWithFineTunedAlignments> assemblyContigs,
                                                           final SvDiscoveryInputMetaData svDiscoveryInputMetaData) {
 
-        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputMetaData.referenceData.referenceBroadcast;
-        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputMetaData.referenceData.referenceSequenceDictionaryBroadcast;
+        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputMetaData.getReferenceData().getReferenceBroadcast();
+        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast();
 
         // almost every thing happens in this series of maps
         final JavaPairRDD<CpxVariantCanonicalRepresentation, Iterable<CpxVariantInducingAssemblyContig>> interpretationAndAssemblyEvidence =
@@ -51,8 +51,8 @@ public final class CpxVariantInterpreter {
                         .mapToPair(tig -> getOneVariantFromOneContig(tig, referenceSequenceDictionaryBroadcast.getValue()))
                         .groupByKey(); // two contigs could give the same variant
 
-        if (svDiscoveryInputMetaData.discoverStageArgs.outputCpxResultsInHumanReadableFormat) {
-            writeResultsForHumanConsumption(svDiscoveryInputMetaData.outputPath, interpretationAndAssemblyEvidence);
+        if (svDiscoveryInputMetaData.getDiscoverStageArgs().outputCpxResultsInHumanReadableFormat) {
+            writeResultsForHumanConsumption(svDiscoveryInputMetaData.getOutputPath(), interpretationAndAssemblyEvidence);
         }
 
         return interpretationAndAssemblyEvidence.map(pair -> turnIntoVariantContext(pair, referenceBroadcast)).collect();

@@ -7,7 +7,7 @@ import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVTestUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestUtilsAndCommonDataProvider;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryTestDataProvider;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoverFromLocalAssemblyContigAlignmentsSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
@@ -119,8 +119,8 @@ public class AlignedContigGeneratorUnitTest extends GATKBaseTest {
         Assert.assertTrue(StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.filterAndConvertToAlignedContigDirect(Collections.singletonList(excuse), refNames, null).isEmpty());
 
         // produce test assembly and alignment
-        final byte[] dummyContigSequence = SVTestUtils.makeDummySequence(1000, (byte)'T');
-        final byte[] dummyContigSequenceQuals = SVTestUtils.makeDummySequence(1000, (byte)'A');
+        final byte[] dummyContigSequence = SVDiscoveryTestUtilsAndCommonDataProvider.makeDummySequence(1000, (byte)'T');
+        final byte[] dummyContigSequenceQuals = SVDiscoveryTestUtilsAndCommonDataProvider.makeDummySequence(1000, (byte)'A');
         final List<FermiLiteAssembly.Connection> dummyConnections = Collections.emptyList();
 
         final FermiLiteAssembly.Contig unmappedContig = new FermiLiteAssembly.Contig(dummyContigSequence, dummyContigSequenceQuals, 100); // totally random 100 supporting reads
@@ -199,7 +199,7 @@ public class AlignedContigGeneratorUnitTest extends GATKBaseTest {
     private Object[][] forNullOrEmptyAlignments() {
         final List<Object[]> data = new ArrayList<>(20);
 
-        data.add(new Object[]{"dummy", SVTestUtils.makeDummySequence(100, (byte) 'A'), null});
+        data.add(new Object[]{"dummy", SVDiscoveryTestUtilsAndCommonDataProvider.makeDummySequence(100, (byte) 'A'), null});
 
         return data.toArray(new Object[data.size()][]);
     }

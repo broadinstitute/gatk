@@ -49,11 +49,11 @@ public final class SimpleNovelAdjacencyInterpreter {
                     .map(SimpleNovelAdjacencyAndChimericAlignmentEvidence::getNovelAdjacencyReferenceLocations).collect();
             evaluateNarls(svDiscoveryInputMetaData, narls);
 
-            final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputMetaData.referenceData.referenceBroadcast;
+            final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputMetaData.getReferenceData().getReferenceBroadcast();
             final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast =
-                    svDiscoveryInputMetaData.referenceData.referenceSequenceDictionaryBroadcast;
-            final String sampleId = svDiscoveryInputMetaData.sampleSpecificData.sampleId;
-            final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast = svDiscoveryInputMetaData.sampleSpecificData.cnvCallsBroadcast;
+                    svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast();
+            final String sampleId = svDiscoveryInputMetaData.getSampleSpecificData().getSampleId();
+            final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast = svDiscoveryInputMetaData.getSampleSpecificData().getCnvCallsBroadcast();
             final List<VariantContext> annotatedSimpleVariants =
                     narlAndAltSeqAndEvidenceAndTypes
                             .flatMap(pair ->
@@ -73,11 +73,11 @@ public final class SimpleNovelAdjacencyInterpreter {
     private static void evaluateNarls(final SvDiscoveryInputMetaData svDiscoveryInputMetaData,
                                       final List<NovelAdjacencyAndAltHaplotype> narls) {
         final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast =
-                svDiscoveryInputMetaData.referenceData.referenceSequenceDictionaryBroadcast;
-        final List<SVInterval> assembledIntervals = svDiscoveryInputMetaData.sampleSpecificData.assembledIntervals;
+                svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast();
+        final List<SVInterval> assembledIntervals = svDiscoveryInputMetaData.getSampleSpecificData().getAssembledIntervals();
         final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection
-                discoverStageArgs = svDiscoveryInputMetaData.discoverStageArgs;
-        final Logger toolLogger = svDiscoveryInputMetaData.toolLogger;
+                discoverStageArgs = svDiscoveryInputMetaData.getDiscoverStageArgs();
+        final Logger toolLogger = svDiscoveryInputMetaData.getToolLogger();
         SvDiscoveryUtils.evaluateIntervalsAndNarls(assembledIntervals, narls,
                 referenceSequenceDictionaryBroadcast.getValue(), discoverStageArgs, toolLogger);
     }
@@ -92,8 +92,8 @@ public final class SimpleNovelAdjacencyInterpreter {
     inferTypeFromSingleContigSimpleChimera(final JavaRDD<AssemblyContigWithFineTunedAlignments> assemblyContigs,
                                            final SvDiscoveryInputMetaData svDiscoveryInputMetaData) {
 
-        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputMetaData.referenceData.referenceSequenceDictionaryBroadcast;
-        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputMetaData.referenceData.referenceBroadcast;
+        final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast();
+        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputMetaData.getReferenceData().getReferenceBroadcast();
 
         return
                 assemblyContigs
