@@ -1,18 +1,38 @@
 <?php
 
-	define('noTWITTER', TRUE);
-    include '../../../../common/include/common.php';
+	include '../../../../common/include/common.php';
     include_once '../../../config.php';
     $module = modules::GATK;
-    printHeader($module, "Tool Documentation Index", "Documentation");
+    $name = docSN::toolDocs;
 
-    $curr_version = file_get_contents(engConst::versions_dir.versionFiles::gatk);
-    $dirs = array_diff(scandir("../", SCANDIR_SORT_DESCENDING), array('..', '.'));
+    printHeader($module, $name, topSN::guide);
+
+    $selected_major_version = 4;
+    $dirs = lookupVersionDirs($selected_major_version);
 ?>
 
 <link type='text/css' rel='stylesheet' href='gatkDoc.css'>
 
-<div class='row-fluid' id="top">
+<div class="row hide_me_html" style="margin: 14px 3px 14px 3px;" id="tippy-top">
+
+	<i class='<?php print ico::toolDocsIcon; ?>'></i> <em>Showing tool doc from version ${version} | The latest version is <?php print $latest_version; ?></em>
+	<div class="btn-group pull-right">
+		<a class="btn btn-warning dropdown-toggle" data-toggle="dropdown" href="#">
+			${version}
+			<span class="caret"></span>
+		</a>
+		<ul class="dropdown-menu">
+			<?php foreach($dirs as $dir) { ?>
+			<li class="hide_me_html"><a tabindex='-1' href='../<?=$dir?>' ><?=$dir?></a></li>
+			<?php } ?>
+		</ul>
+	</div>
+	<hr />
+
+</div>
+
+
+<div class='row' id="top">
 
 	<#include "common.html"/>
 
@@ -90,19 +110,19 @@
 
 	<?php $group = '${group}'; ?>
 
-	<section class="span4">
+	<section class="col-md-4">
 		<aside class="well">
-			<a class="hide_me_php" href="index.html"><h4><i class='fa fa-chevron-left'></i> Back to Tool Docs Index</h4></a>
-			<a class="hide_me_html" href="index"><h4><i class='fa fa-chevron-left'></i> Back to Tool Docs Index</h4></a>
+			<a class="hide_me_php" href="index.html"><h4><i class='fa fa-chevron-left'></i> Back to Tool Documentation Index</h4></a>
+			<a class="hide_me_html" href=".."><h4><i class='fa fa-chevron-left'></i> Back to Tool Documentation Index</h4></a>
 		</aside>
 		<aside class="well hide_me_html">
-			<h2>Categories</h2>
+			<h3>Browse tools by category</h3>
 			<@getCategories groups=groups />
 		</aside>
 
 	</section>
 
-	<div class="span8">
+	<div class="col-md-8">
 
 		<#if beta?? && beta == true>
 			<h1>**BETA** ${name}</h1>
