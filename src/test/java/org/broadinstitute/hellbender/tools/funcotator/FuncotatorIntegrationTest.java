@@ -476,7 +476,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         argumentsVcf.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_PIK3CA_DIR);
         argumentsVcf.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, funcotatorRef);
         argumentsVcf.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, vcfOutputFormatType.toString());
-        argumentsVcf.addBooleanArgument(FuncotatorArgumentDefinitions.IGNORE_FILTERED_VARIANTS_LONG_NAME, false);
+        argumentsVcf.addBooleanArgument(FuncotatorArgumentDefinitions.REMOVE_FILTERED_VARIANTS_LONG_NAME, false);
 
         // We need this argument since we are testing on a subset of b37
         argumentsVcf.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_OVERRIDE_LONG_NAME, true);
@@ -493,7 +493,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         argumentsMaf.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_PIK3CA_DIR);
         argumentsMaf.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, funcotatorRef);
         argumentsMaf.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, mafOutputFormatType.toString());
-        argumentsMaf.addBooleanArgument(FuncotatorArgumentDefinitions.IGNORE_FILTERED_VARIANTS_LONG_NAME, false);
+        argumentsMaf.addBooleanArgument(FuncotatorArgumentDefinitions.REMOVE_FILTERED_VARIANTS_LONG_NAME, false);
         argumentsMaf.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_OVERRIDE_LONG_NAME, true);
 
         runCommandLine(argumentsMaf);
@@ -534,7 +534,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         argumentsVcf.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_PIK3CA_DIR);
         argumentsVcf.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19);
         argumentsVcf.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, vcfOutputFormatType.toString());
-        argumentsVcf.addBooleanArgument(FuncotatorArgumentDefinitions.IGNORE_FILTERED_VARIANTS_LONG_NAME, false);
+        argumentsVcf.addBooleanArgument(FuncotatorArgumentDefinitions.REMOVE_FILTERED_VARIANTS_LONG_NAME, false);
 
         // We need this argument since we are testing on a subset of b37
         argumentsVcf.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_OVERRIDE_LONG_NAME, true);
