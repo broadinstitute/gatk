@@ -6,6 +6,8 @@ import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.compress.utils.IOUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -19,8 +21,8 @@ import java.nio.file.Path;
 import java.util.function.Supplier;
 
 public class FuncotatorReferenceTestUtils {
-
-    private FuncotatorReferenceTestUtils() {}
+    private static final Logger logger = LogManager.getLogger(FuncotatorReferenceTestUtils.class);
+    private FuncotatorReferenceTestUtils() {} // Cannot instantiate this class.
     private static Lazy<String> hg19Chr3Ref;
     private static Lazy<String> hg19Chr19Ref;
     private static Lazy<String> b37Chr3Ref;
@@ -54,8 +56,7 @@ public class FuncotatorReferenceTestUtils {
             ArchiveEntry entry = null;
             while ((entry = i.getNextEntry()) != null) {
                 if (!i.canReadEntryData(entry)) {
-                    // log something?
-                    continue;
+                    logger.warn("Could not read an entry in the archive: " + entry.getName() + " from " + fastaTarGz.getAbsolutePath());
                 }
                 final String name = destDir + "/" + entry.getName();
                 if (entry.getName().endsWith(".fasta")) {
