@@ -1,13 +1,20 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
+import org.broadinstitute.hellbender.tools.spark.pipelines.SortSamSpark;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -15,17 +22,32 @@ import org.testng.annotations.Test;
 import java.io.File;
 
 public final class SortSamSparkIntegrationTest extends CommandLineProgramTest {
+
+    public static final String COUNT_READS_SAM = "count_reads.sam";
+    public static final String COORDINATE_SAM = "count_reads_sorted.sam";
+    public static final String QUERY_NAME_BAM = "count_reads.bam";
+    public static final String COORDINATE_BAM = "count_reads_sorted.bam";
+    public static final String COORDINATE_CRAM = "count_reads_sorted.cram";
+    public static final String QUERY_NAME_CRAM = "count_reads.cram";
+    public static final String REF = "count_reads.fasta";
+    public static final String CRAM = ".cram";
+    public static final String BAM = ".bam";
+    public static final String SAM = ".sam";
+
     @DataProvider(name="sortbams")
     public Object[][] sortBAMData() {
         return new Object[][] {
-                {"count_reads.sam", "count_reads_sorted.sam", null, ".sam", "coordinate"},
-                {"count_reads.bam", "count_reads_sorted.bam", null, ".bam", "coordinate"},
-                {"count_reads.cram", "count_reads_sorted.cram", "count_reads.fasta", ".bam", "coordinate"},
-                {"count_reads.cram", "count_reads_sorted.cram", "count_reads.fasta", ".cram", "coordinate"},
-                {"count_reads.bam", "count_reads_sorted.bam", "count_reads.fasta", ".cram", "coordinate"},
+                {COUNT_READS_SAM, COORDINATE_SAM, null, SAM, SAMFileHeader.SortOrder.coordinate},
+                {QUERY_NAME_BAM, COORDINATE_BAM, null, BAM, SAMFileHeader.SortOrder.coordinate},
+                {QUERY_NAME_CRAM, COORDINATE_CRAM, REF, BAM, SAMFileHeader.SortOrder.coordinate},
+                {QUERY_NAME_CRAM, COORDINATE_CRAM, REF, CRAM, SAMFileHeader.SortOrder.coordinate},
+                {QUERY_NAME_BAM, COORDINATE_BAM, REF, CRAM, SAMFileHeader.SortOrder.coordinate},
 
-                {"count_reads.bam", "count_reads.bam", null, ".bam", "queryname"},
-                {"count_reads.cram", "count_reads.cram", "count_reads.fasta", ".cram", "queryname"},
+                {COORDINATE_SAM, COUNT_READS_SAM, null, SAM, SAMFileHeader.SortOrder.queryname},
+                {COORDINATE_BAM, QUERY_NAME_BAM, null, BAM, SAMFileHeader.SortOrder.queryname},
+                {COORDINATE_CRAM, QUERY_NAME_CRAM, REF, BAM, SAMFileHeader.SortOrder.queryname},
+                {COORDINATE_CRAM, QUERY_NAME_CRAM, REF, CRAM, SAMFileHeader.SortOrder.queryname},
+                {COORDINATE_BAM, QUERY_NAME_BAM, REF, CRAM, SAMFileHeader.SortOrder.queryname},
         };
     }
 
@@ -35,40 +57,64 @@ public final class SortSamSparkIntegrationTest extends CommandLineProgramTest {
             final String expectedOutputFileName,
             final String referenceFileName,
             final String outputExtension,
-            final String sortOrderName) throws Exception {
-        final File inputFile = new File(getTestDataDir(), inputFileName);
-        final File expectedOutputFile = new File(getTestDataDir(), expectedOutputFileName);
+            final SAMFileHeader.SortOrder sortOrder) throws Exception {
+        final File inputFile =  getTestFile(inputFileName);
+        final File expectedOutputFile =  getTestFile(expectedOutputFileName);
         final File actualOutputFile = createTempFile("sort_sam", outputExtension);
-        File referenceFile = null == referenceFileName ? null : new File(getTestDataDir(), referenceFileName);
+        File referenceFile = null == referenceFileName ? null : getTestFile(referenceFileName);
+
+        final SamReaderFactory factory = SamReaderFactory.makeDefault();
+
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addInput(inputFile);
+        args.addOutput(actualOutputFile);
+        if (null != referenceFile) {
+            args.addReference(referenceFile);
+            factory.referenceSequence(referenceFile);
+        }
+        args.addArgument(SortSamSpark.SORT_ORDER_LONG_NAME, sortOrder.name());
+
+        this.runCommandLine(args);
+
+        //test files are exactly equal
+        SamAssertionUtils.assertSamsEqual(actualOutputFile, expectedOutputFile, ValidationStringency.DEFAULT_STRINGENCY, referenceFile);
+
+        //test sorting matches htsjdk
+        try(ReadsDataSource in = new ReadsDataSource(actualOutputFile.toPath(), factory )) {
+            BaseTest.assertSorted(Utils.stream(in).map(read -> read.convertToSAMRecord(in.getHeader())).iterator(), sortOrder.getComparatorInstance());
+        }
+    }
+
+    @Test(dataProvider="sortbams", groups="spark")
+    public void testSortBAMsSharded(
+            final String inputFileName,
+            final String unused,
+            final String referenceFileName,
+            final String outputExtension,
+            final SAMFileHeader.SortOrder sortOrder) {
+        final File inputFile = getTestFile(inputFileName);
+        final File actualOutputFile = createTempFile("sort_sam", outputExtension);
+        File referenceFile = null == referenceFileName ? null : getTestFile(referenceFileName);
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.addInput(inputFile);
         args.addOutput(actualOutputFile);
         if (null != referenceFile) {
             args.addReference(referenceFile);
         }
-        args.addArgument(GATKSparkTool.NUM_REDUCERS_LONG_NAME, "1");
-        args.addArgument(SortSamSpark.SORT_ORDER_LONG_NAME, sortOrderName);
+        args.addArgument(SortSamSpark.SORT_ORDER_LONG_NAME, sortOrder.name());
+        args.addBooleanArgument(GATKSparkTool.SHARDED_OUTPUT_LONG_NAME,true);
+        args.addArgument(GATKSparkTool.NUM_REDUCERS_LONG_NAME, "2");
 
         this.runCommandLine(args);
 
-        SamAssertionUtils.assertSamsEqual(actualOutputFile, expectedOutputFile, ValidationStringency.DEFAULT_STRINGENCY, referenceFile);
+        final ReadsSparkSource source = new ReadsSparkSource(SparkContextFactory.getTestSparkContext());
+        final JavaRDD<GATKRead> reads = source.getParallelReads(actualOutputFile.getAbsolutePath(), referenceFile == null ? null : referenceFile.getAbsolutePath());
+
+        final SAMFileHeader header = source.getHeader(actualOutputFile.getAbsolutePath(),
+                                                      referenceFile == null ? null : referenceFile.getAbsolutePath());
+
+        BaseTest.assertSorted(reads.collect().stream().map(read -> read.convertToSAMRecord(header)).iterator(), sortOrder.getComparatorInstance());
     }
-
-    @Test(groups = "spark")
-    public void test() throws Exception {
-        final File unsortedBam = new File(getTestDataDir(), "count_reads.bam");
-        final File sortedBam = new File(getTestDataDir(), "count_reads_sorted.bam");
-        final File outputBam = createTempFile("sort_bam_spark", ".bam");
-        ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addInput(unsortedBam);
-        args.addOutput(outputBam);
-        args.addArgument(GATKSparkTool.NUM_REDUCERS_LONG_NAME, "1");
-
-        this.runCommandLine(args);
-
-        SamAssertionUtils.assertSamsEqual(outputBam, sortedBam);
-    }
-
 
     @DataProvider
     public Object[][] getInvalidSortOrders(){
@@ -81,10 +127,10 @@ public final class SortSamSparkIntegrationTest extends CommandLineProgramTest {
 
     @Test(expectedExceptions = CommandLineException.BadArgumentValue.class, dataProvider = "getInvalidSortOrders")
     public void testBadSortOrders(SAMFileHeader.SortOrder badOrder){
-        final File unsortedBam = new File(getTestDataDir(), "count_reads.bam");
+        final File unsortedBam = new File(getTestDataDir(), QUERY_NAME_BAM);
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.addInput(unsortedBam);
-        args.addOutput(createTempFile("sort_bam_spark", ".bam"));
+        args.addOutput(createTempFile("sort_bam_spark", BAM));
         args.addArgument(SortSamSpark.SORT_ORDER_LONG_NAME, badOrder.toString());
 
         this.runCommandLine(args);
