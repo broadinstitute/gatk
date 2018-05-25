@@ -392,10 +392,12 @@ final public class DataSourceUtils {
         // Get some metadata:
         final String fastaPath = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_GENCODE_FASTA_PATH);
         final String version   = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_VERSION);
+        final String name      = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_NAME);
 
         // Create our gencode factory:
         return new GencodeFuncotationFactory(dataSourceFile.resolveSibling(fastaPath),
                         version,
+                        name,
                         transcriptSelectionMode,
                         userTranscriptIdSet,
                         annotationOverridesMap

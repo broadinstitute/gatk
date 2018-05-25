@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * A class to represent a Functional Annotation.
+ * A class to represent a Functional Annotation from the Gencode data source.
  * Created by jonn on 8/22/17.
  */
 public class GencodeFuncotation implements Funcotation {
@@ -52,6 +52,8 @@ public class GencodeFuncotation implements Funcotation {
     private String                  referenceContext;                   // Already calculated.
 
     private List<String>            otherTranscripts;                   // TRIVIAL
+
+    private String                  dataSourceName;
 
     //------------------------------------------------------------
     // Non-serialized fields:
@@ -121,6 +123,7 @@ public class GencodeFuncotation implements Funcotation {
         this.gcContent = that.gcContent;
         this.referenceContext = that.referenceContext;
         this.otherTranscripts = that.otherTranscripts;
+        this.dataSourceName = that.dataSourceName;
         this.locusLevel = that.locusLevel;
         this.apprisRank = that.apprisRank;
         this.transcriptLength = that.transcriptLength;
@@ -201,7 +204,7 @@ public class GencodeFuncotation implements Funcotation {
     public void setFieldSerializationOverrideValue( final String fieldName, final String overrideValue ) {
 
         // Cut off the "Gencode" and version number at the start of the string:
-        final String shortFieldName = fieldName.replaceAll("^" + GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_", "");
+        final String shortFieldName = fieldName.replaceAll("^" + getDataSourceName()+ "_" + version + "_", "");
 
         switch (shortFieldName) {
             case "hugoSymbol":                     hugoSymbolSerializedOverride = overrideValue;                     break;
@@ -232,35 +235,35 @@ public class GencodeFuncotation implements Funcotation {
 
     @Override
     public String getDataSourceName() {
-        return GencodeFuncotationFactory.DATA_SOURCE_NAME;
+        return dataSourceName;
     }
 
     @Override
     public LinkedHashSet<String> getFieldNames() {
         return new LinkedHashSet<>(
                 Arrays.asList(
-                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_hugoSymbol",
-                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_ncbiBuild",
-                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_chromosome",
-                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_start",
-                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_end",
-                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_variantClassification",
-                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_secondaryVariantClassification",
-                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_variantType",
-                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_refAllele",
-                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_tumorSeqAllele1",
-                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_tumorSeqAllele2",
-                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_genomeChange",
-                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_annotationTranscript",
-                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_transcriptStrand",
-                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_transcriptExon",
-                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_transcriptPos",
-                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_cDnaChange",
-                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_codonChange",
-                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_proteinChange",
-                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_gcContent",
-                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_referenceContext",
-                        GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_otherTranscripts"
+                        getDataSourceName() + "_" + version + "_hugoSymbol",
+                        getDataSourceName() + "_" + version + "_ncbiBuild",
+                        getDataSourceName() + "_" + version + "_chromosome",
+                        getDataSourceName() + "_" + version + "_start",
+                        getDataSourceName() + "_" + version + "_end",
+                        getDataSourceName() + "_" + version + "_variantClassification",
+                        getDataSourceName() + "_" + version + "_secondaryVariantClassification",
+                        getDataSourceName() + "_" + version + "_variantType",
+                        getDataSourceName() + "_" + version + "_refAllele",
+                        getDataSourceName() + "_" + version + "_tumorSeqAllele1",
+                        getDataSourceName() + "_" + version + "_tumorSeqAllele2",
+                        getDataSourceName() + "_" + version + "_genomeChange",
+                        getDataSourceName() + "_" + version + "_annotationTranscript",
+                        getDataSourceName() + "_" + version + "_transcriptStrand",
+                        getDataSourceName() + "_" + version + "_transcriptExon",
+                        getDataSourceName() + "_" + version + "_transcriptPos",
+                        getDataSourceName() + "_" + version + "_cDnaChange",
+                        getDataSourceName() + "_" + version + "_codonChange",
+                        getDataSourceName() + "_" + version + "_proteinChange",
+                        getDataSourceName() + "_" + version + "_gcContent",
+                        getDataSourceName() + "_" + version + "_referenceContext",
+                        getDataSourceName() + "_" + version + "_otherTranscripts"
                 )
         );
     }
@@ -270,11 +273,11 @@ public class GencodeFuncotation implements Funcotation {
 
         // Allow a user to specify the name of the field, or the fully-qualified name of the field
         // with GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_" at the start.
-        final String altFieldName = GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_" + fieldName;
+        final String altFieldName = getDataSourceName() + "_" + version + "_" + fieldName;
         final LinkedHashSet<String> fieldNames = getFieldNames();
 
         if ( fieldNames.contains(fieldName) || fieldNames.contains(altFieldName) ) {
-            switch(fieldName.replace(GencodeFuncotationFactory.DATA_SOURCE_NAME + "_" + version + "_", "")) {
+            switch(fieldName.replace(getDataSourceName() + "_" + version + "_", "")) {
                 case "hugoSymbol":
                     return (hugoSymbolSerializedOverride != null ? hugoSymbolSerializedOverride : (hugoSymbol != null ? hugoSymbol : ""));
                 case "ncbiBuild":
@@ -363,6 +366,8 @@ public class GencodeFuncotation implements Funcotation {
             return false;
         if ( otherTranscripts != null ? !otherTranscripts.equals(that.otherTranscripts) : that.otherTranscripts != null )
             return false;
+        if ( dataSourceName != null ? !dataSourceName.equals(that.dataSourceName) : that.dataSourceName != null )
+            return false;
         if ( locusLevel != null ? !locusLevel.equals(that.locusLevel) : that.locusLevel != null ) return false;
         if ( apprisRank != that.apprisRank ) return false;
         if ( transcriptLength != null ? !transcriptLength.equals(that.transcriptLength) : that.transcriptLength != null )
@@ -437,6 +442,7 @@ public class GencodeFuncotation implements Funcotation {
         result = 31 * result + (gcContent != null ? gcContent.hashCode() : 0);
         result = 31 * result + (referenceContext != null ? referenceContext.hashCode() : 0);
         result = 31 * result + (otherTranscripts != null ? otherTranscripts.hashCode() : 0);
+        result = 31 * result + (dataSourceName != null ? dataSourceName.hashCode() : 0);
         result = 31 * result + (locusLevel != null ? locusLevel.hashCode() : 0);
         result = 31 * result + (apprisRank != null ? apprisRank.hashCode() : 0);
         result = 31 * result + (transcriptLength != null ? transcriptLength.hashCode() : 0);
@@ -491,6 +497,7 @@ public class GencodeFuncotation implements Funcotation {
                 ", gcContent=" + gcContent +
                 ", referenceContext='" + referenceContext + '\'' +
                 ", otherTranscripts=" + otherTranscripts +
+                ", dataSourceName=" + dataSourceName +
                 ", locusLevel=" + locusLevel +
                 ", apprisRank=" + apprisRank +
                 ", transcriptLength=" + transcriptLength +
@@ -724,6 +731,10 @@ public class GencodeFuncotation implements Funcotation {
 
     public void setGeneTranscriptType(final GencodeGtfFeature.GeneTranscriptType geneTranscriptType) {
         this.geneTranscriptType = geneTranscriptType;
+    }
+
+    public void setDataSourceName(final String dataSourceName) {
+        this.dataSourceName = dataSourceName;
     }
 
     //==================================================================================================================
