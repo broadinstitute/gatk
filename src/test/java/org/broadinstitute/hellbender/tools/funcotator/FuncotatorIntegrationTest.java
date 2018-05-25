@@ -553,13 +553,14 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         final String[] funcotationKeys = extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription());
 
         // The first variant context should have clinvar annotations, since it hit on the alt allele.  None of the rest.
+        // This test assumes that each test variant context has only one alt allele.
         final String funcotationInfoFieldWithClinVarHit = variantContexts.get(0).getAttributeAsString(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME, null);
         Assert.assertEquals(FuncotatorUtils.getFuncotationMapFromVcfFuncotationField(funcotationKeys, funcotationInfoFieldWithClinVarHit).get("dummy_ClinVar_VCF_CLNDISDB"),
             FuncotatorUtils.sanitizeFuncotationForVcf("MedGen:C0027672,SNOMED_CT:699346009"));
 
         // The rest should not have any clinvar hits.
-        final List<String> clinvarAnnotations = new ArrayList();
-        final List<String> clinvarAnnotationsTruth = new ArrayList();
+        final List<String> clinvarAnnotations = new ArrayList<>();
+        final List<String> clinvarAnnotationsTruth = new ArrayList<>();
         for (int i = 1; i < variantContexts.size(); i++) {
             final String infoField = variantContexts.get(i).getAttributeAsString(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME, null);
             clinvarAnnotations.add(FuncotatorUtils.getFuncotationMapFromVcfFuncotationField(funcotationKeys, infoField).get("dummy_ClinVar_VCF_CLNDISDB"));

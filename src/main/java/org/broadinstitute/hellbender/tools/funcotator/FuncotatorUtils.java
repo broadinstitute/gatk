@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
+import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.Resource;
@@ -1982,29 +1983,8 @@ public final class FuncotatorUtils {
         }
     }
 
-    /**
-     * Given a VCF header and an annotation line, return a map of name to funcotation.
-     *
-     * @param funcotationHeaderKeys The funcotation keys from the description of the funcotation info field.
-     *                              @see FuncotatorUtils#extractFuncotatorKeysFromHeaderDescription(String).  Never {@code null}
-     * @param funcotationAttributeAsString The value in a funcotation info field.  Never {@code null}
-     * @return map of the fields specified in the description to the values in the attribute.  Never {@code null}
-     */
-    public static Map<String, String> getFuncotationMapFromVcfFuncotationField(final String[] funcotationHeaderKeys, final String funcotationAttributeAsString) {
+    // TODO: Create transcriptFuncotationMap
 
-        Utils.nonNull(funcotationHeaderKeys);
-        Utils.nonNull(funcotationAttributeAsString);
-
-        final String[] valuesSplit = StringUtils.splitByWholeSeparatorPreserveAllTokens(funcotationAttributeAsString, "|");
-        final String[] values = funcotationAttributeAsString.startsWith("|") ? ArrayUtils.subarray(valuesSplit, 1, valuesSplit.length): valuesSplit;
-
-        if (funcotationHeaderKeys.length != values.length) {
-            throw new GATKException.ShouldNeverReachHereException("Could not parse FUNCOTATION field properly.");
-        }
-
-        return IntStream.range(0, funcotationHeaderKeys.length).boxed()
-                .collect(Collectors.toMap(i -> funcotationHeaderKeys[i], i -> values[i]));
-    }
 
     /**
      * @param funcotationHeaderDescription The raw description of the funcotation info field.  Never {@code null}
@@ -2026,5 +2006,26 @@ public final class FuncotatorUtils {
     public static String sanitizeFuncotationForVcf(final String individualFuncotation) {
         Utils.nonNull(individualFuncotation);
         return StringUtils.replaceEach(individualFuncotation, new String[]{",", ";", "=", "\t", "|"}, new String[]{"_%2C_", "_%3B_", "_%3D_", "_%09_", "_%7C_"});
+    }
+
+    /**
+     * TODO: Docs
+     * TODO: Test this method in a unit test
+     * @param funcotationHeaderKeys
+     * @param v
+     * @return
+     */
+    public static Map<Allele, FuncotationMap> createAlleleToFuncotationMap(final String[] funcotationHeaderKeys, final VariantContext v, final String transcriptIdFuncotationName) {
+
+        final String rawFuncotationAttribute = v.getAttributeAsString(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME, "");
+        final List<String> funcotationPerAllele = Arrays.asList(StringUtils.split(rawFuncotationAttribute, ","));
+        if (v.getAlternateAlleles().size() != funcotationPerAllele.size()) {
+            throw new GATKException.ShouldNeverReachHereException("Could not parse FUNCOTATION field properly.");
+        }
+
+        return IntStream.range(0, v.getAlternateAlleles().size()).boxed()
+                .collect(Collectors
+                        .toMap(i -> v.getAlternateAllele(i), i -> FuncotationMap.create(transcriptIdFuncotationName,
+                                funcotationHeaderKeys, funcotationPerAllele.get(i))));
     }
 }
