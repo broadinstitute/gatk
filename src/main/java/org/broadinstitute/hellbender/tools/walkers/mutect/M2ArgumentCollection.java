@@ -26,7 +26,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String GERMLINE_RESOURCE_LONG_NAME = "germline-resource";
     public static final String DEFAULT_AF_LONG_NAME = "af-of-alleles-not-in-resource";
     public static final String DEFAULT_AF_SHORT_NAME = "default-af";
-    public static final String EMISSION_LOG_LONG_NAME = "tumor-lod-to-emit";
+    public static final String EMISSION_LOD_LONG_NAME = "tumor-lod-to-emit";
     public static final String EMISSION_LOG_SHORT_NAME = "emit-lod";
     public static final String INITIAL_TUMOR_LOD_LONG_NAME = "initial-tumor-lod";
     public static final String INITIAL_TUMOR_LOD_SHORT_NAME = "init-lod";
@@ -105,14 +105,14 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * Default setting of 3 is permissive and will emit some amount of negative training data that 
      * {@link FilterMutectCalls} should then filter.
      */
-    @Argument(fullName = EMISSION_LOG_LONG_NAME, shortName = EMISSION_LOG_SHORT_NAME, optional = true, doc = "LOD threshold to emit tumor variant to VCF.")
-    public double emissionLodThreshold = 3.0;
+    @Argument(fullName = EMISSION_LOD_LONG_NAME, shortName = EMISSION_LOG_SHORT_NAME, optional = true, doc = "LOD threshold to emit tumor variant to VCF.")
+    public double emissionLod = 3.0;
 
     /**
      * Only variants with estimated tumor LODs exceeding this threshold will be considered active.
      */
     @Argument(fullName = INITIAL_TUMOR_LOD_LONG_NAME, shortName = INITIAL_TUMOR_LOD_SHORT_NAME, optional = true, doc = "LOD threshold to consider pileup active.")
-    public double initialTumorLodThreshold = 2.0;
+    public double initialTumorLod = 2.0;
 
     /**
      * In tumor-only mode, we discard variants with population allele frequencies greater than this threshold.
@@ -140,7 +140,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * but may also increase calling false positive, i.e. germline, variants.
      */
     @Argument(fullName = NORMAL_LOD_LONG_NAME, optional = true, doc = "LOD threshold for calling normal variant non-germline.")
-    public double normalLodThreshold = 2.2;
+    public double normalLod = 2.2;
 
     /**
      * Two or more phased substitutions separated by this distance or less are merged into MNPs.
