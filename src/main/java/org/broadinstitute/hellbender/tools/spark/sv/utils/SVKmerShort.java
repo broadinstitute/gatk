@@ -92,6 +92,11 @@ public class SVKmerShort extends SVKmer implements Comparable<SVKmerShort> {
         return new SVKmerShort(reverseComplement(valLow << compK) & mask);
     }
 
+    public boolean isCanonical( final int kSize ) {
+        Utils.validateArg( (kSize & 1) != 0, "Canonical status not defined for even-length kmers.");
+        return ((valLow >> kSize) & 1L) == 0;
+    }
+
     /**
      * Returns a SVKmerShort that is a canonical representation of this one.
      * An odd-K SVKmerShort is in canonical form if its middle base is A or C.

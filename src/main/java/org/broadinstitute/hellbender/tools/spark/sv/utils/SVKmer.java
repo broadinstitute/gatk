@@ -13,6 +13,8 @@ public abstract class SVKmer {
         public final long value;
 
         Base(final long value) { this.value = value; }
+
+        public Base complement() { return values()[ordinal() ^ 3]; }
     }
 
     // Lookup table for reverse-complementing each possible byte value.
@@ -30,6 +32,7 @@ public abstract class SVKmer {
     public abstract SVKmer successor( final Base base, final int kSize );
     public abstract SVKmer predecessor( final Base base, final int kSize );
     public abstract SVKmer reverseComplement( final int kSize );
+    public abstract boolean isCanonical( final int kSize );
     public abstract SVKmer canonical( final int kSize );
     public abstract Base firstBase( final int kSize );
     public abstract Base lastBase();

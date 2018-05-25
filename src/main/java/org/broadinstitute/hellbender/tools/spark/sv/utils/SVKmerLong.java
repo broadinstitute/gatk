@@ -104,6 +104,11 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
         return new SVKmerLong(newV1, newV2);
     }
 
+    public boolean isCanonical( final int kSize ) {
+        Utils.validateArg( (kSize & 1) != 0, "Canonical status not defined for even-length kmers.");
+        return (valHigh & 1L) == 0;
+    }
+
     /**
      * Returns a SVKmerLong that is a canonical representation of this one.
      * An odd-K SVKmerLong is in canonical form if its middle base is A or C.
@@ -119,6 +124,9 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
         return reverseComplement(kSize);
     }
 
+    public SVKmerLong removeFirstAndLastBase( final int kSize ) {
+        return new SVKmerLong(valHigh & ((1L << (kSize-2)) - 1L), valLow >> 2);
+    }
     public final Base firstBase( final int kSize ) { return Base.values()[(int)(valHigh >> (kSize-2))]; }
     public final Base lastBase() { return Base.values()[(int)(valLow & 3)]; }
     public final int firstTrimer(final int kSize ) { return (int)(valHigh >>> (kSize-6)); }
