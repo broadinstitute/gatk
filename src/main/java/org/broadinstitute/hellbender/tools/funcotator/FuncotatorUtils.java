@@ -328,7 +328,9 @@ public final class FuncotatorUtils {
      * Gets the sequence aligned position (1-based, inclusive) for the given coding sequence position.
      * This will produce the next lowest position evenly divisible by 3, such that a codon starting at this returned
      * position would include the given position.  This can be a negative number, in which case the codon would start
-     * at the given position relative to the normal starting position (1).
+     * at the given position relative to the normal starting position (1) (this would be the case for an upstream
+     * UTR or flank).
+     *
      * @param position A sequence starting coordinate for which to produce an coding-aligned position.
      * @return A coding-aligned position (1-based, inclusive) corresponding to the given {@code position}.
      */
@@ -345,7 +347,7 @@ public final class FuncotatorUtils {
 
     /**
      * Calculates whether the given {@code startPosition} (1-based, inclusive) is in frame relative to the end of the region.
-     * @param startPosition The position (1-based, inclusive) relative to the start of a region to check for frame alignment.    Must be > 0.
+     * @param startPosition The position (1-based, inclusive) relative to the start of a region to check for frame alignment.
      * @param regionLength The length of the region containing {@code startPosition}.  Must be >= 0.
      * @return {@code true} if the given {@code startPosition} is in frame relative to the given {@code regionLength} ; {@code false} otherwise.
      */

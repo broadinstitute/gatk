@@ -1456,9 +1456,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         if ( processSequenceInformation ) {
             if ( transcriptIdMap.containsKey(transcript.getTranscriptId()) ) {
 
-                final String transcriptSequence;
                 // NOTE: This can't be null because of the Funcotator input args.
-                transcriptSequence = getCodingSequenceFromTranscriptFasta(transcript.getTranscriptId(), transcriptIdMap, transcriptFastaReferenceDataSource);
+                final String transcriptSequence = getCodingSequenceFromTranscriptFasta(transcript.getTranscriptId(), transcriptIdMap, transcriptFastaReferenceDataSource);
 
                 // Get the transcript sequence as described by the given exonPositionList:
                 sequenceComparison.setTranscriptCodingSequence(new ReferenceSequence(transcript.getTranscriptId(), transcript.getStart(), transcriptSequence.getBytes()));
