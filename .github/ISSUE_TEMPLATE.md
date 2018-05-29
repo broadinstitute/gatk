@@ -2,7 +2,7 @@
 
 The github issue tracker is for bug reports, feature requests, and API documentation requests. General questions about how to use the GATK, how to interpret the output, etc. should be asked on the [official support forum](http://gatkforums.broadinstitute.org/gatk).
 - Search the existing github issues to see if your issue (or something similar) has already been reported.  If the issue already exists, you may comment there to inquire about the progress.
-- Determine whether your issue is a **bug report**, a **feature request**, or a **documentation request** (for tool gatkdocs only -- for forum docs see [the support issues repo](https://github.com/broadinstitute/dsde-docs/issues))
+- Determine whether your issue is a **bug report**, a **feature request**, or a **documentation request** (for tool/class javadoc only -- for forum docs please post there)
 - Consider if your "issue" is better addressed on the GATK forum: http://gatkforums.broadinstitute.org/gatk  Post there if you have questions about expected tool behavior, output format, unexpected results, or generally any question that does not fit into the categories above
 - Use a **concise** yet **descriptive** title
 - Choose the corresponding template block below and fill it in, replacing or deleting text in italics (surrounded by `_`) as appropriate
@@ -12,8 +12,8 @@ The github issue tracker is for bug reports, feature requests, and API documenta
 
 ## Bug Report
 
-### Affected tool(s)
-_Tool name(s), special parameters?_
+### Affected tool(s) or class(es)
+_Tool/class name(s), special parameters?_
 
 ### Affected version(s)
 - [ ] Latest public release version [version?]
@@ -35,8 +35,8 @@ _Tell us what happens instead_
 
 ## Feature request
 
-### Tool(s) involved
-_Tool name(s), special parameters?_
+### Tool(s) or class(es) involved
+_Tool/class name(s), special parameters?_
 
 ### Description
 _Specify whether you want a modification of an existing behavior or addition of a new capability._
@@ -46,8 +46,8 @@ _Provide **examples**, **screenshots**, where appropriate._
 
 ## Documentation request
 
-### Tool(s) involved
-_Tool name(s), parameters?_
+### Tool(s) or class(es) involved
+_Tool/class name(s), parameters?_
 
 ### Description 
 _Describe what needs to be added or modified._
