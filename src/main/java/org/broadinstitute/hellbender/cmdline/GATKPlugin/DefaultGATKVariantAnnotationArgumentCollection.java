@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.cmdline.GATKPlugin;
 
+import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 
@@ -37,6 +38,7 @@ public class DefaultGATKVariantAnnotationArgumentCollection extends GATKAnnotati
     /**
      * Hook allowing for the user to remove default annotations from the tool
      */
+    @Advanced
     @Argument(fullName = StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_ANNOTATIONS, shortName = StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_ANNOTATIONS, doc = "Disable all tool default annotations", optional = true)
     public boolean disableToolDefaultAnnotations = false;
 
@@ -50,8 +52,9 @@ public class DefaultGATKVariantAnnotationArgumentCollection extends GATKAnnotati
      * additional requirements, e.g. minimum number of samples or heterozygous sites only -- see the documentation
      * for individual annotations' requirements).
      */
+    @Advanced
     @Argument(fullName=StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS, doc="Use all possible annotations (not for the faint of heart)", optional=true)
-    protected Boolean enableAllAnnotations = false;
+    protected boolean enableAllAnnotations = false;
 
     @Override
     public List<String> getUserEnabledAnnotationNames() {

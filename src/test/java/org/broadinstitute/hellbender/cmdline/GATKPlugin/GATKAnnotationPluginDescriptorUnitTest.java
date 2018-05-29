@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.cmdline.GATKPlugin;
 
+import org.broadinstitute.barclay.argparser.ClassFinder;
 import htsjdk.variant.variantcontext.*;
-import htsjdk.variant.vcf.VCFConstants;
-import htsjdk.variant.vcf.VCFHeaderLine;
-import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.commons.io.output.NullOutputStream;
 import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -11,7 +9,6 @@ import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
@@ -27,7 +24,6 @@ import org.testng.collections.Lists;
 
 import java.io.PrintStream;
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -459,8 +455,15 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         clp.parseArguments(nullMessageStream, args);
         List<Annotation> annots = instantiateAnnotations(clp);
 
-        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
-        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==ChromosomeCounts.class));
+        ClassFinder finder = new ClassFinder();
+        finder.find(GATKAnnotationPluginDescriptor.pluginPackageName, Annotation.class);
+
+        Set<Class<?>> classes = finder.getConcreteClasses();
+        Assert.assertFalse(classes.isEmpty());
+        Assert.assertEquals(annots.size(),classes.size());
+        for(Class<?> found : classes) {
+            Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==found));
+        }
     }
 
     @Test
@@ -473,14 +476,19 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         clp.parseArguments(nullMessageStream, args);
         List<Annotation> annots = instantiateAnnotations(clp);
 
-        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
-        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==ChromosomeCounts.class));
-        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==AS_RMSMappingQuality.class));
+        // Asserting that only
         Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==AS_StandardAnnotation.class));
-        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==RMSMappingQuality.class));
-        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==QualByDepth.class));
-        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==ReadPosRankSumTest.class));
-        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==StrandOddsRatio.class));
+
+        ClassFinder finder = new ClassFinder();
+        finder.find(GATKAnnotationPluginDescriptor.pluginPackageName, Annotation.class);
+
+        Set<Class<?>> classes = finder.getConcreteClasses();
+        classes.remove(Coverage.class);
+        Assert.assertFalse(classes.isEmpty());
+        Assert.assertEquals(annots.size(),classes.size());
+        for(Class<?> found : classes) {
+            Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==found));
+        }
     }
 
     @Test
@@ -526,7 +534,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testAnnotationGroupOverriding(){
+    public void testAnnotationGroupAdditive(){
         CommandLineParser clp = new CommandLineArgumentParser(
                 new Object(),
                 Collections.singletonList(new GATKAnnotationPluginDescriptor( null, Collections.singletonList(StandardHCAnnotation.class))),
@@ -537,7 +545,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
 
         Assert.assertFalse(annots.isEmpty());
 
-        //check that Coverage is in and ClippingRankSum is out
+        //check that annotations from both specified groups are present
         Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass().getSimpleName().equals(Coverage.class.getSimpleName())));
         Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass().getSimpleName().equals(ClippingRankSumTest.class.getSimpleName())));
     }

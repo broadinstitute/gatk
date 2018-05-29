@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.cmdline;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.intel.gkl.compression.IntelDeflaterFactory;
 import com.intel.gkl.compression.IntelInflaterFactory;
 import htsjdk.samtools.Defaults;
@@ -456,7 +457,8 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     /**
      * @return this programs CommandLineParser.  If one is not initialized yet this will initialize it.
      */
-    protected final CommandLineParser getCommandLineParser() {
+    @VisibleForTesting
+    public final CommandLineParser getCommandLineParser() {
         if( commandLineParser == null) {
             commandLineParser = new CommandLineArgumentParser(this, getPluginDescriptors(), Collections.emptySet());
         }

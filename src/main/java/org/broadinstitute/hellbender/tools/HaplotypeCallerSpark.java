@@ -136,9 +136,12 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
     public boolean useVariantAnnotations() { return true;}
 
     @Override
-    public Collection<Annotation> makeAnnotationCollection() {
+    public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() { return HaplotypeCallerEngine.getStandardHaplotypeCallerAnnotationGroups();}
+
+    @Override
+    public Collection<Annotation> makeVariantAnnotations() {
         final boolean confidenceMode = hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE;
-        final Collection<Annotation> annotations = super.makeAnnotationCollection();
+        final Collection<Annotation> annotations = super.makeVariantAnnotations();
         return confidenceMode? HaplotypeCallerEngine.filterReferenceConfidenceAnnotations(annotations): annotations;
     }
 
@@ -155,7 +158,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         logger.info("Use the non-spark HaplotypeCaller if you care about the results. ");
         logger.info("********************************************************************************");
         final List<SimpleInterval> intervals = hasIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(getHeaderForReads().getSequenceDictionary());
-        callVariantsWithHaplotypeCallerAndWriteOutput(ctx, getReads(), getHeaderForReads(), getReference(), intervals, hcArgs, shardingArgs, numReducers, output, makeAnnotationCollection());
+        callVariantsWithHaplotypeCallerAndWriteOutput(ctx, getReads(), getHeaderForReads(), getReference(), intervals, hcArgs, shardingArgs, numReducers, output, makeVariantAnnotations());
     }
 
     @Override

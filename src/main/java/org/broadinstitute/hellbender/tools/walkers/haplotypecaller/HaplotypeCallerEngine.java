@@ -170,13 +170,21 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
         // Override user preferences and remove ChromosomeCounts, FisherStrand, StrandOddsRatio, and QualByDepth Annotations
         return annotations.stream()
-                .filter(c -> !(
-                        c.getClass() == (ChromosomeCounts.class) ||
-                        c.getClass() == (FisherStrand.class) ||
-                        c.getClass() == (StrandOddsRatio.class) ||
-                        c.getClass() == (QualByDepth.class))
+                .filter(c -> (
+                        c.getClass() != (ChromosomeCounts.class) &&
+                        c.getClass() != (FisherStrand.class) &&
+                        c.getClass() != (StrandOddsRatio.class) &&
+                        c.getClass() != (QualByDepth.class))
                 ).collect(Collectors.toList());
     }
+
+    /**
+     * @return the default set of read filters for use with Mutect2
+     */
+    public static List<Class<? extends Annotation>> getStandardHaplotypeCallerAnnotationGroups() {
+        return Arrays.asList(StandardAnnotation.class, StandardHCAnnotation.class);
+    }
+
 
     private void initialize(boolean createBamOutIndex, final boolean createBamOutMD5) {
         // Note: order of operations matters here!
@@ -238,7 +246,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
             hcArgs.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING = -0.0;
 
-            // but we definitely want certain other ones
             logger.info("Standard Emitting and Calling confidence set to 0.0 for reference-model confidence output");
             if ( ! hcArgs.annotateAllSitesWithPLs ) {
                 logger.info("All sites annotated with PLs forced to true for reference-model confidence output");

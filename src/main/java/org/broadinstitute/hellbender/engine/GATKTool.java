@@ -173,7 +173,7 @@ public abstract class GATKTool extends CommandLineProgram {
         GATKReadFilterPluginDescriptor readFilterDescriptor = new GATKReadFilterPluginDescriptor(getDefaultReadFilters());
         return useVariantAnnotations()?
                 Arrays.asList(readFilterDescriptor, new GATKAnnotationPluginDescriptor(
-                        getDefaultAnnotations(), getDefaultAnnotationGroups())):
+                        getDefaultVariantAnnotations(), getDefaultVariantAnnotationGroups())):
                 Collections.singletonList(readFilterDescriptor);
     }
 
@@ -222,9 +222,9 @@ public abstract class GATKTool extends CommandLineProgram {
      * dynamically discover all {@link Annotation}s in the package {@link org.broadinstitute.hellbender.tools.walkers.annotator} and automatically
      * generate and add command line arguments allowing the user to specify which annotations or groups of annotations to use.
      *
-     * To specify default annotations for a tool simply specify them using {@link #getDefaultAnnotationGroups()} or {@link #getDefaultAnnotations()}
+     * To specify default annotations for a tool simply specify them using {@link #getDefaultVariantAnnotationGroups()} or {@link #getDefaultVariantAnnotations()}
      *
-     * To access instantiated annotation objects simply use {@link #makeAnnotationCollection()}.
+     * To access instantiated annotation objects simply use {@link #makeVariantAnnotations()}.
      */
     public boolean useVariantAnnotations() {
         return false;
@@ -237,36 +237,36 @@ public abstract class GATKTool extends CommandLineProgram {
      *
      * @return List of individual annotations to be applied for this tool.
      */
-    public List<Annotation> getDefaultAnnotations() {
+    public List<Annotation> getDefaultVariantAnnotations() {
         return Collections.emptyList();
     }
 
     /**
      * Returns the default list of annotation groups that are used for this tool. The annotations returned
      * by this method will have default arguments, which can be overridden with specifc arguments using
-     * {@link #getDefaultAnnotations()}. Returned annotation groups are subject to selective enabling/disabling
+     * {@link #getDefaultVariantAnnotations()}. Returned annotation groups are subject to selective enabling/disabling
      * by the user via the command line. The default implementation returns an empty list.
      *
      * @return List of annotation groups to be applied for this tool.
      */
-    public List<Class<? extends Annotation>> getDefaultAnnotationGroups() {
+    public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() {
         return Collections.emptyList();
     }
 
     /**
      * Returns a list of annotations that can be applied to VariantContexts. This implementation combines
-     * the default annotations for this tool (returned by {@link #getDefaultAnnotations()} and {@link #getDefaultAnnotationGroups()}
+     * the default annotations for this tool (returned by {@link #getDefaultVariantAnnotations()} and {@link #getDefaultVariantAnnotationGroups()}
      * along with any annotations command line directives specified by the user (such as enabling other annotations/groups
      * or disabling default annotations) and returns an a collection of all the annotation arguments instantiated.
      *
      * NOTE: Most tools will not need to override the method, and should only do so in order to provide custom
      * behavior or processing of the final annotations based on other command line input. To change the default
-     * annotations used by the tool, override {@link #getDefaultAnnotations()} instead.
+     * annotations used by the tool, override {@link #getDefaultVariantAnnotations()} instead.
      *
      * To apply returned annotations to a VariantContext, simply use a {@link org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine}
      * constructed with the discovered annotations.
      */
-    public Collection<Annotation> makeAnnotationCollection(){
+    public Collection<Annotation> makeVariantAnnotations(){
         if (!useVariantAnnotations()) {
             throw new GATKException("Tool requested tailored annotations but has not overridden 'useVariantAnnotations()' to return true");
         }

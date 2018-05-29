@@ -125,7 +125,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
         GATKReadFilterPluginDescriptor readFilterDescriptor = new GATKReadFilterPluginDescriptor(getDefaultReadFilters());
         return useVariantAnnotations()?
                 Arrays.asList(readFilterDescriptor, new GATKAnnotationPluginDescriptor(
-                        getDefaultAnnotations(), getDefaultAnnotationGroups())):
+                        getDefaultVariantAnnotations(), getDefaultVariantAnnotationGroups())):
                 Collections.singletonList(readFilterDescriptor);
     }
 
@@ -391,23 +391,23 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     }
 
     /**
-     * @see GATKTool#getDefaultAnnotations()
+     * @see GATKTool#getDefaultVariantAnnotations()
      */
-    public List<Annotation> getDefaultAnnotations() {
+    public List<Annotation> getDefaultVariantAnnotations() {
         return Collections.emptyList();
     }
 
     /**
-     * @see GATKTool#getDefaultAnnotationGroups()
+     * @see GATKTool#getDefaultVariantAnnotationGroups()
      */
-    public List<Class<? extends Annotation>> getDefaultAnnotationGroups() {
+    public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() {
         return Collections.emptyList();
     }
 
     /**
-     * @see GATKTool#makeAnnotationCollection()
+     * @see GATKTool#makeVariantAnnotations()
      */
-    public Collection<Annotation> makeAnnotationCollection() {
+    public Collection<Annotation> makeVariantAnnotations() {
         final GATKAnnotationPluginDescriptor annotationPlugin =
                 getCommandLineParser().getPluginDescriptor(GATKAnnotationPluginDescriptor.class);
         return annotationPlugin.getResolvedInstances();

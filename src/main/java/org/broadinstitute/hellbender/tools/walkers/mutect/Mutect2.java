@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
-import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
@@ -165,7 +164,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
     }
 
     @Override
-    public List<Class<? extends Annotation>> getDefaultAnnotationGroups() {
+    public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() {
         return Mutect2Engine.getStandardMutect2AnnotationGroups();
     }
 
@@ -179,7 +178,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
 
     @Override
     public void onTraversalStart() {
-        VariantAnnotatorEngine annotatorEngine = new VariantAnnotatorEngine(makeAnnotationCollection(), null, Collections.emptyList(), false);
+        VariantAnnotatorEngine annotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), null, Collections.emptyList(), false);
         m2Engine = new Mutect2Engine(MTAC, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), referenceArguments.getReferenceFileName(), annotatorEngine);
         vcfWriter = createVCFWriter(outputVCF);
         m2Engine.writeHeader(vcfWriter, getDefaultToolVCFHeaderLines());

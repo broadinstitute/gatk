@@ -83,6 +83,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
      * @param createBamOutMD5 true to create an md5 file for the bamout
      * @param header header for the reads
      * @param reference path to the reference
+     * @param annotatorEngine annotator engine built with desired annotations
      */
     public Mutect2Engine(final M2ArgumentCollection MTAC, final boolean createBamOutIndex, final boolean createBamOutMD5, final SAMFileHeader header, final String reference, final VariantAnnotatorEngine annotatorEngine) {
         this.MTAC = Utils.nonNull(MTAC);
@@ -128,7 +129,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     }
 
     public void writeHeader(final VariantContextWriter vcfWriter, final Set<VCFHeaderLine> defaultToolHeaderLines) {
-            final Set<VCFHeaderLine> headerInfo = new HashSet<>();
+        final Set<VCFHeaderLine> headerInfo = new HashSet<>();
         headerInfo.add(new VCFHeaderLine("Mutect Version", MUTECT_VERSION));
         headerInfo.add(new VCFHeaderLine(Mutect2FilteringEngine.FILTERING_STATUS_VCF_KEY, "Warning: unfiltered Mutect 2 calls.  Please run " + FilterMutectCalls.class.getSimpleName() + " to remove false positives."));
         headerInfo.addAll(annotationEngine.getVCFAnnotationDescriptions(false));

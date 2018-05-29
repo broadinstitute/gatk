@@ -34,8 +34,8 @@ import java.util.stream.Stream;
  */
 public class GATKAnnotationPluginDescriptor  extends CommandLinePluginDescriptor<Annotation> {
     //TODO this should be a configurable option or otherwise exposed to the user when configurations are fully supported.
-    private static final String pluginPackageName = "org.broadinstitute.hellbender.tools.walkers.annotator";
-    private static final Class<?> pluginBaseClass = org.broadinstitute.hellbender.tools.walkers.annotator.Annotation.class;
+    public static final String pluginPackageName = "org.broadinstitute.hellbender.tools.walkers.annotator";
+    public static final Class<?> pluginBaseClass = org.broadinstitute.hellbender.tools.walkers.annotator.Annotation.class;
 
     protected transient Logger logger = LogManager.getLogger(this.getClass());
 

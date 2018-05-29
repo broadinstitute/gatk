@@ -191,23 +191,23 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     }
 
     @Override
-    public List<Class<? extends Annotation>> getDefaultAnnotationGroups() { return Arrays.asList(StandardAnnotation.class, StandardHCAnnotation.class);}
+    public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() { return HaplotypeCallerEngine.getStandardHaplotypeCallerAnnotationGroups();}
 
     @Override
     public boolean useVariantAnnotations() { return true;}
 
     /**
      * If we are in reference confidence mode we want to tailor the annotations as there are certain annotations in the standard
-     * haplotype caller set which are no longer relevant, thus we filter them out before constructing the
+     * HaplotypeCaller set which are no longer relevant, thus we filter them out before constructing the
      * VariantAnnotationEngine because the user args will have been parsed by that point.
      *
-     * @see GATKTool#makeAnnotationCollection()
+     * @see GATKTool#makeVariantAnnotations()
      * @return a collection of annotation arguments with alterations depending on hcArgs.emitReferenceConfidence
      */
     @Override
-    public Collection<Annotation> makeAnnotationCollection() {
+    public Collection<Annotation> makeVariantAnnotations() {
         final boolean confidenceMode = hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE;
-        final Collection<Annotation> annotations = super.makeAnnotationCollection();
+        final Collection<Annotation> annotations = super.makeVariantAnnotations();
         return confidenceMode? HaplotypeCallerEngine.filterReferenceConfidenceAnnotations(annotations): annotations;
     }
 
@@ -222,7 +222,7 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
             throw new CommandLineException.BadArgumentValue("Non-zero maxMnpDistance is incompatible with GVCF mode.");
         }
         final ReferenceSequenceFile referenceReader = getReferenceReader(referenceArguments);
-        final VariantAnnotatorEngine variantAnnotatorEngine = new VariantAnnotatorEngine(makeAnnotationCollection(),
+        final VariantAnnotatorEngine variantAnnotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(),
                 hcArgs.dbsnp.dbsnp, hcArgs.comps,  hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE);
         hcEngine = new HaplotypeCallerEngine(hcArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), referenceReader, variantAnnotatorEngine);
 
