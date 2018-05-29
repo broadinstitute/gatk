@@ -26,13 +26,13 @@ public final class PosteriorProbabilitiesUtilsUnitTest extends GATKBaseTest {
     final Allele ATC = Allele.create("ATC");
     final Allele ATCATC = Allele.create("ATCATC");
 
-    final boolean useInputSamples = true;
+    final boolean useInputSamplesAlleleCounts = true;
     final boolean useMLEAC = true;
     final boolean useFlatPriorsForMissingResources = false;
     final boolean useFlatPriorsForIndels = false;
 
     private PosteriorProbabilitiesUtils.PosteriorProbabilitiesOptions defaultOptions =
-            new PosteriorProbabilitiesUtils.PosteriorProbabilitiesOptions(0.001, 0.0001, useInputSamples, useMLEAC, useFlatPriorsForMissingResources, useFlatPriorsForIndels);
+            new PosteriorProbabilitiesUtils.PosteriorProbabilitiesOptions(0.001, 0.0001, useInputSamplesAlleleCounts, useMLEAC, useFlatPriorsForMissingResources, useFlatPriorsForIndels);
 
     private String arraysEq(final int[] a, final int[] b) {
         if ( a.length != b.length ) {

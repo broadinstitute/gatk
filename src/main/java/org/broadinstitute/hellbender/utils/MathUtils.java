@@ -368,8 +368,7 @@ public final class MathUtils {
         return newPLs;
     }
 
-    public static int[] ebeAdd(final int[] a, final int[] b)
-        throws DimensionMismatchException {
+    public static int[] ebeAdd(final int[] a, final int[] b) throws DimensionMismatchException {
             if (a.length != b.length) {
                 throw new DimensionMismatchException(a.length, b.length);
             }

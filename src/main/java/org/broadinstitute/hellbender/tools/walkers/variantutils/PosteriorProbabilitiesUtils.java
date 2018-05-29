@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.variantutils;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
+import org.apache.commons.collections.ListUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
@@ -17,6 +18,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public final class PosteriorProbabilitiesUtils {
+    final private static int minSamplesToUseInputs = 10;
 
     private PosteriorProbabilitiesUtils(){}
 
@@ -25,23 +27,22 @@ public final class PosteriorProbabilitiesUtils {
      *  mostly from CalculateGenotypePosteriors
      */
     public final static class PosteriorProbabilitiesOptions {
-        double snpPriorDirichlet = HomoSapiensConstants.SNP_HETEROZYGOSITY;
-        double indelPriorDirichlet = HomoSapiensConstants.INDEL_HETEROZYGOSITY;
-        boolean useInputSamples = true;
-        boolean useMLEAC = true;
-        boolean ignoreInputSamplesForMissingResources = false;
-        boolean useFlatPriorsForIndels = false;
-        boolean addInfoAnnotations = true;
+        double snpPriorDirichlet;
+        double indelPriorDirichlet;
+        boolean useInputSamplesAlleleCounts;
+        boolean useMLEAC;
+        boolean ignoreInputSamplesForMissingResources;
+        boolean useFlatPriorsForIndels;
 
         public PosteriorProbabilitiesOptions(final double snpPriorDirichlet,
                                              final double indelPriorDirichlet,
-                                             final boolean useInputSamples,
+                                             final boolean useInputSamplesAlleleCounts,
                                              final boolean useMLEAC,
                                              final boolean ignoreInputSamplesForMissingResources,
                                              final boolean useFlatPriorsForIndels) {
             this.snpPriorDirichlet = snpPriorDirichlet;
             this.indelPriorDirichlet = indelPriorDirichlet;
-            this.useInputSamples = useInputSamples;
+            this.useInputSamplesAlleleCounts = useInputSamplesAlleleCounts;
             this.useMLEAC = useMLEAC;
             this.ignoreInputSamplesForMissingResources = ignoreInputSamplesForMissingResources;
             this.useFlatPriorsForIndels = useFlatPriorsForIndels;
@@ -57,27 +58,23 @@ public final class PosteriorProbabilitiesUtils {
          * @return a VariantContext with PLs and PPs in the genotypes and a PG tag for the Phred-scaled prior in the INFO field if
          */
     public static VariantContext calculatePosteriorProbs(final VariantContext vc1,
-                                                         final Collection<VariantContext> resources,
+                                                         final List<VariantContext> resources,
                                                          final int numRefSamplesFromMissingResources,
                                                          final PosteriorProbabilitiesOptions opts) {
         Utils.nonNull(vc1, "VariantContext vc1 is null");
         final Map<Allele,Integer> totalAlleleCounts = new HashMap<>();
 
         //only use discovered allele count for missing resources if there are at least 10 samples or if we have reference samples
-        final boolean useDiscoveredACForMissing = !opts.ignoreInputSamplesForMissingResources && (vc1.getNSamples() >= 10 || numRefSamplesFromMissingResources != 0);
-        int referenceAlleleCountForMissing = 0;
+        final boolean useDiscoveredACForMissing = !opts.ignoreInputSamplesForMissingResources && (vc1.getNSamples() >= minSamplesToUseInputs || numRefSamplesFromMissingResources != 0);
 
         //deletions introduce ref allele padding issues
-        List<VariantContext> allAlleles = new ArrayList<>();
-        allAlleles.addAll(resources);
-        allAlleles.add(vc1);
-        final Allele commonRef = GATKVariantContextUtils.determineReferenceAllele(allAlleles, new SimpleInterval(vc1.getContig(), vc1.getStart(), vc1.getEnd()));
+        @SuppressWarnings("unchecked")
+        List<VariantContext> allAlleles = ListUtils.union(resources, Arrays.asList(vc1));
+        final Allele commonRef = GATKVariantContextUtils.determineReferenceAllele(allAlleles, new SimpleInterval(vc1));
         final List<Allele> origAllelesRemapped = ReferenceConfidenceVariantContextMerger.remapAlleles(vc1, commonRef);
 
 
-        if(resources.isEmpty()) {
-            referenceAlleleCountForMissing += HomoSapiensConstants.DEFAULT_PLOIDY*numRefSamplesFromMissingResources;  //because we're dealing with diploids
-        }
+        final int referenceAlleleCountForMissing = resources.isEmpty() ? HomoSapiensConstants.DEFAULT_PLOIDY*numRefSamplesFromMissingResources : 0;  //because we're dealing with diploids
         //store the allele counts for each allele in the variant priors
         for (final VariantContext r : resources) {
             if (r.getStart() == vc1.getStart()) {
@@ -87,7 +84,7 @@ public final class PosteriorProbabilitiesUtils {
         }
 
         //add the allele counts from the input samples (if applicable)
-        if ( (opts.useInputSamples && !resources.isEmpty()) || (resources.isEmpty() && useDiscoveredACForMissing)) {
+        if ( (opts.useInputSamplesAlleleCounts && !resources.isEmpty()) || (resources.isEmpty() && useDiscoveredACForMissing)) {
             addAlleleCounts(totalAlleleCounts,vc1,origAllelesRemapped, !opts.useMLEAC);
         }
 
@@ -154,9 +151,6 @@ public final class PosteriorProbabilitiesUtils {
             // outside the annotation engine, which has the header line responsibility for these fields.  For CGP the
             // headers should already be there, but for HaplotypeCaller GVCF mode we'll add the headers in HaplotypeCallerEngine::makeVCFHeader.
             VariantContextUtils.calculateChromosomeCounts(builder.attribute(GATKVCFConstants.GENOTYPE_PRIOR_KEY, priors), true);
-        }
-        else {  //correct non-ref calls
-
         }
         return builder.make();
     }

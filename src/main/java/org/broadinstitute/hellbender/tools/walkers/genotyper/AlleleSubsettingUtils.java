@@ -79,15 +79,15 @@ public final class AlleleSubsettingUtils {
             }
 
             final boolean useNewLikelihoods = newLikelihoods != null && (depth != 0 || GATKVariantContextUtils.isInformative(newLikelihoods));
-            final GenotypeBuilder gb;
-            final Map<String, Object> attributes = new HashMap<>(g.getExtendedAttributes());
+            final GenotypeBuilder gb = new GenotypeBuilder(g);
             if (useNewLikelihoods) {
-                gb = new GenotypeBuilder(g).PL(newLikelihoods).log10PError(newLog10GQ);
+                final Map<String, Object> attributes = new HashMap<>(g.getExtendedAttributes());
+                gb.PL(newLikelihoods).log10PError(newLog10GQ);
                 attributes.remove(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
                 gb.noAttributes().attributes(attributes);
             }
             else {
-                gb = new GenotypeBuilder(g).noPL().noGQ();
+                gb.noPL().noGQ();
             }
             GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep);
 

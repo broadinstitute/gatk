@@ -429,7 +429,7 @@ public final class VariantContextTestUtils {
         return true;
     }
 
-    public static void assertGenotypeAttributeWasRemoved(final VariantContext actual, final VariantContext expected) {
+    public static void assertGenotypePosteriorsAttributeWasRemoved(final VariantContext actual, final VariantContext expected) {
         for (final Genotype g : actual.getGenotypes()) {
             Assert.assertFalse(g.hasExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY));
         }

@@ -202,7 +202,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
     @Test(dataProvider = "gvcfWithPPs")
     public void assertPPsAreStripped(File input, File expected, List<String> extraArgs, String reference) throws IOException {
-        runGenotypeGVCFSAndAssertSomething(input, expected, extraArgs, VariantContextTestUtils::assertGenotypeAttributeWasRemoved, reference);
+        runGenotypeGVCFSAndAssertSomething(input, expected, extraArgs, VariantContextTestUtils::assertGenotypePosteriorsAttributeWasRemoved, reference);
     }
 
 

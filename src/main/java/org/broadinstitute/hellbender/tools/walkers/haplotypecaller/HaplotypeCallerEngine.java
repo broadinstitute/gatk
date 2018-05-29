@@ -373,7 +373,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 VCFConstants.DEPTH_KEY,
                 VCFConstants.GENOTYPE_PL_KEY);
 
-        if (hcArgs.genotypeArgs.applyPriors) {
+        if (hcArgs.genotypeArgs.supportVariants != null) {
             headerInfo.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_COUNT_KEY));
             headerInfo.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_FREQUENCY_KEY));
             headerInfo.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_NUMBER_KEY));
@@ -490,7 +490,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         final List<VariantContext> VCpriors = new ArrayList<>();
-        if (hcArgs.genotypeArgs.applyPriors) {
+        if (hcArgs.genotypeArgs.supportVariants != null) {
             features.getValues(hcArgs.genotypeArgs.supportVariants).stream().forEach(VCpriors::add);
         }
 
@@ -617,8 +617,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 // output variant containing region.
                 result.addAll(referenceConfidenceModel.calculateRefConfidence(assemblyResult.getReferenceHaplotype(),
                         calledHaplotypes.getCalledHaplotypes(), assemblyResult.getPaddedReferenceLoc(), regionForGenotyping,
-                        readLikelihoods, genotypingEngine.getPloidyModel(), calledHaplotypes.getCalls(), hcArgs.genotypeArgs.applyPriors,
-                        VCpriors, genotypingEngine.snpHeterozygosity, genotypingEngine.indelHeterozygosity));
+                        readLikelihoods, genotypingEngine.getPloidyModel(), calledHaplotypes.getCalls(), hcArgs.genotypeArgs.supportVariants != null,
+                        VCpriors));
                 // output right-flanking non-variant section:
                 if (trimmingResult.hasRightFlankingRegion()) {
                     result.addAll(referenceModelForNoVariation(trimmingResult.nonVariantRightFlankRegion(), false, VCpriors));
@@ -663,7 +663,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             final List<Haplotype> haplotypes = Collections.singletonList(refHaplotype);
             return referenceConfidenceModel.calculateRefConfidence(refHaplotype, haplotypes,
                     paddedLoc, region, createDummyStratifiedReadMap(refHaplotype, samplesList, region),
-                    genotypingEngine.getPloidyModel(), Collections.emptyList(), hcArgs.genotypeArgs.applyPriors, VCpriors, genotypingEngine.snpHeterozygosity, genotypingEngine.indelHeterozygosity);
+                    genotypingEngine.getPloidyModel(), Collections.emptyList(), hcArgs.genotypeArgs.supportVariants != null, VCpriors);
         }
         else {
             return NO_CALLS;

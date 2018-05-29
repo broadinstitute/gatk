@@ -17,6 +17,8 @@ import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.variantutils.CalculateGenotypePosteriors;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.PosteriorProbabilitiesUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -309,9 +311,9 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-ERC", "GVCF",
-                "--apply-priors",
-                "-supporting", largeFileTestDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf",
-                "--num-reference-samples-if-no-call", "2500",
+                "--" + GenotypeCalculationArgumentCollection.SUPPORTING_CALLSET_LONG_NAME,
+                    largeFileTestDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf",
+                "--" + GenotypeCalculationArgumentCollection.NUM_REF_SAMPLES_LONG_NAME, "2500",
                 "-pairHMM", "AVX_LOGLESS_CACHING",
                 "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
         };

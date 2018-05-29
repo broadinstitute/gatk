@@ -118,7 +118,8 @@ final class HomRefBlock implements Locatable {
 
         if( minPLs == null ) {
             minPLs = genotype.getPL();
-        } else { // otherwise take the min with the provided genotype's PLs
+        }
+        else { // otherwise take the min with the provided genotype's PLs
             final int[] pls = genotype.getPL();
             if (pls.length != minPLs.length) {
                 throw new GATKException("trying to merge different PL array sizes: " + pls.length + " != " + minPLs.length);
@@ -130,16 +131,17 @@ final class HomRefBlock implements Locatable {
 
         if( genotype.hasExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY)) {
             if (minPPs == null ) {
-            minPPs = PosteriorProbabilitiesUtils.parsePosteriorsIntoPhredSpace(genotype);
-        } else { // otherwise take the min with the provided genotype's PLs
-            final int[] pps = PosteriorProbabilitiesUtils.parsePosteriorsIntoPhredSpace(genotype);
-            if (pps.length != minPPs.length) {
-                throw new GATKException("trying to merge different PP array sizes: " + pps.length + " != " + minPPs.length);
+                minPPs = PosteriorProbabilitiesUtils.parsePosteriorsIntoPhredSpace(genotype);
             }
-            for (int i = 0; i < pps.length; i++) {
-                minPPs[i] = Math.min(minPPs[i], pps[i]);
+            else { // otherwise take the min with the provided genotype's PLs
+                final int[] pps = PosteriorProbabilitiesUtils.parsePosteriorsIntoPhredSpace(genotype);
+                if (pps.length != minPPs.length) {
+                    throw new GATKException("trying to merge different PP array sizes: " + pps.length + " != " + minPPs.length);
+                }
+                for (int i = 0; i < pps.length; i++) {
+                    minPPs[i] = Math.min(minPPs[i], pps[i]);
+                }
             }
-        }
         }
 
         end = pos;

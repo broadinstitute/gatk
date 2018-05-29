@@ -32,7 +32,7 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
                 " -O %s" +
                         " -R " + b37_reference_20_21 +    //NOTE: we need a reference for -L
                         " -L 20:10,000,000-10,010,000" +
-                        " -supporting " + largeDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf" +
+                        " -" +CalculateGenotypePosteriors.SUPPORTING_CALLSETS_SHORT_NAME + " " + largeDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf" +
                         " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false" +
                         " -V " + dir + "NA12878.Jan2013.haplotypeCaller.subset.indels.vcf",
                 Collections.singletonList(dir + "expectedCGP_testDefaultsWithPanel.vcf")
@@ -46,10 +46,10 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
                 " -O %s" +
                         " -R " + b37_reference_20_21 +    //NOTE: we need a reference for -L
                         " -L 20:10,000,000-10,010,000" +
-                        " -supporting " + largeDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf" +
+                        " -" +CalculateGenotypePosteriors.SUPPORTING_CALLSETS_SHORT_NAME + " " + largeDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf" +
                         " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false" +
                         " -V " + dir + "NA12878.Jan2013.haplotypeCaller.subset.indels.vcf" +
-                        " --num-reference-samples-if-no-call 2500",
+                        " --" + CalculateGenotypePosteriors.NUM_REF_SAMPLES_LONG_NAME + " 2500",
                 Collections.singletonList(dir + "expectedCGP_testNumRefWithPanel.vcf")
         );
         spec.executeTest("testDefaultsWithPanel", this);

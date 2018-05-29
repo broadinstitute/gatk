@@ -257,7 +257,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
         final PloidyModel ploidyModel = new HomogeneousPloidyModel(samples,2);
         final IndependentSampleGenotypesModel genotypingModel = new IndependentSampleGenotypesModel();
         final List<Integer> expectedDPs = Collections.nCopies(data.getActiveRegion().getSpan().size(), nReads);
-        final List<VariantContext> contexts = model.calculateRefConfidence(data.getRefHap(), haplotypes, data.getPaddedRefLoc(), data.getActiveRegion(), likelihoods, ploidyModel, calls, false, Collections.emptyList(), -1, -1);
+        final List<VariantContext> contexts = model.calculateRefConfidence(data.getRefHap(), haplotypes, data.getPaddedRefLoc(), data.getActiveRegion(), likelihoods, ploidyModel, calls, false, Collections.emptyList());
         checkReferenceModelResult(data, contexts, expectedDPs, calls);
     }
 
