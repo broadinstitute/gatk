@@ -432,7 +432,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         final MappedTranscriptIdInfo transcriptMapIdAndMetadata = transcriptIdMap.get(transcriptId);
 
         if ( transcriptMapIdAndMetadata == null ) {
-            throw new UserException.BadInput( "Unable to find the given Transcript ID in our transcript list (not in given transcript FASTA file): " + transcriptId );
+            throw new UserException.BadInput( "Unable to find the given Transcript ID in our transcript list for our coding sequence (not in given transcript FASTA file): " + transcriptId );
         }
 
         final SimpleInterval transcriptInterval = new SimpleInterval(
@@ -462,7 +462,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         final MappedTranscriptIdInfo transcriptMapIdAndMetadata = transcriptIdMap.get(transcriptId);
 
         if ( transcriptMapIdAndMetadata == null ) {
-            throw new UserException.BadInput( "Unable to find the given Transcript ID in our transcript list (not in given transcript FASTA file): " + transcriptId );
+            throw new UserException.BadInput( "Unable to find the given Transcript ID in our transcript list for our 5'UTR (not in given transcript FASTA file): " + transcriptId );
         }
 
         if ( transcriptMapIdAndMetadata.has5pUtr ) {
@@ -597,7 +597,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Find the sub-feature of transcript that contains our variant:
         final GencodeGtfFeature containingSubfeature = getContainingGtfSubfeature(variant, transcript);
 
-        // Make sure the start and end of the variant are both in the transcript:
+        // Make sure the sub-regions in the transcript actually contain the variant:
+        // TODO: this is slow, and repeats work that is done later in the process (we call getSortedCdsAndStartStopPositions when creating the sequence comparison)
+        final int startPosInTranscript =  FuncotatorUtils.getStartPositionInTranscript(variant, getSortedCdsAndStartStopPositions(transcript), transcript.getGenomicStrand() );
 
         // Determine what kind of region we're in and handle it in it's own way:
         if ( containingSubfeature == null ) {
@@ -605,8 +607,17 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             gencodeFuncotation = createIgrFuncotation(variant, altAllele, reference);
         }
         else if ( GencodeGtfExonFeature.class.isAssignableFrom(containingSubfeature.getClass()) ) {
-            // We have a coding region variant
-            gencodeFuncotation = createExonFuncotation(variant, altAllele, gtfFeature, reference, transcript, (GencodeGtfExonFeature) containingSubfeature);
+
+            if ( startPosInTranscript == -1 ) {
+                // we overlap an exon but we don't start in one.  Right now this case cannot be handled.
+                // Bubble up an exception and let the caller handle this case.
+                // TODO: fix this case, issue #4804 (https://github.com/broadinstitute/gatk/issues/4804)
+                throw new FuncotatorUtils.TranscriptCodingSequenceException("Cannot yet handle indels starting outside an exon and ending within an exon.");
+            }
+            else {
+                // We have a coding region variant
+                gencodeFuncotation = createExonFuncotation(variant, altAllele, gtfFeature, reference, transcript, (GencodeGtfExonFeature) containingSubfeature);
+            }
         }
         else if ( GencodeGtfUTRFeature.class.isAssignableFrom(containingSubfeature.getClass()) ) {
             // We have a UTR variant
@@ -669,8 +680,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Get the list of exons by their locations so we can use them to determine our location in the transcript and get
         // the transcript code itself:
-        final List<? extends Locatable> exonPositionList = getSortedExonAndStartStopPositions(transcript);
-//        final List<? extends Locatable> exonPositionList = transcript.getExons();
+        final List<? extends Locatable> exonPositionList = getSortedCdsAndStartStopPositions(transcript);
 
         // Setup the "trivial" fields of the gencodeFuncotation:
         final GencodeFuncotationBuilder gencodeFuncotationBuilder = createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele, gtfFeature, transcript);
@@ -730,7 +740,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Get the list of exons by their locations so we can use them to determine our location in the transcript and get
         // the transcript code itself:
-        final List<? extends Locatable> exonPositionList = getSortedExonAndStartStopPositions(transcript);
+        final List<? extends Locatable> exonPositionList = getSortedCdsAndStartStopPositions(transcript);
 
         // NOTE: Regardless of strandedness, we always report the alleles as if they appeared in the forward direction.
         final GencodeFuncotation.VariantType variantType =
@@ -801,51 +811,50 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
-     * Gets a list of locatables representing the start codon, exons, and stop codon containing coding regions within the given {@code transcript}.
-     * These exons are sorted by exon-number order.
+     * Gets a list of locatables representing the start codon, cds, and stop codon containing coding regions within the given {@code transcript}.
+     * These locatables are sorted by exon-number order.
      * @param transcript A {@link GencodeGtfTranscriptFeature} from which to pull the exons.
-     * @return A list of {@link Locatable} objects representing the exons in the given {@code transcript} in the order in which the appear in the expressed protein.
+     * @return A list of {@link Locatable} objects representing the regions in the exons in the given {@code transcript} in the order in which the appear in the expressed protein.
      */
     @VisibleForTesting
-    static List<? extends Locatable> getSortedExonAndStartStopPositions(final GencodeGtfTranscriptFeature transcript) {
+    static List<? extends Locatable> getSortedCdsAndStartStopPositions(final GencodeGtfTranscriptFeature transcript) {
 
         // Sort by exon number first:
         transcript.getExons().sort((lhs, rhs) -> lhs.getExonNumber() < rhs.getExonNumber() ? -1 : (lhs.getExonNumber() > rhs.getExonNumber() ) ? 1 : 0 );
 
-        final List<Locatable> exonList = new ArrayList<>(transcript.getExons().size());
+        final List<Locatable> regionList = new ArrayList<>(transcript.getExons().size());
         for ( final GencodeGtfExonFeature exon : transcript.getExons() ) {
 
             // Add in a CDS region:
             if ( exon.getCds() != null ) {
 
-
                 // If we have a start codon that is not in the CDS for some reason,
                 // we need to add it to our list:
                 if (exon.getStartCodon() != null) {
                     if ( !exon.getCds().contains(exon.getStartCodon()) ) {
-                        exonList.add( exon.getStartCodon() );
+                        regionList.add( exon.getStartCodon() );
                     }
                 }
 
-                exonList.add( exon.getCds() );
+                regionList.add( exon.getCds() );
 
                 // If we have a stop codon that is not in the CDS for some reason,
                 // we need to add it to our list:
                 if (exon.getStopCodon() != null) {
                     if ( !exon.getCds().contains(exon.getStopCodon()) ) {
-                        exonList.add( exon.getStopCodon() );
+                        regionList.add( exon.getStopCodon() );
                     }
                 }
 
             }
             else if (exon.getStartCodon() != null) {
-                exonList.add( exon.getStartCodon() );
+                regionList.add( exon.getStartCodon() );
             }
             else if ( exon.getStopCodon() != null ) {
-                exonList.add( exon.getStopCodon() );
+                regionList.add( exon.getStopCodon() );
             }
         }
-        return exonList;
+        return regionList;
     }
 
     /**
@@ -1077,47 +1086,53 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         if ( is5PrimeUtr(utr, transcript) ) {
 
             // We're 5' to the coding region.
-            // This means we need to check for de novo starts.
+            // Default our variant classification to 5'UTR and try to refine it later:
+            gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR);
+
+            // Now we can check for de novo starts:
 
             // Get our coding sequence for this region:
             final List<Locatable> activeRegions = Collections.singletonList(utr);
 
-            // Get the 5' UTR sequence here.
-            // Note: We grab 3 extra bases at the end (from the coding sequence) so that we can check for denovo starts
-            //       even if the variant occurs in the last base of the UTR.
-            final int numExtraTrailingBases = variant.getReference().length() < defaultNumTrailingBasesForUtrAnnotationSequenceConstruction ? defaultNumTrailingBasesForUtrAnnotationSequenceConstruction : variant.getReference().length() + 1;
-            final String fivePrimeUtrCodingSequence =
-                    getFivePrimeUtrSequenceFromTranscriptFasta( transcript.getTranscriptId(), transcriptIdMap, transcriptFastaReferenceDataSource, numExtraTrailingBases);
+            // Only try to get the sequence if our transcript occurs in the FASTA file:
+            if ( transcriptIdMap.containsKey(transcript.getTranscriptId()) ) {
 
-            final int codingStartPos = FuncotatorUtils.getStartPositionInTranscript(variant, activeRegions, strand);
+                // Get the 5' UTR sequence here.
+                // Note: We grab 3 extra bases at the end (from the coding sequence) so that we can check for denovo starts
+                //       even if the variant occurs in the last base of the UTR.
+                final int numExtraTrailingBases = variant.getReference().length() < defaultNumTrailingBasesForUtrAnnotationSequenceConstruction ? defaultNumTrailingBasesForUtrAnnotationSequenceConstruction : variant.getReference().length() + 1;
+                final String fivePrimeUtrCodingSequence =
+                        getFivePrimeUtrSequenceFromTranscriptFasta( transcript.getTranscriptId(), transcriptIdMap, transcriptFastaReferenceDataSource, numExtraTrailingBases);
 
-            // But we can really just use the referenceBases to do this:
-            final String rawAltUtrSubSequence = (referenceBases.substring(referenceWindow-numLeadingBasesForUtrAnnotationSequenceConstruction, referenceWindow) +
-                                    strandCorrectedAltAllele +
-                                    referenceBases.substring(referenceWindow + variant.getReference().length(), referenceWindow + numExtraTrailingBases));
+                final int codingStartPos = FuncotatorUtils.getStartPositionInTranscript(variant, activeRegions, strand);
 
-            // Check for de novo starts in the raw sequence:
-            boolean startFound = false;
-            int codingRegionOffset = -numLeadingBasesForUtrAnnotationSequenceConstruction;
-            for ( int i = 0; (i+3 < rawAltUtrSubSequence.length()) ; ++i ) {
-                startFound = FuncotatorUtils.getEukaryoticAminoAcidByCodon( rawAltUtrSubSequence.substring(i, i+3) ) == AminoAcid.METHIONINE;
-                if (startFound) {
-                    codingRegionOffset += i;
-                    break;
+                // But we can really just use the referenceBases to do this:
+                final String rawAltUtrSubSequence = (referenceBases.substring(referenceWindow-numLeadingBasesForUtrAnnotationSequenceConstruction, referenceWindow) +
+                        strandCorrectedAltAllele +
+                        referenceBases.substring(referenceWindow + variant.getReference().length(), referenceWindow + numExtraTrailingBases));
+
+                // Check for de novo starts in the raw sequence:
+                boolean startFound = false;
+                int codingRegionOffset = -numLeadingBasesForUtrAnnotationSequenceConstruction;
+                for ( int i = 0; (i+3 < rawAltUtrSubSequence.length()) ; ++i ) {
+                    startFound = FuncotatorUtils.getEukaryoticAminoAcidByCodon( rawAltUtrSubSequence.substring(i, i+3) ) == AminoAcid.METHIONINE;
+                    if (startFound) {
+                        codingRegionOffset += i;
+                        break;
+                    }
+                }
+                // If we found a start codon, we should set the variant classification as such:
+                if ( startFound ) {
+                    if ( FuncotatorUtils.isInFrameWithEndOfRegion(codingStartPos + codingRegionOffset, fivePrimeUtrCodingSequence.length()) ) {
+                        gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME);
+                    }
+                    else {
+                        gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME);
+                    }
                 }
             }
-            // If we found a start codon, we should set the variant classification as such:
-            if ( startFound ) {
-                if ( FuncotatorUtils.isInFrameWithEndOfRegion(codingStartPos + codingRegionOffset, fivePrimeUtrCodingSequence.length()) ) {
-                    gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME);
-                }
-                else {
-                    gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME);
-                }
-            }
-            // Just a normal 5' variant:
             else {
-                gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR);
+                logger.warn("Attempted to process transcript information for transcript WITHOUT sequence data.  Ignoring sequence information for Gencode Transcript ID: " + transcript.getTranscriptId());
             }
         }
         else {

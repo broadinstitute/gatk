@@ -416,6 +416,14 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                 {1635,1633},
                 {1636,1636},
                 {1637,1636},
+
+                // 0 and negative positions:
+                {   0,   -2},
+                {  -1,   -2},
+                {  -2,   -2},
+                {  -3,   -5},
+                {  -4,   -5},
+                {  -5,   -5},
         };
     }
 
@@ -541,6 +549,23 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                 { 12, 12, false },
                 { 100, 100, false },
                 { 1000, 1000, false },
+
+                // Positions before start of the region.
+                // Include these to see if given positions directly flanking the region
+                // are in frame.
+                { 1, 1, false },
+                { 0, 1, false },
+                { -1, 1, true  },
+                { -2, 1, false  },
+                { -3, 1, false  },
+                { -4, 1, true  },
+
+                { 1, 2, false },
+                { 0, 2, true },
+                { -1, 2, false  },
+                { -2, 2, false  },
+                { -3, 2, true  },
+                { -4, 2, false  },
         };
     }
     
@@ -717,6 +742,21 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
         final String referenceSnippet = "AAATTTGGGCCCATGATATAGGCGCCGTAGCAGTAGATAGCCCCCCAACCGGGGCCCGGGTTTAAA";
 
         return new Object[][] {
+
+                // alignedRefAlleleStart <= 0
+                {referenceSnippet, 10, Allele.create("CC", true), 1, -1, "GCCCAT"},
+                {referenceSnippet, 11, Allele.create("CA", true), 1, -1, "CCCATG"},
+                {referenceSnippet, 12, Allele.create("AT", true), 1, -1, "CCATGA"},
+
+                // (codingSequenceRefAlleleStart <= 0) && (alignedRefAlleleStart <= 0)
+                {referenceSnippet, 10, Allele.create("CC", true), 0, -2, "GCCCAT"},
+                {referenceSnippet, 11, Allele.create("CA", true), 0, -2, "CCCATG"},
+                {referenceSnippet, 12, Allele.create("AT", true), 0, -2, "CCATGA"},
+
+                {referenceSnippet, 10, Allele.create("CCA", true),  -1, -2, "CCCATG"},
+                {referenceSnippet, 11, Allele.create("CAT", true),  -1, -2, "CCATGA"},
+                {referenceSnippet, 12, Allele.create("ATG", true),  -1, -2, "CATGAT"},
+
                 // Allele same as reference sequence:
                 {referenceSnippet, 0, Allele.create("AAA", true), 1, 1, "AAA"},
                 {referenceSnippet, 1, Allele.create("AA", true), 2, 1, "AAA"},

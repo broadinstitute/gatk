@@ -320,7 +320,9 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
                     throw new UserException.MalformedFile("File contains an empty line (" + dataRowNum + ").  All lines must have data.");
             }
 
-            final List<String> dataRow = new ArrayList<>( Arrays.asList(rawRow.split(delimiter)) );
+            // The use of Utils.split is NECESSARY here because delimiter could potentially evaluate
+            // as a regular expression (as in the case of '|').
+            final List<String> dataRow = Utils.split(rawRow, delimiter);
 
             // Remove the key column:
             final String rowKey = dataRow.remove(keyColumn);

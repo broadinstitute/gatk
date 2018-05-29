@@ -220,6 +220,12 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                         "Homo_sapiens_assembly38.fasta",
                         false,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG38
+                },
+                {
+                        "0816201804HC0_R01C01.vcf",
+                        "Homo_sapiens_assembly19.fasta",
+                        true,
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG19
                 }
         };
     }
@@ -258,8 +264,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test(enabled = doDebugTests,
-            groups = {"funcotatorValidation"},
-            dataProvider = "provideForLargeDataValidationTest")
+          groups = {"funcotatorValidation"},
+          dataProvider = "provideForLargeDataValidationTest")
     public void largeDataValidationTest(final String inputVcfName,
                                         final String referencePath,
                                         final boolean allowHg19B37ContigMatches,
