@@ -20,6 +20,7 @@ public final class GATKVCFConstants {
     public static final String ALLELE_SPECIFIC_PREFIX =             "AS_";
     public static final String AS_FILTER_STATUS_KEY =               "AS_FilterStatus";
     public static final String RAW_RMS_MAPPING_QUALITY_KEY =        "RAW_MQ";
+    public static final String RAW_MAPPING_QUALITY_WITH_DEPTH_KEY = "RAW_MQandDP";
     public static final String AS_RMS_MAPPING_QUALITY_KEY =         "AS_MQ";
     public static final String AS_RAW_RMS_MAPPING_QUALITY_KEY =     "AS_RAW_MQ";
     public static final String AS_CULPRIT_KEY =                     "AS_culprit";

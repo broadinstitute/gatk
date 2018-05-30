@@ -11,6 +11,7 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBConstants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -46,10 +47,12 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
     private static final File CEUTRIO_20_21_GATK3_4_G_VCF = new File(largeFileTestDir, "gvcfs/CEUTrio.20.21.gatk3.4.g.vcf");
     private static final String CEUTRIO_20_21_EXPECTED_VCF = "CEUTrio.20.21.gatk3.7_30_ga4f720357.expected.vcf";
-    private static final List<String> ATTRIBUTES_TO_IGNORE = Arrays.asList(
+    private static final File NA12878_HG37 = new File(toolsTestDir + "haplotypecaller/expected.testGVCFMode.gatk4.g.vcf");
+    private static final List<String> ATTRIBUTES_WITH_JITTER = Arrays.asList(
             "AS_QD",
             "QD",//TODO QD and AS_QD have cap values and anything that reaches that is randomized.  It's difficult to reproduce the same random numbers across gatk3 -> 4
             "FS");//TODO There's some bug in either gatk3 or gatk4 fisherstrand that's making them not agree still, I'm not sure which is correct
+    private static final List<String> ATTRIBUTES_TO_IGNORE = Arrays.asList("AS_QD","QD","FS","RAW_MQ","MQ"); //MQ data format and key have changed since GATK3
 
     private static final String ALLELE_SPECIFIC_DIRECTORY = toolsTestDir + "walkers/annotator/allelespecific";
 
@@ -104,6 +107,20 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         };
     }
 
+    @DataProvider(name = "singleSampleGVCFWithNewMQFormat")
+    public Object[][] singleSampleGVCFWithNewMQFormat() {
+        return new Object[][]{
+                {NA12878_HG37, getTestFile("newMQcalc.singleSample.genotyped.vcf"), new SimpleInterval("20", 1, 11_000_000), b37_reference_20_21}
+        };
+    }
+
+    @DataProvider(name = "GVCFsWithNewMQFormat")
+    public Object[][] GVCFsWithNewMQFormat() {
+        return new Object[][]{
+                {NA12878_HG37, getTestFile("newMQcalc.singleSample.genotyped.vcf"), new SimpleInterval("20", 1, 11_000_000), b37_reference_20_21},
+                {new File(getTestDataDir() + "/walkers/CombineGVCFs/newMQcalc.combined.g.vcf"), getTestFile("newMQcalc.combined.genotyped.vcf"), new SimpleInterval("20", 1, 11_000_000), b37_reference_20_21}
+        };
+    }
 
     /*
     This test is useful for testing changes in GATK4 versus different versions of GATK3.
@@ -169,12 +186,26 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         };
     }
 
-
+    //this only tests single-sample
     @Test(dataProvider = "getGVCFsForGenomicsDB")
     public void assertMatchingGenotypesFromTileDB(File input, File expected, Locatable interval, String reference) throws IOException {
         final File tempGenomicsDB = GenomicsDBTestUtils.createTempGenomicsDB(input, interval);
         final String genomicsDBUri = GenomicsDBTestUtils.makeGenomicsDBUri(tempGenomicsDB);
         runGenotypeGVCFSAndAssertSomething(genomicsDBUri, expected, NO_EXTRA_ARGS, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes, reference);
+    }
+
+    //this tests single-sample with new MQ format
+    @Test (dataProvider = "singleSampleGVCFWithNewMQFormat")
+    public void assertMatchingAnnotationsFromGenomicsDB_newMQformat(File input, File expected, Locatable interval, String reference) throws IOException {
+        final File tempGenomicsDB = GenomicsDBTestUtils.createTempGenomicsDB(input, interval);
+        final String genomicsDBUri = GenomicsDBTestUtils.makeGenomicsDBUri(tempGenomicsDB);
+
+        //FIXME: copy in the extra files until Protobuf update in PR #4645 is ready
+        //this updated json specifies the combine operation for the new RAW_MQandDP key; behavior for old version is hard-coded into GDB
+        //Runtime.getRuntime().exec("cp " + getTestFile("vidmap.updated.json").getAbsolutePath() +" "+ tempGenomicsDB.getAbsolutePath() + "/vidmap.json");
+
+        final VCFHeader header = VCFHeaderReader.readHeaderFrom(new SeekablePathStream(IOUtils.getPath(expected.getAbsolutePath())));
+        runGenotypeGVCFSAndAssertSomething(genomicsDBUri, expected, NO_EXTRA_ARGS, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_WITH_JITTER, header), reference);
     }
 
     @Test(dataProvider = "gvcfsToGenotype")
@@ -201,6 +232,12 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         runGenotypeGVCFSAndAssertSomething(input, expected, extraArgs, VariantContextTestUtils::assertGenotypePosteriorsAttributeWasRemoved, reference);
     }
 
+    //this test is separate because all the others use old data and ignore the MQ annotations
+    @Test(dataProvider = "GVCFsWithNewMQFormat")
+    public void assertNewMQWorks(File input, File expected, Locatable interval, String reference) throws IOException {
+        final VCFHeader header = VCFHeaderReader.readHeaderFrom(new SeekablePathStream(IOUtils.getPath(expected.getAbsolutePath())));
+        runGenotypeGVCFSAndAssertSomething(input, expected, NO_EXTRA_ARGS, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_WITH_JITTER, header), reference);
+    }
 
     private void runGenotypeGVCFSAndAssertSomething(File input, File expected, List<String> additionalArguments, BiConsumer<VariantContext, VariantContext> assertion, String reference) throws IOException {
         runGenotypeGVCFSAndAssertSomething(input.getAbsolutePath(), expected, additionalArguments, assertion, reference

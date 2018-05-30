@@ -19,7 +19,6 @@
 ##INFO=<ID=MQ,Number=1,Type=Float,Description="RMS Mapping Quality">
 ##INFO=<ID=MQRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref read mapping qualities">
 ##INFO=<ID=QD,Number=1,Type=Float,Description="Variant Confidence/Quality by Depth">
-##INFO=<ID=RAW_MQ,Number=1,Type=Float,Description="Raw data for RMS Mapping Quality">
 ##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
 ##INFO=<ID=SOR,Number=1,Type=Float,Description="Symmetric Odds Ratio of 2x2 contingency table to detect strand bias">
 ##contig=<ID=1,length=249250621,assembly=GRCh37>
