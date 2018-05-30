@@ -170,6 +170,82 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
         }
     }
 
+    // spanning deletion alleles should be treated as non-variant, so we make a few random PLs and test that the
+    // qual is invariant to swapping the ref/ref PL with the ref/SPAN_DEL PL
+    @Test
+    public void testSpanningDeletionIsNotConsideredVariant() {
+        final int ploidy = 2;
+        final AlleleFrequencyCalculator afCalc = new AlleleFrequencyCalculator(1, 0.1, 0.1, ploidy);
+        final List<Allele> alleles = Arrays.asList(A, B, Allele.SPAN_DEL);
+
+        //{AA}, {AB}, {BB}, {AC}, {BC}, {CC}
+
+        // some pls that have high likelihood for span del allele but not for the SNP (B)
+        final int[] spanDelPls = new int[] {50, 100, 100, 0, 100, 100};
+
+        // some pls that weakly support the SNP
+        final int[] lowQualSnpPls = new int[] {10,0,40,100,70,300};
+
+
+        final Genotype spanDel = makeGenotype(ploidy, spanDelPls);
+        final Genotype lowQualSNP = makeGenotype(ploidy, lowQualSnpPls);
+
+        // first test the span del genotype alone.  Its best PL containing the SNP is 100, so we expect a variant probability
+        // of about 10^(-100/10) -- a bit less due to the prior bias in favor of the reference
+        final VariantContext vcSpanDel = makeVC(alleles, Arrays.asList(spanDel));
+        final double log10PVariant = afCalc.getLog10PNonRef(vcSpanDel).getLog10LikelihoodOfAFGT0();
+        Assert.assertTrue(log10PVariant < - 10);
+
+        // now test a realistic situation of two samples, one with a low-quality SNP and one with the spanning deletion
+        // we want to find that the spanning deletion has little effect on the qual
+        // In fact, we also want to check that it *decreases* the qual, because it's essentially one more hom ref sample
+        // Furthermore, to be precise it should be really behave almost identically to a hom ref *haploid* sample,
+        // so we check that, too
+        final VariantContext vcLowQualSnp = makeVC(alleles, Arrays.asList(lowQualSNP));
+        final double lowQualSNPQualScore = afCalc.getLog10PNonRef(vcLowQualSnp).getLog10LikelihoodOfAFGT0();
+        final VariantContext vcBoth = makeVC(alleles, Arrays.asList(lowQualSNP, spanDel));
+        final double bothQualScore = afCalc.getLog10PNonRef(vcBoth).getLog10LikelihoodOfAFGT0();
+        Assert.assertEquals(lowQualSNPQualScore, bothQualScore, 0.1);
+        Assert.assertTrue(bothQualScore < lowQualSNPQualScore);
+
+        final int[] haploidRefPls = new int[] {0, 100, 100};
+        final Genotype haploidRef = makeGenotype(1, haploidRefPls);
+
+        final VariantContext vcLowQualSnpAndHaploidRef = makeVC(alleles, Arrays.asList(lowQualSNP, haploidRef));
+        final double lowQualSNPAndHaplpidRefQualScore = afCalc.getLog10PNonRef(vcLowQualSnpAndHaploidRef).getLog10LikelihoodOfAFGT0();
+        Assert.assertEquals(bothQualScore, lowQualSNPAndHaplpidRefQualScore, 1e-5);
+
+        // as a final test, we check that getting rid of the spanning deletion allele, in the sense that
+        // REF / SPAN_DEL --> haploid REF; REF / SNP --> REF / SNP
+        // does not affect the qual score
+
+        final int[] haploidRefPlsWithoutSpanDel = new int[] {0, 100};
+        final int[] snpPlsWithoutSpanDel = new int[] {10, 0, 40};
+        final VariantContext vcNoSpanDel = makeVC(Arrays.asList(A,B), Arrays.asList(makeGenotype(ploidy, snpPlsWithoutSpanDel),
+                makeGenotype(1, haploidRefPlsWithoutSpanDel)));
+        final double noSpanDelQualScore = afCalc.getLog10PNonRef(vcNoSpanDel).getLog10LikelihoodOfAFGT0();
+        Assert.assertEquals(bothQualScore, noSpanDelQualScore, 1e-6);
+    }
+
+    @Test
+    public void testPresenceOfUnlikelySpanningDeletionDoesntAffectResults() {
+        final int ploidy = 2;
+        final AlleleFrequencyCalculator afCalc = new AlleleFrequencyCalculator(1, 0.1, 0.1, ploidy);
+        final List<Allele> allelesWithoutSpanDel = Arrays.asList(A, B);
+        final List<Allele> allelesWithSpanDel = Arrays.asList(A, B, Allele.SPAN_DEL);
+        
+        // make PLs that support an A/B genotype
+        final int[] plsWithoutSpanDel = new int[] {50, 0, 50};
+        final int[] plsWithSpanDel = new int[] {50, 0, 50, 100, 100, 100};
+        final Genotype genotypeWithoutSpanDel = makeGenotype(ploidy, plsWithoutSpanDel);
+        final Genotype genotypeWithSpanDel = makeGenotype(ploidy, plsWithSpanDel);
+        final VariantContext vcWithoutSpanDel = makeVC(allelesWithoutSpanDel, Arrays.asList(genotypeWithoutSpanDel));
+        final VariantContext vcWithSpanDel = makeVC(allelesWithSpanDel, Arrays.asList(genotypeWithSpanDel));
+        final double log10PVariantWithoutSpanDel = afCalc.getLog10PNonRef(vcWithoutSpanDel).getLog10LikelihoodOfAFGT0();
+        final double log10PVariantWithSpanDel = afCalc.getLog10PNonRef(vcWithSpanDel).getLog10LikelihoodOfAFGT0();
+        Assert.assertEquals(log10PVariantWithoutSpanDel, log10PVariantWithSpanDel, 0.0001);
+    }
+
     // make PLs that correspond to an obvious call i.e. one PL is relatively big and the rest are zero
     // alleleCounts is the GenotypeAlleleCounts format for the obvious genotype, with repeats but in no particular order
     private static int[] PLsForObviousCall(final int ploidy, final int numAlleles, final int[] alleleCounts, final int PL)   {

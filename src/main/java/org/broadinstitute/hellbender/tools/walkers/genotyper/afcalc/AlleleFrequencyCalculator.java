@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
+import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
@@ -66,9 +67,8 @@ public final class AlleleFrequencyCalculator extends AFCalculator {
         double[] alleleCounts = new double[numAlleles];
         final double flatLog10AlleleFrequency = -MathUtils.log10(numAlleles); // log10(1/numAlleles)
         double[] log10AlleleFrequencies = new IndexRange(0, numAlleles).mapToDouble(n -> flatLog10AlleleFrequency);
-        double alleleCountsMaximumDifference = Double.POSITIVE_INFINITY;
 
-        while (alleleCountsMaximumDifference > THRESHOLD_FOR_ALLELE_COUNT_CONVERGENCE) {
+        for (double alleleCountsMaximumDifference = Double.POSITIVE_INFINITY; alleleCountsMaximumDifference > THRESHOLD_FOR_ALLELE_COUNT_CONVERGENCE; ) {
             final double[] newAlleleCounts = effectiveAlleleCounts(vc, log10AlleleFrequencies);
             alleleCountsMaximumDifference = Arrays.stream(MathArrays.ebeSubtract(alleleCounts, newAlleleCounts)).map(Math::abs).max().getAsDouble();
             alleleCounts = newAlleleCounts;
@@ -83,6 +83,8 @@ public final class AlleleFrequencyCalculator extends AFCalculator {
         double[] log10POfZeroCountsByAllele = new double[numAlleles];
         double log10PNoVariant = 0;
 
+        final boolean spanningDeletionPresent = alleles.contains(Allele.SPAN_DEL);
+        final Map<Integer, int[]> nonVariantIndicesByPloidy = new Int2ObjectArrayMap<>();
         for (final Genotype g : vc.getGenotypes()) {
             if (!g.hasLikelihoods()) {
                 continue;
@@ -93,7 +95,14 @@ public final class AlleleFrequencyCalculator extends AFCalculator {
             final double[] log10GenotypePosteriors = log10NormalizedGenotypePosteriors(g, glCalc, log10AlleleFrequencies);
 
             //the total probability
-            log10PNoVariant += log10GenotypePosteriors[HOM_REF_GENOTYPE_INDEX];
+            if (!spanningDeletionPresent) {
+                log10PNoVariant += log10GenotypePosteriors[HOM_REF_GENOTYPE_INDEX];
+            } else {
+                nonVariantIndicesByPloidy.computeIfAbsent(ploidy, p -> genotypeIndicesWithOnlyRefAndSpanDel(p, alleles));
+                final int[] nonVariantIndices = nonVariantIndicesByPloidy.get(ploidy);
+                final double[] nonVariantLog10Posteriors = MathUtils.applyToArray(nonVariantIndices, n -> log10GenotypePosteriors[n]);
+                log10PNoVariant += MathUtils.log10SumLog10(nonVariantLog10Posteriors);
+            }
 
             // per allele non-log space probabilities of zero counts for this sample
             // for each allele calculate the total probability of genotypes containing at least one copy of the allele
@@ -166,6 +175,18 @@ public final class AlleleFrequencyCalculator extends AFCalculator {
                     + gac.sumOverAlleleIndicesAndCounts((index, count) -> count * log10AlleleFrequencies[index]);
         });
         return MathUtils.normalizeLog10(log10Posteriors);
+    }
+
+    private static int[] genotypeIndicesWithOnlyRefAndSpanDel(final int ploidy, final List<Allele> alleles) {
+        final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, alleles.size());
+        final boolean spanningDeletionPresent = alleles.contains(Allele.SPAN_DEL);
+        if (!spanningDeletionPresent) {
+            return new int[] {HOM_REF_GENOTYPE_INDEX};
+        } else {
+            final int spanDelIndex = alleles.indexOf(Allele.SPAN_DEL);
+            // allele counts are in the GenotypeLikelihoodCalculator format of {ref index, ref count, span del index, span del count}
+            return new IndexRange(0, ploidy).mapToInteger(n -> glCalc.alleleCountsToIndex(new int[]{0, ploidy - n, spanDelIndex, n}));
+        }
     }
 
     @Override   //Note: unused
