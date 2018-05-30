@@ -494,6 +494,7 @@ public class MafOutputRenderer extends OutputRenderer {
         printWriter.write(Funcotator.VERSION);
         printWriter.write(" | Date ");
         printWriter.write(new SimpleDateFormat("yyyymmdd'T'hhmmss").format(new Date()));
+        printWriter.write(" | ");
         printWriter.write(getDataSourceInfoString());
         writeLine("");
 

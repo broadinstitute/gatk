@@ -298,4 +298,14 @@ public class GencodeFuncotationBuilder {
         gencodeFuncotation.setGeneTranscriptType( geneTranscriptType );
         return this;
     }
+
+    /**
+     * Set the Data Source Name {@link String} in the {@link GencodeFuncotation}.
+     * @param name The {@link String} containing the Data Source Name for the {@link GencodeFuncotation}.
+     * @return {@code this} {@link GencodeFuncotationBuilder}
+     */
+    public GencodeFuncotationBuilder setDataSourceName( final String name ) {
+        gencodeFuncotation.setDataSourceName( name );
+        return this;
+    }
  }

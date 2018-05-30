@@ -31,11 +31,12 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                                                                final String cDnaChange, final String codonChange,
                                                                final String proteinChange, final Double gcContent,
                                                                final String referenceContext,
-                                                        final List<String> otherTranscripts) {
+                                                               final List<String> otherTranscripts) {
 
         final GencodeFuncotation gencodeFuncotation = new GencodeFuncotation();
 
         gencodeFuncotation.setVersion("TEST_VERSION");
+        gencodeFuncotation.setDataSourceName(GencodeFuncotationFactory.DEFAULT_NAME);
 
         gencodeFuncotation.setHugoSymbol( hugoSymbol );
         gencodeFuncotation.setNcbiBuild( ncbiBuild );

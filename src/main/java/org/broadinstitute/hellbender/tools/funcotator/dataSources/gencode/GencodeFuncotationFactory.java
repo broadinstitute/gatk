@@ -39,7 +39,12 @@ import static org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeatu
  */
 public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
-    public static final String DATA_SOURCE_NAME = "Gencode";
+    //==================================================================================================================
+    // Public Static Members:
+    /**
+     * Default name for this data source.
+     */
+    public static final String DEFAULT_NAME = "Gencode";
 
     //==================================================================================================================
     // Private Static Members:
@@ -118,6 +123,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     // Private Members:
 
     /**
+     * The name of this Gencode data source.
+     */
+    private final String name;
+
+    /**
      * ReferenceSequenceFile for the transcript reference file.
      */
     private final ReferenceDataSource transcriptFastaReferenceDataSource;
@@ -164,27 +174,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     //==================================================================================================================
     // Constructors:
 
-    public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFile, final String version) {
-        this(gencodeTranscriptFastaFile, version, FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE, new HashSet<>(), new LinkedHashMap<>());
-    }
-
-    public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFile, final String version, final Set<String> userRequestedTranscripts) {
-        this(gencodeTranscriptFastaFile, version, FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE, userRequestedTranscripts, new LinkedHashMap<>());
-    }
-
-    public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFile, final String version,final TranscriptSelectionMode transcriptSelectionMode) {
-        this(gencodeTranscriptFastaFile, version, transcriptSelectionMode, new HashSet<>(), new LinkedHashMap<>());
-    }
-
     public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFile,
                                      final String version,
-                                     final TranscriptSelectionMode transcriptSelectionMode,
-                                     final Set<String> userRequestedTranscripts) {
-        this(gencodeTranscriptFastaFile, version, transcriptSelectionMode, userRequestedTranscripts, new LinkedHashMap<>());
-    }
-
-    public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFile,
-                                     final String version,
+                                     final String name,
                                      final TranscriptSelectionMode transcriptSelectionMode,
                                      final Set<String> userRequestedTranscripts,
                                      final LinkedHashMap<String, String> annotationOverrides) {
@@ -197,6 +189,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         this.transcriptSelectionMode = transcriptSelectionMode;
 
         this.version = version;
+
+        this.name = name;
 
         // Go through each requested transcript and remove the version numbers from them if they exist:
         this.userRequestedTranscripts = new HashSet<>();
@@ -231,7 +225,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     @Override
     public String getName() {
-        return DATA_SOURCE_NAME;
+        return name;
     }
 
     @Override
@@ -716,6 +710,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Set the VariantClassification through a simple equivalency on the gene type (since we have no transcript info):
         gencodeFuncotationBuilder.setVariantClassification( convertGeneTranscriptTypeToVariantClassification(exon.getGeneType()) );
 
+        // Set our data source name:
+        gencodeFuncotationBuilder.setDataSourceName(getName());
+
         //==============================================================================================================
 
         return gencodeFuncotationBuilder.build();
@@ -806,6 +803,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             // We should have sequence information but we don't... this is not good, but we have to put something here:
             gencodeFuncotationBuilder.setVariantClassification( convertGeneTranscriptTypeToVariantClassification(exon.getGeneType()) );
         }
+
+        // Set our data source name:
+        gencodeFuncotationBuilder.setDataSourceName(getName());
 
         return gencodeFuncotationBuilder.build();
     }
@@ -1142,6 +1142,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Set our version:
         gencodeFuncotationBuilder.setVersion(version);
 
+        // Set our data source name:
+        gencodeFuncotationBuilder.setDataSourceName(getName());
+
         return gencodeFuncotationBuilder.build();
     }
 
@@ -1217,6 +1220,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Set our version:
         gencodeFuncotationBuilder.setVersion(version);
+
+        // Set our data source name:
+        gencodeFuncotationBuilder.setDataSourceName(getName());
 
         return gencodeFuncotationBuilder.build();
     }
@@ -1814,6 +1820,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Set our version:
         funcotationBuilder.setVersion(version);
+
+        // Set our data source name:
+        funcotationBuilder.setDataSourceName(getName());
 
         return funcotationBuilder.build();
     }

@@ -622,7 +622,7 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                                 baseFieldNameList,
                                 createFieldValuesFromNameList("A", baseFieldNameList, fieldSize),
                                 Allele.create("T"),
-                                GencodeFuncotationFactory.DATA_SOURCE_NAME
+                                GencodeFuncotationFactory.DEFAULT_NAME
                         )
                 ),
                 Collections.singletonList(
@@ -630,7 +630,7 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                                 baseFieldNameList,
                                 createFieldValuesFromNameList("B", baseFieldNameList, fieldSize),
                                 Allele.create("C"),
-                                GencodeFuncotationFactory.DATA_SOURCE_NAME
+                                GencodeFuncotationFactory.DEFAULT_NAME
                         )
                 ),
                 Collections.singletonList(
@@ -638,7 +638,7 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                                 baseFieldNameList,
                                 createFieldValuesFromNameList("C", baseFieldNameList, fieldSize),
                                 Allele.create("GG"),
-                                GencodeFuncotationFactory.DATA_SOURCE_NAME
+                                GencodeFuncotationFactory.DEFAULT_NAME
                         )
                 ),
                 Collections.singletonList(

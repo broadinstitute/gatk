@@ -16,10 +16,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
-import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
-import org.broadinstitute.hellbender.tools.funcotator.SequenceComparison;
-import org.broadinstitute.hellbender.tools.funcotator.TranscriptSelectionMode;
+import org.broadinstitute.hellbender.tools.funcotator.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.gencode.*;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -65,7 +62,13 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
         // Gets cleaned up in `cleanupAfterTests()`
         // NOTE: This is initialized here to save time in testing.
-        testMuc16SnpCreateFuncotationsFuncotationFactory = new GencodeFuncotationFactory(IOUtils.getPath(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE), "VERSION");
+        testMuc16SnpCreateFuncotationsFuncotationFactory = new GencodeFuncotationFactory(
+                IOUtils.getPath(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE),
+                "VERSION",
+                GencodeFuncotationFactory.DEFAULT_NAME,
+                FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE,
+                new HashSet<>(),
+                new LinkedHashMap<>());
     }
 
     //==================================================================================================================
@@ -1147,7 +1150,13 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final Set<String> requestedTranscriptIds = getValidTranscriptsForGene("MUC16");
 
         // Create a factory for our funcotations:
-        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(new File(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE).toPath(), "VERSION", requestedTranscriptIds)) {
+        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(
+                IOUtils.getPath(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE),
+                "VERSION",
+                GencodeFuncotationFactory.DEFAULT_NAME,
+                FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE,
+                requestedTranscriptIds,
+                new LinkedHashMap<>())) {
 
             // Generate our funcotations:
             final List<Feature> featureList = new ArrayList<>();
@@ -1198,7 +1207,13 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final ReferenceContext referenceContext = new ReferenceContext(refDataSourceHg19Ch19, variantInterval );
 
         // Create a factory for our funcotations:
-        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(new File(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE).toPath(), "VERSION")) {
+        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(
+                                                                    IOUtils.getPath(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE),
+                                                                    "VERSION",
+                                                                    GencodeFuncotationFactory.DEFAULT_NAME,
+                                                                    FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE,
+                                                                    new HashSet<>(),
+                                                                    new LinkedHashMap<>())) {
 
             // Generate our funcotations:
             final List<Feature> featureList = new ArrayList<>();
@@ -1262,7 +1277,13 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final Set<String> requestedTranscriptIds = getValidTranscriptsForGene(expectedGeneName);
 
         // Create a factory for our funcotations:
-        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(IOUtils.getPath(transcriptFastaFile), "VERSION", requestedTranscriptIds)) {
+        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(
+                IOUtils.getPath(transcriptFastaFile),
+                "VERSION",
+                GencodeFuncotationFactory.DEFAULT_NAME,
+                FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE,
+                requestedTranscriptIds,
+                new LinkedHashMap<>())) {
 
             final List<Feature> featureList = new ArrayList<>();
             featureList.add( gene );
