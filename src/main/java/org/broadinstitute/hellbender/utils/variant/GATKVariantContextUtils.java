@@ -886,7 +886,7 @@ public final class GATKVariantContextUtils {
         return loc == null || loc.getStart() == vc.getStart();
     }
 
-    private static AlleleMapper resolveIncompatibleAlleles(final Allele refAllele, final VariantContext vc, final LinkedHashSet<Allele> allAlleles) {
+    public static AlleleMapper resolveIncompatibleAlleles(final Allele refAllele, final VariantContext vc, final LinkedHashSet<Allele> allAlleles) {
         if ( refAllele.equals(vc.getReference()) )
             return new AlleleMapper(vc);
         else {
@@ -914,7 +914,7 @@ public final class GATKVariantContextUtils {
      * @param currentAlleles     the list of alleles already created
      * @return a non-null mapping of original alleles to new (extended) ones
      */
-    private static Map<Allele, Allele> createAlleleMapping(final Allele refAllele,
+    public static Map<Allele, Allele> createAlleleMapping(final Allele refAllele,
                                                            final VariantContext oneVC,
                                                            final Collection<Allele> currentAlleles) {
         final Allele myRef = oneVC.getReference();

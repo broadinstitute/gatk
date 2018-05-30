@@ -79,8 +79,16 @@ public final class AlleleSubsettingUtils {
             }
 
             final boolean useNewLikelihoods = newLikelihoods != null && (depth != 0 || GATKVariantContextUtils.isInformative(newLikelihoods));
-            final GenotypeBuilder gb = useNewLikelihoods ? new GenotypeBuilder(g).PL(newLikelihoods).log10PError(newLog10GQ) : new GenotypeBuilder(g).noPL().noGQ();
-
+            final GenotypeBuilder gb = new GenotypeBuilder(g);
+            if (useNewLikelihoods) {
+                final Map<String, Object> attributes = new HashMap<>(g.getExtendedAttributes());
+                gb.PL(newLikelihoods).log10PError(newLog10GQ);
+                attributes.remove(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
+                gb.noAttributes().attributes(attributes);
+            }
+            else {
+                gb.noPL().noGQ();
+            }
             GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep);
 
             // restrict SAC to the new allele subset

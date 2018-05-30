@@ -4,9 +4,7 @@ import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.VariantContextUtils;
-import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -22,6 +20,7 @@ import org.broadinstitute.hellbender.utils.variant.*;
 
 import java.io.File;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Calculate genotype posterior probabilities given family and/or known population genotypes
@@ -142,27 +141,36 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
 
     private static final Logger logger = LogManager.getLogger(CalculateGenotypePosteriors.class);
 
+    public static final String SUPPORTING_CALLSETS_SHORT_NAME = "supporting";
+    public static final String SUPPORTING_CALLSETS_LONG_NAME = "supporting-callsets";
+    public static final String NUM_REF_SAMPLES_LONG_NAME = "num-reference-samples-if-no-call";
+
     /**
      * Supporting external panels. Allele counts from these panels (taken from AC,AN or MLEAC,AN or raw genotypes) will
      * be used to inform the frequency distribution underlying the genotype priors. These files must be VCF 4.2 spec or later.
      */
-    @Argument(fullName="supporting-callsets", shortName = "supporting", doc="Other callsets to use in generating genotype posteriors", optional=true)
+    @Argument(fullName=SUPPORTING_CALLSETS_LONG_NAME, shortName = SUPPORTING_CALLSETS_SHORT_NAME, doc="Other callsets to use in generating genotype posteriors", optional=true)
     public List<FeatureInput<VariantContext>> supportVariants = new ArrayList<>();
 
     @Argument(doc="File to which variants should be written", fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, optional = false)
     public File out = null;
 
     /**
-     * The global prior of a variant site -- i.e. the expected allele frequency distribution knowing only that N alleles
-     * exist, and having observed none of them. This is the "typical" 1/x trend, modeled here as not varying
-     * across alleles. The calculation for this parameter is (Effective population size) * (steady state mutation rate)
-     *
+     * Prior SNP pseudocounts for Dirichlet distribution of allele frequencies. The posterior distribution is a
+     * Dirichlet with parameters given by pseudocounts plus the number of occurrences in the resource vcfs.
      */
-     @Argument(fullName="global-prior", doc="Global Dirichlet prior parameters for the allele frequency",optional=true)
-     public double globalPrior = HomoSapiensConstants.SNP_HETEROZYGOSITY;
+    @Argument(fullName="global-prior-snp", doc="Global Dirichlet prior parameters for the SNP allele frequency",optional=true)
+    public double globalPriorSnp = HomoSapiensConstants.SNP_HETEROZYGOSITY;
 
     /**
-     * The mutation prior -- i.e. the probability that a new mutation occurs. Sensitivity analysis on known de novo 
+     * Prior indel pseudocounts for Dirichlet distribution of allele frequencies. The posterior distribution is a
+     * Dirichlet with parameters given by pseudocounts plus the number of occurrences in the resource vcfs.
+     */
+    @Argument(fullName="global-prior-indel", doc="Global Dirichlet prior parameters for the indel allele frequency",optional=true)
+    public double globalPriorIndel = HomoSapiensConstants.SNP_HETEROZYGOSITY;
+
+    /**
+     * The de novo mutation prior -- i.e. the probability that a new mutation occurs. Sensitivity analysis on known de novo
      * mutations suggests a default value of 10^-6.
      *
      */
@@ -172,10 +180,9 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
     /**
      * When a variant is not seen in a panel, this argument controls whether to infer (and with what effective strength)
      * that only reference alleles were observed at that site. E.g. "If not seen in 1000Genomes, treat it as AC=0,
-     * AN=2000". This is applied across all external panels, so if numRefIsMissing = 10, and the variant is absent in
-     * two panels, this confers evidence of AC=0,AN=20.
+     * AN=2000", where AN=2*nSamples for human autosomes.
      */
-    @Argument(fullName="num-reference-samples-if-no-call",doc="Number of hom-ref genotypes to infer at sites not present in a panel",optional=true)
+    @Argument(fullName=NUM_REF_SAMPLES_LONG_NAME,doc="Number of hom-ref genotypes to infer at sites not present in a panel",optional=true)
     public int numRefIfMissing = 0;
 
     /**
@@ -195,11 +202,20 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
     public boolean ignoreInputSamples = false;
 
     /**
-     * Calculate priors for missing external variants from sample data -- default behavior is to apply flat priors
+     * Don't add input sample ACs for variants not seen in the supporting panel.  Default is to add discovered AC from input samples
+     * provided there are at least 10 input samples or if num-ref-samples-if-no-call is greater than zero.
      */
     @Argument(fullName="discovered-allele-count-priors-off",doc="Do not use discovered allele count in the input callset " +
             "for variants that do not appear in the external callset. ", optional=true)
-    public boolean useACoff = false;
+    public boolean ignoreInputSamplesForMissingResources = false;
+
+    /**
+     * Use flat priors for indels (can be used to replicate the legacy CalculateGenotypePosteriors behavior)
+     * If an input variant contains an indel allele, flat priors will be applied to that site. If a reference panel
+     * variant contains an indel allele, flat priors will be applied instead.
+     */
+    @Argument(fullName = "use-flat-priors-for-indels", shortName = "skipIndels", doc="Use flat priors for indels")
+    public boolean useFlatPriorsForIndels = false;
 
     /**
      * Skip application of population-based priors
@@ -225,6 +241,8 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
     private FamilyLikelihoods famUtils;
 
     private VariantContextWriter vcfWriter;
+
+    private PosteriorProbabilitiesUtils.PosteriorProbabilitiesOptions options;
 
     @Override
     public void onTraversalStart() {
@@ -278,6 +296,9 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
 
         final Map<String,Set<Sample>> families = sampleDB.getFamilies(vcfSamples);
         famUtils = new FamilyLikelihoods(sampleDB, deNovoPrior, vcfSamples, families);
+
+        options = new PosteriorProbabilitiesUtils.PosteriorProbabilitiesOptions(globalPriorSnp, globalPriorIndel,
+                        !ignoreInputSamples, !defaultToAC, ignoreInputSamplesForMissingResources, useFlatPriorsForIndels);
     }
 
     /**
@@ -299,7 +320,9 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
 
         final Collection<VariantContext> otherVCs = featureContext.getValues(supportVariants);
 
-        final int missing = supportVariants.size() - otherVCs.size();
+        //If no resource contains a matching variant, then add numRefIfMissing as a pseudocount to the priors
+        List<VariantContext> resourcesWithMatchingStarts = otherVCs.stream()
+                .filter(vc -> variant.getStart() == vc.getStart()).collect(Collectors.toList());
 
         //do family priors first (if applicable)
         final VariantContextBuilder builder = new VariantContextBuilder(variant);
@@ -313,7 +336,8 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
 
         final VariantContext vc_bothPriors;
         if (!skipPopulationPriors) {
-            vc_bothPriors = PosteriorProbabilitiesUtils.calculatePosteriorProbs(vc_familyPriors, otherVCs, missing * numRefIfMissing, globalPrior, !ignoreInputSamples, defaultToAC, useACoff);
+            vc_bothPriors = PosteriorProbabilitiesUtils.calculatePosteriorProbs(vc_familyPriors, resourcesWithMatchingStarts,
+                    resourcesWithMatchingStarts.isEmpty() ? numRefIfMissing : 0, options);
         } else {
             vc_bothPriors = vc_familyPriors;
         }
