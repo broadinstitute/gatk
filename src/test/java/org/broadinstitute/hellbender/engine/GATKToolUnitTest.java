@@ -730,11 +730,11 @@ public final class GATKToolUnitTest extends GATKBaseTest {
     }
 
     private <T extends GATKTool> T createTestVariantTool(final T tool, final String args[]) {
-        if (null != args) {
-            final CommandLineParser clp = tool.getCommandLineParser();
-            //final CommandLineParser clp = new CommandLineArgumentParser(tool, tool.getPluginDescriptors(), Collections.emptySet());
-            clp.parseArguments(System.out, args);
-        }
+
+        final CommandLineParser clp = tool.getCommandLineParser();
+        //final CommandLineParser clp = new CommandLineArgumentParser(tool, tool.getPluginDescriptors(), Collections.emptySet());
+        clp.parseArguments(System.out, args==null? new String[0] : args);
+
         return tool;
     }
 
