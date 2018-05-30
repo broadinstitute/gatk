@@ -1,14 +1,13 @@
 package org.broadinstitute.hellbender.tools.spark;
 
 import htsjdk.samtools.BAMIndex;
+import htsjdk.samtools.SplittingBAMIndex;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.seqdoop.hadoop_bam.SplittingBAMIndex;
-import org.seqdoop.hadoop_bam.SplittingBAMIndexer;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -43,15 +42,15 @@ public class CreateHadoopBamSplittingIndexIntegrationTest extends CommandLinePro
         assertIndexIsNotEmpty(splittingIndex);
 
         //checked in index created with
-        // java -cp target/hadoop-bam-7.4.1-SNAPSHOT-jar-with-dependencies.jar org.seqdoop.hadoop_bam.SplittingBAMIndexer  1 <filename>
-        final File expectedSplittingIndex = new File(bam.toPath() + SplittingBAMIndexer.OUTPUT_FILE_EXTENSION);
+        // ./gatk CreateHadoopBamSplittingIndex --input <filename> --splitting-index-granularity 1
+        final File expectedSplittingIndex = new File(bam.toPath() + SplittingBAMIndex.FILE_EXTENSION);
 
         IOUtil.assertFilesEqual(splittingIndex, expectedSplittingIndex);
     }
 
     private static void assertIndexIsNotEmpty(final File splittingIndex) throws IOException {
         Assert.assertTrue(splittingIndex.exists());
-        final SplittingBAMIndex splittingBAMIndex = new SplittingBAMIndex(splittingIndex);
+        final SplittingBAMIndex splittingBAMIndex = SplittingBAMIndex.load(splittingIndex.toPath());
         Assert.assertTrue(splittingBAMIndex.size() > 0 );
     }
 
@@ -82,7 +81,7 @@ public class CreateHadoopBamSplittingIndexIntegrationTest extends CommandLinePro
         // we're going to write an index next to it on disk, and we don't want to write into the test resources folder
         final File bamCopy = createTempFile("copy-"+bam, ".bam");
         Files.copy(bam.toPath(), bamCopy.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        final File expectedIndex = new File(bamCopy.toPath() + SplittingBAMIndexer.OUTPUT_FILE_EXTENSION);
+        final File expectedIndex = new File(bamCopy.toPath() + SplittingBAMIndex.FILE_EXTENSION);
         Assert.assertFalse(expectedIndex.exists());
         final ArgumentsBuilder args = new ArgumentsBuilder().addInput(bamCopy);
         this.runCommandLine(args);
