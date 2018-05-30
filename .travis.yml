@@ -156,7 +156,7 @@ script:
     echo ${TEST_TYPE};
     sudo mkdir -p build/reports/;
     sudo chmod -R a+w build/reports/;
-    sudo docker run -v $(pwd):/gatksrc -v $(echo ~)/.gradle:/root/.gradle --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh;
+    sudo docker run -v $(pwd):/gatksrc --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh;
   else
     ./gatk PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
     travis_wait 50 ./gradlew jacocoTestReport;

@@ -95,6 +95,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
         final Map<String, Object> annotations = new HashMap<>();
         String annotationString = makeRawAnnotationString(vcAlleles, combinedData.getAttributeMap());
         annotations.put(getRawKeyName(), annotationString);
+        annotations.put(getRawKeyName(), annotationString);
         return annotations;
     }
 
