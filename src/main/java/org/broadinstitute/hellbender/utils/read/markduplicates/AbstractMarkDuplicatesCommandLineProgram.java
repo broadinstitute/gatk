@@ -117,17 +117,17 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
      */
     protected void finalizeAndWriteMetrics(final LibraryIdGenerator libraryIdGenerator) {
         //We want to sort libraries by name
-        final SortedMap<String, DuplicationMetrics> metricsByLibrary = new TreeMap<>(Utils.COMPARE_STRINGS_NULLS_FIRST);
+        final SortedMap<String, GATKDuplicationMetrics> metricsByLibrary = new TreeMap<>(Utils.COMPARE_STRINGS_NULLS_FIRST);
         metricsByLibrary.putAll(libraryIdGenerator.getMetricsByLibraryMap());
 
         final Histogram<Short> opticalDuplicatesByLibraryId = libraryIdGenerator.getOpticalDuplicatesByLibraryIdMap();
         final Map<String, Short> libraryIds = libraryIdGenerator.getLibraryIdsMap();
 
         // Write out the metrics
-        final MetricsFile<DuplicationMetrics, Double> file = getMetricsFile();
-        for (final Map.Entry<String, DuplicationMetrics> entry : metricsByLibrary.entrySet()) {
+        final MetricsFile<GATKDuplicationMetrics, Double> file = getMetricsFile();
+        for (final Map.Entry<String, GATKDuplicationMetrics> entry : metricsByLibrary.entrySet()) {
             final String libraryName = entry.getKey();
-            final DuplicationMetrics metrics = entry.getValue();
+            final GATKDuplicationMetrics metrics = entry.getValue();
 
             metrics.READ_PAIRS_EXAMINED = metrics.READ_PAIRS_EXAMINED / 2;
             metrics.READ_PAIR_DUPLICATES = metrics.READ_PAIR_DUPLICATES / 2;
@@ -141,7 +141,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
                     metrics.READ_PAIR_OPTICAL_DUPLICATES = (long) bin.getValue();
                 }
             }
-            metrics.calculateDerivedMetrics();
+            metrics.calculateDerivedFields();
             file.addMetric(metrics);
         }
 

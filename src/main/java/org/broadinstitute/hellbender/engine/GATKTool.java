@@ -21,7 +21,6 @@ import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.SequenceDictionaryValidationArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
@@ -834,8 +833,7 @@ public abstract class GATKTool extends CommandLineProgram {
      */
     protected FeatureInput<? extends Feature> addFeatureInputsAfterInitialization(final String filePath,
                                                                                   final String name,
-                                                                                  final Class<? extends Feature> featureType,
-                                                                                  final int featureQueryLookahead) {
+                                                                                  final Class<? extends Feature> featureType, final int featureQueryLookahead) {
 
         final FeatureInput<? extends Feature> featureInput = new FeatureInput<>(filePath, name);
 

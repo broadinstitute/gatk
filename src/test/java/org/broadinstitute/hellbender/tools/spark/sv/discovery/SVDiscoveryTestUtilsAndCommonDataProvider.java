@@ -2,8 +2,12 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMFlag;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.samtools.util.SequenceUtil;
+import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.ContigAlignmentsModifier;
@@ -11,12 +15,23 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
-public final class SVTestUtils {
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryUtils.getCanonicalChromosomes;
+
+public final class SVDiscoveryTestUtilsAndCommonDataProvider {
+
+    // data block ======================================================================================================
+    public static final ReferenceMultiSource b37_reference_20_21 = new ReferenceMultiSource(
+            GATKBaseTest.b37_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+    public static final SAMSequenceDictionary b37_seqDict_20_21 = b37_reference_20_21.getReferenceSequenceDictionary(null);
+    public static final Set<String> b37_canonicalChromosomes = getCanonicalChromosomes(null, b37_seqDict_20_21);
+    public static final ReferenceMultiSource b38_reference_chr20_chr21 = new ReferenceMultiSource(
+            GATKBaseTest.b38_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+    public static final SAMSequenceDictionary b38_seqDict_chr20_chr21 = b38_reference_chr20_chr21.getReferenceSequenceDictionary(null);
+    public static final Set<String> b38_canonicalChromosomes = getCanonicalChromosomes(null, b38_seqDict_chr20_chr21);
+
+    // utils block =====================================================================================================
 
     public static byte[] getReverseComplimentCopy(final byte[] sequence) {
         final byte[] sequenceCopy = Arrays.copyOf(sequence, sequence.length);

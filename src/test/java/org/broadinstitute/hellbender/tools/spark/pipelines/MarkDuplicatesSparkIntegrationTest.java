@@ -6,13 +6,14 @@ import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.SparkException;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.markduplicates.MarkDuplicatesGATKIntegrationTest;
 import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSpark;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
+import org.broadinstitute.hellbender.utils.read.markduplicates.GATKDuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesSparkTester;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.walkers.markduplicates.AbstractMarkDuplicatesCommandLineProgramTest;
@@ -35,13 +36,18 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
     @Override
     protected AbstractMarkDuplicatesTester getTester() {
-        return new MarkDuplicatesSparkTester();
+        MarkDuplicatesSparkTester markDuplicatesSparkTester = new MarkDuplicatesSparkTester();
+        markDuplicatesSparkTester.addArg("--"+ MarkDuplicatesSparkArgumentCollection.DO_NOT_MARK_UNMAPPED_MATES_LONG_NAME);
+        return markDuplicatesSparkTester;
     }
 
     @Override
     protected CommandLineProgram getCommandLineProgramInstance() {
         return new MarkDuplicatesSpark();
     }
+
+    @Override
+    protected boolean markSecondaryAndSupplementaryRecordsLikeTheCanonical() { return true; }
 
     @Test(dataProvider = "testMDdata", groups = "spark")
     @Override
@@ -122,13 +128,13 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         Assert.assertEquals(totalReads, totalExpected, "Wrong number of reads in output BAM");
         Assert.assertEquals(duplicateReads, dupsExpected, "Wrong number of duplicate reads in output BAM");
 
-        final MetricsFile<DuplicationMetrics, Comparable<?>> metricsOutput = new MetricsFile<>();
+        final MetricsFile<GATKDuplicationMetrics, Comparable<?>> metricsOutput = new MetricsFile<>();
         try {
             metricsOutput.read(new FileReader(metricsFile));
         } catch (final FileNotFoundException ex) {
             System.err.println("Metrics file not found: " + ex);
         }
-        final List<DuplicationMetrics> nonEmptyMetrics = metricsOutput.getMetrics().stream().filter(
+        final List<GATKDuplicationMetrics> nonEmptyMetrics = metricsOutput.getMetrics().stream().filter(
                 metric ->
                     metric.UNPAIRED_READS_EXAMINED != 0L ||
                     metric.READ_PAIRS_EXAMINED != 0L ||
@@ -143,7 +149,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         Assert.assertEquals(nonEmptyMetrics.size(), metricsExpected.size(),
                             "Wrong number of metrics with non-zero fields.");
         for (int i = 0; i < nonEmptyMetrics.size(); i++ ){
-            final DuplicationMetrics observedMetrics = nonEmptyMetrics.get(i);
+            final GATKDuplicationMetrics observedMetrics = nonEmptyMetrics.get(i);
             List<?> expectedList = metricsExpected.get(observedMetrics.LIBRARY);
             Assert.assertNotNull(expectedList, "Unexpected library found: " + observedMetrics.LIBRARY);
             Assert.assertEquals(observedMetrics.UNPAIRED_READS_EXAMINED, expectedList.get(0));

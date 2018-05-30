@@ -96,7 +96,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
         // non-empty.  At this point any given alleles have already been injected into the haplotypes, and passing
         // givenAlleles to {@code decomposeHaplotypesIntoVariantContexts} actually overrides any non-given (discovery) alleles, which
         // is not what we want.
-        final List<Integer> startPosKeySet = decomposeHaplotypesIntoVariantContexts(haplotypes, assemblyResultSet.getFullReferenceWithPadding(), assemblyResultSet.getPaddedReferenceLoc(), Collections.emptyList()).stream()
+        final List<Integer> startPosKeySet = decomposeHaplotypesIntoVariantContexts(haplotypes, assemblyResultSet.getFullReferenceWithPadding(), assemblyResultSet.getPaddedReferenceLoc(), Collections.emptyList(), MTAC.maxMnpDistance).stream()
                 .filter(loc -> activeRegionWindow.getStart() <= loc && loc <= activeRegionWindow.getEnd())
                 .collect(Collectors.toList());
 
@@ -126,30 +126,39 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             final Optional<PerAlleleCollection<Double>> normalLog10Odds = getForNormal(() -> diploidAltLog10Odds(log10NormalMatrix.get()));
             final Optional<PerAlleleCollection<Double>> normalArtifactLog10Odds = getForNormal(() -> somaticLog10Odds(log10NormalMatrix.get()));
 
-            final Set<Allele> allelesConsistentWithGivenAlleles = getAllelesConsistentWithGivenAlleles(givenAlleles, loc, mergedVC);
-            final List<Allele> somaticAltAlleles = mergedVC.getAlternateAlleles().stream()
-                    .filter(allele -> allelesConsistentWithGivenAlleles.contains(allele) ||
-                            ((tumorLog10Odds.getAlt(allele) > MTAC.emissionLodThreshold) &&
-                            (!hasNormal || MTAC.genotypeGermlineSites || normalLog10Odds.get().getAlt(allele) > MTAC.normalLodThreshold)))
+            final Set<Allele> forcedAlleles = getAllelesConsistentWithGivenAlleles(givenAlleles, loc, mergedVC);
+
+            final List<Allele> tumorAltAlleles = mergedVC.getAlternateAlleles().stream()
+                    .filter(allele -> forcedAlleles.contains(allele) || tumorLog10Odds.getAlt(allele) > MTAC.emissionLod)
                     .collect(Collectors.toList());
-            final List<Allele> allSomaticAlleles = ListUtils.union(Arrays.asList(mergedVC.getReference()), somaticAltAlleles);
-            if (somaticAltAlleles.isEmpty()) {
+
+            final long somaticAltCount = tumorAltAlleles.stream()
+                    .filter(allele -> forcedAlleles.contains(allele) || !hasNormal || MTAC.genotypeGermlineSites || normalLog10Odds.get().getAlt(allele) > MTAC.normalLod)
+                    .count();
+
+            // if every alt allele is germline, skip this variant.  However, if some alt alleles are germline and others
+            // are not we emit them all so that the filtering engine can see them
+            if (somaticAltCount == 0) {
                 continue;
             }
 
-            final LikelihoodMatrix<Allele> subsettedLog10TumorMatrix = new SubsettedLikelihoodMatrix<>(log10TumorMatrix, allSomaticAlleles);
-            final Optional<LikelihoodMatrix<Allele>> subsettedLog10NormalMatrix =
-                    getForNormal(() -> new SubsettedLikelihoodMatrix<>(log10NormalMatrix.get(), allSomaticAlleles));
 
-            final Map<String, Object> populationAFAnnotation = GermlineProbabilityCalculator.getPopulationAFAnnotation(featureContext.getValues(MTAC.germlineResource, loc), somaticAltAlleles, MTAC.getDefaultAlleleFrequency());
+            final List<Allele> allAllelesToEmit = ListUtils.union(Arrays.asList(mergedVC.getReference()), tumorAltAlleles);
+
+
+            final LikelihoodMatrix<Allele> subsettedLog10TumorMatrix = new SubsettedLikelihoodMatrix<>(log10TumorMatrix, allAllelesToEmit);
+            final Optional<LikelihoodMatrix<Allele>> subsettedLog10NormalMatrix =
+                    getForNormal(() -> new SubsettedLikelihoodMatrix<>(log10NormalMatrix.get(), allAllelesToEmit));
+
+            final Map<String, Object> populationAFAnnotation = GermlineProbabilityCalculator.getPopulationAFAnnotation(featureContext.getValues(MTAC.germlineResource, loc), tumorAltAlleles, MTAC.getDefaultAlleleFrequency());
 
             final VariantContextBuilder callVcb = new VariantContextBuilder(mergedVC)
-                    .alleles(allSomaticAlleles)
+                    .alleles(allAllelesToEmit)
                     .attributes(populationAFAnnotation)
-                    .attribute(GATKVCFConstants.TUMOR_LOD_KEY, somaticAltAlleles.stream().mapToDouble(tumorLog10Odds::getAlt).toArray());
+                    .attribute(GATKVCFConstants.TUMOR_LOD_KEY, tumorAltAlleles.stream().mapToDouble(tumorLog10Odds::getAlt).toArray());
 
-            normalLog10Odds.ifPresent(values -> callVcb.attribute(GATKVCFConstants.NORMAL_LOD_KEY, values.asDoubleArray(somaticAltAlleles)));
-            normalArtifactLog10Odds.ifPresent(values -> callVcb.attribute(GATKVCFConstants.NORMAL_ARTIFACT_LOD_ATTRIBUTE, values.asDoubleArray(somaticAltAlleles)));
+            normalLog10Odds.ifPresent(values -> callVcb.attribute(GATKVCFConstants.NORMAL_LOD_KEY, values.asDoubleArray(tumorAltAlleles)));
+            normalArtifactLog10Odds.ifPresent(values -> callVcb.attribute(GATKVCFConstants.NORMAL_ARTIFACT_LOD_ATTRIBUTE, values.asDoubleArray(tumorAltAlleles)));
 
             if (!featureContext.getValues(MTAC.pon, mergedVC.getStart()).isEmpty()) {
                 callVcb.attribute(GATKVCFConstants.IN_PON_VCF_ATTRIBUTE, true);

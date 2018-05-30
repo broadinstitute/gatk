@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.Gencod
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.test.FuncotatorReferenceTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -62,7 +63,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
         }
 
         final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(
-                FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME,
+                FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                 defaultContig,
                 defaultStart,
                 defaultEnd,
@@ -71,7 +72,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
         defaultVariantContext = variantContextBuilder.make();
 
         defaultReferenceContext = new ReferenceContext(
-                ReferenceDataSource.of( new File (FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME).toPath() ),
+                ReferenceDataSource.of( new File (FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref()).toPath() ),
                 new SimpleInterval(defaultContig, defaultStart, defaultEnd)
         );
     }
@@ -322,6 +323,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
         helpPopulateDataForCreateFuncotations(outList, FuncotatorTestConstants.XSV_CSV_FILE_PATH, ",");
         helpPopulateDataForCreateFuncotations(outList, FuncotatorTestConstants.XSV_TSV_FILE_PATH, "\t");
         helpPopulateDataForCreateFuncotations(outList, FuncotatorTestConstants.XSV_DEADBEEFSV_FILE_PATH, "DEADBEEF");
+        helpPopulateDataForCreateFuncotations(outList, FuncotatorTestConstants.XSV_PIPESV_FILE_PATH, "|");
 
         return outList.iterator();
     }

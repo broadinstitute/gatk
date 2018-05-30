@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
+import org.broadinstitute.hellbender.engine.VariantWalkerBase;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyXsvFuncotationFactory;
@@ -27,7 +28,7 @@ public class FuncotatorArgumentDefinitions {
     // ------------------------------------------------------------
     // Definitions for optional arguments:
 
-    public static final String IGNORE_FILTERED_VARIANTS_LONG_NAME = "ignore-filtered-variants";
+    public static final String REMOVE_FILTERED_VARIANTS_LONG_NAME = "remove-filtered-variants";
 
     public static final String TRANSCRIPT_SELECTION_MODE_LONG_NAME = "transcript-selection-mode";
     public static final TranscriptSelectionMode TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE = TranscriptSelectionMode.CANONICAL;
@@ -45,6 +46,9 @@ public class FuncotatorArgumentDefinitions {
 
     public static final String HG19_REFERENCE_VERSION_STRING = "hg19";
     public static final String HG38_REFERENCE_VERSION_STRING = "hg38";
+
+    public static final String LOOKAHEAD_CACHE_IN_BP_NAME = "lookahead-cache-bp";
+    public static final int LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE = VariantWalkerBase.FEATURE_CACHE_LOOKAHEAD;
 
     // ------------------------------------------------------------
     // Helper Types:

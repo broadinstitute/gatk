@@ -4,9 +4,9 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import java.nio.file.Path;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -16,12 +16,15 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
+import java.nio.file.Path;
+import java.util.List;
 
 
 /**
@@ -193,6 +196,9 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
 
     @Override
     public void onTraversalStart() {
+        if (hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF && hcArgs.maxMnpDistance > 0) {
+            throw new CommandLineException.BadArgumentValue("Non-zero maxMnpDistance is incompatible with GVCF mode.");
+        }
         final ReferenceSequenceFile referenceReader = getReferenceReader(referenceArguments);
         hcEngine = new HaplotypeCallerEngine(hcArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), referenceReader);
 

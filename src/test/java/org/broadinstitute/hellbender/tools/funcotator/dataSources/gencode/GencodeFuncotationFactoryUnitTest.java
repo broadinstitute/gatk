@@ -24,6 +24,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.gencode.*;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
+import org.broadinstitute.hellbender.utils.test.FuncotatorReferenceTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -59,8 +60,8 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         muc16NonBasicFeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.MUC16_GENCODE_NON_BASIC_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
         muc16FeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
         pik3caFeatureReader = AbstractFeatureReader.getFeatureReader( FuncotatorTestConstants.PIK3CA_GENCODE_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
-        refDataSourceHg19Ch19 = ReferenceDataSource.of( IOUtils.getPath(FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME) );
-        refDataSourceHg19Ch3 = ReferenceDataSource.of( IOUtils.getPath(FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME) );
+        refDataSourceHg19Ch19 = ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref()) );
+        refDataSourceHg19Ch3 = ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref()) );
 
         // Gets cleaned up in `cleanupAfterTests()`
         // NOTE: This is initialized here to save time in testing.
@@ -195,7 +196,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     // Data Providers:
 
     @DataProvider
-    Object[][] provideTranscriptForGetSortedExonAndStartStopPositions() {
+    Object[][] provideTranscriptForGetSortedCdsAndStartStopPositions() {
         return new Object[][] {
                 {
                         DataProviderForExampleGencodeGtfGene.createGencodeGtfGeneFeature().getTranscripts().get(0),
@@ -359,24 +360,24 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final List<Object[]> outList = new ArrayList<>();
 
         // MUC16 SNPs / DNPs:
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_1(),       FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME, muc16FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE ) );
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_2(),       FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME, muc16FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE ) );
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_3(),       FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME, muc16FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE ) );
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_4(),       FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME, muc16FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE ) );
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_5(),       FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME, muc16FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE ) );
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideEdgeCasesForMUC16Data_1(), FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME, muc16FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_1(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), muc16FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_2(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), muc16FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_3(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), muc16FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_4(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), muc16FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_5(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), muc16FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideEdgeCasesForMUC16Data_1(), FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), muc16FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE ) );
 
         // MUC16 INDELs:
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16IndelData.provideIndelDataForMuc16(), FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME, muc16FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16IndelData.provideIndelDataForMuc16(), FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), muc16FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE ) );
 
         // PIK3CA SNPs / DNPs:
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caMnpData(), FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME, pik3caFeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.PIK3CA_GENCODE_TRANSCRIPT_FASTA_FILE ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caMnpData(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), pik3caFeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.PIK3CA_GENCODE_TRANSCRIPT_FASTA_FILE ) );
 
         // PIK3CA INDELs:
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caInDelData(), FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME, pik3caFeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.PIK3CA_GENCODE_TRANSCRIPT_FASTA_FILE ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caInDelData(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), pik3caFeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.PIK3CA_GENCODE_TRANSCRIPT_FASTA_FILE ) );
 
         // PIK3CA Other Indels:
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caInDelData2(), FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME, pik3caFeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.PIK3CA_GENCODE_TRANSCRIPT_FASTA_FILE ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caInDelData2(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), pik3caFeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.PIK3CA_GENCODE_TRANSCRIPT_FASTA_FILE ) );
 
         return outList.toArray(new Object[][]{{}});
     }
@@ -1004,10 +1005,10 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     //==================================================================================================================
     // Tests:
 
-    @Test ( dataProvider = "provideTranscriptForGetSortedExonAndStartStopPositions")
+    @Test ( dataProvider = "provideTranscriptForGetSortedCdsAndStartStopPositions")
     void testGetSortedExonAndStartStopPositions(final GencodeGtfTranscriptFeature transcript, final List<? extends Locatable> expected) {
 
-        final List<? extends Locatable> exons = GencodeFuncotationFactory.getSortedExonAndStartStopPositions(transcript);
+        final List<? extends Locatable> exons = GencodeFuncotationFactory.getSortedCdsAndStartStopPositions(transcript);
 
         Assert.assertEquals(exons.size(), expected.size());
 
@@ -1051,7 +1052,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final Allele altAllele = Allele.create(alt);
 
         final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(
-                FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME,
+                FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                 contig,
                 start,
                 end,
@@ -1076,7 +1077,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
         final ReferenceContext referenceContext = new ReferenceContext( refDataSourceHg19Ch19, variantInterval );
 
-        final List<? extends Locatable> exonPositionList = GencodeFuncotationFactory.getSortedExonAndStartStopPositions(transcript);
+        final List<? extends Locatable> exonPositionList = GencodeFuncotationFactory.getSortedCdsAndStartStopPositions(transcript);
 
         final ReferenceDataSource muc16TranscriptDataSource = ReferenceDataSource.of(new File(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE).toPath());
         final Map<String, GencodeFuncotationFactory.MappedTranscriptIdInfo> muc16TranscriptIdMap = GencodeFuncotationFactory. createTranscriptIdMap(muc16TranscriptDataSource);
@@ -1120,7 +1121,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final Allele altAllele = Allele.create(alt);
 
         final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(
-                FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME,
+                FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                 contig,
                 start,
                 end,
@@ -1174,7 +1175,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final Allele altAllele = Allele.create("G", false);
 
         final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(
-                FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME,
+                FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                 contig,
                 start,
                 end,

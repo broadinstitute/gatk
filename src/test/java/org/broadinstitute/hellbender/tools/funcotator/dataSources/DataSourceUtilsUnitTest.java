@@ -55,6 +55,16 @@ public class DataSourceUtilsUnitTest extends GATKBaseTest {
             }
         }
 
+        // Some specific test cases to prevent regression of version checks:
+        // 1 Month after OK release date, but 1 day before OK release date (should pass):
+        testArgs.add( new Object[] { DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, DataSourceUtils.MIN_YEAR_RELEASED, DataSourceUtils.MIN_MONTH_RELEASED+1, DataSourceUtils.MIN_DAY_RELEASED-1, true } );
+        // 1 Year after OK release date, but 1 day before OK release date (should pass):
+        testArgs.add( new Object[] { DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, DataSourceUtils.MIN_YEAR_RELEASED+1, DataSourceUtils.MIN_MONTH_RELEASED, DataSourceUtils.MIN_DAY_RELEASED-1, true } );
+        // 1 Year after OK release date, but 1 month before OK release date (should pass):
+        testArgs.add( new Object[] { DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, DataSourceUtils.MIN_YEAR_RELEASED+1, DataSourceUtils.MIN_MONTH_RELEASED-1, DataSourceUtils.MIN_DAY_RELEASED, true } );
+        // 1 Year after OK release date, but 1 month and 1 day before OK release date (should pass):
+        testArgs.add( new Object[] { DataSourceUtils.MIN_MAJOR_VERSION_NUMBER, DataSourceUtils.MIN_MINOR_VERSION_NUMBER, DataSourceUtils.MIN_YEAR_RELEASED+1, DataSourceUtils.MIN_MONTH_RELEASED-1, DataSourceUtils.MIN_DAY_RELEASED-1, true } );
+
         return testArgs.iterator();
     }
 

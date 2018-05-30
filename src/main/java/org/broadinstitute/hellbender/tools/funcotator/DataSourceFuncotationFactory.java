@@ -189,7 +189,7 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
                     .collect(Collectors.toList());
         }
         else {
-            featureList = featureSourceMap.get( getName() );
+            featureList = featureSourceMap.getOrDefault( getName(), Collections.emptyList() );
         }
         return featureList;
     }

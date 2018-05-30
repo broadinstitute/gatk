@@ -1,6 +1,6 @@
 {
   "Mutect2_Multi.gatk_docker": "__GATK_DOCKER__",
-  "Mutect2_Multi.oncotator_docker": "broadinstitute/oncotator:1.9.7.0",
+  "Mutect2_Multi.oncotator_docker": "broadinstitute/oncotator:1.9.9.0",
   "Mutect2_Multi.intervals": "/home/travis/build/broadinstitute/gatk/scripts/m2_cromwell_tests/interval_list.interval_list",
   "Mutect2_Multi.ref_fasta": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/human_g1k_v37.20.21.fasta",
   "Mutect2_Multi.ref_fai": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/human_g1k_v37.20.21.fasta.fai",

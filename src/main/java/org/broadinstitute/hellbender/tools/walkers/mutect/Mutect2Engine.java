@@ -157,7 +157,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         final AssemblyRegion assemblyActiveRegion = AssemblyBasedCallerUtils.assemblyRegionWithWellMappedReads(originalAssemblyRegion, READ_QUALITY_FILTER_THRESHOLD, header);
         final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyActiveRegion, givenAlleles, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner);
-        final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents();
+        final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(MTAC.maxMnpDistance);
         final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(originalAssemblyRegion,allVariationEvents);
         if (!trimmingResult.isVariationPresent()) {
             return NO_CALLS;
@@ -237,7 +237,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         final double tumorLog10Odds = -QualityUtils.qualToErrorProbLog10(tumorAltCountAndQualSum.getSecond()) +
                 MathUtils.log10Factorial(tumorAltCount) + MathUtils.log10Factorial(tumorRefCount) - MathUtils.log10Factorial(tumorPileup.size() + 1);
 
-        if (tumorLog10Odds < MTAC.initialTumorLodThreshold) {
+        if (tumorLog10Odds < MTAC.initialTumorLod) {
             return new ActivityProfileState(refInterval, 0.0);
         } else if (hasNormal() && !MTAC.genotypeGermlineSites) {
             final ReadPileup normalPileup = pileup.getPileupForSample(normalSample, header);

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.SamFiles;
 import htsjdk.tribble.Tribble;
 import htsjdk.variant.variantcontext.Allele;
@@ -8,6 +9,7 @@ import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
+import java.nio.file.Path;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -20,8 +22,11 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUti
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.CalculateGenotypePosteriors;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.PosteriorProbabilitiesUtils;
+import org.broadinstitute.hellbender.tools.walkers.mutect.M2ArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2IntegrationTest;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
@@ -382,6 +387,18 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testBamoutProducesReasonablySizedOutput() {
+        final Path bamOutput = createTempFile("testBamoutProducesReasonablySizedOutput", ".bam").toPath();
+        innerTestBamoutProducesReasonablySizedOutput(bamOutput);
+    }
+
+    @Test(groups={"bucket"})
+    public void testBamoutOnGcs() {
+        final Path bamOutput = BucketUtils.getPathOnGcs(BucketUtils.getTempFilePath(
+            getGCPTestStaging() + "testBamoutProducesReasonablySizedOutput", ".bam"));
+        innerTestBamoutProducesReasonablySizedOutput(bamOutput);
+    }
+
+    public void innerTestBamoutProducesReasonablySizedOutput(Path bamOutput) {
         Utils.resetRandomGenerator();
 
         // We will test that when running with -bamout over the testInterval, we produce
@@ -394,7 +411,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final int gatk3BamoutNumReads = 5170;
 
         final File vcfOutput = createTempFile("testBamoutProducesReasonablySizedOutput", ".vcf");
-        final File bamOutput = createTempFile("testBamoutProducesReasonablySizedOutput", ".bam");
 
         ArgumentsBuilder argBuilder = new ArgumentsBuilder();
 
@@ -402,12 +418,12 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         argBuilder.addReference(new File(b37_reference_20_21));
         argBuilder.addOutput(new File(vcfOutput.getAbsolutePath()));
         argBuilder.addArgument("L", testInterval);
-        argBuilder.addArgument(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_SHORT_NAME, bamOutput.getAbsolutePath());
+        argBuilder.addArgument(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_SHORT_NAME, bamOutput.toUri().toString());
         argBuilder.addArgument("pairHMM", "AVX_LOGLESS_CACHING");
 
         runCommandLine(argBuilder.getArgsArray());
 
-        try ( final ReadsDataSource bamOutReadsSource = new ReadsDataSource(bamOutput.toPath()) ) {
+        try ( final ReadsDataSource bamOutReadsSource = new ReadsDataSource(bamOutput) ) {
             int actualBamoutNumReads = 0;
             for ( final GATKRead read : bamOutReadsSource ) {
                 ++actualBamoutNumReads;
@@ -706,6 +722,73 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         };
     }
 
+    @Test
+    public void testMnpsAreRepresentedAsSingleEvents() {
+        final String bam = largeFileTestDir + "contaminated_bams/CEUTrio.HiSeq.WGS.b37.NA12878.CONTAMINATED.WITH.HCC1143.NORMALS.AT.15PERCENT.bam";
+        final File outputVcf = createTempFile("output", ".vcf");
+        final String[] args = {
+                "-I", bam,
+                "-R", b37_reference_20_21,
+                "-L", "20:10100000-10150000",
+                "-O", outputVcf.getAbsolutePath(),
+                "--" + HaplotypeCallerArgumentCollection.MAX_MNP_DISTANCE_LONG_NAME, "1"
+        };
+        Utils.resetRandomGenerator();
+        runCommandLine(args);
+
+        final Map<Integer, Allele> altAllelesByPosition = StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false)
+                .collect(Collectors.toMap(VariantContext::getStart, vc -> vc.getAlternateAllele(0)));
+
+        final Map<Integer, Allele> expectedMnps = ImmutableMap.of(
+                10102247, Allele.create("AC", false),
+                10102530, Allele.create("TG", false),
+                10103849, Allele.create("CA", false));
+
+        expectedMnps.entrySet().forEach(entry -> {
+            final int position = entry.getKey();
+            Assert.assertEquals(altAllelesByPosition.get(position), entry.getValue());
+        });
+    }
+
+    // test on an artificial bam with several contrived MNPs
+    // this test is basically identical to a test in {@ link Mutect2IntegrationTest}
+    @Test
+    public void testMnps() throws Exception {
+        Utils.resetRandomGenerator();
+        final File bam = new File(toolsTestDir, "mnp.bam");
+
+        for (final int maxMnpDistance : new int[] {0, 1, 2, 3, 5}) {
+            final File outputVcf = createTempFile("unfiltered", ".vcf");
+
+            final List<String> args = Arrays.asList("-I", bam.getAbsolutePath(),
+                    "-R", b37_reference_20_21,
+                    "-L", "20:10019000-10022000",
+                    "-O", outputVcf.getAbsolutePath(),
+                    "-" + HaplotypeCallerArgumentCollection.MAX_MNP_DISTANCE_SHORT_NAME, Integer.toString(maxMnpDistance));
+            runCommandLine(args);
+
+            Mutect2IntegrationTest.checkMnpOutput(maxMnpDistance, outputVcf);
+        }
+    }
+
+    @Test(expectedExceptions = CommandLineException.BadArgumentValue.class)
+    public void testMnpsThrowErrorInGVCFMode() throws Exception {
+        Utils.resetRandomGenerator();
+        final File bam = new File(toolsTestDir, "mnp.bam");
+        final int maxMnpDistance = 1;
+        final String ercMode = "GVCF";
+
+        final File outputVcf = createTempFile("unfiltered", ".vcf");
+
+        final List<String> args = Arrays.asList("-I", bam.getAbsolutePath(),
+                "-R", b37_reference_20_21,
+                "-L", "20:10019000-10022000",
+                "-O", outputVcf.getAbsolutePath(),
+                "-" + HaplotypeCallerArgumentCollection.MAX_MNP_DISTANCE_SHORT_NAME, Integer.toString(maxMnpDistance),
+                "-ERC", ercMode);
+        runCommandLine(args);
+}
+
     @Test(dataProvider = "getContaminationCorrectionTestData")
     public void testContaminationCorrection( final String contaminatedBam,
                                    final double contaminationFraction,
@@ -720,12 +803,15 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final File correctedOutputUsingContaminationFile = createTempFile("testContaminationCorrectionCorrectedOutputUsingContaminationFile", gvcfMode ? ".g.vcf" : ".vcf");
 
         // Generate raw uncorrected calls on the contaminated bam, for comparison purposes
+        // Note that there are a huge number of MNPs in this bam, and that in {@code gatk4UncontaminatedCallsVCF} and
+        // {@code gatk3ContaminationCorrectedCallsVCF} these are represented as independent consecutive SNPs
+        // Thus if we ever turn on MNPs by default, this will fail
         final String[] noContaminationCorrectionArgs = {
                 "-I", contaminatedBam,
                 "-R", reference,
                 "-L", interval.toString(),
                 "-O", uncorrectedOutput.getAbsolutePath(),
-                "-ERC", (gvcfMode ? "GVCF" : "NONE")
+                "-ERC", (gvcfMode ? "GVCF" : "NONE"),
         };
         Utils.resetRandomGenerator();
         runCommandLine(noContaminationCorrectionArgs);
@@ -737,7 +823,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", interval.toString(),
                 "-O", correctedOutput.getAbsolutePath(),
                 "-contamination", Double.toString(contaminationFraction),
-                "-ERC", (gvcfMode ? "GVCF" : "NONE")
+                "-ERC", (gvcfMode ? "GVCF" : "NONE"),
         };
         Utils.resetRandomGenerator();
         runCommandLine(contaminationCorrectionArgs);
@@ -749,7 +835,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", interval.toString(),
                 "-O", correctedOutputUsingContaminationFile.getAbsolutePath(),
                 "-contamination-file", contaminationFile,
-                "-ERC", (gvcfMode ? "GVCF" : "NONE")
+                "-ERC", (gvcfMode ? "GVCF" : "NONE"),
         };
         Utils.resetRandomGenerator();
         runCommandLine(contaminationCorrectionFromFileArgs);

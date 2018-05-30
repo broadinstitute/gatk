@@ -67,7 +67,7 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
         final List<SimpleChimera> chimericAlignments =
                 Collections.singletonList( new SimpleChimera(testData.firstAlignment, testData.secondAlignment,
                         Collections.emptyList(), testData.evidenceAssemblyContigName, NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME,
-                        b37_seqDict));
+                        SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
         final Map<String, Object> attributeMap =
                 AnnotatedVariantProducer.getEvidenceRelatedAnnotations(chimericAlignments);
 
@@ -140,7 +140,7 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
         final List<SimpleChimera> evidence =
                 Collections.singletonList(new SimpleChimera(testData.firstAlignment, testData.secondAlignment,
                         Collections.emptyList(), testData.evidenceAssemblyContigName, NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME,
-                                b37_seqDict));
+                                SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
         final String sampleID = "testSample";
 
         final VariantContext variantContext =
@@ -161,8 +161,8 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
         final List<Object[]> data = new ArrayList<>(20);
 
         final JavaSparkContext testSparkContext = SparkContextFactory.getTestSparkContext();
-        final Broadcast<ReferenceMultiSource> referenceBroadcast = testSparkContext.broadcast(b37_reference);
-        final Broadcast<SAMSequenceDictionary> refSeqDictBroadcast = testSparkContext.broadcast(b37_seqDict);
+        final Broadcast<ReferenceMultiSource> referenceBroadcast = testSparkContext.broadcast(SVDiscoveryTestUtilsAndCommonDataProvider.b37_reference_20_21);
+        final Broadcast<SAMSequenceDictionary> refSeqDictBroadcast = testSparkContext.broadcast(SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21);
 
         final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls = null;
 
@@ -342,7 +342,7 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
 
         final List<VariantContext> processedVariantContexts =
                 AnnotatedVariantProducer.annotateBreakpointBasedCallsWithImpreciseEvidenceLinks(inputVariants,
-                        evidenceTree, metadata, b37_reference, params, localLogger);
+                        evidenceTree, metadata, SVDiscoveryTestUtilsAndCommonDataProvider.b37_reference_20_21, params, localLogger);
 
         VariantContextTestUtils.assertEqualVariants(processedVariantContexts, expectedVariants);
     }

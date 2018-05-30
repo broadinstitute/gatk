@@ -9,8 +9,8 @@ import htsjdk.samtools.util.FormatUtil;
 import htsjdk.samtools.util.TestUtil;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
 import org.testng.Assert;
+import picard.sam.DuplicationMetrics;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -20,14 +20,17 @@ import java.io.FileReader;
  * This class is an extension of SamFileTester used to test AbstractMarkDuplicatesCommandLineProgram's with SAM files generated on the fly.
  * This performs the underlying tests defined by classes such as AbstractMarkDuplicatesCommandLineProgramTest.
  */
-// TODO: it should live in the test sources, as the implementations - not required to be packed in the testing framework
 public abstract class AbstractMarkDuplicatesTester extends SamFileTester {
 
     final private File metricsFile;
     final DuplicationMetrics expectedMetrics;
 
-    public AbstractMarkDuplicatesTester(final ScoringStrategy duplicateScoringStrategy) {
-        super(50, true, SAMRecordSetBuilder.DEFAULT_CHROMOSOME_LENGTH, duplicateScoringStrategy);
+    public AbstractMarkDuplicatesTester(final ScoringStrategy duplicateScoringStrategy, final SAMFileHeader.SortOrder sortOrder) {
+        this(duplicateScoringStrategy, sortOrder, true);
+    }
+
+    public AbstractMarkDuplicatesTester(final ScoringStrategy duplicateScoringStrategy,  final SAMFileHeader.SortOrder sortOrder, final boolean recordNeedSorting) {
+        super(50, true, SAMRecordSetBuilder.DEFAULT_CHROMOSOME_LENGTH, duplicateScoringStrategy, sortOrder, recordNeedSorting);
 
         expectedMetrics = new DuplicationMetrics();
         expectedMetrics.READ_PAIR_OPTICAL_DUPLICATES = 0;
@@ -37,14 +40,12 @@ public abstract class AbstractMarkDuplicatesTester extends SamFileTester {
         addArg("--"+StandardArgumentDefinitions.DUPLICATE_SCORING_STRATEGY_LONG_NAME, duplicateScoringStrategy.name());
     }
 
+    public AbstractMarkDuplicatesTester(final ScoringStrategy duplicateScoringStrategy) {
+        this(duplicateScoringStrategy, SAMFileHeader.SortOrder.coordinate);
+    }
+
     public AbstractMarkDuplicatesTester() {
-        super(50, true, SAMRecordSetBuilder.DEFAULT_CHROMOSOME_LENGTH);
-
-        expectedMetrics = new DuplicationMetrics();
-        expectedMetrics.READ_PAIR_OPTICAL_DUPLICATES = 0;
-
-        metricsFile = new File(getOutputDir(), "metrics.txt");
-        addArg("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME, metricsFile.getAbsolutePath());
+        this(SAMRecordSetBuilder.DEFAULT_DUPLICATE_SCORING_STRATEGY);
     }
 
     public File getMetricsFile() {
@@ -64,7 +65,9 @@ public abstract class AbstractMarkDuplicatesTester extends SamFileTester {
         final CloseableIterator<SAMRecord> inputRecordIterator = this.getRecordIterator();
         while (inputRecordIterator.hasNext()) {
             final SAMRecord record = inputRecordIterator.next();
-            if (!record.isSecondaryOrSupplementary()) {
+            if (record.isSecondaryOrSupplementary()) {
+                ++expectedMetrics.SECONDARY_OR_SUPPLEMENTARY_RDS;
+            } else {
                 final String key = samRecordToDuplicatesFlagsKey(record);
                 if (!this.duplicateFlags.containsKey(key)) {
                     System.err.println("DOES NOT CONTAIN KEY: " + key);
@@ -74,12 +77,10 @@ public abstract class AbstractMarkDuplicatesTester extends SamFileTester {
                 // First bring the simple metricsFile up to date
                 if (record.getReadUnmappedFlag()) {
                     ++expectedMetrics.UNMAPPED_READS;
-                }
-                else if (!record.getReadPairedFlag() || record.getMateUnmappedFlag()) {
+                } else if (!record.getReadPairedFlag() || record.getMateUnmappedFlag()) {
                     ++expectedMetrics.UNPAIRED_READS_EXAMINED;
                     if (isDuplicate) ++expectedMetrics.UNPAIRED_READ_DUPLICATES;
-                }
-                else {
+                } else {
                     ++expectedMetrics.READ_PAIRS_EXAMINED; // will need to be divided by 2 at the end
                     if (isDuplicate) ++expectedMetrics.READ_PAIR_DUPLICATES; // will need to be divided by 2 at the end
                 }
@@ -87,7 +88,7 @@ public abstract class AbstractMarkDuplicatesTester extends SamFileTester {
         }
         expectedMetrics.READ_PAIR_DUPLICATES = expectedMetrics.READ_PAIR_DUPLICATES / 2;
         expectedMetrics.READ_PAIRS_EXAMINED = expectedMetrics.READ_PAIRS_EXAMINED / 2;
-        expectedMetrics.calculateDerivedMetrics();
+        expectedMetrics.calculateDerivedFields();
 
         // Have to run this Double value through the same format/parsing operations as during a file write/read
         expectedMetrics.PERCENT_DUPLICATION = formatter.parseDouble(formatter.format(expectedMetrics.PERCENT_DUPLICATION));
@@ -132,8 +133,9 @@ public abstract class AbstractMarkDuplicatesTester extends SamFileTester {
             catch (final FileNotFoundException ex) {
                 System.err.println("Metrics file not found: " + ex);
             }
-            // NB: Test writes an initial metrics line with a null entry for LIBRARY and 0 values for all metrics. So we find the first non-null one
-            final DuplicationMetrics observedMetrics = metricsOutput.getMetrics().stream().filter(metric -> metric.LIBRARY != null).findFirst().get();
+
+            Assert.assertEquals(metricsOutput.getMetrics().size(), 1);
+            final DuplicationMetrics observedMetrics = metricsOutput.getMetrics().get(0);
             Assert.assertEquals(observedMetrics.UNPAIRED_READS_EXAMINED, expectedMetrics.UNPAIRED_READS_EXAMINED, "UNPAIRED_READS_EXAMINED does not match expected");
             Assert.assertEquals(observedMetrics.READ_PAIRS_EXAMINED, expectedMetrics.READ_PAIRS_EXAMINED, "READ_PAIRS_EXAMINED does not match expected");
             Assert.assertEquals(observedMetrics.UNMAPPED_READS, expectedMetrics.UNMAPPED_READS, "UNMAPPED_READS does not match expected");
@@ -150,6 +152,7 @@ public abstract class AbstractMarkDuplicatesTester extends SamFileTester {
               expectedMetrics.ESTIMATED_LIBRARY_SIZE = 0L;
             }
             Assert.assertEquals(observedMetrics.ESTIMATED_LIBRARY_SIZE, expectedMetrics.ESTIMATED_LIBRARY_SIZE, "ESTIMATED_LIBRARY_SIZE does not match expected");
+            Assert.assertEquals(observedMetrics.SECONDARY_OR_SUPPLEMENTARY_RDS, expectedMetrics.SECONDARY_OR_SUPPLEMENTARY_RDS, "SECONDARY_OR_SUPPLEMENTARY_RDS does not match expected");
         } finally {
             TestUtil.recursiveDelete(getOutputDir());
         }

@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.Gencod
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvTableFeature;
+import org.broadinstitute.hellbender.utils.test.FuncotatorReferenceTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -41,8 +42,8 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
     static {
         referenceDataSourceMap = new HashMap<>(2);
 
-        referenceDataSourceMap.put(FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME, ReferenceDataSource.of( new File(FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME).toPath() ));
-        referenceDataSourceMap.put(FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME, ReferenceDataSource.of( new File(FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME).toPath() ));
+        referenceDataSourceMap.put(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), ReferenceDataSource.of( new File(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref()).toPath() ));
+        referenceDataSourceMap.put(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), ReferenceDataSource.of( new File(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref()).toPath() ));
     }
 
     //==================================================================================================================
@@ -171,7 +172,7 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                 // Trivial case the list of features is empty:
                 helpProvideForTestCreateFuncotations(
                         "chr3", 178866314, 178866314,
-                        "C", defaultAltAllele.getBaseString(), FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME,
+                        "C", defaultAltAllele.getBaseString(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
                         reportableFieldNames,
                         Collections.emptyList(), Collections.emptyList(),
                         Collections.singletonList(new TableFuncotation(reportableFieldNames, emptyFieldList, defaultAltAllele, defaultDataSourceName))
@@ -179,7 +180,7 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                 // Trivial case where null Features are in the list:
                 helpProvideForTestCreateFuncotations(
                         "chr3", 178866314, 178866314,
-                        "C", defaultAltAllele.getBaseString(), FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME,
+                        "C", defaultAltAllele.getBaseString(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
                         reportableFieldNames,
                         Arrays.asList(null, null, null), Collections.emptyList(),
                         Collections.singletonList(new TableFuncotation(reportableFieldNames, emptyFieldList, defaultAltAllele, defaultDataSourceName))
@@ -187,7 +188,7 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
 //                // Trivial case where no XsvTableFeatures are in the list:
 //                helpProvideForTestCreateFuncotations(
 //                        "chr3", 178866314, 178866314,
-//                        "C", defaultAltAllele.getBaseString(), FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME,
+//                        "C", defaultAltAllele.getBaseString(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
 //                        reportableFieldNames,
 //                        Collections.singletonList(new DummyTestFeature("chr3", 178866314,178866314)),
 //                        Collections.emptyList(),
@@ -196,7 +197,7 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                 // One XsvTableFeature in list
                 helpProvideForTestCreateFuncotations(
                         "chr3", 178866314, 178866314,
-                        "C", defaultAltAllele.getBaseString(), FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME,
+                        "C", defaultAltAllele.getBaseString(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
                         fieldNames,
                         Collections.singletonList(
                             xsvTableFeature1
@@ -207,7 +208,7 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                 // Two XsvTableFeatures in list
                 helpProvideForTestCreateFuncotations(
                         "chr3", 178866314, 178866314,
-                        "C", defaultAltAllele.getBaseString(), FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME,
+                        "C", defaultAltAllele.getBaseString(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
                         fieldNames,
                         Arrays.asList(
                                 xsvTableFeature1, xsvTableFeature2
@@ -218,7 +219,7 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                 // Many XsvTableFeatures in list
                 helpProvideForTestCreateFuncotations(
                         "chr3", 178866314, 178866314,
-                        "C", defaultAltAllele.getBaseString(), FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME,
+                        "C", defaultAltAllele.getBaseString(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
                         fieldNames,
                         Arrays.asList(
                                 xsvTableFeature1, xsvTableFeature2, xsvTableFeature3
@@ -229,7 +230,7 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                 // Many XsvTableFeatures in list and non-empty GencodeFuncotations
                 helpProvideForTestCreateFuncotations(
                         "chr3", 178866314, 178866314,
-                        "C", defaultAltAllele.getBaseString(), FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME,
+                        "C", defaultAltAllele.getBaseString(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
                         fieldNames,
                         Arrays.asList(
                                 xsvTableFeature1, xsvTableFeature2, xsvTableFeature3

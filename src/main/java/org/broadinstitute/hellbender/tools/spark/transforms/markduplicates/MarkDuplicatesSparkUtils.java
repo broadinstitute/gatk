@@ -408,27 +408,12 @@ public class MarkDuplicatesSparkUtils {
                 .orElse(null);
     }
 
-    static JavaPairRDD<String, DuplicationMetrics> generateMetrics(final SAMFileHeader header, final JavaRDD<GATKRead> reads) {
-        return reads.filter(read -> !read.isSecondaryAlignment() && !read.isSupplementaryAlignment())
-                .mapToPair(read -> {
+    static JavaPairRDD<String, GATKDuplicationMetrics> generateMetrics(final SAMFileHeader header, final JavaRDD<GATKRead> reads) {
+        return reads.mapToPair(read -> {
                     final String library = LibraryIdGenerator.getLibraryName(header, read.getReadGroup());
-                    DuplicationMetrics metrics = new DuplicationMetrics();
+                    GATKDuplicationMetrics metrics = new GATKDuplicationMetrics();
                     metrics.LIBRARY = library;
-                    if (read.isUnmapped()) {
-                        ++metrics.UNMAPPED_READS;
-                    } else if (!read.isPaired() || read.mateIsUnmapped()) {
-                        ++metrics.UNPAIRED_READS_EXAMINED;
-                    } else {
-                        ++metrics.READ_PAIRS_EXAMINED;
-                    }
-
-                    if (read.isDuplicate()) {
-                        if (!read.isPaired() || read.mateIsUnmapped()) {
-                            ++metrics.UNPAIRED_READ_DUPLICATES;
-                        } else {
-                            ++metrics.READ_PAIR_DUPLICATES;
-                        }
-                    }
+                    metrics.updateMetrics(read);
                     // NOTE: we use the SAMRecord transientAttribute field here specifically to prevent the already
                     // serialized read from being parsed again here for performance reasons.
                     if (((SAMRecordToGATKReadAdapter) read).getTransientAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME)!=null) {
@@ -438,31 +423,22 @@ public class MarkDuplicatesSparkUtils {
                     }
                     return new Tuple2<>(library, metrics);
                 })
-                .foldByKey(new DuplicationMetrics(), (metricsSum, m) -> {
-                    if (metricsSum.LIBRARY == null) {
-                        metricsSum.LIBRARY = m.LIBRARY;
-                    }
-                    // This should never happen, as we grouped by key using library as the key.
+                .foldByKey(new GATKDuplicationMetrics(), (metricsSum, m) -> {
+                    metricsSum.merge(m);
                     if (!metricsSum.LIBRARY.equals(m.LIBRARY)) {
                         throw new GATKException("Two different libraries encountered while summing metrics: " + metricsSum.LIBRARY
                                 + " and " + m.LIBRARY);
                     }
-                    metricsSum.UNMAPPED_READS += m.UNMAPPED_READS;
-                    metricsSum.UNPAIRED_READS_EXAMINED += m.UNPAIRED_READS_EXAMINED;
-                    metricsSum.READ_PAIRS_EXAMINED += m.READ_PAIRS_EXAMINED;
-                    metricsSum.UNPAIRED_READ_DUPLICATES += m.UNPAIRED_READ_DUPLICATES;
-                    metricsSum.READ_PAIR_DUPLICATES += m.READ_PAIR_DUPLICATES;
-                    metricsSum.READ_PAIR_OPTICAL_DUPLICATES += m.READ_PAIR_OPTICAL_DUPLICATES;
                     return metricsSum;
                 })
                 .mapValues(metrics -> {
-                    DuplicationMetrics copy = metrics.copy();
+                    final GATKDuplicationMetrics copy = metrics.copy();
                     // Divide these by 2 because they are counted for each read
                     // when they should be counted by pair.
                     copy.READ_PAIRS_EXAMINED = metrics.READ_PAIRS_EXAMINED / 2;
                     copy.READ_PAIR_DUPLICATES = metrics.READ_PAIR_DUPLICATES / 2;
 
-                    copy.calculateDerivedMetrics();
+                    copy.calculateDerivedFields();
                     if (copy.ESTIMATED_LIBRARY_SIZE == null) {
                         copy.ESTIMATED_LIBRARY_SIZE = 0L;
                     }
@@ -475,19 +451,19 @@ public class MarkDuplicatesSparkUtils {
      * Note: the SamFileHeader is needed in order to include libraries that didn't have any duplicates.
      * @param result metrics object, potentially pre-initialized with headers,
      */
-    public static void saveMetricsRDD(final MetricsFile<DuplicationMetrics, Double> result, final SAMFileHeader header, final JavaPairRDD<String, DuplicationMetrics> metricsRDD, final String metricsOutputPath) {
+    public static void saveMetricsRDD(final MetricsFile<GATKDuplicationMetrics, Double> result, final SAMFileHeader header, final JavaPairRDD<String, GATKDuplicationMetrics> metricsRDD, final String metricsOutputPath) {
         final LibraryIdGenerator libraryIdGenerator = new LibraryIdGenerator(header);
 
-        final Map<String, DuplicationMetrics> nonEmptyMetricsByLibrary = metricsRDD.collectAsMap();           //Unknown Library
-        final Map<String, DuplicationMetrics> emptyMapByLibrary = libraryIdGenerator.getMetricsByLibraryMap();//with null
+        final Map<String, GATKDuplicationMetrics> nonEmptyMetricsByLibrary = metricsRDD.collectAsMap();           //Unknown Library
+        final Map<String, GATKDuplicationMetrics> emptyMapByLibrary = libraryIdGenerator.getMetricsByLibraryMap();//with null
 
         final List<String> sortedListOfLibraryNames = new ArrayList<>(Sets.union(emptyMapByLibrary.keySet(), nonEmptyMetricsByLibrary.keySet()));
         sortedListOfLibraryNames.sort(Utils.COMPARE_STRINGS_NULLS_FIRST);
         for (final String library : sortedListOfLibraryNames) {
             //if a non-empty exists, take it, otherwise take from the the empties. This is done to include libraries with zero data in them.
             //But not all libraries are listed in the header (esp in testing data) so we union empty and non-empty
-            final DuplicationMetrics metricsToAdd = nonEmptyMetricsByLibrary.containsKey(library) ? nonEmptyMetricsByLibrary.get(library) : emptyMapByLibrary.get(library);
-            metricsToAdd.calculateDerivedMetrics();
+            final GATKDuplicationMetrics metricsToAdd = nonEmptyMetricsByLibrary.containsKey(library) ? nonEmptyMetricsByLibrary.get(library) : emptyMapByLibrary.get(library);
+            metricsToAdd.calculateDerivedFields();
             result.addMetric(metricsToAdd);
         }
 

@@ -22,10 +22,30 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
 
 public final class SvDiscoveryInputMetaData {
 
+    public ReferenceData getReferenceData() {
+        return referenceData;
+    }
+
+    public SampleSpecificData getSampleSpecificData() {
+        return sampleSpecificData;
+    }
+
+    public DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection getDiscoverStageArgs() {
+        return discoverStageArgs;
+    }
+
+    public Logger getToolLogger() {
+        return toolLogger;
+    }
+
+    public String getOutputPath() {
+        return outputPath;
+    }
+
     public static final class ReferenceData {
-        public final Broadcast<Set<String>> canonicalChromosomesBroadcast;
-        public final Broadcast<ReferenceMultiSource> referenceBroadcast;
-        public final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast;
+        private final Broadcast<Set<String>> canonicalChromosomesBroadcast;
+        private final Broadcast<ReferenceMultiSource> referenceBroadcast;
+        private final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast;
 
         ReferenceData(final Broadcast<Set<String>> canonicalChromosomesBroadcast,
                       final Broadcast<ReferenceMultiSource> referenceBroadcast,
@@ -34,16 +54,28 @@ public final class SvDiscoveryInputMetaData {
             this.referenceBroadcast = referenceBroadcast;
             this.referenceSequenceDictionaryBroadcast = referenceSequenceDictionaryBroadcast;
         }
+
+        public Broadcast<Set<String>> getCanonicalChromosomesBroadcast() {
+            return canonicalChromosomesBroadcast;
+        }
+
+        public Broadcast<ReferenceMultiSource> getReferenceBroadcast() {
+            return referenceBroadcast;
+        }
+
+        public Broadcast<SAMSequenceDictionary> getReferenceSequenceDictionaryBroadcast() {
+            return referenceSequenceDictionaryBroadcast;
+        }
     }
 
     public static final class SampleSpecificData {
-        public final String sampleId;
+        private final String sampleId;
 
-        public final ReadMetadata readMetadata;
-        public final Broadcast<SAMFileHeader> headerBroadcast;
-        public final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast;
-        public final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks;
-        public final List<SVInterval> assembledIntervals;
+        private final ReadMetadata readMetadata;
+        private final Broadcast<SAMFileHeader> headerBroadcast;
+        private final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast;
+        private final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks;
+        private final List<SVInterval> assembledIntervals;
 
         public SampleSpecificData(final String sampleId, final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast,
                                   final List<SVInterval> assembledIntervals,
@@ -57,17 +89,41 @@ public final class SvDiscoveryInputMetaData {
             this.readMetadata = readMetadata;
             this.headerBroadcast = headerBroadcast;
         }
+
+        public String getSampleId() {
+            return sampleId;
+        }
+
+        public ReadMetadata getReadMetadata() {
+            return readMetadata;
+        }
+
+        public Broadcast<SAMFileHeader> getHeaderBroadcast() {
+            return headerBroadcast;
+        }
+
+        public Broadcast<SVIntervalTree<VariantContext>> getCnvCallsBroadcast() {
+            return cnvCallsBroadcast;
+        }
+
+        public PairedStrandedIntervalTree<EvidenceTargetLink> getEvidenceTargetLinks() {
+            return evidenceTargetLinks;
+        }
+
+        public List<SVInterval> getAssembledIntervals() {
+            return assembledIntervals;
+        }
     }
 
-    public final ReferenceData referenceData;
+    private final ReferenceData referenceData;
 
-    public final SampleSpecificData sampleSpecificData;
+    private final SampleSpecificData sampleSpecificData;
 
-    public final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs;
+    private final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs;
 
-    public final Logger toolLogger;
+    private final Logger toolLogger;
 
-    public String outputPath;
+    private String outputPath;
 
     public SvDiscoveryInputMetaData(final JavaSparkContext ctx,
                                     final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs,

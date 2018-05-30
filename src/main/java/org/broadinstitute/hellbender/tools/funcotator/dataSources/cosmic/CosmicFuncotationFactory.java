@@ -252,9 +252,9 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
                     try ( final ResultSet resultSet = statement.executeQuery(RESULT_QUERY_TEMPLATE + "\"" + geneName + "\";") ) {
                         // iterate through our results:
                         while ( resultSet.next() ) {
-                            // Get the genome position and protein position:
+
+                            // Get the genome position:
                             final SimpleInterval cosmicGenomePosition = getGenomePositionFromResults(resultSet);
-                            final SimpleInterval cosmicProteinPosition = getProteinPositionFromResults(resultSet);
 
                             // Try to match on genome position first:
                             if ( cosmicGenomePosition != null ) {
@@ -264,6 +264,9 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
                                     continue;
                                 }
                             }
+
+                            // Get the protein position:
+                            final SimpleInterval cosmicProteinPosition = getProteinPositionFromResults(resultSet);
 
                             // Now try to match on protein position:
                             if ( proteinPosition != null ) {
@@ -332,7 +335,15 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
                 final int start = Integer.valueOf(matcher.group(2));
                 final int end = Integer.valueOf(matcher.group(3));
 
-                return new SimpleInterval(contig, start, end);
+                try {
+                    return new SimpleInterval(contig, start, end);
+                }
+                catch (final IllegalArgumentException ex) {
+                    // If we have poorly bounded genomic positions, we need to warn the user and move on.
+                    // These may occur occasionally in the data.
+                    logger.warn("Warning - unable to parse genome position string due to invalid position information.  Ignoring potential COSMIC match with genome position: " + rawPosition);
+                    return null;
+                }
             }
         }
         catch (final SQLException ex) {
@@ -369,16 +380,49 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
 
         final Matcher matcher = PROTEIN_POSITION_REGEX.matcher(proteinPositionString);
         if ( matcher.matches() ) {
-            // We have a position, so we should parse it.
-            // If we have an end position, we should use it:
-            if ( matcher.group(2) != null ) {
-                return new SimpleInterval(PROTEIN_CONTIG, Integer.valueOf(matcher.group(1)), Integer.valueOf(matcher.group(2)));
+            try {
+
+                // We have a position, so we should parse it.
+                // If we have an end position, we should use it:
+                if ( matcher.group(2) != null ) {
+                    return new SimpleInterval(PROTEIN_CONTIG, Integer.valueOf(matcher.group(1)), Integer.valueOf(matcher.group(2)));
+                }
+                else {
+                    return new SimpleInterval(PROTEIN_CONTIG, Integer.valueOf(matcher.group(1)), Integer.valueOf(matcher.group(1)));
+                }
             }
-            else {
-                return new SimpleInterval(PROTEIN_CONTIG, Integer.valueOf(matcher.group(1)), Integer.valueOf(matcher.group(1)));
+            catch (final IllegalArgumentException ex) {
+                // If we have poorly bounded protein changes, we need to warn the user and move on.
+                // These occur occasionally in the data.
+                logger.warn("Warning - unable to parse protein string due to invalid position information.  Ignoring potential COSMIC match with protein sequence: " + proteinPositionString);
+                return null;
             }
         }
         return null;
+    }
+
+    /**
+     * Print the given {@link ResultSet} to stdout.
+     * @param resultSet The {@link ResultSet} to print.
+     */
+    private final void printResultSet(final ResultSet resultSet) {
+        try {
+            final ResultSetMetaData metadata    = resultSet.getMetaData();
+            final int               columnCount = metadata.getColumnCount();
+            for (int i = 1; i <= columnCount; i++) {
+                System.out.print(metadata.getColumnName(i) + ", ");
+            }
+            System.out.println();
+            while ( resultSet.next() ) {
+                for ( int i = 1; i <= columnCount; i++ ) {
+                    System.out.print(resultSet.getString(i) + ", ");
+                }
+                System.out.println();
+            }
+        }
+        catch (final SQLException ex) {
+            throw new GATKException("Cannot print resultSet!");
+        }
     }
 
     //==================================================================================================================

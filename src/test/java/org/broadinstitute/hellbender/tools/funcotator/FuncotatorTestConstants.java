@@ -12,8 +12,10 @@ import java.io.File;
 public class FuncotatorTestConstants {
     public static final String FUNCOTATOR_TEST_DIR = GATKBaseTest.toolsTestDir + "funcotator" + File.separator;
 
-    public static final String HG19_CHR19_REFERENCE_FILE_NAME = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "GRCh37.p13.chr19.fasta";
-    public static final String HG19_CHR3_REFERENCE_FILE_NAME = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "GRCh37.p13.chr3.fasta";
+    public static final String HG19_CHR19_REFERENCE_FILE_NAME = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "GRCh37.p13.chr19.tar.gz";
+    public static final String HG19_CHR3_REFERENCE_FILE_NAME = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "GRCh37.p13.chr3.tar.gz";
+    public static final String HG19_3_REFERENCE_FILE_NAME = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "b37.3.tar.gz";
+    public static final String HG38_3_REFERENCE_FILE_NAME = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "hg38.3.tar.gz";
 
     public static final String FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "funcotator_dataSources" + File.separator;
 
@@ -44,6 +46,7 @@ public class FuncotatorTestConstants {
 
     public static final String XSV_CSV_FILE_PATH = FUNCOTATOR_TEST_DIR + "xsv_CSV_testFile.csv";
     public static final String XSV_TSV_FILE_PATH = FUNCOTATOR_TEST_DIR + "xsv_TSV_testFile.csv";
+    public static final String XSV_PIPESV_FILE_PATH = FUNCOTATOR_TEST_DIR + "xsv_PIPESV_testFile.xsv";
     public static final String XSV_DEADBEEFSV_FILE_PATH = FUNCOTATOR_TEST_DIR + "xsv_DEADBEEFSV_testFile.csv";
     public static final String XSV_CSV_PIK3CA_PATH = FUNCOTATOR_TEST_DIR + "xsv_CSV_PIK3CA.csv";
     public static final String XSV_CSV_MUC16_PATH = FUNCOTATOR_TEST_DIR + "xsv_CSV_MUC16.csv";
