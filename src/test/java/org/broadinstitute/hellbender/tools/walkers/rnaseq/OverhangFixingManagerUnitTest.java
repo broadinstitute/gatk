@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+import htsjdk.samtools.reference.ReferenceSequenceFile;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
@@ -242,7 +243,7 @@ public final class OverhangFixingManagerUnitTest extends GATKBaseTest {
     }
 
     private static class OverhangFixingManagerAlwaysSplit10000Reads extends OverhangFixingManager {
-        public OverhangFixingManagerAlwaysSplit10000Reads(SAMFileHeader header, GATKReadWriter writer, GenomeLocParser genomeLocParser, IndexedFastaSequenceFile referenceReader, int maxRecordsInMemory, int maxMismatchesInOverhangs, int maxBasesInOverhangs, boolean doNotFixOverhangs, boolean secondaryReads) {
+        public OverhangFixingManagerAlwaysSplit10000Reads(SAMFileHeader header, GATKReadWriter writer, GenomeLocParser genomeLocParser, ReferenceSequenceFile referenceReader, int maxRecordsInMemory, int maxMismatchesInOverhangs, int maxBasesInOverhangs, boolean doNotFixOverhangs, boolean secondaryReads) {
             super(header, writer, genomeLocParser, referenceReader, maxRecordsInMemory, maxMismatchesInOverhangs, maxBasesInOverhangs, doNotFixOverhangs, secondaryReads);
         }
         @Override

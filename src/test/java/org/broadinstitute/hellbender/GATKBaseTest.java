@@ -1,15 +1,15 @@
 package org.broadinstitute.hellbender;
 
 import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.testutils.BaseTest;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -105,11 +105,16 @@ public abstract class GATKBaseTest extends BaseTest {
     protected SAMFileHeader hg19Header;
 
     @BeforeClass
-    public void initGenomeLocParser() throws FileNotFoundException {
+    public void initGenomeLocParser() {
         hg19ReferenceReader = new CachingIndexedFastaSequenceFile(IOUtils.getPath(hg19MiniReference));
         hg19Header = new SAMFileHeader();
         hg19Header.setSequenceDictionary(hg19ReferenceReader.getSequenceDictionary());
         hg19GenomeLocParser = new GenomeLocParser(hg19ReferenceReader);
+    }
+
+    @AfterClass
+    public void closeReference(){
+        hg19ReferenceReader.close();
     }
 
     protected List<GenomeLoc> intervalStringsToGenomeLocs( String... intervals) {

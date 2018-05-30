@@ -3,8 +3,7 @@ package org.broadinstitute.hellbender.utils.read;
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import htsjdk.samtools.*;
-import htsjdk.samtools.reference.FastaSequenceFile;
-import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -24,6 +23,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -211,9 +211,10 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void testReadWithNsRefIndexInDeletion() throws FileNotFoundException {
-
-        final IndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleReference));
-        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
+        final SAMFileHeader header;
+        try(final CachingIndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleReference))) {
+             header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
+        }
         final int readLength = 76;
 
         final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 8975, readLength);
@@ -226,19 +227,20 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testReadWithNsRefAfterDeletion() throws FileNotFoundException {
+    public void testReadWithNsRefAfterDeletion() throws IOException {
+        try(final ReferenceSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleReference))) {
+            final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
+            final int readLength = 76;
 
-        final IndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleReference));
-        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
-        final int readLength = 76;
+            final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 8975, readLength);
+            read.setBases(Utils.dupBytes((byte) 'A', readLength));
+            read.setBaseQualities(Utils.dupBytes((byte) 30, readLength));
+            read.setCigar("3M414N1D73M");
 
-        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 8975, readLength);
-        read.setBases(Utils.dupBytes((byte) 'A', readLength));
-        read.setBaseQualities(Utils.dupBytes((byte)30, readLength));
-        read.setCigar("3M414N1D73M");
-
-        final int result = ReadUtils.getReadCoordinateForReferenceCoordinateUpToEndOfRead(read, 9393, ReadUtils.ClippingTail.LEFT_TAIL);
-        Assert.assertEquals(result, 3);
+            final int result = ReadUtils.getReadCoordinateForReferenceCoordinateUpToEndOfRead(read, 9393,
+                                                                                              ReadUtils.ClippingTail.LEFT_TAIL);
+            Assert.assertEquals(result, 3);
+        }
     }
 
     @DataProvider(name = "HasWellDefinedFragmentSizeData")

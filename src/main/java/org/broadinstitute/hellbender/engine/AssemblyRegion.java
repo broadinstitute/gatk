@@ -410,14 +410,14 @@ public final class AssemblyRegion implements Locatable {
     /**
      * See #getActiveRegionReference but using the span including regions not the extended span
      */
-    public byte[] getFullReference( final IndexedFastaSequenceFile referenceReader ) {
+    public byte[] getFullReference( final ReferenceSequenceFile referenceReader ) {
         return getFullReference(referenceReader, 0);
     }
 
     /**
      * See #getActiveRegionReference but using the span including regions not the extended span
      */
-    public byte[] getFullReference( final IndexedFastaSequenceFile referenceReader, final int padding ) {
+    public byte[] getFullReference( final ReferenceSequenceFile referenceReader, final int padding ) {
         return getReference(referenceReader, padding, spanIncludingReads);
     }
 

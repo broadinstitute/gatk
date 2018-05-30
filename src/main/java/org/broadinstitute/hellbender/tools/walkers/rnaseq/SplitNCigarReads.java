@@ -1,13 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
-import htsjdk.samtools.*;
-import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.TextCigarCodec;
+import htsjdk.samtools.reference.ReferenceSequenceFile;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
-import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.TwoPassReadWalker;
@@ -21,7 +22,12 @@ import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.SATagBuilder;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.read.*;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.read.CigarUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -127,7 +133,7 @@ public final class SplitNCigarReads extends TwoPassReadWalker {
 
     private SAMFileGATKReadWriter outputWriter;
     private OverhangFixingManager overhangManager;
-    private IndexedFastaSequenceFile referenceReader;
+    private ReferenceSequenceFile referenceReader;
     SAMFileHeader header;
 
     @Override
@@ -163,15 +169,10 @@ public final class SplitNCigarReads extends TwoPassReadWalker {
     @Override
     public void onTraversalStart() {
         header = getHeaderForSAMWriter();
-        try {
-            referenceReader = new CachingIndexedFastaSequenceFile(referenceArguments.getReferencePath());
-            GenomeLocParser genomeLocParser = new GenomeLocParser(getBestAvailableSequenceDictionary());
-            outputWriter = createSAMWriter(IOUtils.getPath(OUTPUT), false);
-            overhangManager = new OverhangFixingManager(header, outputWriter, genomeLocParser, referenceReader, MAX_RECORDS_IN_MEMORY, MAX_MISMATCHES_IN_OVERHANG, MAX_BASES_TO_CLIP, doNotFixOverhangs, processSecondaryAlignments);
-
-        } catch (FileNotFoundException ex) {
-            throw new UserException.CouldNotReadInputFile(referenceArguments.getReferencePath(), ex);
-        }
+        referenceReader = new CachingIndexedFastaSequenceFile(referenceArguments.getReferencePath());
+        GenomeLocParser genomeLocParser = new GenomeLocParser(getBestAvailableSequenceDictionary());
+        outputWriter = createSAMWriter(IOUtils.getPath(OUTPUT), false);
+        overhangManager = new OverhangFixingManager(header, outputWriter, genomeLocParser, referenceReader, MAX_RECORDS_IN_MEMORY, MAX_MISMATCHES_IN_OVERHANG, MAX_BASES_TO_CLIP, doNotFixOverhangs, processSecondaryAlignments);
     }
 
     @Override

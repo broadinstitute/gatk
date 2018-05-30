@@ -1,7 +1,8 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+import htsjdk.samtools.reference.ReferenceSequenceFile;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
@@ -9,29 +10,34 @@ import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.*;
 
 
 public final class AssemblyRegionUnitTest extends GATKBaseTest {
-    private IndexedFastaSequenceFile seq;
+    private ReferenceSequenceFile seq;
     private String contig;
     private int contigLength;
     private SAMFileHeader header;
 
     @BeforeClass
-    public void init() throws FileNotFoundException {
+    public void init() {
         // sequence
         seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(hg19MiniReference));
         contig = "1";
         contigLength = seq.getSequence(contig).length();
         header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
+    }
+
+    @AfterClass
+    public void close() throws IOException {
+        seq.close();
     }
 
     @Test

@@ -1,11 +1,12 @@
 package org.broadinstitute.hellbender.utils.fasta;
 
 import htsjdk.samtools.SAMException;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.reference.FastaSequenceIndex;
-import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequence;
+import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
+import htsjdk.samtools.util.GZIIndex;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.StringUtil;
 import org.apache.logging.log4j.Level;
@@ -15,7 +16,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 
-import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -25,9 +26,13 @@ import java.util.Arrays;
  *
  * Automatically upper-cases the bases coming in, unless the flag preserveCase is explicitly set.
  * Automatically converts IUPAC bases to Ns, unless the flag preserveIUPAC is explicitly set.
+ *
+ * Instances of this class should be closed when they are no longer.
  */
-public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceFile {
+public final class CachingIndexedFastaSequenceFile implements ReferenceSequenceFile {
     protected static final Logger logger = LogManager.getLogger(CachingIndexedFastaSequenceFile.class);
+
+    private final ReferenceSequenceFile sequenceFile;
 
     /** do we want to print debugging information about cache efficiency? */
     private static final boolean PRINT_EFFICIENCY = false;
@@ -67,21 +72,42 @@ public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceF
     private final Cache cache = new Cache();
 
     /**
-     * Same as general constructor but allows one to override the default cacheSize
-     *
-     * @param fasta the file we will read our FASTA sequence from.
-     * @param index the index of the fasta file, used for efficient random access
-     * @param cacheSize the size in bp of the cache we will use for this reader
-     * @param preserveCase If true, we will keep the case of the underlying bases in the FASTA, otherwise everything is converted to upper case
-     * @param preserveIUPAC If true, we will keep the IUPAC bases in the FASTA, otherwise they are converted to Ns
+     * Assert that the fasta reader we opened is index.  It should be because we asserted that the indexes existed
+     * in {@link #checkFastaPath(Path)}
      */
-    public CachingIndexedFastaSequenceFile(final Path fasta, final FastaSequenceIndex index, final long cacheSize, final boolean preserveCase, final boolean preserveIUPAC) {
-        super(fasta, index);
-        if ( cacheSize < 0 ) throw new IllegalArgumentException("cacheSize must be > 0");
-        this.cacheSize = cacheSize;
-        this.cacheMissBackup = Math.max(cacheSize / 1000, 1);
-        this.preserveCase = preserveCase;
-        this.preserveIUPAC = preserveIUPAC;
+    private static ReferenceSequenceFile requireIndex(Path fasta, ReferenceSequenceFile referenceSequenceFile) {
+        if (!referenceSequenceFile.isIndexed()) {
+            throw new GATKException("Could not load " + fasta.toUri().toString() + " as an indexed fasta despite passing checks before loading.");
+        }
+        return referenceSequenceFile;
+    }
+
+    /**
+     * Open the given indexed fasta sequence file.  Throw an exception if the file cannot be opened.
+     *
+     * Looks for a index files for the fasta on disk.
+     * This CachingIndexedFastaReader will convert all FASTA bases to upper cases under the hood and
+     * all IUPAC bases to `N`.
+     *
+     * @param fasta The file to open.
+     */
+    public CachingIndexedFastaSequenceFile(final Path fasta) {
+        this(fasta, false);
+    }
+
+    /**
+     * Open the given indexed fasta sequence file. Throw an exception if the file cannot be opened.
+     *
+     * If {@code preserveAmbiguityCodesAndCapitalization} is {@code true}, will NOT convert IUPAC bases in the file to `N` and will NOT capitalize lower-case bases.
+     * NOTE: Most GATK tools do not support data created by setting {@code preserveAmbiguityCodesAndCapitalization} to {@code true}.
+     *
+     * Looks for a index files for the fasta on disk.
+     * @param fasta Fasta file to be used as reference
+     * @param preserveAmbiguityCodesAndCapitalization Whether to preserve the original bases in the given reference file path or normalize them.
+     * @return A new instance of a CachingIndexedFastaSequenceFile.
+     */
+    public CachingIndexedFastaSequenceFile(final Path fasta, boolean preserveAmbiguityCodesAndCapitalization){
+        this(fasta, DEFAULT_CACHE_SIZE, preserveAmbiguityCodesAndCapitalization, preserveAmbiguityCodesAndCapitalization);
     }
 
     /**
@@ -90,60 +116,40 @@ public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceF
      * Looks for a index file for fasta on disk
      * Uses provided cacheSize instead of the default
      *
+     * NOTE: Most GATK tools do not support data created by setting {@code preserveCase} or {@code preserveIUPAC} to {@code true}.
+     *
      * @param fasta The file to open.
      * @param cacheSize the size of the cache to use in this CachingIndexedFastaReader, must be >= 0
      * @param preserveCase If true, we will keep the case of the underlying bases in the FASTA, otherwise everything is converted to upper case
+     * @param preserveIUPAC If true, we will keep the IUPAC bases in the FASTA, otherwise they are converted to Ns
      */
-    public CachingIndexedFastaSequenceFile(final Path fasta, final long cacheSize, final boolean preserveCase, final boolean  preserveIUPAC) throws FileNotFoundException {
-        super(fasta);
-        if ( cacheSize < 0 ) throw new IllegalArgumentException("cacheSize must be > 0");
-        this.cacheSize = cacheSize;
-        this.cacheMissBackup = Math.max(cacheSize / 1000, 1);
-        this.preserveCase = preserveCase;
-        this.preserveIUPAC = preserveIUPAC;
-    }
+     public CachingIndexedFastaSequenceFile(final Path fasta, final long cacheSize, final boolean preserveCase, final boolean  preserveIUPAC) {
+        // Check the FASTA path:
+        checkFastaPath(fasta);
 
-    /**
-     * Same as general constructor but allows one to override the default cacheSize
-     *
-     * By default, this CachingIndexedFastaReader converts all incoming bases to upper case
-     *
-     * @param fasta the file we will read our FASTA sequence from.
-     * @param index the index of the fasta file, used for efficient random access
-     * @param cacheSize the size in bp of the cache we will use for this reader
-     */
-    public CachingIndexedFastaSequenceFile(final Path fasta, final FastaSequenceIndex index, final long cacheSize) {
-        this(fasta, index, cacheSize, false, false);
-    }
-
-    /**
-     * Open the given indexed fasta sequence file.  Throw an exception if the file cannot be opened.
-     *
-     * Looks for a index file for fasta on disk.
-     * This CachingIndexedFastaReader will convert all FASTA bases to upper cases under the hood
-     *
-     * @param fasta The file to open.
-     */
-    public CachingIndexedFastaSequenceFile(final Path fasta) throws FileNotFoundException {
-        this(fasta, false);
-    }
-
-    /**
-     * Open the given indexed fasta sequence file.  Throw an exception if the file cannot be opened.
-     *
-     * Looks for a index file for fasta on disk
-     *
-     * @param fasta The file to open.
-     * @param preserveCase If true, we will keep the case of the underlying bases in the FASTA, otherwise everything is converted to upper case
-     */
-    public CachingIndexedFastaSequenceFile(final Path fasta, final boolean preserveCase) throws FileNotFoundException {
-        this(fasta, DEFAULT_CACHE_SIZE, preserveCase, false);
+        // Read reference data by creating an IndexedFastaSequenceFile.
+        try {
+            final ReferenceSequenceFile referenceSequenceFile = ReferenceSequenceFileFactory.getReferenceSequenceFile(fasta, true, true);
+            sequenceFile = requireIndex(fasta, referenceSequenceFile);
+            if ( cacheSize < 0 ) throw new IllegalArgumentException("cacheSize must be > 0");
+            this.cacheSize = cacheSize;
+            this.cacheMissBackup = Math.max(cacheSize / 1000, 1);
+            this.preserveCase = preserveCase;
+            this.preserveIUPAC = preserveIUPAC;
+        }
+        catch (final IllegalArgumentException e) {
+            throw new UserException.CouldNotReadInputFile(fasta, "Could not read reference sequence.  The FASTA must have either a .fasta or .fa extension", e);
+        }
+        catch (final Exception e) {
+            throw new UserException.CouldNotReadInputFile(fasta, e);
+        }
     }
 
     /**
      * Performing several preliminary checks on the file path.
+     *
      * @param fastaPath Fasta file to be used as reference
-     * @throws GATKException If the given {@code fastaPath} is not good.
+     * @throws UserException If the given {@code fastaPath} is not good.
      */
     private static void checkFastaPath(final Path fastaPath) {
 
@@ -152,12 +158,7 @@ public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceF
             throw new UserException.MissingReference("The specified fasta file (" + fastaPath.toUri() + ") does not exist.");
         }
 
-        final boolean isGzipped = fastaPath.toString().endsWith(".gz");
-        if ( isGzipped ) {
-            throw new UserException.CannotHandleGzippedRef();
-        }
-
-        final Path indexPath = IOUtil.addExtension(fastaPath, ".fai");
+        final Path indexPath = ReferenceSequenceFileFactory.getFastaIndexFileName(fastaPath);
 
         // determine the name for the dict file
         final Path dictPath = ReferenceSequenceFileFactory.getDefaultDictionaryForReferenceSequence(fastaPath);
@@ -170,59 +171,15 @@ public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceF
         if (!Files.exists(dictPath)) {
             throw new UserException.MissingReferenceDictFile(dictPath, fastaPath);
         }
-    }
 
-    /**
-     * Create reference data source from fasta file, after performing several preliminary checks on the file.
-     * This static utility was refactored from the constructor of ReferenceDataSource.
-     * Possibly may be better as an overloaded constructor.
-     * @param fastaPath Fasta file to be used as reference
-     * @return A new instance of a CachingIndexedFastaSequenceFile.
-     */
-    public static CachingIndexedFastaSequenceFile checkAndCreate(final Path fastaPath) {
-        return checkAndCreate(fastaPath, false);
-    }
-
-    /**
-     * Create reference data source from fasta file, after performing several preliminary checks on the file.
-     * This static utility was refactored from the constructor of ReferenceDataSource.
-     * Possibly may be better as an overloaded constructor.
-     *
-     * NOTE: Most GATK tools do not support data created by setting {@code preserveFileBases} to {@code true}.
-     *
-     * @param fastaPath Fasta file to be used as reference
-     * @param preserveFileBases Whether to preserve the original bases in the given reference file path.
-     * @return A new instance of a CachingIndexedFastaSequenceFile.
-     */
-    public static CachingIndexedFastaSequenceFile checkAndCreate(final Path fastaPath,
-                                                                 final boolean preserveFileBases) {
-
-        // Check the FASTA path:
-        checkFastaPath(fastaPath);
-
-        // Read reference data by creating an IndexedFastaSequenceFile.
         try {
-            return new CachingIndexedFastaSequenceFile(fastaPath, CachingIndexedFastaSequenceFile.DEFAULT_CACHE_SIZE, preserveFileBases, preserveFileBases);
+            final Path gziPath = GZIIndex.resolveIndexNameForBgzipFile(fastaPath);
+            if( IOUtil.isBlockCompressed(fastaPath, true) && !Files.exists(gziPath)){
+                throw new UserException.MissingReferenceGziFile(gziPath, fastaPath);
+            }
+        } catch (IOException e) {
+            throw new UserException.CouldNotReadInputFile("Couldn't open fasta file: " + fastaPath.toUri().toString() +  ".", e);
         }
-        catch (final IllegalArgumentException e) {
-            throw new UserException.CouldNotReadInputFile(fastaPath, "Could not read reference sequence.  The FASTA must have either a .fasta or .fa extension", e);
-        }
-        catch (final Exception e) {
-            throw new UserException.CouldNotReadInputFile(fastaPath, e);
-        }
-    }
-
-    /**
-     * Open the given indexed fasta sequence file.  Throw an exception if the file cannot be opened.
-     *
-     * Looks for a index file for fasta on disk
-     * Uses provided cacheSize instead of the default
-     *
-     * @param fasta The file to open.
-     * @param cacheSize the size of the cache to use in this CachingIndexedFastaReader, must be >= 0
-     */
-    public CachingIndexedFastaSequenceFile(final Path fasta, final long cacheSize ) throws FileNotFoundException {
-        this(fasta, cacheSize, false, false);
     }
 
     /**
@@ -272,6 +229,58 @@ public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceF
     }
 
     /**
+     * Returns the sequence dictionary associated with this reference file
+     * @return a list of sequence records representing the sequences in this reference file
+     */
+    @Override
+    public SAMSequenceDictionary getSequenceDictionary() {
+        return sequenceFile.getSequenceDictionary();
+    }
+
+    /**
+     * Retrieves the next whole sequence from the file.
+     *
+     * *Note: This method does not use or interact with the cache at all.
+     *
+     * @return a ReferenceSequence or null if at the end of the file
+     */
+    @Override
+    public ReferenceSequence nextSequence() {
+        return sequenceFile.nextSequence();
+    }
+
+    /**
+     * Resets the ReferenceSequenceFile so that the next call to nextSequence() will return
+     * the first sequence in the file.
+     */
+    @Override
+    public void reset() {
+        sequenceFile.reset();
+    }
+
+    /**
+     * A {@link CachingIndexedFastaSequenceFile} is always indexed.
+     * @return true
+     */
+    @Override
+    public boolean isIndexed() {
+        return true;
+    }
+
+    /**
+     * Retrieves the complete sequence described by this contig.
+     *
+     * If the contig is longer than the cache size the cache will not be used or updated.
+     *
+     * @param contig contig whose data should be returned.
+     * @return The full sequence associated with this contig.
+     */
+    @Override
+    public ReferenceSequence getSequence(String contig) {
+        return getSubsequenceAt(contig, 1L, getSequenceDictionary().getSequence(contig).getSequenceLength());
+    }
+
+    /**
      * Gets the subsequence of the contig in the range [start,stop]
      *
      * Uses the sequence cache if possible, or updates the cache to handle the request.  If the range
@@ -287,16 +296,16 @@ public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceF
     public ReferenceSequence getSubsequenceAt( final String contig, long start, final long stop ) {
         final ReferenceSequence result;
 
-        if ( (stop - start) >= cacheSize ) {
+        if ( (stop - start + 1) > cacheSize ) {
             cacheMisses++;
-            result = super.getSubsequenceAt(contig, start, stop);
+            result = sequenceFile.getSubsequenceAt(contig, start, stop);
             if ( ! preserveCase ) StringUtil.toUpperCase(result.getBases());
             if ( ! preserveIUPAC ) BaseUtils.convertIUPACtoN(result.getBases(), true, start < 1);
         } else {
             // todo -- potential optimization is to check if contig.name == contig, as this in general will be true
-            SAMSequenceRecord contigInfo = super.getSequenceDictionary().getSequence(contig);
+            SAMSequenceRecord contigInfo = sequenceFile.getSequenceDictionary().getSequence(contig);
             if (contigInfo == null){
-                throw new UserException.MissingContigInSequenceDictionary(contig, super.getSequenceDictionary());
+                throw new UserException.MissingContigInSequenceDictionary(contig, sequenceFile.getSequenceDictionary());
             }
 
             if (stop > contigInfo.getSequenceLength())
@@ -306,7 +315,7 @@ public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceF
                 cacheMisses++;
                 cache.start = Math.max(start - cacheMissBackup, 0);
                 cache.stop  = Math.min(start + cacheSize + cacheMissBackup, contigInfo.getSequenceLength());
-                cache.seq   = super.getSubsequenceAt(contig, cache.start, cache.stop);
+                cache.seq   = sequenceFile.getSubsequenceAt(contig, cache.start, cache.stop);
 
                 // convert all of the bases in the sequence to upper case if we aren't preserving cases
                 if ( ! preserveCase ) StringUtil.toUpperCase(cache.seq.getBases());
@@ -332,5 +341,17 @@ public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceF
             printEfficiency(Level.INFO);
 
         return result;
+    }
+
+    /**
+     * Close the backing {@link ReferenceSequenceFile}
+     */
+    @Override
+    public void close() {
+        try {
+            this.sequenceFile.close();
+        } catch (IOException e){
+            throw new GATKException("Error closing file: " + sequenceFile.toString(), e);
+        }
     }
 }

@@ -4,6 +4,7 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Tuple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -60,7 +61,7 @@ public class OverhangFixingManager {
     private final GATKReadWriter writer;
 
     // fasta reference reader to check overhanging edges in the exome reference sequence
-    private final IndexedFastaSequenceFile referenceReader;
+    private final ReferenceSequenceFile referenceReader;
 
     // the genome unclippedLoc parser
     private final GenomeLocParser genomeLocParser;
@@ -92,7 +93,7 @@ public class OverhangFixingManager {
     public OverhangFixingManager(final SAMFileHeader header,
                                  final GATKReadWriter writer,
                                  final GenomeLocParser genomeLocParser,
-                                 final IndexedFastaSequenceFile referenceReader,
+                                 final ReferenceSequenceFile referenceReader,
                                  final int maxRecordsInMemory,
                                  final int maxMismatchesInOverhangs,
                                  final int maxBasesInOverhangs,
@@ -467,7 +468,7 @@ public class OverhangFixingManager {
             loc = genomeLocParser.createGenomeLoc(contig, start, end);
         }
 
-        public void initialize(final IndexedFastaSequenceFile referenceReader) {
+        public void initialize(final ReferenceSequenceFile referenceReader) {
             reference = referenceReader.getSubsequenceAt(loc.getContig(), loc.getStart(), loc.getStop()).getBases();
         }
 

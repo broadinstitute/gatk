@@ -106,6 +106,10 @@ public class UserException extends RuntimeException {
     public static class MissingIndex extends UserException {
         private static final long serialVersionUID = 0L;
 
+        public MissingIndex(String message){
+            super(message);
+        }
+
         public MissingIndex(String file, String message) {
             super(String.format("An index is required but was not found for file %s. %s", file, message));
         }
@@ -253,6 +257,14 @@ public class UserException extends RuntimeException {
             super(String.format("Fasta index file %s for reference %s does not exist. Please see %s for help creating it.",
                     indexPath.toUri(), fastaPath.toUri(),
                     HelpConstants.forumPost("discussion/1601/how-can-i-prepare-a-fasta-file-to-use-as-reference")));
+        }
+    }
+
+    public static class MissingReferenceGziFile extends UserException {
+        private static final long serialVersionUID = 0L;
+        public MissingReferenceGziFile( final Path gziPath, final Path fastaPath ) {
+            super(String.format("Fasta bgzip index file %s for reference %s does not exist. A gzi index can be created using bgzip.",
+                                gziPath.toUri(), fastaPath.toUri()));
         }
     }
 
