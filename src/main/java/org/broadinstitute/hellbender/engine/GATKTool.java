@@ -219,7 +219,7 @@ public abstract class GATKTool extends CommandLineProgram {
 
     /**
      * Must be overridden in order to add annotation arguments to the engine. If this is set to true the engine will
-     * dynamically discover all {@link Annotation}s in the package {@link org.broadinstitute.hellbender.tools.walkers.annotator} and automatically
+     * dynamically discover all {@link Annotation}s in the package defined by {@link org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor#pluginPackageName} and automatically
      * generate and add command line arguments allowing the user to specify which annotations or groups of annotations to use.
      *
      * To specify default annotations for a tool simply specify them using {@link #getDefaultVariantAnnotationGroups()} or {@link #getDefaultVariantAnnotations()}
@@ -243,7 +243,7 @@ public abstract class GATKTool extends CommandLineProgram {
 
     /**
      * Returns the default list of annotation groups that are used for this tool. The annotations returned
-     * by this method will have default arguments, which can be overridden with specifc arguments using
+     * by this method will have default arguments, which can be overridden with specific arguments using
      * {@link #getDefaultVariantAnnotations()}. Returned annotation groups are subject to selective enabling/disabling
      * by the user via the command line. The default implementation returns an empty list.
      *
@@ -255,9 +255,9 @@ public abstract class GATKTool extends CommandLineProgram {
 
     /**
      * Returns a list of annotations that can be applied to VariantContexts. This implementation combines
-     * the default annotations for this tool (returned by {@link #getDefaultVariantAnnotations()} and {@link #getDefaultVariantAnnotationGroups()}
+     * the default annotations for this tool (returned by {@link #getDefaultVariantAnnotations()} and {@link #getDefaultVariantAnnotationGroups()})
      * along with any annotations command line directives specified by the user (such as enabling other annotations/groups
-     * or disabling default annotations) and returns an a collection of all the annotation arguments instantiated.
+     * or disabling default annotations) and returns a collection of all the annotation arguments instantiated.
      *
      * NOTE: Most tools will not need to override the method, and should only do so in order to provide custom
      * behavior or processing of the final annotations based on other command line input. To change the default
@@ -268,7 +268,7 @@ public abstract class GATKTool extends CommandLineProgram {
      */
     public Collection<Annotation> makeVariantAnnotations(){
         if (!useVariantAnnotations()) {
-            throw new GATKException("Tool requested tailored annotations but has not overridden 'useVariantAnnotations()' to return true");
+            throw new GATKException("Tool requested variant annotations but has not overridden 'useVariantAnnotations()' to return true");
         }
         final GATKAnnotationPluginDescriptor annotationPlugin =
                 getCommandLineParser().getPluginDescriptor(GATKAnnotationPluginDescriptor.class);

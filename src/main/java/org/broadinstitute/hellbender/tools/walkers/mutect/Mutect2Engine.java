@@ -96,7 +96,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         checkSampleInBamHeader(tumorSample);
         checkSampleInBamHeader(normalSample);
 
-        annotationEngine = annotatorEngine;
+        annotationEngine = Utils.nonNull(annotatorEngine);
         assemblyEngine = AssemblyBasedCallerUtils.createReadThreadingAssembler(MTAC);
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs);
         genotypingEngine = new SomaticGenotypingEngine(samplesList, MTAC, tumorSample, normalSample);
@@ -122,7 +122,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     }
 
     /**
-     * @return the default set of read filters for use with Mutect2
+     * @return the default set of variant annotations for use with HaplotypeCaller
      */
     public static List<Class<? extends Annotation>> getStandardMutect2AnnotationGroups() {
         return Collections.singletonList(StandardMutectAnnotation.class);

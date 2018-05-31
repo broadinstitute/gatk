@@ -83,6 +83,7 @@ import java.util.stream.Collectors;
  * <h3>Caveat</h3>
  * <p>This tool will not output every annotation as many cannot be made without computing the per-read AlleleLikelihoods,
  * which is generated in either the HaplotypeCaller or Mutect2. </p>
+ * <p>This tool outputs no annotations by default, all annotations/groups must be specified explicitly. </p>
  *
  * <h3>Special note on RankSumTestAnnotations</h3>
  * <p>RankSumAnnotations produced by this tool are not the same as those produced by the HaplotypeCaller. Without the

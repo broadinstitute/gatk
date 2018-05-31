@@ -164,6 +164,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @return a list of annotations with non GVCF annotations removed
      */
     public static Collection<Annotation> filterReferenceConfidenceAnnotations(Collection<Annotation> annotations) {
+        logger.info("Tool is in reference confidence mode and the annotation, the following changes will be made to any specified annotations: 'StrandBiasBySample' will be enabled. 'ChromosomeCounts', 'FisherStrand', 'StrandOddsRatio' and 'QualByDepth' annotations have been disabled");
+
         // Override user preferences and add StrandBiasBySample
         if (!annotations.contains(new StrandBiasBySample())) {
             annotations.add(new StrandBiasBySample());
@@ -179,12 +181,11 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     }
 
     /**
-     * @return the default set of read filters for use with Mutect2
+     * @return the default set of variant annotations for use with HaplotypeCaller
      */
     public static List<Class<? extends Annotation>> getStandardHaplotypeCallerAnnotationGroups() {
         return Arrays.asList(StandardAnnotation.class, StandardHCAnnotation.class);
     }
-
 
     private void initialize(boolean createBamOutIndex, final boolean createBamOutMD5) {
         // Note: order of operations matters here!

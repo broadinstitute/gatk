@@ -197,7 +197,7 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     public boolean useVariantAnnotations() { return true;}
 
     /**
-     * If we are in reference confidence mode we want to tailor the annotations as there are certain annotations in the standard
+     * If we are in reference confidence mode we want to filter the annotations as there are certain annotations in the standard
      * HaplotypeCaller set which are no longer relevant, thus we filter them out before constructing the
      * VariantAnnotationEngine because the user args will have been parsed by that point.
      *

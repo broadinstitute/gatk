@@ -467,6 +467,28 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
     }
 
     @Test
+    public void testUseAllAnnotationsDisableToolDefaultAnnotaiotns(){
+        CommandLineParser clp = new CommandLineArgumentParser(
+                new Object(),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor(Collections.singletonList(new Coverage()), null)),
+                Collections.emptySet());
+        String[] args = {"--"+StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS};
+        clp.parseArguments(nullMessageStream, args);
+        List<Annotation> annots = instantiateAnnotations(clp);
+
+        ClassFinder finder = new ClassFinder();
+        finder.find(GATKAnnotationPluginDescriptor.pluginPackageName, Annotation.class);
+
+        Set<Class<?>> classes = finder.getConcreteClasses();
+        Assert.assertFalse(classes.isEmpty());
+        Assert.assertEquals(annots.size(),classes.size());
+        Assert.assertTrue(classes.contains(Coverage.class)); //Asserting that coverage is preserved
+        for(Class<?> found : classes) {
+            Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==found));
+        }
+    }
+
+    @Test
     public void testIncludeAllExcludeIndividual(){
         CommandLineParser clp = new CommandLineArgumentParser(
                 new Object(),
@@ -476,7 +498,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         clp.parseArguments(nullMessageStream, args);
         List<Annotation> annots = instantiateAnnotations(clp);
 
-        // Asserting that only
+        // Asserting that only concrete annotation objects are returned
         Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==AS_StandardAnnotation.class));
 
         ClassFinder finder = new ClassFinder();

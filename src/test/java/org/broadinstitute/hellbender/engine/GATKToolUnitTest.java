@@ -661,24 +661,31 @@ public final class GATKToolUnitTest extends GATKBaseTest {
 
         // Asserting that the annotation was excluded
         Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
+        Assert.assertFalse(annots.isEmpty());
     }
 
     @Test
-    public void testIncludeGroupAnnotations(){
+    public void testIncludeAnnotationGroups(){
         String[] args = {"-G", StandardAnnotation.class.getSimpleName()};
 
         final TestGATKToolWithVariants tool = createTestVariantTool(args);
         Collection<Annotation> annots = tool.makeVariantAnnotations();
 
         // Asserting that a standard annotation was included but not everything
-        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
-        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==StandardAnnotation.class));
-        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==ClippingRankSumTest.class));
+        ClassFinder finder = new ClassFinder();
+        finder.find(GATKAnnotationPluginDescriptor.pluginPackageName, StandardAnnotation.class);
+
+        Set<Class<?>> classes = finder.getConcreteClasses();
+        Assert.assertFalse(classes.isEmpty());
+        Assert.assertEquals(annots.size(),classes.size());
+        for(Class<?> found : classes) {
+            Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==found));
+        }
     }
 
 
     @Test
-    public void testIncludeAnnotations(){
+    public void testIncludeAnnotation(){
         String[] args = {"-A", Coverage.class.getSimpleName()};
 
         final TestGATKToolWithVariants tool = createTestVariantTool(args);
@@ -686,6 +693,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
 
         // Asserting coverage was added
         Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
+        Assert.assertTrue(annots.size() == 1);
     }
 
     @Test
@@ -697,6 +705,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
 
         // Asserting coverage was added by default
         Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
+        Assert.assertTrue(annots.size() == 1);
     }
 
     @Test
@@ -706,8 +715,29 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         final TestGATKToolWithDefaultAnnotationGroups tool = createTestVariantTool(new TestGATKToolWithDefaultAnnotationGroups(), args);
         Collection<Annotation> annots = tool.makeVariantAnnotations();
 
-        // Asserting that a standard annotation was included but not everything
-        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
+        ClassFinder finder = new ClassFinder();
+        finder.find(GATKAnnotationPluginDescriptor.pluginPackageName, StandardAnnotation.class);
+
+        Set<Class<?>> classes = finder.getConcreteClasses();
+        Assert.assertFalse(classes.isEmpty());
+        Assert.assertEquals(annots.size(),classes.size());
+        for(Class<?> found : classes) {
+            Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==found));
+        }
+
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==StandardAnnotation.class));
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==ClippingRankSumTest.class));
+    }
+
+    @Test
+    public void testClearDefaultAnnotationsGroups() {
+        String[] args = {"--"+StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_ANNOTATIONS};
+
+        final TestGATKToolWithDefaultAnnotationGroups tool = createTestVariantTool(new TestGATKToolWithDefaultAnnotationGroups(), args);
+        Collection<Annotation> annots = tool.makeVariantAnnotations();
+
+        // Asserting that the standard annotation was not included when defaults are disabled
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
         Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==StandardAnnotation.class));
         Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==ClippingRankSumTest.class));
     }
@@ -716,7 +746,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
     public void testClearDefaultAnnotations() {
         String[] args = {"--"+StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_ANNOTATIONS};
 
-        final TestGATKToolWithDefaultAnnotationGroups tool = createTestVariantTool(new TestGATKToolWithDefaultAnnotationGroups(), args);
+        final TestGATKToolWithDefaultAnnotations tool = createTestVariantTool(new TestGATKToolWithDefaultAnnotations(), args);
         Collection<Annotation> annots = tool.makeVariantAnnotations();
 
         // Asserting that the standard annotation was not included when defaults are disabled
@@ -732,7 +762,6 @@ public final class GATKToolUnitTest extends GATKBaseTest {
     private <T extends GATKTool> T createTestVariantTool(final T tool, final String args[]) {
 
         final CommandLineParser clp = tool.getCommandLineParser();
-        //final CommandLineParser clp = new CommandLineArgumentParser(tool, tool.getPluginDescriptors(), Collections.emptySet());
         clp.parseArguments(System.out, args==null? new String[0] : args);
 
         return tool;

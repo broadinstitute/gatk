@@ -500,6 +500,9 @@ public final class VariantContextTestUtils {
         return new VCFHeader(lines);
     }
 
+    /**
+     * Uses the AnnotationsPlugin interface to instantiate and return a list of every annotation currently visible to the gatk
+     */
     public static List<Annotation> getAllAnnotations() {
         CommandLineParser clp = new CommandLineArgumentParser(
                 new Object(),

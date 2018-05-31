@@ -41,7 +41,7 @@ public final class VariantAnnotatorEngine {
     private final static Logger logger = LogManager.getLogger(VariantAnnotatorEngine.class);
 
     /**
-     * Creates an annotation engine from a list of tailored annotations output from command line parsing
+     * Creates an annotation engine from a list of selected annotations output from command line parsing
      * @param annotationList list of annotation objects (with any parameters already filled) to include
      * @param dbSNPInput input for variants from a known set from DbSNP or null if not provided.
      *                   The annotation engine will mark variants overlapping anything in this set using {@link htsjdk.variant.vcf.VCFConstants#DBSNP_KEY}.

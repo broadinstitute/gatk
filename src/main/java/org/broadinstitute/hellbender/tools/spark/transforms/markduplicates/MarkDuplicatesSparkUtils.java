@@ -149,9 +149,10 @@ public class MarkDuplicatesSparkUtils {
                 if (readGroup != null) {
                     pair.setReadGroup(readGroup);
                 } else {
-                    throw (firstRead.getReadGroup()==null) ?
-                            new UserException.ReadMissingReadGroup(firstRead) :
-                            new UserException.HeaderMissingReadGroup(firstRead);
+                    pair.setReadGroup((short)-1);
+//                    throw (firstRead.getReadGroup()==null) ?
+//                            new UserException.ReadMissingReadGroup(firstRead) :
+//                            new UserException.HeaderMissingReadGroup(firstRead);
                 }
                 out.add(new Tuple2<>(pair.key(), pair));
 

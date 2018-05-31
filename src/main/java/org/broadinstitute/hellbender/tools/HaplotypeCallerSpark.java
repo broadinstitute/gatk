@@ -140,9 +140,9 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
 
     @Override
     public Collection<Annotation> makeVariantAnnotations() {
-        final boolean confidenceMode = hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE;
+        final boolean referenceConfidenceMode = hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE;
         final Collection<Annotation> annotations = super.makeVariantAnnotations();
-        return confidenceMode? HaplotypeCallerEngine.filterReferenceConfidenceAnnotations(annotations): annotations;
+        return referenceConfidenceMode? HaplotypeCallerEngine.filterReferenceConfidenceAnnotations(annotations): annotations;
     }
 
     @Override
