@@ -361,6 +361,7 @@ workflow Mutect2 {
         File? preadapter_detail_metrics = CollectSequencingArtifactMetrics.pre_adapter_metrics
         File? bamout = MergeBamOuts.merged_bam_out
         File? bamout_index = MergeBamOuts.merged_bam_out_index
+        File? maf_segments = CalculateContamination.maf_segments
     }
 }
 
