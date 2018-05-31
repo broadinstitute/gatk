@@ -74,6 +74,8 @@ workflow Mutect2 {
     Int scatter_count
     File? gnomad
     File? variants_for_contamination
+    File? realignment_index_bundle
+    String? realignment_extra_args
     Boolean? run_orientation_bias_filter
     Boolean run_ob_filter = select_first([run_orientation_bias_filter, false])
     Array[String]? artifact_modes
@@ -290,8 +292,23 @@ workflow Mutect2 {
         }
     }
 
+    if (defined(realignment_index_bundle)) {
+        File realignment_filter_input = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
+        call FilterRealignmentArtifacts {
+            input:
+                gatk_override = gatk_override,
+                bam = tumor_bam,
+                realignment_index_bundle = select_first([realignment_index_bundle]),
+                realignment_extra_args = realignment_extra_args,
+                gatk_docker = gatk_docker,
+                compress = compress,
+                output_name = filtered_name,
+                input_vcf = realignment_filter_input
+        }
+    }
+
     if (run_oncotator_or_default) {
-        File oncotate_vcf_input = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
+        File oncotate_vcf_input = select_first([FilterRealignmentArtifacts.filtered_vcf, FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
         call oncotate_m2 {
             input:
                 m2_vcf = oncotate_vcf_input,
@@ -312,7 +329,7 @@ workflow Mutect2 {
 
     if (run_funcotator_or_default) {
         File funcotate_vcf_input = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
-        File funcotate_vcf_input_index = select_first([FilterByOrientationBias.filtered_vcf_index, Filter.filtered_vcf_index])
+        File funcotate_vcf_input_index = select_first([FilterRealignmentArtifacts.filtered_vcf, FilterByOrientationBias.filtered_vcf_index, Filter.filtered_vcf_index])
         call Funcotate {
             input:
                 m2_vcf = funcotate_vcf_input,
@@ -334,8 +351,8 @@ workflow Mutect2 {
     output {
         File unfiltered_vcf = MergeVCFs.merged_vcf
         File unfiltered_vcf_index = MergeVCFs.merged_vcf_index
-        File filtered_vcf = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
-        File filtered_vcf_index = select_first([FilterByOrientationBias.filtered_vcf_index, Filter.filtered_vcf_index])
+        File filtered_vcf = select_first([FilterRealignmentArtifacts.filtered_vcf, FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
+        File filtered_vcf_index = select_first([FilterRealignmentArtifacts.filtered_vcf_index, FilterByOrientationBias.filtered_vcf_index, Filter.filtered_vcf_index])
         File? contamination_table = CalculateContamination.contamination_table
 
         File? oncotated_m2_maf = oncotate_m2.oncotated_m2_maf
@@ -748,6 +765,57 @@ task FilterByOrientationBias {
             -V ${input_vcf} \
             -AM ${sep=" -AM " artifact_modes} \
             -P ${pre_adapter_metrics} \
+            -O ${output_vcf}
+    }
+
+    runtime {
+        docker: gatk_docker
+        memory: command_mem + " MB"
+        disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
+        preemptible: select_first([preemptible_attempts, 10])
+        cpu: select_first([cpu, 1])
+    }
+
+    output {
+        File filtered_vcf = "${output_vcf}"
+        File filtered_vcf_index = "${output_vcf_index}"
+    }
+}
+
+task FilterRealignmentArtifacts {
+    #input
+    File? gatk_override
+    String input_vcf
+    String bam
+    String output_name
+    Boolean compress
+    String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
+    String output_vcf_index = output_vcf +  if compress then ".tbi" else ".idx"
+    File realignment_index_bundle
+    String? realignment_extra_args
+
+    # runtime
+    String gatk_docker
+    Int? mem
+    Int? preemptible_attempts
+    Int? disk_space
+    Int? cpu
+    Boolean use_ssd = false
+
+    # Mem is in units of GB but our command and memory runtime values are in MB
+    Int machine_mem = if defined(mem) then mem * 1000 else 9000
+    Int command_mem = machine_mem - 500
+
+    command {
+        set -e
+
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+
+        gatk --java-options "-Xmx${command_mem}m" FilterAlignmentArtifacts \
+            -V ${input_vcf} \
+            -I ${bam} \
+            --bwa-mem-index-image ${realignment_index_bundle} \
+            ${realignment_extra_args} \
             -O ${output_vcf}
     }
 

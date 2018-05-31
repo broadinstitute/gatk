@@ -108,6 +108,11 @@ public class FilterAlignmentArtifacts extends VariantWalker {
             doc="Sufficient number of good read realignments to accept a variant.", optional=true)
     private int sufficientGoodRealignments = DEFAULT_SUFFICIENT_GOOD_REALIGNMENTS;
 
+    public static final String DONT_SKIP_ALREADY_FILTERED_VARIANTS_LONG_NAME = "dont-skip-filtered-variants";
+    @Argument(fullName = DONT_SKIP_ALREADY_FILTERED_VARIANTS_LONG_NAME,
+            doc="Try to realign all variants, even ones that have already been filtered.", optional=true)
+    private boolean dontSkipFilteredVariants = false;
+
 
     @ArgumentCollection
     protected RealignmentArgumentCollection realignmentArgumentCollection = new RealignmentArgumentCollection();
@@ -143,7 +148,7 @@ public class FilterAlignmentArtifacts extends VariantWalker {
 
     @Override
     public void apply(final VariantContext vc, final ReadsContext readsContext, final ReferenceContext refContext, final FeatureContext fc) {
-        Trilean passesFilter = vc.getNAlleles() == 1 ? Trilean.TRUE : Trilean.UNKNOWN;
+        Trilean passesFilter = vc.getNAlleles() == 1 || (vc.isFiltered() && !dontSkipFilteredVariants) ? Trilean.TRUE : Trilean.UNKNOWN;
 
         final MutableInt failedRealignmentCount = new MutableInt(0);
         final MutableInt succeededRealignmentCount = new MutableInt(0);
