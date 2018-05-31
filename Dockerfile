@@ -23,7 +23,7 @@ WORKDIR /gatk
 ENV CI true
 RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
     echo "export DOCKER_TEST=\"true\"" >> /root/run_unit_tests.sh && \
-    echo "cd /gatk/ && /gatksrc/gradlew jacocoTestReport -a -p /gatksrc  --tests *HaplotypeCallerIntegrationTest" >> /root/run_unit_tests.sh
+    echo "cd /gatk/ && /gatksrc/gradlew jacocoTestReport -a -p /gatksrc --stacktrace --debug  --tests *HaplotypeCallerIntegrationTest" >> /root/run_unit_tests.sh
 
 WORKDIR /root
 RUN cp -r /root/run_unit_tests.sh /gatk
