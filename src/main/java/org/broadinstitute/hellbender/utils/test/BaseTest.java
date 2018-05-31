@@ -411,11 +411,27 @@ public abstract class BaseTest {
      * assert that the iterator is sorted according to the comparator
      */
     public static <T> void assertSorted(Iterator<T> iterator, Comparator<T> comparator){
+        assertSorted(iterator, comparator, null);
+    }
+
+
+    /**
+     * assert that the iterator is sorted according to the comparator
+     */
+    public static <T> void assertSorted(Iterable<T> iterable, Comparator<T> comparator, String message){
+       assertSorted(iterable.iterator(), comparator, message);
+    }
+
+
+    /**
+     * assert that the iterator is sorted according to the comparator
+     */
+    public static <T> void assertSorted(Iterator<T> iterator, Comparator<T> comparator, String message){
         T previous = null;
         while(iterator.hasNext()){
             T current = iterator.next();
             if( previous != null) {
-                Assert.assertTrue(comparator.compare(previous, current) <= 0, "Expected " + previous + " to be <= " + current);
+                Assert.assertTrue(comparator.compare(previous, current) <= 0, "Expected " + previous + " to be <= " + current + (message == null ? "" : "\n"+message));
             }
             previous = current;
         }

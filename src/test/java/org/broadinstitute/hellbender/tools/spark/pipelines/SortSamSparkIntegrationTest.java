@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import org.apache.spark.api.java.JavaRDD;
@@ -20,6 +21,8 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public final class SortSamSparkIntegrationTest extends CommandLineProgramTest {
 
@@ -113,7 +116,8 @@ public final class SortSamSparkIntegrationTest extends CommandLineProgramTest {
         final SAMFileHeader header = source.getHeader(actualOutputFile.getAbsolutePath(),
                                                       referenceFile == null ? null : referenceFile.getAbsolutePath());
 
-        BaseTest.assertSorted(reads.collect().stream().map(read -> read.convertToSAMRecord(header)).iterator(), sortOrder.getComparatorInstance());
+        final List<SAMRecord> reloadedReads = reads.collect().stream().map(read -> read.convertToSAMRecord(header)).collect(Collectors.toList());
+        BaseTest.assertSorted(reloadedReads.iterator(), sortOrder.getComparatorInstance(),   reloadedReads.stream().map(SAMRecord::getSAMString).collect(Collectors.joining("\n")));
     }
 
     @DataProvider
