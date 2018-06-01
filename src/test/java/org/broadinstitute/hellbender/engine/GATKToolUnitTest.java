@@ -16,13 +16,16 @@ import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFIDHeaderLine;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
-import org.broadinstitute.barclay.argparser.CommandLineParser;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.apache.commons.io.output.NullOutputStream;
+import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.ClippingRankSumTest;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Coverage;
+import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
@@ -33,6 +36,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.PrintStream;
 import java.util.*;
 import java.io.IOException;
 
@@ -165,6 +169,57 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         @Override
         public void traverse() {
             //no op
+        }
+
+        @Override
+        public boolean useVariantAnnotations() {
+            return true;
+        }
+    }
+
+    @CommandLineProgramProperties(
+            summary = "TestGATKToolWithDefaultAnnotations",
+            oneLineSummary = "TestGATKToolWithDefaultAnnotations",
+            programGroup = TestProgramGroup.class
+    )
+    private static final class TestGATKToolWithDefaultAnnotations extends GATKTool{
+
+        @Override
+        public void traverse() {
+            //no op
+        }
+
+        @Override
+        public boolean useVariantAnnotations() {
+            return true;
+        }
+
+        @Override
+        public List<Annotation> getDefaultVariantAnnotations() {
+            return Collections.singletonList(new Coverage());
+        }
+    }
+
+    @CommandLineProgramProperties(
+            summary = "TestGATKToolWithDefaultAnnotations",
+            oneLineSummary = "TestGATKToolWithDefaultAnnotations",
+            programGroup = TestProgramGroup.class
+    )
+    private static final class TestGATKToolWithDefaultAnnotationGroups extends GATKTool{
+
+        @Override
+        public void traverse() {
+            //no op
+        }
+
+        @Override
+        public boolean useVariantAnnotations() {
+            return true;
+        }
+
+        @Override
+        public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() {
+            return Collections.singletonList(StandardAnnotation.class);
         }
     }
 
@@ -566,12 +621,149 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         Assert.assertFalse(outFileMD5.exists(), "An md5 file was created and should not have been");
     }
 
-    private TestGATKToolWithVariants createTestVariantTool(final String args[]) {
-        final TestGATKToolWithVariants tool = new TestGATKToolWithVariants();
-        if (null != args) {
-            final CommandLineParser clp = new CommandLineArgumentParser(tool);
-            clp.parseArguments(System.out, args);
+    private List<Annotation> instantiateAnnotations(final CommandLineParser clp) {
+        GATKAnnotationPluginDescriptor annotationPlugin = clp.getPluginDescriptor(GATKAnnotationPluginDescriptor.class);
+        return annotationPlugin.getResolvedInstances();
+    }
+
+    @Test
+    public void testMakeEmptyAnnotations() {
+        final TestGATKToolWithVariants tool = createTestVariantTool(null);
+        Collection<Annotation> annots = tool.makeVariantAnnotations();
+
+        Assert.assertTrue(annots.isEmpty());
+    }
+
+    @Test
+    public void testGetAllAnnotations() {
+        String[] args = {"--"+StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS};
+
+        final TestGATKToolWithVariants tool = createTestVariantTool(args);
+        Collection<Annotation> annots = tool.makeVariantAnnotations();
+
+        ClassFinder finder = new ClassFinder();
+        finder.find(GATKAnnotationPluginDescriptor.pluginPackageName, Annotation.class);
+
+        Set<Class<?>> classes = finder.getConcreteClasses();
+        Assert.assertFalse(classes.isEmpty());
+        Assert.assertEquals(annots.size(),classes.size());
+        for(Class<?> found : classes) {
+            Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==found));
         }
+    }
+
+    @Test
+    public void testExcludeAnnotation(){
+        String[] args = {"--"+StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS, "-AX", "Coverage"};
+
+        final TestGATKToolWithVariants tool = createTestVariantTool(args);
+        Collection<Annotation> annots = tool.makeVariantAnnotations();
+
+        // Asserting that the annotation was excluded
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
+        Assert.assertFalse(annots.isEmpty());
+    }
+
+    @Test
+    public void testIncludeAnnotationGroups(){
+        String[] args = {"-G", StandardAnnotation.class.getSimpleName()};
+
+        final TestGATKToolWithVariants tool = createTestVariantTool(args);
+        Collection<Annotation> annots = tool.makeVariantAnnotations();
+
+        // Asserting that a standard annotation was included but not everything
+        ClassFinder finder = new ClassFinder();
+        finder.find(GATKAnnotationPluginDescriptor.pluginPackageName, StandardAnnotation.class);
+
+        Set<Class<?>> classes = finder.getConcreteClasses();
+        Assert.assertFalse(classes.isEmpty());
+        Assert.assertEquals(annots.size(),classes.size());
+        for(Class<?> found : classes) {
+            Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==found));
+        }
+    }
+
+
+    @Test
+    public void testIncludeAnnotation(){
+        String[] args = {"-A", Coverage.class.getSimpleName()};
+
+        final TestGATKToolWithVariants tool = createTestVariantTool(args);
+        Collection<Annotation> annots = tool.makeVariantAnnotations();
+
+        // Asserting coverage was added
+        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
+        Assert.assertTrue(annots.size() == 1);
+    }
+
+    @Test
+    public void testMakeDefaultAnnotations() {
+        String[] args = null;
+
+        final TestGATKToolWithDefaultAnnotations tool = createTestVariantTool(new TestGATKToolWithDefaultAnnotations(), args);
+        Collection<Annotation> annots = tool.makeVariantAnnotations();
+
+        // Asserting coverage was added by default
+        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
+        Assert.assertTrue(annots.size() == 1);
+    }
+
+    @Test
+    public void testMakeDefaultAnnotationGroups() {
+        String[] args = null;
+
+        final TestGATKToolWithDefaultAnnotationGroups tool = createTestVariantTool(new TestGATKToolWithDefaultAnnotationGroups(), args);
+        Collection<Annotation> annots = tool.makeVariantAnnotations();
+
+        ClassFinder finder = new ClassFinder();
+        finder.find(GATKAnnotationPluginDescriptor.pluginPackageName, StandardAnnotation.class);
+
+        Set<Class<?>> classes = finder.getConcreteClasses();
+        Assert.assertFalse(classes.isEmpty());
+        Assert.assertEquals(annots.size(),classes.size());
+        for(Class<?> found : classes) {
+            Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==found));
+        }
+
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==StandardAnnotation.class));
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==ClippingRankSumTest.class));
+    }
+
+    @Test
+    public void testClearDefaultAnnotationsGroups() {
+        String[] args = {"--"+StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_ANNOTATIONS};
+
+        final TestGATKToolWithDefaultAnnotationGroups tool = createTestVariantTool(new TestGATKToolWithDefaultAnnotationGroups(), args);
+        Collection<Annotation> annots = tool.makeVariantAnnotations();
+
+        // Asserting that the standard annotation was not included when defaults are disabled
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==StandardAnnotation.class));
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==ClippingRankSumTest.class));
+    }
+
+    @Test
+    public void testClearDefaultAnnotations() {
+        String[] args = {"--"+StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_ANNOTATIONS};
+
+        final TestGATKToolWithDefaultAnnotations tool = createTestVariantTool(new TestGATKToolWithDefaultAnnotations(), args);
+        Collection<Annotation> annots = tool.makeVariantAnnotations();
+
+        // Asserting that the standard annotation was not included when defaults are disabled
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==StandardAnnotation.class));
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==ClippingRankSumTest.class));
+    }
+
+    private TestGATKToolWithVariants createTestVariantTool(final String args[]) {
+       return createTestVariantTool(new TestGATKToolWithVariants(), args);
+    }
+
+    private <T extends GATKTool> T createTestVariantTool(final T tool, final String args[]) {
+
+        final CommandLineParser clp = tool.getCommandLineParser();
+        clp.parseArguments(System.out, args==null? new String[0] : args);
+
         return tool;
     }
 

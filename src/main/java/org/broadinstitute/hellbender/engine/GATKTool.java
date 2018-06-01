@@ -10,10 +10,16 @@ import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFSimpleHeaderLine;
+import java.io.File;
+import java.nio.file.Path;
+import java.time.ZonedDateTime;
+import java.util.*;
+import java.util.stream.Stream;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
@@ -21,7 +27,9 @@ import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -34,12 +42,6 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
-
-import java.io.File;
-import java.nio.file.Path;
-import java.time.ZonedDateTime;
-import java.util.*;
-import java.util.stream.Stream;
 
 /**
  * Base class for all GATK tools. Tool authors that wish to write a "GATK" tool but not use one of
@@ -168,7 +170,11 @@ public abstract class GATKTool extends CommandLineProgram {
      */
     @Override
     public List<? extends CommandLinePluginDescriptor<?>> getPluginDescriptors() {
-        return Collections.singletonList(new GATKReadFilterPluginDescriptor(getDefaultReadFilters()));
+        GATKReadFilterPluginDescriptor readFilterDescriptor = new GATKReadFilterPluginDescriptor(getDefaultReadFilters());
+        return useVariantAnnotations()?
+                Arrays.asList(readFilterDescriptor, new GATKAnnotationPluginDescriptor(
+                        getDefaultVariantAnnotations(), getDefaultVariantAnnotationGroups())):
+                Collections.singletonList(readFilterDescriptor);
     }
 
     /**
@@ -209,6 +215,64 @@ public abstract class GATKTool extends CommandLineProgram {
         return hasReads() ?
                 readFilterPlugin.getMergedCountingReadFilter(getHeaderForReads()) :
                 new CountingReadFilter(ReadFilterLibrary.ALLOW_ALL_READS);
+    }
+
+    /**
+     * Must be overridden in order to add annotation arguments to the engine. If this is set to true the engine will
+     * dynamically discover all {@link Annotation}s in the package defined by {@link org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor#pluginPackageName} and automatically
+     * generate and add command line arguments allowing the user to specify which annotations or groups of annotations to use.
+     *
+     * To specify default annotations for a tool simply specify them using {@link #getDefaultVariantAnnotationGroups()} or {@link #getDefaultVariantAnnotations()}
+     *
+     * To access instantiated annotation objects simply use {@link #makeVariantAnnotations()}.
+     */
+    public boolean useVariantAnnotations() {
+        return false;
+    }
+
+    /**
+     * Returns the default list of {@link Annotation}s that are used for this tool. The annotations returned
+     * by this method are subject to selective enabling/disabling by the user via the command line. The
+     * default implementation returns an empty list. Subclasses can override to provide alternative annotations.
+     *
+     * @return List of individual annotations to be applied for this tool.
+     */
+    public List<Annotation> getDefaultVariantAnnotations() {
+        return Collections.emptyList();
+    }
+
+    /**
+     * Returns the default list of annotation groups that are used for this tool. The annotations returned
+     * by this method will have default arguments, which can be overridden with specific arguments using
+     * {@link #getDefaultVariantAnnotations()}. Returned annotation groups are subject to selective enabling/disabling
+     * by the user via the command line. The default implementation returns an empty list.
+     *
+     * @return List of annotation groups to be applied for this tool.
+     */
+    public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() {
+        return Collections.emptyList();
+    }
+
+    /**
+     * Returns a list of annotations that can be applied to VariantContexts. This implementation combines
+     * the default annotations for this tool (returned by {@link #getDefaultVariantAnnotations()} and {@link #getDefaultVariantAnnotationGroups()})
+     * along with any annotations command line directives specified by the user (such as enabling other annotations/groups
+     * or disabling default annotations) and returns a collection of all the annotation arguments instantiated.
+     *
+     * NOTE: Most tools will not need to override the method, and should only do so in order to provide custom
+     * behavior or processing of the final annotations based on other command line input. To change the default
+     * annotations used by the tool, override {@link #getDefaultVariantAnnotations()} instead.
+     *
+     * To apply returned annotations to a VariantContext, simply use a {@link org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine}
+     * constructed with the discovered annotations.
+     */
+    public Collection<Annotation> makeVariantAnnotations(){
+        if (!useVariantAnnotations()) {
+            throw new GATKException("Tool requested variant annotations but has not overridden 'useVariantAnnotations()' to return true");
+        }
+        final GATKAnnotationPluginDescriptor annotationPlugin =
+                getCommandLineParser().getPluginDescriptor(GATKAnnotationPluginDescriptor.class);
+        return annotationPlugin.getResolvedInstances();
     }
 
     /**

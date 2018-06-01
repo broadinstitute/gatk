@@ -34,8 +34,8 @@ import java.util.stream.Stream;
  */
 public class GATKAnnotationPluginDescriptor  extends CommandLinePluginDescriptor<Annotation> {
     //TODO this should be a configurable option or otherwise exposed to the user when configurations are fully supported.
-    private static final String pluginPackageName = "org.broadinstitute.hellbender.tools.walkers.annotator";
-    private static final Class<?> pluginBaseClass = org.broadinstitute.hellbender.tools.walkers.annotator.Annotation.class;
+    public static final String pluginPackageName = "org.broadinstitute.hellbender.tools.walkers.annotator";
+    public static final Class<?> pluginBaseClass = org.broadinstitute.hellbender.tools.walkers.annotator.Annotation.class;
 
     protected transient Logger logger = LogManager.getLogger(this.getClass());
 
@@ -122,6 +122,18 @@ public class GATKAnnotationPluginDescriptor  extends CommandLinePluginDescriptor
             }
             });
         }
+    }
+    /**
+     * Constructor that allows client tools to specify what annotations (optionally with parameters specified) to use as their defaults
+     * before discovery of user specified annotations. Defaults to using an empty GATKAnnotationArgumentCollection object. 
+     *
+     * @param toolDefaultAnnotations Default annotations that may be supplied with arguments
+     *                               on the command line. May be null.
+     * @param toolDefaultGroups List of tool specified default annotation group names. Annotations specified this way
+     *                          will be instantiated with default arguments. may be null.
+     */
+    public GATKAnnotationPluginDescriptor(final List<Annotation> toolDefaultAnnotations, final List<Class<? extends Annotation>> toolDefaultGroups) {
+        this(new DefaultGATKVariantAnnotationArgumentCollection(), toolDefaultAnnotations, toolDefaultGroups);
     }
 
     @Override
@@ -422,8 +434,12 @@ public class GATKAnnotationPluginDescriptor  extends CommandLinePluginDescriptor
             for (String group : userArgs.getUserEnabledAnnotationGroups()) {
                 annotations.addAll(discoveredGroups.get(group).values());
             }
-            for (String annotation : userArgs.getUserEnabledAnnotationNames()) {
-                annotations.add(allDiscoveredAnnotations.get(annotation));
+            if (userArgs.getEnableAllAnnotations()) {
+                annotations.addAll(allDiscoveredAnnotations.values());
+            } else {
+                for (String annotation : userArgs.getUserEnabledAnnotationNames()) {
+                    annotations.add(allDiscoveredAnnotations.get(annotation));
+                }
             }
             resolvedInstances = annotations.stream().filter(t -> !userArgs.getUserDisabledAnnotationNames().contains(t.getClass().getSimpleName())).collect(Collectors.toList());
         }
@@ -439,6 +455,7 @@ public class GATKAnnotationPluginDescriptor  extends CommandLinePluginDescriptor
      */
     @Override
     public Class<?> getClassForPluginHelp(final String pluginName) {
-        return allDiscoveredAnnotations.containsKey(pluginName)?allDiscoveredAnnotations.get(pluginName).getClass():null;
+        return allDiscoveredAnnotations.containsKey(pluginName) ? allDiscoveredAnnotations.get(pluginName).getClass() : null;
     }
+
 }

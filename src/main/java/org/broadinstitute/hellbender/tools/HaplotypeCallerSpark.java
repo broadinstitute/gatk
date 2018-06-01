@@ -28,7 +28,7 @@ import org.broadinstitute.hellbender.engine.spark.SparkSharder;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCaller;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerEngine;
@@ -132,6 +132,18 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         return true;
     }
 
+    @Override
+    public boolean useVariantAnnotations() { return true;}
+
+    @Override
+    public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() { return HaplotypeCallerEngine.getStandardHaplotypeCallerAnnotationGroups();}
+
+    @Override
+    public Collection<Annotation> makeVariantAnnotations() {
+        final boolean referenceConfidenceMode = hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE;
+        final Collection<Annotation> annotations = super.makeVariantAnnotations();
+        return referenceConfidenceMode? HaplotypeCallerEngine.filterReferenceConfidenceAnnotations(annotations): annotations;
+    }
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
@@ -146,7 +158,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         logger.info("Use the non-spark HaplotypeCaller if you care about the results. ");
         logger.info("********************************************************************************");
         final List<SimpleInterval> intervals = hasIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(getHeaderForReads().getSequenceDictionary());
-        callVariantsWithHaplotypeCallerAndWriteOutput(ctx, getReads(), getHeaderForReads(), getReference(), intervals, hcArgs, shardingArgs, numReducers, output);
+        callVariantsWithHaplotypeCallerAndWriteOutput(ctx, getReads(), getHeaderForReads(), getReference(), intervals, hcArgs, shardingArgs, numReducers, output, makeVariantAnnotations());
     }
 
     @Override
@@ -178,14 +190,16 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             final HaplotypeCallerArgumentCollection hcArgs,
             final ShardingArgumentCollection shardingArgs,
             final int numReducers,
-            final String output) {
+            final String output,
+            final Collection<Annotation> annotations) {
         // Reads must be coordinate sorted to use the overlaps partitioner
         final SAMFileHeader readsHeader = header.clone();
         readsHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
         final JavaRDD<GATKRead> coordinateSortedReads = SparkUtils.sortReadsAccordingToHeader(reads, readsHeader, numReducers);
+        final VariantAnnotatorEngine variantannotatorEngine = new VariantAnnotatorEngine(annotations,  hcArgs.dbsnp.dbsnp, hcArgs.comps, hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE);
 
-        final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, readsHeader, new ReferenceMultiSourceAdapter(reference));
-        final JavaRDD<VariantContext> variants = callVariantsWithHaplotypeCaller(ctx, coordinateSortedReads, readsHeader, reference, intervals, hcArgs, shardingArgs);
+        final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, readsHeader, new ReferenceMultiSourceAdapter(reference), variantannotatorEngine);
+        final JavaRDD<VariantContext> variants = callVariantsWithHaplotypeCaller(ctx, coordinateSortedReads, readsHeader, reference, intervals, hcArgs, shardingArgs, variantannotatorEngine);
         variants.cache(); // without caching, computations are run twice as a side effect of finding partition boundaries for sorting
         try {
             VariantsSparkSink.writeVariants(ctx, output, variants, hcEngine.makeVCFHeader(readsHeader.getSequenceDictionary(), new HashSet<>()),
@@ -207,6 +221,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
      * @param intervals the intervals to restrict calling to
      * @param hcArgs haplotype caller arguments
      * @param shardingArgs arguments to control how the assembly regions are sharded
+     * @param variantannotatorEngine
      * @return an RDD of Variants
      */
     public static JavaRDD<VariantContext> callVariantsWithHaplotypeCaller(
@@ -216,7 +231,8 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             final ReferenceMultiSource reference,
             final List<SimpleInterval> intervals,
             final HaplotypeCallerArgumentCollection hcArgs,
-            final ShardingArgumentCollection shardingArgs) {
+            final ShardingArgumentCollection shardingArgs,
+            final VariantAnnotatorEngine variantannotatorEngine) {
         Utils.validateArg(hcArgs.dbsnp.dbsnp == null, "HaplotypeCallerSpark does not yet support -D or --dbsnp arguments" );
         Utils.validateArg(hcArgs.comps.isEmpty(), "HaplotypeCallerSpark does not yet support -comp or --comp arguments" );
         Utils.validateArg(hcArgs.bamOutputPath == null, "HaplotypeCallerSpark does not yet support -bamout or --bamOutput");
@@ -227,8 +243,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         final Broadcast<ReferenceMultiSource> referenceBroadcast = ctx.broadcast(reference);
         final Broadcast<HaplotypeCallerArgumentCollection> hcArgsBroadcast = ctx.broadcast(hcArgs);
 
-        final VariantAnnotatorEngine variantAnnotatorEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(hcArgs.defaultGATKVariantAnnotationArgumentCollection, hcArgs.dbsnp.dbsnp, hcArgs.comps, hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF);
-        final Broadcast<VariantAnnotatorEngine> annotatorEngineBroadcast = ctx.broadcast(variantAnnotatorEngine);
+        final Broadcast<VariantAnnotatorEngine> annotatorEngineBroadcast = ctx.broadcast(variantannotatorEngine);
 
         final List<ShardBoundary> shardBoundaries = getShardBoundaries(header, intervals, shardingArgs.readShardSize, shardingArgs.readShardPadding);
 

@@ -10,6 +10,8 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.StandardMutectAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingGivenAllelesUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingOutputMode;
@@ -81,8 +83,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
      * @param createBamOutMD5 true to create an md5 file for the bamout
      * @param header header for the reads
      * @param reference path to the reference
+     * @param annotatorEngine annotator engine built with desired annotations
      */
-    public Mutect2Engine(final M2ArgumentCollection MTAC, final boolean createBamOutIndex, final boolean createBamOutMD5, final SAMFileHeader header, final String reference ) {
+    public Mutect2Engine(final M2ArgumentCollection MTAC, final boolean createBamOutIndex, final boolean createBamOutMD5, final SAMFileHeader header, final String reference, final VariantAnnotatorEngine annotatorEngine) {
         this.MTAC = Utils.nonNull(MTAC);
         this.header = Utils.nonNull(header);
         referenceReader = AssemblyBasedCallerUtils.createReferenceReader(Utils.nonNull(reference));
@@ -93,7 +96,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         checkSampleInBamHeader(tumorSample);
         checkSampleInBamHeader(normalSample);
 
-        annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(MTAC.defaultGATKVariantAnnotationArgumentCollection, null, Collections.emptyList(), false);
+        annotationEngine = Utils.nonNull(annotatorEngine);
         assemblyEngine = AssemblyBasedCallerUtils.createReadThreadingAssembler(MTAC);
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs);
         genotypingEngine = new SomaticGenotypingEngine(samplesList, MTAC, tumorSample, normalSample);
@@ -116,6 +119,13 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
                 new ReadLengthReadFilter(MIN_READ_LENGTH, Integer.MAX_VALUE),
                 ReadFilterLibrary.GOOD_CIGAR,
                 new WellformedReadFilter());
+    }
+
+    /**
+     * @return the default set of variant annotations for use with HaplotypeCaller
+     */
+    public static List<Class<? extends Annotation>> getStandardMutect2AnnotationGroups() {
+        return Collections.singletonList(StandardMutectAnnotation.class);
     }
 
     public void writeHeader(final VariantContextWriter vcfWriter, final Set<VCFHeaderLine> defaultToolHeaderLines) {

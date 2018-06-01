@@ -145,18 +145,46 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @param createBamOutMD5 true to create an md5 file for the bamout
      * @param readsHeader header for the reads
      * @param referenceReader reader to provide reference data
+     * @param annotationEngine variantAnnotatorEngine with annotations to process already added
      */
-    public HaplotypeCallerEngine( final HaplotypeCallerArgumentCollection hcArgs,  boolean createBamOutIndex, boolean createBamOutMD5, final SAMFileHeader readsHeader, ReferenceSequenceFile referenceReader ) {
-        this(hcArgs, createBamOutIndex, createBamOutMD5, readsHeader, referenceReader, null);
-    }
-
     public HaplotypeCallerEngine( final HaplotypeCallerArgumentCollection hcArgs, boolean createBamOutIndex, boolean createBamOutMD5, final SAMFileHeader readsHeader, ReferenceSequenceFile referenceReader, VariantAnnotatorEngine annotationEngine ) {
         this.hcArgs = Utils.nonNull(hcArgs);
         this.readsHeader = Utils.nonNull(readsHeader);
         this.referenceReader = Utils.nonNull(referenceReader);
-        this.annotationEngine = annotationEngine;
+        this.annotationEngine = Utils.nonNull(annotationEngine);
         this.aligner = SmithWatermanAligner.getAligner(hcArgs.smithWatermanImplementation);
         initialize(createBamOutIndex, createBamOutMD5);
+    }
+
+    /**
+     * Common method to use in order to remove unwanted annotations from the list returned by the plugin specifically
+     * for reference confidence mode. Will also ensure StrandBiasBySample is present regardless of user requests.
+     *
+     * @param annotations a list of annotations to change
+     * @return a list of annotations with non GVCF annotations removed
+     */
+    public static Collection<Annotation> filterReferenceConfidenceAnnotations(Collection<Annotation> annotations) {
+        logger.info("Tool is in reference confidence mode and the annotation, the following changes will be made to any specified annotations: 'StrandBiasBySample' will be enabled. 'ChromosomeCounts', 'FisherStrand', 'StrandOddsRatio' and 'QualByDepth' annotations have been disabled");
+
+        // Override user preferences and add StrandBiasBySample
+        if (!annotations.contains(new StrandBiasBySample())) {
+            annotations.add(new StrandBiasBySample());
+        }
+        // Override user preferences and remove ChromosomeCounts, FisherStrand, StrandOddsRatio, and QualByDepth Annotations
+        return annotations.stream()
+                .filter(c -> (
+                        c.getClass() != (ChromosomeCounts.class) &&
+                        c.getClass() != (FisherStrand.class) &&
+                        c.getClass() != (StrandOddsRatio.class) &&
+                        c.getClass() != (QualByDepth.class))
+                ).collect(Collectors.toList());
+    }
+
+    /**
+     * @return the default set of variant annotations for use with HaplotypeCaller
+     */
+    public static List<Class<? extends Annotation>> getStandardHaplotypeCallerAnnotationGroups() {
+        return Arrays.asList(StandardAnnotation.class, StandardHCAnnotation.class);
     }
 
     private void initialize(boolean createBamOutIndex, final boolean createBamOutMD5) {
@@ -169,11 +197,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         minTailQuality = (byte)(hcArgs.minBaseQualityScore - 1);
 
         initializeActiveRegionEvaluationGenotyperEngine();
-
-        if (annotationEngine == null) {
-            annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(hcArgs.defaultGATKVariantAnnotationArgumentCollection, hcArgs.dbsnp.dbsnp, hcArgs.comps, emitReferenceConfidence());
-
-        }
 
         genotypingEngine = new HaplotypeCallerGenotypingEngine(hcArgs, samplesList, FixedAFCalculatorProvider.createThreadSafeProvider(hcArgs), ! hcArgs.doNotRunPhysicalPhasing);
         genotypingEngine.setAnnotationEngine(annotationEngine);
@@ -224,14 +247,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
             hcArgs.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING = -0.0;
 
-            // also, we don't need to output several of the annotations
-            hcArgs.defaultGATKVariantAnnotationArgumentCollection.getUserDisabledAnnotationNames().add(ChromosomeCounts.class.getSimpleName());
-            hcArgs.defaultGATKVariantAnnotationArgumentCollection.getUserDisabledAnnotationNames().add(FisherStrand.class.getSimpleName());
-            hcArgs.defaultGATKVariantAnnotationArgumentCollection.getUserDisabledAnnotationNames().add(StrandOddsRatio.class.getSimpleName());
-            hcArgs.defaultGATKVariantAnnotationArgumentCollection.getUserDisabledAnnotationNames().add(QualByDepth.class.getSimpleName());
-
-            // but we definitely want certain other ones
-            hcArgs.defaultGATKVariantAnnotationArgumentCollection.getUserEnabledAnnotationNames().add(StrandBiasBySample.class.getSimpleName());
             logger.info("Standard Emitting and Calling confidence set to 0.0 for reference-model confidence output");
             if ( ! hcArgs.annotateAllSitesWithPLs ) {
                 logger.info("All sites annotated with PLs forced to true for reference-model confidence output");

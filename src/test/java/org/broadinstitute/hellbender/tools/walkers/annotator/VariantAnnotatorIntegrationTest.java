@@ -7,6 +7,7 @@ import htsjdk.tribble.readers.PositionalBufferedStream;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.FeatureDataSourceUnitTest;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -224,7 +225,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         assertVariantContextsMatch(getTestFile("HCOutput.NoAnnotations.vcf"),
                 getTestFile("expected/testWithAllAnnotations.vcf"),
                 //TODO remove the -AX here when https://github.com/broadinstitute/gatk/issues/3944 is resolved
-                Arrays.asList("--use-all-annotations", "-AX", "ReferenceBases", "-L", "20:10000000-10100000", "-I", NA12878_20_21_WGS_bam),
+                Arrays.asList("--"+ StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS, "-AX", "ReferenceBases", "-L", "20:10000000-10100000", "-I", NA12878_20_21_WGS_bam),
                  b37_reference_20_21);
     }
 

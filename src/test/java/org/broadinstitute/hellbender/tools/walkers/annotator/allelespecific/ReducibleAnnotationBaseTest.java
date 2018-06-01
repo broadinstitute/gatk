@@ -6,6 +6,7 @@ import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.GeneralPloidyFailOverAFCalculatorProvider;
@@ -70,7 +71,7 @@ public abstract class ReducibleAnnotationBaseTest extends GATKBaseTest {
     /**
      * This method needs to return a list of the discoverable class names for any annotations that are to be tested in this framework.
      */
-    protected abstract List<String> getAnnotationsToUse();
+    protected abstract List<Annotation> getAnnotationsToUse();
 
     /**
      * This should return the raw key produced by the tested reducible annotation so the tool can assert similarity to GATK3 combineGVCFs output
@@ -86,7 +87,7 @@ public abstract class ReducibleAnnotationBaseTest extends GATKBaseTest {
     // NOTE: this code is mimicking the behavior of GATK3 combineGVCFS insofar as it is important for the annotations
     @Test(dataProvider = "interestingSitesCombineResults")
     public void testCombineAnnotationGATK3Concordance(List<VariantContext> VCs, VariantContext result, VariantContext genotyped) throws Exception {
-        VariantAnnotatorEngine annotatorEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(Collections.emptyList(), getAnnotationsToUse(), Collections.emptyList(), null, Collections.emptyList());
+        VariantAnnotatorEngine annotatorEngine = new VariantAnnotatorEngine(getAnnotationsToUse(), null, Collections.emptyList(), false);
         ReferenceConfidenceVariantContextMerger merger = new ReferenceConfidenceVariantContextMerger(annotatorEngine, new VCFHeader());
         VariantContext merged = merger.merge(VCs, new SimpleInterval(result.getContig(), result.getStart(), result.getStart()), result.getReference().getBases()[0], false, false);
         Assert.assertTrue(VariantContextTestUtils.alleleSpecificAnnotationEquals(merged, result, getRawKey()));
@@ -99,7 +100,7 @@ public abstract class ReducibleAnnotationBaseTest extends GATKBaseTest {
             return;
         }
 
-        VariantAnnotatorEngine annotatorEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(Collections.emptyList(), getAnnotationsToUse(), Collections.emptyList(), null, Collections.emptyList());
+        VariantAnnotatorEngine annotatorEngine = new VariantAnnotatorEngine(getAnnotationsToUse(), null, Collections.emptyList(), false);
         final UnifiedArgumentCollection uac = new UnifiedArgumentCollection();
         uac.genotypeArgs = new GenotypeCalculationArgumentCollection();
         GeneralPloidyFailOverAFCalculatorProvider calculatorProvider = new GeneralPloidyFailOverAFCalculatorProvider(uac.genotypeArgs);

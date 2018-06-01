@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerEngine;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -58,7 +59,8 @@ public class AssemblyRegionIteratorUnitTest extends GATKBaseTest {
               final ReferenceDataSource refSource = ReferenceDataSource.of(IOUtils.getPath(reference)) ) {
             final SAMSequenceDictionary readsDictionary = readsSource.getSequenceDictionary();
             final MultiIntervalLocalReadShard readShard = new MultiIntervalLocalReadShard(shardIntervals, assemblyRegionPadding, readsSource);
-            final AssemblyRegionEvaluator evaluator = new HaplotypeCallerEngine(new HaplotypeCallerArgumentCollection(), false, false, readsSource.getHeader(), new CachingIndexedFastaSequenceFile(IOUtils.getPath(b37_reference_20_21)));
+            final HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();
+            final AssemblyRegionEvaluator evaluator = new HaplotypeCallerEngine(hcArgs, false, false, readsSource.getHeader(), new CachingIndexedFastaSequenceFile(IOUtils.getPath(b37_reference_20_21)), new VariantAnnotatorEngine(new ArrayList<>(), hcArgs.dbsnp.dbsnp, hcArgs.comps, false));
             final ReadCoordinateComparator readComparator = new ReadCoordinateComparator(readsSource.getHeader());
 
             final List<ReadFilter> readFilters = new ArrayList<>(2);

@@ -7,8 +7,10 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
+import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
@@ -19,6 +21,7 @@ import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -29,6 +32,7 @@ import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -118,7 +122,11 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      */
     @Override
     public List<? extends CommandLinePluginDescriptor<?>> getPluginDescriptors() {
-        return Collections.singletonList(new GATKReadFilterPluginDescriptor(getDefaultReadFilters()));
+        GATKReadFilterPluginDescriptor readFilterDescriptor = new GATKReadFilterPluginDescriptor(getDefaultReadFilters());
+        return useVariantAnnotations()?
+                Arrays.asList(readFilterDescriptor, new GATKAnnotationPluginDescriptor(
+                        getDefaultVariantAnnotations(), getDefaultVariantAnnotationGroups())):
+                Collections.singletonList(readFilterDescriptor);
     }
 
     /**
@@ -373,6 +381,36 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      */
     public List<ReadFilter> getDefaultReadFilters() {
         return Arrays.asList(new WellformedReadFilter());
+    }
+
+    /**
+     * @see GATKTool#useVariantAnnotations()
+     */
+    public boolean useVariantAnnotations() {
+        return false;
+    }
+
+    /**
+     * @see GATKTool#getDefaultVariantAnnotations()
+     */
+    public List<Annotation> getDefaultVariantAnnotations() {
+        return Collections.emptyList();
+    }
+
+    /**
+     * @see GATKTool#getDefaultVariantAnnotationGroups()
+     */
+    public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() {
+        return Collections.emptyList();
+    }
+
+    /**
+     * @see GATKTool#makeVariantAnnotations()
+     */
+    public Collection<Annotation> makeVariantAnnotations() {
+        final GATKAnnotationPluginDescriptor annotationPlugin =
+                getCommandLineParser().getPluginDescriptor(GATKAnnotationPluginDescriptor.class);
+        return annotationPlugin.getResolvedInstances();
     }
 
     /**

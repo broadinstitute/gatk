@@ -4,6 +4,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
@@ -18,9 +20,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 public class HaplotypeCallerEngineUnitTest extends GATKBaseTest {
 
@@ -47,9 +47,9 @@ public class HaplotypeCallerEngineUnitTest extends GATKBaseTest {
 
         try ( final ReadsDataSource reads = new ReadsDataSource(testBam.toPath());
               final ReferenceDataSource ref = new ReferenceFileSource(reference);
-              final CachingIndexedFastaSequenceFile referenceReader = new CachingIndexedFastaSequenceFile(reference);) {
+              final CachingIndexedFastaSequenceFile referenceReader = new CachingIndexedFastaSequenceFile(reference)) {
 
-            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, reads.getHeader(), referenceReader);
+            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, reads.getHeader(), referenceReader, new VariantAnnotatorEngine(new ArrayList<>(), hcArgs.dbsnp.dbsnp, hcArgs.comps, false));
 
             List<ReadFilter> hcFilters = HaplotypeCallerEngine.makeStandardHCReadFilters();
             hcFilters.forEach(filter -> filter.setHeader(reads.getHeader()));

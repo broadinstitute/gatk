@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
@@ -18,8 +19,8 @@ import java.util.List;
 public class AS_RMSMappingQualityUnitTest extends ReducibleAnnotationBaseTest {
 
     @Override
-    protected List<String> getAnnotationsToUse() {
-        return Collections.singletonList(AS_RMSMappingQuality.class.getSimpleName());
+    protected List<Annotation> getAnnotationsToUse() {
+        return Collections.singletonList(new AS_RMSMappingQuality());
     }
 
     @Override
@@ -34,12 +35,9 @@ public class AS_RMSMappingQualityUnitTest extends ReducibleAnnotationBaseTest {
 
     @Test
     public void testFinalizeAnnotations() throws Exception {
-        final List<String> annotationGroupsToUse = Collections.emptyList();
-        final List<String> annotationsToUse = Collections.singletonList(AS_RMSMappingQuality.class.getSimpleName());
-        final List<String> annotationsToExclude = Collections.emptyList();
         final FeatureInput<VariantContext> dbSNPBinding = null;
         final List<FeatureInput<VariantContext>> features = Collections.emptyList();
-        final VariantAnnotatorEngine vae = VariantAnnotatorEngine.ofSelectedMinusExcluded(annotationGroupsToUse, annotationsToUse, annotationsToExclude, dbSNPBinding, features);
+        final VariantAnnotatorEngine vae = new VariantAnnotatorEngine(Collections.singletonList(new AS_RMSMappingQuality()), dbSNPBinding, features, false);
         final Allele refAllele = Allele.create("A", true);
         final Allele altAllele1 = Allele.create("T");
         final Allele altAllele2 = Allele.create("C");

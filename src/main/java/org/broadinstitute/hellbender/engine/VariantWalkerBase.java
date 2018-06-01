@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
 import org.broadinstitute.hellbender.utils.IndexUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
-import java.nio.file.Path;
 import java.util.Spliterator;
 import java.util.stream.StreamSupport;
 
