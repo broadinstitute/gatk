@@ -5,23 +5,23 @@
     $module = modules::GATK;
     $name = docSN::toolDocs;
 
-    printHeader($module, $name, "Documentation");
+    printHeader($module, $name, topSN::guide);
 
-    $dirs = array_diff(scandir("../", SCANDIR_SORT_DESCENDING), array('..', '.'));
-    $curr_version = file_get_contents(engConst::versions_dir.versionFiles::gatk);
+    $selected_major_version = 4;
+    $dirs = lookupVersionDirs($selected_major_version);
 ?>
 
 <link type='text/css' rel='stylesheet' href='gatkDoc.css'>
 
-<div class='row-fluid'>
+<div class='row'>
 
-    <aside class="span3">
+    <aside class="col-md-3">
 
         <?php echo produceGuideNav($module, $name) . makeTwitterFeed(); ?>
 
     </aside>
 
-    <div class='span9'>
+    <div class='col-md-9'>
 
 <#include "common.html"/>
 
@@ -60,12 +60,12 @@
         </div>
 </#macro>
 
-        <div class="row-fluid">
-            <div class="span6">
+        <div class="row">
+            <div class="col-md-6">
                 <h1 id="top"><i class='<?php print ico::toolDocsIcon; ?>'></i> Tool Documentation Index</h1>
             </div>
-            <div class="span6">
-                <div class="btn-group pull-right">
+            <div class="col-md-6">
+                <div class="btn-group pull-right" style='margin-top:14px;'>
                     <a class="btn btn-warning dropdown-toggle" data-toggle="dropdown" href="#">
                         Version ${version}
                         <span class="caret"></span>
@@ -79,8 +79,11 @@
             </div>
         </div>
 
-        <h1 class="hide_me_html"><small>Showing docs for version ${version} | The latest version is <?=$curr_version?></small></h1>
-        <hr />
+        <div class="hide_me_html">
+            <hr />
+            <em>Showing docs for version ${version} | The latest version is <?php print $latest_version; ?></em>
+            <hr />
+        </div>
 
         <div class="accordion" id="index">
             <#assign seq = ["engine", "tools", "other", "utilities"]>
