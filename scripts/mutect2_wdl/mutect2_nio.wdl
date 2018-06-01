@@ -558,7 +558,7 @@ task MergeBamOuts {
         gatk --java-options "-Xmx${command_mem}m" SortSam -I unsorted.out.bam \
             -O ${output_vcf_name}.out.bam \
             --SORT_ORDER coordinate -VALIDATION_STRINGENCY LENIENT
-        gatk --java-options "-Xmx${command_mem}m" BuildBamIndex -I ${output_vcf_name}.out.bam
+        gatk --java-options "-Xmx${command_mem}m" BuildBamIndex -I ${output_vcf_name}.out.bam -VALIDATION_STRINGENCY LENIENT
     >>>
 
     runtime {
