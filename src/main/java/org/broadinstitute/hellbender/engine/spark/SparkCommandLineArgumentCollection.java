@@ -31,11 +31,12 @@ public final class SparkCommandLineArgumentCollection implements Serializable {
     public Map<String,String> getSparkProperties(){
         final Map<String, String> propertyMap = new LinkedHashMap<>();
         for( String property: sparkProperties) {
-            final String[] splits = property.split("=");
-            if (splits.length != 2 || splits[0].isEmpty() || splits[1].isEmpty()) {
-                throw new CommandLineException.BadArgumentValue(StandardArgumentDefinitions.SPARK_PROPERTY_NAME, property, "Expected a value of the form spark.property.name=value");
+            final int firstEqualIndex = property.indexOf("=");
+            if (firstEqualIndex == -1 || firstEqualIndex == 0 || firstEqualIndex == property.length() - 1) {
+                throw new CommandLineException.BadArgumentValue(StandardArgumentDefinitions.SPARK_PROPERTY_NAME, property,
+                        "Expected a value of the form spark.property.name=value, where the property name and value are not empty");
             } else {
-                propertyMap.put(splits[0], splits[1]);
+                propertyMap.put(property.substring(0, firstEqualIndex), property.substring(firstEqualIndex + 1));
             }
         }
         return propertyMap;
