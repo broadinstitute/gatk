@@ -60,35 +60,4 @@ public final class GenotypingGivenAllelesUtils {
         return vc;
     }
 
-    /**
-     * Create the list of artificial GGA-mode haplotypes by injecting each of the provided alternate alleles into the reference haplotype
-     *
-     * @param refHaplotype the reference haplotype
-     * @param givenHaplotypes the list of alternate alleles in VariantContexts
-     * @param activeRegionWindow the window containing the reference haplotype
-     *
-     * @return a non-null list of haplotypes
-     */
-    public static List<Haplotype> composeGivenHaplotypes(final Haplotype refHaplotype, final List<VariantContext> givenHaplotypes, final GenomeLoc activeRegionWindow) {
-        Utils.nonNull(refHaplotype, "reference haplotype may not be null");
-        Utils.nonNull(givenHaplotypes, "given haplotypes may not be null");
-        Utils.nonNull(activeRegionWindow, "active region window may not be null");
-        Utils.validateArg(activeRegionWindow.size() == refHaplotype.length(), "inconsistent reference haplotype and active region window");
-
-        final Set<Haplotype> returnHaplotypes = new LinkedHashSet<>();
-        final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
-
-        for( final VariantContext compVC : givenHaplotypes ) {
-            Utils.validateArg(GATKVariantContextUtils.overlapsRegion(compVC, activeRegionWindow),
-                    " some variant provided does not overlap with active region window");
-            for( final Allele compAltAllele : compVC.getAlternateAlleles() ) {
-                final Haplotype insertedRefHaplotype = refHaplotype.insertAllele(compVC.getReference(), compAltAllele, activeRegionStart + compVC.getStart() - activeRegionWindow.getStart(), compVC.getStart());
-                if( insertedRefHaplotype != null ) { // can be null if the requested allele can't be inserted into the haplotype
-                    returnHaplotypes.add(insertedRefHaplotype);
-                }
-            }
-        }
-
-        return new ArrayList<>(returnHaplotypes);
-    }
 }

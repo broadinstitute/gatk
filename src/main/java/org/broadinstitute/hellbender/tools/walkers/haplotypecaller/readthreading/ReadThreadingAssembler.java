@@ -176,7 +176,7 @@ public final class ReadThreadingAssembler {
         final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
 
         for( final VariantContext compVC : givenHaplotypes ) {
-            Utils.validateArg(GATKVariantContextUtils.overlapsRegion(compVC, activeRegionWindow), " some variant provided does not overlap with active region window");
+            Utils.validateArg(compVC.overlaps(activeRegionWindow), " some variant provided does not overlap with active region window");
             for( final Allele compAltAllele : compVC.getAlternateAlleles() ) {
                 final Haplotype insertedRefHaplotype = refHaplotype.insertAllele(compVC.getReference(), compAltAllele, activeRegionStart + compVC.getStart() - activeRegionWindow.getStart(), compVC.getStart());
                 if( insertedRefHaplotype != null ) { // can be null if the requested allele can't be inserted into the haplotype
