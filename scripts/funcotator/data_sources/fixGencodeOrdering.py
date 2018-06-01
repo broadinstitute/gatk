@@ -8,6 +8,7 @@
 import sys
 import argparse
 import csv
+import re
 
 ########################################################################
 # Constants:
@@ -18,6 +19,8 @@ PERCENT_MARKER = TOTAL_EXPECTED_LINES/20
 CONTIG_PRINT_ORDER_LIST = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11",
                            "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21",
                            "chr22", "chrX", "chrY", "chrM"]
+
+STARTS_WITH_NUMBER_REGEX = re.compile('''^[0-9]''')
 
 ########################################################################
 # Set up parsing for arguments:
@@ -35,7 +38,12 @@ def write_contig(contig, contig_dictionary, out_writer):
 
     sys.stderr.write("\tSorting ...\n")
 
-    gene_list = contig_dictionary[contig]
+    try:
+        gene_list = contig_dictionary[contig]
+    except KeyError as err:
+        sys.stderr.write("Got a KeyError: " + str(err))
+        sys.stderr.flush()
+        sys.exit(1)
 
     # sort our contig by the start gene column(3)
     gene_list.sort(key=lambda x: int(x[0][3]))
@@ -46,6 +54,41 @@ def write_contig(contig, contig_dictionary, out_writer):
         for element in g:
             out_writer.writerow(element)
 
+# ------------------
+# Taken from StackOverflow: https://stackoverflow.com/questions/5967500/how-to-correctly-sort-a-string-with-a-number-inside
+def atoi(text):
+    return int(text) if text.isdigit() else text.lower()
+
+def natural_keys(text):
+    '''
+    alist.sort(key=natural_keys) sorts in human order
+    http://nedbatchelder.com/blog/200712/human_sorting.html
+    (See Toothy's implementation in the comments)
+    '''
+    return [ atoi(c) for c in re.split('(\d+)', text) ]
+# ------------------
+
+def sort_the_contigs(contigs):
+    numericList = []
+    charList = []
+    shortList = []
+    longList = []
+
+    for contig in contigs:
+        contig = contig[3:] if contig.startswith('chr') else contig
+        if contig.isdigit():
+            numericList.append(contig)
+        elif len(contig) == 1:
+            charList.append(contig)
+        elif len(contig) < 3:
+            shortList.append(contig)
+        else:
+            longList.append(contig)
+
+    return sorted(numericList, key=int) + \
+           sorted(charList, key=str.lower) + \
+           sorted(shortList, key=str.lower) + \
+           sorted(longList, key=natural_keys)
 
 ########################################################################
 # Main:
@@ -110,11 +153,12 @@ if __name__ == "__main__":
 
         # Go through and print our prioritized contig list first:
         for contig in CONTIG_PRINT_ORDER_LIST:
-            write_contig(contig, contig_dictionary, out_writer)
-            contigs.remove(contig)
+            if contig in contig_dictionary:
+                write_contig(contig, contig_dictionary, out_writer)
+                contigs.remove(contig)
 
         # Print the remaining ones:
-        for contig in sorted(contigs, key=str.lower):
+        for contig in sort_the_contigs(contigs):
             write_contig(contig, contig_dictionary, out_writer)
 
     sys.stderr.write("DONE!\n")

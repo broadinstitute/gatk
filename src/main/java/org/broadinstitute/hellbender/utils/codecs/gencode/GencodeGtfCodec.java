@@ -494,6 +494,30 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
     // ============================================================================================================
 
     /**
+     * Checks to see if the given header could be a Gencode GTF Header.
+     * To be used in conjunction with validation methods.
+     * @param header The first few lines of a GTF file representing the header.
+     * @return {@code true} if the header looks like a Gencode GTF Header, {@code false} otherwise.
+     */
+    static boolean looksLikeGencodeGtfHeader(final List<String> header) {
+        if ( header.isEmpty() )
+            return false;
+        return header.get(0).startsWith("##description:");
+    }
+
+    /**
+     * Checks to see if the given header could be a Ensembl GTF Header.
+     * To be used in conjunction with validation methods.
+     * @param header The first few lines of a GTF file representing the header.
+     * @return {@code true} if the header looks like a Ensembl GTF Header, {@code false} otherwise.
+     */
+    static boolean looksLikeEnsemblGtfHeader(final List<String> header) {
+        if ( header.isEmpty() )
+            return false;
+        return header.get(0).startsWith("#!genome-build");
+    }
+
+    /**
      * Check if the given header of a tentative GENCODE GTF file is, in fact, the header to such a file.
      * @param header Header lines to check for conformity to GENCODE GTF specifications.
      * @return true if the given {@code header} is that of a GENCODE GTF file; false otherwise.
