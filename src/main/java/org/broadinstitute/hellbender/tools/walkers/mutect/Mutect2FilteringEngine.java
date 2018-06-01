@@ -86,7 +86,7 @@ public class Mutect2FilteringEngine {
             }
             final int referenceSTRBaseCount = ru.length() * rpa[0];
             final int numPCRSlips = rpa[0] - rpa[1];
-            if (referenceSTRBaseCount >= MTFAC.minPcrSlippageBases && numPCRSlips == 1) {
+            if (referenceSTRBaseCount >= MTFAC.minPcrSlippageBases && Math.abs(numPCRSlips) == 1) {
                 // calculate the p-value that out of n reads we would have at least k slippage reads
                 // if this p-value is small we keep the variant (reject the PCR slippage hypothesis)
                 final int[] ADs = vc.getGenotype(tumorSample).getAD();
