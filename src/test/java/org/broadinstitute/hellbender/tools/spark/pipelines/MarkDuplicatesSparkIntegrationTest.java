@@ -169,19 +169,6 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
     }
 
     @Test
-    public void testThisIssueRightNow() {
-        File output = createTempFile("supplementaryReadUnmappedMate", "bam");
-        final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addOutput(output);
-        args.addArgument("input","/Users/emeryj/hellbender/Scripts/markDuplicatesTesting/picardComparison/input1.chr1snppet.bam");
-        args.add("--disable-tool-default-read-filters");
-        runCommandLine(args);
-
-        runCommandLine(args.getArgsArray());
-        System.out.print("");
-    }
-
-    @Test
     public void testSupplementaryReadUnmappedMate() {
         File output = createTempFile("supplementaryReadUnmappedMate", "bam");
         final ArgumentsBuilder args = new ArgumentsBuilder();
