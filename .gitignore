@@ -19,6 +19,9 @@ tmp/
 src/main/java/local/
 out/
 *.pyc
+gatkcondaenv.yml
+gatkcondaenv.intel.yml
+gatkPythonPackageArchive.zip
 
 #Please don't commit me
 client_secret.json

@@ -1,6 +1,6 @@
-# Conda environment for GATK Python Tools
+# $condaEnvDescription
 #
-name: gatk
+name: $condaEnvName
 channels:
 - defaults
 dependencies:
@@ -43,9 +43,9 @@ dependencies:
   - scikit-learn==0.19.1
   - scipy==1.0.0
   - six==1.11.0
-  - tensorflow==1.4.0
+  - $tensorFlowDependency
   - tensorflow-tensorboard==0.4.0rc3
   - theano==0.9.0
   - tqdm==4.19.4
   - werkzeug==0.12.2
-  - build/gatkPythonPackageArchive.zip
+  - gatkPythonPackageArchive.zip
