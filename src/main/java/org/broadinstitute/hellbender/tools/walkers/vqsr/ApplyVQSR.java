@@ -81,7 +81,7 @@ import java.util.regex.Pattern;
  *   -R Homo_sapiens_assembly38.fasta \
  *   -V input.vcf.gz \
  *   -O output.vcf.gz \
- *   --ts_filter_level 99.0 \
+ *   --truth-sensitivity-filter-level 99.0 \
  *   --tranches-file output.tranches \
  *   --recal-file output.recal \
  *   -mode SNP
@@ -94,7 +94,7 @@ import java.util.regex.Pattern;
  *   -V input.vcf.gz \
  *   -O output.vcf.gz \
  *   -AS \
- *   --ts_filter_level 99.0 \
+ *   --truth-sensitivity-filter-level 99.0 \
  *   --tranches-file output.AS.tranches \
  *   --recal-file output.AS.recal \
  *   -mode SNP 
