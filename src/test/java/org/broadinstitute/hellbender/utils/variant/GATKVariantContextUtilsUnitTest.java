@@ -32,7 +32,7 @@ import java.util.stream.IntStream;
 
 public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
 
-    Allele Aref, T, C, G, Cref, ATC, ATCATC;
+    Allele Aref, Cref, Gref, Tref, A, T, C, G, ATC, ATCATC;
     Allele ATCATCT;
     Allele ATref;
     Allele ATCref;
@@ -44,6 +44,9 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         // alleles
         Aref = Allele.create("A", true);
         Cref = Allele.create("C", true);
+        Gref = Allele.create("G", true);
+        Tref = Allele.create("T", true);
+        A = Allele.create("T");
         T = Allele.create("T");
         C = Allele.create("C");
         G = Allele.create("G");
@@ -91,6 +94,19 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         return new VariantContextBuilder(source, "1", start, stop, alleles).genotypes(genotypes).filters(filters).make();
     }
 
+    private VariantContext makeVC(final List<Allele> alleles, final int start) {
+        int stop = start + alleles.get(0).length() - 1;
+        return new VariantContextBuilder("source", "1", start, stop, alleles).make();
+    }
+
+    private VariantContext makeVC(final Allele allele, final int start) {
+        return makeVC(Collections.singletonList(allele), start);
+    }
+
+    private VariantContext makeVC(final Allele ref, final Allele alt, final int start) {
+        return makeVC(Arrays.asList(ref, alt), start);
+    }
+
     @Test
     public void testHomozygousAlleleList() throws Exception {
         final List<Allele> alleles = GATKVariantContextUtils.homozygousAlleleList(T, 2);
@@ -102,41 +118,35 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
 
     @DataProvider
     Object[][] provideDataForDetermineReferenceAllele() {
-        // {list of vcs' allele lists, list of vc starts, Locatable for this start, expected ref allele
+        // {list of vcs, locus, expected ref - contig is "1" throughout
         return new Object[][] {
-                { Collections.emptyList(), Collections.emptyList(), null, null },
-                { Collections.emptyList(), Collections.emptyList(), START_AT_1, null },
-                { Arrays.asList(Arrays.asList(Aref)), Arrays.asList(1), START_AT_1, Aref },
-                { Arrays.asList(Arrays.asList(Aref)), Arrays.asList(1), START_AT_2, null },
-                { Arrays.asList(Arrays.asList(Aref), Arrays.asList(ATref)), Arrays.asList(1,1), START_AT_1, ATref },
-                { Arrays.asList(Arrays.asList(ATref), Arrays.asList(Aref)), Arrays.asList(1,1), START_AT_1, ATref },
-                { Arrays.asList(Arrays.asList(Aref), Arrays.asList(ATref)), Arrays.asList(1,2), START_AT_1, Aref },
-                { Arrays.asList(Arrays.asList(Aref), Arrays.asList(ATref)), Arrays.asList(1,1), START_AT_2, null },
-                { Arrays.asList(Arrays.asList(Aref), Arrays.asList(ATref)), Arrays.asList(1,1), null, ATref },
-                { Arrays.asList(Arrays.asList(Aref, C), Arrays.asList(ATref, ATCATC)), Arrays.asList(1,1), START_AT_1, ATref },
-                { Arrays.asList(Arrays.asList(Aref), Arrays.asList(ATCref), Arrays.asList(ATref)), Arrays.asList(1,1,1), START_AT_1, ATCref }
+                { Collections.emptyList(), null, null },
+                { Collections.emptyList(), START_AT_1, null },
+                { Collections.singletonList(makeVC(Aref,1)), START_AT_1, Aref },
+                { Collections.singletonList(makeVC(Aref,1)), START_AT_2, null },
+
+                {Arrays.asList(makeVC(Aref,1), makeVC(ATref,1)), START_AT_1, ATref},
+                {Arrays.asList(makeVC(ATref,1), makeVC(Aref,1)), START_AT_1, ATref},
+                {Arrays.asList(makeVC(Aref,1), makeVC(ATref,1)), null, ATref},
+                {Arrays.asList(makeVC(ATref,1), makeVC(Aref,1)), START_AT_2, null},
+                {Arrays.asList(makeVC(Aref,1), makeVC(ATref,2)), START_AT_1, Aref},
+
+                {Arrays.asList(makeVC(Aref, C,1), makeVC(ATref,ATCATC,1)), START_AT_1, ATref},
+                {Arrays.asList(makeVC(Aref,1), makeVC(ATCref,1), makeVC(ATref,1)), START_AT_1, ATCref},
         };
     }
 
     @Test(dataProvider = "provideDataForDetermineReferenceAllele")
-    public void testDetermineReferenceAllele(final List<List<Allele>> alleleLists, final List<Integer> starts, final Locatable loc, final Allele expectedRef) {
-        final List<VariantContext> vcs = IntStream.range(0, alleleLists.size())
-                .mapToObj(n -> {
-                    final int start = starts.get(n);
-                    final int stop = starts.get(n) + alleleLists.get(n).get(0).length() - 1;
-                    return new VariantContextBuilder(Integer.toString(n), "1", start, stop, alleleLists.get(n)).make();
-                })
-                .collect(Collectors.toList());
+    public void testDetermineReferenceAllele(final List<VariantContext> vcs, final Locatable loc, final Allele expectedRef) {
 
         final Allele ref = GATKVariantContextUtils.determineReferenceAllele(vcs, loc);
 
         if (expectedRef == null) {
-            Assert.assertTrue(ref == null);
+            Assert.assertNull(ref);
         } else {
             Assert.assertTrue(ref.isReference());
             Assert.assertEquals(ref.getBaseString(), expectedRef.getBaseString());
         }
-        Assert.assertTrue(ref == expectedRef || ref.getBaseString().equals(expectedRef.getBaseString()));
     }
 
     // --------------------------------------------------------------------------------
@@ -2129,11 +2139,23 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     @DataProvider
     Object[][] provideDataForIsTransition() {
         return new Object[][] {
-                { makeVC("source", Arrays.asList(Aref, C)), false},
                 { makeVC("source", Arrays.asList(Aref, G)), true},
+                { makeVC("source", Arrays.asList(Cref, T)), true},
+                { makeVC("source", Arrays.asList(Gref, A)), true},
+                { makeVC("source", Arrays.asList(Tref, C)), true},
+
+                { makeVC("source", Arrays.asList(Aref, C)), false},
                 { makeVC("source", Arrays.asList(Aref, T)), false},
+
+                { makeVC("source", Arrays.asList(Cref, A)), false},
                 { makeVC("source", Arrays.asList(Cref, G)), false},
-                { makeVC("source", Arrays.asList(Cref, T)), true}
+
+                { makeVC("source", Arrays.asList(Gref, C)), false},
+                { makeVC("source", Arrays.asList(Gref, T)), false},
+
+                { makeVC("source", Arrays.asList(Tref, A)), false},
+                { makeVC("source", Arrays.asList(Tref, G)), false}
+
         };
     }
 
