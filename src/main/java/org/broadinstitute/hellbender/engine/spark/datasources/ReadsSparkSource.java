@@ -7,7 +7,10 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.JobContext;
+import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.parquet.avro.AvroParquetInputFormat;
@@ -33,6 +36,8 @@ import org.seqdoop.hadoop_bam.util.SAMHeaderReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
@@ -69,6 +74,21 @@ public final class ReadsSparkSource implements Serializable {
         return getParallelReads(readFileName, referencePath, traversalParameters, 0);
     }
 
+
+    public static class SplitSortingSamInputFormat extends AnySAMInputFormat{
+
+        @Override
+        public List<InputSplit> getSplits(JobContext job) throws IOException {
+            final List<InputSplit> splits = super.getSplits(job);
+            splits.sort((a, b) -> {
+                FileSplit fa = (FileSplit) a, fb = (FileSplit) b;
+                return fa.getPath().compareTo(fb.getPath());
+            });
+            return splits;
+        }
+    }
+
+
     /**
      * Loads Reads using Hadoop-BAM. For local files, bam must have the fully-qualified path,
      * i.e., file:///path/to/bam.bam.
@@ -102,7 +122,7 @@ public final class ReadsSparkSource implements Serializable {
         }
 
         rdd2 = ctx.newAPIHadoopFile(
-                readFileName, AnySAMInputFormat.class, LongWritable.class, SAMRecordWritable.class,
+                readFileName, SplitSortingSamInputFormat.class, LongWritable.class, SAMRecordWritable.class,
                 conf);
 
         JavaRDD<GATKRead> reads= rdd2.map(v1 -> {
