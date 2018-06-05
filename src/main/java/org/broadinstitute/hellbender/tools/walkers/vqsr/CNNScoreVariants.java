@@ -118,7 +118,7 @@ public class CNNScoreVariants extends VariantWalker {
     private static final int ALT_INDEX = 3;
     private static final int KEY_INDEX = 4;
     private static final int FIFO_STRING_INITIAL_CAPACITY = 1024;
-    private static final int MAX_READ_BATCH = 2;
+    private static final int MAX_READ_BATCH = 4098;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -147,6 +147,14 @@ public class CNNScoreVariants extends VariantWalker {
     @Advanced
     @Argument(fullName = "transfer-batch-size", shortName = "transfer-batch-size", doc = "Size of data to queue for python streaming.", minValue = 1, maxValue = 8192, optional = true)
     private int transferBatchSize = 512;
+
+    @Advanced
+    @Argument(fullName = "inter-op-threads", shortName = "inter-op-threads", doc = "Number of inter-op parallelism threads to use for Tensorflow", minValue = 0, maxValue = 4096, optional = true)
+    private int interOpThreads = 0;
+
+    @Advanced
+    @Argument(fullName = "intra-op-threads", shortName = "intra-op-threads", doc = "Number of intra-op parallelism threads to use for Tensorflow", minValue = 0, maxValue = 4096, optional = true)
+    private int intraOpThreads = 0;
 
     @Advanced
     @Argument(fullName = "output-tensor-dir", shortName = "output-tensor-dir", doc = "Optional directory where tensors can be saved for debugging or visualization.", optional = true)
@@ -253,6 +261,10 @@ public class CNNScoreVariants extends VariantWalker {
             } else {
                 logger.info("Saving temp file from python:" + scoreFile.getAbsolutePath());
             }
+
+            pythonExecutor.sendSynchronousCommand("from keras import backend" + NL);
+            pythonExecutor.sendSynchronousCommand(String.format("backend.set_session(backend.tf.Session(config=backend.tf.ConfigProto(intra_op_parallelism_threads=%d, inter_op_parallelism_threads=%d)))" + NL, intraOpThreads, interOpThreads));
+
             pythonExecutor.sendSynchronousCommand(String.format("tempFile = open('%s', 'w+')" + NL, scoreFile.getAbsolutePath()));
             pythonExecutor.sendSynchronousCommand("import vqsr_cnn" + NL);
 
@@ -342,7 +354,8 @@ public class CNNScoreVariants extends VariantWalker {
     private String GATKReadToString(GATKRead read) {
         StringBuilder sb = new StringBuilder(FIFO_STRING_INITIAL_CAPACITY);
         sb.append(read.getBasesString() + "\t");
-        sb.append(baseQualityBytesToString(read.getBaseQualities()) + "\t");
+
+        appendQualityBytes(sb, read.getBaseQualities());
         sb.append(read.getCigar().toString() + "\t");
         sb.append(read.isReverseStrand() + "\t");
         sb.append((read.isPaired() ? read.mateIsReverseStrand() : "false") + "\t");
@@ -352,12 +365,16 @@ public class CNNScoreVariants extends VariantWalker {
         return sb.toString();
     }
 
-    private String baseQualityBytesToString(byte[] qualities) {
-        String qualityString = "";
-        for (int i = 0; i < qualities.length; i++) {
-            qualityString += Integer.toString(qualities[i]) + ",";
+    private void appendQualityBytes(StringBuilder sb, byte[] qualities) {
+        if(qualities.length == 0) {
+            sb.append("\t");
+            return;
         }
-        return qualityString.substring(0, qualityString.length() - 1);
+
+        for (int i = 0; i < qualities.length - 1; i++) {
+            sb.append(Integer.toString(qualities[i]) + ",");
+        }
+        sb.append(Integer.toString(qualities[qualities.length - 1]) + "\t");
     }
 
     private String getVariantDataString(final VariantContext variant) {
