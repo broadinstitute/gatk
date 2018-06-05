@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
@@ -27,12 +28,14 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
 
-    Allele Aref, T, C, G, Cref, ATC, ATCATC;
+    Allele Aref, Cref, Gref, Tref, A, T, C, G, ATC, ATCATC;
     Allele ATCATCT;
     Allele ATref;
+    Allele ATCref;
     Allele Anoref;
     Allele GT;
 
@@ -41,10 +44,14 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         // alleles
         Aref = Allele.create("A", true);
         Cref = Allele.create("C", true);
+        Gref = Allele.create("G", true);
+        Tref = Allele.create("T", true);
+        A = Allele.create("T");
         T = Allele.create("T");
         C = Allele.create("C");
         G = Allele.create("G");
         ATC = Allele.create("ATC");
+        ATCref = Allele.create("ATC", true);
         ATCATC = Allele.create("ATCATC");
         ATCATCT = Allele.create("ATCATCT");
         ATref = Allele.create("AT",true);
@@ -87,10 +94,59 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         return new VariantContextBuilder(source, "1", start, stop, alleles).genotypes(genotypes).filters(filters).make();
     }
 
+    private VariantContext makeVC(final List<Allele> alleles, final int start) {
+        int stop = start + alleles.get(0).length() - 1;
+        return new VariantContextBuilder("source", "1", start, stop, alleles).make();
+    }
+
+    private VariantContext makeVC(final Allele allele, final int start) {
+        return makeVC(Collections.singletonList(allele), start);
+    }
+
+    private VariantContext makeVC(final Allele ref, final Allele alt, final int start) {
+        return makeVC(Arrays.asList(ref, alt), start);
+    }
+
     @Test
     public void testHomozygousAlleleList() throws Exception {
         final List<Allele> alleles = GATKVariantContextUtils.homozygousAlleleList(T, 2);
         Assert.assertEquals(alleles, Arrays.asList(T, T));
+    }
+
+    final static private Locatable START_AT_1 = new SimpleInterval("1",1,1);
+    final static private Locatable START_AT_2 = new SimpleInterval("1",2,2);
+
+    @DataProvider
+    Object[][] provideDataForDetermineReferenceAllele() {
+        // {list of vcs, locus, expected ref - contig is "1" throughout
+        return new Object[][] {
+                { Collections.emptyList(), null, null },
+                { Collections.emptyList(), START_AT_1, null },
+                { Collections.singletonList(makeVC(Aref,1)), START_AT_1, Aref },
+                { Collections.singletonList(makeVC(Aref,1)), START_AT_2, null },
+
+                {Arrays.asList(makeVC(Aref,1), makeVC(ATref,1)), START_AT_1, ATref},
+                {Arrays.asList(makeVC(ATref,1), makeVC(Aref,1)), START_AT_1, ATref},
+                {Arrays.asList(makeVC(Aref,1), makeVC(ATref,1)), null, ATref},
+                {Arrays.asList(makeVC(ATref,1), makeVC(Aref,1)), START_AT_2, null},
+                {Arrays.asList(makeVC(Aref,1), makeVC(ATref,2)), START_AT_1, Aref},
+
+                {Arrays.asList(makeVC(Aref, C,1), makeVC(ATref,ATCATC,1)), START_AT_1, ATref},
+                {Arrays.asList(makeVC(Aref,1), makeVC(ATCref,1), makeVC(ATref,1)), START_AT_1, ATCref},
+        };
+    }
+
+    @Test(dataProvider = "provideDataForDetermineReferenceAllele")
+    public void testDetermineReferenceAllele(final List<VariantContext> vcs, final Locatable loc, final Allele expectedRef) {
+
+        final Allele ref = GATKVariantContextUtils.determineReferenceAllele(vcs, loc);
+
+        if (expectedRef == null) {
+            Assert.assertNull(ref);
+        } else {
+            Assert.assertTrue(ref.isReference());
+            Assert.assertEquals(ref.getBaseString(), expectedRef.getBaseString());
+        }
     }
 
     // --------------------------------------------------------------------------------
@@ -2080,6 +2136,29 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         };
     }
 
+    @DataProvider
+    Object[][] provideDataForIsTransition() {
+        return new Object[][] {
+                { makeVC("source", Arrays.asList(Aref, G)), true},
+                { makeVC("source", Arrays.asList(Cref, T)), true},
+                { makeVC("source", Arrays.asList(Gref, A)), true},
+                { makeVC("source", Arrays.asList(Tref, C)), true},
+
+                { makeVC("source", Arrays.asList(Aref, C)), false},
+                { makeVC("source", Arrays.asList(Aref, T)), false},
+
+                { makeVC("source", Arrays.asList(Cref, A)), false},
+                { makeVC("source", Arrays.asList(Cref, G)), false},
+
+                { makeVC("source", Arrays.asList(Gref, C)), false},
+                { makeVC("source", Arrays.asList(Gref, T)), false},
+
+                { makeVC("source", Arrays.asList(Tref, A)), false},
+                { makeVC("source", Arrays.asList(Tref, G)), false}
+
+        };
+    }
+
 
     @Test(dataProvider = "provideAllelesAndFrameshiftResults")
     void testIsFrameshift(final Allele ref, final Allele alt, final boolean expected) {
@@ -2114,5 +2193,10 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     void testIsIndel(final Allele ref, final Allele alt, final boolean expected ) {
         Assert.assertEquals( GATKVariantContextUtils.isIndel(ref, alt), expected );
         Assert.assertEquals( GATKVariantContextUtils.isIndel(ref.getBaseString(), alt.getBaseString()), expected );
+    }
+
+    @Test(dataProvider = "provideDataForIsTransition")
+    public void testIsTransition(final VariantContext vc, final boolean isTransition) {
+        Assert.assertEquals(GATKVariantContextUtils.isTransition(vc), isTransition);
     }
 }
