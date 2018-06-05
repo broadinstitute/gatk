@@ -20,7 +20,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.runtime.AsynchronousStreamWriterService;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
-import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
+import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 import java.io.*;
 import java.util.*;
@@ -98,7 +98,7 @@ import java.util.stream.StreamSupport;
 @CommandLineProgramProperties(
         summary = CNNScoreVariants.USAGE_SUMMARY,
         oneLineSummary = CNNScoreVariants.USAGE_ONE_LINE_SUMMARY,
-        programGroup = VariantEvaluationProgramGroup.class
+        programGroup = VariantFilteringProgramGroup.class
 )
 
 public class CNNScoreVariants extends VariantWalker {

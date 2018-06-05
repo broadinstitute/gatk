@@ -19,7 +19,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
+import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 import java.io.File;
 import java.io.IOException;
@@ -64,7 +64,7 @@ import java.util.stream.Collectors;
 @CommandLineProgramProperties(
         summary = "Apply tranche filtering based on a truth VCF of known common sites of variation and score from VCF INFO field",
         oneLineSummary = "Apply tranche filtering",
-        programGroup = VariantEvaluationProgramGroup.class
+        programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
 @ExperimentalFeature
