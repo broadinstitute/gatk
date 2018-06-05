@@ -264,12 +264,12 @@ Mutect triages sites based on their pileup at a single base locus.  If there is 
 \begin{equation}
 L({\rm no~variation}) = \prod_{i \in \mathcal{R}} (1 - \epsilon_i) \prod_{j \in \mathcal{A}} \epsilon_j \approx \prod_{j \in \mathcal{A}} \epsilon_j, 
 \end{equation}
-where the approximation amounts to ignoring the possibility that ref reads are actually alt, or, equivalently, giving each ref read infinite quality.  This is not necessary but it greatly speeds the computation implementation because, as we will see, we will only need to keep alt base qualities in memory.
+where the approximation amounts to ignoring the possibility that ref reads are actually alt, or, equivalently, giving each ref read infinite quality.  This is not necessary but it speeds the computation because, as we will see, we will only need to keep alt base qualities in memory.
 \begin{equation}
 L(f) = \prod_{i \in \mathcal{R}} \left[ (1 -f)(1 - \epsilon_i) + f \epsilon_i \right] \prod_{j \in \mathcal{A}} \left[f(1 - \epsilon_j) + (1 - f) \epsilon_j \right]
 \approx (1-f)^{N_{\rm ref}} \prod_{j \in \mathcal{A}} \left[f(1 - \epsilon_j) + (1 - f) \epsilon_j \right],
 \end{equation}
-where we again assign infinite base quality to ref reads and have let $N_{\rm ref} = | \mathcal{R}|$.
+where we again assign infinite base quality to ref reads and let $N_{\rm ref} = | \mathcal{R}|$.
 
 This is equivalent to the following model in which we give the $n$th alt read a latent indicator $z_j$ which equals 1 when the read is an error:
 \begin{align}
@@ -281,17 +281,17 @@ q(f) \approx {\rm Beta}(f | \alpha, \beta), \quad \alpha = N_{\rm alt} + 1, \bet
 \end{equation}
 Here the ``$+1$"s come from the pseudocounts, one ref and one alt, of a flat prior of $f$.  Then, following the usual recipe of averaging the log likelihood with respect to $f$ and re-exponentiating, we find that $z_n$ ``sees" the following distribution:
 \begin{align}
-q(z_n) &\propto \left[ \epsilon_n \overline{\ln (1 - f)} \right]^{z_n} \left[ (1 - \epsilon_n) \overline{\ln f} \right]^{1 - z_n} \\
+q(z_n) &\propto \left[ \epsilon_n \exp \overline{\ln (1 - f)} \right]^{z_n} \left[ (1 - \epsilon_n) \exp \overline{\ln f} \right]^{1 - z_n} \\
 &= \left[ \epsilon_n \rho \right]^{z_n} \left[ (1 - \epsilon_n) \tau \right]^{1 - z_n},
 \end{align}
-where we have defined the standard Beta distribution moments (with respect to $q(f)$) $\rho \equiv \overline{\ln (1 - f)} = \psi(\beta) - \psi(\alpha + \beta)$ and $\tau \equiv \overline{\ln f} = \psi(\alpha) - \psi(\alpha + \beta)$. By inspection, we see that
+where we have defined the standard Beta distribution moments (with respect to $q(f)$) $\ln \rho \equiv \overline{\ln (1 - f)} = \psi(\beta) - \psi(\alpha + \beta)$ and $\ln \tau \equiv \overline{\ln f} = \psi(\alpha) - \psi(\alpha + \beta)$. By inspection, we see that
 \begin{equation}
 q(z_n) = {\rm Bernoulli}(z_n | \gamma_n), \quad \gamma_n = \frac{ \rho \epsilon_n}{\rho \epsilon_n + \tau (1 - \epsilon_n)}.
 \end{equation}
 Then, Equation 10.3 of Bishop gives us the variational lower bound on $L(f)$:
 \begin{align}
-L(f) &\approx E_q \left[ \ln P({\rm reads}, f, \vz) \right] - {\rm entropy}[q(f)] - \sum_n {\rm entropy}[q(z_n)] \\
-&= -H(\alpha, \beta) + \rho N_{\rm ref} + \sum_n \left[ \gamma_n (\rho + \ln \epsilon_n) + (1 - \gamma_n)(\tau + \ln(1 - \epsilon_n) - H(\gamma_n) \right],
+L(f) &\approx E_q \left[ \ln P({\rm reads}, f, \vz) \right] + {\rm entropy}[q(f)] + \sum_n {\rm entropy}[q(z_n)] \\
+&= -H(\alpha, \beta) +  N_{\rm ref} \ln \rho + \sum_n \left[ \gamma_n \ln \left( \rho \epsilon_n \right) + (1 - \gamma_n) \ln \left( \tau (1 - \epsilon_n) \right) - H(\gamma_n) \right],
 \end{align}
 where $H(\alpha, \beta)$ and $H(\gamma)$ are Beta and Bernoulli entropies.  We summarize these steps in the following algorithm:
 
@@ -299,9 +299,9 @@ where $H(\alpha, \beta)$ and $H(\gamma)$ are Beta and Bernoulli entropies.  We s
 \begin{algorithmic}[1]
 \State Record the base qualities, hence the error probabilities $\epsilon_n$ of each alt read.
 \State $\alpha = N_{\rm alt} + 1$, $\beta = N_{\rm ref} + 1$
-\State $\rho = \psi(\beta) - \psi(\alpha + \beta)$, $\tau = \psi(\alpha) - \psi(\alpha + \beta)$.
+\State $\rho = \exp \left( \psi(\beta) - \psi(\alpha + \beta) \right) $, $\tau = \exp \left( \psi(\alpha) - \psi(\alpha + \beta) \right)$.
 \State $\gamma_n =  \rho \epsilon_n / \left[ \rho \epsilon_n + \tau (1 - \epsilon_n) \right]$
-\State $L(f) \approx H(\alpha, \beta) + \rho N_{\rm ref} + \sum_n \left[ \gamma_n (\rho + \ln \epsilon_n) + (1 - \gamma_n)(\tau + \ln(1 - \epsilon_n) + H(\gamma_n) \right]$
+\State $L(f) \approx H(\alpha, \beta) + N_{\rm ref} \ln \rho + \sum_n \left[ \gamma_n \ln \left( \rho \epsilon_n \right) + (1 - \gamma_n)\ln \left( \tau (1 - \epsilon_n) \right) + H(\gamma_n) \right]$
 \end{algorithmic}
 %\caption{Pair HMM algorithm}
 %\label{pairHMM}

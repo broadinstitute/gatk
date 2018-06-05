@@ -302,27 +302,27 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
     // this implements the isActive() algorithm described in docs/mutect/mutect.pdf
     private static double lnLikelihoodRatio(final int refCount, final List<Byte> altQuals) {
-        //TODO: we're only taking integer digammas so if it's expensive we can cache them
         final double beta = refCount + 1;
         final double alpha = altQuals.size() + 1;
         final double digammaAlpha = Gamma.digamma(alpha);
         final double digammaBeta = Gamma.digamma(beta);
         final double digammaAlphaPlusBeta = Gamma.digamma(alpha + beta);
-        final double rho = digammaBeta - digammaAlphaPlusBeta;
-        final double tau = digammaAlpha - digammaAlphaPlusBeta;
+        final double lnRho = digammaBeta - digammaAlphaPlusBeta;
+        final double rho = FastMath.exp(lnRho);
+        final double lnTau = digammaAlpha - digammaAlphaPlusBeta;
+        final double tau = FastMath.exp(lnTau);
 
 
 
         final double betaEntropy = Beta.logBeta(alpha, beta) - (alpha - 1)*digammaAlpha - (beta-1)*digammaBeta + (alpha + beta - 2)*digammaAlphaPlusBeta;
 
-        // TODO: check if the stream is too expensive
-        final double result = -betaEntropy + rho * refCount + altQuals.stream().mapToDouble(qual -> {
+        final double result = betaEntropy +  refCount * lnRho + altQuals.stream().mapToDouble(qual -> {
             final double epsilon = QualityUtils.qualToErrorProb(qual);
             final double gamma = rho * epsilon / (rho * epsilon + tau * (1-epsilon));
             final double bernoulliEntropy = -gamma * FastMath.log(gamma) - (1-gamma)*FastMath.log1p(-gamma);
             final double lnEpsilon = MathUtils.log10ToLog(QualityUtils.qualToErrorProbLog10(qual));
             final double lnOneMinusEpsilon = MathUtils.log10ToLog(QualityUtils.qualToProbLog10(qual));
-            return gamma * (rho + lnEpsilon) + (1-gamma)*(tau + lnOneMinusEpsilon) - lnEpsilon - bernoulliEntropy;
+            return gamma * (lnRho + lnEpsilon) + (1-gamma)*(lnTau + lnOneMinusEpsilon) - lnEpsilon + bernoulliEntropy;
         }).sum();
 
         return result;
