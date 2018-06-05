@@ -3439,19 +3439,26 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
     public Object[][] headerProvider() {
         return new Object[][] {
 
-                { new ArrayList<String>(), false },                             // Wrong length header
+                // ------------------------------------------------------------------------
+                // General Header Checks:
+
+                { new ArrayList<String>(), false },                      // Wrong length header
+
                 { Arrays.asList( "",
                                  "",
                                  "",
                                  "",
                                  ""  ),
-                                 false },                                // Bad content
+                                 false },                                // Unable to determine header format: Bad content
                 { Arrays.asList( "##descr",
                                  "##provider: GENCODE",
                                  "##contact: gencode-help@sanger.ac.uk",
                                  "##format: gtf",
                                  "##date: 2017-04-08" ),
-                                 false },                                // Bad header - description
+                                 false },                                // Unable to determine header format: Bad content
+
+                // ------------------------------------------------------------------------
+                // GENCODE Headers:
                 { Arrays.asList( "##description: THIS IS A SAMPLE",
                                  "##provider: GARBAGEDAY",
                                  "##contact: gencode-help@sanger.ac.uk",
@@ -3494,6 +3501,41 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                                  "##format: gtf",
                                  "##date: 2014-07-25" ),
                                  true },                                 // Good Header!
+
+                // ------------------------------------------------------------------------
+                // ENSEMBL Headers:
+
+                { Arrays.asList("#!genome-build CanFam3.1",
+                        "#!genome-ver",
+                        "#!genome-date 2011-09",
+                        "#!genome-build-accession NCBI:GCA_000002285.2",
+                        "#!genebuild-last-updated 2016-05" ),
+                        false },                                 // Bad Genome Version
+                { Arrays.asList("#!genome-build CanFam3.1",
+                        "#!genome-version CanFam3.1",
+                        "#!genom",
+                        "#!genome-build-accession NCBI:GCA_000002285.2",
+                        "#!genebuild-last-updated 2016-05" ),
+                        false },                                 // Bad Genome Date
+                { Arrays.asList("#!genome-build CanFam3.1",
+                        "#!genome-version CanFam3.1",
+                        "#!genome-date 2011-09",
+                        "#!genome-build-accessi",
+                        "#!genebuild-last-updated 2016-05" ),
+                        false },                                 // Bad Genome Build Accession
+                { Arrays.asList("#!genome-build CanFam3.1",
+                        "#!genome-version CanFam3.1",
+                        "#!genome-date 2011-09",
+                        "#!genome-build-accession NCBI:GCA_000002285.2",
+                        "#!genebuild-la" ),
+                        false },                                 // Bad Genebuild last updated date
+
+                { Arrays.asList("#!genome-build CanFam3.1",
+                        "#!genome-version CanFam3.1",
+                        "#!genome-date 2011-09",
+                        "#!genome-build-accession NCBI:GCA_000002285.2",
+                        "#!genebuild-last-updated 2016-05" ),
+                        true },                                 // Good Header!
 
         };
     }

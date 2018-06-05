@@ -518,13 +518,92 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
     }
 
     /**
-     * Check if the given header of a tentative GENCODE GTF file is, in fact, the header to such a file.
-     * @param header Header lines to check for conformity to GENCODE GTF specifications.
-     * @return true if the given {@code header} is that of a GENCODE GTF file; false otherwise.
+     * Check if the given header of a tentative GENCODE or ENSEMBL GTF file is, in fact, the header to such a file.
+     * @param header Header lines to check for conformity to GENCODE/ENSEMBL GTF specifications.
+     * @return true if the given {@code header} is that of a GENCODE/ENSEMBL GTF file; false otherwise.
      */
     @VisibleForTesting
     static boolean validateHeader(final List<String> header) {
         return validateHeader(header, false);
+    }
+
+    /**
+     * Check if the given header of a tentative GENCODE or ENSEMBL GTF file is, in fact, the header to such a file.
+     * @param header Header lines to check for conformity to GENCODE/ENSEMBL GTF specifications.
+     * @param throwIfInvalid If true, will throw a {@link UserException.MalformedFile} if the header is invalid.
+     * @return true if the given {@code header} is that of a GENCODE/ENSEMBL GTF file; false otherwise.
+     */
+    @VisibleForTesting
+    static boolean validateHeader(final List<String> header, final boolean throwIfInvalid) {
+
+        if (looksLikeEnsemblGtfHeader(header)) {
+            logger.info("Detected ENSEMBL GTF header.");
+            return validateEnsemblGtfHeader(header, throwIfInvalid);
+        }
+        else if (looksLikeGencodeGtfHeader(header)) {
+            logger.info("Detected GENCODE GTF header.");
+            return validateGencodeGtfHeader(header, throwIfInvalid);
+        }
+        else {
+            final String message = "GTF file header is malformed!";
+            if (throwIfInvalid) {
+                throw new UserException.MalformedFile(message);
+            }
+            else {
+                logger.warn(message);
+            }
+            return false;
+        }
+    }
+
+    private static boolean validateEnsemblHeaderLine(final List<String> header, final int lineNum, final String lineStartKey, final String keyDescription, final boolean throwIfInvalid) {
+        if ( !header.get(lineNum).startsWith(lineStartKey) ) {
+            if ( throwIfInvalid ) {
+                throw new UserException.MalformedFile(
+                        "ENSEMBL GTF Header line " + (lineNum + 1) + " does not contain expected " + keyDescription + " (" +
+                                lineStartKey + "): " + header.get(lineNum));
+            }
+            else {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if the given header of a tentative ENSEMBL GTF file is, in fact, the header to such a file.
+     * @param header Header lines to check for conformity to ENSEMBL GTF specifications.
+     * @param throwIfInvalid If true, will throw a {@link UserException.MalformedFile} if the header is invalid.
+     * @return true if the given {@code header} is that of a ENSEMBL GTF file; false otherwise.
+     */
+    static boolean validateEnsemblGtfHeader(final List<String> header, final boolean throwIfInvalid) {
+
+        boolean isValid = true;
+
+        final String comment = "#!";
+        int currentLine = 0;
+
+        if ( header.size() != HEADER_NUM_LINES) {
+            if ( throwIfInvalid ) {
+                throw new UserException.MalformedFile(
+                        "ENSEMBL GTF Header is of unexpected length: " +
+                                header.size() + " != " + HEADER_NUM_LINES);
+            }
+            else {
+                return false;
+            }
+        }
+
+        // Check the normal commented fields:
+        isValid = isValid && validateEnsemblHeaderLine(header, currentLine++, comment + "genome-build", "genome build specification", throwIfInvalid);
+        isValid = isValid && validateEnsemblHeaderLine(header, currentLine++, comment + "genome-version", "genome version", throwIfInvalid);
+        isValid = isValid && validateEnsemblHeaderLine(header, currentLine++, comment + "genome-date", "genome date", throwIfInvalid);
+        isValid = isValid && validateEnsemblHeaderLine(header, currentLine++, comment + "genome-build-accession", "genome build accession", throwIfInvalid);
+        isValid = isValid && validateEnsemblHeaderLine(header, currentLine++, comment + "genebuild-last-updated", "genebuild last updated date", throwIfInvalid);
+
+        return isValid;
+
     }
 
     /**
@@ -533,9 +612,7 @@ final public class GencodeGtfCodec extends AbstractFeatureCodec<GencodeGtfFeatur
      * @param throwIfInvalid If true, will throw a {@link UserException.MalformedFile} if the header is invalid.
      * @return true if the given {@code header} is that of a GENCODE GTF file; false otherwise.
      */
-    @VisibleForTesting
-    static boolean validateHeader(final List<String> header, final boolean throwIfInvalid) {
-
+    static boolean validateGencodeGtfHeader(final List<String> header, final boolean throwIfInvalid) {
         if ( header.size() != HEADER_NUM_LINES) {
             if ( throwIfInvalid ) {
                 throw new UserException.MalformedFile(

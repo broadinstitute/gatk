@@ -1,0 +1,6 @@
+#!genome-build CanFam3.1
+#!genome-version CanFam3.1
+#!genome-date 2011-09
+#!genome-build-accession NCBI:GCA_000002285.2
+#!genebuild-last-updated 2016-05
+1	ensembl	gene	247829	322180	.	-	.	gene_id "ENSCAFG00000000001"; gene_version "3"; gene_name "ENPP1"; gene_source "ensembl"; gene_biotype "protein_coding";
