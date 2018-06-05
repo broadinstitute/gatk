@@ -268,6 +268,15 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(resourceContentsFirstLine, expectedFirstLine);
     }
 
+    @Test
+    public void testCreateTempFileInDirectory() {
+        final File tempDir = createTempDir("testCreateTempFileInDirectory");
+        final File tempFile = IOUtils.createTempFileInDirectory("testCreateTempFileInDirectory", ".txt", tempDir);
+        Assert.assertTrue(tempFile.exists(), "file was not written to temp file: " + tempFile);
+        Assert.assertEquals(tempFile.getParentFile().getAbsolutePath(), (tempDir.getAbsolutePath()),
+                "file was not written to temp file: " + tempFile + " in dir: " + tempDir);
+    }
+
     private String getFirstLineAndDeleteTempFile(final File tempResourceFile) throws IOException {
         String resourceContentsFirstLine = "";
         try (final FileReader fr = new FileReader(tempResourceFile);

@@ -13,8 +13,8 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
-import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import  org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.python.StreamingPythonScriptExecutor;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.runtime.AsynchronousStreamWriterService;
@@ -26,7 +26,6 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.StreamSupport;
-
 
 
 /**
@@ -184,8 +183,8 @@ public class CNNScoreVariants extends VariantWalker {
 
     private String scoreKey;
 
-    private static String resourcePathReadTensor = "large" + File.separator + "cnn_score_variants" + File.separator + "small_2d.json";
-    private static String resourcePathReferenceTensor = "large" + File.separator + "cnn_score_variants" + File.separator + "1d_cnn_mix_train_full_bn.json";
+    private static String resourcePathReadTensor = Resource.LARGE_RUNTIME_RESOURCES_PATH + "/cnn_score_variants/small_2d.json";
+    private static String resourcePathReferenceTensor = Resource.LARGE_RUNTIME_RESOURCES_PATH + "/cnn_score_variants/1d_cnn_mix_train_full_bn.json";
 
     @Override
     protected String[] customCommandLineValidation() {
@@ -496,23 +495,18 @@ public class CNNScoreVariants extends VariantWalker {
     }
 
     private void setArchitectureAndWeightsFromResources() {
-        Resource architectureResource, weightsResourceHD5;
         if (tensorType.equals(TensorType.read_tensor)) {
-            architectureResource = new Resource(resourcePathReadTensor, null);
-            weightsResourceHD5 = new Resource(resourcePathReadTensor.replace(".json", ".hd5"), null);
+            architecture = IOUtils.writeTempResourceFromPath(resourcePathReadTensor, null).getAbsolutePath();
+            weights = IOUtils.writeTempResourceFromPath(
+                    resourcePathReadTensor.replace(".json", ".hd5"),
+                    null).getAbsolutePath();
         } else if (tensorType.equals(TensorType.reference)) {
-            architectureResource = new Resource(resourcePathReferenceTensor, null);
-            weightsResourceHD5 = new Resource(resourcePathReferenceTensor.replace(".json", ".hd5"), null);
+            architecture = IOUtils.writeTempResourceFromPath(resourcePathReferenceTensor, null).getAbsolutePath();
+            weights = IOUtils.writeTempResourceFromPath(
+                     resourcePathReferenceTensor.replace(".json", ".hd5"), null).getAbsolutePath();
         } else {
             throw new GATKException("No default architecture for tensor type:" + tensorType.name());
         }
-
-        File architectureFile = IOUtils.writeTempResource(architectureResource);
-        File weightsHD5 = IOUtils.writeTempResource(weightsResourceHD5);
-        architectureFile.deleteOnExit();
-        weightsHD5.deleteOnExit();
-        architecture = architectureFile.getAbsolutePath();
-        weights = weightsHD5.getAbsolutePath();
     }
 
 }

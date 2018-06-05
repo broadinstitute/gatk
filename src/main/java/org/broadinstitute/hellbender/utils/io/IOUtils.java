@@ -24,7 +24,6 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipException;
@@ -145,29 +144,28 @@ public final class IOUtils {
     }
 
     /**
-     * Writes an embedded resource to a temp file.
-     * File is not scheduled for deletion and must be cleaned up by the caller.
+     * Writes an embedded resource to a temporary file. The temporary file is automatically scheduled for deletion
+     * on exit.
      * @param resource Embedded resource.
-     * @return Path to the temp file with the contents of the resource.
+     * @return the temporary file containing the contents of the resource, which is automatically scheduled for
+     * deletion on exit.
      */
-    public static File writeTempResource(Resource resource) {
-        File temp;
-        try {
-            temp = File.createTempFile(FilenameUtils.getBaseName(resource.getPath()) + ".", "." + FilenameUtils.getExtension(resource.getPath()));
-        } catch (IOException e) {
-            throw new UserException.BadTempDir(e.getMessage(), e);
-        }
-        writeResource(resource, temp);
-        return temp;
+    public static File writeTempResource(final Resource resource) {
+        final File tempFile = createTempFile(
+                FilenameUtils.getBaseName(resource.getPath()) + ".",
+                "." + FilenameUtils.getExtension(resource.getPath()));
+        writeResource(resource, tempFile);
+        return tempFile;
     }
 
     /**
      * Create a resource from a path and a relative class, and write it to a temporary file.
      * If the relative class is null then the system classloader will be used and the path must be absolute.
+     * The temporary file is automatically scheduled for deletion on exit.
      * @param resourcePath Relative or absolute path to the class.
      * @param relativeClass Relative class to use as a class loader and for a relative package.
-     * @return a temporary file containing the contents of the resource. the File is not automatically scheduled
-     * for deletion and must be cleaned up by the caller.
+     * @return a temporary file containing the contents of the resource, which is automatically scheduled
+     * for deletion on exit.
      */
     public static File writeTempResourceFromPath(final String resourcePath, final Class<?> relativeClass) {
         Utils.nonNull(resourcePath, "A resource path must be provided");
@@ -404,13 +402,26 @@ public final class IOUtils {
      * @return A file in the temporary directory starting with name, ending with extension, which will be deleted after the program exits.
      */
     public static File createTempFile(String name, String extension) {
+        return createTempFileInDirectory(name, extension, null);
+    }
+
+    /**
+     * Creates a temp file in a target directory that will be deleted on exit
+     *
+     * This will also mark the corresponding Tribble/Tabix/BAM indices matching the temp file for deletion.
+     * @param name Prefix of the file.
+     * @param extension Extension to concat to the end of the file name.
+     * @param targetDir Directory in which to create the temp file. If null, the default temp directory is used.
+     * @return A file in the temporary directory starting with name, ending with extension, which will be deleted after the program exits.
+     */
+    public static File createTempFileInDirectory(final String name, String extension, final File targetDir) {
         try {
 
             if ( !extension.startsWith(".") ) {
                 extension = "." + extension;
             }
 
-            final File file = File.createTempFile(name, extension);
+            final File file = File.createTempFile(name, extension, targetDir);
             file.deleteOnExit();
 
             // Mark corresponding indices for deletion on exit as well just in case an index is created for the temp file:
@@ -425,7 +436,6 @@ public final class IOUtils {
             throw new GATKException("Cannot create temp file: " + ex.getMessage(), ex);
         }
     }
-
 
     /**
      * @param extension a file extension, may include 0 or more leading dots which will be replaced with a single dot
