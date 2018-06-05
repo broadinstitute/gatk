@@ -63,6 +63,8 @@ public final class ReadLikelihoodsUnitTest {
         final ReadLikelihoods<Allele> original = new ReadLikelihoods<>(new IndexedSampleList(samples), new IndexedAlleleList<>(alleles), reads);
         fillWithRandomLikelihoods(samples,alleles,original);
         final int numberOfAlleles = alleles.length;
+        final int refIndex = original.indexOfReference();
+        final Allele refAllele = refIndex >= 0 ? original.getAllele(refIndex) : null;
         for (int s = 0; s < samples.length; s++) {
             final int sampleReadCount = original.sampleReadCount(s);
             final LikelihoodMatrix<Allele> sampleMatrix = original.sampleMatrix(s);
@@ -91,9 +93,11 @@ public final class ReadLikelihoodsUnitTest {
             for (final ReadLikelihoods<Allele>.BestAllele bestAllele : bestAlleles) {
                 final int readIndex = original.readIndex(s,bestAllele.read);
                 if (readIndex == -1) continue;
-                Assert.assertEquals(bestLkArray[readIndex], bestAllele.likelihood);
-                Assert.assertEquals(bestAllele.allele, alleles[bestIndexArray[readIndex]]);
-                Assert.assertEquals(bestAllele.confidence, confidenceArray[readIndex], EPSILON);
+                final double refLikelihood = refIndex >= 0 ? sampleMatrix.get(refIndex, readIndex) : Double.NEGATIVE_INFINITY;
+                final boolean refOverride = refIndex >= 0 && refIndex !=bestIndexArray[readIndex] && bestLkArray[readIndex] - refLikelihood < ReadLikelihoods.BestAllele.INFORMATIVE_THRESHOLD;
+                Assert.assertEquals(refOverride ? refLikelihood : bestLkArray[readIndex], bestAllele.likelihood);
+                Assert.assertEquals(bestAllele.allele, refOverride ? refAllele : alleles[bestIndexArray[readIndex]]);
+                Assert.assertEquals(bestAllele.confidence, refOverride ? refLikelihood - bestLkArray[readIndex] : confidenceArray[readIndex], EPSILON);
             }
         }
     }
@@ -406,6 +410,8 @@ public final class ReadLikelihoodsUnitTest {
             final int ordinarynumberOfAlleles = originalLikelihoods[s].length;
             newLikelihoods[s][ordinarynumberOfAlleles] = new double[sampleReadCount];
             for (int r = 0; r < sampleReadCount; r++) {
+
+                //TODO secondBestLk is totaly irrelevant, and this code is really just a MathUtils.max to get bestLk
                 double bestLk = newLikelihoods[s][0][r];
                 double secondBestLk = Double.NEGATIVE_INFINITY;
                 for (int a = 1; a < ordinarynumberOfAlleles; a++) {

@@ -8,13 +8,11 @@ import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import org.apache.commons.collections.ListUtils;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
-import org.broadinstitute.hellbender.tools.walkers.qc.Pileup;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.AlleleBiasedDownsamplingUtils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
-import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.*;
@@ -369,7 +367,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
     private void normalizeLikelihoodsPerRead(final boolean bestToZero, final double maximumBestAltLikelihoodDifference,
                                              final double[][] sampleValues, final int sampleIndex, final int readIndex) {
 
-        final BestAllele bestAlternativeAllele = searchBestAllele(sampleIndex,readIndex,false);
+        final BestAllele bestAlternativeAllele = searchBestAllele(sampleIndex,readIndex,false, false);
 
         final double worstLikelihoodCap = bestAlternativeAllele.likelihood + maximumBestAltLikelihoodDifference;
 
@@ -443,10 +441,11 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
      * @param sampleIndex including sample index.
      * @param readIndex  target read index.
      *
+     * @param useReferenceIfUninformative
      * @return never {@code null}, but with {@link BestAllele#allele allele} == {@code null}
      * if non-could be found.
      */
-    private BestAllele searchBestAllele(final int sampleIndex, final int readIndex, final boolean canBeReference) {
+    private BestAllele searchBestAllele(final int sampleIndex, final int readIndex, final boolean canBeReference, boolean useReferenceIfUninformative) {
         final int alleleCount = alleles.numberOfAlleles();
         if (alleleCount == 0 || (alleleCount == 1 && referenceAlleleIndex == 0 && !canBeReference)) {
             return new BestAllele(sampleIndex, readIndex, -1, Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY);
@@ -468,6 +467,17 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
                 bestLikelihood = candidateLikelihood;
             } else if (candidateLikelihood > secondBestLikelihood) {
                 secondBestLikelihood = candidateLikelihood;
+            }
+        }
+
+        // if our read is not informative against the ref we set the ref as the best allele.  This is so that bamouts don't
+        // spuriously show deletions in ref reads that end in STRs
+        if (useReferenceIfUninformative && canBeReference && referenceAlleleIndex != MISSING_REF && bestAlleleIndex != referenceAlleleIndex) {
+            final double referenceLikelihood = sampleValues[referenceAlleleIndex][readIndex];
+            if ( bestLikelihood - referenceLikelihood < BestAllele.INFORMATIVE_THRESHOLD ) {
+                secondBestLikelihood = bestLikelihood;
+                bestAlleleIndex = referenceAlleleIndex;
+                bestLikelihood = referenceLikelihood;
             }
         }
         return new BestAllele(sampleIndex,readIndex,bestAlleleIndex,bestLikelihood,secondBestLikelihood);
@@ -935,7 +945,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
             final double[][] sampleValues = valuesBySampleIndex[s];
             final int readCount = sampleValues[0].length;
             for (int r = 0; r < readCount; r++) {
-                final BestAllele bestAllele = searchBestAllele(s, r, true);
+                final BestAllele bestAllele = searchBestAllele(s, r, true, false);
                 int numberOfQualifiedAlleleLikelihoods = 0;
                 for (int i = 0; i < alleleCount; i++) {
                     final double alleleLikelihood = sampleValues[i][r];
@@ -983,7 +993,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
                 final List<Integer> removeIndices = IntStream.range(0, readsBySampleIndex[s].length).boxed().collect(Collectors.toList());
                 removeSampleReads(s, removeIndices, alleleCount);
             } else {
-                final Map<A,List<GATKRead>> readsByBestAllelesMap = readsByBestAlleleMap(s);
+                final Map<A,List<GATKRead>> readsByBestAllelesMap = readsByBestAlleleMap(s, false);
                 removeSampleReads(s, AlleleBiasedDownsamplingUtils.selectAlleleBiasedReads(readsByBestAllelesMap, fraction),alleleCount);
             }
         }
@@ -997,7 +1007,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
      * @return never {@code null}, one element per read in the read-likelihoods collection.
      */
     public Collection<BestAllele> bestAlleles() {
-        return IntStream.range(0, numberOfSamples()).boxed().flatMap(n -> bestAlleles(n).stream()).collect(Collectors.toList());
+        return IntStream.range(0, numberOfSamples()).boxed().flatMap(n -> bestAlleles(n, true).stream()).collect(Collectors.toList());
     }
 
     /**
@@ -1009,7 +1019,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
      */
     public Collection<BestAllele> bestAlleles(final String sample) {
         final int sampleIndex = indexOfSample(sample);
-        return bestAlleles(sampleIndex);
+        return bestAlleles(sampleIndex, true);
     }
 
     /**
@@ -1019,14 +1029,14 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
      *
      * @return never {@code null}, one element per read in the read-likelihoods collection.
      */
-    private Collection<BestAllele> bestAlleles(final int sampleIndex) {
+    private Collection<BestAllele> bestAlleles(final int sampleIndex, boolean useReferenceIfUninformative) {
         Utils.validIndex(sampleIndex, numberOfSamples());
 
         final GATKRead[] sampleReads = readsBySampleIndex[sampleIndex];
         final int readCount = sampleReads.length;
         final List<BestAllele> result = new ArrayList<>(readCount);
         for (int r = 0; r < readCount; r++) {
-            result.add(searchBestAllele(sampleIndex, r, true));
+            result.add(searchBestAllele(sampleIndex, r, true, useReferenceIfUninformative));
         }
 
         return result;
@@ -1038,7 +1048,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
      * @param sampleIndex the target sample.
      * @return never {@code null}, perhaps empty.
      */
-    private Map<A,List<GATKRead>> readsByBestAlleleMap(final int sampleIndex) {
+    private Map<A,List<GATKRead>> readsByBestAlleleMap(final int sampleIndex, final boolean useReferenceIfUninformative) {
         Utils.validIndex(sampleIndex, numberOfSamples());
         final int alleleCount = alleles.numberOfAlleles();
         final int sampleReadCount = readsBySampleIndex[sampleIndex].length;
@@ -1046,7 +1056,7 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
         for (int a = 0; a < alleleCount; a++) {
             result.put(alleles.getAllele(a), new ArrayList<>(sampleReadCount));
         }
-        readsByBestAlleleMap(sampleIndex,result);
+        readsByBestAlleleMap(sampleIndex,result, useReferenceIfUninformative);
         return result;
     }
 
@@ -1064,17 +1074,17 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
         }
         final int sampleCount = samples.numberOfSamples();
         for (int s = 0; s < sampleCount; s++) {
-            readsByBestAlleleMap(s, result);
+            readsByBestAlleleMap(s, result, false);
         }
         return result;
     }
 
-    private void readsByBestAlleleMap(final int sampleIndex, final Map<A,List<GATKRead>> result) {
+    private void readsByBestAlleleMap(final int sampleIndex, final Map<A, List<GATKRead>> result, boolean useReferenceIfUninformative) {
         final GATKRead[] reads = readsBySampleIndex[sampleIndex];
         final int readCount = reads.length;
 
         for (int r = 0; r < readCount; r++) {
-            final BestAllele bestAllele = searchBestAllele(sampleIndex,r,true);
+            final BestAllele bestAllele = searchBestAllele(sampleIndex,r,true, useReferenceIfUninformative);
             if (!bestAllele.isInformative()) {
                 continue;
             }
