@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.utils;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.google.common.jimfs.Configuration;
+import com.google.common.jimfs.Jimfs;
 import htsjdk.samtools.QueryInterval;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -28,6 +30,9 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -1245,8 +1250,19 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "loadIntervalsFromFeatureFileData")
     public void testLoadIntervalsFromFeatureFile( final File featureFile, final List<GenomeLoc> expectedIntervals ) {
-        final GenomeLocSortedSet actualIntervals = IntervalUtils.loadIntervals(Arrays.asList(featureFile.getAbsolutePath()), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
+        final GenomeLocSortedSet actualIntervals = IntervalUtils.loadIntervals(Collections.singletonList(featureFile.getAbsolutePath()), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
         Assert.assertEquals(actualIntervals, expectedIntervals, "Wrong intervals loaded from Feature file " + featureFile.getAbsolutePath());
+    }
+
+    @Test(dataProvider = "loadIntervalsFromFeatureFileData")
+    public void testLoadIntervalsFromFeatureFileInJimfs( final File featureFile, final List<GenomeLoc> expectedIntervals ) throws IOException {
+        try(final FileSystem fs = Jimfs.newFileSystem(Configuration.unix())){
+            final Path jimfsRootPath = fs.getRootDirectories().iterator().next();
+            final Path jimfsCopy = Files.copy(featureFile.toPath(), jimfsRootPath.resolve(featureFile.getName()));
+            final String jimfsPathString = jimfsCopy.toAbsolutePath().toUri().toString();
+            final GenomeLocSortedSet actualIntervals = IntervalUtils.loadIntervals(Collections.singletonList(jimfsPathString), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
+            Assert.assertEquals(actualIntervals, expectedIntervals, "Wrong intervals loaded from Feature file " + jimfsPathString);
+        }
     }
 
     // Note: because the file does not exist and all characters are allowed in contig names,
