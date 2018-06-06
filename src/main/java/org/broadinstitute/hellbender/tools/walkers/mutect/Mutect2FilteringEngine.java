@@ -131,8 +131,7 @@ public class Mutect2FilteringEngine {
     private void applyReadPositionFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final VariantContextBuilder vcb) {
         final int[] readPositionByAllele = getIntArrayTumorField(vc, ReadPosition.KEY);
         if (readPositionByAllele != null) {
-            final int insertionSize =  Math.max(vc.getAltAlleleWithHighestAlleleCount().getBases().length - vc.getReference().getBases().length, 0);
-            if (insertionSize + readPositionByAllele[0] < MTFAC.minMedianReadPosition) {
+            if (readPositionByAllele[0] < MTFAC.minMedianReadPosition) {
                 vcb.filter(GATKVCFConstants.READ_POSITION_FILTER_NAME);
             }
         }
