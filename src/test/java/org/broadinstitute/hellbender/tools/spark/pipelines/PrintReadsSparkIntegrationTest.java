@@ -170,7 +170,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         };
     }
 
-    @Test(dataProvider="testFileToFile_queryNameSorted", expectedExceptions = UserException.class, groups="spark")
+    @Test(dataProvider="testFileToFile_queryNameSorted", groups="spark")
     public void testFileToFile_queryNameSorted(String fileIn, String extOut, String reference) throws Exception {
         final File outFile = GATKBaseTest.createTempFile(fileIn + ".", extOut);
         outFile.deleteOnExit();
@@ -195,9 +195,24 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         SamAssertionUtils.assertSamsEqual(outFile, originalFile, refFile);
     }
 
-    @Test(expectedExceptions = UserException.class, groups = "spark")
+    @Test( groups = "spark")
     public void testNameSorted() throws Exception {
         final File inBam = new File(getTestDataDir(), "print_reads.bam");
+        final File outBam = GATKBaseTest.createTempFile("print_reads", ".bam");
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.add(inBam.getCanonicalPath());
+        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.add(outBam.getCanonicalPath());
+
+        this.runCommandLine(args.getArgsArray());
+
+        SamAssertionUtils.assertSamsEqual(outBam, inBam);
+    }
+
+    @Test( groups = "spark")
+    public void testUnSorted() throws Exception {
+        final File inBam = new File(getTestDataDir(), "print_reads.unsorted.bam");
         final File outBam = GATKBaseTest.createTempFile("print_reads", ".bam");
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
