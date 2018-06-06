@@ -73,12 +73,16 @@ public final class ReadsSparkSource implements Serializable {
     }
 
 
+    /**
+     * this is a hack to work around https://github.com/HadoopGenomics/Hadoop-BAM/issues/199
+     *
+     * fix the problem by explicitly sorting the input file splits
+     */
     public static class SplitSortingSamInputFormat extends AnySAMInputFormat{
         @SuppressWarnings("unchecked")
         @Override
         public List<InputSplit> getSplits(JobContext job) throws IOException {
             final List<InputSplit> splits = super.getSplits(job);
-
 
             if( splits.stream().allMatch(split -> split instanceof FileVirtualSplit || split instanceof FileSplit)) {
                 splits.sort(Comparator.comparing(split -> {
