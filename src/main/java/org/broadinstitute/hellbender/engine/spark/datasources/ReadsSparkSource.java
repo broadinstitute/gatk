@@ -27,10 +27,7 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
-import org.seqdoop.hadoop_bam.AnySAMInputFormat;
-import org.seqdoop.hadoop_bam.BAMInputFormat;
-import org.seqdoop.hadoop_bam.CRAMInputFormat;
-import org.seqdoop.hadoop_bam.SAMRecordWritable;
+import org.seqdoop.hadoop_bam.*;
 import org.seqdoop.hadoop_bam.util.SAMHeaderReader;
 
 import java.io.File;
@@ -40,6 +37,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 /** Loads the reads from disk either serially (using samReaderFactory) or in parallel using Hadoop-BAM.
  * The parallel code is a modified version of the example writing code from Hadoop-BAM.
@@ -76,14 +74,22 @@ public final class ReadsSparkSource implements Serializable {
 
 
     public static class SplitSortingSamInputFormat extends AnySAMInputFormat{
-
+        @SuppressWarnings("unchecked")
         @Override
         public List<InputSplit> getSplits(JobContext job) throws IOException {
             final List<InputSplit> splits = super.getSplits(job);
-            splits.sort((a, b) -> {
-                FileSplit fa = (FileSplit) a, fb = (FileSplit) b;
-                return fa.getPath().compareTo(fb.getPath());
-            });
+
+
+            if( splits.stream().allMatch(split -> split instanceof FileVirtualSplit || split instanceof FileSplit)) {
+                splits.sort(Comparator.comparing(split -> {
+                    if (split instanceof FileVirtualSplit) {
+                        return ((FileVirtualSplit) split).getPath();
+                    } else {
+                        return ((FileSplit) split).getPath();
+                    }
+                }));
+            }
+
             return splits;
         }
     }
