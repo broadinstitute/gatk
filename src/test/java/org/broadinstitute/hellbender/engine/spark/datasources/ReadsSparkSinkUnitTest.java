@@ -47,11 +47,8 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
     @DataProvider(name = "loadReadsBAM")
     public Object[][] loadReadsBAM() {
         return new Object[][]{
-                {testDataDir + "tools/BQSR/HiSeq.1mb.1RG.2k_lines.bam", "ReadsSparkSinkUnitTest1", null, ".bam", true, true},
-                {testDataDir + "tools/BQSR/HiSeq.1mb.1RG.2k_lines.bam", "ReadsSparkSinkUnitTest1", null, ".bam", true, false}, // write BAI, don't write SBI
-                {testDataDir + "tools/BQSR/HiSeq.1mb.1RG.2k_lines.bam", "ReadsSparkSinkUnitTest1", null, ".bam", false, true}, // don't write BAI, write SBI
-                {testDataDir + "tools/BQSR/HiSeq.1mb.1RG.2k_lines.bam", "ReadsSparkSinkUnitTest1", null, ".bam", false, false}, // don't write BAI, don't write SBI
-                {testDataDir + "tools/BQSR/expected.HiSeq.1mb.1RG.2k_lines.alternate.recalibrated.DIQ.bam", "ReadsSparkSinkUnitTest2", null, ".bam", true, true},
+                {testDataDir + "tools/BQSR/HiSeq.1mb.1RG.2k_lines.bam", "ReadsSparkSinkUnitTest1", null, ".bam"},
+                {testDataDir + "tools/BQSR/expected.HiSeq.1mb.1RG.2k_lines.alternate.recalibrated.DIQ.bam", "ReadsSparkSinkUnitTest2", null, ".bam"},
 
                 // This file has unmapped reads that are set to the position of their mates -- the ordering check
                 // in the tests below will fail if our ordering of these reads relative to the mapped reads
@@ -149,7 +146,7 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
         JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam, referenceFile);
         SAMFileHeader header = readSource.getHeader(inputBam, referenceFile);
 
-        ReadsSparkSink.writeReads(ctx, outputPath, referenceFile, rddParallelReads, header, ReadsWriteFormat.SINGLE, 0, outputPartsPath, writeBai, writeSbi);
+        ReadsSparkSink.writeReads(ctx, outputPath, referenceFile, rddParallelReads, header, ReadsWriteFormat.SINGLE, 0, outputPartsPath, writeBai, writeSbi, true);
 
         // check that a bai file is created
         if (IOUtils.isBamFileName(outputPath) && writeBai) {

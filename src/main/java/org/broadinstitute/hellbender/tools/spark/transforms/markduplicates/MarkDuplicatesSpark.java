@@ -317,7 +317,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         }
 
         header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-        writeReads(ctx, output, readsForWriting, header);
+        writeReads(ctx, output, readsForWriting, header, true);
     }
 
 }

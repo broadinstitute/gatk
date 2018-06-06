@@ -52,7 +52,7 @@ public final class ReadsSparkSink {
     public static void writeReads(
             final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<GATKRead> reads,
             final SAMFileHeader header, ReadsWriteFormat format) throws IOException {
-        writeReads(ctx, outputFile, referenceFile, reads, header, format, 0, null);
+        writeReads(ctx, outputFile, referenceFile, reads, header, format, 0, null,format==ReadsWriteFormat.SINGLE);
     }
 
     /**
@@ -66,10 +66,11 @@ public final class ReadsSparkSink {
      * @param numReducers the number of reducers to use when writing a single file. A value of zero indicates that the default
      *                    should be used.
      * @param outputPartsDir directory for temporary files for SINGLE output format, should be null for default value of filename + .output
+     * @param sortReadsToHeader if true, the writer will perform a sort of reads according to the sort order of the header before writing
      */
     public static void writeReads(
             final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<GATKRead> reads,
-            final SAMFileHeader header, ReadsWriteFormat format, final int numReducers, final String outputPartsDir) throws IOException {
+            final SAMFileHeader header, ReadsWriteFormat format, final int numReducers, final String outputPartsDir, final boolean sortReadsToHeader) throws IOException {
         writeReads(ctx, outputFile, referenceFile, reads, header, format, numReducers, outputPartsDir, true, true);
     }
 
@@ -103,6 +104,7 @@ public final class ReadsSparkSink {
         // SAMRecords, this will effectively be a no-op. The SAMRecords will be headerless
         // for efficient serialization.
         final JavaRDD<SAMRecord> samReads = reads.map(read -> read.convertToSAMRecord(null));
+        final JavaRDD<SAMRecord> readsToUse = sortReadsToHeader ? sortSamRecordsToMatchHeader(samReads, header, numReducers) : samReads;
 
         if (format == ReadsWriteFormat.SINGLE) {
             FileCardinalityWriteOption fileCardinalityWriteOption = FileCardinalityWriteOption.SINGLE;
@@ -133,7 +135,7 @@ public final class ReadsSparkSink {
             if (outputPartsDir!=null) {
                 throw new  GATKException(String.format("You specified the bam output parts directory %s, but requested an ADAM output format which does not use this option",outputPartsDir));
             }
-            writeReadsADAM(ctx, absoluteOutputFile, samReads, header);
+            writeReadsADAM(ctx, absoluteOutputFile, readsToUse, header);
         }
     }
 

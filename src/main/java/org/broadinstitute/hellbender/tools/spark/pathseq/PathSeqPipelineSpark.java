@@ -289,7 +289,7 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
                 final int numPartitions = Math.max(1, (int) (numTotalReads / readsPerPartitionOutput));
                 final JavaRDD<GATKRead> readsFinalRepartitioned = readsFinal.coalesce(numPartitions, false);
                 ReadsSparkSink.writeReads(ctx, outputPath, null, readsFinalRepartitioned, header,
-                        shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE, numPartitions, shardedPartsDir);
+                        shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE, numPartitions, shardedPartsDir, true);
             } catch (final IOException e) {
                 throw new UserException.CouldNotCreateOutputFile(outputPath, "writing failed", e);
             }

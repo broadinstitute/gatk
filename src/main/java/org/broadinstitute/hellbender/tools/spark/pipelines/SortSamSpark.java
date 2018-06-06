@@ -73,12 +73,6 @@ public final class SortSamSpark extends GATKSparkTool {
         final SAMFileHeader header = getHeaderForReads();
         header.setSortOrder(sortOrder.getSamOrder());
 
-        final JavaRDD<GATKRead> readsToWrite;
-        if (shardedOutput) {
-            readsToWrite = SparkUtils.sortReadsAccordingToHeader(reads, header, numReducers);
-        } else {
-            readsToWrite = reads;
-        }
-        writeReads(ctx, outputFile, readsToWrite, header);
+        writeReads(ctx, outputFile, reads, header, true);
     }
 }
