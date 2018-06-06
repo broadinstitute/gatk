@@ -280,32 +280,20 @@ public class FuncotationMapUnitTest extends BaseTest{
         .map(f -> (GencodeFuncotation) f).collect(Collectors.toList());
     }
 
-
-    //TODO: Duplicate code
-    private List<String> createFieldValuesFromNameList(final String prefix, final List<String> baseFieldList, final int fieldSize) {
-        final List<String> outList = new ArrayList<>(baseFieldList.size());
-
-        for ( int i = 0; i < baseFieldList.size() ; ++i ) {
-            final String formatString = "%s%0" +
-                    ((fieldSize - prefix.length()) > 0 ? fieldSize - prefix.length() : "") +
-                    "d";
-            outList.add(String.format(formatString, prefix, i+1));
-        }
-
-        return outList;
+    private List<String> createFieldValuesFromNameList(final String prefix, final List<String> baseFieldList) {
+        return baseFieldList.stream().map(f -> prefix + f + "value").collect(Collectors.toList());
     }
 
     @DataProvider
     public Object[][] provideTableFuncotations() {
         final List<String> baseFieldNameList = Arrays.asList("FOO", "BAR");
-        final int fieldSize = 10;
         return new Object[][]{
         // NOTE: The data field names must match data sources that are checked in for this to work in an expected way:
                 {
                         Collections.singletonList(
                                 new TableFuncotation(
                                         baseFieldNameList,
-                                        createFieldValuesFromNameList("A", baseFieldNameList, fieldSize),
+                                        createFieldValuesFromNameList("A", baseFieldNameList),
                                         Allele.create("T"),
                                         GencodeFuncotationFactory.DEFAULT_NAME
                                 )
@@ -313,7 +301,7 @@ public class FuncotationMapUnitTest extends BaseTest{
                         Collections.singletonList(
                                 new TableFuncotation(
                                         baseFieldNameList,
-                                        createFieldValuesFromNameList("B", baseFieldNameList, fieldSize),
+                                        createFieldValuesFromNameList("B", baseFieldNameList),
                                         Allele.create("C"),
                                         GencodeFuncotationFactory.DEFAULT_NAME
                                 )
@@ -321,7 +309,7 @@ public class FuncotationMapUnitTest extends BaseTest{
                         Collections.singletonList(
                                 new TableFuncotation(
                                         baseFieldNameList,
-                                        createFieldValuesFromNameList("C", baseFieldNameList, fieldSize),
+                                        createFieldValuesFromNameList("C", baseFieldNameList),
                                         Allele.create("GG"),
                                         GencodeFuncotationFactory.DEFAULT_NAME
                                 )
@@ -329,7 +317,7 @@ public class FuncotationMapUnitTest extends BaseTest{
                         Collections.singletonList(
                                 new TableFuncotation(
                                         baseFieldNameList,
-                                        createFieldValuesFromNameList("D", baseFieldNameList, fieldSize),
+                                        createFieldValuesFromNameList("D", baseFieldNameList),
                                         Allele.create("T"),
                                         "TestDataSource4"
                                 )
@@ -337,19 +325,19 @@ public class FuncotationMapUnitTest extends BaseTest{
                         Arrays.asList(
                                 new TableFuncotation(
                                         baseFieldNameList,
-                                        createFieldValuesFromNameList("E", baseFieldNameList, fieldSize),
+                                        createFieldValuesFromNameList("E", baseFieldNameList),
                                         Allele.create("A"),
                                         "TestDataSource5"
                                 ),
                                 new TableFuncotation(
                                         baseFieldNameList,
-                                        createFieldValuesFromNameList("F", baseFieldNameList, fieldSize),
+                                        createFieldValuesFromNameList("F", baseFieldNameList),
                                         Allele.create("AG"),
                                         "TestDataSource5"
                                 ),
                                 new TableFuncotation(
                                         baseFieldNameList,
-                                        createFieldValuesFromNameList("G", baseFieldNameList, fieldSize),
+                                        createFieldValuesFromNameList("G", baseFieldNameList),
                                         Allele.create("AT"),
                                         "TestDataSource5"
                                 )
@@ -363,8 +351,6 @@ public class FuncotationMapUnitTest extends BaseTest{
     @DataProvider
     public Object[][] provideTestAdd() {
         final List<String> baseFieldNameList = Arrays.asList("TESTFIELD1", "TESTADD");
-        final int fieldSize = 10;
-
         return new Object[][]{
                 {"chr3", 178916538, 178916538, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref())),
@@ -373,19 +359,19 @@ public class FuncotationMapUnitTest extends BaseTest{
                         Arrays.asList(
                                 new TableFuncotation(
                                         baseFieldNameList,
-                                        createFieldValuesFromNameList("E", baseFieldNameList, fieldSize),
+                                        createFieldValuesFromNameList("E", baseFieldNameList),
                                         Allele.create("A"),
                                         "TestDataSource5"
                                 ),
                                 new TableFuncotation(
                                         baseFieldNameList,
-                                        createFieldValuesFromNameList("F", baseFieldNameList, fieldSize),
+                                        createFieldValuesFromNameList("F", baseFieldNameList),
                                         Allele.create("AG"),
                                         "TestDataSource5"
                                 ),
                                 new TableFuncotation(
                                         baseFieldNameList,
-                                        createFieldValuesFromNameList("G", baseFieldNameList, fieldSize),
+                                        createFieldValuesFromNameList("G", baseFieldNameList),
                                         Allele.create("AT"),
                                         "TestDataSource5"
                                 )
@@ -397,19 +383,19 @@ public class FuncotationMapUnitTest extends BaseTest{
                         Arrays.asList(
                         new TableFuncotation(
                                 baseFieldNameList,
-                                createFieldValuesFromNameList("E", baseFieldNameList, fieldSize),
+                                createFieldValuesFromNameList("E", baseFieldNameList),
                                 Allele.create("A"),
                                 "TestDataSource5"
                         ),
                         new TableFuncotation(
                                 baseFieldNameList,
-                                createFieldValuesFromNameList("F", baseFieldNameList, fieldSize),
+                                createFieldValuesFromNameList("F", baseFieldNameList),
                                 Allele.create("AG"),
                                 "TestDataSource5"
                         ),
                         new TableFuncotation(
                                 baseFieldNameList,
-                                createFieldValuesFromNameList("G", baseFieldNameList, fieldSize),
+                                createFieldValuesFromNameList("G", baseFieldNameList),
                                 Allele.create("AT"),
                                 "TestDataSource5"
                         )
@@ -421,19 +407,19 @@ public class FuncotationMapUnitTest extends BaseTest{
                         Arrays.asList(
                                 new TableFuncotation(
                                         baseFieldNameList,
-                                        createFieldValuesFromNameList("E", baseFieldNameList, fieldSize),
+                                        createFieldValuesFromNameList("E", baseFieldNameList),
                                         Allele.create("A"),
                                         "TestDataSource5"
                                 ),
                                 new TableFuncotation(
                                         baseFieldNameList,
-                                        createFieldValuesFromNameList("F", baseFieldNameList, fieldSize),
+                                        createFieldValuesFromNameList("F", baseFieldNameList),
                                         Allele.create("AG"),
                                         "TestDataSource5"
                                 ),
                                 new TableFuncotation(
                                         baseFieldNameList,
-                                        createFieldValuesFromNameList("G", baseFieldNameList, fieldSize),
+                                        createFieldValuesFromNameList("G", baseFieldNameList),
                                         Allele.create("AT"),
                                         "TestDataSource5"
                                 )
@@ -492,19 +478,19 @@ public class FuncotationMapUnitTest extends BaseTest{
         // Create a funcotationMap with some pre-made funcotations.  Content does not really matter.
         final FuncotationMap funcotationMap = FuncotationMap.createNoTranscriptInfo(Arrays.asList(new TableFuncotation(
                         Arrays.asList("TESTFIELD1", "TESTADD1"),
-                        createFieldValuesFromNameList("E", Arrays.asList("TESTFIELD1", "TESTADD1"), 20),
+                        createFieldValuesFromNameList("E", Arrays.asList("TESTFIELD1", "TESTADD1")),
                         Allele.create("A"),
                         "TestDataSource5"
                 ),
                 new TableFuncotation(
                         Arrays.asList("TESTFIELD2", "TESTADD2"),
-                        createFieldValuesFromNameList("F", Arrays.asList("TESTFIELD2", "TESTADD2"), 20),
+                        createFieldValuesFromNameList("F", Arrays.asList("TESTFIELD2", "TESTADD2")),
                         Allele.create("AG"),
                         "TestDataSource5"
                 ),
                 new TableFuncotation(
                         Arrays.asList("TESTFIELD3", "TESTADD3"),
-                        createFieldValuesFromNameList("G", Arrays.asList("TESTFIELD3", "TESTADD3"), 20),
+                        createFieldValuesFromNameList("G", Arrays.asList("TESTFIELD3", "TESTADD3")),
                         Allele.create("AT"),
                         "TestDataSource5"
                 )));
