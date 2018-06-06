@@ -459,9 +459,9 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     @DataProvider(name = "provideForMafVcfConcordanceProteinChange")
     final Object[][] provideForMafVcfConcordanceProteinChange() {
         return new Object[][]{
-                {PIK3CA_VCF_HG19_SNPS, b37Chr3Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Arrays.asList("Gencode_19_proteinChange"), DS_PIK3CA_DIR, 15},
-                {PIK3CA_VCF_HG19_INDELS, b37Chr3Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Arrays.asList("Gencode_19_proteinChange"), DS_PIK3CA_DIR, 57},
-                {MUC16_VCF_HG19, hg19Chr19Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Arrays.asList("Gencode_19_proteinChange"), DS_MUC16_DIR, 2057}
+                {PIK3CA_VCF_HG19_SNPS, b37Chr3Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Arrays.asList("Gencode_19_proteinChange"), Arrays.asList(MafOutputRendererConstants.FieldName_Protein_Change), DS_PIK3CA_DIR, 15},
+                {PIK3CA_VCF_HG19_INDELS, b37Chr3Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Arrays.asList("Gencode_19_proteinChange"), Arrays.asList(MafOutputRendererConstants.FieldName_Protein_Change), DS_PIK3CA_DIR, 57},
+                {MUC16_VCF_HG19, hg19Chr19Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Arrays.asList("Gencode_19_proteinChange"), Arrays.asList(MafOutputRendererConstants.FieldName_Protein_Change), DS_MUC16_DIR, 2057}
         };
     }
 
@@ -471,7 +471,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
      */
     @Test(dataProvider = "provideForMafVcfConcordanceProteinChange")
     public void testVcfMafConcordanceForProteinChange(final String inputVcf, final String inputRef,
-                                                      final String funcotatorRef, final List<String> annotationsToCheck,
+                                                      final String funcotatorRef, final List<String> annotationsToCheckVcf,
+                                                      final List<String> annotationsToCheckMaf,
                                                       final String datasourceDir,
                                                       final int gtNumVariants) {
         final FuncotatorArgumentDefinitions.OutputFormatType vcfOutputFormatType = FuncotatorArgumentDefinitions.OutputFormatType.VCF;
@@ -518,8 +519,11 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
         final AnnotatedIntervalCollection maf = AnnotatedIntervalCollection.create(mafOutputFile.toPath(), null);
         Assert.assertEquals(maf.getRecords().size(), gtNumVariants);
+
+        // Some errors manifest as all of the variant classifications being IGR.  Check to make sure that is not the case.
         Assert.assertTrue(maf.getRecords().stream()
                 .anyMatch(v -> !v.getAnnotationValue(MafOutputRendererConstants.FieldName_Variant_Classification).equals("IGR")));
+
         Assert.assertTrue(maf.getRecords().stream()
                 .anyMatch(v -> v.getAnnotationValue(MafOutputRendererConstants.FieldName_Variant_Classification).equals("Missense_Mutation") ||
                         v.getAnnotationValue(MafOutputRendererConstants.FieldName_Variant_Classification).startsWith("Frame_Shift")));
@@ -527,20 +531,23 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         // Get the protein changes:
         final String[] funcotationKeys = extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription());
 
-        for (final String annotationToCheck: annotationsToCheck) {
-            final List<String> mafProteinChanges = maf.getRecords().stream().map(v -> v.getAnnotationValue(MafOutputRendererConstants.FieldName_Protein_Change)).collect(Collectors.toList());
+        for (int i = 0; i < annotationsToCheckMaf.size(); i++) {
+            final String annotationToCheckVcf = annotationsToCheckVcf.get(i);
+            final String annotationToCheckMaf = annotationsToCheckMaf.get(i);
+            final List<String> mafProteinChanges = maf.getRecords().stream().map(v -> v.getAnnotationValue(annotationToCheckMaf)).collect(Collectors.toList());
 
             // Note that we assume that each variant context has one allele and one transcript.  This is true due to the
             //  datasources and input VCF.
             // Don't try to refactor this for-loop to a stream here.
             final List<String> vcfProteinChanges = new ArrayList<>();
             for (final VariantContext v: variantContexts) {
-                final Map<Allele, FuncotationMap> alleleFuncotationMapMap = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(funcotationKeys, v, "Gencode_19_annotationTranscript");
+                final Map<Allele, FuncotationMap> alleleFuncotationMapMap = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(
+                        funcotationKeys, v, "Gencode_19_annotationTranscript", "TEST");
                 final Allele alternateAllele = v.getAlternateAllele(0);
                 final FuncotationMap funcotationMap = alleleFuncotationMapMap.get(alternateAllele);
-                vcfProteinChanges.add(funcotationMap.getFieldValue(funcotationMap.keyList().get(0), annotationToCheck, alternateAllele));
+                vcfProteinChanges.add(funcotationMap.getFieldValue(funcotationMap.getTranscriptList().get(0), annotationToCheckVcf, alternateAllele));
             }
-            Assert.assertEquals(mafProteinChanges, vcfProteinChanges, "Failed matching " + annotationToCheck);
+            Assert.assertEquals(mafProteinChanges, vcfProteinChanges, "Failed matching " + annotationToCheckVcf);
         }
     }
 
@@ -575,14 +582,15 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         // The rest should not have any clinvar hits.
         for (int i = 0; i < variantContexts.size(); i++) {
             final String gtString = (i == 0) ? "MedGen:C0027672,SNOMED_CT:699346009" : "";
-            final Map<Allele, FuncotationMap> alleleToFuncotationMap = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(funcotationKeys, variantContexts.get(i), "Gencode_19_annotationTranscript");
+            final Map<Allele, FuncotationMap> alleleToFuncotationMap = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(funcotationKeys,
+                    variantContexts.get(i), "Gencode_19_annotationTranscript", "TEST");
             Assert.assertEquals(alleleToFuncotationMap.entrySet().size(), 1);
 
             final FuncotationMap funcotationMap = alleleToFuncotationMap.values().iterator().next();
-            Assert.assertEquals(funcotationMap.keyList().size(), 1);
-            Assert.assertTrue(funcotationMap.keyList().stream().noneMatch(k -> k.equals(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY)));
-            Assert.assertTrue(funcotationMap.keyList().stream().noneMatch(k -> StringUtils.isEmpty(k)));
-            final List<Funcotation> funcotations = funcotationMap.get(funcotationMap.keyList().get(0));
+            Assert.assertEquals(funcotationMap.getTranscriptList().size(), 1);
+            Assert.assertTrue(funcotationMap.getTranscriptList().stream().noneMatch(k -> k.equals(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY)));
+            Assert.assertTrue(funcotationMap.getTranscriptList().stream().noneMatch(StringUtils::isEmpty));
+            final List<Funcotation> funcotations = funcotationMap.get(funcotationMap.getTranscriptList().get(0));
             Assert.assertEquals(funcotations.size(), 1);
             final Funcotation funcotation = funcotations.get(0);
 

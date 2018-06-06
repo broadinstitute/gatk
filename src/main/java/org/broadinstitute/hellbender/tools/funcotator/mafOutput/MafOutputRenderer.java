@@ -210,13 +210,13 @@ public class MafOutputRenderer extends OutputRenderer {
     @Override
     public void write(final VariantContext variant, final FuncotationMap txToFuncotationMap) {
 
-        if (txToFuncotationMap.keyList().size() > 1) {
+        if (txToFuncotationMap.getTranscriptList().size() > 1) {
             logger.warn("MAF typically does not support multiple transcripts per variant, though this should be able to render (grouped by transcript).  No user action needed.");
         }
 
         // Loop through each alt allele in our variant:
         for ( final Allele altAllele : variant.getAlternateAlleles() ) {
-            for (final String txId : txToFuncotationMap.keyList()) {
+            for (final String txId : txToFuncotationMap.getTranscriptList()) {
 
                 final List<Funcotation> funcotations = txToFuncotationMap.get(txId);
 

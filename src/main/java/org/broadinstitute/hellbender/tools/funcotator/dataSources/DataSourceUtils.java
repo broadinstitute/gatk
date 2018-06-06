@@ -233,7 +233,7 @@ final public class DataSourceUtils {
                                                                                                final LinkedHashMap<String, String> annotationOverridesMap,
                                                                                                final TranscriptSelectionMode transcriptSelectionMode,
                                                                                                final Set<String> userTranscriptIdSet,
-                                                                                                        boolean isAllowingNoChrMatchesForTranscripts) {
+                                                                                                        final boolean isAllowingNoChrMatchesForTranscripts) {
 
         Utils.nonNull(dataSourceMetaData);
         Utils.nonNull(annotationOverridesMap);

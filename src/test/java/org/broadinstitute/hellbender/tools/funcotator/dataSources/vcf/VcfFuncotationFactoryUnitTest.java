@@ -165,7 +165,7 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
                                         Allele.create("C"), FACTORY_NAME)
                         )
                 ),
-                // No overlapping VCF features, since there are no indels in dbSNP (the test datasource), so the ground truth should be a default entry, which was constructed here manually:
+                // No matching VCF features (three overlap by position only), since there are no indels in dbSNP (the test datasource), so the ground truth should be a default entry, which was constructed here manually:
                 helpProvideForTestCreateFuncotations("3", 64157, 64166, "AGAAAGGTCA", "TCTTTCCAGT",
                         Collections.singletonList(new TableFuncotation(FIELD_DEFAULT_MAP.keySet().stream().map(s->FACTORY_NAME + "_" + s).collect(Collectors.toList()),
                                 Arrays.asList("false","false","","false","false","","false","false","false","","false","false","false","false","false","false","false","false","false","false","false","false","false","false","false","false","false","false","false","false","","","false","false","","false","","false","","false","false","false","","false","","","false",""),

@@ -134,7 +134,6 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
         if ( isFeatureListCompatible(featureList) ) {
 
             // Create our funcotations:
-
             if ( gencodeFuncotations == null ) {
                 outputFuncotations = createFuncotationsOnVariant(variant, referenceContext, featureList);
             }

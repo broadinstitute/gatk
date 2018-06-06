@@ -188,7 +188,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                      final String name,
                                      final TranscriptSelectionMode transcriptSelectionMode,
                                      final Set<String> userRequestedTranscripts,
-                                     final LinkedHashMap<String, String> annotationOverrides, boolean isAllowingNoChrMatches) {
+                                     final LinkedHashMap<String, String> annotationOverrides,
+                                     final boolean isAllowingNoChrMatches) {
 
         this.gencodeTranscriptFastaFile = gencodeTranscriptFastaFile;
 
@@ -575,9 +576,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             ncbiBuildVersion = gtfFeature.getUcscGenomeVersion();
         }
 
-        // Go through and annotate all our non-best transcripts:
-        final List<String> otherTranscriptsCondensedAnnotations = new ArrayList<>();
-
         final List<GencodeGtfTranscriptFeature> basicTranscripts = gtfFeature.getTranscripts().stream()
                 .filter(GencodeFuncotationFactory::isBasic).collect(Collectors.toList());
 
@@ -592,11 +590,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                 outputFuncotations.add(gencodeFuncotation);
             }
             catch ( final FuncotatorUtils.TranscriptCodingSequenceException ex ) {
-                //TODO: This should never happen, but needs to be here for some transcripts, such as HG19 MUC16 ENST00000599436.1, where the transcript sequence itself is of length not divisible by 3! (3992)
-                //      There may be other erroneous transcripts too.
-                otherTranscriptsCondensedAnnotations.add("ERROR_ON_" + transcript.getTranscriptId());
-
-                logger.warn("Unable to create a GencodeFuncotation on transcript " + transcript.getTranscriptId() + " for variant: " +
+                 logger.error("Unable to create a GencodeFuncotation on transcript " + transcript.getTranscriptId() + " for variant: " +
                         variant.getContig() + ":" + variant.getStart() + "-" + variant.getEnd() + "(" + variant.getReference() + " -> " + altAllele + ")"
                 );
             }
@@ -1857,7 +1851,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                           .setStart(variant.getStart())
                           .setEnd(variant.getEnd())
                 .setVariantType(getVariantType(variant.getReference(), altAllele))
-               // .setNcbiBuild(variant.getUcscGenomeVersion())
                 .setChromosome(variant.getContig())
                 .setAnnotationTranscript(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY);
 

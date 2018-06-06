@@ -177,7 +177,7 @@ public class GencodeFuncotation implements Funcotation {
         // Alias for the FIELD_DELIMITER so we can have nicer looking code:
         final String DELIMITER = VcfOutputRenderer.FIELD_DELIMITER;
         //TODO See issue https://github.com/broadinstitute/gatk/issues/4797 
-        // TODO: Sanitize for VCF.  Not quite as easy as it looks.
+
         // After the manual string, we check to see if we have an override first and if not we get the set field value:
         final List<String> funcotations = Arrays.asList((hugoSymbolSerializedOverride != null ? hugoSymbolSerializedOverride : (hugoSymbol != null ? hugoSymbol : "")),
                 (ncbiBuildSerializedOverride != null ? ncbiBuildSerializedOverride : (ncbiBuild != null ? ncbiBuild : "")),
@@ -204,7 +204,7 @@ public class GencodeFuncotation implements Funcotation {
                 (otherTranscriptsSerializedOverride != null ? otherTranscriptsSerializedOverride : (otherTranscripts != null ? otherTranscripts.stream().map(Object::toString).collect(Collectors.joining(VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER)) : ""))
             );
 
-        return funcotations.stream().map(f -> FuncotatorUtils.sanitizeFuncotationForVcf(f)).collect(Collectors.joining(DELIMITER));
+        return funcotations.stream().map(FuncotatorUtils::sanitizeFuncotationForVcf).collect(Collectors.joining(DELIMITER));
     }
 
     @Override

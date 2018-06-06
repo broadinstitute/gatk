@@ -2009,8 +2009,9 @@ public final class FuncotatorUtils {
     public static String[] extractFuncotatorKeysFromHeaderDescription(final String funcotationHeaderDescription) {
         Utils.nonNull(funcotationHeaderDescription);
 
-        final String[] descriptionSplit = StringUtils.splitByWholeSeparatorPreserveAllTokens(funcotationHeaderDescription, ": ");
-        return StringUtils.splitByWholeSeparatorPreserveAllTokens(descriptionSplit[1], "|");
+        final String[] descriptionSplit = StringUtils.splitByWholeSeparatorPreserveAllTokens(funcotationHeaderDescription,
+                VcfOutputRenderer.DESCRIPTION_PREAMBLE_DELIMITER);
+        return StringUtils.splitByWholeSeparatorPreserveAllTokens(descriptionSplit[1], VcfOutputRenderer.FIELD_DELIMITER);
     }
 
     /**
@@ -2034,12 +2035,18 @@ public final class FuncotatorUtils {
      * @param transcriptIdFuncotationName The field name to use for determining the transcript ID.  Use {@link FuncotationMap#NO_TRANSCRIPT_AVAILABLE_KEY} if unknown.
      *                            If not in the funcotation keys, then the funcotation maps will be created with one transcript ID,
      *                            {@link FuncotationMap#NO_TRANSCRIPT_AVAILABLE_KEY}.  Never {@code null}
+     * @param dummyDatasourceName Datasource name to use for the funcotations coming from the VCF.  Note that the original datasource names are impossible to reconstruct.
+     *                            Never {@code null}
      * @return Never {@code null}
      */
-    public static Map<Allele, FuncotationMap> createAlleleToFuncotationMapFromFuncotationVcfAttribute(final String[] funcotationHeaderKeys, final VariantContext v, final String transcriptIdFuncotationName) {
+    public static Map<Allele, FuncotationMap> createAlleleToFuncotationMapFromFuncotationVcfAttribute(final String[] funcotationHeaderKeys,
+                                                                                                      final VariantContext v,
+                                                                                                      final String transcriptIdFuncotationName,
+                                                                                                      final String dummyDatasourceName) {
         Utils.nonNull(funcotationHeaderKeys);
         Utils.nonNull(v);
         Utils.nonNull(transcriptIdFuncotationName);
+        Utils.nonNull(dummyDatasourceName);
         final String rawFuncotationAttribute = v.getAttributeAsString(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME, "");
         final List<String> funcotationPerAllele = Arrays.asList(StringUtils.split(rawFuncotationAttribute, ","));
         if (v.getAlternateAlleles().size() != funcotationPerAllele.size()) {
@@ -2049,7 +2056,24 @@ public final class FuncotatorUtils {
         return IntStream.range(0, v.getAlternateAlleles().size()).boxed()
                 .collect(Collectors
                         .toMap(i -> v.getAlternateAllele(i), i -> FuncotationMap.createAsAllTableFuncotationsFromVcf(transcriptIdFuncotationName,
-                                funcotationHeaderKeys, funcotationPerAllele.get(i), v.getAlternateAllele(i), "TEST")));
+                                funcotationHeaderKeys, funcotationPerAllele.get(i), v.getAlternateAllele(i), dummyDatasourceName)));
+    }
+
+    /**
+     * @param f Never {@code null}
+     * @return whether this is an instance of {@link GencodeFuncotation}
+     */
+    public static boolean isGencodeFuncotation(final Funcotation f) {
+        Utils.nonNull(f);
+        return f instanceof GencodeFuncotation;
+    }
+
+    /**
+     * @param funcotations  Never {@code null}
+     * @return whether any funcotations in the input are an instance of {@link GencodeFuncotation}
+     */
+    public static boolean areAnyGencodeFuncotation(final List<Funcotation> funcotations) {
+        return funcotations.stream().anyMatch(FuncotatorUtils::isGencodeFuncotation);
     }
 }
 

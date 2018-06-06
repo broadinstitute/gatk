@@ -48,10 +48,17 @@ public class VcfOutputRenderer extends OutputRenderer {
      * The delimiter to use when starting the information regarding a transcript.
      */
     public static final String START_TRANSCRIPT_DELIMITER = "[";
+
     /**
      * The delimiter to use when ending the information regarding a transcript.
      */
     public static final String END_TRANSCRIPT_DELIMITER = "]";
+
+    /**
+     * The delimiter used between the preamble and the actual fields in the description of the
+     *  {@link #FUNCOTATOR_VCF_FIELD_NAME} attribute i the header.
+     */
+    public static final String DESCRIPTION_PREAMBLE_DELIMITER = ": ";
 
     //==================================================================================================================
 
@@ -139,7 +146,7 @@ public class VcfOutputRenderer extends OutputRenderer {
                 funcotatorAnnotationStringBuilder.append(FIELD_DELIMITER);
             }
 
-            for (final String txId : txToFuncotationMap.keyList()) {
+            for (final String txId : txToFuncotationMap.getTranscriptList()) {
                 funcotatorAnnotationStringBuilder.append(START_TRANSCRIPT_DELIMITER);
                 final List<Funcotation> funcotations = txToFuncotationMap.get(txId);
                 funcotatorAnnotationStringBuilder.append(
@@ -194,7 +201,8 @@ public class VcfOutputRenderer extends OutputRenderer {
         headerLines.addAll(defaultToolVcfHeaderLines);
         headerLines.add(new VCFHeaderLine("Funcotator Version", Funcotator.VERSION + " | " + getDataSourceInfoString()));
         headerLines.add(new VCFInfoHeaderLine(FUNCOTATOR_VCF_FIELD_NAME, VCFHeaderLineCount.A,
-                VCFHeaderLineType.String, "Functional annotation from the Funcotator tool.  Funcotation fields are: " +
+                VCFHeaderLineType.String, "Functional annotation from the Funcotator tool.  Funcotation fields are"
+                + DESCRIPTION_PREAMBLE_DELIMITER +
                 delimitedFields)
         );
 

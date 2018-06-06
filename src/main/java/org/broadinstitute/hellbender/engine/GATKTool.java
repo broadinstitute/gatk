@@ -888,6 +888,9 @@ public abstract class GATKTool extends CommandLineProgram {
     /**
      * Call {@link GATKTool#addFeatureInputsAfterInitialization(String, String, Class, int)} with no caching.
      *
+     * @param filePath See {@link #addFeatureInputsAfterInitialization(String, String, Class, int)}
+     * @param name See {@link #addFeatureInputsAfterInitialization(String, String, Class, int)}
+     * @param featureType See {@link #addFeatureInputsAfterInitialization(String, String, Class, int)}
      * @return The {@link FeatureInput} used as the key for this data source.
      */
     protected FeatureInput<? extends Feature> addFeatureInputsAfterInitialization(final String filePath, final String name,
