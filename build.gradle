@@ -525,6 +525,11 @@ task sparkJar(type: ShadowJar) {
 
 task testJar(type: Jar, dependsOn: testClasses) {
     classifier = 'tests'
+    dependencies {
+        compile "org.mockito:mockito-core:2.10.0"
+        compile "com.google.jimfs:jimfs:1.1"
+    }
+
     from sourceSets.test.output
 }
 
