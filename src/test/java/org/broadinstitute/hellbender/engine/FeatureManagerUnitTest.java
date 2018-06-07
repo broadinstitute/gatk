@@ -89,7 +89,7 @@ public final class FeatureManagerUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "IsFeatureFileTestData")
     public void testIsFeatureFile( final File file, final boolean expectedIsFeatureFile ) {
-        Assert.assertEquals(FeatureManager.isFeatureFile(file), expectedIsFeatureFile, "isFeatureFile() returned incorrect result for file " + file.getAbsolutePath());
+        Assert.assertEquals(FeatureManager.isFeatureFile(file.toPath()), expectedIsFeatureFile, "isFeatureFile() returned incorrect result for file " + file.getAbsolutePath());
     }
 
     @CommandLineProgramProperties(summary = "", oneLineSummary = "", programGroup = TestProgramGroup.class)

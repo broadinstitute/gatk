@@ -270,7 +270,7 @@ public final class IntervalUtils {
                     "interval or an interval file instead.");
         }
         // If it's a Feature-containing file, convert it to a list of intervals
-        else if ( FeatureManager.isFeatureFile(new File(arg)) ) {
+        else if ( FeatureManager.isFeatureFile(IOUtils.getPath(arg)) ) {
             rawIntervals.addAll(featureFileToIntervals(parser, arg));
         }
         // If it's an interval file, add its contents to the raw interval list
@@ -307,12 +307,11 @@ public final class IntervalUtils {
      * Converts a Feature-containing file to a list of intervals
      *
      * @param parser GenomeLocParser for creating intervals
-     * @param featureFileName file containing Features to convert to intervals
+     * @param featureFile file containing Features to convert to intervals
      * @return a List of intervals corresponding to the locations of the Features in the provided file
      * @throws UserException.CouldNotReadInputFile if the provided file is not in a supported Feature file format
      */
-    public static List<GenomeLoc> featureFileToIntervals( final GenomeLocParser parser, final String featureFileName ) {
-        final File featureFile = new File(featureFileName);
+    public static List<GenomeLoc> featureFileToIntervals( final GenomeLocParser parser, final String featureFile ) {
 
         try ( final FeatureDataSource<? extends Feature> dataSource = new FeatureDataSource<>(featureFile) ) {
             final List<GenomeLoc> featureIntervals = new ArrayList<>();
