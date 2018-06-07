@@ -291,7 +291,7 @@ q(z_n) = {\rm Bernoulli}(z_n | \gamma_n), \quad \gamma_n = \frac{ \rho \epsilon_
 Then, Equation 10.3 of Bishop gives us the variational lower bound on $L(f)$:
 \begin{align}
 L(f) &\approx E_q \left[ \ln P({\rm reads}, f, \vz) \right] + {\rm entropy}[q(f)] + \sum_n {\rm entropy}[q(z_n)] \\
-&= -H(\alpha, \beta) +  N_{\rm ref} \ln \rho + \sum_n \left[ \gamma_n \ln \left( \rho \epsilon_n \right) + (1 - \gamma_n) \ln \left( \tau (1 - \epsilon_n) \right) - H(\gamma_n) \right],
+&= H(\alpha, \beta) +  N_{\rm ref} \ln \rho + \sum_n \left[ \gamma_n \ln \left( \rho \epsilon_n \right) + (1 - \gamma_n) \ln \left( \tau (1 - \epsilon_n) \right) + H(\gamma_n) \right],
 \end{align}
 where $H(\alpha, \beta)$ and $H(\gamma)$ are Beta and Bernoulli entropies.  We summarize these steps in the following algorithm:
 
