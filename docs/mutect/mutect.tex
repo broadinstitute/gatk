@@ -1,6 +1,7 @@
 \documentclass[nofootinbib,amssymb,amsmath]{revtex4}
 \usepackage{mathtools}
 \usepackage{amsthm}
+\usepackage{amsmath}
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \usepackage{lmodern}
@@ -261,26 +262,53 @@ We filter by setting a threshold on this posterior probability.
 Mutect triages sites based on their pileup at a single base locus.  If there is sufficient evidence of variation Mutect proceeds with local reassembly and realignment.  As in the downstream parts of Mutect we seek a likelihood ratio between the existence and non-existence of an alt allele.  Instead of obtaining read likelihoods via Pair-HMM, we assign each base a likelihood.  For substitutions we can simply use the base quality.  For indels we assign a heuristic effective quality that increases with length.  Supposing we have an effective quality for each element in the read pileup we can now estimate the likelihoods of no variation and of a true alt allele with allele fraction $f$.  Let $\mathcal{R}$ and $\mathcal{A}$ denote the sets of ref and alt reads.  The likelihood of no variation is the likelihood that every alt read was in error.  Letting $\epsilon_i$ be the error probability of pileup element $i$ we have:
 
 \begin{equation}
-L({\rm no~variation}) = \prod_{i \in \mathcal{R}} (1 - \epsilon_i) \prod_{j \in \mathcal{A}} \epsilon_j 
+L({\rm no~variation}) = \prod_{i \in \mathcal{R}} (1 - \epsilon_i) \prod_{j \in \mathcal{A}} \epsilon_j \approx \prod_{j \in \mathcal{A}} \epsilon_j, 
 \end{equation}
+where the approximation amounts to ignoring the possibility that ref reads are actually alt, or, equivalently, giving each ref read infinite quality.  This is not necessary but it speeds the computation because, as we will see, we will only need to keep alt base qualities in memory.
 \begin{equation}
 L(f) = \prod_{i \in \mathcal{R}} \left[ (1 -f)(1 - \epsilon_i) + f \epsilon_i \right] \prod_{j \in \mathcal{A}} \left[f(1 - \epsilon_j) + (1 - f) \epsilon_j \right]
+\approx (1-f)^{N_{\rm ref}} \prod_{j \in \mathcal{A}} \left[f(1 - \epsilon_j) + (1 - f) \epsilon_j \right],
 \end{equation}
-The terms that signify observed ref reads that are actually alt reads with an error and vice versa are negligible\footnote{We can set an upper bound on the error in the log likelihood by Taylor-expanding to first order.  The error turns out to be quite small.}  Then we get
+where we again assign infinite base quality to ref reads and let $N_{\rm ref} = | \mathcal{R}|$.
+
+This is equivalent to the following model in which we give the $n$th alt read a latent indicator $z_j$ which equals 1 when the read is an error:
 \begin{align}
-L(f) &\approx \prod_{i \in \mathcal{R}} \left[ (1 -f)(1 - \epsilon_i)  \right] \prod_{j \in \mathcal{A}} \left[f(1 - \epsilon_j) \right] \\
-&=(1-f)^{|\mathcal{R}|}f^{|\mathcal{A}|}  \prod_{i \in \mathcal{R}} (1 - \epsilon_i)  \prod_{j \in \mathcal{A}} (1 - \epsilon_j) 
+P({\rm reads}, f, \vz) = (1-f)^{N_{\rm ref}} \prod_{n=1}^{N_{\rm alt}} \left[ (1-f)\epsilon_n \right]^{z_n} \left[ f (1 - \epsilon_n) \right]^{1 - z_n}
 \end{align}
-We can integrate over the latent variable $f$ from $0$ to $1$ with a flat prior analytically because the integral is the normalization constant of the beta distribution:
+We will approximate the model evidence $L(f) = \sum_\vz \int \, df P({\rm reads}, f, \vz)$ via a mean field variational Bayes approximation in which we factorize the full data likelihood as $P({\rm reads}, f, \vz) \approx q(f) q(\vz) = q(f) \prod_n q(z_n)$\footnote{The latter step is an induced factorization -- once $f$ and $\vz$ are decoupled, then the different $z_n$ become independent as well.}.  For simplicity and speed, we will not iteratively compute $q(f)$.  Rather, we use the fact that $z_n$ is almost always 0 to see, by inspection, that
 \begin{equation}
-\int_0^1 (1-f)^{|\mathcal{R}|}f^{|\mathcal{A}|} \, df = \frac{ \Gamma(|\mathcal{R}| + 1) \Gamma(|\mathcal{A}| + 1)}{\Gamma(|\mathcal{R}| + |\mathcal{A}| + 2)} = \frac{|\mathcal{R}|! |\mathcal{A}|!}{(|\mathcal{R}|+|\mathcal{A}|+1)!}
+q(f) \approx {\rm Beta}(f | \alpha, \beta), \quad \alpha = N_{\rm alt} + 1, \beta = N_{\rm ref} + 1.
 \end{equation}
-In the likelihood ratio the reference factors $\prod_{i \in \mathcal{R}} (1 - \epsilon_i)$ cancel, leaving a log-odds of
+Here the ``$+1$"s come from the pseudocounts, one ref and one alt, of a flat prior of $f$.  Then, following the usual recipe of averaging the log likelihood with respect to $f$ and re-exponentiating, we find that $z_n$ ``sees" the following distribution:
 \begin{align}
-{\rm LOD} \approx& \sum_{j \in \mathcal{A}} \left[ \log (1 - \epsilon_j) - \log \epsilon_j \right] + \log \frac{|\mathcal{R}|! |\mathcal{A}|!}{(|\mathcal{R}|+|\mathcal{A}|+1)!} \\
- \approx& -\sum_{j \in \mathcal{A}} \log \epsilon_j + \log \frac{|\mathcal{R}|! |\mathcal{A}|!}{(|\mathcal{R}|+|\mathcal{A}|+1)!},
+q(z_n) &\propto \left[ \epsilon_n \exp \overline{\ln (1 - f)} \right]^{z_n} \left[ (1 - \epsilon_n) \exp \overline{\ln f} \right]^{1 - z_n} \\
+&= \left[ \epsilon_n \rho \right]^{z_n} \left[ (1 - \epsilon_n) \tau \right]^{1 - z_n},
 \end{align}
-the first term of which is proportional to the sum of effective base qualities.
+where we have defined the standard Beta distribution moments (with respect to $q(f)$) $\ln \rho \equiv \overline{\ln (1 - f)} = \psi(\beta) - \psi(\alpha + \beta)$ and $\ln \tau \equiv \overline{\ln f} = \psi(\alpha) - \psi(\alpha + \beta)$. By inspection, we see that
+\begin{equation}
+q(z_n) = {\rm Bernoulli}(z_n | \gamma_n), \quad \gamma_n = \frac{ \rho \epsilon_n}{\rho \epsilon_n + \tau (1 - \epsilon_n)}.
+\end{equation}
+Then, Equation 10.3 of Bishop gives us the variational lower bound on $L(f)$:
+\begin{align}
+L(f) &\approx E_q \left[ \ln P({\rm reads}, f, \vz) \right] + {\rm entropy}[q(f)] + \sum_n {\rm entropy}[q(z_n)] \\
+&= H(\alpha, \beta) +  N_{\rm ref} \ln \rho + \sum_n \left[ \gamma_n \ln \left( \rho \epsilon_n \right) + (1 - \gamma_n) \ln \left( \tau (1 - \epsilon_n) \right) + H(\gamma_n) \right],
+\end{align}
+where $H(\alpha, \beta)$ and $H(\gamma)$ are Beta and Bernoulli entropies.  We summarize these steps in the following algorithm:
+
+\begin{algorithm}
+\begin{algorithmic}[1]
+\State Record the base qualities, hence the error probabilities $\epsilon_n$ of each alt read.
+\State $\alpha = N_{\rm alt} + 1$, $\beta = N_{\rm ref} + 1$
+\State $\rho = \exp \left( \psi(\beta) - \psi(\alpha + \beta) \right) $, $\tau = \exp \left( \psi(\alpha) - \psi(\alpha + \beta) \right)$.
+\State $\gamma_n =  \rho \epsilon_n / \left[ \rho \epsilon_n + \tau (1 - \epsilon_n) \right]$
+\State $L(f) \approx H(\alpha, \beta) + N_{\rm ref} \ln \rho + \sum_n \left[ \gamma_n \ln \left( \rho \epsilon_n \right) + (1 - \gamma_n)\ln \left( \tau (1 - \epsilon_n) \right) + H(\gamma_n) \right]$
+\end{algorithmic}
+%\caption{Pair HMM algorithm}
+%\label{pairHMM}
+\end{algorithm}
+To get the log odds we subtract the log likelihood, $\sum_n \ln \epsilon_n$, from $L(f)$.
+
+
 
 \section{Calculating Contamination}
 Below, we present the GATK's fast, simple, and accurate method for calculating the contamination of a sample.  This methods does not require a matched normal, makes no assumptions about the number of contaminating samples, and remains accurate even when the sample has a lot of copy number variation.

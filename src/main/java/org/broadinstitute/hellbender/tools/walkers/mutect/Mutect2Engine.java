@@ -1,9 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
+import breeze.stats.distributions.Bernoulli;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
+import org.apache.commons.math.special.Beta;
+import org.apache.commons.math.special.Gamma;
+import org.apache.commons.math3.distribution.BetaDistribution;
+import org.apache.commons.math3.util.FastMath;
 import org.apache.commons.math3.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -240,20 +245,16 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         final ReadPileup pileup = context.getBasePileup();
         final ReadPileup tumorPileup = pileup.getPileupForSample(tumorSample, header);
-        final Pair<Integer, Double> tumorAltCountAndQualSum = altCountAndQualSum(tumorPileup, refBase);
-        final int tumorAltCount = tumorAltCountAndQualSum.getFirst();
-        final int tumorRefCount = tumorPileup.size() - tumorAltCount;
-
-        final double tumorLog10Odds = -QualityUtils.qualToErrorProbLog10(tumorAltCountAndQualSum.getSecond()) +
-                MathUtils.log10Factorial(tumorAltCount) + MathUtils.log10Factorial(tumorRefCount) - MathUtils.log10Factorial(tumorPileup.size() + 1);
+        final List<Byte> tumorAltQuals = altQuals(tumorPileup, refBase);
+        final double tumorLog10Odds = MathUtils.logToLog10(lnLikelihoodRatio(tumorPileup.size()-tumorAltQuals.size(), tumorAltQuals));
 
         if (tumorLog10Odds < MTAC.initialTumorLod) {
             return new ActivityProfileState(refInterval, 0.0);
         } else if (hasNormal() && !MTAC.genotypeGermlineSites) {
             final ReadPileup normalPileup = pileup.getPileupForSample(normalSample, header);
-            final Pair<Integer, Double> normalAltCountAndQualSum = altCountAndQualSum(normalPileup, refBase);
-            final int normalAltCount = normalAltCountAndQualSum.getFirst();
-            final double normalQualSum = normalAltCountAndQualSum.getSecond();
+            final List<Byte> normalAltQuals = altQuals(normalPileup, refBase);
+            final int normalAltCount = normalAltQuals.size();
+            final double normalQualSum = normalAltQuals.stream().mapToDouble(Byte::doubleValue).sum();
             if (normalAltCount > normalPileup.size() * MAX_ALT_FRACTION_IN_NORMAL && normalQualSum > MAX_NORMAL_QUAL_SUM) {
                 return new ActivityProfileState(refInterval, 0.0);
             }
@@ -278,29 +279,54 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         return pe.isDeletion() ? pe.getCurrentCigarElement().getLength() : pe.getLengthOfImmediatelyFollowingIndel();
     }
 
-    private static double indelQual(final int indelLength) {
-        return INDEL_START_QUAL + (indelLength - 1) * INDEL_CONTINUATION_QUAL;
+    private static byte indelQual(final int indelLength) {
+        return (byte) Math.min(INDEL_START_QUAL + (indelLength - 1) * INDEL_CONTINUATION_QUAL, Byte.MAX_VALUE);
     }
 
-    private static Pair<Integer, Double> altCountAndQualSum(final ReadPileup pileup, final byte refBase) {
-        int altCount = 0;
-        double qualSum = 0;
+    private static List<Byte> altQuals(final ReadPileup pileup, final byte refBase) {
+        final List<Byte> result = new ArrayList<>();
 
         for (final PileupElement pe : pileup) {
             final int indelLength = getCurrentOrFollowingIndelLength(pe);
             if (indelLength > 0) {
-                altCount++;
-                qualSum += indelQual(indelLength);
+                result.add(indelQual(indelLength));
             } else if (isNextToUsefulSoftClip(pe)) {
-                altCount++;
-                qualSum += indelQual(1);
+                result.add(indelQual(1));
             } else if (pe.getBase() != refBase && pe.getQual() > MINIMUM_BASE_QUALITY) {
-                altCount++;
-                qualSum += pe.getQual();
+                result.add(pe.getQual());
             }
         }
 
-        return new Pair<>(altCount, qualSum);
+        return result;
+    }
+
+    // this implements the isActive() algorithm described in docs/mutect/mutect.pdf
+    private static double lnLikelihoodRatio(final int refCount, final List<Byte> altQuals) {
+        final double beta = refCount + 1;
+        final double alpha = altQuals.size() + 1;
+        final double digammaAlpha = Gamma.digamma(alpha);
+        final double digammaBeta = Gamma.digamma(beta);
+        final double digammaAlphaPlusBeta = Gamma.digamma(alpha + beta);
+        final double lnRho = digammaBeta - digammaAlphaPlusBeta;
+        final double rho = FastMath.exp(lnRho);
+        final double lnTau = digammaAlpha - digammaAlphaPlusBeta;
+        final double tau = FastMath.exp(lnTau);
+
+
+
+        final double betaEntropy = Beta.logBeta(alpha, beta) - (alpha - 1)*digammaAlpha - (beta-1)*digammaBeta + (alpha + beta - 2)*digammaAlphaPlusBeta;
+
+        final double result = betaEntropy +  refCount * lnRho + altQuals.stream().mapToDouble(qual -> {
+            final double epsilon = QualityUtils.qualToErrorProb(qual);
+            final double gamma = rho * epsilon / (rho * epsilon + tau * (1-epsilon));
+            final double bernoulliEntropy = -gamma * FastMath.log(gamma) - (1-gamma)*FastMath.log1p(-gamma);
+            final double lnEpsilon = MathUtils.log10ToLog(QualityUtils.qualToErrorProbLog10(qual));
+            final double lnOneMinusEpsilon = MathUtils.log10ToLog(QualityUtils.qualToProbLog10(qual));
+            return gamma * (lnRho + lnEpsilon) + (1-gamma)*(lnTau + lnOneMinusEpsilon) - lnEpsilon + bernoulliEntropy;
+        }).sum();
+
+        return result;
+
     }
 
     // check that we're next to a soft clip that is not due to a read that got out of sync and ended in a bunch of BQ2's
