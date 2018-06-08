@@ -21,7 +21,7 @@ public abstract class MarkDuplicatesSparkRecord {
     // Required abstract methods
     public abstract Type getType();
     // NOTE: these keys are typically stored as a transient field to prevent serialization for performances purposes, this is only guaranteed to give the correct result right after construction
-    public abstract int key();
+    public abstract String key();
 
 
     // A fragment containing only one read without a mapped mate

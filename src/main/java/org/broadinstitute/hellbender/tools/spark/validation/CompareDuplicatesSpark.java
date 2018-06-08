@@ -136,17 +136,17 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
 
         Broadcast<SAMFileHeader> bHeader = ctx.broadcast(getHeaderForReads());
         // Group the reads of each BAM by MarkDuplicates key, then pair up the the reads for each BAM.
-        JavaPairRDD<Integer, GATKRead> firstKeyed = firstReads.mapToPair(read -> new Tuple2<>(ReadsKey.hashKeyForFragment(
+        JavaPairRDD<String, GATKRead> firstKeyed = firstReads.mapToPair(read -> new Tuple2<>(ReadsKey.hashKeyForFragment(
                 ReadUtils.getStrandedUnclippedStart(read),
                 read.isReverseStrand(),
                 ReadUtils.getReferenceIndex(read,bHeader.getValue()),
                 ReadUtils.getLibrary(read, bHeader.getValue())), read));
-        JavaPairRDD<Integer, GATKRead> secondKeyed = secondReads.mapToPair(read -> new Tuple2<>(ReadsKey.hashKeyForFragment(
+        JavaPairRDD<String, GATKRead> secondKeyed = secondReads.mapToPair(read -> new Tuple2<>(ReadsKey.hashKeyForFragment(
                 ReadUtils.getStrandedUnclippedStart(read),
                 read.isReverseStrand(),
                 ReadUtils.getReferenceIndex(read,bHeader.getValue()),
                 ReadUtils.getLibrary(read, bHeader.getValue())), read));
-        JavaPairRDD<Integer, Tuple2<Iterable<GATKRead>, Iterable<GATKRead>>> cogroup = firstKeyed.cogroup(secondKeyed, getRecommendedNumReducers());
+        JavaPairRDD<String, Tuple2<Iterable<GATKRead>, Iterable<GATKRead>>> cogroup = firstKeyed.cogroup(secondKeyed, getRecommendedNumReducers());
 
 
         // Produces an RDD of MatchTypes, e.g., EQUAL, DIFFERENT_REPRESENTATIVE_READ, etc. per MarkDuplicates key,

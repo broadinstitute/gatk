@@ -99,8 +99,8 @@ public class MarkDuplicatesSparkUtils {
         final Broadcast<Map<String, Short>> headerReadGroupIndexMap = JavaSparkContext.fromSparkContext(reads.context()).broadcast( getHeaderReadGroupIndexMap(header));
 
         // Place all the reads into a single RDD of MarkDuplicatesSparkRecord objects
-        final JavaPairRDD<Integer, MarkDuplicatesSparkRecord> pairedEnds = keyedReads.flatMapToPair(keyedRead -> {
-            final List<Tuple2<Integer, MarkDuplicatesSparkRecord>> out = Lists.newArrayList();
+        final JavaPairRDD<String, MarkDuplicatesSparkRecord> pairedEnds = keyedReads.flatMapToPair(keyedRead -> {
+            final List<Tuple2<String, MarkDuplicatesSparkRecord>> out = Lists.newArrayList();
             final IndexPair<?>[] hadNonPrimaryRead = {null};
 
             final List<IndexPair<GATKRead>> primaryReads = Utils.stream(keyedRead._2())
@@ -167,7 +167,7 @@ public class MarkDuplicatesSparkUtils {
             return out.iterator();
         });
 
-        final JavaPairRDD<Integer, Iterable<MarkDuplicatesSparkRecord>> keyedPairs = pairedEnds.groupByKey(); //TODO evaluate replacing this with a smart aggregate by key.
+        final JavaPairRDD<String, Iterable<MarkDuplicatesSparkRecord>> keyedPairs = pairedEnds.groupByKey(); //TODO evaluate replacing this with a smart aggregate by key.
 
         return markDuplicateRecords(keyedPairs, finder);
     }
@@ -284,7 +284,7 @@ public class MarkDuplicatesSparkUtils {
      *  - Collects the results and returns an iterator
      */
     @SuppressWarnings("unchecked")
-    private static JavaPairRDD<IndexPair<String>, Integer> markDuplicateRecords(final JavaPairRDD<Integer, Iterable<MarkDuplicatesSparkRecord>> keyedPairs,
+    private static JavaPairRDD<IndexPair<String>, Integer> markDuplicateRecords(final JavaPairRDD<String, Iterable<MarkDuplicatesSparkRecord>> keyedPairs,
                                                                                 final OpticalDuplicateFinder finder) {
         return keyedPairs.flatMapToPair(keyedPair -> {
             Iterable<MarkDuplicatesSparkRecord> pairGroups = keyedPair._2();
@@ -294,11 +294,11 @@ public class MarkDuplicatesSparkUtils {
             //since we grouped by a non-unique hash code for efficiency we need to regroup by the actual criteria
             //todo this should use library and contig as well probably
             //todo these should all be one traversal over the records)
-            final Collection<List<MarkDuplicatesSparkRecord>> groups = Utils.stream(pairGroups)
-                    .collect(Collectors.groupingBy(MarkDuplicatesSparkUtils::getGroupKey)).values();
-
-            for (List<MarkDuplicatesSparkRecord> duplicateGroup : groups) {
-                final Map<MarkDuplicatesSparkRecord.Type, List<MarkDuplicatesSparkRecord>> stratifiedByType = splitByType(duplicateGroup);
+//            final Collection<List<MarkDuplicatesSparkRecord>> groups = Utils.stream(pairGroups)
+//                    .collect(Collectors.groupingBy(MarkDuplicatesSparkUtils::getGroupKey)).values();
+//
+//            for (List<MarkDuplicatesSparkRecord> duplicateGroup : groups) {
+                final Map<MarkDuplicatesSparkRecord.Type, List<MarkDuplicatesSparkRecord>> stratifiedByType = splitByType(pairGroups);
 
                 // Each key corresponds to either fragments or paired ends, not a mixture of both.
                 final List<MarkDuplicatesSparkRecord> emptyFragments = stratifiedByType.get(MarkDuplicatesSparkRecord.Type.EMPTY_FRAGMENT);
@@ -320,7 +320,7 @@ public class MarkDuplicatesSparkUtils {
                 if (Utils.isNonEmpty(passthroughs)) {
                     nonDuplicates.addAll(handlePassthroughs(passthroughs));
                 }
-            }
+//            }
 
             return nonDuplicates.iterator();
         });
@@ -341,7 +341,7 @@ public class MarkDuplicatesSparkUtils {
     /**
      * split MarkDuplicatesSparkRecord into groups by their type
      */
-    private static Map<MarkDuplicatesSparkRecord.Type, List<MarkDuplicatesSparkRecord>> splitByType(List<MarkDuplicatesSparkRecord> duplicateGroup) {
+    private static Map<MarkDuplicatesSparkRecord.Type, List<MarkDuplicatesSparkRecord>> splitByType(Iterable<MarkDuplicatesSparkRecord> duplicateGroup) {
         final EnumMap<MarkDuplicatesSparkRecord.Type, List<MarkDuplicatesSparkRecord>> byType = new EnumMap<>(MarkDuplicatesSparkRecord.Type.class);
         for(MarkDuplicatesSparkRecord pair: duplicateGroup) {
             byType.compute(pair.getType(), (key, value) -> {

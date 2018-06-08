@@ -14,7 +14,7 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
  * during the processing step of MarkDuplicatesSpark
  */
 public class Fragment extends PairedEnds {
-    protected transient int key;
+    protected transient String key;
 
     private final int firstStartPosition;
     private final int firstUnclippedStartPosition;
@@ -43,7 +43,7 @@ public class Fragment extends PairedEnds {
     }
     @Override
     // NOTE: This is transient and thus may not exist if the object gets serialized
-    public int key() {
+    public String key() {
         return key;
     }
     @Override

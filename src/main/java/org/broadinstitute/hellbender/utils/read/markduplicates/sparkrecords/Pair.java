@@ -21,7 +21,7 @@ import picard.sam.util.PhysicalLocation;
  */
 @DefaultSerializer(Pair.Serializer.class)
 public final class Pair extends PairedEnds implements PhysicalLocation {
-    protected transient int key;
+    protected transient String key;
 
     private final int firstStartPosition;
     private final int firstUnclippedStartPosition;
@@ -131,7 +131,7 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
     }
     @Override
     // NOTE: This is transient and thus may not exist if the object gets serialized
-    public int key() {
+    public String key() {
         return key;
     }
     @Override
