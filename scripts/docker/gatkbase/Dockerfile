@@ -6,16 +6,11 @@ FROM ubuntu:16.04
 RUN apt-get update && \
      apt-get upgrade -y && \
      apt-get install -y python && \
-     apt-get install -y python3-pip && \
-     apt-get install -y wget curl unzip gcc python-dev python-setuptools git less lynx hdfview \
+     apt-get install -y wget curl unzip gcc python-dev python-setuptools git less \
      aufs-tools \
-     automake \
-     bedtools \
-     btrfs-tools \
+     openjdk-8-jdk \
      build-essential \
      dpkg-sig \
-     iptables \
-     samtools \
      software-properties-common && \
      apt-get -y autoremove && \
      apt-get -y clean 
@@ -24,12 +19,10 @@ RUN apt-get update && \
 RUN export CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)" && \
     echo "deb http://packages.cloud.google.com/apt $CLOUD_SDK_REPO main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && \
     curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - && \
-    apt-get update -y && apt-get install google-cloud-sdk -y
+    apt-get update -y && apt-get install google-cloud-sdk -y && \
+    apt-get -y autoremove && \
+    apt-get -y clean
 ###########
-
-# Get OpenJDK8 on here.
-RUN apt-get update && \
-    apt-get install -y openjdk-8-jdk
 
 # Set environment variables.
 ENV HOME /root
@@ -50,7 +43,9 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9 && \
     apt-get update && \
     apt-get install -y --force-yes \
         r-base-dev=3.2.5-1xenial \
-        r-base-core=3.2.5-1xenial
+        r-base-core=3.2.5-1xenial && \
+    apt-get -y autoremove && \
+    apt-get -y clean
 
 COPY install_R_packages.R install_R_packages.R
 RUN Rscript install_R_packages.R
