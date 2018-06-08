@@ -295,7 +295,7 @@ workflow Mutect2 {
 
     if (defined(realignment_index_bundle)) {
         File realignment_filter_input = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
-        call FilterRealignmentArtifacts {
+        call FilterAlignmentArtifacts {
             input:
                 gatk_override = gatk_override,
                 bam = tumor_bam,
@@ -309,7 +309,7 @@ workflow Mutect2 {
     }
 
     if (run_oncotator_or_default) {
-        File oncotate_vcf_input = select_first([FilterRealignmentArtifacts.filtered_vcf, FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
+        File oncotate_vcf_input = select_first([FilterAlignmentArtifacts.filtered_vcf, FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
         call oncotate_m2 {
             input:
                 m2_vcf = oncotate_vcf_input,
@@ -330,7 +330,7 @@ workflow Mutect2 {
 
     if (run_funcotator_or_default) {
         File funcotate_vcf_input = select_first([FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
-        File funcotate_vcf_input_index = select_first([FilterRealignmentArtifacts.filtered_vcf, FilterByOrientationBias.filtered_vcf_index, Filter.filtered_vcf_index])
+        File funcotate_vcf_input_index = select_first([FilterAlignmentArtifacts.filtered_vcf, FilterByOrientationBias.filtered_vcf_index, Filter.filtered_vcf_index])
         call Funcotate {
             input:
                 m2_vcf = funcotate_vcf_input,
@@ -352,8 +352,8 @@ workflow Mutect2 {
     output {
         File unfiltered_vcf = MergeVCFs.merged_vcf
         File unfiltered_vcf_index = MergeVCFs.merged_vcf_index
-        File filtered_vcf = select_first([FilterRealignmentArtifacts.filtered_vcf, FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
-        File filtered_vcf_index = select_first([FilterRealignmentArtifacts.filtered_vcf_index, FilterByOrientationBias.filtered_vcf_index, Filter.filtered_vcf_index])
+        File filtered_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
+        File filtered_vcf_index = select_first([FilterAlignmentArtifacts.filtered_vcf_index, FilterByOrientationBias.filtered_vcf_index, Filter.filtered_vcf_index])
         File? contamination_table = CalculateContamination.contamination_table
 
         File? oncotated_m2_maf = oncotate_m2.oncotated_m2_maf
@@ -783,7 +783,7 @@ task FilterByOrientationBias {
     }
 }
 
-task FilterRealignmentArtifacts {
+task FilterAlignmentArtifacts {
     #input
     File? gatk_override
     String input_vcf
@@ -885,7 +885,7 @@ task oncotate_m2 {
         fi
 
         ${default="/root/oncotator_venv/bin/oncotator" oncotator_exe} --db-dir onco_dbdir/ -c $HOME/tx_exact_uniprot_matches.AKT1_CRLF2_FGFR1.txt  \
-            -v ${m2_vcf} ${case_id}.maf.annotated hg19 -i VCF -o TCGAMAF --skip-no-alt --infer-onps --collapse-number-annotations --log_name oncotator.log \
+            -v ${m2_vcf} ${case_id}.maf.annotated hg19 -i VCF -o TCGAMAF --skip-no-alt --collapse-number-annotations --log_name oncotator.log \
             -a Center:${default="Unknown" sequencing_center} \
             -a source:${default="Unknown" sequence_source} \
             -a normal_barcode:${control_id} \
