@@ -95,127 +95,127 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                         overrideVal + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_ncbiBuild", overrideVal),
                         "TESTGENE" + D + overrideVal + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_chromosome", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + overrideVal + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_start", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + overrideVal + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_end", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + overrideVal + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_variantClassification", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 overrideVal + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_secondaryVariantClassification", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + overrideVal + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_variantType", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + overrideVal + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_refAllele", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 overrideVal + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_tumorSeqAllele1", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + overrideVal + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_tumorSeqAllele2", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + overrideVal + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_genomeChange", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + overrideVal + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_annotationTranscript", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + overrideVal + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_transcriptStrand", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                overrideVal + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                overrideVal + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_transcriptExon", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + overrideVal + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + overrideVal + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_transcriptPos", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + overrideVal + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + overrideVal + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_cDnaChange", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + overrideVal + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + overrideVal + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_codonChange", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + overrideVal + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + overrideVal + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_proteinChange", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + overrideVal + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + overrideVal + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_gcContent", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + overrideVal + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + overrideVal + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_gcContent", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + overrideVal + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + overrideVal + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 { setFuncotationFieldOverride(gencodeFuncotation, "Gencode_TEST_VERSION_otherTranscripts", overrideVal),
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
@@ -242,7 +242,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                         "CRUMB BUM!!!!!" + "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 // All fields:
                 {
@@ -254,7 +254,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 {
                         createGencodeFuncotation(null, "BUILD1", "chr1", 1, 100,
@@ -265,7 +265,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                         D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 {
                         createGencodeFuncotation("TESTGENE", null, "chr1", 1, 100,
@@ -276,7 +276,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                         "TESTGENE" + D + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 {
                         createGencodeFuncotation("TESTGENE", "BUILD1", null, 50, 60,
@@ -287,7 +287,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                         "TESTGENE" + D + "BUILD1" + D + D + 50 + D + 60 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 {
                         createGencodeFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
@@ -298,7 +298,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 {
                         createGencodeFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
@@ -309,7 +309,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 {
                         createGencodeFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
@@ -320,7 +320,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 {
                         createGencodeFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
@@ -331,7 +331,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "G" + D + "G" + D + "C" + D + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ACC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ACC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 {
                         createGencodeFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
@@ -342,7 +342,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + D +
-                                D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 {
                         createGencodeFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
@@ -353,7 +353,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + D + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + D + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 {
                         createGencodeFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
@@ -364,7 +364,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 {
                         createGencodeFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
@@ -375,7 +375,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 {
                         createGencodeFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
@@ -386,7 +386,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + D + "1.0" + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 {
                         createGencodeFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
@@ -397,7 +397,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + D + "ATGCGCAT" + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
                 {
                         createGencodeFuncotation("TESTGENE", "BUILD1", "chr1", 1, 100,
@@ -408,7 +408,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big changes" + D + "T1" + D +
-                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + D + "ONE;TWO;THREE"
+                                "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
                 },
         };
     }

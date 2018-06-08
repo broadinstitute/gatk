@@ -8,11 +8,13 @@ import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
+import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.Resource;
@@ -25,6 +27,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public final class FuncotatorUtils {
 
@@ -1998,4 +2001,79 @@ public final class FuncotatorUtils {
             super(msg, throwable);
         }
     }
+
+    /**
+     * @param funcotationHeaderDescription The raw description of the funcotation info field.  Never {@code null}
+     * @return Array of the keys, in proper order.  Never {@code null}
+     */
+    public static String[] extractFuncotatorKeysFromHeaderDescription(final String funcotationHeaderDescription) {
+        Utils.nonNull(funcotationHeaderDescription);
+
+        final String[] descriptionSplit = StringUtils.splitByWholeSeparatorPreserveAllTokens(funcotationHeaderDescription,
+                VcfOutputRenderer.DESCRIPTION_PREAMBLE_DELIMITER);
+        return StringUtils.splitByWholeSeparatorPreserveAllTokens(descriptionSplit[1], VcfOutputRenderer.FIELD_DELIMITER);
+    }
+
+    /**
+     * Make sure that an individual funcotation (i.e. single value of a funcotation) is sanitized for VCF consumption.
+     * Particularly, make sure that it does not allow special characters that would interfere with VCF parsing.
+     * @param individualFuncotation  value from a funcotation Never {@code null}
+     * @return input string with special characters replaced by _%HEX%_ where HEX is the 2 digit ascii hex code.
+     */
+    public static String sanitizeFuncotationForVcf(final String individualFuncotation) {
+        Utils.nonNull(individualFuncotation);
+        return StringUtils.replaceEach(individualFuncotation, new String[]{",", ";", "=", "\t", "|"}, new String[]{"_%2C_", "_%3B_", "_%3D_", "_%09_", "_%7C_"});
+    }
+
+    /**
+     * Create a mapping for a single variant.  The mapping are the variant allele(s) to a FuncotationMap {@link FuncotationMap}
+     * This is lossy, since the attribute cannot possibly store the type of funcotation.
+     *
+     * @param funcotationHeaderKeys {@link FuncotatorUtils#extractFuncotatorKeysFromHeaderDescription(String)} for
+     *                                  getting this parameter from a VCFHeader entry.  Never {@code null}
+     * @param v the variant to use in creating the map.  Never {@code null}
+     * @param transcriptIdFuncotationName The field name to use for determining the transcript ID.  Use {@link FuncotationMap#NO_TRANSCRIPT_AVAILABLE_KEY} if unknown.
+     *                            If not in the funcotation keys, then the funcotation maps will be created with one transcript ID,
+     *                            {@link FuncotationMap#NO_TRANSCRIPT_AVAILABLE_KEY}.  Never {@code null}
+     * @param dummyDatasourceName Datasource name to use for the funcotations coming from the VCF.  Note that the original datasource names are impossible to reconstruct.
+     *                            Never {@code null}
+     * @return Never {@code null}
+     */
+    public static Map<Allele, FuncotationMap> createAlleleToFuncotationMapFromFuncotationVcfAttribute(final String[] funcotationHeaderKeys,
+                                                                                                      final VariantContext v,
+                                                                                                      final String transcriptIdFuncotationName,
+                                                                                                      final String dummyDatasourceName) {
+        Utils.nonNull(funcotationHeaderKeys);
+        Utils.nonNull(v);
+        Utils.nonNull(transcriptIdFuncotationName);
+        Utils.nonNull(dummyDatasourceName);
+        final String rawFuncotationAttribute = v.getAttributeAsString(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME, "");
+        final List<String> funcotationPerAllele = Arrays.asList(StringUtils.split(rawFuncotationAttribute, ","));
+        if (v.getAlternateAlleles().size() != funcotationPerAllele.size()) {
+            throw new GATKException.ShouldNeverReachHereException("Could not parse FUNCOTATION field properly.");
+        }
+
+        return IntStream.range(0, v.getAlternateAlleles().size()).boxed()
+                .collect(Collectors
+                        .toMap(i -> v.getAlternateAllele(i), i -> FuncotationMap.createAsAllTableFuncotationsFromVcf(transcriptIdFuncotationName,
+                                funcotationHeaderKeys, funcotationPerAllele.get(i), v.getAlternateAllele(i), dummyDatasourceName)));
+    }
+
+    /**
+     * @param f Never {@code null}
+     * @return whether this is an instance of {@link GencodeFuncotation}
+     */
+    public static boolean isGencodeFuncotation(final Funcotation f) {
+        Utils.nonNull(f);
+        return f instanceof GencodeFuncotation;
+    }
+
+    /**
+     * @param funcotations  Never {@code null}
+     * @return whether any funcotations in the input are an instance of {@link GencodeFuncotation}
+     */
+    public static boolean areAnyGencodeFuncotation(final List<Funcotation> funcotations) {
+        return funcotations.stream().anyMatch(FuncotatorUtils::isGencodeFuncotation);
+    }
 }
+

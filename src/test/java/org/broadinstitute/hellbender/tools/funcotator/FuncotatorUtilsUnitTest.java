@@ -10,6 +10,8 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceFileSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -1457,5 +1459,53 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     @Test(dataProvider = "provideForTestGetStrandCorrectedAllele")
     public void testGetStrandCorrectedAllele(final Allele allele, final Strand strand, final Allele expected) {
          Assert.assertEquals( FuncotatorUtils.getStrandCorrectedAllele(allele, strand), expected );
+    }
+
+    @DataProvider
+    public Object[][] provideIsGencodeFuncotation() {
+        return new Object[][] {
+                {new TableFuncotation(Collections.singletonList("FIELD"), Collections.singletonList("VALUE"), Allele.create("A"), "TEST"), false},
+                {new GencodeFuncotationBuilder().setAnnotationTranscript("TXID").build(), true}
+        };
+    }
+
+    @Test(dataProvider = "provideIsGencodeFuncotation")
+    public void testIsGencodeFuncotation(final Funcotation f, final boolean gt) {
+        Assert.assertEquals(FuncotatorUtils.isGencodeFuncotation(f), gt);
+    }
+
+    @DataProvider
+    public Object[][] provideAreGencodeFuncotations() {
+        return new Object[][] {
+                {Collections.singletonList(new TableFuncotation(Collections.singletonList("FIELD"), Collections.singletonList("VALUE"), Allele.create("A"), "TEST")), false},
+                {Collections.singletonList(new GencodeFuncotationBuilder().setAnnotationTranscript("TXID").build()), true},
+                {Arrays.asList(
+                        new TableFuncotation(Collections.singletonList("FIELD"), Collections.singletonList("VALUE"), Allele.create("A"), "TEST"),
+                        new TableFuncotation(Collections.singletonList("FIELD2"), Collections.singletonList("VALUE1"), Allele.create("A"), "TEST")
+                    ), false
+                },
+                {Arrays.asList(
+                        new GencodeFuncotationBuilder().setAnnotationTranscript("TXID1").build(),
+                        new GencodeFuncotationBuilder().setAnnotationTranscript("TXID2").build()
+                    ), true
+                },
+                {Arrays.asList(
+                        new GencodeFuncotationBuilder().setAnnotationTranscript("TXID1").build(),
+                        new GencodeFuncotationBuilder().setAnnotationTranscript("TXID2").build(),
+                        new TableFuncotation(Collections.singletonList("FIELD"), Collections.singletonList("VALUE"), Allele.create("A"), "TEST")
+                    ), true
+                },
+                {Arrays.asList(
+                        new TableFuncotation(Collections.singletonList("FIELD"), Collections.singletonList("VALUE"), Allele.create("A"), "TEST"),
+                        new GencodeFuncotationBuilder().setAnnotationTranscript("TXID1").build(),
+                        new GencodeFuncotationBuilder().setAnnotationTranscript("TXID2").build()
+                    ), true
+                }
+        };
+    }
+
+    @Test(dataProvider = "provideAreGencodeFuncotations")
+    public void testAreGencodeFuncotations(final List<Funcotation> f, final boolean gt) {
+        Assert.assertEquals(FuncotatorUtils.areAnyGencodeFuncotation(f), gt);
     }
 }

@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtil
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyXsvFuncotationFactory;
 
 import java.nio.file.Path;
-import java.util.*;
+import java.util.Properties;
 
 /**
  * Class to store argument definitions specific to {@link Funcotator}.
@@ -33,14 +33,21 @@ public class FuncotatorArgumentDefinitions {
     public static final String TRANSCRIPT_SELECTION_MODE_LONG_NAME = "transcript-selection-mode";
     public static final TranscriptSelectionMode TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE = TranscriptSelectionMode.CANONICAL;
 
+    /**
+     * Do not give this a static default value or the integration tests will get hosed.
+     */
     public static final String TRANSCRIPT_LIST_LONG_NAME = "transcript-list";
-    public static final Set<String> TRANSCRIPT_LIST_DEFAULT_VALUE = new HashSet<>();
 
+    /**
+     * Do not give this a static default value or the integration tests will get hosed.
+     */
     public static final String ANNOTATION_DEFAULTS_LONG_NAME = "annotation-default";
-    public static final List<String> ANNOTATION_DEFAULTS_DEFAULT_VALUE = new ArrayList<>();
 
+    /**
+     * Do not give this a static default value or the integration tests will get hosed.
+     */
     public static final String ANNOTATION_OVERRIDES_LONG_NAME = "annotation-override";
-    public static final List<String> ANNOTATION_OVERRIDES_DEFAULT_VALUE = new ArrayList<>();
+
 
     public static final String ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME = "allow-hg19-gencode-b37-contig-matching";
 
@@ -49,6 +56,8 @@ public class FuncotatorArgumentDefinitions {
 
     public static final String LOOKAHEAD_CACHE_IN_BP_NAME = "lookahead-cache-bp";
     public static final int LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE = VariantWalkerBase.FEATURE_CACHE_LOOKAHEAD;
+
+    public static final String ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_OVERRIDE_LONG_NAME = "allow-hg19-gencode-b37-contig-matching-override";
 
     // ------------------------------------------------------------
     // Helper Types:

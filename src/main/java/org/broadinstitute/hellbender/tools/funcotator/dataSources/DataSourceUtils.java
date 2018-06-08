@@ -232,7 +232,8 @@ final public class DataSourceUtils {
     public static List<DataSourceFuncotationFactory> createDataSourceFuncotationFactoriesForDataSources(final Map<Path, Properties> dataSourceMetaData,
                                                                                                final LinkedHashMap<String, String> annotationOverridesMap,
                                                                                                final TranscriptSelectionMode transcriptSelectionMode,
-                                                                                               final Set<String> userTranscriptIdSet) {
+                                                                                               final Set<String> userTranscriptIdSet,
+                                                                                                        final boolean isAllowingNoChrMatchesForTranscripts) {
 
         Utils.nonNull(dataSourceMetaData);
         Utils.nonNull(annotationOverridesMap);
@@ -265,7 +266,7 @@ final public class DataSourceUtils {
                     funcotationFactory = DataSourceUtils.createCosmicDataSource(path, properties, annotationOverridesMap);
                     break;
                 case GENCODE:
-                    funcotationFactory = DataSourceUtils.createGencodeDataSource(path, properties, annotationOverridesMap, transcriptSelectionMode, userTranscriptIdSet);
+                    funcotationFactory = DataSourceUtils.createGencodeDataSource(path, properties, annotationOverridesMap, transcriptSelectionMode, userTranscriptIdSet, isAllowingNoChrMatchesForTranscripts);
                     break;
                 case VCF:
                     funcotationFactory = DataSourceUtils.createVcfDataSource(path, properties, annotationOverridesMap, transcriptSelectionMode, userTranscriptIdSet);
@@ -375,13 +376,14 @@ final public class DataSourceUtils {
      * @param annotationOverridesMap {@link LinkedHashMap}{@code <String->String>} containing any annotation overrides to be included in the resulting data source.  Must not be {@code null}.
      * @param transcriptSelectionMode {@link TranscriptSelectionMode} to use when choosing the transcript for detailed reporting.  Must not be {@code null}.
      * @param userTranscriptIdSet {@link Set} of {@link String}s containing transcript IDs of interest to be selected for first.  Must not be {@code null}.
+     * @param isAllowingNoChrMatchesForTranscripts Whether the datasource should disregard chr for a contig match.
      * @return A new {@link GencodeFuncotationFactory} based on the given data source file information, field overrides map, and transcript information.
      */
     public static GencodeFuncotationFactory createGencodeDataSource(final Path dataSourceFile,
                                                                  final Properties dataSourceProperties,
                                                                  final LinkedHashMap<String, String> annotationOverridesMap,
                                                                  final TranscriptSelectionMode transcriptSelectionMode,
-                                                                 final Set<String> userTranscriptIdSet) {
+                                                                 final Set<String> userTranscriptIdSet, final boolean isAllowingNoChrMatchesForTranscripts) {
 
         Utils.nonNull(dataSourceFile);
         Utils.nonNull(dataSourceProperties);
@@ -400,7 +402,8 @@ final public class DataSourceUtils {
                         name,
                         transcriptSelectionMode,
                         userTranscriptIdSet,
-                        annotationOverridesMap
+                        annotationOverridesMap,
+                        isAllowingNoChrMatchesForTranscripts
                 );
     }
 

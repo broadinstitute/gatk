@@ -5,11 +5,8 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
-import org.apache.commons.lang3.StringUtils;
-import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
-import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
-import org.broadinstitute.hellbender.tools.funcotator.Funcotator;
-import org.broadinstitute.hellbender.tools.funcotator.OutputRenderer;
+import org.apache.commons.lang.StringUtils;
+import org.broadinstitute.hellbender.tools.funcotator.*;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -40,7 +37,28 @@ public class VcfOutputRenderer extends OutputRenderer {
     /**
      * The delimiter for the `Other Transcript` field within the Funcotation annotation in the VCF.
      */
-    public static final String OTHER_TRANSCRIPT_DELIMITER = ";";
+    public static final String OTHER_TRANSCRIPT_DELIMITER = "/";
+
+    /**
+     * The delimiter to use when separating the information regarding a transcript.
+     */
+    public static final String ALL_TRANSCRIPT_DELIMITER = "#";
+
+    /**
+     * The delimiter to use when starting the information regarding a transcript.
+     */
+    public static final String START_TRANSCRIPT_DELIMITER = "[";
+
+    /**
+     * The delimiter to use when ending the information regarding a transcript.
+     */
+    public static final String END_TRANSCRIPT_DELIMITER = "]";
+
+    /**
+     * The delimiter used between the preamble and the actual fields in the description of the
+     *  {@link #FUNCOTATOR_VCF_FIELD_NAME} attribute i the header.
+     */
+    public static final String DESCRIPTION_PREAMBLE_DELIMITER = ": ";
 
     //==================================================================================================================
 
@@ -100,7 +118,7 @@ public class VcfOutputRenderer extends OutputRenderer {
     }
 
     @Override
-    public void write(final VariantContext variant, final List<Funcotation> funcotations) {
+    public void write(final VariantContext variant, final FuncotationMap txToFuncotationMap) {
 
         // Create a new variant context builder:
         final VariantContextBuilder variantContextOutputBuilder = new VariantContextBuilder(variant);
@@ -128,13 +146,20 @@ public class VcfOutputRenderer extends OutputRenderer {
                 funcotatorAnnotationStringBuilder.append(FIELD_DELIMITER);
             }
 
-            funcotatorAnnotationStringBuilder.append(
-                    funcotations.stream()
-                            .filter(f -> f.getAltAllele().equals(altAllele) )
-                            .map(f -> retrieveSanitizedFuncotation(f, manualAnnotationSerializedString))
-                            .collect(Collectors.joining(FIELD_DELIMITER))
-            );
-            funcotatorAnnotationStringBuilder.append(",");
+            for (final String txId : txToFuncotationMap.getTranscriptList()) {
+                funcotatorAnnotationStringBuilder.append(START_TRANSCRIPT_DELIMITER);
+                final List<Funcotation> funcotations = txToFuncotationMap.get(txId);
+                funcotatorAnnotationStringBuilder.append(
+                        funcotations.stream()
+                                .filter(f -> f.getAltAllele().equals(altAllele))
+                                .map(f -> retrieveSanitizedFuncotation(f, manualAnnotationSerializedString))
+                                .collect(Collectors.joining(FIELD_DELIMITER))
+                );
+                funcotatorAnnotationStringBuilder.append(END_TRANSCRIPT_DELIMITER + ALL_TRANSCRIPT_DELIMITER);
+            }
+            // We have a trailing "#" - we need to remove it:
+            funcotatorAnnotationStringBuilder.deleteCharAt(funcotatorAnnotationStringBuilder.length()-1);
+            funcotatorAnnotationStringBuilder.append(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR);
         }
 
         // We have a trailing "," - we need to remove it:
@@ -168,12 +193,17 @@ public class VcfOutputRenderer extends OutputRenderer {
         final String dataSourceFields = getDataSourceFieldNamesForHeader(dataSourceFactories);
         final String manualAnnotationFields = String.join( HEADER_LISTED_FIELD_DELIMITER, manualAnnotations.keySet() );
 
+        // Construct (only) the field list delimited by HEADER_LISTED_FIELD_DELIMITER
+        final String delimitedFields = StringUtils.isEmpty(manualAnnotationFields) ? dataSourceFields :
+                manualAnnotationFields + HEADER_LISTED_FIELD_DELIMITER + dataSourceFields;
+
         // Add in the lines about Funcotations:
         headerLines.addAll(defaultToolVcfHeaderLines);
         headerLines.add(new VCFHeaderLine("Funcotator Version", Funcotator.VERSION + " | " + getDataSourceInfoString()));
         headerLines.add(new VCFInfoHeaderLine(FUNCOTATOR_VCF_FIELD_NAME, VCFHeaderLineCount.A,
-                VCFHeaderLineType.String, "Functional annotation from the Funcotator tool.  Funcotation fields are: " +
-                manualAnnotationFields + HEADER_LISTED_FIELD_DELIMITER + dataSourceFields)
+                VCFHeaderLineType.String, "Functional annotation from the Funcotator tool.  Funcotation fields are"
+                + DESCRIPTION_PREAMBLE_DELIMITER +
+                delimitedFields)
         );
 
         // Create a new header and preserve the genotype sample names:
@@ -196,7 +226,7 @@ public class VcfOutputRenderer extends OutputRenderer {
     }
 
     private static String retrieveSanitizedFuncotation(final Funcotation funcotation, final String manualAnnotationSerializedString) {
-        final String initialString = funcotation.serializeToVcfString(manualAnnotationSerializedString);
-        return StringUtils.replaceEach(initialString, new String[]{",", ";", "=", "\t", "|"}, new String[]{"_%2C_", "_%3B_", "_%3D_", "_%09_", "_%7C_"});
+       return funcotation.serializeToVcfString(manualAnnotationSerializedString);
+
     }
 }

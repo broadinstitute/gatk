@@ -8,6 +8,7 @@ import htsjdk.tribble.Feature;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -26,6 +27,7 @@ import org.testng.collections.Sets;
 
 import java.nio.file.Path;
 import java.util.*;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -148,6 +150,13 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     private final TranscriptSelectionMode transcriptSelectionMode;
 
     /**
+     * Whether this factory will disregard the string "chr" in matching contig names.
+     *
+     * Setting this to true is useful in cases of b37 variants (e.g. contig 3) matching to gencode (e.g. contig chr3)
+     */
+    private boolean isAllowingNoChrMatches = false;
+
+    /**
      * {@link List} of Transcript IDs that the user has requested that we annotate.
      * If this list is empty, will default to keeping ALL transcripts.
      * Otherwise, only transcripts on this list will be annotated.
@@ -179,7 +188,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                      final String name,
                                      final TranscriptSelectionMode transcriptSelectionMode,
                                      final Set<String> userRequestedTranscripts,
-                                     final LinkedHashMap<String, String> annotationOverrides) {
+                                     final LinkedHashMap<String, String> annotationOverrides,
+                                     final boolean isAllowingNoChrMatches) {
 
         this.gencodeTranscriptFastaFile = gencodeTranscriptFastaFile;
 
@@ -203,6 +213,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Initialize overrides / defaults:
         initializeAnnotationOverrides( annotationOverrides );
+
+        this.isAllowingNoChrMatches = isAllowingNoChrMatches;
     }
 
     //==================================================================================================================
@@ -264,6 +276,50 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         return funcotationList;
     }
 
+    private List<GencodeFuncotation> createAndFilterGencodeFuncotationsByTranscript(final VariantContext variant, final ReferenceContext referenceContext, final Allele altAllele, final GencodeGtfGeneFeature feature) {
+        // By this point we know the feature type is correct, so we cast it:
+        final List<GencodeFuncotation> gencodeFuncotationList = createFuncotationsHelper(variant, altAllele, feature, referenceContext);
+        sortAndFilterInPlace(gencodeFuncotationList);
+
+        if ((this.transcriptSelectionMode != TranscriptSelectionMode.ALL) && (gencodeFuncotationList.size() > 0)) {
+            return Collections.singletonList(gencodeFuncotationList.get(0));
+        }
+
+        return gencodeFuncotationList;
+    }
+
+    private void sortAndFilterInPlace(final List<GencodeFuncotation> gencodeFuncotationList) {
+        if (gencodeFuncotationList.size() > 0) {
+            // Get our "Best Transcript" from our list.
+            sortFuncotationsByTranscriptForOutput(gencodeFuncotationList);
+
+
+            // Now we have to filter out the output gencodeFuncotations if they are not on the list the user provided:
+            // TODO: Is this correct behavior?  The sorting takes care of ordering the transcripts.
+            filterAnnotationsByUserTranscripts(gencodeFuncotationList, userRequestedTranscripts);
+
+            // Since the initial query was done on the entire gene footprint, we need to get rid of every transcript that does not overlap the variant at all (not even in flank)
+            //   i.e. IGR.
+            filterAnnotationsByIGR(gencodeFuncotationList);
+
+            populateOtherTranscriptsMapForFuncotation(gencodeFuncotationList);
+        }
+    }
+
+    private void populateOtherTranscriptsMapForFuncotation(final List<GencodeFuncotation> gencodeFuncotations) {
+        // First create a map that goes from each given funcotation to its condensed version.
+        final Map<GencodeFuncotation, String> funcotationToCondensedString = gencodeFuncotations.stream()
+                .collect(Collectors.toMap(Function.identity(), f -> condenseGencodeFuncotation(f), (x,y) -> y, LinkedHashMap::new));
+
+        for (final GencodeFuncotation g: gencodeFuncotations) {
+            final List<String> otherTranscriptStrings = funcotationToCondensedString.keySet().stream()
+                    .filter(f -> !f.equals(g))
+                    .map(f -> funcotationToCondensedString.get(f))
+                    .collect(Collectors.toList());
+            g.setOtherTranscripts(otherTranscriptStrings);
+        }
+    }
+
     @Override
     /**
      * Attempts to treat the given features as {@link GencodeGtfFeature} objects in order to
@@ -279,15 +335,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
                     if ( (feature != null) ) {
                         // By this point we know the feature type is correct, so we cast it:
-                        final List<GencodeFuncotation> gencodeFuncotationList = createFuncotationsHelper(variant, altAllele, (GencodeGtfGeneFeature) feature, referenceContext);
-
-                        // Now we have to filter out the output gencodeFuncotations if they are not on the list the user provided:
-                        filterAnnotationsByUserTranscripts( gencodeFuncotationList, userRequestedTranscripts );
+                        final List<GencodeFuncotation> gencodeFuncotationList = createAndFilterGencodeFuncotationsByTranscript(variant, referenceContext, altAllele, (GencodeGtfGeneFeature) feature);
 
                         // Add the filtered funcotations here:
                         outputFuncotations.addAll(gencodeFuncotationList);
                     }
-                    // TODO: Actually you may want to put another IGR creation here for now...  This may be a more difficult thing if we determine it in here.  There is no way to know if these are IGRs or simply not included in this particular data set.
                 }
             }
         }
@@ -328,6 +380,14 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         if ( (selectedTranscripts != null) && (!selectedTranscripts.isEmpty()) ) {
             funcotations.removeIf( f -> !FuncotatorUtils.isFuncotationInTranscriptList(f, selectedTranscripts) );
         }
+    }
+
+    /**
+     * Filter the given list of {@link GencodeFuncotation} to only contain those funcotations that are NOT IGR.
+     * @param funcotations The {@link List} of {@link GencodeFuncotation} to filter.
+     */
+    static void filterAnnotationsByIGR(final List<GencodeFuncotation> funcotations) {
+        funcotations.removeIf( f -> f.getVariantClassification().equals(GencodeFuncotation.VariantClassification.IGR));
     }
 
     /**
@@ -516,58 +576,36 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             ncbiBuildVersion = gtfFeature.getUcscGenomeVersion();
         }
 
-        // Go through and annotate all our non-best transcripts:
-        final List<String> otherTranscriptsCondensedAnnotations = new ArrayList<>();
-        for ( final GencodeGtfTranscriptFeature transcript : gtfFeature.getTranscripts() ) {
+        final List<GencodeGtfTranscriptFeature> basicTranscripts = gtfFeature.getTranscripts().stream()
+                .filter(GencodeFuncotationFactory::isBasic).collect(Collectors.toList());
 
-            // Check if this transcript has the `basic` tag:
-            final boolean isBasic = transcript.getOptionalFields().stream()
-                    .filter( f -> f.getName().equals("tag") )
-                    .filter( f -> f.getValue() instanceof GencodeGtfFeature.FeatureTag )
-                    .filter( f -> f.getValue().equals(GencodeGtfFeature.FeatureTag.BASIC) )
-                    .count() > 0;
+        // Only annotate on the `basic` transcripts:
+        for ( final GencodeGtfTranscriptFeature transcript : basicTranscripts ) {
 
-            // Only annotate on the `basic` transcripts:
-            if ( isBasic ) {
+            // Try to create the annotation:
+            try {
+                final GencodeFuncotation gencodeFuncotation = createGencodeFuncotationOnTranscript(variant, altAllele, gtfFeature, reference, transcript);
 
-                // Try to create the annotation:
-                try {
-                    final GencodeFuncotation gencodeFuncotation = createGencodeFuncotationOnTranscript(variant, altAllele, gtfFeature, reference, transcript);
-
-                    // Add it into our transcript:
-                    outputFuncotations.add(gencodeFuncotation);
-
-                }
-                catch ( final FuncotatorUtils.TranscriptCodingSequenceException ex ) {
-                    //TODO: This should never happen, but needs to be here for some transcripts, such as HG19 MUC16 ENST00000599436.1, where the transcript sequence itself is of length not divisible by 3! (3992)
-                    //      There may be other erroneous transcripts too.
-                    otherTranscriptsCondensedAnnotations.add("ERROR_ON_" + transcript.getTranscriptId());
-
-                    logger.warn("Unable to create a GencodeFuncotation on transcript " + transcript.getTranscriptId() + " for variant: " +
-                            variant.getContig() + ":" + variant.getStart() + "-" + variant.getEnd() + "(" + variant.getReference() + " -> " + altAllele + ")"
-                    );
-                }
+                // Add it into our transcript:
+                outputFuncotations.add(gencodeFuncotation);
             }
-        }
-
-        if (outputFuncotations.size() > 0) {
-            // Get our "Best Transcript" from our list:
-            sortFuncotationsByTranscriptForOutput(outputFuncotations);
-            final GencodeFuncotation bestFuncotation = outputFuncotations.remove(0);
-
-            // Now convert the other transcripts into summary strings:
-            for ( final GencodeFuncotation funcotation : outputFuncotations ) {
-                otherTranscriptsCondensedAnnotations.add(condenseGencodeFuncotation(funcotation));
+            catch ( final FuncotatorUtils.TranscriptCodingSequenceException ex ) {
+                 logger.error("Unable to create a GencodeFuncotation on transcript " + transcript.getTranscriptId() + " for variant: " +
+                        variant.getContig() + ":" + variant.getStart() + "-" + variant.getEnd() + "(" + variant.getReference() + " -> " + altAllele + ")"
+                );
             }
-
-            // Set our `other transcripts` annotation in our best funcotation:
-            bestFuncotation.setOtherTranscripts(otherTranscriptsCondensedAnnotations);
-
-            // Add our best funcotation to the output:
-            outputFuncotations.add(bestFuncotation);
         }
 
         return outputFuncotations;
+    }
+
+    private static boolean isBasic(final GencodeGtfTranscriptFeature transcript) {
+        // Check if this transcript has the `basic` tag:
+        return transcript.getOptionalFields().stream()
+                .filter( f -> f.getName().equals("tag") )
+                .filter( f -> f.getValue() instanceof GencodeGtfFeature.FeatureTag )
+                .filter( f -> f.getValue().equals(GencodeGtfFeature.FeatureTag.BASIC) )
+                .count() > 0;
     }
 
     /**
@@ -588,17 +626,27 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // TODO: check for complex INDEL and warn and skip.
 
+        VariantContext variantToUse = variant;
+
         // Find the sub-feature of transcript that contains our variant:
-        final GencodeGtfFeature containingSubfeature = getContainingGtfSubfeature(variant, transcript);
+        GencodeGtfFeature containingSubfeature = getContainingGtfSubfeature(variantToUse, transcript);
+
+        // If we got no hits, let's check as if this contig was translated to hg19
+        if (isAllowingNoChrMatches && containingSubfeature == null) {
+            final VariantContextBuilder vcb = new VariantContextBuilder(variant);
+            vcb.chr(FuncotatorUtils.convertB37ContigToHg19Contig(variant.getContig()));
+            variantToUse = vcb.make();
+            containingSubfeature = getContainingGtfSubfeature(variantToUse, transcript);
+        }
 
         // Make sure the sub-regions in the transcript actually contain the variant:
         // TODO: this is slow, and repeats work that is done later in the process (we call getSortedCdsAndStartStopPositions when creating the sequence comparison)
-        final int startPosInTranscript =  FuncotatorUtils.getStartPositionInTranscript(variant, getSortedCdsAndStartStopPositions(transcript), transcript.getGenomicStrand() );
+        final int startPosInTranscript =  FuncotatorUtils.getStartPositionInTranscript(variantToUse, getSortedCdsAndStartStopPositions(transcript), transcript.getGenomicStrand() );
 
         // Determine what kind of region we're in and handle it in it's own way:
         if ( containingSubfeature == null ) {
             // We have an IGR variant
-            gencodeFuncotation = createIgrFuncotation(variant, altAllele, reference);
+            gencodeFuncotation = createIgrFuncotation(variantToUse, altAllele, reference);
         }
         else if ( GencodeGtfExonFeature.class.isAssignableFrom(containingSubfeature.getClass()) ) {
 
@@ -610,16 +658,16 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             }
             else {
                 // We have a coding region variant
-                gencodeFuncotation = createExonFuncotation(variant, altAllele, gtfFeature, reference, transcript, (GencodeGtfExonFeature) containingSubfeature);
+                gencodeFuncotation = createExonFuncotation(variantToUse, altAllele, gtfFeature, reference, transcript, (GencodeGtfExonFeature) containingSubfeature);
             }
         }
         else if ( GencodeGtfUTRFeature.class.isAssignableFrom(containingSubfeature.getClass()) ) {
             // We have a UTR variant
-            gencodeFuncotation = createUtrFuncotation(variant, altAllele, reference, gtfFeature, transcript, (GencodeGtfUTRFeature) containingSubfeature);
+            gencodeFuncotation = createUtrFuncotation(variantToUse, altAllele, reference, gtfFeature, transcript, (GencodeGtfUTRFeature) containingSubfeature);
         }
         else if ( GencodeGtfTranscriptFeature.class.isAssignableFrom(containingSubfeature.getClass()) ) {
             // We have an intron variant
-            gencodeFuncotation = createIntronFuncotation(variant, altAllele, reference, gtfFeature, transcript, reference);
+            gencodeFuncotation = createIntronFuncotation(variantToUse, altAllele, reference, gtfFeature, transcript, reference);
         }
         else {
             // Uh-oh!  Problemz.
@@ -1286,18 +1334,18 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
-     * Get the subfeature contained in {@code transcript} that contains the given {@code variant}.
+     * Get the subfeature contained in {@code transcript} that contains the given {@code Locatable}.
      * The returned subfeature will be of type {@link GencodeGtfFeature} with concrete type based on the type of region
      * in which the variant is found:
      *      Found in coding region -> {@link GencodeGtfExonFeature}
      *      Found in UTR ->{@link GencodeGtfUTRFeature}
      *      Found in intron ->{@link GencodeGtfTranscriptFeature}
      *      Not Found in transcript ->{@code null}
-     * @param variant A {@link VariantContext} of which to determine the containing subfeature.
+     * @param variant A {@link Locatable} of which to determine the containing subfeature.
      * @param transcript A {@link GencodeGtfTranscriptFeature} in which to find the subfeature containing the given {@code variant}.
      * @return The {@link GencodeGtfFeature} corresponding to the subfeature of {@code transcript} in which the given {@code variant} was found.
      */
-    private static GencodeGtfFeature getContainingGtfSubfeature(final VariantContext variant, final GencodeGtfTranscriptFeature transcript) {
+    private static GencodeGtfFeature getContainingGtfSubfeature(final Locatable variant, final GencodeGtfTranscriptFeature transcript) {
 
         boolean determinedRegionAlready = false;
         GencodeGtfFeature subFeature = null;
@@ -1803,8 +1851,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                           .setStart(variant.getStart())
                           .setEnd(variant.getEnd())
                 .setVariantType(getVariantType(variant.getReference(), altAllele))
-               // .setNcbiBuild(variant.getUcscGenomeVersion())
-                .setChromosome(variant.getContig());
+                .setChromosome(variant.getContig())
+                .setAnnotationTranscript(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY);
 
         // If we have a cached value for the ncbiBuildVersion, we should add it:
         // NOTE: This will only be true if we have previously annotated a non-IGR variant.

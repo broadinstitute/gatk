@@ -6,11 +6,10 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import org.apache.commons.lang.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
-import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
-import org.broadinstitute.hellbender.tools.funcotator.Funcotator;
-import org.broadinstitute.hellbender.tools.funcotator.OutputRenderer;
+import org.broadinstitute.hellbender.tools.funcotator.*;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -41,6 +40,8 @@ public class MafOutputRenderer extends OutputRenderer {
 
     //==================================================================================================================
     // Private Static Members:
+
+    static final Logger logger = LogManager.getLogger(MafOutputRenderer.class);
 
     /**
      * Default set of columns to include in this {@link MafOutputRenderer}.
@@ -207,57 +208,66 @@ public class MafOutputRenderer extends OutputRenderer {
     }
 
     @Override
-    public void write(final VariantContext variant, final List<Funcotation> funcotations) {
+    public void write(final VariantContext variant, final FuncotationMap txToFuncotationMap) {
+
+        if (txToFuncotationMap.getTranscriptList().size() > 1) {
+            logger.warn("MAF typically does not support multiple transcripts per variant, though this should be able to render (grouped by transcript).  No user action needed.");
+        }
 
         // Loop through each alt allele in our variant:
         for ( final Allele altAllele : variant.getAlternateAlleles() ) {
+            for (final String txId : txToFuncotationMap.getTranscriptList()) {
 
-            // Create our output maps:
-            final LinkedHashMap<String, Object> outputMap = new LinkedHashMap<>(defaultMap);
-            final LinkedHashMap<String, Object> extraFieldOutputMap = new LinkedHashMap<>();
+                final List<Funcotation> funcotations = txToFuncotationMap.get(txId);
 
-            // Get our funcotations for this allele and add them to the output maps:
-            for ( final Funcotation funcotation : funcotations ) {
-                if ( funcotation.getAltAllele().equals(altAllele) ) {
-                    // Add all the fields from the other funcotations into the extra field output:
-                    for ( final String field : funcotation.getFieldNames() ) {
-                        setField(extraFieldOutputMap, field, funcotation.getField(field));
+                // Create our output maps:
+                final LinkedHashMap<String, Object> outputMap = new LinkedHashMap<>(defaultMap);
+                final LinkedHashMap<String, Object> extraFieldOutputMap = new LinkedHashMap<>();
+
+                // Get our funcotations for this allele and add them to the output maps:
+                for (final Funcotation funcotation : funcotations) {
+                    if (funcotation.getAltAllele().equals(altAllele)) {
+                        // Add all the fields from the other funcotations into the extra field output:
+                        for (final String field : funcotation.getFieldNames()) {
+                            setField(extraFieldOutputMap, field, funcotation.getField(field));
+                        }
                     }
                 }
-            }
 
-            // Now add in our annotation overrides so they can be aliased correctly with the outputFieldNameMap:
-            extraFieldOutputMap.putAll(overrideAnnotations);
 
-            // Go through all output fields and see if any of the names in the value list are in our extraFieldOutputMap.
-            // For any that match, we remove them from our extraFieldOutputMap and add them to the outputMap with the
-            // correct key.
-            for ( final Map.Entry<String, List<String>> entry : outputFieldNameMap.entrySet() ) {
-                for ( final String fieldName : entry.getValue() ) {
-                    if ( extraFieldOutputMap.containsKey(fieldName) ) {
-                        outputMap.put(entry.getKey(), extraFieldOutputMap.remove(fieldName));
-                        break;
+                // Now add in our annotation overrides so they can be aliased correctly with the outputFieldNameMap:
+                extraFieldOutputMap.putAll(overrideAnnotations);
+
+                // Go through all output fields and see if any of the names in the value list are in our extraFieldOutputMap.
+                // For any that match, we remove them from our extraFieldOutputMap and add them to the outputMap with the
+                // correct key.
+                for (final Map.Entry<String, List<String>> entry : outputFieldNameMap.entrySet()) {
+                    for (final String fieldName : entry.getValue()) {
+                        if (extraFieldOutputMap.containsKey(fieldName)) {
+                            outputMap.put(entry.getKey(), extraFieldOutputMap.remove(fieldName));
+                            break;
+                        }
                     }
                 }
+
+                // Merge our output maps together:
+                outputMap.putAll(extraFieldOutputMap);
+
+                // Now translate fields to the field names that MAF likes:
+                final LinkedHashMap<String, String> mafCompliantOutputMap = replaceFuncotationValuesWithMafCompliantValues(outputMap);
+
+                // Write our header if we have to:
+                if (!hasWrittenHeader) {
+                    writeHeader(mafCompliantOutputMap);
+                }
+
+                // Write the output (with manual annotations at the end):
+                for (final Map.Entry<String, String> entry : mafCompliantOutputMap.entrySet()) {
+                    writeString(entry.getValue());
+                    writeString(MafOutputRendererConstants.FIELD_DELIMITER);
+                }
+                writeLine(manualAnnotationSerializedString);
             }
-
-            // Merge our output maps together:
-            outputMap.putAll(extraFieldOutputMap);
-
-            // Now translate fields to the field names that MAF likes:
-            final LinkedHashMap<String, String> mafCompliantOutputMap = replaceFuncotationValuesWithMafCompliantValues(outputMap);
-
-            // Write our header if we have to:
-            if ( ! hasWrittenHeader ) {
-                writeHeader(mafCompliantOutputMap);
-            }
-
-            // Write the output (with manual annotations at the end):
-            for ( final Map.Entry<String, String> entry : mafCompliantOutputMap.entrySet() ) {
-                writeString(entry.getValue());
-                writeString(MafOutputRendererConstants.FIELD_DELIMITER);
-            }
-            writeLine(manualAnnotationSerializedString);
         }
     }
 

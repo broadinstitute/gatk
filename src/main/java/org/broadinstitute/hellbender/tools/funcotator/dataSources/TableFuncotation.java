@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.LocatableXsvFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyXsvFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
@@ -128,7 +129,7 @@ public class TableFuncotation implements Funcotation {
     @Override
     public String serializeToVcfString() {
         return fieldMap.values().stream()
-                .map(f -> (f == null ? "" : f))
+                .map(f -> (f == null ? "" : FuncotatorUtils.sanitizeFuncotationForVcf(f)))
                 .collect(Collectors.joining(VcfOutputRenderer.FIELD_DELIMITER));
     }
 
@@ -145,6 +146,11 @@ public class TableFuncotation implements Funcotation {
         else {
             throw new GATKException(this.getClass().getSimpleName() + ": Does not contain field: " + fieldName);
         }
+    }
+
+    @Override
+    public boolean hasField(final String fieldName) {
+        return fieldMap.containsKey(fieldName);
     }
 
     @Override

@@ -151,7 +151,9 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
 
                         // Now we create one funcotation for each Alternate allele:
                         for ( final Allele altAllele : alternateAlleles ) {
-
+                            if (!(variantFeature.hasAlternateAllele(altAllele) && variantFeature.getReference().equals(variant.getReference()))) {
+                                continue;
+                            }
                             // Add all Info keys/values to a copy of our default map:
                             final LinkedHashMap<String, Object> annotations = new LinkedHashMap<>(supportedFieldNamesAndDefaults);
                             for ( final Map.Entry<String, Object> entry : variantFeature.getAttributes().entrySet() ) {
@@ -159,12 +161,10 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
                                 final String valueString;
 
                                 // Handle collections a little differently:
-                                if ( entry.getValue() instanceof Collection<?> ) {
-                                    @SuppressWarnings("unchecked")
-                                    final Collection<Object> objectList = ((Collection<Object>)entry.getValue());
+                                if (entry.getValue() instanceof Collection<?>) {
+                                    @SuppressWarnings("unchecked") final Collection<Object> objectList = ((Collection<Object>) entry.getValue());
                                     valueString = objectList.stream().map(Object::toString).collect(Collectors.joining(","));
-                                }
-                                else {
+                                } else {
                                     valueString = entry.getValue().toString();
                                 }
 
