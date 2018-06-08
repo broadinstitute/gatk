@@ -50,7 +50,6 @@ import java.util.*;
  *   -R reference.fa \
  *   -I normal1.bam \
  *   -tumor normal1_sample_name \
- *   --germline-resource af-only-gnomad.vcf.gz \
  *   -O normal1_for_pon.vcf.gz
  * </pre>
  *
