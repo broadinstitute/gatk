@@ -235,5 +235,5 @@ public class MafOutputRendererConstants {
     static final List<String> OutputFieldNameMap_MUTSIG_Published_Results               = Arrays.asList(FieldName_MUTSIG_Published_Results, "MutSig Published Results_Published_Results");
     static final List<String> OutputFieldNameMap_OREGANNO_ID                            = Arrays.asList(FieldName_OREGANNO_ID, "Oreganno_ID", "ORegAnno_ID");
     static final List<String> OutputFieldNameMap_OREGANNO_Values                        = Arrays.asList(FieldName_OREGANNO_Values, "Oreganno_Values", "ORegAnno_Values");
-    static final List<String> OutputFieldNameMap_tumor_f                                = Arrays.asList(FieldName_tumor_f, "sample_allelic_fraction", "AF");
+    static final List<String> OutputFieldNameMap_tumor_f                                = Arrays.asList(FieldName_tumor_f, "sample_allelic_fraction");
 }
