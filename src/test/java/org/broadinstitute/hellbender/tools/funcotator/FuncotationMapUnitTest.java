@@ -471,52 +471,6 @@ public class FuncotationMapUnitTest extends BaseTest{
         return variantContextBuilder.make();
     }
 
-    @Test(expectedExceptions = GATKException.ShouldNeverReachHereException.class, expectedExceptionsMessageRegExp = ".*a Gencode Funcotation cannot be added.*")
-    public void testAddingGencodeFuncotationToFuncotationMap() {
-        // Create some gencode funcotations.  The content does not really matter here.
-        final List<Funcotation> gencodeFuncotations = createGencodeFuncotations("chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
-                ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA,
-                TranscriptSelectionMode.ALL).stream().map(gf -> (Funcotation) gf).collect(Collectors.toList());
-
-        // Create a funcotationMap with some pre-made funcotations.  Content does not really matter.
-        final FuncotationMap funcotationMap = FuncotationMap.createNoTranscriptInfo(Arrays.asList(new TableFuncotation(
-                        Arrays.asList("TESTFIELD1", "TESTADD1"),
-                        createFieldValuesFromNameList("E", Arrays.asList("TESTFIELD1", "TESTADD1")),
-                        Allele.create("A"),
-                        "TestDataSource5"
-                ),
-                new TableFuncotation(
-                        Arrays.asList("TESTFIELD2", "TESTADD2"),
-                        createFieldValuesFromNameList("F", Arrays.asList("TESTFIELD2", "TESTADD2")),
-                        Allele.create("AG"),
-                        "TestDataSource5"
-                ),
-                new TableFuncotation(
-                        Arrays.asList("TESTFIELD3", "TESTADD3"),
-                        createFieldValuesFromNameList("G", Arrays.asList("TESTFIELD3", "TESTADD3")),
-                        Allele.create("AT"),
-                        "TestDataSource5"
-                )));
-
-        // Attempt to add the Gencode funcotations to the funcotation map.  This should cause an exception.
-        funcotationMap.add(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY, gencodeFuncotations);
-    }
-
-    /**
-     * Also tests that {@link FuncotationMap#getGencodeFuncotations(String)} will return an empty list.
-     * @param funcotations funcotations to add to the FuncotationMap.  None are GencodeFuncotations.
-     */
-    @Test(dataProvider = "provideTableFuncotations")
-    public void testCreateNoTranscriptInfo(final List<Funcotation> funcotations) {
-        final FuncotationMap funcotationMap = FuncotationMap.createNoTranscriptInfo(funcotations);
-        Assert.assertEquals(funcotationMap.getTranscriptList().size(), 1);
-        final String transcriptId = funcotationMap.getTranscriptList().get(0);
-        Assert.assertEquals(transcriptId, FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY);
-        Assert.assertEquals(funcotationMap.get(transcriptId), funcotations);
-        Assert.assertEquals(funcotationMap.getGencodeFuncotations(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY).size(), 0);
-    }
-
     @DataProvider
     public Object[][] provideFakeGencodeData() {
 
