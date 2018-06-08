@@ -61,7 +61,7 @@ public class UniqueAltReadCount extends GenotypeAnnotation {
 
         final Allele altAllele = vc.getAlternateAllele(0); // assume single-allelic
         final String tumorSampleName = g.getSampleName();
-        Collection<ReadLikelihoods<Allele>.BestAllele> tumorBestAlleles = likelihoods.bestAlleles(tumorSampleName);
+        Collection<ReadLikelihoods<Allele>.BestAllele> tumorBestAlleles = likelihoods.bestAllelesBreakingTies(tumorSampleName);
 
         // Build a map from the (Start Position, Fragment Size) tuple to the count of reads with that
         // start position and fragment size

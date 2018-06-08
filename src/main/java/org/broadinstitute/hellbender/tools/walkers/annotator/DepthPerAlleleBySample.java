@@ -103,7 +103,7 @@ public final class DepthPerAlleleBySample extends GenotypeAnnotation implements 
         }
         final Map<Allele, List<Allele>> alleleSubset = alleles.stream().collect(Collectors.toMap(a -> a, Arrays::asList));
         final ReadLikelihoods<Allele> subsettedLikelihoods = likelihoods.marginalize(alleleSubset);
-        subsettedLikelihoods.bestAlleles(g.getSampleName()).stream()
+        subsettedLikelihoods.bestAllelesBreakingTies(g.getSampleName()).stream()
                 .filter(ba -> ba.isInformative())
                 .forEach(ba -> alleleCounts.compute(ba.allele, (allele,prevCount) -> prevCount + 1));
 

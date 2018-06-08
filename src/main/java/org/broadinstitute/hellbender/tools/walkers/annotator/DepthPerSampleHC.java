@@ -77,7 +77,7 @@ public final class DepthPerSampleHC extends GenotypeAnnotation implements Standa
         // close) but it's a pretty good proxy and it matches with the AD field (i.e., sum(AD) = DP).
         final Map<Allele, List<Allele>> alleleSubset = alleles.stream().collect(Collectors.toMap(a -> a, a -> Arrays.asList(a)));
         final ReadLikelihoods<Allele> subsettedLikelihoods = likelihoods.marginalize(alleleSubset);
-        final int depth = (int) subsettedLikelihoods.bestAlleles(sample).stream().filter(ba -> ba.isInformative()).count();
+        final int depth = (int) subsettedLikelihoods.bestAllelesBreakingTies(sample).stream().filter(ba -> ba.isInformative()).count();
         gb.DP(depth);
     }
 

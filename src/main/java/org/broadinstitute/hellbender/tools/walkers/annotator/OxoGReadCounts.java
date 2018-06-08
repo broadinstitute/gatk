@@ -73,7 +73,7 @@ public final class OxoGReadCounts extends GenotypeAnnotation implements Standard
         final Map<Allele, MutableInt> f2r1Counts = likelihoods.alleles().stream()
                 .collect(Collectors.toMap(a -> a, a -> new MutableInt(0)));
 
-        Utils.stream(likelihoods.bestAlleles(g.getSampleName()))
+        Utils.stream(likelihoods.bestAllelesBreakingTies(g.getSampleName()))
                 .filter(ba -> ba.isInformative() && isUsableRead(ba.read))
                 .forEach(ba -> (isF2R1(ba.read) ? f2r1Counts : f1r2Counts).get(ba.allele).increment());
 

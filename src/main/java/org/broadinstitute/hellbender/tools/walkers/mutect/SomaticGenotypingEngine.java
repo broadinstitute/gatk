@@ -303,7 +303,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
         for (final String sample : likelihoods.samples()) {
             // Get the best alleles of each read and group them by the read name.
             // This puts paired reads from the same fragment together
-            final Map<String, List<ReadLikelihoods<Allele>.BestAllele>> fragments = likelihoods.bestAlleles(sample).stream()
+            final Map<String, List<ReadLikelihoods<Allele>.BestAllele>> fragments = likelihoods.bestAllelesBreakingTies(sample).stream()
                     .collect(Collectors.groupingBy(ba -> ba.read.getName()));
 
             // We only potentially filter read pairs that overlap at this position

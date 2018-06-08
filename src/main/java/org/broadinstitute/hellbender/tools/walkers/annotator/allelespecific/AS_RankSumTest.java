@@ -160,7 +160,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
         final int refLoc = vc.getStart();
 
         final Map<Allele, CompressedDataList<Integer>> perAlleleValues = myData.getAttributeMap();
-        for ( final ReadLikelihoods<Allele>.BestAllele bestAllele : likelihoods.bestAlleles() ) {
+        for ( final ReadLikelihoods<Allele>.BestAllele bestAllele : likelihoods.bestAllelesBreakingTies() ) {
             if (bestAllele.isInformative() && isUsableRead(bestAllele.read, refLoc)) {
                 final OptionalDouble value = getElementForRead(bestAllele.read, refLoc, bestAllele);
                 if (value.isPresent() && value.getAsDouble() != INVALID_ELEMENT_FROM_READ && perAlleleValues.containsKey(bestAllele.allele)) {

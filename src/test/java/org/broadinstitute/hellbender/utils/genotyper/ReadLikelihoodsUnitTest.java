@@ -89,7 +89,7 @@ public final class ReadLikelihoodsUnitTest {
                 confidenceArray[r] = bestAlleleLk - secondBestAlleleLk;
                 bestIndexArray[r] = bestindexOfAllele;
             }
-            final Collection<ReadLikelihoods<Allele>.BestAllele> bestAlleles = original.bestAlleles();
+            final Collection<ReadLikelihoods<Allele>.BestAllele> bestAlleles = original.bestAllelesBreakingTies();
             for (final ReadLikelihoods<Allele>.BestAllele bestAllele : bestAlleles) {
                 final int readIndex = original.readIndex(s,bestAllele.read);
                 if (readIndex == -1) continue;

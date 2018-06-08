@@ -79,7 +79,7 @@ public abstract class RankSumTest extends InfoFieldAnnotation implements Annotat
     }
 
     protected void fillQualsFromLikelihood(VariantContext vc, ReadLikelihoods<Allele> likelihoods, List<Double> refQuals, List<Double> altQuals, int refLoc) {
-        for (final ReadLikelihoods<Allele>.BestAllele bestAllele : likelihoods.bestAlleles()) {
+        for (final ReadLikelihoods<Allele>.BestAllele bestAllele : likelihoods.bestAllelesBreakingTies()) {
             final GATKRead read = bestAllele.read;
             final Allele allele = bestAllele.allele;
             if (bestAllele.isInformative() && isUsableRead(read, refLoc)) {
