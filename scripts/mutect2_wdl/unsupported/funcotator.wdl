@@ -3,22 +3,24 @@
 # Description of inputs:
 #
 #   Required:
-#     gatk_docker                -  GATK Docker image in which to run
-#     ref_fasta                  -  Reference FASTA file.
-#     ref_fasta_index            -  Reference FASTA file index.
-#     ref_fasta_dict             -  Reference FASTA file sequence dictionary.
-#     variant_vcf_to_funcotate   -  Variant Context File (VCF) containing the variants to annotate.
-#     reference_version          -  Version of the reference being used.  Either `hg19` or `hg38`.
-#     output_file_name           -  Path to desired output file.
-#     output_format              -  Format of the output file (`VCF` or `MAF`).
+#     gatk_docker                    -  GATK Docker image in which to run
+#     ref_fasta                      -  Reference FASTA file.
+#     ref_fasta_index                -  Reference FASTA file index.
+#     ref_fasta_dict                 -  Reference FASTA file sequence dictionary.
+#     variant_vcf_to_funcotate       -  Variant Context File (VCF) containing the variants to annotate.
+#     variant_vcf_to_funcotate_index -  Index for the Variant Context File (VCF) containing the variants to annotate.
+#     reference_version              -  Version of the reference being used.  Either `hg19` or `hg38`.
+#     output_file_name               -  Path to desired output file.
 #
 #   Optional:
-#     data_sources_tar_gz        -  Path to tar.gz containing the data sources for Funcotator to create annotations.
-#     transcript_selection_mode  -  Method of detailed transcript selection.  This will select the transcript for detailed annotation (either `CANONICAL` or `BEST_EFFECT`).
-#     transcript_selection_list  -  Set of transcript IDs to use for annotation to override selected transcript.
-#     annotation_defaults        -  Annotations to include in all annotated variants if the annotation is not specified in the data sources (in the format <ANNOTATION>:<VALUE>).  This will add the specified annotation to every annotated variant if it is not already present.
-#     annotation_overrides       -  Override values for annotations (in the format <ANNOTATION>:<VALUE>).  Replaces existing annotations of the given name with given values.
-#     gatk4_jar_override         -  Override Jar file containing GATK 4.0.  Use this when overriding the docker JAR or when using a backend without docker.
+#     interval_list                  -  Intervals to be used for traversal.  If specified will only traverse the given intervals.
+#     data_sources_tar_gz            -  Path to tar.gz containing the data sources for Funcotator to create annotations.
+#     transcript_selection_mode      -  Method of detailed transcript selection.  This will select the transcript for detailed annotation (either `CANONICAL` or `BEST_EFFECT`).
+#     transcript_selection_list      -  Set of transcript IDs to use for annotation to override selected transcript.
+#     annotation_defaults            -  Annotations to include in all annotated variants if the annotation is not specified in the data sources (in the format <ANNOTATION>:<VALUE>).  This will add the specified annotation to every annotated variant if it is not already present.
+#     annotation_overrides           -  Override values for annotations (in the format <ANNOTATION>:<VALUE>).  Replaces existing annotations of the given name with given values.
+#     gatk4_jar_override             -  Override Jar file containing GATK 4.0.  Use this when overriding the docker JAR or when using a backend without docker.
+#     funcotator_extra_args          -  Extra command-line arguments to pass through to Funcotator.
 #
 # This WDL needs to decide whether to use the ``gatk_jar`` or ``gatk_jar_override`` for the jar location.  As of cromwell-0.24,
 # this logic *must* go into each task.  Therefore, there is a lot of duplicated code.  This allows users to specify a jar file
@@ -31,8 +33,8 @@ workflow Funcotator {
     File ref_fasta
     File ref_fasta_index
     File ref_dict
-    File variant_vcf_to_annotate
-    File variant_vcf_to_annotate_index
+    File variant_vcf_to_funcotate
+    File variant_vcf_to_funcotate_index
     String reference_version
     String output_file_base_name
 #    String output_format
@@ -52,8 +54,8 @@ workflow Funcotator {
             ref_fasta                 = ref_fasta,
             ref_fasta_index           = ref_fasta_index,
             ref_dict                  = ref_dict,
-            input_vcf                 = variant_vcf_to_annotate,
-            input_vcf_idx             = variant_vcf_to_annotate_index,
+            input_vcf                 = variant_vcf_to_funcotate,
+            input_vcf_idx             = variant_vcf_to_funcotate_index,
             reference_version         = reference_version,
             interval_list             = interval_list,
             output_file_base_name     = output_file_base_name,
