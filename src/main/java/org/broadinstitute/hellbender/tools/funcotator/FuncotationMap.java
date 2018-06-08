@@ -31,7 +31,6 @@ public class FuncotationMap {
     /** Standard Logger.  */
     protected static final Logger logger = LogManager.getLogger(FuncotationMap.class);
 
-
     final private Map<String, LinkedHashSet<Funcotation>> txToFuncotations = new LinkedHashMap<>();
 
     private FuncotationMap() {}
@@ -164,6 +163,15 @@ public class FuncotationMap {
      */
     public List<String> getTranscriptList() {
         return new ArrayList<>(txToFuncotations.keySet());
+    }
+
+    /**
+     * Get the transcripts as a of transcripts in order.
+     *
+     * @return Never {@code null}
+     */
+    public LinkedHashSet<String> getTranscriptSet() {
+        return new LinkedHashSet<>(txToFuncotations.keySet());
     }
 
     /** Create a FuncotationMap where all Funcotations will be TableFuncotations.  This is useful for parsing existing

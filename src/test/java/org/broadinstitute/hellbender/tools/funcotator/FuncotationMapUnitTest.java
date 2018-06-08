@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfCodec;
@@ -513,4 +514,36 @@ public class FuncotationMapUnitTest extends BaseTest{
         Assert.assertEquals(funcotationMap.getGencodeFuncotations(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY).size(), 0);
     }
 
+    @DataProvider
+    public Object[][] provideFakeGencodeData() {
+
+        return new Object[][] {
+                {Collections.singletonList(new GencodeFuncotationBuilder().setAnnotationTranscript("TXID").build())},
+                {Arrays.asList(new GencodeFuncotationBuilder().setAnnotationTranscript("TXID1").build(),
+                        new GencodeFuncotationBuilder().setAnnotationTranscript("TXID2").build(),
+                        new GencodeFuncotationBuilder().setAnnotationTranscript("TXID3").build(),
+                        new GencodeFuncotationBuilder().setAnnotationTranscript("TXID4").build(),
+                        new GencodeFuncotationBuilder().setAnnotationTranscript("TXID5").build(),
+                        new GencodeFuncotationBuilder().setAnnotationTranscript("TXID6").build(),
+                        new GencodeFuncotationBuilder().setAnnotationTranscript("TXID7").build(),
+                        new GencodeFuncotationBuilder().setAnnotationTranscript("TXID8").build(),
+                        new GencodeFuncotationBuilder().setAnnotationTranscript("TXID9").build(),
+                        new GencodeFuncotationBuilder().setAnnotationTranscript("TXID10").build(),
+                        new GencodeFuncotationBuilder().setAnnotationTranscript("TXID11").build(),
+                        new GencodeFuncotationBuilder().setAnnotationTranscript("TXID12").build(),
+                        new GencodeFuncotationBuilder().setAnnotationTranscript("TXID13").build(),
+                        new GencodeFuncotationBuilder().setAnnotationTranscript("TXID14").build(),
+                        new GencodeFuncotationBuilder().setAnnotationTranscript("TXID15").build(),
+                        new GencodeFuncotationBuilder().setAnnotationTranscript("TXID16").build(),
+                        new GencodeFuncotationBuilder().setAnnotationTranscript("TXID17").build())
+                }
+        };
+    }
+
+    @Test(dataProvider = "provideFakeGencodeData")
+    public void testTranscriptListAndSetAreOrdered(final List<GencodeFuncotation> gencodeFuncotations) {
+        // Tests that both the list and the set are ordered the same way and produce equals values.
+        final FuncotationMap funcotationMap = FuncotationMap.createFromGencodeFuncotations(gencodeFuncotations);
+        Assert.assertEquals(funcotationMap.getTranscriptList(), new ArrayList<>(funcotationMap.getTranscriptSet()));
+    }
 }
