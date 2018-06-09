@@ -38,6 +38,8 @@ COPY_FASTQ=${COPY_FASTQ:-"Y"}
 shift $(($# < 6 ? $# : 6))
 SV_ARGS=${*:-${SV_ARGS:-""}}
 
+GCS_SAVE_PATH=${GCS_SAVE_PATH%/} # remove trailing slash to avoid double slashes
+
 # get appropriate ZONE for cluster
 echo "CLUSTER_INFO=\$(gcloud dataproc clusters list --project=${PROJECT_NAME} --filter='clusterName=${CLUSTER_NAME}')"
 CLUSTER_INFO=$(gcloud dataproc clusters list --project=${PROJECT_NAME} --filter="clusterName=${CLUSTER_NAME}" --format="csv(NAME, WORKER_COUNT, PREEMPTIBLE_WORKER_COUNT, STATUS, ZONE)")
@@ -62,11 +64,13 @@ if [ -z "${RESULTS_DIR}" ]; then
     echo "RESULTS_DIR=${RESULTS_DIR}" 2>&1 | tee -a ${LOCAL_LOG_FILE}
     GCS_RESULTS_DIR="${GCS_SAVE_PATH}/${RESULTS_DIR}"
     if [[ "${GCS_RESULTS_DIR}" != gs://* ]]; then GCS_RESULTS_DIR="gs://${GCS_RESULTS_DIR}"; fi
+    echo "Saving results to bucket ${GCS_RESULTS_DIR}"
 else
     # copy the latest results to google cloud
     echo "RESULTS_DIR=${RESULTS_DIR}" 2>&1 | tee -a ${LOCAL_LOG_FILE}
     GCS_RESULTS_DIR="${GCS_SAVE_PATH}/${RESULTS_DIR}"
     if [[ "${GCS_RESULTS_DIR}" != gs://* ]]; then GCS_RESULTS_DIR="gs://${GCS_RESULTS_DIR}"; fi
+    echo "Saving results to bucket ${GCS_RESULTS_DIR}"
     # chose semi-optimal parallel args for distcp
     # 1) count number of files to copy
     COUNT_FILES_CMD="hadoop fs -count /${RESULTS_DIR}/ | tr -s ' ' | cut -d ' ' -f 3"
