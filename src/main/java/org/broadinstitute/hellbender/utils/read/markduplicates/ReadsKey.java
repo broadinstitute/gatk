@@ -22,7 +22,7 @@ public final class ReadsKey {
 //        key = key * 31 + strandedUnclippedStart;
 //        return key * 31 + (reverseStrand ? 0 : 1);
 //
-        return new StringBuilder(library!=null?library:"").append('|').append(referenceIndex).append(strandedUnclippedStart).append(reverseStrand ? 'r' : 'f').toString();
+        return new StringBuilder(library!=null?library:"").append('|').append(referenceIndex).append('|').append(strandedUnclippedStart).append(reverseStrand ? 'r' : 'f').toString();
     }
 
     /**
@@ -34,7 +34,7 @@ public final class ReadsKey {
         if (second == null) {
             return key;
         }
-        return new StringBuffer(key).append('|').append(ReadUtils.getReferenceIndex(second, header)).append('|').append(ReadUtils.getStrandedUnclippedStart(second)).append(second.isReverseStrand() ? 'r' : 'f').toString();
+        return new StringBuffer(key).append(ReadUtils.getReferenceIndex(second, header)).append('|').append(ReadUtils.getStrandedUnclippedStart(second)).append(second.isReverseStrand() ? 'r' : 'f').toString();
 
 //        key = 31 * key + ReadUtils.getReferenceIndex(second, header);
 //        key = 31 * key + ReadUtils.getStrandedUnclippedStart(second);
