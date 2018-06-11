@@ -405,6 +405,7 @@ task SplitIntervals {
 
     runtime {
         docker: gatk_docker
+        bootDiskSizeGb: 12
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
@@ -480,6 +481,7 @@ task M2 {
 
     runtime {
         docker: gatk_docker
+        bootDiskSizeGb: 12
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
@@ -528,6 +530,7 @@ task MergeVCFs {
 
     runtime {
         docker: gatk_docker
+        bootDiskSizeGb: 12
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
@@ -581,6 +584,7 @@ task MergeBamOuts {
 
     runtime {
         docker: gatk_docker
+        bootDiskSizeGb: 12
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
@@ -623,6 +627,7 @@ task CollectSequencingArtifactMetrics {
 
     runtime {
         docker: gatk_docker
+        bootDiskSizeGb: 12
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
@@ -670,6 +675,7 @@ task CalculateContamination {
 
     runtime {
         docker: gatk_docker
+        bootDiskSizeGb: 12
         memory: command_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + " HDD"
         preemptible: select_first([preemptible_attempts, 10])
@@ -722,6 +728,7 @@ task Filter {
 
     runtime {
         docker: gatk_docker
+        bootDiskSizeGb: 12
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
@@ -771,6 +778,7 @@ task FilterByOrientationBias {
 
     runtime {
         docker: gatk_docker
+        bootDiskSizeGb: 12
         memory: command_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
@@ -822,6 +830,7 @@ task FilterAlignmentArtifacts {
 
     runtime {
         docker: gatk_docker
+        bootDiskSizeGb: 12
         memory: command_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
@@ -1008,6 +1017,7 @@ task Funcotate {
 
     runtime {
         docker: gatk_docker
+        bootDiskSizeGb: 12
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space_gb, default_disk_space_gb]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 3])
