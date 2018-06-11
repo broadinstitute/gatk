@@ -243,7 +243,7 @@ public final class ReadsSparkSink {
     private static void saveAsShardedHadoopFiles(
             final JavaSparkContext ctx, final String outputFile, final String referenceFile,
             final SAMFormat samOutputFormat, final JavaRDD<SAMRecord> reads, final SAMFileHeader header,
-            final boolean writeHeader) throws IOException {
+            final boolean writeHeader) {
         // Set the static header on the driver thread.
         if (samOutputFormat == SAMFormat.CRAM) {
             SparkCRAMOutputFormat.setHeader(header);
