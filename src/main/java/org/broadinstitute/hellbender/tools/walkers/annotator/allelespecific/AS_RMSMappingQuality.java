@@ -183,7 +183,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
     public String getRawKeyName() { return GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY; }
 
     private void getRMSDataFromLikelihoods(final ReadLikelihoods<Allele> likelihoods, ReducibleAnnotationData<Double> myData) {
-        for ( final ReadLikelihoods<Allele>.BestAllele bestAllele : likelihoods.bestAlleles() ) {
+        for ( final ReadLikelihoods<Allele>.BestAllele bestAllele : likelihoods.bestAllelesBreakingTies() ) {
             if (bestAllele.isInformative()) {
                 final int mq = bestAllele.read.getMappingQuality();
                 if ( mq != QualityUtils.MAPPING_QUALITY_UNAVAILABLE ) {

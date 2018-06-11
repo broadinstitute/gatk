@@ -6,7 +6,6 @@ import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
@@ -139,7 +138,7 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
         final int[][] table = new int[ARRAY_DIM][ARRAY_DIM];
         for (final String sample : samples) {
             final int[] sampleTable = new int[ARRAY_SIZE];
-            likelihoods.bestAlleles(sample).stream()
+            likelihoods.bestAllelesBreakingTies(sample).stream()
                     .filter(ba -> ba.isInformative())
                     .forEach(ba -> updateTable(sampleTable, ba.allele, ba.read, ref, allAlts));
             if (passesMinimumThreshold(sampleTable, minCount)) {

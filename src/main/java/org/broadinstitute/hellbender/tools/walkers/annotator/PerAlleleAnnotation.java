@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.primitives.Doubles;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
@@ -9,14 +7,11 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import htsjdk.variant.vcf.VCFHeaderLineCount;
 import htsjdk.variant.vcf.VCFHeaderLineType;
-import org.apache.commons.math3.util.DoubleArray;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -45,7 +40,7 @@ public abstract class PerAlleleAnnotation extends GenotypeAnnotation {
         final Map<Allele, List<Integer>> values = likelihoods.alleles().stream()
                 .collect(Collectors.toMap(a -> a, a -> new ArrayList<>()));
 
-        Utils.stream(likelihoods.bestAlleles(g.getSampleName()))
+        Utils.stream(likelihoods.bestAllelesBreakingTies(g.getSampleName()))
                 .filter(ba -> ba.isInformative() && isUsableRead(ba.read))
                 .forEach(ba -> getValueForRead(ba.read, vc).ifPresent(v -> values.get(ba.allele).add(v)));
 

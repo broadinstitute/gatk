@@ -44,7 +44,7 @@ public final class AssemblyBasedCallerUtils {
      * @return never {@code null}
      */
     public static Map<GATKRead, GATKRead> realignReadsToTheirBestHaplotype(final ReadLikelihoods<Haplotype> originalReadLikelihoods, final Haplotype refHaplotype, final Locatable paddedReferenceLoc, final SmithWatermanAligner aligner) {
-        final Collection<ReadLikelihoods<Haplotype>.BestAllele> bestAlleles = originalReadLikelihoods.bestAlleles();
+        final Collection<ReadLikelihoods<Haplotype>.BestAllele> bestAlleles = originalReadLikelihoods.bestAllelesBreakingTies();
         final Map<GATKRead, GATKRead> result = new HashMap<>(bestAlleles.size());
 
         for (final ReadLikelihoods<Haplotype>.BestAllele bestAllele : bestAlleles) {

@@ -90,7 +90,7 @@ public class StrandArtifact extends GenotypeAnnotation implements StandardMutect
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
         final Allele altAlelle = vc.getAlternateAllele(indexOfMaxTumorLod);
 
-        final Collection<ReadLikelihoods<Allele>.BestAllele> bestAlleles = likelihoods.bestAlleles(g.getSampleName());
+        final Collection<ReadLikelihoods<Allele>.BestAllele> bestAlleles = likelihoods.bestAllelesBreakingTies(g.getSampleName());
         final int numFwdAltReads = (int) bestAlleles.stream().filter(ba -> !ba.read.isReverseStrand() && ba.isInformative() && ba.allele.equals(altAlelle)).count();
         final int numRevAltReads = (int) bestAlleles.stream().filter(ba -> ba.read.isReverseStrand() && ba.isInformative() && ba.allele.equals(altAlelle)).count();
         final int numFwdReads = (int) bestAlleles.stream().filter(ba -> !ba.read.isReverseStrand() && ba.isInformative()).count();
