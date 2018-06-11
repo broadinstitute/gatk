@@ -187,6 +187,25 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         }
     }
 
+    @Test
+    public void testHashCollisionHandling() {
+        File output = createTempFile("supplementaryReadUnmappedMate", "bam");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addOutput(output);
+        args.addInput(getTestFile("hashCollisionedReads.bam"));
+        runCommandLine(args);
+
+        try ( final ReadsDataSource outputReadsSource = new ReadsDataSource(output.toPath()) ) {
+            final List<GATKRead> actualReads = new ArrayList<>();
+            for ( final GATKRead read : outputReadsSource ) {
+                Assert.assertFalse(read.isDuplicate());
+                actualReads.add(read);
+            }
+
+            Assert.assertEquals(actualReads.size(), 4, "Wrong number of reads output");
+        }
+    }
+
     // Tests asserting that without --do-not-mark-unmapped-mates argument that unmapped mates are still duplicate marked with their partner
     @Test
     public void testMappedPairAndMappedFragmentAndMatePairSecondUnmapped() {

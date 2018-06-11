@@ -142,6 +142,9 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
     public int getUnclippedStartPosition() {
         return firstUnclippedStartPosition;
     }
+    public int getSecondUnclippedStartPosition() {
+        return secondUnclippedStartPosition;
+    }
     @Override
     public int getFirstStartPosition() {
         return firstStartPosition;
@@ -152,6 +155,9 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
     }
     @Override
     public int getFirstRefIndex() {
+        return firstRefIndex;
+    }
+    public int getSecondRefIndex() {
         return firstRefIndex;
     }
     @Override
