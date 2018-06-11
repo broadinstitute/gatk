@@ -104,6 +104,7 @@ task CreatePanel {
 
     runtime {
         docker: gatk_docker
+        bootDiskSizeGb: 12
         memory: machine_mem + " GB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 3])
