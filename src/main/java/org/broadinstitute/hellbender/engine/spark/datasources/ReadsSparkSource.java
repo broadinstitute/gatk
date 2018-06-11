@@ -87,9 +87,9 @@ public final class ReadsSparkSource implements Serializable {
             if( splits.stream().allMatch(split -> split instanceof FileVirtualSplit || split instanceof FileSplit)) {
                 splits.sort(Comparator.comparing(split -> {
                     if (split instanceof FileVirtualSplit) {
-                        return ((FileVirtualSplit) split).getPath();
+                        return ((FileVirtualSplit) split).getPath().getName();
                     } else {
-                        return ((FileSplit) split).getPath();
+                        return ((FileSplit) split).getPath().getName();
                     }
                 }));
             }
