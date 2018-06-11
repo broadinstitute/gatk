@@ -303,7 +303,8 @@ public class MarkDuplicatesSparkUtils {
                 // Each key corresponds to either fragments or paired ends, not a mixture of both.
                 final List<MarkDuplicatesSparkRecord> emptyFragments = stratifiedByType.get(MarkDuplicatesSparkRecord.Type.EMPTY_FRAGMENT);
                 final List<MarkDuplicatesSparkRecord> fragments = stratifiedByType.get(MarkDuplicatesSparkRecord.Type.FRAGMENT);
-                final List<Pair> pairs = (List<Pair>) (List)(stratifiedByType.get(MarkDuplicatesSparkRecord.Type.PAIR));
+                final List<MarkDuplicatesSparkRecord> pairs = stratifiedByType.get(MarkDuplicatesSparkRecord.Type.PAIR);
+                final Collection<List<Pair>> pairsStratified = pairs==null? Collections.emptyList() : pairs.stream().map(p -> (Pair)p).collect(Collectors.groupingBy(MarkDuplicatesSparkUtils::getGroupsForPairs)).values();
                 final List<MarkDuplicatesSparkRecord> passthroughs = stratifiedByType.get(MarkDuplicatesSparkRecord.Type.PASSTHROUGH);
 
                 //empty MarkDuplicatesSparkRecord signify that a pair has a mate somewhere else
@@ -313,8 +314,8 @@ public class MarkDuplicatesSparkUtils {
                     nonDuplicates.add(bestFragment);
                 }
 
-                if (Utils.isNonEmpty(pairs)) {
-                    nonDuplicates.add(handlePairs(pairs, finder));
+                for (List<Pair> pairList : pairsStratified) {
+                    nonDuplicates.add(handlePairs(pairList, finder));
                 }
 
                 if (Utils.isNonEmpty(passthroughs)) {
@@ -336,6 +337,12 @@ public class MarkDuplicatesSparkUtils {
                     (pairedEnds.getFirstRefIndex() << 16) |
                     pairedEnds.getOrientationForPCRDuplicates() );
         }
+    }
+
+    // Note, this uses bitshift operators in order to perform only a single groupBy operation for all the merged data
+    private static long getGroupsForPairs(Pair record) {
+        return ((((long) record.getSecondUnclippedStartPosition()) << 32) |
+                (record.getSecondRefIndex()));
     }
 
     /**
