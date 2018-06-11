@@ -228,7 +228,7 @@ public class GATKAnnotationPluginDescriptor  extends CommandLinePluginDescriptor
      * Return the allowed values for annotationNames/disableAnnotations/annotationGroups for use by the help system.
      *
      * @param longArgName long name of the argument for which help is requested
-     * @return
+     * @return the set of allowed values for the argument, or null if the argument is not controlled by this descriptor
      */
     @Override
     public Set<String> getAllowedValuesForDescriptorHelp(String longArgName) {
@@ -243,7 +243,7 @@ public class GATKAnnotationPluginDescriptor  extends CommandLinePluginDescriptor
         if (longArgName.equals(StandardArgumentDefinitions.ANNOTATION_GROUP_LONG_NAME)) {
             return discoveredGroups.keySet();
         }
-        throw new IllegalArgumentException("Allowed values request for unrecognized string argument: " + longArgName);
+        return null;
     }
 
     @Override

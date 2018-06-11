@@ -621,11 +621,6 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         Assert.assertFalse(outFileMD5.exists(), "An md5 file was created and should not have been");
     }
 
-    private List<Annotation> instantiateAnnotations(final CommandLineParser clp) {
-        GATKAnnotationPluginDescriptor annotationPlugin = clp.getPluginDescriptor(GATKAnnotationPluginDescriptor.class);
-        return annotationPlugin.getResolvedInstances();
-    }
-
     @Test
     public void testMakeEmptyAnnotations() {
         final TestGATKToolWithVariants tool = createTestVariantTool(null);
@@ -753,6 +748,14 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
         Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==StandardAnnotation.class));
         Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==ClippingRankSumTest.class));
+    }
+
+    @Test
+    public void testHelpWithAllPluginDescriptors() {
+        // Smoke test to ensure that requesting help from plugin descriptors doesn't crash. Use a tool
+        // (TestGATKToolWithVariants) that has both the read filter and annotation plugin descriptors enabled.
+        String[] args = {"-h"};
+        new TestGATKToolWithVariants().instanceMain(args);
     }
 
     private TestGATKToolWithVariants createTestVariantTool(final String args[]) {
