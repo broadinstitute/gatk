@@ -31,6 +31,7 @@ import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import scala.Tuple2;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -105,7 +106,12 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
 
         // Here we combine the original bam with the repartitioned unmarked readnames to produce our marked reads
         return sortedReadsForMarking.zipPartitions(repartitionedReadNames, (readsIter, readNamesIter)  -> {
-            final Map<String,Integer> namesOfNonDuplicateReadsAndOpticalCounts = Utils.stream(readNamesIter).collect(Collectors.toMap(Tuple2::_1,Tuple2::_2, (t1,t2) -> {throw new GATKException("Detected multiple mark duplicate records objects corresponding to read with name, this could be the result of readnames spanning more than one partition");}));
+            final Map<String,Integer> namesOfNonDuplicateReadsAndOpticalCounts = new HashMap<>();
+            readNamesIter.forEachRemaining(tup -> { if (namesOfNonDuplicateReadsAndOpticalCounts.putIfAbsent(tup._1,tup._2)!=null) {
+                throw new GATKException(String.format("Detected multiple mark duplicate records objects corresponding to read with name '%s', this could be the result of the file sort order being incorrect or that a previous tool has let readnames span multiple partitions",tup._1()));
+            }
+                });
+
             return Utils.stream(readsIter)
                     .peek(read -> read.setIsDuplicate(false))
                     .peek(read -> {
