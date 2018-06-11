@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyXsvFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.mafOutput.MafOutputRendererConstants;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
@@ -629,6 +630,21 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         for (int i = 0; i < variantContexts.size(); i++) {
             final Map<Allele, FuncotationMap> alleleToFuncotationMap = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(funcotationKeys,
                     variantContexts.get(i), "Gencode_28_annotationTranscript", "TEST");
+
+            // Make sure that all spanning deletions are funcotated with could not determine and that the others are something else.
+            for (final Allele allele : alleleToFuncotationMap.keySet()) {
+                if (allele.equals(Allele.SPAN_DEL)) {
+                    final List<String> txIds = alleleToFuncotationMap.get(allele).getTranscriptList();
+                    for (String txId : txIds) {
+                        if (allele.equals(Allele.SPAN_DEL)) {
+                            Assert.assertEquals(alleleToFuncotationMap.get(allele).get(txId).get(0).getField("Gencode_28_variantClassification"), GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE.toString());
+                        } else {
+                            Assert.assertNotEquals(alleleToFuncotationMap.get(allele).get(txId).get(0).getField("Gencode_28_variantClassification"), GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE.toString());
+                        }
+                    }
+
+                }
+            }
         }
     }
 }
