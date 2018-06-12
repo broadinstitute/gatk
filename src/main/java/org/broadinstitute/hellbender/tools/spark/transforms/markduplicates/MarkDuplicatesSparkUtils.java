@@ -173,6 +173,9 @@ public class MarkDuplicatesSparkUtils {
         return markDuplicateRecords(keyedPairs, finder);
     }
 
+    /**
+     * Method which generates a map of the libraries found tagged in readgroups from the header so they can be serialized as indexes to save space
+     */
     public static Map<String, Byte> constructLibraryIndex(final SAMFileHeader header) {
         final List<String> discoveredLibraries = header.getReadGroups().stream()
                 .map(r -> {String library = r.getLibrary(); return library==null? LibraryIdGenerator.UNKNOWN_LIBRARY : library;} )
@@ -328,7 +331,6 @@ public class MarkDuplicatesSparkUtils {
             if (Utils.isNonEmpty(passthroughs)) {
                 nonDuplicates.addAll(handlePassthroughs(passthroughs));
             }
-
 
             return nonDuplicates.iterator();
         });

@@ -21,8 +21,6 @@ public class Fragment extends PairedEnds {
     protected transient ReadsKey key;
 
     private final int firstStartPosition;
-//    private final int firstUnclippedStartPosition;
-//    private final short firstRefIndex;
     private final boolean R1R;
 
     protected final int score;
@@ -30,9 +28,7 @@ public class Fragment extends PairedEnds {
     public Fragment(final GATKRead first, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy, Map<String, Byte> headerLibraryMap) {
         super(partitionIndex, first.getName());
 
-//        this.firstUnclippedStartPosition = ReadUtils.getStrandedUnclippedStart(first);
         this.firstStartPosition = first.getAssignedStart();
-//        this.firstRefIndex = (short)ReadUtils.getReferenceIndex(first, header);
         this.score = scoringStrategy.score(first);
         this.R1R = first.isReverseStrand();
         this.key = ReadsKey.getKeyForFragment(ReadUtils.getStrandedUnclippedStart(first),
@@ -54,10 +50,6 @@ public class Fragment extends PairedEnds {
     public int getScore() {
       return score;
     }
-//    @Override
-//    public int getUnclippedStartPosition() {
-//      return firstUnclippedStartPosition;
-//    }
     @Override
     public int getFirstStartPosition() {
       return firstStartPosition;
@@ -70,10 +62,6 @@ public class Fragment extends PairedEnds {
     public byte getOrientationForPCRDuplicates() {
         return (R1R)? ReadEnds.R : ReadEnds.F;
     }
-//    @Override
-//    public int getFirstRefIndex() {
-//      return firstRefIndex;
-//    }
     @Override
     public String toString() {
         return "fragment: " + name + " " + firstStartPosition;
