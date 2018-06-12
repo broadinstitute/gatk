@@ -31,6 +31,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.read.markduplicates.LibraryIdGenerator;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 /**
@@ -272,6 +273,21 @@ public final class ReadUtils {
     public static String getLibrary( final GATKRead read, final SAMFileHeader header ) {
         final SAMReadGroupRecord readGroup = getSAMReadGroupRecord(read, header);
         return readGroup != null ? readGroup.getLibrary() : null;
+    }
+
+    /**
+     * Returns the library associated with the provided read's read group.
+     * Or the specified default if no library is found
+     *
+     * @param read read whose library to retrieve
+     * @param header SAM header containing read groups
+     * @return the library for the provided read's read group as a String,
+     *         or the default value if the read has no read group.
+     */
+    public static String getLibrary( final GATKRead read, final SAMFileHeader header, String defaultLibrary) {
+        final SAMReadGroupRecord readGroup = getSAMReadGroupRecord(read, header);
+        String library = readGroup != null ? readGroup.getLibrary() : null;
+        return library==null? defaultLibrary : library;
     }
 
     /**

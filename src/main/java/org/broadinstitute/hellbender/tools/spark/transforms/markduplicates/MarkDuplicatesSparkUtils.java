@@ -97,10 +97,11 @@ public class MarkDuplicatesSparkUtils {
         final JavaPairRDD<String, Iterable<IndexPair<GATKRead>>> keyedReads = getReadsGroupedByName(header, mappedReads, numReducers);
 
         final Broadcast<Map<String, Short>> headerReadGroupIndexMap = JavaSparkContext.fromSparkContext(reads.context()).broadcast( getHeaderReadGroupIndexMap(header));
+        final Broadcast<Map<String, Byte>> libraryIndex = JavaSparkContext.fromSparkContext(reads.context()).broadcast( constructLibraryIndex(header));
 
         // Place all the reads into a single RDD of MarkDuplicatesSparkRecord objects
-        final JavaPairRDD<Integer, MarkDuplicatesSparkRecord> pairedEnds = keyedReads.flatMapToPair(keyedRead -> {
-            final List<Tuple2<Integer, MarkDuplicatesSparkRecord>> out = Lists.newArrayList();
+        final JavaPairRDD<ReadsKey, MarkDuplicatesSparkRecord> pairedEnds = keyedReads.flatMapToPair(keyedRead -> {
+            final List<Tuple2<ReadsKey, MarkDuplicatesSparkRecord>> out = Lists.newArrayList();
             final IndexPair<?>[] hadNonPrimaryRead = {null};
 
             final List<IndexPair<GATKRead>> primaryReads = Utils.stream(keyedRead._2())
@@ -110,8 +111,8 @@ public class MarkDuplicatesSparkUtils {
                         final GATKRead read = readWithIndex.getValue();
                         if (!(read.isSecondaryAlignment()||read.isSupplementaryAlignment())) {
                             PairedEnds fragment = (ReadUtils.readHasMappedMate(read)) ?
-                                    MarkDuplicatesSparkRecord.newEmptyFragment(read, header) :
-                                    MarkDuplicatesSparkRecord.newFragment(read, header, readWithIndex.getIndex(), scoringStrategy);
+                                    MarkDuplicatesSparkRecord.newEmptyFragment(read, header, libraryIndex.getValue()) :
+                                    MarkDuplicatesSparkRecord.newFragment(read, header, readWithIndex.getIndex(), scoringStrategy, libraryIndex.getValue());
 
                             out.add(new Tuple2<>(fragment.key(), fragment));
                         } else {
@@ -143,7 +144,7 @@ public class MarkDuplicatesSparkUtils {
             if (mappedPair.size()==2) {
                 final GATKRead firstRead = mappedPair.get(0).getValue();
                 final IndexPair<GATKRead> secondRead = mappedPair.get(1);
-                final Pair pair = MarkDuplicatesSparkRecord.newPair(firstRead, secondRead.getValue(), header, secondRead.getIndex(), scoringStrategy);
+                final Pair pair = MarkDuplicatesSparkRecord.newPair(firstRead, secondRead.getValue(), header, secondRead.getIndex(), scoringStrategy, libraryIndex.getValue());
                 // Validate and add the read group to the pair
                 final Short readGroup = headerReadGroupIndexMap.getValue().get(firstRead.getReadGroup());
                 if (readGroup != null) {
@@ -167,9 +168,21 @@ public class MarkDuplicatesSparkUtils {
             return out.iterator();
         });
 
-        final JavaPairRDD<Integer, Iterable<MarkDuplicatesSparkRecord>> keyedPairs = pairedEnds.groupByKey(); //TODO evaluate replacing this with a smart aggregate by key.
+        final JavaPairRDD<ReadsKey, Iterable<MarkDuplicatesSparkRecord>> keyedPairs = pairedEnds.groupByKey(); //TODO evaluate replacing this with a smart aggregate by key.
 
         return markDuplicateRecords(keyedPairs, finder);
+    }
+
+    public static Map<String, Byte> constructLibraryIndex(final SAMFileHeader header) {
+        final List<String> discoveredLibraries = header.getReadGroups().stream()
+                .map(r -> {String library = r.getLibrary(); return library==null? LibraryIdGenerator.UNKNOWN_LIBRARY : library;} )
+                .distinct()
+                .collect(Collectors.toList());
+        if (discoveredLibraries.size() > 255) {
+            throw new GATKException("Detected too many read libraries among read groups header, currently MarkDuplciatesSpark only supports up to 256 unique readgroup libraries");
+        }
+        final Iterator<Byte> iterator = IntStream.range(0, discoveredLibraries.size()).boxed().map(Integer::byteValue).iterator();
+        return Maps.uniqueIndex(iterator, idx -> discoveredLibraries.get(idx));
     }
 
     /**
@@ -177,6 +190,9 @@ public class MarkDuplicatesSparkUtils {
      */
     private static Map<String, Short> getHeaderReadGroupIndexMap(final SAMFileHeader header) {
         final List<SAMReadGroupRecord> readGroups = header.getReadGroups();
+        if (readGroups.size() > ((int)Short.MAX_VALUE)*2) {
+            throw new GATKException("Detected too many read groups in the header, currently MarkDuplciatesSpark only supports up to 65536 unique readgroup IDs");
+        }
         final Iterator<Short> iterator = IntStream.range(0, readGroups.size()).boxed().map(Integer::shortValue).iterator();
         return Maps.uniqueIndex(iterator, idx -> readGroups.get(idx).getId() );
     }
@@ -284,71 +300,44 @@ public class MarkDuplicatesSparkUtils {
      *  - Collects the results and returns an iterator
      */
     @SuppressWarnings("unchecked")
-    private static JavaPairRDD<IndexPair<String>, Integer> markDuplicateRecords(final JavaPairRDD<Integer, Iterable<MarkDuplicatesSparkRecord>> keyedPairs,
+    private static JavaPairRDD<IndexPair<String>, Integer> markDuplicateRecords(final JavaPairRDD<ReadsKey, Iterable<MarkDuplicatesSparkRecord>> keyedPairs,
                                                                                 final OpticalDuplicateFinder finder) {
         return keyedPairs.flatMapToPair(keyedPair -> {
             List<MarkDuplicatesSparkRecord> pairGroups = Utils.stream(keyedPair._2()).collect(Collectors.toList());
 
             final List<Tuple2<IndexPair<String>, Integer>> nonDuplicates = Lists.newArrayList();
+            final Map<MarkDuplicatesSparkRecord.Type, List<MarkDuplicatesSparkRecord>> stratifiedByType = splitByType(pairGroups);
 
-            //since we grouped by a non-unique hash code for efficiency we need to regroup by the actual criteria
-            //todo this should use library and contig as well probably
-            //todo these should all be one traversal over the records)
-            final Collection<List<MarkDuplicatesSparkRecord>> groups = Utils.stream(pairGroups)
-                    .collect(Collectors.groupingBy(MarkDuplicatesSparkUtils::getGroupKey)).values();
+            // Each key corresponds to either fragments or paired ends, not a mixture of both.
+            final List<MarkDuplicatesSparkRecord> emptyFragments = stratifiedByType.get(MarkDuplicatesSparkRecord.Type.EMPTY_FRAGMENT);
+            final List<MarkDuplicatesSparkRecord> fragments = stratifiedByType.get(MarkDuplicatesSparkRecord.Type.FRAGMENT);
+            final List<Pair> pairs = (List<Pair>)(List)stratifiedByType.get(MarkDuplicatesSparkRecord.Type.PAIR);
+            final List<MarkDuplicatesSparkRecord> passthroughs = stratifiedByType.get(MarkDuplicatesSparkRecord.Type.PASSTHROUGH);
 
-            for (List<MarkDuplicatesSparkRecord> duplicateGroup : groups) {
-                final Map<MarkDuplicatesSparkRecord.Type, List<MarkDuplicatesSparkRecord>> stratifiedByType = splitByType(duplicateGroup);
-
-                // Each key corresponds to either fragments or paired ends, not a mixture of both.
-                final List<MarkDuplicatesSparkRecord> emptyFragments = stratifiedByType.get(MarkDuplicatesSparkRecord.Type.EMPTY_FRAGMENT);
-                final List<MarkDuplicatesSparkRecord> fragments = stratifiedByType.get(MarkDuplicatesSparkRecord.Type.FRAGMENT);
-                final List<MarkDuplicatesSparkRecord> pairs = stratifiedByType.get(MarkDuplicatesSparkRecord.Type.PAIR);
-                final Collection<List<Pair>> pairsStratified = pairs==null? Collections.emptyList() : pairs.stream().map(p -> (Pair)p).collect(Collectors.groupingBy(MarkDuplicatesSparkUtils::getGroupsForPairs)).values();
-                final List<MarkDuplicatesSparkRecord> passthroughs = stratifiedByType.get(MarkDuplicatesSparkRecord.Type.PASSTHROUGH);
-
-                //empty MarkDuplicatesSparkRecord signify that a pair has a mate somewhere else
-                // If there are any non-fragment placeholders at this site, mark everything as duplicates, otherwise compute the best score
-                if (Utils.isNonEmpty(fragments) && !Utils.isNonEmpty(emptyFragments)) {
-                    final Tuple2<IndexPair<String>, Integer> bestFragment = handleFragments(fragments);
-                    nonDuplicates.add(bestFragment);
-                }
-
-                for (List<Pair> pairList : pairsStratified) {
-                    nonDuplicates.add(handlePairs(pairList, finder));
-                }
-
-                if (Utils.isNonEmpty(passthroughs)) {
-                    nonDuplicates.addAll(handlePassthroughs(passthroughs));
-                }
+            //empty MarkDuplicatesSparkRecord signify that a pair has a mate somewhere else
+            // If there are any non-fragment placeholders at this site, mark everything as duplicates, otherwise compute the best score
+            if (Utils.isNonEmpty(fragments) && !Utils.isNonEmpty(emptyFragments)) {
+                final Tuple2<IndexPair<String>, Integer> bestFragment = handleFragments(fragments);
+                nonDuplicates.add(bestFragment);
             }
+
+            if (Utils.isNonEmpty(pairs)) {
+                nonDuplicates.add(handlePairs(pairs, finder));
+            }
+
+            if (Utils.isNonEmpty(passthroughs)) {
+                nonDuplicates.addAll(handlePassthroughs(passthroughs));
+            }
+
 
             return nonDuplicates.iterator();
         });
     }
 
-    // Note, this uses bitshift operators in order to perform only a single groupBy operation for all the merged data
-    private static long getGroupKey(MarkDuplicatesSparkRecord record) {
-        if ( record.getClass()==Passthrough.class) {
-            return -1;
-        } else {
-            final PairedEnds pairedEnds = (PairedEnds) record;
-            return ((((long) pairedEnds.getUnclippedStartPosition()) << 32) |
-                    (pairedEnds.getFirstRefIndex() << 16) |
-                    pairedEnds.getOrientationForPCRDuplicates() );
-        }
-    }
-
-    // Note, this uses bitshift operators in order to perform only a single groupBy operation for all the merged data
-    private static long getGroupsForPairs(Pair record) {
-        return ((((long) record.getSecondUnclippedStartPosition()) << 32) |
-                (record.getSecondRefIndex()));
-    }
-
     /**
      * split MarkDuplicatesSparkRecord into groups by their type
      */
-    private static Map<MarkDuplicatesSparkRecord.Type, List<MarkDuplicatesSparkRecord>> splitByType(List<MarkDuplicatesSparkRecord> duplicateGroup) {
+    private static Map<MarkDuplicatesSparkRecord.Type, List<MarkDuplicatesSparkRecord>> splitByType(Iterable<MarkDuplicatesSparkRecord> duplicateGroup) {
         final EnumMap<MarkDuplicatesSparkRecord.Type, List<MarkDuplicatesSparkRecord>> byType = new EnumMap<>(MarkDuplicatesSparkRecord.Type.class);
         for(MarkDuplicatesSparkRecord pair: duplicateGroup) {
             byType.compute(pair.getType(), (key, value) -> {
@@ -504,7 +493,7 @@ public class MarkDuplicatesSparkUtils {
 
         @Override
         public int compare( PairedEnds first, PairedEnds second ) {
-            int result = compareCoordinates(first, second);
+            int result = Integer.compare(first.getFirstStartPosition(), second.getFirstStartPosition());
             if ( result != 0 ) {
                 return result;
             }
@@ -518,25 +507,6 @@ public class MarkDuplicatesSparkUtils {
                 result = first.getName().compareTo(second.getName());
             }
             return result;
-        }
-
-        public static int compareCoordinates(final PairedEnds first, final PairedEnds second ) {
-            final int firstRefIndex = first.getFirstRefIndex();
-            final int secondRefIndex = second.getFirstRefIndex();
-
-            if ( firstRefIndex == -1 ) {
-                return (secondRefIndex == -1 ? 0 : 1);
-            }
-            else if ( secondRefIndex == -1 ) {
-                return -1;
-            }
-
-            final int refIndexDifference = firstRefIndex - secondRefIndex;
-            if ( refIndexDifference != 0 ) {
-                return refIndexDifference;
-            }
-
-            return Integer.compare(first.getFirstStartPosition(), second.getFirstStartPosition());
         }
     }
 }
