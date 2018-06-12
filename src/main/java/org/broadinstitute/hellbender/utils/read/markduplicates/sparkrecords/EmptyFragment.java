@@ -19,9 +19,6 @@ import java.util.Map;
 public final class EmptyFragment extends PairedEnds {
     protected transient ReadsKey key;
 
-//    private final int firstUnclippedStartPosition;
-//    private final int firstStartPosition;
-//    private final short firstRefIndex;
     private final boolean R1R;
 
     /**
@@ -31,11 +28,7 @@ public final class EmptyFragment extends PairedEnds {
      */
     public EmptyFragment(GATKRead read, SAMFileHeader header, Map<String, Byte> headerLibraryMap) {
         super(0, null);
-//
-//        this.firstUnclippedStartPosition = ReadUtils.getStrandedUnclippedStart(read);
-//        this.firstRefIndex = (short)ReadUtils.getReferenceIndex(read, header);
         this.R1R = read.isReverseStrand();
-//        firstStartPosition = 0;
         this.key = ReadsKey.getKeyForFragment(ReadUtils.getStrandedUnclippedStart(read),
                 isRead1ReverseStrand(),
                 ReadUtils.getReferenceIndex(read, header),
@@ -55,10 +48,6 @@ public final class EmptyFragment extends PairedEnds {
     public ReadsKey key() {
         return key;
     }
-//    @Override
-//    public int getUnclippedStartPosition() {
-//        return firstUnclippedStartPosition;
-//    }
     @Override
     public int getFirstStartPosition() {
         throw new UnsupportedOperationException("Empty fragments do not support requests for positional information");
@@ -71,10 +60,6 @@ public final class EmptyFragment extends PairedEnds {
     public byte getOrientationForPCRDuplicates() {
         return (R1R)? ReadEnds.R : ReadEnds.F;
     }
-//    @Override
-//    public int getFirstRefIndex() {
-//        return firstRefIndex;
-//    }
     @Override
     public String toString() {
         return "EmptyFragment ";
