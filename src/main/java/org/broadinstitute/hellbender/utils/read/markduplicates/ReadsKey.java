@@ -73,7 +73,7 @@ public class ReadsKey {
     /**
      *
      */
-    private static class keyForFragment extends ReadsKey {
+    public static class keyForFragment extends ReadsKey {
         final long keyValue;
 
         keyForFragment(final long key) {
@@ -103,7 +103,7 @@ public class ReadsKey {
     /**
      *
      */
-    private static class keyForPair extends ReadsKey {
+    public static class keyForPair extends ReadsKey {
         final long fragmentValue;
         final long keyValue;
 
