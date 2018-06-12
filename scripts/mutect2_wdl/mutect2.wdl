@@ -350,22 +350,33 @@ workflow Mutect2 {
         File funcotate_vcf_input_index = select_first([FilterAlignmentArtifacts.filtered_vcf_index, FilterByOrientationBias.filtered_vcf_index, Filter.filtered_vcf_index])
         call Funcotate {
             input:
-                m2_vcf = funcotate_vcf_input,
-                m2_vcf_index = funcotate_vcf_input_index,
-                ref_fasta = ref_fasta,
-                ref_fai = ref_fai,
-                ref_dict = ref_dict,
-                reference_version = select_first([reference_version, "NO_REFERENCE_VERSION_GIVEN"]),
-                output_name = funcotated_name,
-                compress = compress,
-                data_sources_tar_gz = data_sources_tar_gz,
-                transcript_selection_mode = transcript_selection_mode,
-                transcript_selection_list = transcript_selection_list,
-                annotation_defaults = annotation_defaults,
-                annotation_overrides = annotation_overrides,
-                gatk_docker = gatk_docker,
-                gatk_override = gatk_override,
-                filter_funcotations = filter_funcotations_or_default
+                gatk_docker                                         = gatk_docker,
+
+                ref_fasta                                           = ref_fasta,
+                ref_fasta_index                                     = ref_fai,
+                ref_dict                                            = ref_dict,
+                input_vcf                                           = funcotate_vcf_input,
+                input_vcf_idx                                       = funcotate_vcf_input_index,
+                reference_version                                   = select_first([reference_version, "NO_REFERENCE_VERSION_GIVEN"]),
+                output_file_base_name                               = funcotated_name,
+                output_format                                       = "VCF",
+
+                gatk_override                                       = gatk_override,
+
+                data_sources_tar_gz                                 = data_sources_tar_gz,
+                transcript_selection_mode                           = transcript_selection_mode,
+                transcript_selection_list                           = transcript_selection_list,
+                annotation_defaults                                 = annotation_defaults,
+                annotation_overrides                                = annotation_overrides,
+                filter_funcotations                                 = filter_funcotations_or_default,
+#                interval_list
+                compress                                            = compress,
+#
+                allow_hg19_gencode_b37_contig_matching              = true,
+#                allow_hg19_gencode_b37_contig_matching_force_unsafe = false,
+#                lookahead_cache_bp                                  = 100000,
+#
+#                funcotator_extra_args
         }
     }
 
@@ -377,8 +388,8 @@ workflow Mutect2 {
         File? contamination_table = CalculateContamination.contamination_table
 
         File? oncotated_m2_maf = oncotate_m2.oncotated_m2_maf
-        File? funcotated_vcf = Funcotate.funcotated_vcf
-        File? funcotated_vcf_index = Funcotate.funcotated_vcf_index
+        File? funcotated_vcf = Funcotate.funcotated_output
+        File? funcotated_vcf_index = Funcotate.funcotated_index
         File? preadapter_detail_metrics = CollectSequencingArtifactMetrics.pre_adapter_metrics
         File? bamout = MergeBamOuts.merged_bam_out
         File? bamout_index = MergeBamOuts.merged_bam_out_index
@@ -976,34 +987,55 @@ task SumFloats {
 }
 
 task Funcotate {
-    # inputs
-    File ref_fasta
-    File ref_fai
-    File ref_dict
-    File m2_vcf
-    File m2_vcf_index
-    String reference_version
-    String output_name
-    Boolean compress
-    String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
-    String output_vcf_index = output_vcf +  if compress then ".tbi" else ".idx"
 
+    # =======================================
+    # Required Inputs:
+    File ref_fasta
+    File ref_fasta_index
+    File ref_dict
+    File input_vcf
+    File input_vcf_idx
+    String reference_version
+    String output_file_base_name
+    String output_format
+
+    # =======================================
+    # Optional Inputs:
     File? data_sources_tar_gz
     String? transcript_selection_mode
     Array[String]? transcript_selection_list
     Array[String]? annotation_defaults
     Array[String]? annotation_overrides
-    Boolean filter_funcotations
+    Boolean? filter_funcotations
+    File? interval_list
+    Boolean? compress
 
-    # ==============
+    Boolean? allow_hg19_gencode_b37_contig_matching
+    Boolean? allow_hg19_gencode_b37_contig_matching_force_unsafe
+    Int? lookahead_cache_bp
+
+    String? extra_args
+
+    # =======================================
     # Process input args:
-    String transcript_selection_arg = if defined(transcript_selection_list) then " --transcript-list " else ""
+
+    String output_file = output_file_base_name + if output_format == "VCF" then if compress then ".vcf.gz" else ".vcf" else ".maf"
+    String output_index = if output_format == "VCF" then output_file +  if compress then ".tbi" else ".idx" else ""
+
+    String transcript_selection_list_arg = if defined(transcript_selection_list) then " --transcript-list " else ""
     String annotation_def_arg = if defined(annotation_defaults) then " --annotation-default " else ""
     String annotation_over_arg = if defined(annotation_overrides) then " --annotation-override " else ""
     String filter_funcotations_args = if (filter_funcotations) then " --remove-filtered-variants " else ""
-    # ==============
+    String interval_list_arg = if defined(interval_list) then " -L " else ""
 
-    # runtime
+    String allow_hg19_gencode_b37_contig_matching_arg = if defined(allow_hg19_gencode_b37_contig_matching) then "--allow-hg19-gencode-b37-contig-matching" else ""
+    String allow_hg19_gencode_b37_contig_matching_force_unsafe_arg = if defined(allow_hg19_gencode_b37_contig_matching_force_unsafe) then "--allow-hg19-gencode-b37-contig-matching-override" else ""
+    String lookahead_cache_bp_arg = if defined(lookahead_cache_bp) then "--lookahead-cache-bp" else ""
+
+    String extra_args_arg = select_first([extra_args, ""])
+
+    # =======================================
+    # Runtime setup:
 
     String gatk_docker
     File? gatk_override
@@ -1013,6 +1045,10 @@ task Funcotate {
     Int? cpu
 
     Boolean use_ssd = false
+
+    # This should be updated when a new version of the data sources is released
+    # TODO: Make this dynamically chosen in the command.
+    String default_datasources_version = "funcotator_dataSources.v1.3.20180531"
 
     # You may have to change the following two parameter values depending on the task requirements
     Int default_ram_mb = 3000
@@ -1032,9 +1068,9 @@ task Funcotate {
             # We have to download the data sources:
             echo "Data sources gzip does not exist: $DATA_SOURCES_TAR_GZ"
             echo "Downloading default data sources..."
-            wget ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/funcotator_dataSources.v1.0.20180105.tar.gz
-            tar -zxf funcotator_dataSources.v1.0.20180105.tar.gz
-            DATA_SOURCES_FOLDER=funcotator_dataSources.v1.0.20180105
+            wget ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/${default_datasources_version}.tar.gz
+            tar -zxf ${default_datasources_version}.tar.gz
+            DATA_SOURCES_FOLDER=${default_datasources_version}
         else
             # Extract the tar.gz:
             mkdir datasources_dir
@@ -1045,19 +1081,24 @@ task Funcotate {
         gatk --java-options "-Xmx${command_mem}m" Funcotator \
             --data-sources-path $DATA_SOURCES_FOLDER \
             --ref-version ${reference_version} \
+            --output-file-format ${output_format} \
             -R ${ref_fasta} \
-            -V ${m2_vcf} \
-            -O ${output_vcf} \
+            -V ${input_vcf} \
+            -O ${output_file} \
+            ${interval_list_arg} ${default="" interval_list} \
             ${"--transcript-selection-mode " + transcript_selection_mode} \
-            ${transcript_selection_arg}${default="" sep=" --transcript-list " transcript_selection_list} \
+            ${transcript_selection_list_arg}${default="" sep=" --transcript-list " transcript_selection_list} \
             ${annotation_def_arg}${default="" sep=" --annotation-default " annotation_defaults} \
             ${annotation_over_arg}${default="" sep=" --annotation-override " annotation_overrides} \
-            ${filter_funcotations_args}
+            ${filter_funcotations_args} \
+            ${allow_hg19_gencode_b37_contig_matching_arg} \
+            ${allow_hg19_gencode_b37_contig_matching_force_unsafe_arg} \
+            ${lookahead_cache_bp_arg}${lookahead_cache_bp} \
+            ${extra_args_arg}
     >>>
 
     runtime {
         docker: gatk_docker
-        bootDiskSizeGb: 12
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space_gb, default_disk_space_gb]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 3])
@@ -1065,8 +1106,103 @@ task Funcotate {
     }
 
     output {
-        File funcotated_vcf = "${output_vcf}"
-        File funcotated_vcf_index = "${output_vcf_index}"
+        File funcotated_output = "${output_file}"
+        File funcotated_index  = "${output_index}"
     }
-}
+ }
+
+#task Funcotate {
+#    # inputs
+#    File ref_fasta
+#    File ref_fai
+#    File ref_dict
+#    File m2_vcf
+#    File m2_vcf_index
+#    String reference_version
+#    String output_name
+#    Boolean compress
+#    String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
+#    String output_vcf_index = output_vcf +  if compress then ".tbi" else ".idx"
+#
+#    File? data_sources_tar_gz
+#    String? transcript_selection_mode
+#    Array[String]? transcript_selection_list
+#    Array[String]? annotation_defaults
+#    Array[String]? annotation_overrides
+#    Boolean filter_funcotations
+#
+#    # ==============
+#    # Process input args:
+#    String transcript_selection_arg = if defined(transcript_selection_list) then " --transcript-list " else ""
+#    String annotation_def_arg = if defined(annotation_defaults) then " --annotation-default " else ""
+#    String annotation_over_arg = if defined(annotation_overrides) then " --annotation-override " else ""
+#    String filter_funcotations_args = if (filter_funcotations) then " --remove-filtered-variants " else ""
+#    # ==============
+#
+#    # runtime
+#
+#    String gatk_docker
+#    File? gatk_override
+#    Int? mem
+#    Int? preemptible_attempts
+#    Int? disk_space_gb
+#    Int? cpu
+#
+#    Boolean use_ssd = false
+#
+#    # You may have to change the following two parameter values depending on the task requirements
+#    Int default_ram_mb = 3000
+#    # WARNING: In the workflow, you should calculate the disk space as an input to this task (disk_space_gb).  Please see [TODO: Link from Jose] for examples.
+#    Int default_disk_space_gb = 100
+#
+#    # Mem is in units of GB but our command and memory runtime values are in MB
+#    Int machine_mem = if defined(mem) then mem *1000 else default_ram_mb
+#    Int command_mem = machine_mem - 1000
+#
+#    command <<<
+#        set -e
+#        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+#
+#        DATA_SOURCES_TAR_GZ=${data_sources_tar_gz}
+#        if [[ ! -e $DATA_SOURCES_TAR_GZ ]] ; then
+#            # We have to download the data sources:
+#            echo "Data sources gzip does not exist: $DATA_SOURCES_TAR_GZ"
+#            echo "Downloading default data sources..."
+#            wget ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/funcotator_dataSources.v1.0.20180105.tar.gz
+#            tar -zxf funcotator_dataSources.v1.0.20180105.tar.gz
+#            DATA_SOURCES_FOLDER=funcotator_dataSources.v1.0.20180105
+#        else
+#            # Extract the tar.gz:
+#            mkdir datasources_dir
+#            tar zxvf ${data_sources_tar_gz} -C datasources_dir --strip-components 1
+#            DATA_SOURCES_FOLDER="$PWD/datasources_dir"
+#        fi
+#
+#        gatk --java-options "-Xmx${command_mem}m" Funcotator \
+#            --data-sources-path $DATA_SOURCES_FOLDER \
+#            --ref-version ${reference_version} \
+#            -R ${ref_fasta} \
+#            -V ${m2_vcf} \
+#            -O ${output_vcf} \
+#            ${"--transcript-selection-mode " + transcript_selection_mode} \
+#            ${transcript_selection_arg}${default="" sep=" --transcript-list " transcript_selection_list} \
+#            ${annotation_def_arg}${default="" sep=" --annotation-default " annotation_defaults} \
+#            ${annotation_over_arg}${default="" sep=" --annotation-override " annotation_overrides} \
+#            ${filter_funcotations_args}
+#    >>>
+#
+#    runtime {
+#        docker: gatk_docker
+#        bootDiskSizeGb: 12
+#        memory: machine_mem + " MB"
+#        disks: "local-disk " + select_first([disk_space_gb, default_disk_space_gb]) + if use_ssd then " SSD" else " HDD"
+#        preemptible: select_first([preemptible_attempts, 3])
+#        cpu: select_first([cpu, 1])
+#    }
+#
+#    output {
+#        File funcotated_vcf = "${output_vcf}"
+#        File funcotated_vcf_index = "${output_vcf_index}"
+#    }
+#}
 

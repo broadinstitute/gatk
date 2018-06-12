@@ -296,7 +296,7 @@ public class Funcotator extends VariantWalker {
     protected int lookaheadFeatureCachingInBp = FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE;
 
     @Argument(
-            fullName = FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_OVERRIDE_LONG_NAME,
+            fullName = FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_FORCE_UNSAFE_LONG_NAME,
             optional = true,
             doc = "(Advanced/Use at your own risk) Use in conjunction with allow hg19 contig names with b37.  If you also select this flag, no check that your input reference is b37 is actually performed.  Otherwise, ignored.  Typically, this option is useful in integration tests (written by devs) only."
     )
@@ -387,7 +387,7 @@ public class Funcotator extends VariantWalker {
 
         // Issue a warning if the lenient reference checking is being used without the b37-hg19 checking relaxed
         if (allowHg19ContigNamesWithB37Lenient && !allowHg19ContigNamesWithB37) {
-            logger.warn(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_OVERRIDE_LONG_NAME + " was specified without " +
+            logger.warn(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_FORCE_UNSAFE_LONG_NAME + " was specified without " +
                     FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME +  ".  It will be ignored.");
         }
     }
