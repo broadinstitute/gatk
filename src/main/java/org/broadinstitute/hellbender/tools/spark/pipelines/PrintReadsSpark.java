@@ -30,10 +30,6 @@ public final class PrintReadsSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
-        if (getHeaderForReads().getSortOrder() != SAMFileHeader.SortOrder.coordinate){
-            //https://github.com/broadinstitute/hellbender/issues/929
-            throw new UserException("PrintReadsSpark: Only coordinate-sorted files are currently supported");
-        }
 
         final JavaRDD<GATKRead> reads = getReads();
         writeReads(ctx, output, reads);
