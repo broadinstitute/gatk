@@ -136,7 +136,7 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
         }
         System.out.println("first and second: " + firstDupesCount + "," + secondDupesCount);
 
-        final Broadcast<Map<String, Byte>> libraryIndex = JavaSparkContext.fromSparkContext(firstReads.context()).broadcast(MarkDuplicatesSparkUtils.constructLibraryIndex(getHeaderForReads()));
+        Broadcast<Map<String, Byte>> libraryIndex = ctx.broadcast(MarkDuplicatesSparkUtils.constructLibraryIndex(getHeaderForReads()));
 
         Broadcast<SAMFileHeader> bHeader = ctx.broadcast(getHeaderForReads());
         // Group the reads of each BAM by MarkDuplicates key, then pair up the the reads for each BAM.
@@ -235,10 +235,7 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
 
     static JavaRDD<GATKRead> filteredReads(JavaRDD<GATKRead> initialReads, String fileName) {
         // We only need to compare duplicates that are "primary" (i.g., primary mapped read).
-        return initialReads.map((Function<GATKRead, GATKRead>) v1 -> {
-            v1.clearAttributes();
-            return v1;
-        }).filter(v1 -> {
+        return initialReads.filter(v1 -> {
             if (ReadUtils.isNonPrimary(v1) && v1.isDuplicate()) {
                 throw new GATKException("found a non-primary read marked as a duplicate in the bam: "
                         + fileName);
