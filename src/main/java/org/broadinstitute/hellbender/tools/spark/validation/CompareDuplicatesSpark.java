@@ -144,7 +144,7 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
         }
         System.out.println("first and second: " + firstDupesCount + "," + secondDupesCount);
 
-        final Broadcast<Map<String, Byte>> libraryIndex = JavaSparkContext.fromSparkContext(firstReads.context()).broadcast(MarkDuplicatesSparkUtils.constructLibraryIndex(getHeaderForReads()));
+        Broadcast<Map<String, Byte>> libraryIndex = ctx.broadcast(MarkDuplicatesSparkUtils.constructLibraryIndex(getHeaderForReads()));
 
         Broadcast<SAMFileHeader> bHeader = ctx.broadcast(getHeaderForReads());
         // Group the reads of each BAM by MarkDuplicates key, then pair up the the reads for each BAM.

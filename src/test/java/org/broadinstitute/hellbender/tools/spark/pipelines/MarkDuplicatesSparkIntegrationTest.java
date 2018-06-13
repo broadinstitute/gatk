@@ -189,7 +189,9 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
     @Test
     public void testHashCollisionHandling() {
-        File output = createTempFile("supplementaryReadUnmappedMate", "bam");
+        // This test asserts that the handling of two read pairs with the same start positions but on different in such a way
+        // that they might cause hash collisions are handled properly.
+        final File output = createTempFile("supplementaryReadUnmappedMate", "bam");
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addOutput(output);
         args.addInput(getTestFile("hashCollisionedReads.bam"));

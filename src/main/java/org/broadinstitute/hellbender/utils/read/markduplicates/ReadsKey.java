@@ -16,32 +16,6 @@ import java.util.Objects;
 public class ReadsKey {
 
     /**
-     * Makes a hash key for the fragment.
-     */
-    public static int hashKeyForFragment(int strandedUnclippedStart, boolean reverseStrand, int referenceIndex, String library) {
-
-        int key = library != null ? library.hashCode() : 1;
-        key = key * 31 + referenceIndex;
-        key = key * 31 + strandedUnclippedStart;
-        return key * 31 + (reverseStrand ? 0 : 1);
-    }
-//
-//    /**
-//     * Makes a hash key for the paired reads.
-//     */
-//    public static int hashKeyForPair(final SAMFileHeader header, final GATKRead first, final GATKRead second) {
-//        int key = hashKeyForFragment(ReadUtils.getStrandedUnclippedStart(first), first.isReverseStrand(),
-//                                     ReadUtils.getReferenceIndex(first, header), ReadUtils.getLibrary(first, header));
-//        if (second == null) {
-//            return key;
-//        }
-//
-//        key = 31 * key + ReadUtils.getReferenceIndex(second, header);
-//        key = 31 * key + ReadUtils.getStrandedUnclippedStart(second);
-//        return 31 * key + (second.isReverseStrand() ? 0 : 1);
-//    }
-
-    /**
      * Makes a unique key for the read.
      */
     public static String keyForRead(final GATKRead read) {
@@ -71,7 +45,7 @@ public class ReadsKey {
     }
 
     /**
-     *
+     * Key class for representing relevant duplicate marking identifiers into a single long key for fragment data.
      */
     public static class keyForFragment extends ReadsKey {
         final long keyValue;
@@ -87,10 +61,8 @@ public class ReadsKey {
             keyForFragment that = (keyForFragment) o;
             return keyValue == that.keyValue;
         }
-
         @Override
         public int hashCode() {
-
             return Objects.hash(keyValue);
         }
 
@@ -101,7 +73,7 @@ public class ReadsKey {
     }
 
     /**
-     *
+     * Key class for representing relevant duplicate marking identifiers into a two long key values for pair data data.
      */
     public static class keyForPair extends ReadsKey {
         final long fragmentValue;
@@ -120,10 +92,8 @@ public class ReadsKey {
             return fragmentValue == that.fragmentValue &&
                     keyValue == that.keyValue;
         }
-
         @Override
         public int hashCode() {
-
             return Objects.hash(fragmentValue, keyValue);
         }
 
@@ -133,7 +103,7 @@ public class ReadsKey {
         }
     }
 
-
+    // Helper methods for generating summary longs
     private static long longKeyForFragment(int strandedUnclippedStart, boolean reverseStrand, int referenceIndex, byte library) {
         return (((long)strandedUnclippedStart) << 32) |
                         (referenceIndex << 16) |
