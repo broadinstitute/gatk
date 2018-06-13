@@ -2081,12 +2081,13 @@ public final class FuncotatorUtils {
     /**
      * Create funcotations (one for each alt allele) corresponding to the given variant context.
      *
-     * Assumes that the fields in the variant context are named exactly the same as what is in the metadata.
+     * Assumes that the fields in the variant context are named exactly the same as what is in the metadata.  Additionally, the
+     * metadata must include all variant attributes.
      *
-     * @param vc Never {@code null}
-     * @param metadata Never {@code null}
+     * @param vc The variant context to derive funcotations.  Never {@code null}
+     * @param metadata Existing metadata that matches the variant context info field attributes exactly.  Never {@code null}
      * @param datasourceName Name to use as the datasource in the funcotations.  Never {@code null}
-     * @return Never empty, unless the metadata has no fields.  Never {@code null}
+     * @return A list of funcotations based on the variant context (INFO) attributes.  Never empty, unless the metadata has no fields.  Never {@code null}
      */
     public static List<Funcotation> createFuncotations(final VariantContext vc, final FuncotationMetadata metadata, final String datasourceName) {
 

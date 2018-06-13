@@ -115,7 +115,7 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
     @VisibleForTesting
     List<VCFInfoHeaderLine> createFuncotationVcfInfoHeaderLines(final VCFHeader vcfHeader) {
         final List<VCFInfoHeaderLine> supportedVcfInfoHeaderLines = vcfHeader.getInfoHeaderLines().stream()
-                .filter(vcfInfoHeaderLine -> supportedFieldNames.contains(determineFinalFieldName(name, vcfInfoHeaderLine.getID())))
+                .filter(vcfInfoHeaderLine -> supportedFieldNames.contains(createFinalFieldName(name, vcfInfoHeaderLine.getID())))
                 .collect(Collectors.toList());
 
         // Make sure to rename the input VCF field names to the output funcotation field names for this funcotation factory.
@@ -126,10 +126,10 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
 
     private static VCFInfoHeaderLine copyWithRename(final VCFInfoHeaderLine vcfInfoHeaderLine, final String name) {
         if (vcfInfoHeaderLine.getCountType() == VCFHeaderLineCount.INTEGER) {
-            return new VCFInfoHeaderLine(determineFinalFieldName(name, vcfInfoHeaderLine.getID()),
+            return new VCFInfoHeaderLine(createFinalFieldName(name, vcfInfoHeaderLine.getID()),
                     vcfInfoHeaderLine.getCount(), vcfInfoHeaderLine.getType(), vcfInfoHeaderLine.getDescription());
         } else {
-            return new VCFInfoHeaderLine(determineFinalFieldName(name, vcfInfoHeaderLine.getID()),
+            return new VCFInfoHeaderLine(createFinalFieldName(name, vcfInfoHeaderLine.getID()),
                     vcfInfoHeaderLine.getCountType(), vcfInfoHeaderLine.getType(), vcfInfoHeaderLine.getDescription());
         }
     }
@@ -212,7 +212,7 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
                                     valueString = entry.getValue().toString();
                                 }
 
-                                annotations.put(determineFinalFieldName(name, entry.getKey()), valueString);
+                                annotations.put(createFinalFieldName(name, entry.getKey()), valueString);
                             }
 
                             // Add our funcotation to the funcotation list:
@@ -287,17 +287,17 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
         // Add our sorted names to the supported list:
         for ( final String key : infoLineKeys ) {
             if ( infoFieldFlagMap.get(key) ) {
-                supportedFieldNamesAndDefaults.put(determineFinalFieldName(name, key), "false" );
+                supportedFieldNamesAndDefaults.put(createFinalFieldName(name, key), "false" );
             }
             else {
-                supportedFieldNamesAndDefaults.put(determineFinalFieldName(name, key), "" );
+                supportedFieldNamesAndDefaults.put(createFinalFieldName(name, key), "" );
             }
-            supportedFieldNames.add(determineFinalFieldName(name, key));
+            supportedFieldNames.add(createFinalFieldName(name, key));
         }
     }
 
     @VisibleForTesting
-    static String determineFinalFieldName(final String funcotationFactoryName, final String fieldName) {
+    static String createFinalFieldName(final String funcotationFactoryName, final String fieldName) {
         return funcotationFactoryName + "_" + fieldName;
     }
 

@@ -257,7 +257,7 @@ public class Funcotator extends VariantWalker {
     @Argument(
             fullName  = FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME,
             optional = true,
-            doc = "Method of detailed transcript selection.  This will select the transcript for detailed annotation (CANONICAL or BEST_EFFECT)."
+            doc = "Method of detailed transcript selection.  This will select the transcript for detailed annotation (CANONICAL, ALL, or BEST_EFFECT)."
     )
     private TranscriptSelectionMode transcriptSelectionMode = FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE;
 

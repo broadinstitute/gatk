@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * A concrete class for {@link FuncotationMetadata} that can be easily built from a VCF Header.
+ */
 public class VcfFuncotationMetadata implements FuncotationMetadata {
 
     private LinkedHashMap<String, VCFInfoHeaderLine> fieldNameToHeaderLineMap;
@@ -19,7 +22,7 @@ public class VcfFuncotationMetadata implements FuncotationMetadata {
 
     /**
      * @param vcfInfoHeaderLines Never {@code null}
-     * @return Never {@code null}
+     * @return Metadata corresponding to VCF info fields.  Never {@code null}
      */
     public static VcfFuncotationMetadata create(final List<VCFInfoHeaderLine> vcfInfoHeaderLines) {
         Utils.nonNull(vcfInfoHeaderLines);

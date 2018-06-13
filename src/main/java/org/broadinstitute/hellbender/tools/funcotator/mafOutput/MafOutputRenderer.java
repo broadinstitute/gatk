@@ -241,7 +241,6 @@ public class MafOutputRenderer extends OutputRenderer {
                     }
                 }
 
-
                 // Now add in our annotation overrides so they can be aliased correctly with the outputFieldNameMap:
                 extraFieldOutputMap.putAll(overrideAnnotations);
 
@@ -521,13 +520,6 @@ public class MafOutputRenderer extends OutputRenderer {
 
         // Make sure we keep track of the fact that we've now written the header:
         hasWrittenHeader = true;
-    }
-
-    /**
-     * @return Immutable copy of the output field map used by this MafOutputRenderer.
-     */
-    public ImmutableMap<String, List<String>> getOutputFieldNameMap() {
-        return ImmutableMap.copyOf(outputFieldNameMap);
     }
 
     /** No field ordering is preserved in the output of this method.

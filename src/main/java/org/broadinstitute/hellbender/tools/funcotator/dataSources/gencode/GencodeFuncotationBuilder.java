@@ -31,7 +31,7 @@ public class GencodeFuncotationBuilder {
     }
 
     public GencodeFuncotation build() {
-        // TODO: File an issue to give mechanism for populating the metadata  (https://github.com/broadinstitute/gatk/issues/4857)
+        // TODO: In the future, we will need a mechanism for populating the metadata  (https://github.com/broadinstitute/gatk/issues/4857)
         gencodeFuncotation.setMetadata(FuncotationMetadataUtils.createWithUnknownAttributes(new ArrayList<>(gencodeFuncotation.getFieldNames())));
         return gencodeFuncotation;
     }

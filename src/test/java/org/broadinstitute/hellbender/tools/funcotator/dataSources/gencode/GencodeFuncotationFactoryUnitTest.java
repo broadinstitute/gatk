@@ -1370,15 +1370,15 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                     errorMessageStringBuilder.toString() + "\n"
             );
 
-            Assert.assertNotNull(funcotation.getMetadata());
-            Assert.assertTrue(funcotation.getMetadata().retrieveAllHeaderInfo().size() > 0);
-            Assert.assertEquals(funcotation.getMetadata().retrieveAllHeaderInfo().size(), funcotation.getFieldNames().size());
+            Assert.assertNotNull(funcotation.getMetadata(), "Metadata was null.");
+            Assert.assertTrue(funcotation.getMetadata().retrieveAllHeaderInfo().size() > 0, "Metadata was empty.");
 
             final Set<String> metaDataFields =  funcotation.getMetadata().retrieveAllHeaderInfo().stream()
                     .map(f -> f.getID()).collect(Collectors.toSet());
+            final Set<String> symmetricDifference = Sets.symmetricDifference(metaDataFields, funcotation.getFieldNames());
 
-            final Set<String> intersection = Sets.intersection(metaDataFields, funcotation.getFieldNames());
-            Assert.assertEquals(intersection.size(), funcotation.getFieldNames().size());
+            Assert.assertEquals(symmetricDifference.size(), 0, "Metadata fields did not match exactly the funcotation field names: " +
+                symmetricDifference.stream().collect(Collectors.joining(", ")));
         }
     }
 
