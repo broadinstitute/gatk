@@ -143,7 +143,7 @@ public class ReadsKeyUnitTest extends GATKBaseTest {
                         createTestRead("name2", "1", 1200, "100M", library2.getReadGroupId(), true),},
 
                 // Test of two equivalent groups, but one was softclipped to a different start
-                {header, createTestRead("name1", "1", 1010, "10s90M", library1.getReadGroupId(), false),
+                {header, createTestRead("name1", "1", 1010, "10S90M", library1.getReadGroupId(), false),
                         createTestRead("name1", "1", 1200, "100M", library1.getReadGroupId(), true),
                         true,
                         createTestRead("name2", "1", 1000, "100M", library1.getReadGroupId(), false),
