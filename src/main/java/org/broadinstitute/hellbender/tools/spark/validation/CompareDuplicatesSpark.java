@@ -7,18 +7,18 @@ import htsjdk.samtools.SAMFileHeader;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.Function;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
@@ -109,7 +109,18 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
     protected String output2;
 
     @Override
+    public List<ReadFilter> getDefaultReadFilters() {
+        return Collections.singletonList(ReadFilterLibrary.ALLOW_ALL_READS);
+    }
+
+    @Override
     protected void runTool(final JavaSparkContext ctx) {
+        if (hasOutputSpecified()) {
+            // Checking the they are both specified given that at least one was
+            if (output == null | output2 == null) {
+                throw new IllegalArgumentException("Arguments '--output' and '--output2' must both be specified together in order to write mismatch bams or not at all");
+            }
+        }
 
         JavaRDD<GATKRead> firstReads = getReads();
 
@@ -171,7 +182,7 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
             return out.iterator();
         });
 
-        if (output!=null && output2!=null) {
+        if (hasOutputSpecified()) {
 
             JavaRDD<Tuple2<Iterable<GATKRead>, Iterable<GATKRead>>> unequalGroups = subsettedByStart.filter(v1 -> {
                 SAMFileHeader header = bHeader.getValue();
@@ -240,6 +251,10 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
                 }
             }
         }
+    }
+
+    private boolean hasOutputSpecified() {
+        return output != null || output2 != null;
     }
 
     private static Map<Integer, List<GATKRead>> splitByStart(Iterable<GATKRead> duplicateGroup) {
