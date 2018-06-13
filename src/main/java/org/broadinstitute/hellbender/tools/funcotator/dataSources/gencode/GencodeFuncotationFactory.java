@@ -309,7 +309,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     private void populateOtherTranscriptsMapForFuncotation(final List<GencodeFuncotation> gencodeFuncotations) {
         // First create a map that goes from each given funcotation to its condensed version.
         final Map<GencodeFuncotation, String> funcotationToCondensedString = gencodeFuncotations.stream()
-                .collect(Collectors.toMap(Function.identity(), f -> condenseGencodeFuncotation(f), (x,y) -> y, LinkedHashMap::new));
+                .collect(Collectors.toMap(Function.identity(), GencodeFuncotationFactory::condenseGencodeFuncotation, (x,y) -> y, LinkedHashMap::new));
 
         for (final GencodeFuncotation g: gencodeFuncotations) {
             final List<String> otherTranscriptStrings = funcotationToCondensedString.keySet().stream()
@@ -623,6 +623,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                                                     final ReferenceContext reference,
                                                                     final GencodeGtfTranscriptFeature transcript) {
         final GencodeFuncotation gencodeFuncotation;
+
+        // If the alt allele is a spanning deletion, create an unknown funcotation
+        if (altAllele.equals(Allele.SPAN_DEL)) {
+            return createFuncotationForSpanningDeletion(variant, transcript.getTranscriptId(), reference);
+        }
 
         // TODO: check for complex INDEL and warn and skip.
 
@@ -1876,15 +1881,68 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
+     * Creates a {@link GencodeFuncotation}s based on a given spanning deletion {@link Allele}.
+     *
+     * Reports reference bases as if they are on the {@link Strand#POSITIVE} strand.
+     * @param variant The {@link VariantContext} associated with this annotation.
+     * @param annotationTranscript The transcript ID to use for populating this funcotation.
+     * @param reference The {@link ReferenceContext} in which the given {@link Allele}s appear.
+     * @return An IGR funcotation for the given allele.
+     */
+    private GencodeFuncotation createFuncotationForSpanningDeletion(final VariantContext variant,
+                                                                    final String annotationTranscript,
+                                                    final ReferenceContext reference){
+
+        final GencodeFuncotationBuilder funcotationBuilder = new GencodeFuncotationBuilder();
+
+        // Get GC Content:
+        funcotationBuilder.setGcContent( calculateGcContent( variant.getReference(), Allele.SPAN_DEL, reference, gcContentWindowSizeBases ) );
+
+        funcotationBuilder.setVariantClassification( GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE )
+                .setRefAllele( variant.getReference() )
+                .setStrand(Strand.POSITIVE)
+                .setTumorSeqAllele2( Allele.SPAN_DEL_STRING )
+                .setStart(variant.getStart())
+                .setEnd(variant.getEnd())
+                .setVariantType(getVariantType(variant.getReference(), Allele.SPAN_DEL))
+                .setChromosome(variant.getContig())
+                .setAnnotationTranscript(annotationTranscript);
+
+        // If we have a cached value for the ncbiBuildVersion, we should add it:
+        // NOTE: This will only be true if we have previously annotated a non-IGR variant.
+        // TODO: This is issue #4404
+        if ( ncbiBuildVersion != null ) {
+            funcotationBuilder.setNcbiBuild( ncbiBuildVersion );
+        }
+
+        final String referenceBases = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(variant.getReference(), Allele.SPAN_DEL, Strand.POSITIVE, referenceWindow, reference);
+
+        // Set our reference context in the the FuncotatonBuilder:
+        funcotationBuilder.setReferenceContext( referenceBases );
+
+        // Set our version:
+        funcotationBuilder.setVersion(version);
+
+        // Set our data source name:
+        funcotationBuilder.setDataSourceName(getName());
+
+        return funcotationBuilder.build();
+    }
+
+    /**
      * Determines the variant type based on the given reference allele and alternate allele.
      * @param refAllele The reference {@link Allele} for this variant.
      * @param altAllele The alternate {@link Allele} for this variant.
      * @return A {@link GencodeFuncotation.VariantType} representing the variation type between the given reference and alternate {@link Allele}.
+     * Spanning deletions and no calls will get a type of {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantType.NA}
      */
     private static GencodeFuncotation.VariantType getVariantType( final Allele refAllele, final Allele altAllele ) {
 
         if ( altAllele.length() > refAllele.length() ) {
             return GencodeFuncotation.VariantType.INS;
+        }
+        else if (altAllele.equals(Allele.SPAN_DEL) || altAllele.equals(Allele.NO_CALL)) {
+            return GencodeFuncotation.VariantType.NA;
         }
         else if (altAllele.length() < refAllele.length()) {
             return GencodeFuncotation.VariantType.DEL;
