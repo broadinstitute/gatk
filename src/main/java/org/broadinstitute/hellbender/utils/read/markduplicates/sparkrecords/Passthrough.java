@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords;
 
-import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
 
@@ -14,8 +13,8 @@ public final class Passthrough extends MarkDuplicatesSparkRecord {
     Passthrough(GATKRead read, int partitionIndex) {
         super(partitionIndex, read.getName());
 
-        // use a
-        this.key = ReadsKey.hashKeyForRead(read);
+        // use a hash key here instead of a normal key because collisions don't matter here
+        this.key = ReadsKey.hashKeyForPassthroughRead(read);
     }
 
     @Override

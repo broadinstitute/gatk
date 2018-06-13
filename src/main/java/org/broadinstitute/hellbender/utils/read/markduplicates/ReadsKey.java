@@ -13,7 +13,7 @@ import java.util.Objects;
  * This class was changed to primarily operate on key hashing instead of generating long string keys as it was discovered
  * that it had performance implications for serialization in MarkDuplicatesSpark. 
  */
-public class ReadsKey {
+public abstract class ReadsKey {
 
     /**
      * Makes a unique key for the read.
@@ -25,16 +25,16 @@ public class ReadsKey {
     /**
      * Makes a hash key for the read.
      */
-    public static ReadsKey hashKeyForRead(final GATKRead read) {
-        return new keyForFragment(read.getName().hashCode()) ;
+    public static ReadsKey hashKeyForPassthroughRead(final GATKRead read) {
+        return new KeyForFragment(read.getName().hashCode()) ;
     }
 
     public static ReadsKey getKeyForFragment(int strandedUnclippedStart, boolean reverseStrand, int referenceIndex, byte library) {
-        return new keyForFragment(longKeyForFragment(strandedUnclippedStart, reverseStrand, referenceIndex, library));
+        return new KeyForFragment(longKeyForFragment(strandedUnclippedStart, reverseStrand, referenceIndex, library));
     }
 
     public static ReadsKey getKeyForPair(final SAMFileHeader header, final GATKRead first, final GATKRead second, final Map<String, Byte> libraryKeyMap) {
-        return new keyForPair(longKeyForFragment(ReadUtils.getStrandedUnclippedStart(first),
+        return new KeyForPair(longKeyForFragment(ReadUtils.getStrandedUnclippedStart(first),
                                 first.isReverseStrand(),
                                 ReadUtils.getReferenceIndex(first, header),
                                 libraryKeyMap.get(ReadUtils.getLibrary(first, header, LibraryIdGenerator.UNKNOWN_LIBRARY))),
@@ -46,11 +46,14 @@ public class ReadsKey {
 
     /**
      * Key class for representing relevant duplicate marking identifiers into a single long key for fragment data.
+     *
+     * Note: This class is intended for internal MarkDuplicatesSpark key purposes, it is only exposed so it can
+     *       be accessed by {@link org.broadinstitute.hellbender.engine.spark.GATKRegistrator} for kryo serialization
      */
-    public static class keyForFragment extends ReadsKey {
+    public static class KeyForFragment extends ReadsKey {
         final long keyValue;
 
-        keyForFragment(final long key) {
+        KeyForFragment(final long key) {
             this.keyValue = key;
         }
 
@@ -58,7 +61,7 @@ public class ReadsKey {
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
-            keyForFragment that = (keyForFragment) o;
+            KeyForFragment that = (KeyForFragment) o;
             return keyValue == that.keyValue;
         }
         @Override
@@ -74,45 +77,50 @@ public class ReadsKey {
 
     /**
      * Key class for representing relevant duplicate marking identifiers into a two long key values for pair data data.
+     *
+     * Note: This class is intended for internal MarkDuplicatesSpark key purposes, it is only exposed so it can
+     *       be accessed by {@link org.broadinstitute.hellbender.engine.spark.GATKRegistrator} for kryo serialization
      */
-    public static class keyForPair extends ReadsKey {
-        final long fragmentValue;
-        final long keyValue;
+    public static class KeyForPair extends ReadsKey {
+        final long firstReadKeyValue;
+        final long secondReadKeyValue;
 
-        keyForPair(final long fragmentValue, final long pairValue) {
-            this.fragmentValue = fragmentValue;
-            this.keyValue = pairValue;
+        KeyForPair(final long firstReadKeyValue, final long secondReadKeyValue) {
+            this.firstReadKeyValue = firstReadKeyValue;
+            this.secondReadKeyValue = secondReadKeyValue;
         }
 
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
-            keyForPair that = (keyForPair) o;
-            return fragmentValue == that.fragmentValue &&
-                    keyValue == that.keyValue;
+            KeyForPair that = (KeyForPair) o;
+            return firstReadKeyValue == that.firstReadKeyValue &&
+                    secondReadKeyValue == that.secondReadKeyValue;
         }
+
         @Override
         public int hashCode() {
-            return Objects.hash(fragmentValue, keyValue);
+            return Objects.hash(firstReadKeyValue, secondReadKeyValue);
         }
 
         @Override
         public String toString() {
-            return fragmentValue + " " + keyValue;
+            return firstReadKeyValue + " " + secondReadKeyValue;
         }
     }
 
     // Helper methods for generating summary longs
     private static long longKeyForFragment(int strandedUnclippedStart, boolean reverseStrand, int referenceIndex, byte library) {
         return (((long)strandedUnclippedStart) << 32) |
-                        (referenceIndex << 16) |
-                        (library << 8) |
+                        (referenceIndex << 16 & (0xFFFF0000)) |
+                        ((library << 8) & (0x0000FF00)) |
                         (reverseStrand ? 1 : 0);
     }
+
     private static long longKeyForPair(int strandedUnclippedStart, boolean reverseStrand, int referenceIndex) {
         return (((long)strandedUnclippedStart) << 32) |
-                (referenceIndex << 16) |
+                ((referenceIndex << 16) & (0xFFFF0000)) |
                 (reverseStrand ? 1 : 0);
     }
 }

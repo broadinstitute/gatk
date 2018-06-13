@@ -91,7 +91,7 @@ public class GATKRegistrator implements KryoRegistrator {
         kryo.register(Passthrough.class, new FieldSerializer(kryo, Passthrough.class));
         kryo.register(MarkDuplicatesSparkUtils.IndexPair.class, new FieldSerializer(kryo, MarkDuplicatesSparkUtils.IndexPair.class));
         kryo.register(ReadsKey.class, new FieldSerializer(kryo, ReadsKey.class));
-        kryo.register(ReadsKey.keyForFragment.class, new FieldSerializer(kryo, ReadsKey.keyForFragment.class));
-        kryo.register(ReadsKey.keyForPair.class, new FieldSerializer(kryo, ReadsKey.keyForPair.class));
+        kryo.register(ReadsKey.KeyForFragment.class, new FieldSerializer(kryo, ReadsKey.KeyForFragment.class));
+        kryo.register(ReadsKey.KeyForPair.class, new FieldSerializer(kryo, ReadsKey.KeyForPair.class));
     }
 }
