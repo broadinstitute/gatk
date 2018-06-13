@@ -178,11 +178,12 @@ public class MarkDuplicatesSparkUtils {
      */
     public static Map<String, Byte> constructLibraryIndex(final SAMFileHeader header) {
         final List<String> discoveredLibraries = header.getReadGroups().stream()
-                .map(r -> {String library = r.getLibrary(); return library==null? LibraryIdGenerator.UNKNOWN_LIBRARY : library;} )
+                .map(r -> { String library = r.getLibrary();
+                            return library==null? LibraryIdGenerator.UNKNOWN_LIBRARY : library;} )
                 .distinct()
                 .collect(Collectors.toList());
         if (discoveredLibraries.size() > 255) {
-            throw new GATKException("Detected too many read libraries among read groups header, currently MarkDuplciatesSpark only supports up to 256 unique readgroup libraries");
+            throw new GATKException("Detected too many read libraries among read groups header, currently MarkDuplciatesSpark only supports up to 256 unique readgroup libraries but " + discoveredLibraries.size() + " were found");
         }
         final Iterator<Byte> iterator = IntStream.range(0, discoveredLibraries.size()).boxed().map(Integer::byteValue).iterator();
         return Maps.uniqueIndex(iterator, idx -> discoveredLibraries.get(idx));
@@ -193,8 +194,8 @@ public class MarkDuplicatesSparkUtils {
      */
     private static Map<String, Short> getHeaderReadGroupIndexMap(final SAMFileHeader header) {
         final List<SAMReadGroupRecord> readGroups = header.getReadGroups();
-        if (readGroups.size() > ((int)Short.MAX_VALUE)*2) {
-            throw new GATKException("Detected too many read groups in the header, currently MarkDuplciatesSpark only supports up to 65536 unique readgroup IDs");
+        if (readGroups.size() > 65535) {
+            throw new GATKException("Detected too many read groups in the header, currently MarkDuplciatesSpark only supports up to 65535 unique readgroup IDs but " + readGroups.size() + " were found");
         }
         final Iterator<Short> iterator = IntStream.range(0, readGroups.size()).boxed().map(Integer::shortValue).iterator();
         return Maps.uniqueIndex(iterator, idx -> readGroups.get(idx).getId() );
