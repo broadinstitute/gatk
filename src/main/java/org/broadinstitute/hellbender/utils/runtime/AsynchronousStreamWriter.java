@@ -17,8 +17,8 @@ import java.util.function.Function;
  * is typically used to write items to a buffered stream that might block until the stream is consumed by a reader.
  * @param <T> Type of items to be written.
  */
-public class AsynchronousStreamWriterService<T> {
-    private static final Logger logger = LogManager.getLogger(AsynchronousStreamWriterService.class);
+public class AsynchronousStreamWriter<T> {
+    private static final Logger logger = LogManager.getLogger(AsynchronousStreamWriter.class);
 
     final ExecutorService executorService;
     final OutputStream streamWriter;
@@ -30,7 +30,7 @@ public class AsynchronousStreamWriterService<T> {
      * @param streamWriter target stream to which items should be written
      * @param itemSerializer function that converts an item of type {@code T} to a {@code ByteArrayOutputStream} for serialization
      */
-    public AsynchronousStreamWriterService(
+    public AsynchronousStreamWriter(
             final ExecutorService executorService,
             final OutputStream streamWriter,
             final Function<T, ByteArrayOutputStream> itemSerializer)
@@ -51,7 +51,7 @@ public class AsynchronousStreamWriterService<T> {
      *
      * @param batchList a list of items to be written
      */
-    public void startAsynchronousBatchWrite(final List<T> batchList) {
+    public void startBatchWrite(final List<T> batchList) {
         Utils.nonNull(batchList);
         Utils.nonEmpty(batchList);
 
@@ -66,7 +66,7 @@ public class AsynchronousStreamWriterService<T> {
                     T element = batchList.get(i);
                     itemSerializer.apply(element).writeTo(streamWriter);
                 }
-                // this can block, waiting for the stream to be consumed if its buffered
+                // this can block, waiting for the stream to be consumed
                 streamWriter.flush();
                 return batchSize; // return the number of items this batch was asked to write
             } catch (IOException e) {
@@ -76,28 +76,24 @@ public class AsynchronousStreamWriterService<T> {
     }
 
     /**
-     * Waits for a batch that was previously initiated via {@link #startAsynchronousBatchWrite(List)}}
+     * Waits for a batch that was previously initiated via {@link #startBatchWrite(List)}}
      * to complete, flushes the target stream and returns the corresponding completed Future. The Future representing
      * a given batch can only be obtained via this method once. If no work is outstanding, and/or the previous batch
      * has already been retrieved, null is returned.
-     * @param timeout maximum time to wait for a response
-     * @param timeoutUnit units of {@code timeout}
      * @return returns null if no previous work to complete, otherwise a completed Future
      */
-    public Future<Integer> waitForPreviousBatchCompletion(long timeout, TimeUnit timeoutUnit) {
+    public Future<Integer> waitForPreviousBatchCompletion() {
         final Future<Integer> lastCompleteBatch = previousBatch;
-        if (previousBatch != null) {
+         if (previousBatch != null) {
             try {
                 try {
-                    previousBatch.get(timeout, timeoutUnit);
+                    previousBatch.get();
                 } catch (ExecutionException | InterruptedException e) {
-                    throw new GATKException("Interrupted during background stream write");
-                } catch (TimeoutException e) {
-                    throw new GATKException("Timeout waiting for background stream write to complete");
+                    throw new GATKException("Interrupted during background stream write", e);
                 }
                 streamWriter.flush();
             } catch (IOException e) {
-                throw new GATKException("IOException waiting for asynchrouns batch completion", e);
+                throw new GATKException("IOException waiting for asynchronous batch completion", e);
             }
             previousBatch = null;
         }
@@ -119,7 +115,7 @@ public class AsynchronousStreamWriterService<T> {
     }
 
     /**
-     * Convenience function that can be provided to an {@code AsynchronousStreamWriterService} to serialize String objects.
+     * Convenience function that can be provided to an {@code AsynchronousStreamWriter} to serialize String objects.
      */
     public static Function<String, ByteArrayOutputStream> stringSerializer =
             (String item) -> {

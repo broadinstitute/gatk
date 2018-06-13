@@ -3,55 +3,45 @@ package org.broadinstitute.hellbender.utils.python;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.runtime.*;
-import org.broadinstitute.hellbender.exceptions.UserException;
+import org.testng.Assert;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.OutputStream;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.Future;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Python executor used to interact with a keep-alive Python process. The lifecycle of an executor is typically:
+ * Python executor used to interact with a cooperative, keep-alive Python process. The executor issues commands
+ * to call Python functions in the {@code tool} module in {@code gatktool} Python package. These include functions
+ * for managing an acknowledgement FIFO that is used to signal completion of Python commands, and a data FIFO that
+ * can be used to stream data to Python.
  *
  *  - construct the executor
- *  - start the remote process ({@link #start}) and synchronize on the prompt ({@link #getAccumulatedOutput()}
- *  - create a fifo {@link #getFIFOForWrite}
- *  - execute asynchronous Python code {@link #sendAsynchronousCommand} to open the fifo for reading
- *  - execute local java code to open the fifo for writing
- *  - synchronize on the prompt resulting from the python code opening the fifo {@link #getAccumulatedOutput}
- *  - send/receive input one or more times (write/flush to the fifo)/synchronize on the prompt ({@link #getAccumulatedOutput) output
- *  - close the fifo locally
+ *  - start the remote process ({@link #start}.
+ *  - optionally call {@code #getStreamWriter} to initialize and create a data transfer fifo.
+ *  - send one or more synchronous or asynchronous commands to be executed in Python
+ *  - optionally send data one or more times of type {@ocde T} through the async writer
+ *  - execute python code to close the data fifo
  *  - terminate the executor {@link #terminate}
  *
  * Guidelines for writing GATK tools that use Python interactively:
  *
- *   - Program correctness should not rely on consumption of anything written by Python to stdout/stderr other than
- *     the use the prompt for synchronization via {@link #getAccumulatedOutput}. All data should be transferred through
- *     a FIFO or file.
- *   - Always synchronize after starting the Python process (through {@link #start}, followed by
- *     {@link #getAccumulatedOutput}).
+ *   - Program correctness should not rely on consumption of anything written by Python to stdout/stderr. All
+ *     data should be transferred through the stream writer or a file.
  *   - Python code should write errors to stderr.
- *   - The FIFO should always be flushed before executing Python code that reads from it. Failure to do so can result
- *     in the Python process being blocked.
  *   - Prefer single line commands that run a script, vs. multi-line Python code embedded in Java
- *   - Always terminated with newlines (otherwise Python will block)
  *   - Terminate commands with a newline.
  *   - Try not to be chatty (maximize use of the fifo buffer by writing to it in batches before reading from Python)
  *
- * NOTE: Python implementations are unreliable about honoring standard I/O stream redirection. Its not safe to
- * try to synchronize based on anything written to standard I/O streams, since Python sometimes prints the
- * prompt to stdout, and sometimes to stderr:
- *
- *  https://bugs.python.org/issue17620
- *  https://bugs.python.org/issue1927
+ * @param <T> type of data that will be streamed to the Python process
  */
-public class StreamingPythonScriptExecutor extends PythonExecutorBase {
+public class StreamingPythonScriptExecutor<T> extends PythonExecutorBase {
     private static final Logger logger = LogManager.getLogger(StreamingPythonScriptExecutor.class);
     private static final String NL = System.lineSeparator();
 
@@ -60,7 +50,22 @@ public class StreamingPythonScriptExecutor extends PythonExecutorBase {
     private StreamingProcessController spController;
     private ProcessSettings processSettings;
 
-    final public static String PYTHON_PROMPT = ">>> ";
+    private File dataTransferFIFOFile;
+    private FileOutputStream dataTransferFIFOWriter;
+    private AsynchronousStreamWriter<T> asyncWriter;
+
+    // Python commands that are executed in the companion python process. The functions called
+    // here live in the {@code tool} module in {@code gatktool} Python package.
+    private final static String PYTHON_IMPORT_GATK = "from gatktool import tool" + NL;
+    private final static String PYTHON_INITIALIZE_GATK = "tool.initializeGATK('%s')" + NL;
+    private final static String PYTHON_TERMINATE_GATK = "tool.terminateGATK()" + NL;
+    private final static String PYTHON_INITIALIZE_DATA_FIFO = "tool.initializeDataFIFO('%s')" + NL;
+    private final static String PYTHON_CLOSE_DATA_FIFO = "tool.closeDataFIFO()" + NL;
+    private final static String PYTHON_SEND_ACK_REQUEST = "tool.sendAck()" + NL;
+
+    // keep track of when an ack request has been made and reject attempts to send another ack
+    // request until the previous one has been handled
+    private boolean isAckRequestOutstanding = false;
 
     /**
      * The start method must be called to actually start the remote executable.
@@ -126,18 +131,26 @@ public class StreamingPythonScriptExecutor extends PythonExecutorBase {
                 stdErrSettings
         );
 
-        spController = new StreamingProcessController(processSettings, PYTHON_PROMPT, enableJournaling);
-        return spController.start();
+        // start the process, initialize the python code, and do the ack fifo handshake
+        spController = new StreamingProcessController(processSettings, enableJournaling);
+        final File ackFIFOFile = spController.start();
+        if (ackFIFOFile == null) {
+            return false;
+        }
+        initializeTool(ackFIFOFile);
+        return true;
     }
 
     /**
-     * Send a command to Python, and wait for a response prompt, returning all accumulated output
+     * Send a command to Python, and wait for an ack, returning all accumulated output
      * since the last call to either <link #sendSynchronousCommand/> or <line #getAccumulatedOutput/>
-     * This is a blocking call, and should be used for commands that execute quickly and synchronously.
-     * If no output is received from the remote process during the timeout period, an exception will be thrown.
+     * This is a blocking call - if no acknowledgment is received from the remote process, it will
+     * block indefinitely. If an exception is raised in the Python code, or a negative acknowledgment
+     * is received, an PythonScriptExecutorException will be thrown.
      *
-     * The caller is required to terminate commands with a newline. The executor doesn't do this
-     * automatically since doing so would alter the number of prompts issued by the remote process.
+     * The caller is required to terminate commands with the correct number of newline(s) as appropriate for
+     * the command being issued. Since white space is significant in Python, failure to do so properly can
+     * leave the Python parser blocked waiting for more newlines to terminate indented code blocks.
      *
      * @param line data to be sent to the remote process
      * @return ProcessOutput
@@ -150,7 +163,8 @@ public class StreamingPythonScriptExecutor extends PythonExecutorBase {
                             "Indented Python code blocks must be terminated with additional newlines");
         }
         spController.writeProcessInput(line);
-        return getAccumulatedOutput();
+        sendAckRequest();
+        return waitForAck();
     }
 
     /**
@@ -160,9 +174,9 @@ public class StreamingPythonScriptExecutor extends PythonExecutorBase {
      * NOTE: Before executing further synchronous statements after calling this method, getAccumulatedOutput
      * should be called to enforce a synchronization point.
      *
-     * The caller is required to terminate commands with a newline. The executor doesn't do this
-     * automatically since it can alter the number of prompts, and thus synchronization points, issued
-     * by the remote process.
+     * The caller is required to terminate commands with the correct number of newline(s) as appropriate for
+     * the command being issued. Since white space is significant in Python, failure to do so properly can
+     * leave the Python parser blocked waiting for more newlines to terminate indented code blocks.
      *
      * @param line data to send to the remote process
      */
@@ -171,94 +185,32 @@ public class StreamingPythonScriptExecutor extends PythonExecutorBase {
             throw new IllegalArgumentException("Python commands must be newline-terminated");
         }
         spController.writeProcessInput(line);
+        sendAckRequest(); // but don't wait for it..the caller should subsequently call waitForAck
     }
 
     /**
-     * See if any output is currently available. This is non-blocking, and can be used to determine if a blocking
-     * call can be made; it is always safe to call getAccumulatedOutput if isOutputAvailable is true.
-     * @return true if data is available from the remote process.
+     * Wait for an acknowledgement (which must have been previously requested).
+     * @return true if a positive acknowledgement (ack) is received, false if negative (nck)
      */
-    public boolean isOutputAvailable() {
-        return spController.isOutputAvailable();
-    }
-
-    /**
-     * Return all data accumulated since the last call to {@link #getAccumulatedOutput} (either directly, or
-     * indirectly through {@link #sendSynchronousCommand}, collected until an output prompt is detected.
-     *
-     * Note that the output returned is somewhat non-deterministic, in that the only guaranty is that a prompt
-     * was detected on either stdout or stderr. It is possible for the remote process to produce the prompt on
-     * one stream (stderr or stdout), and additional output on the other; this method may detect the prompt before
-     * detecting the additional output on the other stream. Such output will be retained, and returned as part of
-     * the payload the next time output is retrieved.
-     *
-     * For this reason, program correctness should not rely on consuming data written by Python to standard streams.
-     *
-     * This should only be used for short, synchronous commands that produce output quickly. If no data has been
-     * sent from the process, this call blocks waiting for data, or the timeout (default 5 seconds) to be reached.
-     *
-     * Longer-running, blocking commands can be executed using {@link #sendAsynchronousCommand}, in combination
-     * with {@link #isOutputAvailable}.
-     *
-     * @return ProcessOutput containing all accumulated output from stdout/stderr
-     * @throws UserException if a timeout occurs waiting for output
-     * @throws PythonScriptExecutorException if a traceback is detected in the output
-     */
-    public ProcessOutput getAccumulatedOutput() {
-        try {
-            final ProcessOutput po = spController.getProcessOutputByPrompt();
-            final StreamOutput stdErr = po.getStderr();
-            if (stdErr != null) {
-                final String stdErrText = stdErr.getBufferString();
-                if (stdErrText != null && stdErrText.contains("Traceback")) {
-                    throw new PythonScriptExecutorException("Traceback detected: " + stdErrText);
-                }
-            }
-            return po;
-        } catch (TimeoutException e) {
-            throw new UserException("A timeout ocurred waiting for output from the remote Python command.", e);
+    public ProcessOutput waitForAck() {
+        if (!isAckRequestOutstanding) {
+            throw new GATKException("No ack request is outstanding. An ack request must be issued first");
         }
+        final boolean isAck = spController.waitForAck();
+        isAckRequestOutstanding = false;
+        // At every ack receipt, we want to retrieve the stdout/stderr output in case we're journaling
+        final ProcessOutput po = getAccumulatedOutput();
+        // if the ack was negative, throw, since the ack queue is no longer reliably in sync
+        if (!isAck) {
+            throw new PythonScriptExecutorException(
+                    String.format(
+                            "A nack was received from the Python process (most likely caused by a raised exception caused by): %s",
+                            po.toString()));
+        }
+        return po;
     }
 
     /**
-     * Terminate the remote process, closing the fifo if any.
-     */
-    public void terminate() {
-        spController.terminate();
-    }
-
-    /**
-     * Obtain a temporary FIFO to be used to transfer data to Python. The FIFO is only valid for the
-     * lifetime of the executor; it is destroyed when the executor is terminated.
-     *
-     * NOTE: Since opening a FIFO for write blocks until it is opened for read, the caller is responsible
-     * for ensuring that a Python command to open the FIFO has been executed (asynchronously) before executing
-     * code to open it for write. For this reason, the opening of the FIFO is left to the caller.
-     *
-     * @return
-     */
-    public File getFIFOForWrite() {
-        return spController.createFIFO();
-    }
-
-    /**
-     * Return a {@link AsynchronousStreamWriterService} to be used to write to an output stream, typically on a FIFO,
-     * on a background thread.
-     * @param streamWriter stream to which items should be written.
-     * @param itemSerializer function that converts an item of type {@code T} to a {@code ByteArrayOutputStream} for serialization
-     * @param <T> Type of items to be written to the stream.
-     * @return {@link AsynchronousStreamWriterService}
-     */
-    public <T> AsynchronousStreamWriterService<T> getAsynchronousStreamWriterService(
-            final OutputStream streamWriter,
-            final Function<T, ByteArrayOutputStream> itemSerializer)
-    {
-        Utils.nonNull(streamWriter);
-        Utils.nonNull(itemSerializer);
-
-        return spController.getAsynchronousStreamWriterService(streamWriter, itemSerializer);
-    }
-
     /**
      * Return a (not necessarily executable) string representing the current command line for this executor
      * for error reporting purposes.
@@ -266,6 +218,63 @@ public class StreamingPythonScriptExecutor extends PythonExecutorBase {
      */
     public String getApproximateCommandLine() {
         return curatedCommandLineArgs.stream().collect(Collectors.joining(" "));
+    }
+
+    /**
+     * Obtain a stream writer that serializes and writes batches of items of type {@code T} on a background thread.
+     * @param itemSerializer {@code Function} that  accepts items of type {@code T} and converts them to a
+     *                                       {@code ByteArrayOutputStream} that is subsequently written to the stream
+     * @return An {@link AsynchronousStreamWriter}
+     */
+    public void initStreamWriter(final Function<T, ByteArrayOutputStream> itemSerializer) {
+        Utils.nonNull(itemSerializer, "An item serializer must be provided for the async writer service");
+
+        dataTransferFIFOFile = spController.createDataFIFO();
+
+        // Open the FIFO for writing. Opening a FIFO for read or write will block until there is a reader/writer
+        // on the other end, so before we open it, send a non blocking, ASYNCHRONOUS command to the Python process
+        // to open the FIFO for reading. The Python process will then block until we open the FIFO below.
+        sendAsynchronousCommand(String.format(PYTHON_INITIALIZE_DATA_FIFO, dataTransferFIFOFile.getAbsolutePath()));
+        try {
+            dataTransferFIFOWriter = new FileOutputStream(dataTransferFIFOFile);
+            asyncWriter = spController.getAsynchronousStreamWriter(dataTransferFIFOWriter, itemSerializer);
+            // synchronize on an ack for the async command sent above before returning
+            waitForAck();
+        } catch ( IOException e ) {
+            throw new GATKException("Failure opening FIFO for writing", e);
+        }
+    }
+
+    /**
+     * Request that a batch of items be written to the stream on a background thread. Any previously requested batch
+     * must have already been completed and retrieved via {@link #waitForPreviousBatchCompletion}.
+     *
+     * @param pythonCommand command that will be executed asynchronously to cconsume the data written to the stream
+     * @param batchList a list of items to be written
+     */
+    public void startBatchWrite(final String pythonCommand, final List<T> batchList) {
+        Utils.nonNull(pythonCommand);
+        Utils.nonNull(batchList);
+        Utils.nonEmpty(batchList);
+        sendAsynchronousCommand(pythonCommand);
+        asyncWriter.startBatchWrite(batchList);
+    }
+
+    /**
+     * Waits for a batch that was previously initiated via {@link #startBatchWrite(String, List)}}
+     * to complete, flushes the target stream and returns the corresponding completed Future. The Future representing
+     * a given batch can only be obtained via this method once. If no work is outstanding, and/or the previous batch
+     * has already been retrieved, null is returned.
+     * @return returns null if no previous work to complete, otherwise a completed Future
+     */
+    public Future<Integer> waitForPreviousBatchCompletion() {
+        // wait for the batch queue to be completely written
+        final Future<Integer> numberOfItemsWritten = asyncWriter.waitForPreviousBatchCompletion();
+        if (numberOfItemsWritten != null) {
+            // wait for the written items to be completely consumed
+            waitForAck();
+        }
+        return numberOfItemsWritten;
     }
 
     /**
@@ -277,4 +286,65 @@ public class StreamingPythonScriptExecutor extends PythonExecutorBase {
     protected Process getProcess() {
         return spController.getProcess();
     }
+
+    /**
+     * Terminate the remote process, closing the fifo if any.
+     */
+    public void terminate() {
+        if (dataTransferFIFOWriter != null) {
+            if (asyncWriter != null) {
+                Assert.assertTrue(asyncWriter.terminate());
+            }
+            spController.writeProcessInput(PYTHON_CLOSE_DATA_FIFO);
+            sendAckRequest();
+            waitForAck();
+            try {
+                dataTransferFIFOWriter.close();
+                dataTransferFIFOWriter = null;
+                dataTransferFIFOFile = null;
+            } catch (IOException e) {
+                throw new GATKException("IOException closing fifo", e);
+            }
+        }
+
+        // we can't get an ack for this, since it closes down the ack fifo
+        spController.writeProcessInput(PYTHON_TERMINATE_GATK);
+        spController.terminate();
+    }
+
+    /**
+     * Return all data accumulated since the last call to {@link #getAccumulatedOutput} (either directly, or
+     * indirectly through {@link #sendSynchronousCommand}.
+     *
+     * Note that the output returned is somewhat non-deterministic, in that there is no guaranty that all of
+     * the output from the previous command has been flushed at the time this call is made.
+     *
+     * @return ProcessOutput containing all accumulated output from stdout/stderr
+     * @throws UserException if a timeout occurs waiting for output
+     * @throws PythonScriptExecutorException if a traceback is detected in the output
+     */
+    public ProcessOutput getAccumulatedOutput() {
+        return spController.getProcessOutput();
+    }
+
+    private void initializeTool(final File ackFIFOFile) {
+        //  first we need to import the module; no ack expected yet as we haven't initialized the ack fifo
+        spController.writeProcessInput(PYTHON_IMPORT_GATK); // no ack generated
+        spController.writeProcessInput(String.format(PYTHON_INITIALIZE_GATK, ackFIFOFile.getAbsolutePath()));
+        sendAckRequest(); // queue up an ack request
+        // open the FIFO to unblock the remote caller (which should be blocked on open for read), and then
+        // wait for the ack to be sent
+        spController.openAckFIFOForRead();
+        waitForAck();
+    }
+
+    private void sendAckRequest() {
+        if (isAckRequestOutstanding) {
+            throw new GATKException("An ack request is already outstanding. The previous ack request must be retrieved" +
+                    " before a new ack request can be issued");
+        }
+        spController.writeProcessInput(PYTHON_SEND_ACK_REQUEST);
+        isAckRequestOutstanding = true;
+    }
+
 }

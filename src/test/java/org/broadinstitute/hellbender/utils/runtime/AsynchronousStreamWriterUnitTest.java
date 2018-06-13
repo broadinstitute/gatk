@@ -10,7 +10,7 @@ import java.util.concurrent.*;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public class AsynchronousStreamWriterServiceUnitTest {
+public class AsynchronousStreamWriterUnitTest {
     // Use a relatively long timeout when running tests to allow for variation in test environment run times
     final static TimeUnit TIMEOUT_TIMEUNIT = TimeUnit.SECONDS;
     final static int TIMEOUT_TIME = 10;
@@ -25,13 +25,13 @@ public class AsynchronousStreamWriterServiceUnitTest {
         final List<String> expectedItems = new ArrayList<>();
         List<String> batchItems;
         int batchCount = 0;
-        AsynchronousStreamWriterService<String> asyncWriteService = null;
+        AsynchronousStreamWriter<String> asyncWriteService = null;
 
         // create an executor service, and write ITEM_COUNT lines in batches of BATCH_SIZE (where ITEM_COUNT is not
         // an integral multiple of BATCH_SIZE) and leave one final odd-sized batch at the end
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         try (final ByteArrayOutputStream streamWriter = new ByteArrayOutputStream()) {
-            asyncWriteService = new AsynchronousStreamWriterService<>(executorService, streamWriter, AsynchronousStreamWriterService.stringSerializer);
+            asyncWriteService = new AsynchronousStreamWriter<>(executorService, streamWriter, AsynchronousStreamWriter.stringSerializer);
             batchItems = new ArrayList<>(BATCH_SIZE);
             for (int i = 0; i < ITEM_COUNT; i++) {
                 if (batchCount == BATCH_SIZE) {
@@ -50,7 +50,7 @@ public class AsynchronousStreamWriterServiceUnitTest {
                 dispatchABatch(asyncWriteService, batchItems, batchCount, readCommandStrings, expectedReadCommandStrings);
             }
 
-            final Future<Integer> batchResult = asyncWriteService.waitForPreviousBatchCompletion(TIMEOUT_TIME, TIMEOUT_TIMEUNIT);
+            final Future<Integer> batchResult = asyncWriteService.waitForPreviousBatchCompletion();
             Assert.assertTrue(batchResult.get().equals(batchCount));
             Assert.assertTrue(asyncWriteService.terminate());
 
@@ -70,7 +70,7 @@ public class AsynchronousStreamWriterServiceUnitTest {
     }
 
     private void dispatchABatch(
-            final AsynchronousStreamWriterService<String> asyncWriteService,
+            final AsynchronousStreamWriter<String> asyncWriteService,
             final List<String> batchItems,
             int batchSize,
             final List<String> readCommandStrings,
@@ -79,9 +79,9 @@ public class AsynchronousStreamWriterServiceUnitTest {
         final String commandString = "This would usually be a command to tell python to read %d items\n";
 
         // wait for the last batch to complete before we start a new one
-        final Future<Integer> batchResult = asyncWriteService.waitForPreviousBatchCompletion(TIMEOUT_TIME, TIMEOUT_TIMEUNIT);
+        final Future<Integer> batchResult = asyncWriteService.waitForPreviousBatchCompletion();
         readCommandStrings.add(String.format(commandString, batchSize));
-        asyncWriteService.startAsynchronousBatchWrite(batchItems);
+        asyncWriteService.startBatchWrite(batchItems);
 
         // write to our expected read string list
         expectedReadCommandStrings.add(String.format(commandString, batchSize));
@@ -94,13 +94,13 @@ public class AsynchronousStreamWriterServiceUnitTest {
         for (int i = 0; i < BATCH_SIZE; i++) { batchItems.add(Integer.toString(i)); }
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
-        AsynchronousStreamWriterService<String> asyncWriteService = null;
+        AsynchronousStreamWriter<String> asyncWriteService = null;
         try (final ByteArrayOutputStream streamWriter = new ByteArrayOutputStream()) {
-            asyncWriteService = new AsynchronousStreamWriterService<>(executorService, streamWriter, AsynchronousStreamWriterService.stringSerializer);
-            asyncWriteService.startAsynchronousBatchWrite(batchItems);
-            Future<Integer> batchResult = asyncWriteService.waitForPreviousBatchCompletion(100, TimeUnit.MILLISECONDS);
+            asyncWriteService = new AsynchronousStreamWriter<>(executorService, streamWriter, AsynchronousStreamWriter.stringSerializer);
+            asyncWriteService.startBatchWrite(batchItems);
+            Future<Integer> batchResult = asyncWriteService.waitForPreviousBatchCompletion();
             Assert.assertNotNull(batchResult);
-            batchResult = asyncWriteService.waitForPreviousBatchCompletion(100, TimeUnit.MILLISECONDS);
+            batchResult = asyncWriteService.waitForPreviousBatchCompletion();
             Assert.assertNull(batchResult);
         } finally {
             if (asyncWriteService != null) {
@@ -116,13 +116,13 @@ public class AsynchronousStreamWriterServiceUnitTest {
         final List<String> batchItems = new ArrayList<>(BATCH_SIZE);
         for (int i = 0; i < BATCH_SIZE; i++) { batchItems.add(Integer.toString(i)); }
 
-        AsynchronousStreamWriterService<String> asyncWriteService = null;
+        AsynchronousStreamWriter<String> asyncWriteService = null;
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         try (final ByteArrayOutputStream streamWriter = new ByteArrayOutputStream()) {
-            asyncWriteService = new AsynchronousStreamWriterService<>(executorService, streamWriter, AsynchronousStreamWriterService.stringSerializer);
-            asyncWriteService.startAsynchronousBatchWrite(batchItems);
+            asyncWriteService = new AsynchronousStreamWriter<>(executorService, streamWriter, AsynchronousStreamWriter.stringSerializer);
+            asyncWriteService.startBatchWrite(batchItems);
             // try to start a new batch without retrieving the completion of the previous one
-            asyncWriteService.startAsynchronousBatchWrite(batchItems);
+            asyncWriteService.startBatchWrite(batchItems);
         } finally {
             if (asyncWriteService != null) {
                 asyncWriteService.terminate();

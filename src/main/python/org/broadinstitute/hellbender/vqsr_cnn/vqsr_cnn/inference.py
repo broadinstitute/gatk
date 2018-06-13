@@ -4,6 +4,8 @@ import h5py
 import numpy as np
 from collections import Counter, defaultdict, namedtuple
 
+from gatktool import tool
+
 # Keras Imports
 import keras.backend as K
 
@@ -30,7 +32,7 @@ for i in range(256):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~ Inference ~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def score_and_write_batch(args, model, file_out, fifo, batch_size, python_batch_size, tensor_dir):
+def score_and_write_batch(args, model, file_out, batch_size, python_batch_size, tensor_dir):
     '''Score a batch of variants with a CNN model. Write tab delimited temp file with scores.
 
     This function is tightly coupled with the CNNScoreVariants.java
@@ -52,7 +54,7 @@ def score_and_write_batch(args, model, file_out, fifo, batch_size, python_batch_
     read_batch = []
 
     for _ in range(batch_size):
-        fifo_line = fifo.readline()
+        fifo_line = tool.readDataFIFO()
         fifo_data = fifo_line.split(defines.SEPARATOR_CHAR)
 
         variant_data.append(fifo_data[0] + '\t' + fifo_data[1] + '\t' + fifo_data[2] + '\t' + fifo_data[3])
