@@ -100,11 +100,11 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
     @Argument(doc="Throw error if any differences were found", fullName = THROW_ON_DIFF_LONG_NAME, optional = true)
     protected boolean throwOnDiff = false;
 
-    @Argument(doc = "If output is given, the tool will return a bam with all the mismatching duplicate groups in the specified file",
+    @Argument(doc = "If output is given, the tool will return a bam with all the mismatching duplicate groups in the first specified file",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = true)
     protected String output;
 
-    @Argument(doc = "If output is given, the tool will return a bam with all the mismatching duplicate groups in the specified file",
+    @Argument(doc = "If output is given, the tool will return a bam with all the mismatching duplicate groups in the second specified input file",
             shortName = "O2", fullName = "output2", optional = true)
     protected String output2;
 
