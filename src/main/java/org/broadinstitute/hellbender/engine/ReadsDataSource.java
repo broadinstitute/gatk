@@ -8,6 +8,8 @@ import java.nio.channels.SeekableByteChannel;
 import java.util.function.Function;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.cache.LocatableCache;
+import org.broadinstitute.hellbender.engine.cache.SideReadInputCacheStrategy;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -72,6 +74,11 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      * Used to create a merged Sam header when we're dealing with multiple readers. Null if we only have a single reader.
      */
     private final SamFileHeaderMerger headerMerger;
+
+    /**
+     * Used to cache reads around the current query interval when caching is enabled
+     */
+    private LocatableCache<GATKRead> queryCache = null;
 
     /**
      * Are indices available for all files?
@@ -248,6 +255,28 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
     }
 
     /**
+     * Enable look-ahead caching for reads using {@code windowSize} look-ahead bases.
+     * @param lookAheadBases number of additional bases to cache
+     */
+    public void enableReadCaching(int lookAheadBases) {
+        Utils.validate(queryCache == null, "Can't reset the cache/window look ahead size");
+        this.queryCache = new LocatableCache<>(
+                getName(),
+                new SideReadInputCacheStrategy<>(
+                    lookAheadBases,
+                    (SimpleInterval newCacheInterval) -> prepareIteratorsForTraversal(Arrays.asList(newCacheInterval), false)
+                )
+        );
+    }
+
+    public String getName() {
+        final int DISPLAY_NAME_THRESHOLD = 3; // don't try to display more than this many paths
+        return backingPaths.values().stream().limit(DISPLAY_NAME_THRESHOLD)
+                .map(p -> p.toString())
+                .collect(Collectors.joining("Reads: ",",", backingPaths.values().size() > DISPLAY_NAME_THRESHOLD ? "..." : ""));
+    }
+
+    /**
      * Are indices available for all files?
      */
     public boolean indicesAvailable() {
@@ -343,7 +372,11 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
             raiseExceptionForMissingIndex("Cannot query reads data source by interval unless all files are indexed");
         }
 
-        return prepareIteratorsForTraversal(Arrays.asList(interval));
+        if (queryCache != null) {
+            return queryCache.queryAndPrefetch(interval).iterator();
+        } else {
+            return prepareIteratorsForTraversal(Arrays.asList(interval));
+        }
     }
 
     /**
