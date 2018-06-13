@@ -216,6 +216,12 @@ public class MafOutputRenderer extends OutputRenderer {
 
         // Loop through each alt allele in our variant:
         for ( final Allele altAllele : variant.getAlternateAlleles() ) {
+
+            // Ignore spanning deletions.  Those have no meaning in a MAF.
+            if (altAllele.equals(Allele.SPAN_DEL)) {
+                continue;
+            }
+
             for (final String txId : txToFuncotationMap.getTranscriptList()) {
 
                 final List<Funcotation> funcotations = txToFuncotationMap.get(txId);

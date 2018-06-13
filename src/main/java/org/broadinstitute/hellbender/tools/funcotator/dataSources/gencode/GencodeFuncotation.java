@@ -792,7 +792,7 @@ public class GencodeFuncotation implements Funcotation {
         TNP("TNP"),
         ONP("ONP"),
         MNP("MNP"),
-        xNP("NP");
+        NA("NA");
 
         final private String serialized;
 

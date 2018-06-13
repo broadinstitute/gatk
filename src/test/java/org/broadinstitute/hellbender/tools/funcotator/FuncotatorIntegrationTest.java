@@ -627,25 +627,44 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(variantContexts.size(), NUM_VARIANTS);
         Assert.assertEquals(variantContexts.stream().filter(v -> v.hasAllele(Allele.SPAN_DEL)).count(), NUM_VARIANTS);
 
-        for (int i = 0; i < variantContexts.size(); i++) {
+        for (final VariantContext vc : variantContexts) {
             final Map<Allele, FuncotationMap> alleleToFuncotationMap = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(funcotationKeys,
-                    variantContexts.get(i), "Gencode_28_annotationTranscript", "TEST");
+                    vc, "Gencode_28_annotationTranscript", "TEST");
 
             // Make sure that all spanning deletions are funcotated with could not determine and that the others are something else.
             for (final Allele allele : alleleToFuncotationMap.keySet()) {
-                if (allele.equals(Allele.SPAN_DEL)) {
-                    final List<String> txIds = alleleToFuncotationMap.get(allele).getTranscriptList();
-                    for (String txId : txIds) {
-                        if (allele.equals(Allele.SPAN_DEL)) {
-                            Assert.assertEquals(alleleToFuncotationMap.get(allele).get(txId).get(0).getField("Gencode_28_variantClassification"), GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE.toString());
-                        } else {
-                            Assert.assertNotEquals(alleleToFuncotationMap.get(allele).get(txId).get(0).getField("Gencode_28_variantClassification"), GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE.toString());
-                        }
+                final List<String> txIds = alleleToFuncotationMap.get(allele).getTranscriptList();
+                for (final String txId : txIds) {
+                    if (allele.equals(Allele.SPAN_DEL)) {
+                        Assert.assertEquals(alleleToFuncotationMap.get(allele).get(txId).get(0).getField("Gencode_28_variantClassification"), GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE.toString());
+                        Assert.assertEquals(alleleToFuncotationMap.get(allele).get(txId).get(0).getField("Gencode_28_variantType"), GencodeFuncotation.VariantType.NA.toString());
+                    } else {
+                        Assert.assertNotEquals(alleleToFuncotationMap.get(allele).get(txId).get(0).getField("Gencode_28_variantClassification"), GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE.toString());
                     }
-
                 }
             }
         }
+    }
+
+    @Test
+    public void testNoSpanningDeletionWriteWithMAF() {
+        final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType = FuncotatorArgumentDefinitions.OutputFormatType.MAF;
+        final File outputFile = getOutputFile(outputFormatType);
+
+        final ArgumentsBuilder arguments = new ArgumentsBuilder();
+
+        arguments.addVCF(new File(SPANNING_DEL_VCF));
+        arguments.addOutput(outputFile);
+        arguments.addReference(new File(hg38Chr3Ref));
+        arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_PIK3CA_DIR);
+        arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
+
+        runCommandLine(arguments);
+
+        // There should only be one variant in the MAF, not two
+        final AnnotatedIntervalCollection annotatedIntervalCollection = AnnotatedIntervalCollection.create(outputFile.toPath(), null);
+        Assert.assertEquals(annotatedIntervalCollection.getRecords().size(), 10);
     }
 }
 
