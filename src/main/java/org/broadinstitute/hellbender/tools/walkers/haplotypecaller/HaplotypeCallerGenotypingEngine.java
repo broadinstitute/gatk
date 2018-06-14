@@ -69,7 +69,7 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
 
     @Override
     protected boolean forceKeepAllele(final Allele allele) {
-        return allele == Allele.NON_REF_ALLELE || referenceConfidenceMode != ReferenceConfidenceMode.NONE
+        return allele.equals(Allele.NON_REF_ALLELE,false) || referenceConfidenceMode != ReferenceConfidenceMode.NONE
                 || configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES;
     }
 

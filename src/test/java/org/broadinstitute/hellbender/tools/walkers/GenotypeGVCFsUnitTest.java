@@ -165,6 +165,6 @@ public class GenotypeGVCFsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "getSpanningAndNonSpanningAlleles")
     public void testIsSpanningDeletion(Allele allele, boolean expected){
-        Assert.assertEquals(GenotypeGVCFs.isSpanningDeletion(allele), expected);
+        Assert.assertEquals(GATKVCFConstants.isSpanningDeletion(allele), expected);
     }
 }
