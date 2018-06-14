@@ -173,13 +173,6 @@ public abstract class VariantWalkerBase extends GATKTool {
     }
 
     /**
-     * Returns the list of intervals to iterate, either limited to the user-supplied intervals or the entire reference genome if none were specified
-     */
-    public List<SimpleInterval> getIntervals() {
-        return hasIntervals() ? intervalsForTraversal : IntervalUtils.getAllIntervalsForReference(getReferenceDictionary());
-    }
-
-    /**
      * Process an individual variant. Must be implemented by tool authors.
      * In general, tool authors should simply stream their output from apply(), and maintain as little internal state
      * as possible.

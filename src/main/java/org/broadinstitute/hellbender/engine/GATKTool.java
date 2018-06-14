@@ -26,6 +26,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -926,6 +927,14 @@ public abstract class GATKTool extends CommandLineProgram {
      */
     public String getToolName() {
         return String.format("%s %s", getToolkitShortName(), getClass().getSimpleName());
+    }
+
+    /**
+     * Returns the list of intervals to iterate, either limited to the user-supplied intervals or the entire reference genome if none were specified.
+     * If no reference was supplied, null is returned
+     */
+    public List<SimpleInterval> getEffectiveIntervals() {
+        return hasIntervals() ? intervalsForTraversal : hasReference() ? IntervalUtils.getAllIntervalsForReference(getReferenceDictionary()) : null;
     }
 
     /**
