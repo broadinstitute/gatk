@@ -295,7 +295,7 @@ public class MarkDuplicatesSparkUtils {
             //todo this should use library and contig as well probably
             //todo these should all be one traversal over the records)
             for (MarkDuplicatesSparkRecord rec : pairGroups) {
-                if (rec.getName().equals("HJYFJCCXX160204:8:1124:31659:21526")) {
+                if ("HJYFJCCXX160204:8:1124:31659:21526".equals(rec.getName())) {
                     System.out.println("\n\n*******************\n\n\n");
                     Utils.stream(pairGroups).forEach(d -> {System.out.println(d.getClass().toString() + d.getName());});
                     System.out.println("\n\n*******************\n\n\n");
