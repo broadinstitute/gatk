@@ -307,6 +307,10 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
             }
         }
         if (firstDupes.size() != secondDupes.size()) {
+            System.out.println("\n\n\nFirst:");
+            first.stream().forEach(r -> System.out.println(r.convertToSAMRecord(header).getSAMString()));
+            System.out.println("\nSecond:");
+            second.stream().forEach(r -> System.out.println(r.convertToSAMRecord(header).getSAMString()));
             return MatchType.DIFF_NUM_DUPES;
         }
         if (!firstDupes.equals(secondDupes)) {
