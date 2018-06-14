@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.utils.io;
 
+import com.google.common.jimfs.Configuration;
+import com.google.common.jimfs.Jimfs;
 import org.apache.logging.log4j.core.util.FileUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -17,6 +19,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.UUID;
 
 public final class IOUtilsUnitTest extends GATKBaseTest {
 
@@ -170,7 +173,9 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     @DataProvider
     public Object[][] absoluteNames() {
         return new Object[][] {
+                {"relative/example.txt", new File("relative/example.txt").getAbsolutePath()},
                 {"/local/example.txt", "/local/example.txt"},
+                // note that path normalization removes the extra / in file://
                 {"/local/file://example.txt", "/local/file:/example.txt"},
                 {"file:///local/example.txt", "/local/example.txt"},
                 {"gs://dir/example.txt", "gs://dir/example.txt"}
@@ -291,6 +296,31 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         Assert.assertTrue(tempFile.exists(), "file was not written to temp file: " + tempFile);
         Assert.assertEquals(tempFile.getParentFile().getAbsolutePath(), (tempDir.getAbsolutePath()),
                 "file was not written to temp file: " + tempFile + " in dir: " + tempDir);
+    }
+
+    @DataProvider
+    public Object[][] tmpPathDirs() throws Exception {
+        return new Object[][] {
+                {createTempDir("local").toPath()},
+                {Files.createDirectory(Jimfs.newFileSystem(Configuration.unix()).getPath("tmp"))}
+        };
+    }
+
+    @Test(dataProvider = "tmpPathDirs", singleThreaded = true)
+    public void testTempPath(final Path tempDir) throws Exception {
+        // store the previous tmp.dir to check that it is working
+        final String previousTmpDir = System.getProperty("java.io.tmpdir");
+        try {
+            System.setProperty("java.io.tmpdir", IOUtils.getAbsolutePathWithoutFileProtocol(tempDir));
+            final Path tempFile = IOUtils.createTempPath(UUID.randomUUID().toString(), ".txt");
+            Assert.assertTrue(Files.exists(tempFile),
+                    "file was not written to temp file: " + tempFile);
+            Assert.assertEquals(tempFile.getParent().toUri().toString(), tempDir.toUri().toString(),
+                    "file was not written to temp file: " + tempFile + " in dir: " + tempDir);
+        } finally {
+            System.setProperty("java.io.tmpdir", previousTmpDir);
+            closeFileSystemIfJimnfs(tempDir);
+        }
     }
 
     private String getFirstLineAndDeleteTempFile(final File tempResourceFile) throws IOException {

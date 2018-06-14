@@ -1,33 +1,9 @@
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2015 Daniel Gómez-Sánchez
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 package org.broadinstitute.hellbender.cmdline;
 
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -35,15 +11,17 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.UUID;
 
 /**
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
-public class CommandLineProgramIntegrationTest extends GATKBaseTest {
+public class CommandLineProgramIntegrationTest extends CommandLineProgramTest {
 
     private static FileSystem jimfs;
 
@@ -77,22 +55,29 @@ public class CommandLineProgramIntegrationTest extends GATKBaseTest {
     @DataProvider
     public Object[][] tmpDirs() throws Exception {
         return new Object[][]{
-                {createTempDir("local").toPath()},
-                {Files.createDirectory(jimfs.getPath("tmp"))}
+                // local without the file:// prefix
+                {createTempDir("local1").getAbsolutePath()},
+                // local with the file:// prefix
+                {createTempDir("local2").toPath().toUri().toString()},
+                // jimfs:// path
+                {Files.createDirectory(jimfs.getPath("tmp")).toUri().toString()}
         };
     }
 
     @Test(dataProvider = "tmpDirs", singleThreaded = true)
-    public void testCreateTempPath(final Path tmpDir) {
+    public void testTmpDirArgument(final String tmpDirArg) throws Exception {
         // store the previous tmp.dir to check that it is working
         final String previousTmpDir = System.getProperty("java.io.tmpdir");
 
-        final Path p = (Path) new TestCreateTempPathClp().instanceMain(new String[]{
-                "--" + StandardArgumentDefinitions.TMP_DIR_NAME, tmpDir.toUri().toString()});
-        Assert.assertTrue(Files.exists(p));
-
-        // get back to the previous tmp dir
-        System.setProperty("java.io.tmpdir", previousTmpDir);
+        try {
+            final Path p = (Path) new TestCreateTempPathClp().instanceMain(new String[] {
+                    "--" + StandardArgumentDefinitions.TMP_DIR_NAME, tmpDirArg});
+            Assert.assertTrue(Files.exists(p));
+            Assert.assertNotEquals(System.getProperty("java.io.tmpdir"), previousTmpDir);
+        } finally {
+            // get back to the previous tmp dir
+            System.setProperty("java.io.tmpdir", previousTmpDir);
+        }
     }
 
 }
