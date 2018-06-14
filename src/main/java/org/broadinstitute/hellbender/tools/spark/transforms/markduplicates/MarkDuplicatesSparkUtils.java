@@ -294,6 +294,14 @@ public class MarkDuplicatesSparkUtils {
             //since we grouped by a non-unique hash code for efficiency we need to regroup by the actual criteria
             //todo this should use library and contig as well probably
             //todo these should all be one traversal over the records)
+            for (MarkDuplicatesSparkRecord rec : pairGroups) {
+                if (rec.getName().equals("HJYFJCCXX160204:8:1124:31659:21526")) {
+                    System.out.println("\n\n*******************\n\n\n");
+                    Utils.stream(pairGroups).forEach(d -> {System.out.println(d.getClass().toString() + d.getName());});
+                    System.out.println("\n\n*******************\n\n\n");
+                }
+            }
+
             final Collection<List<MarkDuplicatesSparkRecord>> groups = Utils.stream(pairGroups)
                     .collect(Collectors.groupingBy(MarkDuplicatesSparkUtils::getGroupKey)).values();
 

@@ -8,6 +8,7 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
+import org.apache.spark.sql.catalyst.plans.logical.Except;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -27,6 +28,7 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
 import scala.Tuple2;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Determine if two potentially identical BAMs have the same duplicate reads. This tool is useful for checking if two
@@ -134,24 +136,24 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
 
         JavaRDD<GATKRead> secondReads = readsSource2.getParallelReads(input2, null, traversalParameters, bamPartitionSplitSize);
 
-        // Start by verifying that we have same number of reads and duplicates in each BAM.
-        long firstBamSize = firstReads.count();
-
-        long secondBamSize = secondReads.count();
-
-        if (firstBamSize != secondBamSize) {
-            throw new UserException("input bams have different numbers of mapped reads: "
-                    + firstBamSize + "," + secondBamSize);
-        }
-        System.out.println("processing bams with " + firstBamSize + " mapped reads");
-
-
-        long firstDupesCount = firstReads.filter(GATKRead::isDuplicate).count();
-        long secondDupesCount = secondReads.filter(GATKRead::isDuplicate).count();
-        if (firstDupesCount != secondDupesCount) {
-            System.out.println("BAMs have different number of total duplicates: " + firstDupesCount + "," + secondDupesCount);
-        }
-        System.out.println("first and second: " + firstDupesCount + "," + secondDupesCount);
+//        // Start by verifying that we have same number of reads and duplicates in each BAM.
+//        long firstBamSize = firstReads.count();
+//
+//        long secondBamSize = secondReads.count();
+//
+//        if (firstBamSize != secondBamSize) {
+//            throw new UserException("input bams have different numbers of mapped reads: "
+//                    + firstBamSize + "," + secondBamSize);
+//        }
+//        System.out.println("processing bams with " + firstBamSize + " mapped reads");
+//
+//
+//        long firstDupesCount = firstReads.filter(GATKRead::isDuplicate).count();
+//        long secondDupesCount = secondReads.filter(GATKRead::isDuplicate).count();
+//        if (firstDupesCount != secondDupesCount) {
+//            System.out.println("BAMs have different number of total duplicates: " + firstDupesCount + "," + secondDupesCount);
+//        }
+//        System.out.println("first and second: " + firstDupesCount + "," + secondDupesCount);
 
         Broadcast<SAMFileHeader> bHeader = ctx.broadcast(getHeaderForReads());
         // Group the reads of each BAM by MarkDuplicates key, then pair up the the reads for each BAM.
@@ -281,7 +283,7 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
      * @param header header (should be the same for both)
      * @return the type of the match, EQUAL, DIFFERENT_REPRESENTATIVE_READ, etc.
      */
-    static MatchType getDupes(Iterable<GATKRead> f, Iterable<GATKRead> s, SAMFileHeader header) {
+    static MatchType getDupes(Iterable<GATKRead> f, Iterable<GATKRead> s, SAMFileHeader header) throws Exception {
         List<GATKRead> first = Lists.newArrayList(f);
         List<GATKRead> second = Lists.newArrayList(s);
         if (first.size() != second.size()) {
@@ -307,10 +309,11 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
             }
         }
         if (firstDupes.size() != secondDupes.size()) {
-            System.out.println("\n\n\nFirst:");
-            first.stream().forEach(r -> System.out.println(r.convertToSAMRecord(header).getSAMString()));
-            System.out.println("\nSecond:");
-            second.stream().forEach(r -> System.out.println(r.convertToSAMRecord(header).getSAMString()));
+            System.out.println("First: " + first.size() + "   SecondSize: "+second.size());
+            System.out.println("FirstDups: " + firstDupes.size() + "   SecondDupsSize: "+secondDupes.size());
+            System.out.println("FirstDup secondary/supplementaryReads: " + firstDupes.stream().filter(r -> r.isSecondaryAlignment() || r.isSupplementaryAlignment()).count() + "   SecondDupsSize secondary/supplementaryReads: "+secondDupes.stream().filter(r -> r.isSecondaryAlignment() || r.isSupplementaryAlignment()).count());
+            System.out.println("FirstDup unmapped mates: " + firstDupes.stream().filter(r -> !ReadUtils.readHasMappedMate(r)).count() + "   SecondDupsSize unmapped mates: "+secondDupes.stream().filter(r -> !ReadUtils.readHasMappedMate(r)).count());
+            System.out.println("Different Reads: " + Sets.symmetricDifference(new HashSet<>(firstDupes), new HashSet<>(secondDupes) ) + "   SecondDupsSize: "+secondDupes.size());
             return MatchType.DIFF_NUM_DUPES;
         }
         if (!firstDupes.equals(secondDupes)) {
