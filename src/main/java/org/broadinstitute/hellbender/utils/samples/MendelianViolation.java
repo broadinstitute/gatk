@@ -204,26 +204,37 @@ public class MendelianViolation {
         }
     }
 
-    //Number of families with genotype information for all members
+    /**
+     * @return Number of families with genotype information for all members
+     */
     public int getFamilyCalledCount(){
         return familyCalled;
     }
 
-    //Number of families where at least one member is not homozygous ref
+    /**
+     * @return Number of families where at least one member is not homozygous ref
+     */
     public int getVarFamilyCalledCount(){
         return varFamilyCalled;
     }
 
-    //Number of families missing genotypes for one or more of their members
+    /**
+     * @return Number of families missing genotypes for one or more of their members
+     */
     public int getFamilyNoCallCount(){
         return noCall;
     }
 
-    //Number of families with genotypes below the set quality threshold
+    /**
+     * @return Number of families with genotypes below the set quality threshold
+     */
     public int getFamilyLowQualsCount(){
         return lowQual;
     }
 
+    /**
+     * @return Number of violations identified
+     */
     public int getViolationsCount(){
         return violations_total;
     }

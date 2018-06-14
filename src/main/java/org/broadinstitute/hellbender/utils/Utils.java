@@ -1307,7 +1307,7 @@ public final class Utils {
     }
 
     /**
-     * Convenience function that formats the novelty rate as a %.2f string
+     * Convenience function that formats a percentage as a %.2f string
      *
      * @param x number of objects part of total that meet some criteria
      * @param total count of all objects, including x
@@ -1337,10 +1337,7 @@ public final class Utils {
      * @return A new set strings from sourceValues that satisfy at least one of the expressions in sampleExpressions
      */
     public static Set<String> filterCollectionByExpressions(final Collection<String> sourceValues, final Collection<String> filterExpressions, final boolean exactMatch) {
-        if (filterExpressions == null) {
-            return Collections.emptySet();
-        }
-
+        Utils.nonNull(filterExpressions);
         Utils.nonNull(sourceValues);
 
         final Set<String> filteredValues = new LinkedHashSet<>();
@@ -1356,6 +1353,7 @@ public final class Utils {
                 for (final Pattern pattern : patterns) {
                     if (pattern.matcher(value).find()) {
                         filteredValues.add(value);
+                        break;
                     }
                 }
             }

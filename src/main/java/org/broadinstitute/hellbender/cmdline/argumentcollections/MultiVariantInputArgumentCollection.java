@@ -27,11 +27,11 @@ public abstract class MultiVariantInputArgumentCollection implements Serializabl
         // from any other potential sources of Features.
         @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME,
                 doc = "One or more VCF files containing variants", common = false, optional = false)
-        public List<String> drivingVariantFiles = new ArrayList<>();
+        public List<String> drivingVariantPaths = new ArrayList<>();
 
         @Override
         public List<String> getDrivingVariantPaths() {
-            return drivingVariantFiles;
+            return drivingVariantPaths;
         }
     }
 }

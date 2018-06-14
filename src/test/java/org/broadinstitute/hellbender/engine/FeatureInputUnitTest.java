@@ -261,7 +261,6 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
     @DataProvider(name = "HasUserSuppliedNameData")
     public Object[][] hasUserSuppliedNameData() {
         return new Object[][] {
-                // input String, expected Feature path, expected logical name
                 {"hdfs://localhost/user/my.vcf", false},
                 {"myname:hdfs://localhost/user/my.vcf", true},
                 {"myname,key1=value1:hdfs://localhost/user/my.vcf", true},
@@ -274,8 +273,6 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
     @Test(dataProvider = "HasUserSuppliedNameData")
     public void testHasUserSuppliedName(final String inputString, final boolean isUserSupplied) {
         final FeatureInput<VariantContext> input = new FeatureInput<>(inputString);
-
-        //If the name assigned to the
         Assert.assertEquals(input.hasUserSuppliedName(), isUserSupplied);
     }
 

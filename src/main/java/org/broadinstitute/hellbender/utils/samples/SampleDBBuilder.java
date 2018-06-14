@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.samples;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -57,6 +58,7 @@ public class SampleDBBuilder {
      * Integrates the collection of sample names with the samples already present
      */
     public SampleDBBuilder addSamplesFromSampleNames(final Collection<String> sampleNames) {
+        Utils.nonNull(sampleNames);
         for (final String sampleName : sampleNames) {
             if (sampleDB.getSample(sampleName) == null) {
                 final Sample newSample = new Sample(sampleName, null, null, null, Sex.UNKNOWN);
