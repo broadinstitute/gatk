@@ -42,6 +42,11 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String HG_00096 = largeFileTestDir + "gvcfs/HG00096.g.vcf.gz";
     private static final String HG_00268 = largeFileTestDir + "gvcfs/HG00268.g.vcf.gz";
     private static final String NA_19625 = largeFileTestDir + "gvcfs/NA19625.g.vcf.gz";
+    //The following 3 files were obtained by running CombineGVCFs on the above 3 files (separately). This introduces spanning
+    //deletions in the files. Hence, these files can be used to test for spanning deletions in the input VCF.
+    private static final String HG_00096_after_combine_gvcfs = largeFileTestDir + "gvcfs/HG00096_after_combine_gvcfs.g.vcf.gz";
+    private static final String HG_00268_after_combine_gvcfs = largeFileTestDir + "gvcfs/HG00268_after_combine_gvcfs.g.vcf.gz";
+    private static final String NA_19625_after_combine_gvcfs = largeFileTestDir + "gvcfs/NA19625_after_combine_gvcfs.g.vcf.gz";
     private static final String NA_24385 = largeFileTestDir + "NA24385.vcf.gz";
     private static final String NA_12878_PHASED = largeFileTestDir + "NA12878.phasedData.Chr20.vcf"; //NOTE: this is not phased according to the vcf spec but it reflects phasing currently produced by haplotype caller
     private static final String MULTIPLOID_DATA_HG37 = largeFileTestDir + "gvcfs/HapMap5plex.ploidy10.b37.g.vcf";
@@ -49,9 +54,15 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String ARTIFICIAL_PHASED = getTestDataDir() + "/ArtificalPhasedData.1.g.vcf";
     private static final String HG_00268_WITH_SPACES = largeFileTestDir + "gvcfs/HG00268.spaceInSampleName.g.vcf";
     private static final List<String> LOCAL_GVCFS = Arrays.asList(HG_00096, HG_00268, NA_19625);
+    private static final List<String> LOCAL_GVCFS_AFTER_COMBINE_GVCFS = Arrays.asList(HG_00096_after_combine_gvcfs,
+            HG_00268_after_combine_gvcfs,
+            NA_19625_after_combine_gvcfs);
     private static final String GENOMICSDB_TEST_DIR = toolsTestDir + "GenomicsDBImport/";
     private static final String COMBINEGVCFS_TEST_DIR = toolsTestDir + "walkers/CombineGVCFs/";
     private static final String COMBINED = largeFileTestDir + "gvcfs/combined.gatk3.7.g.vcf.gz";
+    private static final String COMBINED_WITH_GENOTYPES = largeFileTestDir + "gvcfs/combined_with_genotypes.g.vcf.gz";
+    //This file was obtained from combined.gatk3.7.g.vcf.gz by dropping all the samples
+    private static final String COMBINED_SITES_ONLY = largeFileTestDir + "gvcfs/combined.gatk3.7_sites_only.g.vcf.gz";
     //Consider a gVCF with a REF block chr20:50-150. Importing this data into GenomicsDB using multiple intervals
     //-L chr20:1-100 and -L chr20:101-200 will cause the REF block to be imported into both the arrays
     //Now, when reading data from the workspace (assume full scan) - the data is split into 2 REF block intervals chr20:50-100
@@ -83,7 +94,8 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final ArrayList<SimpleInterval> MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS =
         new ArrayList<SimpleInterval>(Arrays.asList(
             new SimpleInterval("chr20", 17960187, 17969999),
-            new SimpleInterval("chr20", 17980001, 17981445)
+            new SimpleInterval("chr20", 17980001, 17981445),
+            new SimpleInterval("chr21", 29477554, 29486255)
     ));
     private static final ArrayList<SimpleInterval> INTERVAL_3736 =
             new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("chr6",130365070,146544250)));
@@ -138,6 +150,14 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     }
 
     @Test
+    public void testGenomicsDBImportFileInputsAgainstCombineGVCFWithMultipleNonAdjacentIntervalsForFilesProducedAfterCombineGVCFs()
+        throws IOException {
+        //this test covers the scenario where the input vcfs have spanning deletions
+        testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS_AFTER_COMBINE_GVCFS, MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS,
+            b38_reference_20_21, new String[0]);
+    }
+
+    @Test
     public void testGenomicsDBImportFileInputsAgainstCombineGVCFWithNonDiploidData() throws IOException {
         testGenomicsDBAgainstCombineGVCFs(Arrays.asList(NA12878_HG37, MULTIPLOID_DATA_HG37), INTERVAL_NONDIPLOID, b37_reference_20_21, new String[0]);
     }
@@ -158,13 +178,50 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         testGenomicsDBImporterWithGenotypes(Arrays.asList(ARTIFICIAL_PHASED), intervals, ARTIFICIAL_PHASED, b37_reference_20_21);
     }
 
+    @Test
+    public void testGenomicsDBThreeLargeSamplesWithGenotypes() throws IOException {
+        ArrayList<SimpleInterval> intervals = new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("chr20", 1, 64444167)));
+        testGenomicsDBImporterWithGenotypes(LOCAL_GVCFS, intervals, COMBINED_WITH_GENOTYPES, b38_reference_20_21, true, true, false);
+    }
+
+    @Test
+    public void testGenomicsDBThreeLargeSamplesSitesOnlyQuery() throws IOException {
+        ArrayList<SimpleInterval> intervals = new ArrayList<SimpleInterval>(Arrays.asList(
+                    new SimpleInterval("chr20", 1, 64444167),
+                    new SimpleInterval("chr21", 1, 46709983)));
+        testGenomicsDBImporterWithGenotypes(LOCAL_GVCFS, intervals, COMBINED_SITES_ONLY, b38_reference_20_21, true, true, true);
+    }
+
     private void testGenomicsDBImporterWithGenotypes(final List<String> vcfInputs, final List<SimpleInterval> intervals,
-                                                     final String referenceFile, final String expectedCombinedVCF) throws IOException {
+                                                      final String expectedCombinedVCF,
+                                                      final String referenceFile) throws IOException {
+        testGenomicsDBImporterWithGenotypes(vcfInputs, intervals,
+                expectedCombinedVCF, referenceFile,
+                false,
+                true,
+                false);
+    }
+
+    private void testGenomicsDBImporterWithGenotypes(final List<String> vcfInputs, final List<SimpleInterval> intervals,
+                                                      final String expectedCombinedVCF, final String referenceFile,
+                                                     final boolean testAll) throws IOException {
+        testGenomicsDBImporterWithGenotypes(vcfInputs, intervals,
+                expectedCombinedVCF, referenceFile,
+                testAll,
+                false,
+                false);
+    }
+
+    private void testGenomicsDBImporterWithGenotypes(final List<String> vcfInputs, final List<SimpleInterval> intervals,
+                                                      final String expectedCombinedVCF, final String referenceFile,
+                                                     final boolean testAll,
+                                                     final boolean produceGTField,
+                                                     final boolean sitesOnlyQuery) throws IOException {
         final String workspace = createTempDir("genomicsdb-tests-").getAbsolutePath() + "/workspace";
 
         writeToGenomicsDB(vcfInputs, intervals, workspace, 0, false, 0, 1);
         checkJSONFilesAreWritten(workspace);
-        checkGenomicsDBAgainstExpected(workspace, intervals, referenceFile, expectedCombinedVCF, false);
+        checkGenomicsDBAgainstExpected(workspace, intervals, expectedCombinedVCF, referenceFile, testAll, produceGTField, sitesOnlyQuery);
     }
 
     private File runCombineGVCFs(final List<String> inputs, final List<SimpleInterval> intervals, final String reference, final String[] extraArgs) {
@@ -339,8 +396,20 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static void checkGenomicsDBAgainstExpected(final String workspace, final List<SimpleInterval> intervals,
                                                        final String expectedCombinedVCF, final String referenceFile,
                                                        final boolean testAll) throws IOException {
+        checkGenomicsDBAgainstExpected(workspace, intervals,
+                expectedCombinedVCF, referenceFile,
+                testAll,
+                false,
+                false);
+    }
+
+    private static void checkGenomicsDBAgainstExpected(final String workspace, final List<SimpleInterval> intervals,
+                                                       final String expectedCombinedVCF, final String referenceFile,
+                                                       final boolean testAll,
+                                                       final boolean produceGTField,
+                                                       final boolean sitesOnlyQuery) throws IOException {
         final GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> genomicsDBFeatureReader =
-                getGenomicsDBFeatureReader(workspace, referenceFile, !testAll);
+                getGenomicsDBFeatureReader(workspace, referenceFile, produceGTField, sitesOnlyQuery);
 
         final AbstractFeatureReader<VariantContext, LineIterator> combinedVCFReader =
                 AbstractFeatureReader.getFeatureReader(expectedCombinedVCF, new VCFCodec(), true);
@@ -663,9 +732,17 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         }
 
     }
+    private static GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> getGenomicsDBFeatureReader(
+            final String workspace, final String reference,
+            final boolean produceGTField) throws IOException {
+        return getGenomicsDBFeatureReader(workspace, reference,
+                produceGTField, false);
+    }
 
     private static GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> getGenomicsDBFeatureReader(
-            final String workspace, final String reference, boolean produceGTField) throws IOException {
+            final String workspace, final String reference,
+            final boolean produceGTField,
+            final boolean sitesOnlyQuery) throws IOException {
        GenomicsDBExportConfiguration.ExportConfiguration exportConfiguration = GenomicsDBExportConfiguration.ExportConfiguration.newBuilder()
                 .setWorkspace(workspace)
                 .setReferenceGenome(reference)
@@ -673,6 +750,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                 .setCallsetMappingFile(new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).getAbsolutePath())
                 .setVcfHeaderFilename(new File(workspace, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME).getAbsolutePath())
                 .setProduceGTField(produceGTField)
+                .setSitesOnlyQuery(sitesOnlyQuery)
                 .setGenerateArrayNameFromPartitionBounds(true)
                 .build();
 
