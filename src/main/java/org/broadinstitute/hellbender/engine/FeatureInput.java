@@ -275,7 +275,7 @@ public final class FeatureInput<T extends Feature> implements Serializable {
      *
      * @return true if the value for name does not match the default, indicating it was a user supplied name (i.e. foo:file.vcf)
      */
-    public boolean isUserSuppliedName() {
+    public boolean hasUserSuppliedName() {
         return !ParsedArgument.getDefaultName(getFeaturePath()).equals(name);
     }
 

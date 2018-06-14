@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.MultiVariantInputArgumentCollection;
 
 import java.util.ArrayList;
 import java.util.List;

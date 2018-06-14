@@ -1,20 +1,24 @@
-package org.broadinstitute.hellbender.engine;
+package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.MultiVariantWalker;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Class that defines the variant arguments used for a MultiVariantWalker.  DefaultArgumentCollection uses the standard --variant argument; however,
- * subclasses of MultiVariantWalker can override MultiVariantWalker.getMultiVariantInputArgumentCollection() and provide their own argument pattern.
+ * Class that defines the variant arguments used for a MultiVariantWalker.  The default implementation below uses the standard --variant argument; however,
+ * subclasses of {@link MultiVariantWalker} can override {@link MultiVariantWalker#getMultiVariantInputArgumentCollection} and provide their own argument pattern.
  */
 public abstract class MultiVariantInputArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    abstract protected List<String> getDrivingVariantPaths();
+    /**
+     * @return List of paths to variants over which to iterate.  These will be merged and iterated as a single data source.
+     */
+    abstract public List<String> getDrivingVariantPaths();
 
     public static class DefaultArgumentCollection extends MultiVariantInputArgumentCollection {
         private static final long serialVersionUID = 1L;
@@ -26,7 +30,7 @@ public abstract class MultiVariantInputArgumentCollection implements Serializabl
         public List<String> drivingVariantFiles = new ArrayList<>();
 
         @Override
-        protected List<String> getDrivingVariantPaths() {
+        public List<String> getDrivingVariantPaths() {
             return drivingVariantFiles;
         }
     }
