@@ -148,6 +148,14 @@ public class ReadsKeyUnitTest extends GATKBaseTest {
                         true,
                         createTestRead("name2", "1", 1000, "100M", library1.getReadGroupId(), false),
                         createTestRead("name2", "1", 1200, "100M", library1.getReadGroupId(), true),},
+
+                // Test of two equivalent groups, but one read is on a different contig
+                {header, createTestRead("name1", "1", 1000, "100M", library1.getReadGroupId(), false),
+                        createTestRead("name1", "1", 1200, "100M", library1.getReadGroupId(), true),
+                        false,
+                        createTestRead("name2", "1", 1000, "100M", library1.getReadGroupId(), false),
+                        createTestRead("name2", "2", 1200, "100M", library1.getReadGroupId(), true),},
+
         };
     }
 

@@ -113,14 +113,14 @@ public abstract class ReadsKey {
     // Helper methods for generating summary longs
     private static long longKeyForFragment(int strandedUnclippedStart, boolean reverseStrand, int referenceIndex, byte library) {
         return (((long)strandedUnclippedStart) << 32) |
-                        (referenceIndex << 16 & (0xFFFF0000)) |
+                        (referenceIndex << 16 & (0xFFFF0000)) | // Note, the bitmasks are being used here because upcasting a negative int to a long in java results in the top bits being filled with 1s, which will ruin the rest of the key. So we mask it for saftey.
                         ((library << 8) & (0x0000FF00)) |
                         (reverseStrand ? 1 : 0);
     }
 
     private static long longKeyForPair(int strandedUnclippedStart, boolean reverseStrand, int referenceIndex) {
         return (((long)strandedUnclippedStart) << 32) |
-                ((referenceIndex << 16) & (0xFFFF0000)) |
+                ((referenceIndex << 16) & (0xFFFF0000)) | // Note, the bitmasks are being used here because upcasting a negative int to a long in java results in the top bits being filled with 1s, which will ruin the rest of the key. So we mask it for saftey.
                 (reverseStrand ? 1 : 0);
     }
 }
