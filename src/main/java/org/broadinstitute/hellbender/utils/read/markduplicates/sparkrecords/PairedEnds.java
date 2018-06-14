@@ -10,8 +10,6 @@ public abstract class PairedEnds extends MarkDuplicatesSparkRecord {
     }
 
     public abstract int getFirstStartPosition();
-    public abstract int getUnclippedStartPosition();
-    public abstract int getFirstRefIndex();
     public abstract int getScore();
     public abstract boolean isRead1ReverseStrand();
 

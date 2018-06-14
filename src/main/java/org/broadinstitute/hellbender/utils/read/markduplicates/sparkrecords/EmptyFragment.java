@@ -3,8 +3,11 @@ package org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.markduplicates.LibraryIdGenerator;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadEnds;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
+
+import java.util.Map;
 
 /**
  * Dummy class representing a mated read fragment at a particular start position to be used for accounting
@@ -14,11 +17,8 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
  * during the processing step of MarkDuplicatesSpark
  */
 public final class EmptyFragment extends PairedEnds {
-    protected transient int key;
+    protected transient ReadsKey key;
 
-    private final int firstUnclippedStartPosition;
-    private final int firstStartPosition;
-    private final short firstRefIndex;
     private final boolean R1R;
 
     /**
@@ -26,17 +26,13 @@ public final class EmptyFragment extends PairedEnds {
      * this only includes the necessary data to locate the read, the rest is unnecessary because it will appear in the paired bucket
      *
      */
-    public EmptyFragment(GATKRead read, SAMFileHeader header) {
+    public EmptyFragment(GATKRead read, SAMFileHeader header, Map<String, Byte> headerLibraryMap) {
         super(0, null);
-
-        this.firstUnclippedStartPosition = ReadUtils.getStrandedUnclippedStart(read);
-        this.firstRefIndex = (short)ReadUtils.getReferenceIndex(read, header);
         this.R1R = read.isReverseStrand();
-        firstStartPosition = 0;
-        this.key = ReadsKey.hashKeyForFragment(firstUnclippedStartPosition,
+        this.key = ReadsKey.getKeyForFragment(ReadUtils.getStrandedUnclippedStart(read),
                 isRead1ReverseStrand(),
-                firstRefIndex,
-                ReadUtils.getLibrary(read, header));
+                ReadUtils.getReferenceIndex(read, header),
+                headerLibraryMap.get(ReadUtils.getLibrary(read, header, LibraryIdGenerator.UNKNOWN_LIBRARY)));
     }
 
     @Override
@@ -49,16 +45,12 @@ public final class EmptyFragment extends PairedEnds {
     }
     @Override
     // NOTE: This is transient and thus may not exist if the object gets serialized
-    public int key() {
+    public ReadsKey key() {
         return key;
     }
     @Override
-    public int getUnclippedStartPosition() {
-        return firstUnclippedStartPosition;
-    }
-    @Override
     public int getFirstStartPosition() {
-        return firstStartPosition;
+        throw new UnsupportedOperationException("Empty fragments do not support requests for positional information");
     }
     @Override
     public boolean isRead1ReverseStrand() {
@@ -69,11 +61,7 @@ public final class EmptyFragment extends PairedEnds {
         return (R1R)? ReadEnds.R : ReadEnds.F;
     }
     @Override
-    public int getFirstRefIndex() {
-        return firstRefIndex;
-    }
-    @Override
     public String toString() {
-        return "EmptyFragment " + firstUnclippedStartPosition;
+        return "EmptyFragment ";
     }
 }

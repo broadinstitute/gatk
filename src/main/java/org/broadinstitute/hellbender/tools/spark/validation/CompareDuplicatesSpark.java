@@ -4,6 +4,7 @@ package org.broadinstitute.hellbender.tools.spark.validation;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMReadGroupRecord;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -13,6 +14,8 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSparkUtils;
+import org.broadinstitute.hellbender.utils.read.markduplicates.LibraryIdGenerator;
 import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -134,19 +137,21 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
         }
         System.out.println("first and second: " + firstDupesCount + "," + secondDupesCount);
 
+        Broadcast<Map<String, Byte>> libraryIndex = ctx.broadcast(MarkDuplicatesSparkUtils.constructLibraryIndex(getHeaderForReads()));
+
         Broadcast<SAMFileHeader> bHeader = ctx.broadcast(getHeaderForReads());
         // Group the reads of each BAM by MarkDuplicates key, then pair up the the reads for each BAM.
-        JavaPairRDD<Integer, GATKRead> firstKeyed = firstReads.mapToPair(read -> new Tuple2<>(ReadsKey.hashKeyForFragment(
+        JavaPairRDD<ReadsKey, GATKRead> firstKeyed = firstReads.mapToPair(read -> new Tuple2<>(ReadsKey.getKeyForFragment(
                 ReadUtils.getStrandedUnclippedStart(read),
                 read.isReverseStrand(),
                 ReadUtils.getReferenceIndex(read,bHeader.getValue()),
-                ReadUtils.getLibrary(read, bHeader.getValue())), read));
-        JavaPairRDD<Integer, GATKRead> secondKeyed = secondReads.mapToPair(read -> new Tuple2<>(ReadsKey.hashKeyForFragment(
+                libraryIndex.getValue().get(ReadUtils.getLibrary(read, bHeader.getValue(), LibraryIdGenerator.UNKNOWN_LIBRARY))), read));
+        JavaPairRDD<ReadsKey, GATKRead> secondKeyed = secondReads.mapToPair(read -> new Tuple2<>(ReadsKey.getKeyForFragment(
                 ReadUtils.getStrandedUnclippedStart(read),
                 read.isReverseStrand(),
                 ReadUtils.getReferenceIndex(read,bHeader.getValue()),
-                ReadUtils.getLibrary(read, bHeader.getValue())), read));
-        JavaPairRDD<Integer, Tuple2<Iterable<GATKRead>, Iterable<GATKRead>>> cogroup = firstKeyed.cogroup(secondKeyed, getRecommendedNumReducers());
+                libraryIndex.getValue().get(ReadUtils.getLibrary(read, bHeader.getValue(), LibraryIdGenerator.UNKNOWN_LIBRARY))), read));
+        JavaPairRDD<ReadsKey, Tuple2<Iterable<GATKRead>, Iterable<GATKRead>>> cogroup = firstKeyed.cogroup(secondKeyed, getRecommendedNumReducers());
 
 
         // Produces an RDD of MatchTypes, e.g., EQUAL, DIFFERENT_REPRESENTATIVE_READ, etc. per MarkDuplicates key,
@@ -159,8 +164,6 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
 
             return getDupes(iFirstReads, iSecondReads, header);
         });
-
-        // TODO: We should also produce examples of reads that don't match to make debugging easier (#1263).
         Map<MatchType, Integer> tagCountMap = tagged.mapToPair(v1 ->
                 new Tuple2<>(v1, 1)).reduceByKey((v1, v2) -> v1 + v2).collectAsMap();
 
@@ -232,7 +235,9 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
     static JavaRDD<GATKRead> filteredReads(JavaRDD<GATKRead> initialReads, String fileName) {
         // We only need to compare duplicates that are "primary" (i.g., primary mapped read).
         return initialReads.map((Function<GATKRead, GATKRead>) v1 -> {
+            String rg = v1.getReadGroup();
             v1.clearAttributes();
+            v1.setReadGroup(rg);
             return v1;
         }).filter(v1 -> {
             if (ReadUtils.isNonPrimary(v1) && v1.isDuplicate()) {

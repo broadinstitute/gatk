@@ -1,11 +1,15 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords;
 
 import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.markduplicates.LibraryIdGenerator;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadEnds;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
+
+import java.util.Map;
 
 /**
  * Class representing a single read fragment at a particular start location without a mapped mate.
@@ -14,27 +18,23 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
  * during the processing step of MarkDuplicatesSpark
  */
 public class Fragment extends PairedEnds {
-    protected transient int key;
+    protected transient ReadsKey key;
 
     private final int firstStartPosition;
-    private final int firstUnclippedStartPosition;
-    private final short firstRefIndex;
     private final boolean R1R;
 
     protected final int score;
 
-    public Fragment(final GATKRead first, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
+    public Fragment(final GATKRead first, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy, Map<String, Byte> headerLibraryMap) {
         super(partitionIndex, first.getName());
 
-        this.firstUnclippedStartPosition = ReadUtils.getStrandedUnclippedStart(first);
         this.firstStartPosition = first.getAssignedStart();
-        this.firstRefIndex = (short)ReadUtils.getReferenceIndex(first, header);
         this.score = scoringStrategy.score(first);
         this.R1R = first.isReverseStrand();
-        this.key = ReadsKey.hashKeyForFragment(firstUnclippedStartPosition,
+        this.key = ReadsKey.getKeyForFragment(ReadUtils.getStrandedUnclippedStart(first),
                 isRead1ReverseStrand(),
-                firstRefIndex,
-                ReadUtils.getLibrary(first, header));
+                (short)ReadUtils.getReferenceIndex(first, header),
+                headerLibraryMap.get(ReadUtils.getLibrary(first, header, LibraryIdGenerator.UNKNOWN_LIBRARY)));
     }
 
     @Override
@@ -43,16 +43,12 @@ public class Fragment extends PairedEnds {
     }
     @Override
     // NOTE: This is transient and thus may not exist if the object gets serialized
-    public int key() {
+    public ReadsKey key() {
         return key;
     }
     @Override
     public int getScore() {
       return score;
-    }
-    @Override
-    public int getUnclippedStartPosition() {
-      return firstUnclippedStartPosition;
     }
     @Override
     public int getFirstStartPosition() {
@@ -67,11 +63,7 @@ public class Fragment extends PairedEnds {
         return (R1R)? ReadEnds.R : ReadEnds.F;
     }
     @Override
-    public int getFirstRefIndex() {
-      return firstRefIndex;
-    }
-    @Override
     public String toString() {
-        return name + " " + firstUnclippedStartPosition;
+        return "fragment: " + name + " " + firstStartPosition;
     }
 }

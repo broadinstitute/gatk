@@ -13,6 +13,8 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.ReadEnds;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
 import picard.sam.util.PhysicalLocation;
 
+import java.util.Map;
+
 /**
  * Class representing a pair of reads together with accompanying optical duplicate marking information.
  *
@@ -21,15 +23,11 @@ import picard.sam.util.PhysicalLocation;
  */
 @DefaultSerializer(Pair.Serializer.class)
 public final class Pair extends PairedEnds implements PhysicalLocation {
-    protected transient int key;
+    protected transient ReadsKey key;
 
     private final int firstStartPosition;
-    private final int firstUnclippedStartPosition;
-    private final short firstRefIndex;
     private final boolean isRead1ReverseStrand;
 
-    private final int secondUnclippedStartPosition;
-    private final short secondRefIndex;
     private final boolean isRead2ReverseStrand;
     private final int score;
     private final boolean wasFlipped;
@@ -42,7 +40,7 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
     private transient int y = -1;
     private transient short libraryId = -1;
 
-    public Pair(final GATKRead read1, final GATKRead read2, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy) {
+    public Pair(final GATKRead read1, final GATKRead read2, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy, Map<String, Byte> headerLibraryMap) {
         super(partitionIndex, read1.getName());
 
         final String name1 = read1.getName();
@@ -60,25 +58,19 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
         if( read1UnclippedStart < read2UnclippedStart ){
             first = read1;
             second = read2;
-            firstUnclippedStartPosition = read1UnclippedStart;
-            secondUnclippedStartPosition = read2UnclippedStart;
         } else {
             first = read2;
             second = read1;
-            firstUnclippedStartPosition = read2UnclippedStart;
-            secondUnclippedStartPosition = read1UnclippedStart;
         }
         // Keep track of the orientation of read1 and read2 as it is important for optical duplicate marking
         wasFlipped = second.isFirstOfPair();
 
         firstStartPosition = first.getAssignedStart();
-        firstRefIndex = (short)ReadUtils.getReferenceIndex(first, header);
-        secondRefIndex = (short)ReadUtils.getReferenceIndex(second, header);
 
         isRead1ReverseStrand = first.isReverseStrand();
         isRead2ReverseStrand = second.isReverseStrand();
 
-        this.key = ReadsKey.hashKeyForPair(header, first, second);
+        this.key = ReadsKey.getKeyForPair(header, first, second, headerLibraryMap);
     }
 
     // Constructor for serialization purposes
@@ -94,12 +86,8 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
         score = input.readInt();
 
         firstStartPosition = input.readInt();
-        firstUnclippedStartPosition = input.readInt();
-        firstRefIndex = input.readShort();
         isRead1ReverseStrand = input.readBoolean();
 
-        secondUnclippedStartPosition = input.readInt();
-        secondRefIndex = input.readShort();
         isRead2ReverseStrand = input.readBoolean();
 
         readGroupIndex = input.readShort();
@@ -113,12 +101,8 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
         output.writeInt(score);
 
         output.writeInt(firstStartPosition);
-        output.writeInt(firstUnclippedStartPosition);
-        output.writeShort(firstRefIndex);
         output.writeBoolean(isRead1ReverseStrand);
 
-        output.writeInt(secondUnclippedStartPosition);
-        output.writeShort(secondRefIndex);
         output.writeBoolean(isRead2ReverseStrand);
 
         output.writeShort(readGroupIndex);
@@ -131,16 +115,12 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
     }
     @Override
     // NOTE: This is transient and thus may not exist if the object gets serialized
-    public int key() {
+    public ReadsKey key() {
         return key;
     }
     @Override
     public int getScore() {
         return score;
-    }
-    @Override
-    public int getUnclippedStartPosition() {
-        return firstUnclippedStartPosition;
     }
     @Override
     public int getFirstStartPosition() {
@@ -151,12 +131,8 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
         return isRead1ReverseStrand;
     }
     @Override
-    public int getFirstRefIndex() {
-        return firstRefIndex;
-    }
-    @Override
     public String toString() {
-        return name + " " + firstUnclippedStartPosition + " " + (secondUnclippedStartPosition == -1 ? "" : secondUnclippedStartPosition);
+        return name + " " + firstStartPosition + " score:" + score;
     }
 
     /**
