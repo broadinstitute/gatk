@@ -315,11 +315,6 @@ public class Funcotator extends VariantWalker {
 
     private FuncotationMetadata inputMetadata;
 
-    /**
-     * Datasource name to use for Funcotations created from input variants.
-     */
-    public static String datasourceNameForInput = "INPUT";
-
     //==================================================================================================================
 
     @Override
@@ -535,7 +530,7 @@ public class Funcotator extends VariantWalker {
         final List<String> txIds = funcotationMap.getTranscriptList();
 
         for (final String txId: txIds) {
-            funcotationMap.add(txId, FuncotatorUtils.createFuncotations(variant, inputMetadata, datasourceNameForInput));
+            funcotationMap.add(txId, FuncotatorUtils.createFuncotations(variant, inputMetadata, FuncotatorConstants.DATASOURCE_NAME_FOR_INPUT_VCFS));
         }
 
         // At this point there is only one transcript ID in the funcotation map if canonical or best effect are selected

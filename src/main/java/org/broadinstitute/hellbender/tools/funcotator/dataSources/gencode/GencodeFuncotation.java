@@ -357,93 +357,96 @@ public class GencodeFuncotation implements Funcotation {
 
     //==================================================================================================================
 
+
     @Override
     public boolean equals(final Object o) {
-        if ( this == o ) return true;
-        if ( o == null || getClass() != o.getClass() ) return false;
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
 
-        final GencodeFuncotation that = (GencodeFuncotation) o;
+        GencodeFuncotation that = (GencodeFuncotation) o;
 
-        if ( start != that.start ) return false;
-        if ( end != that.end ) return false;
-        if ( hugoSymbol != null ? !hugoSymbol.equals(that.hugoSymbol) : that.hugoSymbol != null ) return false;
-        if ( ncbiBuild != null ? !ncbiBuild.equals(that.ncbiBuild) : that.ncbiBuild != null ) return false;
-        if ( chromosome != null ? !chromosome.equals(that.chromosome) : that.chromosome != null ) return false;
-        if ( variantClassification != that.variantClassification ) return false;
-        if ( secondaryVariantClassification != that.secondaryVariantClassification ) return false;
-        if ( variantType != that.variantType ) return false;
-        if ( refAllele != null ? !refAllele.equals(that.refAllele) : that.refAllele != null ) return false;
-        if ( tumorSeqAllele2 != null ? !tumorSeqAllele2.equals(that.tumorSeqAllele2) : that.tumorSeqAllele2 != null )
+        if (start != that.start) return false;
+        if (end != that.end) return false;
+        if (hugoSymbol != null ? !hugoSymbol.equals(that.hugoSymbol) : that.hugoSymbol != null) return false;
+        if (ncbiBuild != null ? !ncbiBuild.equals(that.ncbiBuild) : that.ncbiBuild != null) return false;
+        if (chromosome != null ? !chromosome.equals(that.chromosome) : that.chromosome != null) return false;
+        if (variantClassification != that.variantClassification) return false;
+        if (secondaryVariantClassification != that.secondaryVariantClassification) return false;
+        if (variantType != that.variantType) return false;
+        if (refAllele != null ? !refAllele.equals(that.refAllele) : that.refAllele != null) return false;
+        if (tumorSeqAllele2 != null ? !tumorSeqAllele2.equals(that.tumorSeqAllele2) : that.tumorSeqAllele2 != null)
             return false;
-        if ( genomeChange != null ? !genomeChange.equals(that.genomeChange) : that.genomeChange != null ) return false;
-        if ( annotationTranscript != null ? !annotationTranscript.equals(that.annotationTranscript) : that.annotationTranscript != null )
+        if (genomeChange != null ? !genomeChange.equals(that.genomeChange) : that.genomeChange != null) return false;
+        if (annotationTranscript != null ? !annotationTranscript.equals(that.annotationTranscript) : that.annotationTranscript != null)
             return false;
-        if ( transcriptStrand != null ? !transcriptStrand.equals(that.transcriptStrand) : that.transcriptStrand != null )
+        if (transcriptStrand != null ? !transcriptStrand.equals(that.transcriptStrand) : that.transcriptStrand != null)
             return false;
-        if ( transcriptExon != null ? !transcriptExon.equals(that.transcriptExon) : that.transcriptExon != null )
+        if (transcriptExon != null ? !transcriptExon.equals(that.transcriptExon) : that.transcriptExon != null)
             return false;
-        if ( transcriptPos != null ? !transcriptPos.equals(that.transcriptPos) : that.transcriptPos != null )
+        if (transcriptPos != null ? !transcriptPos.equals(that.transcriptPos) : that.transcriptPos != null)
             return false;
-        if ( cDnaChange != null ? !cDnaChange.equals(that.cDnaChange) : that.cDnaChange != null ) return false;
-        if ( codonChange != null ? !codonChange.equals(that.codonChange) : that.codonChange != null ) return false;
-        if ( proteinChange != null ? !proteinChange.equals(that.proteinChange) : that.proteinChange != null )
+        if (cDnaChange != null ? !cDnaChange.equals(that.cDnaChange) : that.cDnaChange != null) return false;
+        if (codonChange != null ? !codonChange.equals(that.codonChange) : that.codonChange != null) return false;
+        if (proteinChange != null ? !proteinChange.equals(that.proteinChange) : that.proteinChange != null)
             return false;
-        if ( gcContent != null ? !gcContent.equals(that.gcContent) : that.gcContent != null ) return false;
-        if ( referenceContext != null ? !referenceContext.equals(that.referenceContext) : that.referenceContext != null )
+        if (gcContent != null ? !gcContent.equals(that.gcContent) : that.gcContent != null) return false;
+        if (referenceContext != null ? !referenceContext.equals(that.referenceContext) : that.referenceContext != null)
             return false;
-        if ( otherTranscripts != null ? !otherTranscripts.equals(that.otherTranscripts) : that.otherTranscripts != null )
+        if (otherTranscripts != null ? !otherTranscripts.equals(that.otherTranscripts) : that.otherTranscripts != null)
             return false;
-        if ( dataSourceName != null ? !dataSourceName.equals(that.dataSourceName) : that.dataSourceName != null )
+        if (dataSourceName != null ? !dataSourceName.equals(that.dataSourceName) : that.dataSourceName != null)
             return false;
-        if ( locusLevel != null ? !locusLevel.equals(that.locusLevel) : that.locusLevel != null ) return false;
-        if ( apprisRank != that.apprisRank ) return false;
-        if ( transcriptLength != null ? !transcriptLength.equals(that.transcriptLength) : that.transcriptLength != null )
+        if (locusLevel != null ? !locusLevel.equals(that.locusLevel) : that.locusLevel != null) return false;
+        if (apprisRank != that.apprisRank) return false;
+        if (transcriptLength != null ? !transcriptLength.equals(that.transcriptLength) : that.transcriptLength != null)
             return false;
-        if ( version != null ? !version.equals(that.version) : that.version != null ) return false;
-        if ( geneTranscriptType != that.geneTranscriptType ) return false;
-        if ( hugoSymbolSerializedOverride != null ? !hugoSymbolSerializedOverride.equals(that.hugoSymbolSerializedOverride) : that.hugoSymbolSerializedOverride != null )
+        if (version != null ? !version.equals(that.version) : that.version != null) return false;
+        if (geneTranscriptType != that.geneTranscriptType) return false;
+        if (hugoSymbolSerializedOverride != null ? !hugoSymbolSerializedOverride.equals(that.hugoSymbolSerializedOverride) : that.hugoSymbolSerializedOverride != null)
             return false;
-        if ( ncbiBuildSerializedOverride != null ? !ncbiBuildSerializedOverride.equals(that.ncbiBuildSerializedOverride) : that.ncbiBuildSerializedOverride != null )
+        if (ncbiBuildSerializedOverride != null ? !ncbiBuildSerializedOverride.equals(that.ncbiBuildSerializedOverride) : that.ncbiBuildSerializedOverride != null)
             return false;
-        if ( chromosomeSerializedOverride != null ? !chromosomeSerializedOverride.equals(that.chromosomeSerializedOverride) : that.chromosomeSerializedOverride != null )
+        if (chromosomeSerializedOverride != null ? !chromosomeSerializedOverride.equals(that.chromosomeSerializedOverride) : that.chromosomeSerializedOverride != null)
             return false;
-        if ( startSerializedOverride != null ? !startSerializedOverride.equals(that.startSerializedOverride) : that.startSerializedOverride != null )
+        if (startSerializedOverride != null ? !startSerializedOverride.equals(that.startSerializedOverride) : that.startSerializedOverride != null)
             return false;
-        if ( endSerializedOverride != null ? !endSerializedOverride.equals(that.endSerializedOverride) : that.endSerializedOverride != null )
+        if (endSerializedOverride != null ? !endSerializedOverride.equals(that.endSerializedOverride) : that.endSerializedOverride != null)
             return false;
-        if ( variantClassificationSerializedOverride != null ? !variantClassificationSerializedOverride.equals(that.variantClassificationSerializedOverride) : that.variantClassificationSerializedOverride != null )
+        if (variantClassificationSerializedOverride != null ? !variantClassificationSerializedOverride.equals(that.variantClassificationSerializedOverride) : that.variantClassificationSerializedOverride != null)
             return false;
-        if ( secondaryVariantClassificationSerializedOverride != null ? !secondaryVariantClassificationSerializedOverride.equals(that.secondaryVariantClassificationSerializedOverride) : that.secondaryVariantClassificationSerializedOverride != null )
+        if (secondaryVariantClassificationSerializedOverride != null ? !secondaryVariantClassificationSerializedOverride.equals(that.secondaryVariantClassificationSerializedOverride) : that.secondaryVariantClassificationSerializedOverride != null)
             return false;
-        if ( variantTypeSerializedOverride != null ? !variantTypeSerializedOverride.equals(that.variantTypeSerializedOverride) : that.variantTypeSerializedOverride != null )
+        if (variantTypeSerializedOverride != null ? !variantTypeSerializedOverride.equals(that.variantTypeSerializedOverride) : that.variantTypeSerializedOverride != null)
             return false;
-        if ( refAlleleSerializedOverride != null ? !refAlleleSerializedOverride.equals(that.refAlleleSerializedOverride) : that.refAlleleSerializedOverride != null )
+        if (refAlleleSerializedOverride != null ? !refAlleleSerializedOverride.equals(that.refAlleleSerializedOverride) : that.refAlleleSerializedOverride != null)
             return false;
-        if ( tumorSeqAllele1SerializedOverride != null ? !tumorSeqAllele1SerializedOverride.equals(that.tumorSeqAllele1SerializedOverride) : that.tumorSeqAllele1SerializedOverride != null )
+        if (tumorSeqAllele1SerializedOverride != null ? !tumorSeqAllele1SerializedOverride.equals(that.tumorSeqAllele1SerializedOverride) : that.tumorSeqAllele1SerializedOverride != null)
             return false;
-        if ( tumorSeqAllele2SerializedOverride != null ? !tumorSeqAllele2SerializedOverride.equals(that.tumorSeqAllele2SerializedOverride) : that.tumorSeqAllele2SerializedOverride != null )
+        if (tumorSeqAllele2SerializedOverride != null ? !tumorSeqAllele2SerializedOverride.equals(that.tumorSeqAllele2SerializedOverride) : that.tumorSeqAllele2SerializedOverride != null)
             return false;
-        if ( genomeChangeSerializedOverride != null ? !genomeChangeSerializedOverride.equals(that.genomeChangeSerializedOverride) : that.genomeChangeSerializedOverride != null )
+        if (genomeChangeSerializedOverride != null ? !genomeChangeSerializedOverride.equals(that.genomeChangeSerializedOverride) : that.genomeChangeSerializedOverride != null)
             return false;
-        if ( annotationTranscriptSerializedOverride != null ? !annotationTranscriptSerializedOverride.equals(that.annotationTranscriptSerializedOverride) : that.annotationTranscriptSerializedOverride != null )
+        if (annotationTranscriptSerializedOverride != null ? !annotationTranscriptSerializedOverride.equals(that.annotationTranscriptSerializedOverride) : that.annotationTranscriptSerializedOverride != null)
             return false;
-        if ( transcriptStrandSerializedOverride != null ? !transcriptStrandSerializedOverride.equals(that.transcriptStrandSerializedOverride) : that.transcriptStrandSerializedOverride != null )
+        if (transcriptStrandSerializedOverride != null ? !transcriptStrandSerializedOverride.equals(that.transcriptStrandSerializedOverride) : that.transcriptStrandSerializedOverride != null)
             return false;
-        if ( transcriptExonSerializedOverride != null ? !transcriptExonSerializedOverride.equals(that.transcriptExonSerializedOverride) : that.transcriptExonSerializedOverride != null )
+        if (transcriptExonSerializedOverride != null ? !transcriptExonSerializedOverride.equals(that.transcriptExonSerializedOverride) : that.transcriptExonSerializedOverride != null)
             return false;
-        if ( transcriptPosSerializedOverride != null ? !transcriptPosSerializedOverride.equals(that.transcriptPosSerializedOverride) : that.transcriptPosSerializedOverride != null )
+        if (transcriptPosSerializedOverride != null ? !transcriptPosSerializedOverride.equals(that.transcriptPosSerializedOverride) : that.transcriptPosSerializedOverride != null)
             return false;
-        if ( cDnaChangeSerializedOverride != null ? !cDnaChangeSerializedOverride.equals(that.cDnaChangeSerializedOverride) : that.cDnaChangeSerializedOverride != null )
+        if (cDnaChangeSerializedOverride != null ? !cDnaChangeSerializedOverride.equals(that.cDnaChangeSerializedOverride) : that.cDnaChangeSerializedOverride != null)
             return false;
-        if ( codonChangeSerializedOverride != null ? !codonChangeSerializedOverride.equals(that.codonChangeSerializedOverride) : that.codonChangeSerializedOverride != null )
+        if (codonChangeSerializedOverride != null ? !codonChangeSerializedOverride.equals(that.codonChangeSerializedOverride) : that.codonChangeSerializedOverride != null)
             return false;
-        if ( proteinChangeSerializedOverride != null ? !proteinChangeSerializedOverride.equals(that.proteinChangeSerializedOverride) : that.proteinChangeSerializedOverride != null )
+        if (proteinChangeSerializedOverride != null ? !proteinChangeSerializedOverride.equals(that.proteinChangeSerializedOverride) : that.proteinChangeSerializedOverride != null)
             return false;
-        if ( gcContentSerializedOverride != null ? !gcContentSerializedOverride.equals(that.gcContentSerializedOverride) : that.gcContentSerializedOverride != null )
+        if (gcContentSerializedOverride != null ? !gcContentSerializedOverride.equals(that.gcContentSerializedOverride) : that.gcContentSerializedOverride != null)
             return false;
-        if ( referenceContextSerializedOverride != null ? !referenceContextSerializedOverride.equals(that.referenceContextSerializedOverride) : that.referenceContextSerializedOverride != null )
+        if (referenceContextSerializedOverride != null ? !referenceContextSerializedOverride.equals(that.referenceContextSerializedOverride) : that.referenceContextSerializedOverride != null)
             return false;
-        return otherTranscriptsSerializedOverride != null ? otherTranscriptsSerializedOverride.equals(that.otherTranscriptsSerializedOverride) : that.otherTranscriptsSerializedOverride == null;
+        if (otherTranscriptsSerializedOverride != null ? !otherTranscriptsSerializedOverride.equals(that.otherTranscriptsSerializedOverride) : that.otherTranscriptsSerializedOverride != null)
+            return false;
+        return metadata != null ? metadata.equals(that.metadata) : that.metadata == null;
     }
 
     @Override
@@ -497,6 +500,7 @@ public class GencodeFuncotation implements Funcotation {
         result = 31 * result + (gcContentSerializedOverride != null ? gcContentSerializedOverride.hashCode() : 0);
         result = 31 * result + (referenceContextSerializedOverride != null ? referenceContextSerializedOverride.hashCode() : 0);
         result = 31 * result + (otherTranscriptsSerializedOverride != null ? otherTranscriptsSerializedOverride.hashCode() : 0);
+        result = 31 * result + (metadata != null ? metadata.hashCode() : 0);
         return result;
     }
 

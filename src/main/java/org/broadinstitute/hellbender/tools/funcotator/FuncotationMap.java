@@ -220,7 +220,6 @@ public class FuncotationMap {
 
             final List<String> valuesAsList = Arrays.asList(funcotationKeys).stream().map(k -> simpleNameValuePairs.get(k)).collect(Collectors.toList());
             result.add(simpleNameValuePairs.getOrDefault(transcriptFieldName, NO_TRANSCRIPT_AVAILABLE_KEY), TableFuncotation.create(Arrays.asList(funcotationKeys), valuesAsList, altAllele, datasourceName, null));
-
         }
         return result;
     }

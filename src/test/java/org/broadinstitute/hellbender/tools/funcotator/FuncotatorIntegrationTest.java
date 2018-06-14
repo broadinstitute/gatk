@@ -614,6 +614,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.addReference(new File(hg38Chr3Ref));
         arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_PIK3CA_DIR);
         arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        arguments.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.ALL.toString());
         arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
 
         runCommandLine(arguments);
@@ -700,7 +701,6 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         final Map<String, Set<String>> mafAliasMap = dummyMafOutputRenderer.getReverseOutputFieldNameMap();
 
         // Get all of the alias lists
-
         final Pair<VCFHeader, List<VariantContext>> vcf  = VariantContextTestUtils.readEntireVCFIntoMemory(PIK3CA_VCF_HG19);
         final Set<String> vcfHeaderInfoSet = vcf.getLeft().getInfoHeaderLines().stream()
                 .map(h -> h.getID())
@@ -749,6 +749,11 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(variantContexts.size() > 0);
         Assert.assertTrue(variantContexts.stream().allMatch(v -> v.hasAttribute("ILLUMINA_BUILD")));
         Assert.assertTrue(variantContexts.stream().allMatch(v -> v.getAttributeAsString("ILLUMINA_BUILD", "").startsWith("37")));
+        final VCFInfoHeaderLine funcotationHeaderLine = vcf.getLeft().getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
+
+        // Make sure that none of the input fields appear in the funcotation header.
+        final Set<String> funcotationKeys = new HashSet<>(Arrays.asList(extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription())));
+        Assert.assertEquals(Sets.intersection(funcotationKeys, PIK3CA_VCF_HG19_INPUT_FIELDS).size(), 0);
     }
 }
 
