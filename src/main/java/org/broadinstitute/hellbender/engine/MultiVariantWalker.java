@@ -53,7 +53,7 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
      * argument pattern besides the default -V
      */
     protected MultiVariantInputArgumentCollection getMultiVariantInputArgumentCollection() {
-        return new MultiVariantInputArgumentCollection.DefaultArgumentCollection();
+        return new MultiVariantInputArgumentCollection.DefaultMultiVariantInputArgumentCollection();
     }
 
     @Override

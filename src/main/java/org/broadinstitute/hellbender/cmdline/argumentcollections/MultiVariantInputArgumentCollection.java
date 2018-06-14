@@ -20,7 +20,7 @@ public abstract class MultiVariantInputArgumentCollection implements Serializabl
      */
     abstract public List<String> getDrivingVariantPaths();
 
-    public static class DefaultArgumentCollection extends MultiVariantInputArgumentCollection {
+    public static class DefaultMultiVariantInputArgumentCollection extends MultiVariantInputArgumentCollection {
         private static final long serialVersionUID = 1L;
 
         // NOTE: using List<String> rather than List<FeatureInput> here so that we can initialize the driving source of variants separately
