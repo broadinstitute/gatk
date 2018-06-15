@@ -55,20 +55,35 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
         final int read1UnclippedStart = ReadUtils.getStrandedUnclippedStart(read1);
         final int read2UnclippedStart = ReadUtils.getStrandedUnclippedStart(read2);
 
-        if( read1UnclippedStart < read2UnclippedStart ){
+        int read1ReferenceIndex = ReadUtils.getReferenceIndex(read1,header);
+        int read2ReferenceIndex = ReadUtils.getReferenceIndex(read2,header);
+
+        if( read1ReferenceIndex != read2ReferenceIndex ? read1ReferenceIndex < read2ReferenceIndex : read1UnclippedStart <= read2UnclippedStart ){
             first = read1;
             second = read2;
         } else {
             first = read2;
             second = read1;
         }
-        // Keep track of the orientation of read1 and read2 as it is important for optical duplicate marking
-        wasFlipped = second.isFirstOfPair();
-
         firstStartPosition = first.getAssignedStart();
+
+        // Ensuring that the orientation is consistent for reads starting at the same place there is no propper order
+        if (read1ReferenceIndex == read2ReferenceIndex &&
+                read1UnclippedStart == read2UnclippedStart &&
+                first.isReverseStrand() && !second.isReverseStrand()) {
+            // setting to FR for consistencies sake. (which involves flipping) if both reads had the same unclipped start
+            GATKRead tmp = first;
+            first = second;
+            second = tmp;
+        }
+
+        this.key = ReadsKey.getKeyForPair(header, first, second, headerLibraryMap);
 
         isRead1ReverseStrand = first.isReverseStrand();
         isRead2ReverseStrand = second.isReverseStrand();
+
+        // Keep track of the orientation of read1 and read2 as it is important for optical duplicate marking
+        wasFlipped = second.isFirstOfPair(); //TODO be sure this is still correct...
 
         this.key = ReadsKey.getKeyForPair(header, first, second, headerLibraryMap);
     }

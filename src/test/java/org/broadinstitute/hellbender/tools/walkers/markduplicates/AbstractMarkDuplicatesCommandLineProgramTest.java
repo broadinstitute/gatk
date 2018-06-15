@@ -211,6 +211,18 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
     }
 
     @Test
+    // To match picard, when two reads are grouped into a duplicate group and have the same unclipped start position we will unify their orientations
+    // to FR if they point in opposite directions. This test asserts that two pairs of reads that ultimately all map to 93470499-93470499 with clipping
+    // and orientations will ultimately be marked and mapped together even though they have opposite orientations (one is FR while the other is RF).
+    public void testReadSameStartPositionOrientationOverride() {
+        final AbstractMarkDuplicatesTester tester = getTester();
+        tester.setExpectedOpticalDuplicate(0);
+        tester.addMatePair("HJYFJCCXX160204:8:1124:31659:21526",  19, 19, 93470380, 93470499, false, false, false, false, "31S111M9S", "64M87S", true, false, false, false, false, DEFAULT_BASE_QUALITY, "1");  // after clipping these both start on 93470499
+        tester.addMatePair("HJYFJCCXX160204:8:1124:31659:21527",  19, 19, 93470499, 93470380, false, false, true, true, "64M87S", "31S111M9S", false, true, false, false, false, DEFAULT_BASE_QUALITY, "1");  // after clipping these both start on 93470499
+        tester.runTest();
+    }
+
+    @Test
     public void testOpticalDuplicateClusterSamePositionNoOpticalDuplicatesWithinPixelDistance() {
         final AbstractMarkDuplicatesTester tester = getTester();
         tester.getSamRecordSetBuilder().setReadLength(101);
