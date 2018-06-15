@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.validation;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.ValidationStringency;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -96,8 +97,8 @@ public class CompareDuplicatesSparkIntegrationTest extends CommandLineProgramTes
 
         this.runCommandLine(args.getArgsArray());
 
-        SamAssertionUtils.assertSamsEqual(diffbam1, validation1);
-        SamAssertionUtils.assertSamsEqual(diffbam2, validation2);
+        SamAssertionUtils.assertSamsEqual(diffbam1, validation1,  ValidationStringency.SILENT );
+        SamAssertionUtils.assertSamsEqual(diffbam2, validation2,  ValidationStringency.SILENT );
 
         Pair<SAMFileHeader, List<GATKRead>> bam1Diffs = ReadTestUtils.readEntireBamIntoMemory(diffbam1.getPath());
         Pair<SAMFileHeader, List<GATKRead>> bam2Diffs = ReadTestUtils.readEntireBamIntoMemory(diffbam2.getPath());
