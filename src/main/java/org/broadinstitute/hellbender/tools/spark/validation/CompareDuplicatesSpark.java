@@ -125,7 +125,7 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
             }
         }
 
-        JavaRDD<GATKRead> firstReads = getReads();
+        JavaRDD<GATKRead> firstReads = filteredReads(getReads());
 
         ReadsSparkSource readsSource2 = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency());
         TraversalParameters traversalParameters;
@@ -135,7 +135,7 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
             traversalParameters = null;
         }
 
-        JavaRDD<GATKRead> secondReads = readsSource2.getParallelReads(input2, null, traversalParameters, bamPartitionSplitSize);
+        JavaRDD<GATKRead> secondReads = filteredReads(readsSource2.getParallelReads(input2, null, traversalParameters, bamPartitionSplitSize));
 
         // Start by verifying that we have same number of reads and duplicates in each BAM.
         long firstBamSize = firstReads.count();
@@ -321,9 +321,9 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
     }
 
 
-    static JavaRDD<GATKRead> filteredReads(JavaRDD<GATKRead> initialReads, String fileName) {
+    static JavaRDD<GATKRead> filteredReads(JavaRDD<GATKRead> initialReads) {
         // We only need to compare duplicates that are "primary" (i.g., primary mapped read).
-        return initialReads.map((Function<GATKRead, GATKRead>) v1 -> {
+        return initialReads.map( v1 -> {
             String rg = v1.getReadGroup();
             v1.clearAttributes();
             v1.setReadGroup(rg);
