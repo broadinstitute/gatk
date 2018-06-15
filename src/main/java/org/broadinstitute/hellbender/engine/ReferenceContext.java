@@ -352,7 +352,7 @@ public final class ReferenceContext implements Iterable<Byte> {
 
         final SAMSequenceRecord sequence = dataSource.getSequenceDictionary().getSequence(contig);
         if ( sequence == null ) {
-            throw new UserException("Given reference file does not have data at the requested contig(" + contig + ")!");
+            throw new UserException.NoDataAtRequestedContig("Given reference file does not have data at the requested contig(" + contig + ")!");
         }
 
         final int sequenceLength = dataSource.getSequenceDictionary().getSequence(contig).getSequenceLength();

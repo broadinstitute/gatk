@@ -10,11 +10,6 @@ import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFSimpleHeaderLine;
-import java.io.File;
-import java.nio.file.Path;
-import java.time.ZonedDateTime;
-import java.util.*;
-import java.util.stream.Stream;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
@@ -42,6 +37,12 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+
+import java.io.File;
+import java.nio.file.Path;
+import java.time.ZonedDateTime;
+import java.util.*;
+import java.util.stream.Stream;
 
 /**
  * Base class for all GATK tools. Tool authors that wish to write a "GATK" tool but not use one of
@@ -137,17 +138,17 @@ public abstract class GATKTool extends CommandLineProgram {
     /**
      * Our source of reference data (null if no reference was provided)
      */
-    ReferenceDataSource reference;
+    protected ReferenceDataSource reference;
 
     /**
      * Our source of reads data (null if no source of reads was provided)
      */
-    ReadsDataSource reads;
+    protected ReadsDataSource reads;
 
     /**
      * Our source of Feature data (null if no source of Features was provided)
      */
-    FeatureManager features;
+    protected FeatureManager features;
 
     /**
      * Intervals to be used for traversal (null if no intervals were provided).

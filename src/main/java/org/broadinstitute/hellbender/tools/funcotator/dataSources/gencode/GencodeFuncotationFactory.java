@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.*;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -1288,6 +1289,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     @VisibleForTesting
     static String getReferenceBases(final Allele refAllele, final Allele altAllele, final ReferenceContext reference, final Strand strand ) {
 
+        // TODO: this seems to be the same as FuncotatorUtils::getBasesInWindowAroundReferenceAllele - should this method call into that?
+
         final int indelAdjustment;
         if ( altAllele.length() > refAllele.length() ) {
             indelAdjustment = altAllele.length() - refAllele.length();
@@ -1302,12 +1305,29 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                     reference.getWindow().getStart() - referenceWindow,
                     reference.getWindow().getEnd() + referenceWindow + indelAdjustment);
 
+        // Get the reference bases for this interval.
+        // This grossness is required for now as a fix for the hg19 vs b37 reference contig name issue:
+        byte[] referenceBases;
+        try {
+            referenceBases = reference.getBases(refBasesInterval);
+        }
+        catch (final UserException.MissingContigInSequenceDictionary | UserException.NoDataAtRequestedContig ex) {
+
+            final SimpleInterval otherPossibleRefInterval = new SimpleInterval(
+                    FuncotatorUtils.convertHG19ContigToB37Contig(refBasesInterval.getContig()),
+                    refBasesInterval.getStart(),
+                    refBasesInterval.getEnd()
+            );
+
+            referenceBases = reference.getBases(otherPossibleRefInterval);
+        }
+
         // Get the bases in the correct direction:
         if ( strand == Strand.POSITIVE ) {
-            return new String(reference.getBases(refBasesInterval));
+            return new String(referenceBases);
         }
         else {
-            return ReadUtils.getBasesReverseComplement(reference.getBases(refBasesInterval));
+            return ReadUtils.getBasesReverseComplement(referenceBases);
         }
     }
 
@@ -1580,9 +1600,10 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                              final ReferenceContext referenceContext,
                                              final int windowSize ) {
 
+        // TODO: this seems to do something similar to FuncotatorUtils::getBasesInWindowAroundReferenceAllele - should this method call into that?
+
         Utils.nonNull( referenceContext );
         ParamUtils.isPositive( windowSize, "Window size must be >= 1." );
-
 
         final int leadingWindowSize;
         final int trailingWindowSize = windowSize;
@@ -1606,10 +1627,23 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         }
 
         // Create a placeholder for the bases:
-        final byte[] bases;
+        byte[] bases;
 
         // Get the bases:
-        bases = referenceContext.getBases(leadingWindowSize, trailingWindowSize);
+        // This grossness is required for now as a fix for the hg19 vs b37 reference contig name issue:
+        try {
+            bases = referenceContext.getBases(leadingWindowSize, trailingWindowSize);
+        }
+        catch (final UserException.MissingContigInSequenceDictionary | UserException.NoDataAtRequestedContig ex) {
+
+            final SimpleInterval otherPossibleRefInterval = new SimpleInterval(
+                    FuncotatorUtils.convertHG19ContigToB37Contig(referenceContext.getWindow().getContig()),
+                    Math.max(referenceContext.getWindow().getStart() - leadingWindowSize, 1),
+                    referenceContext.getWindow().getEnd() + trailingWindowSize
+            );
+
+            bases = referenceContext.getBases(otherPossibleRefInterval);
+        }
 
         // Get the gcCount:
         long gcCount = 0;

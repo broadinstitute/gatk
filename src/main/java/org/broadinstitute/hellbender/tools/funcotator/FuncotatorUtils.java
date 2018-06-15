@@ -48,6 +48,7 @@ public final class FuncotatorUtils {
     private static SAMSequenceDictionary B37_SEQUENCE_DICTIONARY = null;
 
     private static final Map<String, String> B37_To_HG19_CONTIG_NAME_MAP;
+    private static final Map<String, String> HG19_TO_B37_CONTIG_NAME_MAP;
 
     /**
      * Initialize our hashmaps of lookup tables:
@@ -71,6 +72,9 @@ public final class FuncotatorUtils {
         tableByLetter = Collections.unmodifiableMap(mapByLetter);
 
         B37_To_HG19_CONTIG_NAME_MAP = initializeB37ToHg19ContigNameMap();
+        HG19_TO_B37_CONTIG_NAME_MAP = B37_To_HG19_CONTIG_NAME_MAP.entrySet()
+                                            .stream()
+                                            .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
     }
 
     /**
@@ -1482,6 +1486,8 @@ public final class FuncotatorUtils {
                                                                 final ReferenceContext referenceContext) {
         // TODO: This is generating too long a string for INDELs because of VCF format alleles - see Issue #4407
 
+        // TODO: this seems to be the same as GencodeFunotationFactory::getReferenceBases - should that method call into this?
+
         Utils.nonNull( refAllele );
         Utils.nonNull( altAllele );
         assertValidStrand( strand );
@@ -1492,9 +1498,26 @@ public final class FuncotatorUtils {
 
         final String referenceBases;
 
+        // Get the reference bases for this interval.
+        // This grossness is required for now as a fix for the hg19 vs b37 reference contig name issue:
+        byte[] bases;
+        try {
+            bases = referenceContext.getBases(referenceWindowInBases, endWindow);
+        }
+        catch (final UserException.MissingContigInSequenceDictionary | UserException.NoDataAtRequestedContig ex) {
+
+            final SimpleInterval otherPossibleRefInterval = new SimpleInterval(
+                    FuncotatorUtils.convertHG19ContigToB37Contig(referenceContext.getWindow().getContig()),
+                        Math.max(referenceContext.getWindow().getStart() - referenceWindowInBases, 1),
+                        referenceContext.getWindow().getEnd() + endWindow
+            );
+
+            bases = referenceContext.getBases(otherPossibleRefInterval);
+        }
+
         if ( strand == Strand.POSITIVE ) {
             // Get the reference sequence:
-            referenceBases = new String(referenceContext.getBases(referenceWindowInBases, endWindow));
+            referenceBases = new String(bases);
         }
         else {
             // Get the reference sequence:
@@ -1746,6 +1769,15 @@ public final class FuncotatorUtils {
      */
     public static String convertB37ContigToHg19Contig( final String b37Contig ) {
         return B37_To_HG19_CONTIG_NAME_MAP.getOrDefault(b37Contig, b37Contig);
+    }
+
+    /**
+     * Converts a given HG19 style contig name to the equivalent in B37.
+     * @param hg19Contig The contig name from the HG19 Human Genome reference to convert to the equivalent contig from the B37 Human Genome reference.
+     * @return The B37 equivalent of the given HG19 contig name, if such an equivalent name exists.  If no equivalent name exists, returns the given {@code hg19Contig}.
+     */
+    public static String convertHG19ContigToB37Contig( final String hg19Contig ) {
+        return HG19_TO_B37_CONTIG_NAME_MAP.getOrDefault(hg19Contig, hg19Contig);
     }
 
     /**

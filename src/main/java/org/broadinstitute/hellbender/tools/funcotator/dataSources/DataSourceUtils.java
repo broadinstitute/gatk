@@ -59,13 +59,13 @@ final public class DataSourceUtils {
     @VisibleForTesting
     static final int MIN_MAJOR_VERSION_NUMBER = 1;
     @VisibleForTesting
-    static final int MIN_MINOR_VERSION_NUMBER = 2;
+    static final int MIN_MINOR_VERSION_NUMBER = 4;
     @VisibleForTesting
     static final int MIN_YEAR_RELEASED        = 2018;
     @VisibleForTesting
-    static final int MIN_MONTH_RELEASED       = 3;
+    static final int MIN_MONTH_RELEASED       = 6;
     @VisibleForTesting
-    static final int MIN_DAY_RELEASED         = 29;
+    static final int MIN_DAY_RELEASED         = 15;
 
     //==================================================================================================================
     // Public Static Members:
@@ -230,9 +230,9 @@ final public class DataSourceUtils {
      * @return A {@link List} of {@link DataSourceFuncotationFactory} given the data source metadata, overrides, and transcript reporting priority information.
      */
     public static List<DataSourceFuncotationFactory> createDataSourceFuncotationFactoriesForDataSources(final Map<Path, Properties> dataSourceMetaData,
-                                                                                               final LinkedHashMap<String, String> annotationOverridesMap,
-                                                                                               final TranscriptSelectionMode transcriptSelectionMode,
-                                                                                               final Set<String> userTranscriptIdSet,
+                                                                                                        final LinkedHashMap<String, String> annotationOverridesMap,
+                                                                                                        final TranscriptSelectionMode transcriptSelectionMode,
+                                                                                                        final Set<String> userTranscriptIdSet,
                                                                                                         final boolean isAllowingNoChrMatchesForTranscripts) {
 
         Utils.nonNull(dataSourceMetaData);
@@ -573,9 +573,12 @@ final public class DataSourceUtils {
 
         // Warn the user if they need newer stuff.
         if ( !dataSourcesPathIsAcceptable ) {
-            logger.error("ERROR: Given data source path is too old!  Minimum required version is: " + CURRENT_MINIMUM_DATA_SOURCE_VERSION + " (yours: " + version + ")");
-            logger.error("       You must download a newer version of the data sources from the Broad Institute FTP site: " + DATA_SOURCES_FTP_PATH);
-            logger.error("       or the Broad Institute Google Bucket: " + DATA_SOURCES_BUCKET_PATH);
+
+            String message = "";
+            message = message + "ERROR: Given data source path is too old!  Minimum required version is: " + CURRENT_MINIMUM_DATA_SOURCE_VERSION + " (yours: " + version + ")\n";
+            message = message + "       You must download a newer version of the data sources from the Broad Institute FTP site: " + DATA_SOURCES_FTP_PATH + "\n";
+            message = message + "       or the Broad Institute Google Bucket: " + DATA_SOURCES_BUCKET_PATH + "\n";
+            throw new UserException( message );
         }
 
         return dataSourcesPathIsAcceptable;

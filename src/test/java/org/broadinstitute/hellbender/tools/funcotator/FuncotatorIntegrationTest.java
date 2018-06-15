@@ -260,6 +260,12 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                         "Homo_sapiens_assembly19.fasta",
                         true,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19
+                },
+                {
+                        "hg38_trio.vcf",
+                        "Homo_sapiens_assembly38.fasta",
+                        false,
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG38
                 }
         };
     }

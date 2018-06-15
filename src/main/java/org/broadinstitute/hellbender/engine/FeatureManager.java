@@ -86,7 +86,7 @@ public final class FeatureManager implements AutoCloseable {
     /**
      * Mapping from FeatureInput argument to query-able FeatureDataSource for that source of Features
      */
-    private final Map<FeatureInput<? extends Feature>, FeatureDataSource<? extends Feature>> featureSources;
+    public final Map<FeatureInput<? extends Feature>, FeatureDataSource<? extends Feature>> featureSources;
 
     /**
      * Create a FeatureManager given a CommandLineProgram tool instance, discovering all FeatureInput

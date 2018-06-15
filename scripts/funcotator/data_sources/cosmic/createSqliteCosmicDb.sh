@@ -44,6 +44,7 @@ sqlite3 ${OUT_DB_FILE} <<EOF
 .import ${COSMIC_FILE} RawCosmic
 CREATE TABLE Cosmic AS SELECT * FROM RawCosmic WHERE ("Mutation AA" != "" OR "Mutation genome position" != "");
 DROP TABLE RawCosmic;
+UPDATE Cosmic SET "Mutation genome position" = "chr"||"Mutation genome position" WHERE "Mutation genome position" != "";
 CREATE INDEX GeneIndex ON Cosmic("Gene name");
 VACUUM;
 EOF
