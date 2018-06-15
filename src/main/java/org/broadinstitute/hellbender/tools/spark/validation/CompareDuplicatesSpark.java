@@ -4,7 +4,6 @@ package org.broadinstitute.hellbender.tools.spark.validation;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMReadGroupRecord;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -125,7 +124,7 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
             }
         }
 
-        JavaRDD<GATKRead> firstReads = filteredReads(getReads());
+        JavaRDD<GATKRead> firstReads = removeNonReadGroupAttributes(getReads());
 
         ReadsSparkSource readsSource2 = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency());
         TraversalParameters traversalParameters;
@@ -135,7 +134,7 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
             traversalParameters = null;
         }
 
-        JavaRDD<GATKRead> secondReads = filteredReads(readsSource2.getParallelReads(input2, null, traversalParameters, bamPartitionSplitSize));
+        JavaRDD<GATKRead> secondReads = removeNonReadGroupAttributes(readsSource2.getParallelReads(input2, null, traversalParameters, bamPartitionSplitSize));
 
         // Start by verifying that we have same number of reads and duplicates in each BAM.
         long firstBamSize = firstReads.count();
@@ -321,8 +320,8 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
     }
 
 
-    static JavaRDD<GATKRead> filteredReads(JavaRDD<GATKRead> initialReads) {
-        // We only need to compare duplicates that are "primary" (i.g., primary mapped read).
+    static JavaRDD<GATKRead> removeNonReadGroupAttributes(JavaRDD<GATKRead> initialReads) {
+        // We only need to compare duplicates by their readgroup and alignment info, so we throw all other attributes away
         return initialReads.map( v1 -> {
             String rg = v1.getReadGroup();
             v1.clearAttributes();
