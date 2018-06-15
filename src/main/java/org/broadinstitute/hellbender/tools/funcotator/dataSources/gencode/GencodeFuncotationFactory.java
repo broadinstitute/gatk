@@ -1934,7 +1934,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param refAllele The reference {@link Allele} for this variant.
      * @param altAllele The alternate {@link Allele} for this variant.
      * @return A {@link GencodeFuncotation.VariantType} representing the variation type between the given reference and alternate {@link Allele}.
-     * Spanning deletions and no calls will get a type of NA
+     * Spanning deletions and no calls will get a type of {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantType#NA}
      */
     private static GencodeFuncotation.VariantType getVariantType( final Allele refAllele, final Allele altAllele ) {
 
