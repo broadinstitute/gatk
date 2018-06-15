@@ -27,7 +27,6 @@ import org.testng.collections.Sets;
 
 import java.nio.file.Path;
 import java.util.*;
-import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -293,7 +292,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             // Get our "Best Transcript" from our list.
             sortFuncotationsByTranscriptForOutput(gencodeFuncotationList);
 
-
             // Now we have to filter out the output gencodeFuncotations if they are not on the list the user provided:
             // TODO: Is this correct behavior?  The sorting takes care of ordering the transcripts.
             filterAnnotationsByUserTranscripts(gencodeFuncotationList, userRequestedTranscripts);
@@ -307,19 +305,20 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     private void populateOtherTranscriptsMapForFuncotation(final List<GencodeFuncotation> gencodeFuncotations) {
+        // This method assumes unique transcript names in each GencodeFuncotation.  Do not use Function.identity() as
+        //  the key or error will result.
         // First create a map that goes from each given funcotation to its condensed version.
-        final Map<GencodeFuncotation, String> funcotationToCondensedString = gencodeFuncotations.stream()
-                .collect(Collectors.toMap(Function.identity(), GencodeFuncotationFactory::condenseGencodeFuncotation, (x,y) -> y, LinkedHashMap::new));
+        final Map<String, String> funcotationToCondensedString = gencodeFuncotations.stream()
+                .collect(Collectors.toMap(f -> f.getAnnotationTranscript(), GencodeFuncotationFactory::condenseGencodeFuncotation, (x,y) -> y, LinkedHashMap::new));
 
         for (final GencodeFuncotation g: gencodeFuncotations) {
             final List<String> otherTranscriptStrings = funcotationToCondensedString.keySet().stream()
-                    .filter(f -> !f.equals(g))
+                    .filter(f -> !f.equals(g.getAnnotationTranscript()))
                     .map(f -> funcotationToCondensedString.get(f))
                     .collect(Collectors.toList());
             g.setOtherTranscripts(otherTranscriptStrings);
         }
     }
-
     @Override
     /**
      * Attempts to treat the given features as {@link GencodeGtfFeature} objects in order to
@@ -1906,6 +1905,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                 .setEnd(variant.getEnd())
                 .setVariantType(getVariantType(variant.getReference(), Allele.SPAN_DEL))
                 .setChromosome(variant.getContig())
+                .setOtherTranscripts(Collections.emptyList())
                 .setAnnotationTranscript(annotationTranscript);
 
         // If we have a cached value for the ncbiBuildVersion, we should add it:
@@ -1934,7 +1934,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param refAllele The reference {@link Allele} for this variant.
      * @param altAllele The alternate {@link Allele} for this variant.
      * @return A {@link GencodeFuncotation.VariantType} representing the variation type between the given reference and alternate {@link Allele}.
-     * Spanning deletions and no calls will get a type of {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantType.NA}
+     * Spanning deletions and no calls will get a type of {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantType#NA}
      */
     private static GencodeFuncotation.VariantType getVariantType( final Allele refAllele, final Allele altAllele ) {
 

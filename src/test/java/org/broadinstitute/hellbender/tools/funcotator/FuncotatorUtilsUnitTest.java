@@ -1,10 +1,14 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
+import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.vcf.VCFHeaderLineCount;
+import htsjdk.variant.vcf.VCFHeaderLineType;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
@@ -12,6 +16,8 @@ import org.broadinstitute.hellbender.engine.ReferenceFileSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
+import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
+import org.broadinstitute.hellbender.tools.funcotator.metadata.VcfFuncotationMetadata;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -25,6 +31,7 @@ import org.testng.annotations.Test;
 import java.io.*;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * A unit test suite for the {@link FuncotatorUtils} class.
@@ -1464,7 +1471,7 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     @DataProvider
     public Object[][] provideIsGencodeFuncotation() {
         return new Object[][] {
-                {new TableFuncotation(Collections.singletonList("FIELD"), Collections.singletonList("VALUE"), Allele.create("A"), "TEST"), false},
+                {TableFuncotation.create(Collections.singletonList("FIELD"), Collections.singletonList("VALUE"), Allele.create("A"), "TEST", null), false},
                 {new GencodeFuncotationBuilder().setAnnotationTranscript("TXID").build(), true}
         };
     }
@@ -1477,11 +1484,11 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     @DataProvider
     public Object[][] provideAreGencodeFuncotations() {
         return new Object[][] {
-                {Collections.singletonList(new TableFuncotation(Collections.singletonList("FIELD"), Collections.singletonList("VALUE"), Allele.create("A"), "TEST")), false},
+                {Collections.singletonList(TableFuncotation.create(Collections.singletonList("FIELD"), Collections.singletonList("VALUE"), Allele.create("A"), "TEST", null)), false},
                 {Collections.singletonList(new GencodeFuncotationBuilder().setAnnotationTranscript("TXID").build()), true},
                 {Arrays.asList(
-                        new TableFuncotation(Collections.singletonList("FIELD"), Collections.singletonList("VALUE"), Allele.create("A"), "TEST"),
-                        new TableFuncotation(Collections.singletonList("FIELD2"), Collections.singletonList("VALUE1"), Allele.create("A"), "TEST")
+                        TableFuncotation.create(Collections.singletonList("FIELD"), Collections.singletonList("VALUE"), Allele.create("A"), "TEST", null),
+                        TableFuncotation.create(Collections.singletonList("FIELD2"), Collections.singletonList("VALUE1"), Allele.create("A"), "TEST", null)
                     ), false
                 },
                 {Arrays.asList(
@@ -1492,11 +1499,11 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                 {Arrays.asList(
                         new GencodeFuncotationBuilder().setAnnotationTranscript("TXID1").build(),
                         new GencodeFuncotationBuilder().setAnnotationTranscript("TXID2").build(),
-                        new TableFuncotation(Collections.singletonList("FIELD"), Collections.singletonList("VALUE"), Allele.create("A"), "TEST")
+                        TableFuncotation.create(Collections.singletonList("FIELD"), Collections.singletonList("VALUE"), Allele.create("A"), "TEST", null)
                     ), true
                 },
                 {Arrays.asList(
-                        new TableFuncotation(Collections.singletonList("FIELD"), Collections.singletonList("VALUE"), Allele.create("A"), "TEST"),
+                        TableFuncotation.create(Collections.singletonList("FIELD"), Collections.singletonList("VALUE"), Allele.create("A"), "TEST", null),
                         new GencodeFuncotationBuilder().setAnnotationTranscript("TXID1").build(),
                         new GencodeFuncotationBuilder().setAnnotationTranscript("TXID2").build()
                     ), true
@@ -1507,5 +1514,51 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     @Test(dataProvider = "provideAreGencodeFuncotations")
     public void testAreGencodeFuncotations(final List<Funcotation> f, final boolean gt) {
         Assert.assertEquals(FuncotatorUtils.areAnyGencodeFuncotation(f), gt);
+    }
+
+    @DataProvider
+    public Object[][] provideCreateFuncotationsFromVariantContext() {
+        final Map<String, String> attributes1 = ImmutableMap.of("FOOFIELD", "FOO", "BAZFIELD", "BAZ");
+        final List<VCFInfoHeaderLine> attributes1AsVcfHeaderLine = attributes1.keySet().stream()
+                .map(k -> new VCFInfoHeaderLine(k, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Description here"))
+                .collect(Collectors.toList());
+
+        final Map<String, String> attributes2 = ImmutableMap.of("FOOFIELD", "FOO,FOOINDEL", "BAZFIELD", "BAZ,BAZINDEL");
+        final List<VCFInfoHeaderLine> attributes2AsVcfHeaderLine = attributes2.keySet().stream()
+                .map(k -> new VCFInfoHeaderLine(k, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Description here"))
+                .collect(Collectors.toList());
+
+        return new Object[][] {
+            { new VariantContextBuilder(
+                    FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
+                    "chr3",
+                    1000000,
+                    1000000,
+                    Arrays.asList(Allele.create("A", true), Allele.create("C")))
+                    .attributes(attributes1)
+                    .make(),
+                    VcfFuncotationMetadata.create(attributes1AsVcfHeaderLine),
+                    "TEST1"
+            }, { new VariantContextBuilder(
+                    FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
+                    "chr3",
+                    1000000,
+                    1000000,
+                    Arrays.asList(Allele.create("A", true), Allele.create("C"), Allele.create("ATT")))
+                    .attributes(attributes1)
+                    .make(),
+                    VcfFuncotationMetadata.create(attributes2AsVcfHeaderLine),
+                    "TEST1"
+            }
+        };
+    }
+
+    @Test(dataProvider = "provideCreateFuncotationsFromVariantContext")
+    public void testCreateFuncotationsFromVariantContext(final VariantContext vc, final FuncotationMetadata metadata, final String datasourceName) {
+        final List<Funcotation> funcotations = FuncotatorUtils.createFuncotations(vc, metadata, datasourceName);
+
+        Assert.assertTrue(funcotations.stream().allMatch(f -> f.getDataSourceName().equals(datasourceName)));
+        Assert.assertEquals(funcotations.stream().map(f -> f.getAltAllele()).collect(Collectors.toSet()), new HashSet<>(vc.getAlternateAlleles()));
+        Assert.assertEquals(funcotations.stream().map(f -> f.getMetadata()).collect(Collectors.toSet()), new HashSet<>(Collections.singletonList(metadata)));
     }
 }

@@ -136,11 +136,11 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                                         new GencodeFuncotationBuilder().setHugoSymbol(dataTable.get(startingHeaderRow+1).get(keyColumn)).build()
                                 ),
                                 Collections.singletonList(
-                                        new TableFuncotation(
+                                        TableFuncotation.create(
                                                 removeHelper(headerRowTable.get(startingHeaderRow), keyColumn),
                                                 removeHelper(dataTable.get(startingHeaderRow+1), keyColumn),
                                                 defaultAltAllele,
-                                                defaultName
+                                                defaultName, null
                                         )
                                 )
                         }
@@ -163,11 +163,11 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                                         new GencodeFuncotationBuilder().setAnnotationTranscript(dataTable.get(startingHeaderRow+1).get(keyColumn)).build()
                                 ),
                                 Collections.singletonList(
-                                        new TableFuncotation(
+                                        TableFuncotation.create(
                                                 removeHelper(headerRowTable.get(startingHeaderRow), keyColumn),
                                                 removeHelper(dataTable.get(startingHeaderRow+1), keyColumn),
                                                 defaultAltAllele,
-                                                defaultName
+                                                defaultName, null
                                         )
                                 )
                         }
@@ -292,7 +292,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                                 new GencodeFuncotationBuilder().setHugoSymbol("NOT THE RIGHT GENE NAME").build()
                         ),
                         Collections.singletonList(
-                                new TableFuncotation(new ArrayList<>(geneNameXsvFuncotationFactory.getSupportedFuncotationFields()), emptyFields1, defaultAltAllele, defaultName)
+                                TableFuncotation.create(new ArrayList<>(geneNameXsvFuncotationFactory.getSupportedFuncotationFields()), emptyFields1, defaultAltAllele, defaultName, null)
                         )
                 }
         );
@@ -314,7 +314,7 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                             new GencodeFuncotationBuilder().setAnnotationTranscript("NOT THE RIGHT TRANSCRIPT ID").build()
                     ),
                     Collections.singletonList(
-                            new TableFuncotation(new ArrayList<>(transcriptIdXsvFuncotationFactory.getSupportedFuncotationFields()), emptyFields2, defaultAltAllele, defaultName)
+                            TableFuncotation.create(new ArrayList<>(transcriptIdXsvFuncotationFactory.getSupportedFuncotationFields()), emptyFields2, defaultAltAllele, defaultName, null)
                     )
             }
         );

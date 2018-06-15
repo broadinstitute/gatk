@@ -615,55 +615,55 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
         // NOTE: The data field names must match data sources that are checked in for this to work in an expected way:
         final List<List<Funcotation>> funcotationList = Arrays.asList(
                 Collections.singletonList(
-                        new TableFuncotation(
+                        TableFuncotation.create(
                                 baseFieldNameList,
                                 createFieldValuesFromNameList("A", baseFieldNameList, fieldSize),
                                 Allele.create("T"),
-                                GencodeFuncotationFactory.DEFAULT_NAME
+                                GencodeFuncotationFactory.DEFAULT_NAME, null
                         )
                 ),
                 Collections.singletonList(
-                        new TableFuncotation(
+                        TableFuncotation.create(
                                 baseFieldNameList,
                                 createFieldValuesFromNameList("B", baseFieldNameList, fieldSize),
                                 Allele.create("C"),
-                                GencodeFuncotationFactory.DEFAULT_NAME
+                                GencodeFuncotationFactory.DEFAULT_NAME, null
                         )
                 ),
                 Collections.singletonList(
-                        new TableFuncotation(
+                        TableFuncotation.create(
                                 baseFieldNameList,
                                 createFieldValuesFromNameList("C", baseFieldNameList, fieldSize),
                                 Allele.create("GG"),
-                                GencodeFuncotationFactory.DEFAULT_NAME
+                                GencodeFuncotationFactory.DEFAULT_NAME, null
                         )
                 ),
                 Collections.singletonList(
-                        new TableFuncotation(
+                        TableFuncotation.create(
                                 baseFieldNameList,
                                 createFieldValuesFromNameList("D", baseFieldNameList, fieldSize),
                                 Allele.create("T"),
-                                "TestDataSource4"
+                                "TestDataSource4", null
                         )
                 ),
                 Arrays.asList(
-                        new TableFuncotation(
+                        TableFuncotation.create(
                                 baseFieldNameList,
                                 createFieldValuesFromNameList("E", baseFieldNameList, fieldSize),
                                 Allele.create("A"),
-                                "TestDataSource5"
+                                "TestDataSource5", null
                         ),
-                        new TableFuncotation(
+                        TableFuncotation.create(
                                 baseFieldNameList,
                                 createFieldValuesFromNameList("F", baseFieldNameList, fieldSize),
                                 Allele.create("AG"),
-                                "TestDataSource5"
+                                "TestDataSource5", null
                         ),
-                        new TableFuncotation(
+                        TableFuncotation.create(
                                 baseFieldNameList,
                                 createFieldValuesFromNameList("G", baseFieldNameList, fieldSize),
                                 Allele.create("AT"),
-                                "TestDataSource5"
+                                "TestDataSource5", null
                         )
                 )
         );

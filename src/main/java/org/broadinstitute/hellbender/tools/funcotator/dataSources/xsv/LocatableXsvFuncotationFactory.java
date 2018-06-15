@@ -149,7 +149,7 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
 
                         // Now we create one funcotation for each Alternate allele:
                         for ( final Allele altAllele : alternateAlleles ) {
-                            outputFuncotations.add(new TableFuncotation(tableFeature, altAllele, name));
+                            outputFuncotations.add(TableFuncotation.create(tableFeature, altAllele, name, null));
                             annotatedAltAlleles.add(altAllele);
                         }
                     }
@@ -190,7 +190,7 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
 
         for ( final Allele altAllele : alternateAlleles ) {
             if ( !annotatedAltAlleles.contains(altAllele) ) {
-                funcotationList.add(new TableFuncotation(supportedFieldNameList, emptyFieldList, altAllele, name));
+                funcotationList.add(TableFuncotation.create(supportedFieldNameList, emptyFieldList, altAllele, name, null));
             }
         }
 

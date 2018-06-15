@@ -13,7 +13,9 @@ import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
+import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -2022,7 +2024,7 @@ public final class FuncotatorUtils {
      */
     public static String sanitizeFuncotationForVcf(final String individualFuncotation) {
         Utils.nonNull(individualFuncotation);
-        return StringUtils.replaceEach(individualFuncotation, new String[]{",", ";", "=", "\t", "|"}, new String[]{"_%2C_", "_%3B_", "_%3D_", "_%09_", "_%7C_"});
+        return StringUtils.replaceEach(individualFuncotation, new String[]{",", ";", "=", "\t", "|", " "}, new String[]{"_%2C_", "_%3B_", "_%3D_", "_%09_", "_%7C_", "_%20_"});
     }
 
     /**
@@ -2074,6 +2076,45 @@ public final class FuncotatorUtils {
      */
     public static boolean areAnyGencodeFuncotation(final List<Funcotation> funcotations) {
         return funcotations.stream().anyMatch(FuncotatorUtils::isGencodeFuncotation);
+    }
+
+    /**
+     * Create funcotations (one for each alt allele) corresponding to the given variant context.
+     *
+     * Assumes that the fields in the variant context are named exactly the same as what is in the metadata.  Additionally, the
+     * metadata must include all variant attributes.
+     *
+     * @param vc The variant context to derive funcotations.  Never {@code null}
+     * @param metadata Existing metadata that matches the variant context info field attributes exactly.  Never {@code null}
+     * @param datasourceName Name to use as the datasource in the funcotations.  Never {@code null}
+     * @return A list of funcotations based on the variant context (INFO) attributes.  Never empty, unless the metadata has no fields.  Never {@code null}
+     */
+    public static List<Funcotation> createFuncotations(final VariantContext vc, final FuncotationMetadata metadata, final String datasourceName) {
+
+        Utils.nonNull(vc);
+        Utils.nonNull(metadata);
+        Utils.nonNull(datasourceName);
+
+        final List<Funcotation> result = new ArrayList<>();
+        final List<String> allFields = metadata.retrieveAllHeaderInfo().stream().map(h -> h.getID()).collect(Collectors.toList());
+
+        final Set<String> attributesNotInMetadata = vc.getAttributes().keySet().stream().filter(k -> !allFields.contains(k)).collect(Collectors.toSet());
+        if (attributesNotInMetadata.size() != 0) {
+            throw new UserException.MalformedFile("Not all attributes in the variant context appear in the metadata: " + attributesNotInMetadata.stream().collect(Collectors.joining(", ")) + " .... Please add these attributes to the input metadata (e.g. VCF Header).");
+        }
+
+        for (final Allele allele: vc.getAlternateAlleles()) {
+
+            // We must have fields for everything in the metadata.
+            final List<String> funcotationFieldValues = new ArrayList<>();
+            for (final String funcotationFieldName : allFields) {
+                funcotationFieldValues.add(vc.getAttributeAsString(funcotationFieldName, ""));
+            }
+
+            result.add(TableFuncotation.create(allFields, funcotationFieldValues, allele, datasourceName, metadata));
+        }
+
+        return result;
     }
 }
 

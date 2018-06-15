@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources;
 
+import com.google.common.collect.Sets;
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -7,7 +8,10 @@ import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.LocatableXsvFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyXsvFuncotationFactory;
+import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
+import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadataUtils;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvTableFeature;
 
 import java.util.*;
@@ -42,10 +46,12 @@ public class TableFuncotation implements Funcotation {
     /** The alternate {@link Allele} associated with this {@link TableFuncotation} */
     final private Allele altAllele;
 
+    final private FuncotationMetadata metadata;
+
     //==================================================================================================================
     // Constructors:
 
-    public TableFuncotation(final List<String> fieldNames, final List<String> fieldValues, final Allele altAllele, final String dataSourceName ) {
+    private TableFuncotation(final List<String> fieldNames, final List<String> fieldValues, final Allele altAllele, final String dataSourceName, final FuncotationMetadata metadata ) {
         if ( fieldNames.size() != fieldValues.size() ) {
             throw new UserException.BadInput("Field names and Field values are of different lengths!  This must not be!");
         }
@@ -57,51 +63,20 @@ public class TableFuncotation implements Funcotation {
 
         this.altAllele = altAllele;
         this.dataSourceName = dataSourceName;
-    }
 
-    public TableFuncotation(final LinkedHashSet<String> fieldNames, final List<String> fieldValues, final Allele altAllele, final String dataSourceName ) {
-        if ( fieldNames.size() != fieldValues.size() ) {
-            throw new UserException.BadInput("Field names and Field values are of different lengths!  This must not be!");
+        if (metadata == null) {
+            this.metadata = FuncotationMetadataUtils.createWithUnknownAttributes(fieldNames);
+        } else {
+            this.metadata = metadata;
         }
 
-        fieldMap = new LinkedHashMap<>(fieldNames.size());
-        int i = 0;
-        for ( final String fieldName : fieldNames ) {
-            fieldMap.put(fieldName, fieldValues.get(i++));
+        // Validate that the metadata is okay.
+        final Sets.SetView<String> differenceMetadataFields = Sets.symmetricDifference(this.metadata.retrieveAllHeaderInfo().stream().map(f -> f.getID()).collect(Collectors.toSet()),
+                new HashSet<>(fieldNames));
+        if (differenceMetadataFields.size() > 0) {
+            throw new UserException.BadInput("Metadata was not valid for the given field names.  Unmatched fields: " +
+                    differenceMetadataFields.stream().collect(Collectors.joining(", ")));
         }
-
-        this.altAllele = altAllele;
-        this.dataSourceName = dataSourceName;
-    }
-
-    public TableFuncotation(final Map<String, Object> data, final Allele altAllele, final String dataSourceName ) {
-
-        fieldMap = new LinkedHashMap<>(data.size());
-
-        // Make sure we do this in the same order every time:
-        final List<String> dataKeys = new ArrayList<>(data.keySet());
-        dataKeys.sort(Comparator.naturalOrder());
-
-        for (final String key : dataKeys ) {
-            fieldMap.put(key, data.get(key).toString());
-        }
-
-        this.altAllele = altAllele;
-        this.dataSourceName = dataSourceName;
-    }
-
-    public TableFuncotation(final XsvTableFeature xsvTableFeature, final Allele altAllele, final String dataSourceName) {
-
-        final List<String> keys = xsvTableFeature.getHeaderWithoutLocationColumns();
-        final List<String> values = xsvTableFeature.getValuesWithoutLocationColumns();
-
-        fieldMap = new LinkedHashMap<>(keys.size());
-        for ( int i = 0; i < keys.size() ; ++i ) {
-            fieldMap.put(keys.get(i), values.get(i));
-        }
-
-        this.altAllele = altAllele;
-        this.dataSourceName = dataSourceName;
     }
 
     //==================================================================================================================
@@ -154,6 +129,11 @@ public class TableFuncotation implements Funcotation {
     }
 
     @Override
+    public FuncotationMetadata getMetadata() {
+        return this.metadata;
+    }
+
+    @Override
     public boolean equals(final Object o) {
         if ( this == o ) return true;
         if ( o == null || getClass() != o.getClass() ) return false;
@@ -186,6 +166,71 @@ public class TableFuncotation implements Funcotation {
 
     //==================================================================================================================
     // Static Methods:
+
+    /**
+     * Create a TableFuncotation with given name value pairs.
+     *
+     * @param fieldNames Names corresponding to the values in <code>fieldValues</code>.  Never {@code null}
+     * @param fieldValues Values corresponding to the names in <code>fieldNames</code>.Never {@code null}
+     * @param altAllele Alternate allele to use for all of the fields in this funcotation.  Never {@code null}
+     * @param dataSourceName Datasource name to use for all of the fields in this funcotation.  Never {@code null}
+     * @param metadata Metadata to use for the given fields.  Use {@code null} to get metadata with unknown description.
+     * @return Never {@code null}
+     */
+    public static TableFuncotation create(final List<String> fieldNames, final List<String> fieldValues, final Allele altAllele, final String dataSourceName, final FuncotationMetadata metadata ) {
+        Utils.nonNull(fieldNames);
+        Utils.nonNull(fieldValues);
+        Utils.nonNull(altAllele);
+        Utils.nonNull(dataSourceName);
+        return new TableFuncotation(fieldNames, fieldValues, altAllele, dataSourceName, metadata);
+    }
+
+    /**
+     * Convenience method to create a table funcotation from a {@link LinkedHashSet}, which preserves order.
+     *
+     * See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
+     *
+     * @param fieldNames See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
+     * @param fieldValues See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
+     * @param altAllele See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
+     * @param dataSourceName See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
+     * @param metadata See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
+     * @return See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
+     */
+    public static TableFuncotation create(final LinkedHashSet<String> fieldNames, final List<String> fieldValues, final Allele altAllele, final String dataSourceName, final FuncotationMetadata metadata ) {
+        return create(new ArrayList<>(fieldNames), fieldValues, altAllele, dataSourceName, metadata );
+    }
+
+    /**
+     *  See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
+     *
+     * @param data Map for field name to field value.  The field value will be converted to a String.  Never {@code null}
+     * @param altAllele See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
+     * @param dataSourceName See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
+     * @param metadata See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
+     * @return See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
+     */
+    public static TableFuncotation create(final Map<String, Object> data, final Allele altAllele, final String dataSourceName, final FuncotationMetadata metadata ) {
+        final List<String> fieldNames = new ArrayList<>(data.keySet());
+        final List<String> fieldValues = fieldNames.stream().map(f -> data.get(f).toString()).collect(Collectors.toList());
+        return create(fieldNames, fieldValues, altAllele, dataSourceName, metadata);
+    }
+
+    /**
+     * See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
+     *
+     * @param xsvTableFeature {@link XsvTableFeature} with field names and values fully populated.  Never {@code null}
+     * @param altAllele See {@link #create(List, List, Allele, String, FuncotationMetadata)}
+     * @param dataSourceName See {@link #create(List, List, Allele, String, FuncotationMetadata)}
+     * @param metadata See {@link #create(List, List, Allele, String, FuncotationMetadata)}
+     * @return See {@link #create(List, List, Allele, String, FuncotationMetadata)}
+     */
+    public static TableFuncotation create(final XsvTableFeature xsvTableFeature, final Allele altAllele, final String dataSourceName, final FuncotationMetadata metadata ) {
+        Utils.nonNull(xsvTableFeature);
+        final List<String> fieldNames = xsvTableFeature.getHeaderWithoutLocationColumns();
+        final List<String> fieldValues = xsvTableFeature.getValuesWithoutLocationColumns();
+        return create(fieldNames, fieldValues, altAllele, dataSourceName, metadata);
+    }
 
     //==================================================================================================================
     // Instance Methods:

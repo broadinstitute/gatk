@@ -31,6 +31,7 @@ public class FuncotationMap {
     /** Standard Logger.  */
     protected static final Logger logger = LogManager.getLogger(FuncotationMap.class);
 
+
     final private Map<String, LinkedHashSet<Funcotation>> txToFuncotations = new LinkedHashMap<>();
 
     private FuncotationMap() {}
@@ -218,8 +219,7 @@ public class FuncotationMap {
                     .toMap(i -> funcotationKeys[i], i-> values[i]));
 
             final List<String> valuesAsList = Arrays.asList(funcotationKeys).stream().map(k -> simpleNameValuePairs.get(k)).collect(Collectors.toList());
-            result.add(simpleNameValuePairs.getOrDefault(transcriptFieldName, NO_TRANSCRIPT_AVAILABLE_KEY), new TableFuncotation(Arrays.asList(funcotationKeys), valuesAsList, altAllele, datasourceName));
-
+            result.add(simpleNameValuePairs.getOrDefault(transcriptFieldName, NO_TRANSCRIPT_AVAILABLE_KEY), TableFuncotation.create(Arrays.asList(funcotationKeys), valuesAsList, altAllele, datasourceName, null));
         }
         return result;
     }

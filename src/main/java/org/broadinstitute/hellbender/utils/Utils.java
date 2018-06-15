@@ -5,10 +5,6 @@ import com.google.common.collect.Iterators;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.tribble.util.ParsingUtils;
-import java.io.FileNotFoundException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.random.RandomDataGenerator;
@@ -19,9 +15,12 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import javax.annotation.Nullable;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.math.BigInteger;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.ZonedDateTime;
@@ -1273,5 +1272,36 @@ public final class Utils {
         while ( (!result.isEmpty()) && (result.get(result.size() - 1).isEmpty()) ) {
             result.remove(result.size() - 1);
         }
+    }
+
+    /**
+     * Take a map of a value to a list and reverse it.  Note that no assumptions of uniqueness are made, so returned
+     *  values are also lists.
+     *
+     *  <p>For example:</p>
+     *
+     *  Input:<br/>
+     *  k ->  {a,b} <br/>
+     *  j ->  {a} <br/>
+     *
+     *  Output:<br/>
+     *  a ->  {k,j} <br/>
+     *  b ->  {k} <br/>
+     *
+     *  Any sorting in the input map will be lost in the output.
+     *
+     * @param somethingToListMap a map from a value to a list of values.  Never {@code null}
+     * @param <T> class of the key of the input
+     * @param <U> class of the values in the list of the input
+     * @return A new mapping from class of values to set of keys.  Never {@code null}
+     */
+    public static <T,U> Map<U, Set<T>> getReverseValueToListMap(final Map<T, List<U>> somethingToListMap) {
+        final Map<U, Set<T>> result = new HashMap<>();
+
+        for (final Map.Entry<T, List<U>> entry : somethingToListMap.entrySet()) {
+            entry.getValue().forEach(v -> result.computeIfAbsent(v, k -> new HashSet<>()).add(entry.getKey()));
+        }
+
+        return result;
     }
 }

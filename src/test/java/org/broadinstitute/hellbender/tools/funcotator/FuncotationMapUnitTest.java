@@ -247,25 +247,14 @@ public class FuncotationMapUnitTest extends BaseTest{
 
     private static List<GencodeFuncotation> createGencodeFuncotations(final String contig, final int start, final int end, final String ref, final String alt, final String referenceFileName, final ReferenceDataSource referenceDataSource, final FeatureReader<GencodeGtfFeature> featureReader, final String transcriptFastaFile, final TranscriptSelectionMode transcriptSelectionMode) {
         final SimpleInterval variantInterval = new SimpleInterval( contig, start, end );
-
-        final Allele refAllele = Allele.create(ref, true);
-        final Allele altAllele = Allele.create(alt);
-
-        final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(
-                referenceFileName,
-                contig,
-                start,
-                end,
-                Arrays.asList(refAllele, altAllele)
-        );
-        final VariantContext variantContext = variantContextBuilder.make();
+        final VariantContext variantContext = createVariantContext(contig, start, end, ref, alt, referenceFileName);
 
         final ReferenceContext referenceContext = new ReferenceContext(referenceDataSource, variantInterval );
 
         // Get our gene feature iterator:
         final CloseableTribbleIterator<GencodeGtfFeature> gtfFeatureIterator;
         try {
-            gtfFeatureIterator = featureReader.query(contig, start, end);
+            gtfFeatureIterator = featureReader.query(variantContext.getContig(), variantContext.getStart(), variantContext.getEnd());
         }
         catch (final IOException ex) {
             throw new GATKException("Could not finish the test!", ex);
@@ -292,55 +281,55 @@ public class FuncotationMapUnitTest extends BaseTest{
         // NOTE: The data field names must match data sources that are checked in for this to work in an expected way:
                 {
                         Collections.singletonList(
-                                new TableFuncotation(
+                                TableFuncotation.create(
                                         baseFieldNameList,
                                         createFieldValuesFromNameList("A", baseFieldNameList),
                                         Allele.create("T"),
-                                        GencodeFuncotationFactory.DEFAULT_NAME
+                                        GencodeFuncotationFactory.DEFAULT_NAME, null
                                 )
                         )},{
                         Collections.singletonList(
-                                new TableFuncotation(
+                                TableFuncotation.create(
                                         baseFieldNameList,
                                         createFieldValuesFromNameList("B", baseFieldNameList),
                                         Allele.create("C"),
-                                        GencodeFuncotationFactory.DEFAULT_NAME
+                                        GencodeFuncotationFactory.DEFAULT_NAME, null
                                 )
                         )},{
                         Collections.singletonList(
-                                new TableFuncotation(
+                                TableFuncotation.create(
                                         baseFieldNameList,
                                         createFieldValuesFromNameList("C", baseFieldNameList),
                                         Allele.create("GG"),
-                                        GencodeFuncotationFactory.DEFAULT_NAME
+                                        GencodeFuncotationFactory.DEFAULT_NAME, null
                                 )
                         )},{
                         Collections.singletonList(
-                                new TableFuncotation(
+                                TableFuncotation.create(
                                         baseFieldNameList,
                                         createFieldValuesFromNameList("D", baseFieldNameList),
                                         Allele.create("T"),
-                                        "TestDataSource4"
+                                        "TestDataSource4", null
                                 )
                         )},{
                         Arrays.asList(
-                                new TableFuncotation(
+                                TableFuncotation.create(
                                         baseFieldNameList,
                                         createFieldValuesFromNameList("E", baseFieldNameList),
                                         Allele.create("A"),
-                                        "TestDataSource5"
+                                        "TestDataSource5", null
                                 ),
-                                new TableFuncotation(
+                                TableFuncotation.create(
                                         baseFieldNameList,
                                         createFieldValuesFromNameList("F", baseFieldNameList),
                                         Allele.create("AG"),
-                                        "TestDataSource5"
+                                        "TestDataSource5", null
                                 ),
-                                new TableFuncotation(
+                                TableFuncotation.create(
                                         baseFieldNameList,
                                         createFieldValuesFromNameList("G", baseFieldNameList),
                                         Allele.create("AT"),
-                                        "TestDataSource5"
+                                        "TestDataSource5", null
                                 )
                         )
                 }
@@ -358,23 +347,23 @@ public class FuncotationMapUnitTest extends BaseTest{
                         pik3caFeatureReader, DS_PIK3CA_HG19_GENCODE_FASTA,
                         TranscriptSelectionMode.ALL, Collections.singletonList("ENST00000263967.3"),
                         Arrays.asList(
-                                new TableFuncotation(
+                                TableFuncotation.create(
                                         baseFieldNameList,
                                         createFieldValuesFromNameList("E", baseFieldNameList),
                                         Allele.create("A"),
-                                        "TestDataSource5"
+                                        "TestDataSource5", null
                                 ),
-                                new TableFuncotation(
+                                TableFuncotation.create(
                                         baseFieldNameList,
                                         createFieldValuesFromNameList("F", baseFieldNameList),
                                         Allele.create("AG"),
-                                        "TestDataSource5"
+                                        "TestDataSource5", null
                                 ),
-                                new TableFuncotation(
+                                TableFuncotation.create(
                                         baseFieldNameList,
                                         createFieldValuesFromNameList("G", baseFieldNameList),
                                         Allele.create("AT"),
-                                        "TestDataSource5"
+                                        "TestDataSource5", null
                                 )
                         )
                 },{"chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
@@ -382,23 +371,23 @@ public class FuncotationMapUnitTest extends BaseTest{
                         muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA,
                         TranscriptSelectionMode.BEST_EFFECT, Collections.singletonList("ENST00000397910.4"),
                         Arrays.asList(
-                        new TableFuncotation(
+                        TableFuncotation.create(
                                 baseFieldNameList,
                                 createFieldValuesFromNameList("E", baseFieldNameList),
                                 Allele.create("A"),
-                                "TestDataSource5"
+                                "TestDataSource5", null
                         ),
-                        new TableFuncotation(
+                        TableFuncotation.create(
                                 baseFieldNameList,
                                 createFieldValuesFromNameList("F", baseFieldNameList),
                                 Allele.create("AG"),
-                                "TestDataSource5"
+                                "TestDataSource5", null
                         ),
-                        new TableFuncotation(
+                        TableFuncotation.create(
                                 baseFieldNameList,
                                 createFieldValuesFromNameList("G", baseFieldNameList),
                                 Allele.create("AT"),
-                                "TestDataSource5"
+                                "TestDataSource5", null
                         )
                 )
                 }, {"chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
@@ -406,23 +395,23 @@ public class FuncotationMapUnitTest extends BaseTest{
                         muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA,
                         TranscriptSelectionMode.ALL, Arrays.asList("ENST00000397910.4", "ENST00000380951.5"),
                         Arrays.asList(
-                                new TableFuncotation(
+                                TableFuncotation.create(
                                         baseFieldNameList,
                                         createFieldValuesFromNameList("E", baseFieldNameList),
                                         Allele.create("A"),
-                                        "TestDataSource5"
+                                        "TestDataSource5", null
                                 ),
-                                new TableFuncotation(
+                                TableFuncotation.create(
                                         baseFieldNameList,
                                         createFieldValuesFromNameList("F", baseFieldNameList),
                                         Allele.create("AG"),
-                                        "TestDataSource5"
+                                        "TestDataSource5", null
                                 ),
-                                new TableFuncotation(
+                                TableFuncotation.create(
                                         baseFieldNameList,
                                         createFieldValuesFromNameList("G", baseFieldNameList),
                                         Allele.create("AT"),
-                                        "TestDataSource5"
+                                        "TestDataSource5", null
                                 )
                         )
                 }
@@ -468,50 +457,18 @@ public class FuncotationMapUnitTest extends BaseTest{
 
     }
 
-    @Test(expectedExceptions = GATKException.ShouldNeverReachHereException.class, expectedExceptionsMessageRegExp = ".*a Gencode Funcotation cannot be added.*")
-    public void testAddingGencodeFuncotationToFuncotationMap() {
-        // Create some gencode funcotations.  The content does not really matter here.
-        final List<Funcotation> gencodeFuncotations = createGencodeFuncotations("chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
-                ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA,
-                TranscriptSelectionMode.ALL).stream().map(gf -> (Funcotation) gf).collect(Collectors.toList());
+    private static VariantContext createVariantContext(final String contig, final int start, final int end, final String ref, final String alt, final String referenceFileName) {
+        final Allele refAllele = Allele.create(ref, true);
+        final Allele altAllele = Allele.create(alt);
 
-        // Create a funcotationMap with some pre-made funcotations.  Content does not really matter.
-        final FuncotationMap funcotationMap = FuncotationMap.createNoTranscriptInfo(Arrays.asList(new TableFuncotation(
-                        Arrays.asList("TESTFIELD1", "TESTADD1"),
-                        createFieldValuesFromNameList("E", Arrays.asList("TESTFIELD1", "TESTADD1")),
-                        Allele.create("A"),
-                        "TestDataSource5"
-                ),
-                new TableFuncotation(
-                        Arrays.asList("TESTFIELD2", "TESTADD2"),
-                        createFieldValuesFromNameList("F", Arrays.asList("TESTFIELD2", "TESTADD2")),
-                        Allele.create("AG"),
-                        "TestDataSource5"
-                ),
-                new TableFuncotation(
-                        Arrays.asList("TESTFIELD3", "TESTADD3"),
-                        createFieldValuesFromNameList("G", Arrays.asList("TESTFIELD3", "TESTADD3")),
-                        Allele.create("AT"),
-                        "TestDataSource5"
-                )));
-
-        // Attempt to add the Gencode funcotations to the funcotation map.  This should cause an exception.
-        funcotationMap.add(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY, gencodeFuncotations);
-    }
-
-    /**
-     * Also tests that {@link FuncotationMap#getGencodeFuncotations(String)} will return an empty list.
-     * @param funcotations funcotations to add to the FuncotationMap.  None are GencodeFuncotations.
-     */
-    @Test(dataProvider = "provideTableFuncotations")
-    public void testCreateNoTranscriptInfo(final List<Funcotation> funcotations) {
-        final FuncotationMap funcotationMap = FuncotationMap.createNoTranscriptInfo(funcotations);
-        Assert.assertEquals(funcotationMap.getTranscriptList().size(), 1);
-        final String transcriptId = funcotationMap.getTranscriptList().get(0);
-        Assert.assertEquals(transcriptId, FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY);
-        Assert.assertEquals(funcotationMap.get(transcriptId), funcotations);
-        Assert.assertEquals(funcotationMap.getGencodeFuncotations(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY).size(), 0);
+        final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(
+                referenceFileName,
+                contig,
+                start,
+                end,
+                Arrays.asList(refAllele, altAllele)
+        );
+        return variantContextBuilder.make();
     }
 
     @DataProvider
@@ -545,5 +502,51 @@ public class FuncotationMapUnitTest extends BaseTest{
         // Tests that both the list and the set are ordered the same way and produce equals values.
         final FuncotationMap funcotationMap = FuncotationMap.createFromGencodeFuncotations(gencodeFuncotations);
         Assert.assertEquals(funcotationMap.getTranscriptList(), new ArrayList<>(funcotationMap.getTranscriptSet()));
+    }
+
+    @Test(expectedExceptions = GATKException.ShouldNeverReachHereException.class, expectedExceptionsMessageRegExp = ".*a Gencode Funcotation cannot be added.*")
+    public void testAddingGencodeFuncotationToFuncotationMap() {
+        // Create some gencode funcotations.  The content does not really matter here.
+        final List<Funcotation> gencodeFuncotations = createGencodeFuncotations("chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
+                ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
+                muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA,
+                TranscriptSelectionMode.ALL).stream().map(gf -> (Funcotation) gf).collect(Collectors.toList());
+
+        // Create a funcotationMap with some pre-made funcotations.  Content does not really matter.
+        final FuncotationMap funcotationMap = FuncotationMap.createNoTranscriptInfo(Arrays.asList(TableFuncotation.create(
+                        Arrays.asList("TESTFIELD1", "TESTADD1"),
+                        createFieldValuesFromNameList("E", Arrays.asList("TESTFIELD1", "TESTADD1")),
+                        Allele.create("A"),
+                        "TestDataSource5", null
+                ),
+                TableFuncotation.create(
+                        Arrays.asList("TESTFIELD2", "TESTADD2"),
+                        createFieldValuesFromNameList("F", Arrays.asList("TESTFIELD2", "TESTADD2")),
+                        Allele.create("AG"),
+                        "TestDataSource5", null
+                ),
+                TableFuncotation.create(
+                        Arrays.asList("TESTFIELD3", "TESTADD3"),
+                        createFieldValuesFromNameList("G", Arrays.asList("TESTFIELD3", "TESTADD3")),
+                        Allele.create("AT"),
+                        "TestDataSource5", null
+                )));
+
+        // Attempt to add the Gencode funcotations to the funcotation map.  This should cause an exception.
+        funcotationMap.add(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY, gencodeFuncotations);
+    }
+
+    /**
+     * Also tests that {@link FuncotationMap#getGencodeFuncotations(String)} will return an empty list.
+     * @param funcotations funcotations to add to the FuncotationMap.  None are GencodeFuncotations.
+     */
+    @Test(dataProvider = "provideTableFuncotations")
+    public void testCreateNoTranscriptInfo(final List<Funcotation> funcotations) {
+        final FuncotationMap funcotationMap = FuncotationMap.createNoTranscriptInfo(funcotations);
+        Assert.assertEquals(funcotationMap.getTranscriptList().size(), 1);
+        final String transcriptId = funcotationMap.getTranscriptList().get(0);
+        Assert.assertEquals(transcriptId, FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY);
+        Assert.assertEquals(funcotationMap.get(transcriptId), funcotations);
+        Assert.assertEquals(funcotationMap.getGencodeFuncotations(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY).size(), 0);
     }
 }

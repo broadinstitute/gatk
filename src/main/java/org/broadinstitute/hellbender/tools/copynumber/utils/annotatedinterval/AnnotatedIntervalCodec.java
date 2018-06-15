@@ -158,7 +158,7 @@ public class AnnotatedIntervalCodec extends AsciiFeatureCodec<AnnotatedInterval>
      * @param currentComments Never {@code null}.  Can be empty.
      * @return list of the comments.  Never {@code null} and never empty.
      */
-    public static List<String> updateStructuredComments(final String finalContigColumnName, final String finalStartColumnName, final String finalEndColumnName, final List<String> currentComments) {
+    private static List<String> updateStructuredComments(final String finalContigColumnName, final String finalStartColumnName, final String finalEndColumnName, final List<String> currentComments) {
 
         Utils.nonNull(currentComments);
         Utils.validateArg(!StringUtils.isEmpty(finalContigColumnName), "Contig column name was null or blank, which is invalid.");

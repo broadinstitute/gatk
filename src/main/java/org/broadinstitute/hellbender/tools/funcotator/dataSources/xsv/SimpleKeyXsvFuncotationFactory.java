@@ -215,7 +215,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
             if ( annotations != null ) {
                 // Create 1 annotation for each alt allele and add our annotations to the list:
                 for ( final Allele altAllele : variant.getAlternateAlleles() ) {
-                    outputFuncotations.add(new TableFuncotation(annotationColumnNames, annotations, altAllele, name));
+                    outputFuncotations.add(TableFuncotation.create(annotationColumnNames, annotations, altAllele, name, null));
                     annotatedAltAlleles.add(altAllele);
                 }
             }
@@ -249,7 +249,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
 
         for ( final Allele altAllele : alternateAlleles ) {
             if ( !annotatedAltAlleles.contains(altAllele) ) {
-                funcotationList.add(new TableFuncotation(annotationColumnNames, emptyAnnotationList, altAllele, name));
+                funcotationList.add(TableFuncotation.create(annotationColumnNames, emptyAnnotationList, altAllele, name, null));
             }
         }
 
