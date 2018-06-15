@@ -28,6 +28,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -58,6 +59,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     private static final String SPANNING_DEL_VCF = toolsTestDir + "funcotator/spanning_del.vcf";
     private static final String DS_PIK3CA_DIR = largeFileTestDir + "funcotator/small_ds_pik3ca/";
     private static final String DS_MUC16_DIR = largeFileTestDir + "funcotator/small_ds_muc16/";
+    private static final String MAF_TEST_CONFIG = toolsTestDir + "funcotator/maf.config";
 
     private static String hg38Chr3Ref;
     private static String b37Chr3Ref;
@@ -665,8 +667,9 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
         runCommandLine(arguments);
 
-        // There should only be one variant in the MAF, not two
-        final AnnotatedIntervalCollection annotatedIntervalCollection = AnnotatedIntervalCollection.create(outputFile.toPath(), null);
+        // There should only be one variant in the MAF, not two.
+        //  TODO:  This input VCF has an "END" field which (currently) throws off the reading of an AnnotatedIntervalCollection.  The MAF_TEST_CONFIG is a workaround/hack.  See issue https://github.com/broadinstitute/gatk/issues/4897
+        final AnnotatedIntervalCollection annotatedIntervalCollection = AnnotatedIntervalCollection.create(outputFile.toPath(), Paths.get(MAF_TEST_CONFIG), null);
         Assert.assertEquals(annotatedIntervalCollection.getRecords().size(), 10);
     }
 
