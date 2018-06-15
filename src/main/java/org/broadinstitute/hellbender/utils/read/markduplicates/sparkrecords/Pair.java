@@ -67,7 +67,10 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
         }
         firstStartPosition = first.getAssignedStart();
 
-        // Ensuring that the orientation is consistent for reads starting at the same place there is no propper order
+        // if the two read ends are in the same position, pointing in opposite directions,
+        // the orientation is undefined and the procedure above
+        // will depend on the order of the reads in the file.
+        // To avoid this, and match picard's behavior in this case, we ensure the orientation will be FR:
         if (read1ReferenceIndex == read2ReferenceIndex &&
                 read1UnclippedStart == read2UnclippedStart &&
                 first.isReverseStrand() && !second.isReverseStrand()) {
@@ -83,7 +86,7 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
         isRead2ReverseStrand = second.isReverseStrand();
 
         // Keep track of the orientation of read1 and read2 as it is important for optical duplicate marking
-        wasFlipped = second.isFirstOfPair(); //TODO be sure this is still correct...
+        wasFlipped = second.isFirstOfPair();
 
         this.key = ReadsKey.getKeyForPair(header, first, second, headerLibraryMap);
     }
