@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.linkedreads;
 
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.collections4.Predicate;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -7,7 +8,12 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.VariantsToTable;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
+
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
 
 /**
  * Evaluate site-level concordance of an single-sample called VCF against a joint-called VCF.
@@ -56,13 +62,14 @@ public class SingleSampleVsJointCallConcordance extends Concordance {
 
     @Override
     protected boolean areVariantsAtSameLocusConcordant(final VariantContext truth, final VariantContext eval) {
-        final boolean sameRefAllele = truth.getReference().equals(eval.getReference());
-        // we assume that the truth has a single alternate allele
-        //final boolean containsAllAltAlleles = eval.getAlternateAlleles().contains(truth.getAlternateAllele(0));
-        final boolean sameAltAlleles = eval.getAlternateAlleles().containsAll(truth.getAlternateAlleles()) &&
-                truth.getAlternateAlleles().containsAll(eval.getAlternateAlleles());
+        final Allele jointRef = truth.getReference();
+        final Allele singleSampleRef = eval.getReference();
+        if (jointRef.length() < singleSampleRef.length()) return false;
 
-        return sameRefAllele && sameAltAlleles;
+        final Map<Allele, Allele> alleleMapping = GATKVariantContextUtils.createAlleleMapping(jointRef, eval, Collections.emptySet());
+        final boolean jointHasAllAltAlleles = eval.getAlternateAlleles().stream().allMatch(a -> truth.hasAllele(alleleMapping.get(a)));
+
+        return jointHasAllAltAlleles;
     }
 
     @Override
