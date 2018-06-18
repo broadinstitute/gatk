@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.CountingVariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
 import org.broadinstitute.hellbender.transformers.VariantTransformer;
@@ -143,9 +144,10 @@ public abstract class VariantWalkerBase extends GATKTool {
      */
     @Override
     public void traverse() {
+        final CountingVariantFilter countingVariantfilter = makeVariantFilter();
         final CountingReadFilter readFilter = makeReadFilter();
         // Process each variant in the input stream.
-        getTransformedVariantStream( makeVariantFilter() )
+        getTransformedVariantStream(countingVariantfilter)
                 .forEach(variant -> {
                     final SimpleInterval variantInterval = new SimpleInterval(variant);
                     apply(variant,
@@ -155,6 +157,8 @@ public abstract class VariantWalkerBase extends GATKTool {
 
                     progressMeter.update(variantInterval);
                 });
+
+        logger.info(countingVariantfilter.getSummaryLine());
     }
 
     /**
@@ -166,8 +170,8 @@ public abstract class VariantWalkerBase extends GATKTool {
      * Subclasses can extend to provide own filters (ie override and call super).
      * Multiple filters can be composed by using {@link VariantFilter} composition methods.
      */
-    protected VariantFilter makeVariantFilter() {
-        return VariantFilterLibrary.ALLOW_ALL_VARIANTS;
+    protected CountingVariantFilter makeVariantFilter() {
+        return new CountingVariantFilter(VariantFilterLibrary.ALLOW_ALL_VARIANTS);
     }
 
     /**

@@ -14,7 +14,7 @@ import org.broadinstitute.hellbender.engine.filters.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import  org.broadinstitute.hellbender.utils.io.Resource;
+import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.python.StreamingPythonScriptExecutor;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.runtime.AsynchronousStreamWriter;
@@ -207,12 +207,12 @@ public class CNNScoreVariants extends VariantWalker {
     }
 
     @Override
-    protected VariantFilter makeVariantFilter(){
-        if (filterSymbolicAndSV) {
-            return VariantFilterLibrary.NOT_SV_OR_SYMBOLIC;
-        } else {
-            return VariantFilterLibrary.ALLOW_ALL_VARIANTS;
-        }
+    protected CountingVariantFilter makeVariantFilter() {
+        return new CountingVariantFilter(
+                filterSymbolicAndSV ?
+                        VariantFilterLibrary.NOT_SV_OR_SYMBOLIC:
+                        VariantFilterLibrary.ALLOW_ALL_VARIANTS
+        );
     }
 
     @Override

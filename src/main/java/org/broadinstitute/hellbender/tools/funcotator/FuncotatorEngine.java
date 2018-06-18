@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
+import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
@@ -216,13 +217,10 @@ public final class FuncotatorEngine implements AutoCloseable {
      * @return A {@link VariantFilter} that will ignore any variants that have been filtered (if the user requested that the filter is turned on).  Otherwise returns a no-op filter.
      */
     public VariantFilter makeVariantFilter() {
-        return  variant -> {
-            // Ignore variants that have been filtered if the user requests it:
-            if ( funcotatorArgs.removeFilteredVariants && variant.isFiltered() ) {
-                return false;
-            }
-            return true;
-        };
+        // Ignore variants that have been filtered if the user requests it:
+        return funcotatorArgs.removeFilteredVariants ?
+                VariantFilterLibrary.PASSES_FILTERS :
+                VariantFilterLibrary.ALLOW_ALL_VARIANTS;
     }
 
     /**

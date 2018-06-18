@@ -22,15 +22,12 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.filters.*;
 import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.filters.VariantFilter;
-import org.broadinstitute.hellbender.engine.filters.VariantIDsVariantFilter;
-import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
-import org.broadinstitute.hellbender.engine.filters.VariantTypesVariantFilter;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.ChromosomeCounts;
@@ -658,19 +655,19 @@ public final class SelectVariants extends VariantWalker {
      * Create filters for variant types, ids, and genomic intervals.
      */
     @Override
-    protected VariantFilter makeVariantFilter() {
-        VariantFilter compositeFilter = VariantFilterLibrary.ALLOW_ALL_VARIANTS;
+    protected CountingVariantFilter makeVariantFilter() {
+        CountingVariantFilter compositeFilter = new CountingVariantFilter(VariantFilterLibrary.ALLOW_ALL_VARIANTS);
 
         if (!selectedTypes.isEmpty()) {
-            compositeFilter = compositeFilter.and(new VariantTypesVariantFilter(selectedTypes));
+            compositeFilter = compositeFilter.and(new CountingVariantFilter(new VariantTypesVariantFilter(selectedTypes)));
         }
 
         if (rsIDsToKeep != null && !rsIDsToKeep.isEmpty()) {
-            compositeFilter = compositeFilter.and(new VariantIDsVariantFilter(rsIDsToKeep));
+            compositeFilter = compositeFilter.and(new CountingVariantFilter(new VariantIDsVariantFilter(rsIDsToKeep)));
         }
 
         if (rsIDsToRemove != null && !rsIDsToRemove.isEmpty()) {
-            compositeFilter = compositeFilter.and(new VariantIDsVariantFilter(rsIDsToRemove).negate());
+            compositeFilter = compositeFilter.and(new CountingVariantFilter(new VariantIDsVariantFilter(rsIDsToRemove).negate()));
         }
 
         return compositeFilter;
