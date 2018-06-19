@@ -9,10 +9,12 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.VariantsToTable;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils.AlleleMapper;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
 
 /**
@@ -66,8 +68,8 @@ public class SingleSampleVsJointCallConcordance extends Concordance {
         final Allele singleSampleRef = eval.getReference();
         if (jointRef.length() < singleSampleRef.length()) return false;
 
-        final Map<Allele, Allele> alleleMapping = GATKVariantContextUtils.createAlleleMapping(jointRef, eval, Collections.emptySet());
-        final boolean jointHasAllAltAlleles = eval.getAlternateAlleles().stream().allMatch(a -> truth.hasAllele(alleleMapping.get(a)));
+        final AlleleMapper alleleMapping = GATKVariantContextUtils.resolveIncompatibleAlleles(jointRef, eval, new LinkedHashSet<>());
+        final boolean jointHasAllAltAlleles = eval.getAlternateAlleles().stream().allMatch(a -> truth.hasAllele(alleleMapping.remap(a)));
 
         return jointHasAllAltAlleles;
     }
