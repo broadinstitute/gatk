@@ -212,7 +212,7 @@ public final class GatherVcfsCloud extends CommandLineProgram {
                 return false;
             }
             final String pathString = path.toUri().toString();
-            if ( pathString.endsWith(".bcf") || !AbstractFeatureReader.hasBlockCompressedExtension(pathString)){
+            if ( pathString.endsWith(".bcf") || !IOUtil.hasBlockCompressedExtension(pathString)){
                 return false;
             }
         }

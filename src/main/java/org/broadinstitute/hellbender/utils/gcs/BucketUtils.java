@@ -6,6 +6,7 @@ import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider;
 import com.google.common.io.ByteStreams;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.Tribble;
@@ -103,7 +104,7 @@ public final class BucketUtils {
                 inputStream = new FileInputStream(path);
             }
 
-            if(AbstractFeatureReader.hasBlockCompressedExtension(path)){
+            if(IOUtil.hasBlockCompressedExtension(path)){
                 return IOUtils.makeZippedInputStream(new BufferedInputStream(inputStream));
             } else {
                 return inputStream;

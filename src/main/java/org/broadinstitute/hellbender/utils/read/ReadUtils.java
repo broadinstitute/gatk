@@ -1107,7 +1107,7 @@ public final class ReadUtils {
     {
         return createCommonSAMWriter(
             (null == outputFile ? null : outputFile.toPath()),
-            referenceFile,
+            null == referenceFile ? null : referenceFile.toPath(),
             header,
             preSorted,
             createOutputBamIndex,
@@ -1128,7 +1128,7 @@ public final class ReadUtils {
      */
     public static SAMFileWriter createCommonSAMWriter(
         final Path outputPath,
-        final File referenceFile,
+        final Path referenceFile,
         final SAMFileHeader header,
         final boolean preSorted,
         boolean createOutputBamIndex,
@@ -1166,7 +1166,7 @@ public final class ReadUtils {
             final boolean preSorted)
     {
         return createCommonSAMWriterFromFactory(factory,
-            Utils.nonNull(outputFile).toPath(), referenceFile, header, preSorted);
+            Utils.nonNull(outputFile).toPath(), referenceFile == null ? null : referenceFile.toPath(), header, preSorted);
     }
 
     /**
@@ -1184,7 +1184,7 @@ public final class ReadUtils {
     public static SAMFileWriter createCommonSAMWriterFromFactory(
         final SAMFileWriterFactory factory,
         final Path outputPath,
-        final File referenceFile,
+        final Path referenceFile,
         final SAMFileHeader header,
         final boolean preSorted,
         OpenOption... openOptions)

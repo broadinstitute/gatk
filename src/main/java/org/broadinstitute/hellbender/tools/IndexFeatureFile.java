@@ -1,6 +1,7 @@
 
 package org.broadinstitute.hellbender.tools;
 
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.*;
 import htsjdk.tribble.index.Index;
 import htsjdk.tribble.index.IndexFactory;
@@ -94,7 +95,7 @@ public final class IndexFeatureFile extends CommandLineProgram {
     private Index createAppropriateIndexInMemory(final FeatureCodec<? extends Feature, ?> codec) {
         try {
             // For block-compression files, write a Tabix index
-            if (AbstractFeatureReader.hasBlockCompressedExtension(featureFile)) {
+            if (IOUtil.hasBlockCompressedExtension(featureFile)) {
                 // Creating tabix indices with a non standard extensions can cause problems so we disable it
                 if (outputFile != null && !outputFile.getAbsolutePath().endsWith(TabixUtils.STANDARD_INDEX_EXTENSION)) {
                     throw new UserException("The index for " + featureFile + " must be written to a file with a \"" + TabixUtils.STANDARD_INDEX_EXTENSION + "\" extension");

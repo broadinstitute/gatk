@@ -756,22 +756,10 @@ public abstract class GATKTool extends CommandLineProgram {
             throw new UserException.MissingReference("A reference file is required for writing CRAM files");
         }
 
-        //TODO this is a workaround until #4039 is resolved
-        final File reference;
-        if ( isCramFile ){
-            try{
-                reference = referenceArguments.getReferencePath().toFile();
-            } catch ( final UnsupportedOperationException e){
-                throw new UserException("When writing a cram File a local reference file must be used", e);
-            }
-        } else {
-            reference = null;
-        }
-
         return new SAMFileGATKReadWriter(
             ReadUtils.createCommonSAMWriter(
                 outputPath,
-                reference,
+                referenceArguments.getReferencePath(),
                 getHeaderForSAMWriter(),
                 preSorted,
                 createOutputBamIndex,

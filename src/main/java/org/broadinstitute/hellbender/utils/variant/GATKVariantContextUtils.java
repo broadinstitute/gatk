@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.TribbleException;
@@ -105,7 +106,7 @@ public final class GATKVariantContextUtils {
             return VariantContextWriterBuilder.OutputType.VCF;
         } else if (extension.equals(VcfUtils.BCF_FILE_EXTENSION)) {
             return VariantContextWriterBuilder.OutputType.BCF;
-        } else if (AbstractFeatureReader.hasBlockCompressedExtension(outputFile.getPath())) {
+        } else if (IOUtil.hasBlockCompressedExtension(outputFile.getPath())) {
             return VariantContextWriterBuilder.OutputType.BLOCK_COMPRESSED_VCF;
         }
         return VariantContextWriterBuilder.OutputType.UNSPECIFIED;

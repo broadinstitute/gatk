@@ -3,7 +3,9 @@ package org.broadinstitute.hellbender.utils.read;
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import htsjdk.samtools.*;
+import htsjdk.samtools.reference.FastaSequenceFile;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
@@ -511,8 +513,16 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
 
             final Path outputPath = jimfs.getPath("samWriterTest" + outputExtension);
             final Path md5Path = jimfs.getPath("samWriterTest" + outputExtension + ".md5");
+            final Path referencePath;
+            if( referenceFile == null) {
+                referencePath = null;
+            } else {
+                referencePath = Files.copy(referenceFile.toPath(), jimfs.getPath(referenceFile.getName()));
+                final Path fastaIndexLocal = ReferenceSequenceFileFactory.getFastaIndexFileName(referenceFile.toPath());
+                Files.copy(fastaIndexLocal, jimfs.getPath(fastaIndexLocal.getFileName().toString()));
+            }
 
-            try (final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(bamFile)) {
+            try (final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referencePath).open(bamFile)) {
 
                 final SAMFileHeader header = samReader.getFileHeader();
                 if (expectIndex) { // ensure test condition
@@ -520,7 +530,7 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
                 }
 
                 try (final SAMFileWriter samWriter = ReadUtils.createCommonSAMWriter
-                    (outputPath, referenceFile, samReader.getFileHeader(), preSorted, createIndex, createMD5)) {
+                    (outputPath, referencePath, samReader.getFileHeader(), preSorted, createIndex, createMD5)) {
                     final Iterator<SAMRecord> samRecIt = samReader.iterator();
                     while (samRecIt.hasNext()) {
                         samWriter.addAlignment(samRecIt.next());
