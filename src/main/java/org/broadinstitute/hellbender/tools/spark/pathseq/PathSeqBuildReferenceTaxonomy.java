@@ -43,7 +43,7 @@ import java.util.*;
  * <h3>Usage examples</h3>
  *
  * <pre>
- * gatk PathSeqBuildKmers  \
+ * gatk PathSeqBuildReferenceTaxonomy \
  *   --reference microbe_reference.fasta \
  *   --output taxonomy.db \
  *   --refseq-catalog RefSeq-releaseXX.catalog.gz \
