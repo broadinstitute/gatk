@@ -55,20 +55,38 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
         final int read1UnclippedStart = ReadUtils.getStrandedUnclippedStart(read1);
         final int read2UnclippedStart = ReadUtils.getStrandedUnclippedStart(read2);
 
-        if( read1UnclippedStart < read2UnclippedStart ){
+        int read1ReferenceIndex = ReadUtils.getReferenceIndex(read1,header);
+        int read2ReferenceIndex = ReadUtils.getReferenceIndex(read2,header);
+
+        if( read1ReferenceIndex != read2ReferenceIndex ? read1ReferenceIndex < read2ReferenceIndex : read1UnclippedStart <= read2UnclippedStart ){
             first = read1;
             second = read2;
         } else {
             first = read2;
             second = read1;
         }
-        // Keep track of the orientation of read1 and read2 as it is important for optical duplicate marking
-        wasFlipped = second.isFirstOfPair();
-
         firstStartPosition = first.getAssignedStart();
+
+        // if the two read ends are in the same position, pointing in opposite directions,
+        // the orientation is undefined and the procedure above
+        // will depend on the order of the reads in the file.
+        // To avoid this, and match picard's behavior in this case, we ensure the orientation will be FR:
+        if (read1ReferenceIndex == read2ReferenceIndex &&
+                read1UnclippedStart == read2UnclippedStart &&
+                first.isReverseStrand() && !second.isReverseStrand()) {
+            // setting to FR for consistencies sake. (which involves flipping) if both reads had the same unclipped start
+            GATKRead tmp = first;
+            first = second;
+            second = tmp;
+        }
+
+        this.key = ReadsKey.getKeyForPair(header, first, second, headerLibraryMap);
 
         isRead1ReverseStrand = first.isReverseStrand();
         isRead2ReverseStrand = second.isReverseStrand();
+
+        // Keep track of the orientation of read1 and read2 as it is important for optical duplicate marking
+        wasFlipped = second.isFirstOfPair();
 
         this.key = ReadsKey.getKeyForPair(header, first, second, headerLibraryMap);
     }
