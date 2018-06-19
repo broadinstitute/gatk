@@ -19,10 +19,13 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
+import org.broadinstitute.hellbender.utils.samples.Sex;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -47,6 +50,11 @@ public class FilterFuncotations extends VariantWalker {
             doc = "Output VCF file to which annotated variants should be written.")
     protected File outputFile;
 
+    @Argument(
+            shortName = "G",
+            fullName = "gender",
+            doc = "Sample gender for this vcf.")
+    protected Sex gender;
 
     private VariantContextWriter outputVcfWriter;
     private String[] funcotationKeys;
@@ -68,7 +76,7 @@ public class FilterFuncotations extends VariantWalker {
     }
 
     private void registerFilters() {
-        funcotationFilters.add(new ClinVarFilter());
+        funcotationFilters.add(new ClinVarFilter(gender));
         funcotationFilters.add(new LofFilter());
         funcotationFilters.add(new LmmFilter());
     }
@@ -80,13 +88,13 @@ public class FilterFuncotations extends VariantWalker {
 
     private VariantContext applyFilters(VariantContext variant) {
         Map<Allele, FuncotationMap> funcs = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(
-                funcotationKeys, variant, "test", "FilterFuncs"
+                funcotationKeys, variant, "FilterFuncs", "FilterFuncs"
         );
         VariantContextBuilder variantContextBuilder = new VariantContextBuilder(variant);
         funcs.values().forEach(funcotationMap ->
                 funcotationMap.getTranscriptList().forEach(transcriptId -> {
                     funcotationFilters.forEach(filter -> {
-                        if (filter.checkFilter(funcotationMap.get(transcriptId))) {
+                        if (filter.checkFilter(variant, funcotationMap.get(transcriptId))) {
                             variantContextBuilder.filter(filter.getFilterName());
                         }
                     });
@@ -103,15 +111,76 @@ public class FilterFuncotations extends VariantWalker {
     }
 }
 
-class ClinVarFilter extends FuncotationFilter {
+abstract class FuncotationFiltrationRule {
+    private final String[] fieldNames;
 
-    ClinVarFilter() {
+    FuncotationFiltrationRule(String... fieldNames) {
+        this.fieldNames = fieldNames;
+    }
+
+    abstract boolean ruleFunction(VariantContext variant, Map<String, String> fieldValueMap);
+
+    boolean applyRule(VariantContext variant, Funcotation funcotation) {
+        Map<String, String> fieldValueMap = new HashMap<>();
+
+        Arrays.stream(fieldNames).forEach(fieldName -> fieldValueMap.put(fieldName, funcotation.getField(fieldName)));
+        fieldValueMap.values().removeIf(value -> (value == null || value.isEmpty()));
+
+        if (fieldValueMap.isEmpty()) {
+            return false;
+        } else {
+            return ruleFunction(variant, fieldValueMap);
+        }
+    }
+}
+
+//A
+class ClinVarFilter extends FuncotationFilter {
+    private static final String CLIN_VAR_VCF_GENEINFO = "ClinVar_VCF_GENEINFO";
+    private static final String CLIN_VAR_VCF_CLNSIG = "ClinVar_VCF_CLNSIG";
+    private static final String CLIN_VAR_VCF_AF_EXAC = "ClinVar_VCF_AF_EXAC";
+    private final Sex gender;
+
+    ClinVarFilter(Sex gender) {
         super("CLINVAR");
+        this.gender = gender;
     }
 
     @Override
-    public Boolean checkFilter(List<Funcotation> funcotations) {
-        return false;
+    List<FuncotationFiltrationRule> getRules() {
+        final List<FuncotationFiltrationRule> clinVarFiltrationRules = new ArrayList<>();
+
+        // 1) The gene name must be on the ACMG59 list (American College of Medical Genomics).
+        //TODO
+
+        // 2) ClinVar annotations specifies Pathogenicity or Likely pathogenic.
+        clinVarFiltrationRules.add(new FuncotationFiltrationRule(CLIN_VAR_VCF_CLNSIG) {
+            @Override
+            boolean ruleFunction(VariantContext variant, Map<String, String> fieldValueMap) {
+                String clinicalSignificance = fieldValueMap.get(CLIN_VAR_VCF_CLNSIG);
+                return clinicalSignificance.contains("Pathogenic") || clinicalSignificance.contains("Likely_pathogenic");
+            }
+        });
+
+        // 3) Frequency: Max Minor Allele Freq is ≤5% in GnoMAD (ExAC for Proof of Concept)
+        clinVarFiltrationRules.add(new FuncotationFiltrationRule(CLIN_VAR_VCF_AF_EXAC) {
+            @Override
+            boolean ruleFunction(VariantContext variant, Map<String, String> fieldValueMap) {
+                Double alleleFreqExac = Double.valueOf(fieldValueMap.get(CLIN_VAR_VCF_AF_EXAC));
+                return alleleFreqExac <= 0.05;
+            }
+        });
+
+        // 4) If participant is female flag a het variant in the GLA gene (x-linked) [edge case that needs more detail]
+        clinVarFiltrationRules.add(new FuncotationFiltrationRule(CLIN_VAR_VCF_GENEINFO, CLIN_VAR_VCF_CLNSIG) {
+            @Override
+            boolean ruleFunction(VariantContext variant, Map<String, String> fieldValueMap) {
+                String geneInfo = fieldValueMap.get(CLIN_VAR_VCF_GENEINFO);
+                return Sex.FEMALE == gender && geneInfo.substring(0, geneInfo.indexOf(":")).equals("GLA")
+                        && variant.getHetCount() > 0;
+            }
+        });
+        return clinVarFiltrationRules;
     }
 }
 
@@ -122,20 +191,20 @@ class LofFilter extends FuncotationFilter {
     }
 
     @Override
-    public Boolean checkFilter(List<Funcotation> funcotations) {
-        return false;
+    List<FuncotationFiltrationRule> getRules() {
+        return new ArrayList<>();
     }
 }
 
 class LmmFilter extends FuncotationFilter {
+
     LmmFilter() {
         super("LMM");
     }
 
-
     @Override
-    public Boolean checkFilter(List<Funcotation> funcotations) {
-        return false;
+    List<FuncotationFiltrationRule> getRules() {
+        return new ArrayList<>();
     }
 }
 
@@ -147,7 +216,15 @@ abstract class FuncotationFilter {
         this.filterName = filterName;
     }
 
-    public abstract Boolean checkFilter(List<Funcotation> funcotations);
+    Boolean checkFilter(VariantContext variant, List<Funcotation> funcotations) {
+        //check each funcotation against each rule and reduce
+        return funcotations.stream().map(funcotation ->
+                getRules().stream().map(rule ->
+                        rule.applyRule(variant, funcotation)).reduce(false, (a, b) -> a || b))
+                .reduce(false, (a, b) -> a || b);
+    }
+
+    abstract List<FuncotationFiltrationRule> getRules();
 
     public String getFilterName() {
         return filterName;
