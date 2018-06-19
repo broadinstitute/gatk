@@ -26,12 +26,14 @@ public class FuncotatorReferenceTestUtils {
     private static Lazy<String> hg19Chr3Ref;
     private static Lazy<String> hg19Chr19Ref;
     private static Lazy<String> b37Chr3Ref;
+    private static Lazy<String> b37Chr2Ref;
     private static Lazy<String> hg38Chr3Ref;
 
     static {
         hg19Chr3Ref = new Lazy<>(createInitializer(new File(FuncotatorTestConstants.HG19_CHR3_REFERENCE_FILE_NAME)));
         hg19Chr19Ref = new Lazy<>(createInitializer(new File(FuncotatorTestConstants.HG19_CHR19_REFERENCE_FILE_NAME)));
         b37Chr3Ref = new Lazy<>(createInitializer(new File(FuncotatorTestConstants.HG19_3_REFERENCE_FILE_NAME)));
+        b37Chr2Ref = new Lazy<>(createInitializer(new File(FuncotatorTestConstants.HG19_2_REFERENCE_FILE_NAME)));
         hg38Chr3Ref = new Lazy<>(createInitializer(new File(FuncotatorTestConstants.HG38_3_REFERENCE_FILE_NAME)));
     }
 
@@ -101,6 +103,11 @@ public class FuncotatorReferenceTestUtils {
      * @return a path (as String) to the b37 chromosome 3 only reference.  ("3")
      */
     public static String retrieveB37Chr3Ref() { return b37Chr3Ref.get(); }
+
+    /**
+     * @return a path (as String) to the b37 chromosome 2 only reference.  ("2")
+     */
+    public static String retrieveB37Chr2Ref() { return b37Chr2Ref.get(); }
 
     /**
      * @return a path (as String) to the hg38 chromosome 3 only reference.  ("chr3" in hg38)
