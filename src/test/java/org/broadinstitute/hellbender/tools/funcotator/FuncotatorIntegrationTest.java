@@ -50,19 +50,22 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     private static final boolean doDebugTests = false;
     private static final String LARGE_DATASOURCES_FOLDER = "funcotator_dataSources_latest";
 
-    private static final String PIK3CA_VCF_HG19 = toolsTestDir + "funcotator/0816201804HC0_R01C01.pik3ca.vcf";
-    private static final String PIK3CA_VCF_HG38 = toolsTestDir + "funcotator/hg38_trio.pik3ca.vcf";
-    private static final String PIK3CA_VCF_HG19_SNPS = toolsTestDir + "funcotator/PIK3CA_SNPS_3.vcf";
-    private static final String PIK3CA_VCF_HG19_INDELS = toolsTestDir + "funcotator/PIK3CA_INDELS_3.vcf";
-    private static final String MUC16_VCF_HG19 = toolsTestDir + "funcotator/MUC16_MNP.vcf";
-    private static final String PIK3CA_VCF_HG19_ALTS = toolsTestDir + "funcotator/PIK3CA_3_miss_clinvar_alt_only.vcf";
-    private static final String SPANNING_DEL_VCF = toolsTestDir + "funcotator/spanning_del.vcf";
-    private static final String DS_PIK3CA_DIR = largeFileTestDir + "funcotator/small_ds_pik3ca/";
-    private static final String DS_MUC16_DIR = largeFileTestDir + "funcotator/small_ds_muc16/";
-    private static final String MAF_TEST_CONFIG = toolsTestDir + "funcotator/maf.config";
+    private static final String PIK3CA_VCF_HG19          = toolsTestDir + "funcotator" + File.separator + "0816201804HC0_R01C01.pik3ca.vcf";
+    private static final String PIK3CA_VCF_HG38          = toolsTestDir + "funcotator" + File.separator + "hg38_trio.pik3ca.vcf";
+    private static final String PIK3CA_VCF_HG19_SNPS     = toolsTestDir + "funcotator" + File.separator + "PIK3CA_SNPS_3.vcf";
+    private static final String PIK3CA_VCF_HG19_INDELS   = toolsTestDir + "funcotator" + File.separator + "PIK3CA_INDELS_3.vcf";
+    private static final String MUC16_VCF_HG19           = toolsTestDir + "funcotator" + File.separator + "MUC16_MNP.vcf";
+    private static final String PIK3CA_VCF_HG19_ALTS     = toolsTestDir + "funcotator" + File.separator + "PIK3CA_3_miss_clinvar_alt_only.vcf";
+    private static final String SPANNING_DEL_VCF         = toolsTestDir + "funcotator" + File.separator + "spanning_del.vcf";
+    private static final String DS_PIK3CA_DIR            = largeFileTestDir + "funcotator" + File.separator + "small_ds_pik3ca" + File.separator;
+    private static final String DS_MUC16_DIR             = largeFileTestDir + "funcotator" + File.separator + "small_ds_muc16" + File.separator;
+    private static final String MAF_TEST_CONFIG          = toolsTestDir + "funcotator" + File.separator + "maf.config";
+    private static final String XSV_CLINVAR_COL_TEST_VCF = toolsTestDir + "funcotator" + File.separator + "clinvar_hg19_column_test.vcf";
+    private static final String DS_XSV_CLINVAR_COL_TEST  = largeFileTestDir + "funcotator" + File.separator + "small_ds_clinvar_hg19" + File.separator;
 
     private static String hg38Chr3Ref;
     private static String b37Chr3Ref;
+    private static String b37Chr2Ref;
     private static String hg19Chr3Ref;
     private static String hg19Chr19Ref;
 
@@ -78,6 +81,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
         hg38Chr3Ref = FuncotatorReferenceTestUtils.retrieveHg38Chr3Ref();
         b37Chr3Ref = FuncotatorReferenceTestUtils.retrieveB37Chr3Ref();
+        b37Chr2Ref = FuncotatorReferenceTestUtils.retrieveB37Chr2Ref();
         hg19Chr3Ref = FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref();
         hg19Chr19Ref = FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref();
     }
@@ -425,8 +429,49 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
         // Look for "MedGen" to know that we have a clinvar hit.
         Assert.assertEquals(variantContexts.stream()
-                .filter(vc -> StringUtils.contains(vc.getAttributeAsString("FUNCOTATION", ""), "MedGen"))
+                .filter(vc -> StringUtils.contains(vc.getAttributeAsString(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME, ""), "MedGen"))
                 .count(), NUM_CLINVAR_HITS);
+    }
+
+    @Test
+    public void testXsvLocatableAnnotationsHaveCorrectColsForOnlyOnePositionSpecified() {
+        final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType = FuncotatorArgumentDefinitions.OutputFormatType.VCF;
+        final File outputFile = getOutputFile(outputFormatType);
+
+        final ArgumentsBuilder arguments = new ArgumentsBuilder();
+
+        arguments.addVCF(new File(XSV_CLINVAR_COL_TEST_VCF));
+        arguments.addOutput(outputFile);
+        arguments.addReference(new File(b37Chr2Ref));
+        arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_XSV_CLINVAR_COL_TEST);
+        arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19);
+        arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
+        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME, true);
+
+        runCommandLine(arguments);
+
+        final Pair<VCFHeader, List<VariantContext>> vcfInfo = VariantContextTestUtils.readEntireVCFIntoMemory(outputFile.getAbsolutePath());
+        final VCFInfoHeaderLine funcotationHeaderLine = vcfInfo.getLeft().getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
+
+        final String[] funcotationFieldNames = FuncotatorUtils.extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription());
+
+        final int EXPECTED_NUM_VARIANTS = 10;
+        Assert.assertEquals(vcfInfo.getRight().size(), EXPECTED_NUM_VARIANTS);
+
+        for (final VariantContext vc : vcfInfo.getRight() ) {
+            final String funcotation = vc.getAttributeAsString(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME, "");
+
+            Assert.assertNotEquals(funcotation, "");
+
+            final String rawFuncotations = funcotation.substring(1,funcotation.length()-1);
+
+            Assert.assertEquals(StringUtils.countMatches(rawFuncotations, VcfOutputRenderer.FIELD_DELIMITER), funcotationFieldNames.length - 1);
+
+            // This is here to make sure we can create the FuncotationMap object without exploding.
+            // It serves as a secondary check.
+            final FuncotationMap funkyMap = FuncotationMap.createAsAllTableFuncotationsFromVcf(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY, funcotationFieldNames,
+                    funcotation, vc.getAlternateAllele(0), "VCF");
+        }
     }
 
     @Test
