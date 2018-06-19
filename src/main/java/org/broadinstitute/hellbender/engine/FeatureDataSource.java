@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import com.intel.genomicsdb.GenomicsDBFeatureReader;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.*;
 import htsjdk.variant.bcf2.BCF2Codec;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -266,7 +267,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         }
         // Due to a bug in HTSJDK, unindexed block compressed input files may fail to parse completely. For safety,
         // these files have been disabled. See https://github.com/broadinstitute/gatk/issues/4224 for discussion
-        if (!hasIndex && TribbleIndexedFeatureReader.hasBlockCompressedExtension(featureInput.getFeaturePath())) {
+        if (!hasIndex && IOUtil.hasBlockCompressedExtension(featureInput.getFeaturePath())) {
             throw new UserException.MissingIndex(featureInput.toString(),"Support for unindexed block-compressed files has been temporarily disabled. Try running IndexFeatureFile on the input.");
         }
 
