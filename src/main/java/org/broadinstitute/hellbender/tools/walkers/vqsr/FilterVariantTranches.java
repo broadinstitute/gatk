@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
@@ -168,7 +169,7 @@ public class FilterVariantTranches extends CommandLineProgram {
     private Index createAppropriateIndexInMemory(final FeatureCodec<? extends Feature, ?> codec, File featureFile, File indexFile) {
         try {
             // For block-compression files, write a Tabix index
-            if (AbstractFeatureReader.hasBlockCompressedExtension(featureFile)) {
+            if (IOUtil.hasBlockCompressedExtension(featureFile)) {
                 // Creating tabix indices with a non standard extensions can cause problems so we disable it
                 if (!indexFile.getAbsolutePath().endsWith(TabixUtils.STANDARD_INDEX_EXTENSION)) {
                     throw new UserException("The index for " + featureFile + " must be written to a file with a \"" + TabixUtils.STANDARD_INDEX_EXTENSION + "\" extension");

@@ -77,7 +77,14 @@ public class XsvTableFeature implements Feature {
         this.columnValues = columnValues;
 
         // Create our list of indices to remove:
-        locationColumnRemoveIndiciesInOrder = new ArrayList<>(Arrays.asList(contigColumn, startColumn, endColumn));
+        if ( startColumn == endColumn ) {
+            // Don't add the same column more than once:
+            locationColumnRemoveIndiciesInOrder = new ArrayList<>(Arrays.asList(contigColumn, startColumn));
+        }
+        else {
+            locationColumnRemoveIndiciesInOrder = new ArrayList<>(Arrays.asList(contigColumn, startColumn, endColumn));
+        }
+        
         locationColumnRemoveIndiciesInOrder.sort(Collections.reverseOrder());
     }
 
