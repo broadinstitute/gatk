@@ -165,7 +165,7 @@ public final class AlignmentUtilsUnitTest {
             badHap.setAlignmentStartHapwrtRef(hapStart);
             final Haplotype refHap = makeHaplotypeForAlignedToRefTest(ref, ref.length() + "M");
 
-            final int expectedPos = 215239900; // = 215239171 + 575 + 154 (alignment offset)
+            final int expectedPos = 215239900; // expectedPos = refStart + hapStart + alignmentOffset
             tests.add(new Object[]{read, badHap, refHap, refStart, expectedPos, goodCigar});
          }
 
@@ -181,13 +181,13 @@ public final class AlignmentUtilsUnitTest {
             final GATKRead read = makeReadForAlignedToRefTest(readBases);
             final int refStart = 13011;
             final int hapStart = 553;
-            final String goodCigar = "1M3D63M";
+            final String goodCigar = "64M";
             final Haplotype badHap = new Haplotype(hap.getBytes());
             badHap.setCigar(TextCigarCodec.decode(hapCigar));
             badHap.setAlignmentStartHapwrtRef(hapStart);
             final Haplotype refHap = makeHaplotypeForAlignedToRefTest(ref, ref.length() + "M");
 
-            final int expectedPos = 13684; // expectedPos = refStart + hapStart + alignmentOffset
+            final int expectedPos = 13687; // expectedPos = refStart + hapStart + alignmentOffset
             tests.add(new Object[]{read, badHap, refHap, refStart, expectedPos, goodCigar});
          }
 
