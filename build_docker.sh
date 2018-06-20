@@ -106,24 +106,48 @@ if [ -n "$STAGING_DIR" ]; then
     ${GIT_PULL_LARGE_COMMAND}
 fi
 
+# Create a temp dir to use as the build context.
+# `docker build` sends everything in the context directory to the daemon as its first
+# step, so not using the repo's top-level dir saves some time.
+TMP_CONTEXT=$(mktemp -d -t gatk-build-docker)
+echo "Using temporary build context ${TMP_CONTEXT}..."
+
 # Build
 if [ -n "${IS_PUSH}" ]; then
     RELEASE=true
 else
     RELEASE=false
 fi
-./gradlew clean bundle createPythonPackageArchive -Drelease=$DRELEASE
-ZIPPATHGATK=$( find ./build -name "gatk-*.zip" )
-ZIPPATHPYTHON=$( find ./build -name "gatkPython*.zip" )
-unzip -j ${ZIPPATHGATK} -d ./unzippedJar
-unzip -o -j ${ZIPPATHPYTHON} -d ./unzippedJar/scripts
+./gradlew clean bundle createPythonPackageArchive -Drelease=$RELEASE
+#./gradlew bundle createPythonPackageArchive -Drelease=$RELEASE
 
-echo "Building image to tag ${REPO_PRJ}:${GITHUB_TAG}..."
+GATK_JAR_PATH=$( find ${PWD}/build -name "gatk*local.jar" )
+GATK_SPARK_JAR_PATH=$( find ${PWD}/build -name "gatk*spark.jar" )
+PYTHON_ZIP_PATH=$( find ${PWD}/build -name "gatkPython*.zip" )
+CONDA_ENV_PATH=$( find ${PWD} -name gatkcondaenv.yml )
+
+cp ${GATK_JAR_PATH} ${GATK_SPARK_JAR_PATH} ${PYTHON_ZIP_PATH} ${CONDA_ENV_PATH} ${TMP_CONTEXT}/
+
+DOCKERHUB_TAG=${REPO_PRJ}:${GITHUB_TAG}
+DOCKER_BUILD=(
+    docker build
+    -f ${PWD}/Dockerfile
+    -t ${DOCKERHUB_TAG}
+    --build-arg GATK_JAR_PATH=$(basename ${GATK_JAR_PATH})
+    --build-arg GATK_SPARK_JAR_PATH=$(basename ${GATK_SPARK_JAR_PATH})
+    --build-arg PYTHON_ZIP_PATH=$(basename ${PYTHON_ZIP_PATH})
+    --build-arg CONDA_ENV_PATH=$(basename ${CONDA_ENV_PATH})
+)
+
+echo "${DOCKER_BUILD[@]}"
+
+echo "Building image to tag ${DOCKERHUB_TAG}..."
 if [ -n "${IS_PUSH}" ]; then
-    docker build -t ${REPO_PRJ}:${GITHUB_TAG} --squash --build-arg ZIPPATH=./unzippedJar .
+    "${DOCKER_BUILD[@]}" --squash ${TMP_CONTEXT}
 else
-    docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg ZIPPATH=./unzippedJar .
+    "${DOCKER_BUILD[@]}" ${TMP_CONTEXT}
 fi
+rm -r ${TMP_CONTEXT}
 
 if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
 
@@ -135,11 +159,21 @@ if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
 	fi
 
 	git lfs pull
-    chmod -R a+w ${STAGING_ABSOLUTE_PATH}/src/test/resources
+  chmod -R a+w src/test/resources
 
-	echo docker run ${REMOVE_CONTAINER_STRING} -v  ${STAGING_ABSOLUTE_PATH}/src/test/resources:/gatksrc/test/resources -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
-#	docker run ${REMOVE_CONTAINER_STRING} -v ${STAGING_ABSOLUTE_PATH}:/gatksrc -v ~/.gradle:/root/.gradle -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
-    docker run ${REMOVE_CONTAINER_STRING} -v ${STAGING_ABSOLUTE_PATH}:/gatksrc -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
+  TEST_COMMAND=(
+    docker run ${REMOVE_CONTAINER_STRING}
+    -e CI=true
+    -e DOCKER_TEST=true
+    -e GRADLE_USER_HOME=/root/.gradle
+    -v ${PWD}:/gatksrc
+    -v ${GRADLE_USER_HOME:-"${HOME}/.gradle"}:/root/.gradle
+    ${DOCKERHUB_TAG}
+    /gatksrc/gradlew jacocoTestReport -a -p /gatksrc
+  )
+
+  echo "${TEST_COMMAND[@]}"
+  "${TEST_COMMAND[@]}"
 	echo " Unit tests passed..."
 fi
 
@@ -147,17 +181,17 @@ fi
 if [ -n "${IS_PUSH}" ]; then
 
 	echo "Pushing to ${REPO_PRJ}"
-	docker push ${REPO_PRJ}:${GITHUB_TAG}
+	docker push ${DOCKERHUB_TAG}
 
 	echo "Pushing to ${GCR_REPO}"
-	docker tag ${REPO_PRJ}:${GITHUB_TAG} ${GCR_REPO}:${GITHUB_TAG}
+	docker tag ${DOCKERHUB_TAG} ${GCR_REPO}:${GITHUB_TAG}
 	gcloud docker -- push ${GCR_REPO}:${GITHUB_TAG}
 
 	if [ -z "${IS_NOT_LATEST}" ] && [ -z "${IS_HASH}" ] ; then
 		echo "Updating latest tag in ${REPO_PRJ}"
-		docker tag ${REPO_PRJ}:${GITHUB_TAG} ${REPO_PRJ}:latest
+		docker tag ${DOCKERHUB_TAG} ${REPO_PRJ}:latest
 		docker push ${REPO_PRJ}:latest
-		
+
 		echo "Updating latest tag in ${GCR_REPO}"
 		docker tag ${GCR_REPO}:${GITHUB_TAG} ${GCR_REPO}:latest
 		gcloud docker -- push ${GCR_REPO}:latest
