@@ -1,14 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.tribble.AbstractFeatureReader;
-import htsjdk.tribble.Feature;
-import htsjdk.tribble.FeatureCodec;
-import htsjdk.tribble.TribbleException;
-import htsjdk.tribble.index.Index;
-import htsjdk.tribble.index.IndexFactory;
-import htsjdk.tribble.util.TabixUtils;
-
 import java.util.*;
 import java.io.File;
 import java.util.stream.Collectors;
@@ -21,17 +12,15 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 
 import org.broadinstitute.hellbender.engine.*;
-
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 
-import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
+import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 /**
  * Apply tranche filtering to VCF based on scores from an annotation in the INFO field.
