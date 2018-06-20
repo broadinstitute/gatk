@@ -293,7 +293,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             sortFuncotationsByTranscriptForOutput(gencodeFuncotationList);
 
             // Now we have to filter out the output gencodeFuncotations if they are not on the list the user provided:
-            // TODO: Is this correct behavior?  The sorting takes care of ordering the transcripts.
+            // TODO: Is this correct behavior?  The sorting takes care of ordering the transcripts. See https://github.com/broadinstitute/gatk/issues/4918
             filterAnnotationsByUserTranscripts(gencodeFuncotationList, userRequestedTranscripts);
 
             // Since the initial query was done on the entire gene footprint, we need to get rid of every transcript that does not overlap the variant at all (not even in flank)
