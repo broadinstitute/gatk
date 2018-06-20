@@ -132,7 +132,7 @@ public final class AlignmentUtilsUnitTest {
         // example case of bad alignment because SW doesn't necessarily left-align indels
         {
             final String hap = "ACTGTGGGTTCCTCTTATTTTATTTCTACATCAATGTTCATATTTAACTTATTATTTTATCTTATTTTTAAATTTCTTTTATGTTGAGCCTTGATGAAAGCCATAGGTTCTCTCATATAATTGTATGTGTATGTATGTATATGTACATAATATATACATATATGTATATGTATGTGTATGTACATAATATATACGTATATGTATGTGTATGTACATAATATATACGTATATGTATGTGTATGTACATAATATATACGTATATGTATGTGTATGTACATAATATATACGTATATGTATGTGTATGTACATAATATATACGTATATGTATGTGTATGTGTATTACATAATATATACATATATGTATATATTATGTATATGTACATAATATATACATATATG";
-            final String hapCigar = "399M";
+            final String hapCigar = hap.length() + "M";
             final String readBases = "ATGTACATAATATATACATATATGTATATGTATGTACATAATATATACGTATATGTATGTGTATGTACATAATATATACGTATATGTATGTGTATGTACATAATATATACGTATATGTATGTGTATGTACATAATATATACGTATATGTATGTGTATGTACATAATATATACGTATATGTATGTGTATGTGTATTACATAATATATACATATATGTATATATTATGTATATGTACATAATAT";
             final GATKRead read = makeReadForAlignedToRefTest(readBases);
             final int refStart = 10130100;
@@ -155,7 +155,7 @@ public final class AlignmentUtilsUnitTest {
             // hap-to-read:                                                                                                                                                               ||||.|||||||||||||||||
             // aligned read:                                                                                                                                                              GCTGCTTTTGGTGTGGCTCTTT
             final String readBases = "GCTGCTTTTGGTGTGGCTCTTT";
-            final String hapCigar = "218M";
+            final String hapCigar = hap.length() + "M";
             final GATKRead read = makeReadForAlignedToRefTest(readBases);
             final int refStart = 215239171;
             final int hapStart = 575;
@@ -187,7 +187,7 @@ public final class AlignmentUtilsUnitTest {
             badHap.setAlignmentStartHapwrtRef(hapStart);
             final Haplotype refHap = makeHaplotypeForAlignedToRefTest(ref, ref.length() + "M");
 
-            final int expectedPos = 13684; // = 13011 + 553 + 120 (alignemnt offset)
+            final int expectedPos = 13684; // expectedPos = refStart + hapStart + alignmentOffset
             tests.add(new Object[]{read, badHap, refHap, refStart, expectedPos, goodCigar});
          }
 
