@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceState;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
@@ -72,7 +73,9 @@ public abstract class AbstractConcordanceWalker extends GATKTool {
     }
 
     private void initializeTruthVariantsIfNecessary() {
-        IOUtils.canReadFile(new File(truthVariantsFile));
+        if (! BucketUtils.fileExists(truthVariantsFile)) {
+            throw new IllegalArgumentException("Truth variants file " + truthVariantsFile + " does not exist or is not readable.");
+        }
 
         if (truthVariants == null) {
             truthVariants = new FeatureDataSource<>(new FeatureInput<>(truthVariantsFile, "truth"), CACHE_LOOKAHEAD, VariantContext.class);
