@@ -1,9 +1,12 @@
 package org.broadinstitute.hellbender.engine;
 
+import com.google.common.jimfs.Configuration;
+import com.google.common.jimfs.Jimfs;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -16,6 +19,9 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -41,6 +47,59 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest {
         return testCases.toArray(new Object[][]{});
     }
 
+    @DataProvider(name = "cramFromPathIndex")
+    public Object[][] cramFromPathIndex() {
+        final File ref = new File(hg19MiniReference);
+        return new Object[][] {
+            // cram, index file, reference, intervals, expected read names
+            { new File(TEST_DATA_DIR, "cram_with_bai_index.cram"), new File(TEST_DATA_DIR, "cram_with_bai_index.cram.bai"),
+                    ref, Arrays.asList("1:1-200", "1:1000-2000"), Arrays.asList("a", "d", "e") },
+            { new File(TEST_DATA_DIR, "cram_with_crai_index.cram"), new File(TEST_DATA_DIR, "cram_with_crai_index.cram.crai"),
+                    ref, Arrays.asList("1:1000-2000", "3:300-400"), Arrays.asList("d", "e", "i", "j") }
+        };
+    }
+
+    @Test(dataProvider = "cramFromPathIndex")
+    public void testQueryCRAMWithIndexFromPath(
+            final File cramFile,
+            final File indexFile,
+            final File referenceFile,
+            final List<String> intervalArgs,
+            final List<String> expectedReadNames ) throws IOException {
+        final List<String> args = new ArrayList<>();
+        try (final FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
+            final Path jimfsRootPath = jimfs.getRootDirectories().iterator().next();
+
+            // copy the cram, the index, the reference, the reference dictionary and the reference index to jimfs
+            final Path cramPath = Files.copy(cramFile.toPath(), jimfsRootPath.resolve(cramFile.getName()));
+            Files.copy(indexFile.toPath(), jimfsRootPath.resolve(indexFile.getName()));
+
+            final Path refPath = Files.copy(referenceFile.toPath(), jimfsRootPath.resolve(referenceFile.getName()));
+
+            final File referenceDict = ReferenceSequenceFileFactory.getDefaultDictionaryForReferenceSequence(referenceFile);
+            final Path referenceDictPath = referenceDict.toPath();
+            Files.copy(referenceDictPath, jimfsRootPath.resolve(referenceDict.getName()));
+
+            final Path referenceIndexPath = ReferenceSequenceFileFactory.getFastaIndexFileName(referenceFile.toPath());
+            Files.copy(referenceIndexPath, jimfsRootPath.resolve(referenceFile.getName() + ".fai"));
+
+            final File outputFile = createTempFile("testReadCramWithIndexFromPath", ".bam");
+            args.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
+            args.add(cramPath.toAbsolutePath().toUri().toString());
+            args.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+            args.add(outputFile.getAbsolutePath());
+            args.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
+            args.add(refPath.toAbsolutePath().toUri().toString());
+            intervalArgs.stream().forEach(intervalArg -> { args.add("-L"); args.add(intervalArg); });
+
+            runCommandLine(args);
+
+            SamAssertionUtils.assertCRAMContentsIfCRAM(outputFile);
+            checkReadNames(outputFile.toPath(), refPath, expectedReadNames);
+        }
+
+    }
+
     @Test(dataProvider = "ReadEntireCramTestData")
     public void testReadEntireCram(final File cramFile, final File reference, final String outputExtension, final List<String> expectedReadNames ) throws IOException {
         final File outputFile = createTempFile("testReadEntireCram", outputExtension);
@@ -52,7 +111,7 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
 
         SamAssertionUtils.assertCRAMContentsIfCRAM(outputFile);
-        checkReadNames(outputFile, reference, expectedReadNames);
+        checkReadNames(outputFile.toPath(), reference.toPath(), expectedReadNames);
     }
 
     @Test
@@ -113,12 +172,12 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
 
         SamAssertionUtils.assertCRAMContentsIfCRAM(outputFile);
-        checkReadNames(outputFile, reference, expectedReadNames);
+        checkReadNames(outputFile.toPath(), reference.toPath(), expectedReadNames);
     }
 
-    private void checkReadNames( final File outputFile, final File reference, final List<String> expectedReadNames ) throws IOException {
+    private void checkReadNames( final Path outputPath, final Path reference, final List<String> expectedReadNames ) throws IOException {
         List<String> actualReadNames = new ArrayList<>();
-        try ( final SamReader reader = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT).referenceSequence(reference).open(outputFile) ) {
+        try ( final SamReader reader = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT).referenceSequence(reference).open(outputPath) ) {
             for ( SAMRecord read : reader ) {
                 actualReadNames.add(read.getReadName());
             }
