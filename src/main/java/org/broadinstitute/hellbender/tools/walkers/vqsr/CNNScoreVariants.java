@@ -166,6 +166,10 @@ public class CNNScoreVariants extends VariantWalker {
     @Argument(fullName = "keep-temp-file", shortName = "keep-temp-file", doc = "Keep the temporary file that python writes scores to.", optional = true)
     private boolean keepTempFile = false;
 
+    @Hidden
+    @Argument(fullName = "python-profile", shortName = "python-profile", doc = "Run the tool with the Python CProfiler on and write results to this file.", optional = true)
+    private File pythonProfileResults;
+
     // Create the Python executor. This doesn't actually start the Python process, but verifies that
     // the requestedPython executable exists and can be located.
     final StreamingPythonScriptExecutor<String> pythonExecutor = new StreamingPythonScriptExecutor<>(true);
@@ -230,7 +234,8 @@ public class CNNScoreVariants extends VariantWalker {
         }
 
         // Start the Python process and initialize a stream writer for streaming data to the Python code
-        pythonExecutor.start(Collections.emptyList(), enableJournal);
+        pythonExecutor.start(Collections.emptyList(), enableJournal, pythonProfileResults);
+
         pythonExecutor.initStreamWriter(AsynchronousStreamWriter.stringSerializer);
         batchList = new ArrayList<>(transferBatchSize);
 

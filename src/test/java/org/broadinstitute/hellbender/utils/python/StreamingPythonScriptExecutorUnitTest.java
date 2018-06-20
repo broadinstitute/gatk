@@ -218,6 +218,34 @@ public class StreamingPythonScriptExecutorUnitTest extends GATKBaseTest {
         }
     }
 
+    @Test(groups = "python", dataProvider="supportedPythonVersions")
+    public void testEnablePythonProfiling(final PythonScriptExecutor.PythonExecutableName executableName) throws IOException {
+        // create a temporary output file for the profile results
+        final File profileFile = createTempFile("pythonProfileTest", "txt");
+        final String CONSUME_SOME_CPU_SCRIPT = "list(2 * n for n in range(100))" + NL;
+
+        final StreamingPythonScriptExecutor<String> streamingPythonExecutor =
+                new StreamingPythonScriptExecutor<>(executableName,true);
+        Assert.assertNotNull(streamingPythonExecutor);
+
+        Assert.assertTrue(streamingPythonExecutor.start(Collections.emptyList(), false, profileFile));
+
+        try {
+            streamingPythonExecutor.sendSynchronousCommand(CONSUME_SOME_CPU_SCRIPT);
+        }
+        finally {
+            streamingPythonExecutor.terminate();
+            Assert.assertFalse(streamingPythonExecutor.getProcess().isAlive());
+        }
+        // read the temp file in and validate
+        try (final FileInputStream fis= new FileInputStream(profileFile);
+             final BufferedLineReader br = new BufferedLineReader(fis)) {
+            final String profileLine1 = br.readLine();
+            Assert.assertNotNull(profileLine1);
+            Assert.assertTrue(profileLine1.length() != 0);
+        }
+    }
+
     @Test(groups = "python", dataProvider="supportedPythonVersions", dependsOnMethods = "testPythonExists",
             expectedExceptions = PythonScriptExecutorException.class)
     public void testRaisePythonException(final PythonScriptExecutor.PythonExecutableName executableName) {
@@ -234,7 +262,7 @@ public class StreamingPythonScriptExecutorUnitTest extends GATKBaseTest {
         final StreamingPythonScriptExecutor<String> streamingPythonExecutor =
                 new StreamingPythonScriptExecutor<>(executableName,true);
         Assert.assertNotNull(streamingPythonExecutor);
-        Assert.assertTrue(streamingPythonExecutor.start(Collections.emptyList(), true));
+        Assert.assertTrue(streamingPythonExecutor.start(Collections.emptyList(), true, null));
 
         try {
             streamingPythonExecutor.sendSynchronousCommand(errorCommand + NL);

@@ -54,14 +54,18 @@ public class StreamingPythonScriptExecutor<T> extends PythonExecutorBase {
     private FileOutputStream dataTransferFIFOWriter;
     private AsynchronousStreamWriter<T> asyncWriter;
 
+    private File profileResults;
+
     // Python commands that are executed in the companion python process. The functions called
     // here live in the {@code tool} module in {@code gatktool} Python package.
     private final static String PYTHON_IMPORT_GATK = "from gatktool import tool" + NL;
     private final static String PYTHON_INITIALIZE_GATK = "tool.initializeGATK('%s')" + NL;
+    private final static String PYTHON_START_PROFILING = "tool.startProfiling()" + NL;
     private final static String PYTHON_TERMINATE_GATK = "tool.terminateGATK()" + NL;
     private final static String PYTHON_INITIALIZE_DATA_FIFO = "tool.initializeDataFIFO('%s')" + NL;
     private final static String PYTHON_CLOSE_DATA_FIFO = "tool.closeDataFIFO()" + NL;
     private final static String PYTHON_SEND_ACK_REQUEST = "tool.sendAck()" + NL;
+    private final static String PYTHON_END_PROFILING = "tool.endProfiling('%s')" + NL;
 
     // keep track of when an ack request has been made and reject attempts to send another ack
     // request until the previous one has been handled
@@ -93,7 +97,7 @@ public class StreamingPythonScriptExecutor<T> extends PythonExecutorBase {
      * @return true if the process is successfully started
      */
     public boolean start(final List<String> pythonProcessArgs) {
-        return start(pythonProcessArgs, false);
+        return start(pythonProcessArgs, false, null);
     }
 
     /**
@@ -104,7 +108,8 @@ public class StreamingPythonScriptExecutor<T> extends PythonExecutorBase {
      *                         expensive and should only be used for debugging purposes.
      * @return true if the process is successfully started
      */
-    public boolean start(final List<String> pythonProcessArgs, final boolean enableJournaling) {
+    public boolean start(final List<String> pythonProcessArgs, final boolean enableJournaling, final File profileResults) {
+        this.profileResults = profileResults;
         final List<String> args = new ArrayList<>();
         args.add(externalScriptExecutableName);
         args.add("-u");
@@ -291,6 +296,11 @@ public class StreamingPythonScriptExecutor<T> extends PythonExecutorBase {
      * Terminate the remote process, closing the fifo if any.
      */
     public void terminate() {
+        if (profileResults != null) {
+            spController.writeProcessInput(String.format(PYTHON_END_PROFILING, profileResults.getAbsolutePath()));
+            sendAckRequest();
+            waitForAck();
+        }
         if (dataTransferFIFOWriter != null) {
             if (asyncWriter != null) {
                 Assert.assertTrue(asyncWriter.terminate());
@@ -336,6 +346,11 @@ public class StreamingPythonScriptExecutor<T> extends PythonExecutorBase {
         // wait for the ack to be sent
         spController.openAckFIFOForRead();
         waitForAck();
+        if (profileResults != null) {
+            spController.writeProcessInput(PYTHON_START_PROFILING);
+            sendAckRequest();
+            waitForAck();
+        }
     }
 
     private void sendAckRequest() {
