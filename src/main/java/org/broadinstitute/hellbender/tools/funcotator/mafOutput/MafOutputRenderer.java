@@ -12,6 +12,8 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.*;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
+import org.broadinstitute.hellbender.tools.funcotator.metadata.SamplePairExtractor;
+import org.broadinstitute.hellbender.tools.funcotator.metadata.TumorNormalPair;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -91,6 +93,9 @@ public class MafOutputRenderer extends OutputRenderer {
     /** Override annotation list from the user. */
     private final LinkedHashMap<String, String> overrideAnnotations;
 
+    /** The tumor normal pairs discovered in the input */
+    private final List<TumorNormalPair> tnPairs;
+
     //==================================================================================================================
     // Constructors:
 
@@ -115,6 +120,18 @@ public class MafOutputRenderer extends OutputRenderer {
         this.toolHeaderLines = new LinkedHashSet<>(toolHeaderLines);
         this.inputFileHeader = inputFileHeader;
         dataSourceFactories = dataSources;
+
+        this.tnPairs = SamplePairExtractor.extractPossibleTumorNormalPairs(this.inputFileHeader);
+        if (tnPairs.size() == 0) {
+            logger.warn("No tumor/normal pairs were seen, cannot populate the some of the MAF fields (e.g. t_alt_count).  Please add '##tumor_sample=<tumor_sample_name>' and (if applicable) '##normal_sample=<normal_sample_name>' to the input VCF header");
+        }
+
+        // TODO: Make this check unnecessary and use the contained information to populate the MAF entries correctly.  (https://github.com/broadinstitute/gatk/issues/4912)
+        if (this.tnPairs.size() > 1) {
+            throw new UserException.BadInput("Input files with more than one tumor normal pair are currently not supported.  Found: " + tnPairs.stream()
+                    .map(tn -> tn.toString())
+                    .collect(Collectors.joining("; ")) );
+        }
 
         // Merge the default annotations into our manualAnnotations:
         manualAnnotations = new LinkedHashMap<>();
@@ -214,6 +231,10 @@ public class MafOutputRenderer extends OutputRenderer {
         if (txToFuncotationMap.getTranscriptList().size() > 1) {
             logger.warn("MAF typically does not support multiple transcripts per variant, though this should be able to render (grouped by transcript).  No user action needed.");
         }
+
+        // Add the generated funcotations necessary for a MAF output rendering.
+        final List<Funcotation> customMafFuncotations = CustomMafFuncotationCreator.createCustomMafCountFields(variant, tnPairs);
+        txToFuncotationMap.getTranscriptList().forEach(txId -> txToFuncotationMap.add(txId, customMafFuncotations));
 
         // Loop through each alt allele in our variant:
         for ( final Allele altAllele : variant.getAlternateAlleles() ) {
@@ -618,6 +639,11 @@ public class MafOutputRenderer extends OutputRenderer {
         defaultMap.put(MafOutputRendererConstants.FieldName_OREGANNO_ID                            ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
         defaultMap.put(MafOutputRendererConstants.FieldName_OREGANNO_Values                        ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
         defaultMap.put(MafOutputRendererConstants.FieldName_tumor_f                                ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_t_alt_count                            ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_t_ref_count                            ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_n_alt_count                            ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_n_ref_count                            ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+
     }
 
     /**
@@ -710,6 +736,10 @@ public class MafOutputRenderer extends OutputRenderer {
         outputFieldNameMap.put( MafOutputRendererConstants.FieldName_OREGANNO_Values                        , MafOutputRendererConstants.OutputFieldNameMap_OREGANNO_Values );
 
         outputFieldNameMap.put( MafOutputRendererConstants.FieldName_tumor_f                                , MafOutputRendererConstants.OutputFieldNameMap_tumor_f );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_t_alt_count                            , MafOutputRendererConstants.OutputFieldNameMap_t_alt_count );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_t_ref_count                            , MafOutputRendererConstants.OutputFieldNameMap_t_ref_count );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_n_alt_count                            , MafOutputRendererConstants.OutputFieldNameMap_n_alt_count );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_n_ref_count                            , MafOutputRendererConstants.OutputFieldNameMap_n_ref_count );
     }
 
     //==================================================================================================================

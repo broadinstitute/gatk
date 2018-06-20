@@ -58,6 +58,11 @@ public class MafOutputRendererConstants {
      */
     static final String FIELD_DELIMITER = "\t";
 
+    /**
+     * Used for creating funcotations while rendering the MAF.
+     */
+    static final String MAF_RENDERING_DATASOURCE_DUMMY_NAME = "MAF_OUTPUT";
+
     //==================================================================================================================
     // Specific Field Values:
 
@@ -142,6 +147,10 @@ public class MafOutputRendererConstants {
     public static final String FieldName_OREGANNO_ID                            = "OREGANNO_ID";
     public static final String FieldName_OREGANNO_Values                        = "OREGANNO_Values";
     public static final String FieldName_tumor_f                                = "tumor_f";
+    public static final String FieldName_t_alt_count                            = "t_alt_count";
+    public static final String FieldName_t_ref_count                            = "t_ref_count";
+    public static final String FieldName_n_alt_count                            = "n_alt_count";
+    public static final String FieldName_n_ref_count                            = "n_ref_count";
 
     // Field Values:
     static final String FieldValue_Strand                  = "+";
@@ -236,4 +245,8 @@ public class MafOutputRendererConstants {
     static final List<String> OutputFieldNameMap_OREGANNO_ID                            = Arrays.asList(FieldName_OREGANNO_ID, "Oreganno_ID", "ORegAnno_ID");
     static final List<String> OutputFieldNameMap_OREGANNO_Values                        = Arrays.asList(FieldName_OREGANNO_Values, "Oreganno_Values", "ORegAnno_Values");
     static final List<String> OutputFieldNameMap_tumor_f                                = Arrays.asList(FieldName_tumor_f, "sample_allelic_fraction");
+    static final List<String> OutputFieldNameMap_t_alt_count                            = Collections.singletonList(FieldName_t_alt_count);
+    static final List<String> OutputFieldNameMap_t_ref_count                            = Collections.singletonList(FieldName_t_ref_count);
+    static final List<String> OutputFieldNameMap_n_alt_count                            = Collections.singletonList(FieldName_n_alt_count);
+    static final List<String> OutputFieldNameMap_n_ref_count                            = Collections.singletonList(FieldName_n_ref_count);
 }
