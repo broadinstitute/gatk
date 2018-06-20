@@ -45,9 +45,9 @@ public final class FragmentUtils {
         final int numOverlappingBases = Math.min(clippedFirstRead.getLength() - firstReadStop, clippedSecondRead.getLength());
 
         final byte[] firstReadBases = clippedFirstRead.getBases();
-        final byte[] firstReadQuals = clippedFirstRead.getBaseQualities();
+        final byte[] firstReadQuals = clippedFirstRead.getBaseQualities().clone();
         final byte[] secondReadBases = clippedSecondRead.getBases();
-        final byte[] secondReadQuals = clippedSecondRead.getBaseQualities();
+        final byte[] secondReadQuals = clippedSecondRead.getBaseQualities().clone();
 
         for ( int i = 0; i < numOverlappingBases; i++ ) {
             final int firstReadIndex = firstReadStop + i;
