@@ -59,22 +59,22 @@ public class CustomMafFuncotationCreator {
             final Genotype tumorGenotype = variant.getGenotype(tumorSampleName);
             final boolean hasTumorAD = (tumorGenotype != null) && (tumorGenotype.hasAD());
             final boolean hasTumorAF = (tumorGenotype != null) && (tumorGenotype.hasAnyAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY));
-            final String t_alt_count = hasTumorAD ? Integer.toString(tumorGenotype.getAD()[i + 1]) : "";
-            final String t_ref_count = hasTumorAD ? Integer.toString(tumorGenotype.getAD()[0]) : "";
-            final String tumor_f_all_alleles = hasTumorAF ? tumorGenotype.getAnyAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY).toString() : "";
-            final String tumor_f = hasTumorAF ? StringUtils.split(tumor_f_all_alleles, ",")[i] : "";
+            final String tAltCount = hasTumorAD ? Integer.toString(tumorGenotype.getAD()[i + 1]) : "";
+            final String tRefCount = hasTumorAD ? Integer.toString(tumorGenotype.getAD()[0]) : "";
+            final String tumorFAllAlleles = hasTumorAF ? tumorGenotype.getAnyAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY).toString() : "";
+            final String tumorF = hasTumorAF ? StringUtils.split(tumorFAllAlleles, ",")[i] : "";
 
             final Genotype normalGenotype = variant.getGenotype(normalSampleName);
             final boolean hasNormalAD = (normalGenotype != null) && (normalGenotype.hasAD());
-            final String n_alt_count = hasNormalAD ? Integer.toString(normalGenotype.getAD()[i + 1]) : "";
-            final String n_ref_count = hasNormalAD ? Integer.toString(normalGenotype.getAD()[0]) : "";
+            final String nAltCount = hasNormalAD ? Integer.toString(normalGenotype.getAD()[i + 1]) : "";
+            final String nRefCount = hasNormalAD ? Integer.toString(normalGenotype.getAD()[0]) : "";
 
             final List<String> fieldValues = Arrays.asList(
-                    t_alt_count,
-                    t_ref_count,
-                    n_alt_count,
-                    n_ref_count,
-                    tumor_f);
+                    tAltCount,
+                    tRefCount,
+                    nAltCount,
+                    nRefCount,
+                    tumorF);
 
             result.add(TableFuncotation.create(COUNT_FIELD_NAMES, fieldValues, allele, MAF_RENDERING_DATASOURCE_DUMMY_NAME, createCustomMafCountFieldsMetadata()));
         }
