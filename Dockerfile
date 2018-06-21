@@ -16,11 +16,19 @@ RUN unzip -o -j /gatk/scripts/$PYTHON_ZIP_PATH -d /gatk/scripts && \
 
 WORKDIR /gatk
 
+ARG GATK_WRAPPER_PATH
 ARG GATK_JAR_PATH
 ARG GATK_SPARK_JAR_PATH
 
-ADD $GATK_JAR_PATH /gatk/gatk.jar
-ADD $GATK_SPARK_JAR_PATH /gatk/gatk-spark.jar
+ADD $GATK_WRAPPER_PATH gatk
+ADD $GATK_JAR_PATH .
+ADD $GATK_SPARK_JAR_PATH .
+
+RUN ln -Fsv $GATK_JAR_PATH gatk.jar && \
+    ln -Fsv $GATK_SPARK_JAR_PATH gatk-spark.jar
 
 ENV PATH /gatk:$PATH
-ENTRYPOINT ["bash", "--init-file", "/gatk/gatkenv.rc"]
+ENTRYPOINT ["bash", "--init-file", "/gatk/gatkenv.rc", "-c"]
+
+# Make sure we can run the wrapper script.
+RUN gatk --list

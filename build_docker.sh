@@ -125,13 +125,14 @@ GATK_SPARK_JAR_PATH=$( find ${PWD}/build -name "gatk*spark.jar" )
 PYTHON_ZIP_PATH=$( find ${PWD}/build -name "gatkPython*.zip" )
 CONDA_ENV_PATH=$( find ${PWD} -name gatkcondaenv.yml )
 
-cp ${GATK_JAR_PATH} ${GATK_SPARK_JAR_PATH} ${PYTHON_ZIP_PATH} ${CONDA_ENV_PATH} ${TMP_CONTEXT}/
+cp gatk ${GATK_JAR_PATH} ${GATK_SPARK_JAR_PATH} ${PYTHON_ZIP_PATH} ${CONDA_ENV_PATH} ${TMP_CONTEXT}/
 
 DOCKERHUB_TAG=${REPO_PRJ}:${GITHUB_TAG}
 DOCKER_BUILD=(
     docker build
     -f ${PWD}/Dockerfile
     -t ${DOCKERHUB_TAG}
+    --build-arg GATK_WRAPPER_PATH=gatk
     --build-arg GATK_JAR_PATH=$(basename ${GATK_JAR_PATH})
     --build-arg GATK_SPARK_JAR_PATH=$(basename ${GATK_SPARK_JAR_PATH})
     --build-arg PYTHON_ZIP_PATH=$(basename ${PYTHON_ZIP_PATH})
