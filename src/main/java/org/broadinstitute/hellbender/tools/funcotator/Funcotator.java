@@ -3,11 +3,10 @@ package org.broadinstitute.hellbender.tools.funcotator;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.util.ParsingUtils;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
@@ -286,13 +285,6 @@ public class Funcotator extends VariantWalker {
     private List<String> annotationOverrides = new ArrayList<>();
 
     @Argument(
-            fullName = FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME,
-            optional = true,
-            doc = "Allow for the HG19 Reference version of ANY data source to match with B37 Contig names.  (May create erroneous annotations in some contigs where B37 != HG19)."
-    )
-    private boolean allowHg19ContigNamesWithB37 = true;
-
-    @Argument(
             fullName = FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_NAME,
             optional = true,
             minValue = 0,
@@ -300,12 +292,14 @@ public class Funcotator extends VariantWalker {
     )
     private int lookaheadFeatureCachingInBp = FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE;
 
+    @Advanced
+    @Hidden
     @Argument(
-            fullName = FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_OVERRIDE_LONG_NAME,
+            fullName = FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION,
             optional = true,
-            doc = "(Advanced/Use at your own risk) Use in conjunction with allow hg19 contig names with b37.  If you also select this flag, no check that your input reference is b37 is actually performed.  Otherwise, ignored.  Typically, this option is useful in integration tests (written by devs) only."
+            doc = "(Advanced / DO NOT USE*) If you select this flag, Funcotator will force a conversion of variant contig names from b37 to hg19.  *This option is useful in integration tests (written by devs) only."
     )
-    private boolean allowHg19ContigNamesWithB37Lenient = false;
+    private boolean forceB37ToHg19ContigNameConversion = false;
 
     //==================================================================================================================
 
@@ -314,7 +308,16 @@ public class Funcotator extends VariantWalker {
 
     private final List<FeatureInput<? extends Feature>> manualLocatableFeatureInputs = new ArrayList<>();
 
+    /** Whether the given input reference is the b37 reference. */
     private boolean inputReferenceIsB37 = false;
+
+    /**
+     * Whether the input variant contigs must be converted to hg19.
+     * This is only the case when the input reference is b37
+     * (i.e. {@link #inputReferenceIsB37} is {@code true}) AND when
+     * the reference version is hg19 (i.e. {@link #referenceVersion} == {@link FuncotatorArgumentDefinitions#HG19_REFERENCE_VERSION_STRING}).
+     */
+    private boolean mustConvertInputContigsToHg19 = false;
 
     private long numVariantsAnnotated = 0;
 
@@ -347,7 +350,7 @@ public class Funcotator extends VariantWalker {
         final Map<Path, Properties> configData = DataSourceUtils.getAndValidateDataSourcesFromPaths(referenceVersion, dataSourceDirectories);
         initializeManualFeaturesForLocatableDataSources(configData);
         dataSourceFactories.addAll(
-                DataSourceUtils.createDataSourceFuncotationFactoriesForDataSources(configData, annotationOverridesMap, transcriptSelectionMode, userTranscriptIdSet, allowHg19ContigNamesWithB37)
+                DataSourceUtils.createDataSourceFuncotationFactoriesForDataSources(configData, annotationOverridesMap, transcriptSelectionMode, userTranscriptIdSet)
         );
 
         // Sort our data source factories to ensure they're always in the same order:  gencode datasources first
@@ -383,38 +386,46 @@ public class Funcotator extends VariantWalker {
         }
 
         // Check for reference version (in)compatibility:
-        if ( allowHg19ContigNamesWithB37 &&
-             referenceVersion.equals(FuncotatorArgumentDefinitions.HG19_REFERENCE_VERSION_STRING) ) {
+        if ( forceB37ToHg19ContigNameConversion || referenceVersion.equals(FuncotatorArgumentDefinitions.HG19_REFERENCE_VERSION_STRING) ) {
             // NOTE AND WARNING:
             // hg19 is from ucsc. b37 is from the genome reference consortium.
             // ucsc decided the grc version had crap in it, so they blocked out some of the bases, aka "masked" them
-            // so the lengths of the contigs are the same, the bases are just _slightly_ different
-            inputReferenceIsB37 = FuncotatorUtils.isSequenceDictionaryUsingB37Reference(getSequenceDictionaryForDrivingVariants());
+            // so the lengths of the contigs are the same, the bases are just _slightly_ different.
+            // ALSO, the contig naming convention is different between hg19 and hg38:
+            //      hg19 uses contigs of the form "chr1"
+            //      b37 uses contigs of the form  "1"
+            // This naming convention difference causes a LOT of issues and was a bad idea.
+            inputReferenceIsB37 = forceB37ToHg19ContigNameConversion || FuncotatorUtils.isSequenceDictionaryUsingB37Reference(getSequenceDictionaryForDrivingVariants());
             if ( inputReferenceIsB37 ) {
                 logger.warn("WARNING: You are using B37 as a reference.  " +
                         "Funcotator will convert your variants to GRCh37, and this will be fine in 99.9% of cases.  " +
-                        "There MAY be some errors in the Y chromosome due to changes between the two references.");
-            }
-        }
+                        "There MAY be some errors (e.g. in the Y chromosome, but possibly in other places as well) due to changes between the two references.");
 
-        // Issue a warning if the lenient reference checking is being used without the b37-hg19 checking relaxed
-        if (allowHg19ContigNamesWithB37Lenient && !allowHg19ContigNamesWithB37) {
-            logger.warn(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_OVERRIDE_LONG_NAME + " was specified without " +
-                    FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME +  ".  It will be ignored.");
+                mustConvertInputContigsToHg19 = forceB37ToHg19ContigNameConversion || referenceVersion.equals(FuncotatorArgumentDefinitions.HG19_REFERENCE_VERSION_STRING);
+            }
         }
     }
 
-    private SimpleInterval getCorrectContigNameForReference(final VariantContext variant ) {
-        // Check to see if we need to query with a different reference convention (i.e. "chr1" vs "1").
-        if (allowHg19ContigNamesWithB37 && (inputReferenceIsB37 || allowHg19ContigNamesWithB37Lenient)) {
-
-            // If the allowHg19ContigNamesWithB37 flag was given we assume the variants are in B37 reference format.
-            // Construct a new contig and new interval with no "chr" in front of it:
-            return new SimpleInterval( FuncotatorUtils.convertB37ContigToHg19Contig( variant.getContig() ),
-                                        variant.getStart(),
-                                        variant.getEnd());
+    private VariantContext getCorrectVariantContextForReference(final VariantContext variant) {
+        if ( mustConvertInputContigsToHg19 ) {
+            final VariantContextBuilder vcb = new VariantContextBuilder(variant);
+            vcb.chr(FuncotatorUtils.convertB37ContigToHg19Contig(variant.getContig()));
+            return vcb.make();
         }
-        return new SimpleInterval(variant);
+        else {
+            return variant;
+        }
+    }
+
+    @Override
+    protected VariantFilter makeVariantFilter() {
+        return  variant -> {
+            // Ignore variants that have been filtered if the user requests it:
+            if ( removeFilteredVariants && variant.isFiltered() ) {
+                return false;
+            }
+            return true;
+        };
     }
 
     @Override
@@ -425,15 +436,29 @@ public class Funcotator extends VariantWalker {
         StreamSupport.stream(getSpliteratorForDrivingVariants(), false)
                 .filter(variantfilter)
                 .forEach(variant -> {
-                    // We may need to translate the contig here (if our variant is B37 and we've been given the
-                    // flag to do the translation to HG19):
-                    final SimpleInterval variantInterval = getCorrectContigNameForReference(variant);
-                    apply(variant,
-                            new ReadsContext(reads, variantInterval, readFilter),
-                            new ReferenceContext(reference, variantInterval),
-                            new FeatureContext(features, variantInterval));
 
-                    progressMeter.update(variantInterval);
+                    // We may need to translate the contig here (if our variant is B37 and we've been given the
+                    // flag to do the translation to HG19).
+                    // Note: This will make the variant no longer match the reference for contig (if the conversion has
+                    //       been applied).
+                    //       You will need to keep this in mind when querying the variant against the reference from here
+                    //       on out.
+                    final VariantContext correctedVariant = getCorrectVariantContextForReference(variant);
+
+                    // Note: This interval will have any corrections applied to the variant for contig name.
+                    final SimpleInterval featureInterval = new SimpleInterval(correctedVariant);
+
+                    apply(correctedVariant,
+                            new ReadsContext(reads, featureInterval, readFilter),
+                            // Note: We are using the original interval for the reference here so that the reference can be
+                            //       properly aligned to where the variant occurs.  This simplifies processing later in the
+                            //       chain at the cost of requiring ReferenceContext manipulation to be conscious of what
+                            //       reference (i.e. hg19/b37/hg38) is being used by the variant & reference, and which is
+                            //       used by the data sources.
+                            new ReferenceContext(reference, new SimpleInterval(variant)),
+                            new FeatureContext(features, featureInterval));
+
+                    progressMeter.update(featureInterval);
                 });
     }
 
@@ -503,13 +528,6 @@ public class Funcotator extends VariantWalker {
      */
     private void enqueueAndHandleVariant(final VariantContext variant, final ReferenceContext referenceContext, final FeatureContext featureContext) {
 
-        // Check to see if we're annotating filtered variants and ignore this if we're told to:
-        if ( removeFilteredVariants && variant.isFiltered() ) {
-            // We can ignore this variant since it was filtered out.
-            return;
-        }
-
-
         //==============================================================================================================
         // Get our feature inputs:
         final Map<String, List<Feature>> featureSourceMap = new HashMap<>();
@@ -519,7 +537,6 @@ public class Funcotator extends VariantWalker {
             final List<Feature> featureList = (List<Feature>)featureContext.getValues(featureInput);
             featureSourceMap.put( featureInput.getName(), featureList );
         }
-
 
         //==============================================================================================================
         // Create only the gencode funcotations.
@@ -532,8 +549,9 @@ public class Funcotator extends VariantWalker {
                 .flatMap(List::stream)
                 .map(gf -> (GencodeFuncotation) gf).collect(Collectors.toList());
 
-
         //==============================================================================================================
+        // Create the rest of the funcotations:
+
         // Create a place to keep our funcotations:
         final FuncotationMap funcotationMap = FuncotationMap.createFromGencodeFuncotations(transcriptFuncotations);
 

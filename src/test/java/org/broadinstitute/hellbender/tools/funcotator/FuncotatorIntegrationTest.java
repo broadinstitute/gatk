@@ -234,37 +234,31 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 {
                         "M2_01115161-TA1-filtered.vcf",
                         "Homo_sapiens_assembly19.fasta",
-                        true,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                 },
                 {
                         "C828.TCGA-D3-A2JP-06A-11D-A19A-08.3-filtered.PASS.vcf",
                         "Homo_sapiens_assembly19.fasta",
-                        true,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19
                 },
                 {
                         "hg38_test_variants.vcf",
                         "Homo_sapiens_assembly38.fasta",
-                        false,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG38
                 },
                 {
                         "sample21.trimmed.vcf",
                         "Homo_sapiens_assembly38.fasta",
-                        false,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG38
                 },
                 {
                         "0816201804HC0_R01C01.vcf",
                         "Homo_sapiens_assembly19.fasta",
-                        true,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19
                 },
                 {
                         "hg38_trio.vcf",
                         "Homo_sapiens_assembly38.fasta",
-                        false,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG38
                 }
         };
@@ -303,12 +297,28 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         runCommandLine(arguments);
     }
 
+    private void validateFuncotationsOnVcf(final Iterable<VariantContext> vcfIterable, final String[] funcotationFieldNames) {
+        for (final VariantContext vc : vcfIterable ) {
+            final String funcotation = vc.getAttributeAsString(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME, "");
+
+            Assert.assertNotEquals(funcotation, "");
+
+            final String rawFuncotations = funcotation.substring(1,funcotation.length()-1);
+
+            Assert.assertEquals(StringUtils.countMatches(rawFuncotations, VcfOutputRenderer.FIELD_DELIMITER), funcotationFieldNames.length - 1);
+
+            // This is here to make sure we can create the FuncotationMap object without exploding.
+            // It serves as a secondary check.
+            final FuncotationMap funkyMap = FuncotationMap.createAsAllTableFuncotationsFromVcf(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY, funcotationFieldNames,
+                    funcotation, vc.getAlternateAllele(0), "VCF");
+        }
+    }
+
     @Test(enabled = doDebugTests,
           groups = {"funcotatorValidation"},
           dataProvider = "provideForLargeDataValidationTest")
     public void largeDataValidationTest(final String inputVcfName,
                                         final String referencePath,
-                                        final boolean allowHg19B37ContigMatches,
                                         final String referenceVersion) throws IOException {
 
         // Get our main test folder path from our environment:
@@ -340,8 +350,6 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
             arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, getFuncotatorLargeDataValidationTestInputPath() + LARGE_DATASOURCES_FOLDER);
 
-            arguments.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME, allowHg19B37ContigMatches);
-
             arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, referenceVersion);
             arguments.addOutput(outputFile);
             arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outFormat.toString());
@@ -355,6 +363,21 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
             endTime = System.nanoTime();
 
             System.out.println("  Elapsed Time (" + outFormat.toString() + "): " + (endTime - startTime) / 1e9 + "s");
+
+            // Perform a simple validation if the file was a VCF:
+            if ( outFormat == FuncotatorArgumentDefinitions.OutputFormatType.VCF) {
+
+                try ( final FeatureDataSource<VariantContext> vcfReader = new FeatureDataSource<>(outputFile.getAbsolutePath()) ) {
+                    Assert.assertTrue(vcfReader.getHeader() instanceof VCFHeader, "Header is not a VCFHeader!");
+                    final VCFHeader vcfHeader = (VCFHeader)vcfReader.getHeader();
+
+                    final VCFInfoHeaderLine funcotationHeaderLine = vcfHeader.getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
+                    final String[] funcotationFieldNames = FuncotatorUtils.extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription());
+
+                    validateFuncotationsOnVcf(vcfReader, funcotationFieldNames);
+
+                }
+            }
         }
 
         System.out.println("Total Elapsed Time: " + (endTime - overallStartTime) / 1e9 + "s");
@@ -428,7 +451,9 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_PIK3CA_DIR);
         arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19);
         arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME, true);
+
+        // We need this argument since we are testing on a subset of b37
+        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
 
         runCommandLine(arguments);
 
@@ -440,30 +465,12 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
         final int NUM_VARIANTS = 21;
         final int NUM_CLINVAR_HITS = 4;
-        Assert.assertEquals(variantContexts.size(), NUM_VARIANTS);
+        Assert.assertEquals(variantContexts.size(), NUM_VARIANTS, "Found unexpected number of variants!");
 
         // Look for "MedGen" to know that we have a clinvar hit.
         Assert.assertEquals(variantContexts.stream()
                 .filter(vc -> StringUtils.contains(vc.getAttributeAsString(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME, ""), "MedGen"))
-                .count(), NUM_CLINVAR_HITS);
-    }
-
-
-    private void checkVariantContextFuncotationResultsForParseability(final Pair<VCFHeader, List<VariantContext>> vcfInfo, final String[] funcotationFieldNames) {
-        for (final VariantContext vc : vcfInfo.getRight() ) {
-            final String funcotation = vc.getAttributeAsString(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME, "");
-
-            Assert.assertNotEquals(funcotation, "", "Funcotation string is empty!");
-
-            final String rawFuncotations = funcotation.substring(1,funcotation.length()-1);
-
-            Assert.assertEquals(StringUtils.countMatches(rawFuncotations, VcfOutputRenderer.FIELD_DELIMITER), funcotationFieldNames.length - 1, "Found unexpected number of funcotation delimiters (indicating wrong number of funcotations)!");
-
-            // This is here to make sure we can create the FuncotationMap object without exploding.
-            // It serves as a secondary check.
-            final FuncotationMap funkyMap = FuncotationMap.createAsAllTableFuncotationsFromVcf(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY, funcotationFieldNames,
-                    funcotation, vc.getAlternateAllele(0), "VCF");
-        }
+                .count(), NUM_CLINVAR_HITS, "Found unexpected number of ClinVar hits!");
     }
 
     @Test
@@ -479,7 +486,9 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_XSV_CLINVAR_TESTS);
         arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19);
         arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME, true);
+
+        // We need this argument since we are testing on a subset of b37
+        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
 
         runCommandLine(arguments);
 
@@ -491,7 +500,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         final int EXPECTED_NUM_VARIANTS = 1;
         Assert.assertEquals(vcfInfo.getRight().size(), EXPECTED_NUM_VARIANTS, "Found more than " + EXPECTED_NUM_VARIANTS + " variants!");
 
-        checkVariantContextFuncotationResultsForParseability(vcfInfo, funcotationFieldNames);
+        validateFuncotationsOnVcf(vcfInfo.getRight(), funcotationFieldNames);
     }
 
     @Test
@@ -507,7 +516,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_XSV_CLINVAR_TESTS);
         arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19);
         arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME, true);
+
+        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
 
         runCommandLine(arguments);
 
@@ -519,7 +529,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         final int EXPECTED_NUM_VARIANTS = 10;
         Assert.assertEquals(vcfInfo.getRight().size(), EXPECTED_NUM_VARIANTS);
 
-        checkVariantContextFuncotationResultsForParseability(vcfInfo, funcotationFieldNames);
+        validateFuncotationsOnVcf(vcfInfo.getRight(), funcotationFieldNames);
     }
 
     @Test
@@ -558,9 +568,9 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     @DataProvider(name = "provideForMafVcfConcordanceProteinChange")
     final Object[][] provideForMafVcfConcordanceProteinChange() {
         return new Object[][]{
-                {PIK3CA_VCF_HG19_SNPS, b37Chr3Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Arrays.asList("Gencode_19_proteinChange"), Arrays.asList(MafOutputRendererConstants.FieldName_Protein_Change), DS_PIK3CA_DIR, 15},
-                {PIK3CA_VCF_HG19_INDELS, b37Chr3Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Arrays.asList("Gencode_19_proteinChange"), Arrays.asList(MafOutputRendererConstants.FieldName_Protein_Change), DS_PIK3CA_DIR, 57},
-                {MUC16_VCF_HG19, hg19Chr19Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Arrays.asList("Gencode_19_proteinChange"), Arrays.asList(MafOutputRendererConstants.FieldName_Protein_Change), DS_MUC16_DIR, 2057}
+                {PIK3CA_VCF_HG19_SNPS, b37Chr3Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Collections.singletonList("Gencode_19_proteinChange"), Collections.singletonList(MafOutputRendererConstants.FieldName_Protein_Change), DS_PIK3CA_DIR, true, 15},
+                {PIK3CA_VCF_HG19_INDELS, b37Chr3Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Collections.singletonList("Gencode_19_proteinChange"), Collections.singletonList(MafOutputRendererConstants.FieldName_Protein_Change), DS_PIK3CA_DIR, true, 57},
+                {MUC16_VCF_HG19, hg19Chr19Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Collections.singletonList("Gencode_19_proteinChange"), Collections.singletonList(MafOutputRendererConstants.FieldName_Protein_Change), DS_MUC16_DIR, false, 2057}
         };
     }
 
@@ -573,6 +583,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                                                       final String funcotatorRef, final List<String> annotationsToCheckVcf,
                                                       final List<String> annotationsToCheckMaf,
                                                       final String datasourceDir,
+                                                      final boolean forceB37Hg19Conversion,
                                                       final int gtNumVariants) {
         final FuncotatorArgumentDefinitions.OutputFormatType vcfOutputFormatType = FuncotatorArgumentDefinitions.OutputFormatType.VCF;
         final File vcfOutputFile = getOutputFile(vcfOutputFormatType);
@@ -588,8 +599,11 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         argumentsVcf.addBooleanArgument(FuncotatorArgumentDefinitions.REMOVE_FILTERED_VARIANTS_LONG_NAME, false);
         argumentsVcf.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
 
-        // We need this argument since we are testing on a subset of b37
-        argumentsVcf.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_OVERRIDE_LONG_NAME, true);
+        if ( forceB37Hg19Conversion ) {
+            // We need this argument since we are testing on a subset of b37
+            argumentsVcf.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
+        }
+
         runCommandLine(argumentsVcf);
 
         final FuncotatorArgumentDefinitions.OutputFormatType mafOutputFormatType = FuncotatorArgumentDefinitions.OutputFormatType.MAF;
@@ -604,9 +618,12 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         argumentsMaf.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, funcotatorRef);
         argumentsMaf.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, mafOutputFormatType.toString());
         argumentsMaf.addBooleanArgument(FuncotatorArgumentDefinitions.REMOVE_FILTERED_VARIANTS_LONG_NAME, false);
-        argumentsMaf.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_OVERRIDE_LONG_NAME, true);
         argumentsMaf.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
 
+        if ( forceB37Hg19Conversion ) {
+            // We need this argument since we are testing on a subset of b37
+            argumentsMaf.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
+        }
         runCommandLine(argumentsMaf);
 
         final Pair<VCFHeader, List<VariantContext>> vcfInfo = VariantContextTestUtils.readEntireVCFIntoMemory(vcfOutputFile.getAbsolutePath());
@@ -621,11 +638,11 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
         // Some errors manifest as all of the variant classifications being IGR.  Check to make sure that is not the case.
         Assert.assertTrue(maf.getRecords().stream()
-                .anyMatch(v -> !v.getAnnotationValue(MafOutputRendererConstants.FieldName_Variant_Classification).equals("IGR")));
+                .anyMatch(v -> !v.getAnnotationValue(MafOutputRendererConstants.FieldName_Variant_Classification).equals("IGR")), "Output produced only IGR annotations!");
 
         Assert.assertTrue(maf.getRecords().stream()
                 .anyMatch(v -> v.getAnnotationValue(MafOutputRendererConstants.FieldName_Variant_Classification).equals("Missense_Mutation") ||
-                        v.getAnnotationValue(MafOutputRendererConstants.FieldName_Variant_Classification).startsWith("Frame_Shift")));
+                        v.getAnnotationValue(MafOutputRendererConstants.FieldName_Variant_Classification).startsWith("Frame_Shift")), "Output produced unexpected VariantClassification");
 
         // Get the protein changes:
         final String[] funcotationKeys = extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription());
@@ -666,7 +683,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         argumentsVcf.addBooleanArgument(FuncotatorArgumentDefinitions.REMOVE_FILTERED_VARIANTS_LONG_NAME, false);
 
         // We need this argument since we are testing on a subset of b37
-        argumentsVcf.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_OVERRIDE_LONG_NAME, true);
+        argumentsVcf.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
+
         runCommandLine(argumentsVcf);
 
         final Pair<VCFHeader, List<VariantContext>> vcfInfo = VariantContextTestUtils.readEntireVCFIntoMemory(vcfOutputFile.getAbsolutePath());
@@ -683,17 +701,17 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
             final String gtString = (i == 0) ? "MedGen:C0027672,SNOMED_CT:699346009" : "";
             final Map<Allele, FuncotationMap> alleleToFuncotationMap = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(funcotationKeys,
                     variantContexts.get(i), "Gencode_19_annotationTranscript", "TEST");
-            Assert.assertEquals(alleleToFuncotationMap.entrySet().size(), 1);
+            Assert.assertEquals(alleleToFuncotationMap.entrySet().size(), 1, "Found more than 1 alternate allele!");
 
             final FuncotationMap funcotationMap = alleleToFuncotationMap.values().iterator().next();
-            Assert.assertEquals(funcotationMap.getTranscriptList().size(), 1);
-            Assert.assertTrue(funcotationMap.getTranscriptList().stream().noneMatch(k -> k.equals(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY)));
-            Assert.assertTrue(funcotationMap.getTranscriptList().stream().noneMatch(StringUtils::isEmpty));
+            Assert.assertEquals(funcotationMap.getTranscriptList().size(), 1, "Found more than 1 funcotation!");
+            Assert.assertTrue(funcotationMap.getTranscriptList().stream().noneMatch(k -> k.equals(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY)), "Found a funcotation with an unknown transcript name: " + FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY);
+            Assert.assertTrue(funcotationMap.getTranscriptList().stream().noneMatch(StringUtils::isEmpty), "Found a funcotation with an empty transcript!");
             final List<Funcotation> funcotations = funcotationMap.get(funcotationMap.getTranscriptList().get(0));
-            Assert.assertEquals(funcotations.size(), 1);
+            Assert.assertEquals(funcotations.size(), 1, "Found more than one funcotation in the funcotation map!");
             final Funcotation funcotation = funcotations.get(0);
 
-            Assert.assertEquals(funcotation.getField("dummy_ClinVar_VCF_CLNDISDB"), FuncotatorUtils.sanitizeFuncotationForVcf(gtString));
+            Assert.assertEquals(funcotation.getField("dummy_ClinVar_VCF_CLNDISDB"), FuncotatorUtils.sanitizeFuncotationForVcf(gtString), "Field (dummy_ClinVar_VCF_CLNDISDB) was unsanititzed: " + funcotation.getField("dummy_ClinVar_VCF_CLNDISDB"));
         }
     }
 
@@ -780,8 +798,10 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_PIK3CA_DIR);
         arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19);
         arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME, true);
         arguments.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
+
+        // We need this argument since we are testing on a subset of b37
+        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
 
         runCommandLine(arguments);
 
@@ -823,8 +843,10 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_PIK3CA_DIR);
         arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19);
         arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME, true);
         arguments.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
+
+        // We need this argument since we are testing on a subset of b37
+        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
 
         runCommandLine(arguments);
 

@@ -263,8 +263,7 @@ public class FuncotationMapUnitTest extends BaseTest{
 
         final String gencode_test = "GENCODE_TEST";
         final GencodeFuncotationFactory gencodeFactory = new GencodeFuncotationFactory(Paths.get(transcriptFastaFile),
-        "TEST", gencode_test, transcriptSelectionMode, new HashSet<>(), new LinkedHashMap<>(),
-                true);
+        "TEST", gencode_test, transcriptSelectionMode, new HashSet<>(), new LinkedHashMap<>());
 
         return gencodeFactory.createFuncotations(variantContext, referenceContext, Collections.singletonMap(gencode_test, featureList)).stream()
         .map(f -> (GencodeFuncotation) f).collect(Collectors.toList());

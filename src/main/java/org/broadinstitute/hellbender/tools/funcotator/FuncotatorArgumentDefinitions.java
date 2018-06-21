@@ -48,16 +48,13 @@ public class FuncotatorArgumentDefinitions {
      */
     public static final String ANNOTATION_OVERRIDES_LONG_NAME = "annotation-override";
 
-
-    public static final String ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_LONG_NAME = "allow-hg19-gencode-b37-contig-matching";
-
     public static final String HG19_REFERENCE_VERSION_STRING = "hg19";
     public static final String HG38_REFERENCE_VERSION_STRING = "hg38";
 
     public static final String LOOKAHEAD_CACHE_IN_BP_NAME = "lookahead-cache-bp";
     public static final int LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE = VariantWalkerBase.FEATURE_CACHE_LOOKAHEAD;
 
-    public static final String ALLOW_HG19_GENCODE_B37_CONTIG_MATCHING_OVERRIDE_LONG_NAME = "allow-hg19-gencode-b37-contig-matching-override";
+    public static final String FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION = "force-b37-to-hg19-reference-contig-lookup";
 
     // ------------------------------------------------------------
     // Helper Types:
