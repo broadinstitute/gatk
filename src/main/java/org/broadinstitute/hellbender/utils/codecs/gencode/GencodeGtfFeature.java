@@ -1107,6 +1107,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         /** shares an identical CDS but has alternative 3' UTR with respect to a reference variant. */
         ALTERNATIVE_5_UTR("alternative_5_UTR"),
 
+        /** Please note that the ordering of the APPRIS_* tags is also used in sorting here.  Do not re-order. */
         /** Transcript expected to code for the main functional isoform based on a range of protein features (APPRIS pipeline). */
         APPRIS_PRINCIPAL("appris_principal"),
 
