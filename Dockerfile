@@ -31,8 +31,7 @@ RUN ln -Fsv $GATK_JAR_PATH gatk.jar && \
     ln -Fsv /gatk/$GATK_SPARK_JAR_PATH /root/gatk-spark.jar
 
 ENV PATH /gatk:$PATH
-ENTRYPOINT ["bash", "--init-file", "/gatk/gatkenv.rc", "-c"]
-CMD ["bash"]
+CMD ["bash", "--init-file", "/gatk/gatkenv.rc"]
 
 # Make sure we can run the wrapper script.
 RUN gatk --list
