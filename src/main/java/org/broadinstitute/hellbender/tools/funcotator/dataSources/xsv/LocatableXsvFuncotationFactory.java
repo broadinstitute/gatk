@@ -153,6 +153,9 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
                             annotatedAltAlleles.add(altAllele);
                         }
                     }
+
+                    // TODO: Must break the loop now to prevent multiple entries messing up the number of fields in the funcotation (issue #4930 - https://github.com/broadinstitute/gatk/issues/4930)
+                    break;
                 }
             }
         }
