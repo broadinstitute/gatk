@@ -6,7 +6,7 @@ set -e
 REPO=broadinstitute
 PROJECT=gatk
 REPO_PRJ=${REPO}/${PROJECT}
-GCR_REPO="us.gcr.io/broad-gotc-prod/gatk"
+GCR_REPO=us.gcr.io/broad-gotc-prod/gatk
 STAGING_CLONE_DIR=${PROJECT}_staging_temp
 
 #################################################
@@ -41,7 +41,6 @@ Optional arguments:  \n \
 -t <PULL_REQUEST_NUMBER>\t (Travis CI only) The pull request number.  This is only used during pull request builds on Travis CI. \n" $0
 	exit 1
 fi
-
 
 # -z is like "not -n"
 if [ -z ${IS_NOT_LATEST} ] && [ -n "${IS_HASH}" ] && [ -n "${IS_PUSH}" ]; then
@@ -107,14 +106,43 @@ if [ -n "$STAGING_DIR" ]; then
     ${GIT_PULL_LARGE_COMMAND}
 fi
 
+# Create a temp dir to use as the build context.
+# `docker build` sends everything in the context directory to the daemon as its first
+# step, so not using the repo's top-level dir saves some time.
+TMP_CONTEXT=$(mktemp -d -t gatk-build-docker-XXXXXX)
+echo "Using temporary build context ${TMP_CONTEXT}..."
+
 # Build
 if [ -n "${IS_PUSH}" ]; then
     RELEASE=true
 else
     RELEASE=false
 fi
-echo "Building image to tag ${REPO_PRJ}:${GITHUB_TAG}..."
-docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg DRELEASE=$RELEASE .
+./gradlew clean compileTestJava sparkJar localJar condaEnvironmentDefinition -Drelease=$RELEASE
+
+GATK_JAR_PATH=$( find ${PWD}/build -name "gatk*local.jar" )
+GATK_SPARK_JAR_PATH=$( find ${PWD}/build -name "gatk*spark.jar" )
+PYTHON_ZIP_PATH=$( find ${PWD}/build -name "gatkPython*.zip" )
+CONDA_ENV_PATH=$( find ${PWD} -name gatkcondaenv.yml )
+
+cp ${GATK_JAR_PATH} ${GATK_SPARK_JAR_PATH} ${PYTHON_ZIP_PATH} ${CONDA_ENV_PATH} ${TMP_CONTEXT}/
+
+DOCKERHUB_TAG=${REPO_PRJ}:${GITHUB_TAG}
+DOCKER_BUILD=(
+    docker build
+    -f ${PWD}/Dockerfile
+    -t ${DOCKERHUB_TAG}
+    --build-arg GATK_JAR_PATH=$(basename ${GATK_JAR_PATH})
+    --build-arg GATK_SPARK_JAR_PATH=$(basename ${GATK_SPARK_JAR_PATH})
+    --build-arg PYTHON_ZIP_PATH=$(basename ${PYTHON_ZIP_PATH})
+    --build-arg CONDA_ENV_PATH=$(basename ${CONDA_ENV_PATH})
+    ${TMP_CONTEXT}
+)
+
+echo "Building image to tag ${DOCKERHUB_TAG}..."
+echo "${DOCKER_BUILD[@]}"
+"${DOCKER_BUILD[@]}"
+rm -r ${TMP_CONTEXT}
 
 if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
 
@@ -126,10 +154,22 @@ if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
 	fi
 
 	git lfs pull
-    chmod -R a+w ${STAGING_ABSOLUTE_PATH}/src/test/resources
+  chmod -R a+w src/test/resources
 
-	echo docker run ${REMOVE_CONTAINER_STRING} -v ${STAGING_ABSOLUTE_PATH}/src/test/resources:/testdata -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
-	docker run ${REMOVE_CONTAINER_STRING} -v ${STAGING_ABSOLUTE_PATH}/src/test/resources:/testdata -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
+  TEST_COMMAND=(
+    docker run -it ${REMOVE_CONTAINER_STRING}
+    -e CI=true
+    -e DOCKER_TEST=true
+    -e GRADLE_USER_HOME=/root/.gradle
+    -e GRADLE_OPTS="-Xmx1024m -Dorg.gradle.daemon=false"
+    -v ${PWD}:/gatksrc
+    -v ${GRADLE_USER_HOME:-"${HOME}/.gradle"}:/root/.gradle
+    ${DOCKERHUB_TAG}
+    /gatksrc/gradlew jacocoTestReport -a -p /gatksrc
+  )
+
+  echo "${TEST_COMMAND[@]}"
+  "${TEST_COMMAND[@]}"
 	echo " Unit tests passed..."
 fi
 
@@ -137,21 +177,21 @@ fi
 if [ -n "${IS_PUSH}" ]; then
 
 	#echo "Pushing to ${REPO_PRJ}"
-	#docker push ${REPO_PRJ}:${GITHUB_TAG}
+	#docker push ${DOCKERHUB_TAG}
 
 	echo "Pushing to ${GCR_REPO}"
-	docker tag ${REPO_PRJ}:${GITHUB_TAG} ${GCR_REPO}:${GITHUB_TAG}
+	docker tag ${DOCKERHUB_TAG} ${GCR_REPO}:${GITHUB_TAG}
 	gcloud docker -- push ${GCR_REPO}:${GITHUB_TAG}
 
-	#if [ -z "${IS_NOT_LATEST}" ] && [ -z "${IS_HASH}" ] ; then
-	#	echo "Updating latest tag in ${REPO_PRJ}"
-	#	docker tag ${REPO_PRJ}:${GITHUB_TAG} ${REPO_PRJ}:latest
-	#	docker push ${REPO_PRJ}:latest
+	if [ -z "${IS_NOT_LATEST}" ] && [ -z "${IS_HASH}" ] ; then
+		#echo "Updating latest tag in ${REPO_PRJ}"
+		#docker tag ${DOCKERHUB_TAG} ${REPO_PRJ}:latest
+		#docker push ${REPO_PRJ}:latest
 
-	#	echo "Updating latest tag in ${GCR_REPO}"
-	#	docker tag ${GCR_REPO}:${GITHUB_TAG} ${GCR_REPO}:latest
-	#	gcloud docker -- push ${GCR_REPO}:latest
-	#fi
+		echo "Updating latest tag in ${GCR_REPO}"
+		docker tag ${GCR_REPO}:${GITHUB_TAG} ${GCR_REPO}:latest
+		gcloud docker -- push ${GCR_REPO}:latest
+	fi
 
 else
 	echo "Not pushing to dockerhub"

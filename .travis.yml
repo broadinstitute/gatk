@@ -144,7 +144,9 @@ script:
     echo ${TEST_TYPE};
     sudo mkdir -p build/reports/;
     sudo chmod -R a+w build/reports/;
-    sudo docker run -v $(pwd)/src/test/resources:/testdata -v $(pwd)/build/reports/:/gatk/build/reports/ --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh;
+    sudo docker run -v $(pwd):/gatksrc -v ${GRADLE_USER_HOME:-"${HOME}/.gradle"}:/root/.gradle --rm \
+      -e "CI=true" -e "DOCKER_TEST=true" -e "GRADLE_USER_HOME=/root/.gradle" -e "GRADLE_OPTS=${GRADLE_OPTS}" -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" \
+      -t broadinstitute/gatk:${DOCKER_TAG} /gatksrc/gradlew jacocoTestReport -a -p /gatksrc;
   else
     ./gatk PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
     travis_wait 50 ./gradlew jacocoTestReport;
@@ -156,7 +158,7 @@ after_success:
 # if this is actually a commit to master and not a pull request build into master, then publish master-snapshot
 - if [[ $TRAVIS_BRANCH == master && $TRAVIS_PULL_REQUEST == false && $UPLOAD == true ]]; then
     git tag master;
-    ./gradlew uploadArchives; 
+    ./gradlew uploadArchives;
   fi
 
 # This creates and uploads the gatk zip file to the nightly build bucket, only keeping the 10 newest entries

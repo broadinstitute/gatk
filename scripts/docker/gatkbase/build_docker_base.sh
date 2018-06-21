@@ -4,9 +4,9 @@
 set -e
 
 
-REPO=broadinstitute
+REPO=us.gcr.io/broad-gotc-prod
 PROJECT=gatk
-VERSION=1.2.3
+VERSION=1.3.0
 FULL_PATH=${REPO}/${PROJECT}:gatkbase-${VERSION}
 
 #################################################
@@ -14,7 +14,7 @@ FULL_PATH=${REPO}/${PROJECT}:gatkbase-${VERSION}
 #################################################
 while getopts "ph" option; do
 	case "$option" in
-	    h) IS_HELP=true ;;
+	  h) IS_HELP=true ;;
 		p) IS_PUSH=true ;;
 	esac
 done
