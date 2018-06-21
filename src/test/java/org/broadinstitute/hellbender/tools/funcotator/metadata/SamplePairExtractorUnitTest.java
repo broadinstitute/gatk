@@ -21,10 +21,10 @@ public class SamplePairExtractorUnitTest extends GATKBaseTest {
     @DataProvider
     public Object[][] provideHeaders() {
         return new Object[][] {
-                {EXAMPLE_TUMOR_SAMPLE_NAME,  new TumorNormalPair("TUMOR", "NORMAL")},
-                {EXAMPLE_M2_TUMOR_SAMPLE_NAME,  new TumorNormalPair("S1234T", "S1234N")},
-                {EXAMPLE_M2_2_TUMOR_SAMPLE_NAME,  new TumorNormalPair("SM-74P4M", "SM-74NEG")},
-                {EXAMPLE_GERMLINE_NAME,  Collections.emptyList()}
+                {EXAMPLE_TUMOR_SAMPLE_NAME, Collections.singletonList(new TumorNormalPair("TUMOR", "NORMAL"))},
+                {EXAMPLE_M2_TUMOR_SAMPLE_NAME,  Collections.singletonList(new TumorNormalPair("S1234T", "S1234N"))},
+                {EXAMPLE_M2_2_TUMOR_SAMPLE_NAME,  Collections.singletonList(new TumorNormalPair("SM-74P4M", "SM-74NEG"))},
+                {EXAMPLE_GERMLINE_NAME,  Collections.singletonList(new TumorNormalPair("0816201804HC0_R01C01", ""))}
         };
     }
 
