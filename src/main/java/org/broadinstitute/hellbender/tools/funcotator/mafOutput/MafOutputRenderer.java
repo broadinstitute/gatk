@@ -100,7 +100,8 @@ public class MafOutputRenderer extends OutputRenderer {
     // Constructors:
 
     /**
-     * Create a {@link MafOutputRenderer}.
+     * Create a {@link MafOutputRenderer}.  Usage for germline use cases is unsupported.
+     *
      * @param outputFilePath {@link Path} to output file (must not be null).
      * @param dataSources {@link List} of {@link DataSourceFuncotationFactory} to back our annotations (must not be null).
      * @param inputFileHeader {@link VCFHeader} of input VCF file to preserve.

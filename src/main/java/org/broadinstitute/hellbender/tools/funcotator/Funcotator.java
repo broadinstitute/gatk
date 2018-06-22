@@ -240,7 +240,7 @@ public class Funcotator extends VariantWalker {
 
     @Argument(
             fullName =  FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME,
-            doc = "The output file format.  Either VCF or MAF"
+            doc = "The output file format.  Either VCF or MAF.  Please note that MAF output for germline use case VCFs is unsupported."
     )
     private FuncotatorArgumentDefinitions.OutputFormatType outputFormatType;
 
