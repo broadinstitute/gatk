@@ -106,7 +106,7 @@ workflow Mutect2 {
     Boolean? run_funcotator
     Boolean run_funcotator_or_default = select_first([run_funcotator, false])
     String? funco_reference_version
-    String? funco_data_sources_tar_gz
+    File? funco_data_sources_tar_gz
     String? funco_transcript_selection_mode
     File? funco_transcript_selection_list
     Array[String]? funco_annotation_defaults
