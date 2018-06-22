@@ -220,6 +220,10 @@ public class MafOutputRenderer extends OutputRenderer {
 
     @Override
     public void close() {
+        if (!hasWrittenHeader) {
+            final LinkedHashMap<String, String> mafCompliantOutputMap = createMafCompliantOutputMap(Allele.create("AT"), Collections.emptyList());
+            writeHeader(new ArrayList<>(mafCompliantOutputMap.keySet()));
+        }
         if ( printWriter != null ) {
             printWriter.flush();
             printWriter.close();
