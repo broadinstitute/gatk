@@ -182,6 +182,19 @@ compileTestJava {
   options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror', '-Xdiags:verbose']
 }
 
+
+sourceSets {
+    testUtils
+}
+
+configurations {
+    testUtilsCompile.extendsFrom compile
+    testUtilsRuntime.extendsFrom runtime
+
+    testCompile.extendsFrom testUtilsCompile
+    testRuntime.extendsFrom testUtilsRuntime
+}
+
 // Dependency change for including MLLib
 configurations {
     compile.exclude module: 'jul-to-slf4j'
@@ -279,8 +292,6 @@ dependencies {
     }
 
     compile 'org.jgrapht:jgrapht-core:0.9.1'
-    compile 'org.testng:testng:' + testNGVersion //compile instead of testCompile because it is needed for test infrastructure that needs to be packaged
-    compile 'org.apache.hadoop:hadoop-minicluster:' + hadoopVersion
 
     compile('org.seqdoop:hadoop-bam:' + hadoopBamVersion) {
         exclude group: 'org.apache.hadoop'
@@ -324,6 +335,12 @@ dependencies {
     
     // Required for SV Discovery machine learning
     compile group: 'biz.k11i', name: 'xgboost-predictor', version: '0.3.0'
+
+    testUtilsCompile sourceSets.main.output
+    testUtilsCompile 'org.testng:testng:' + testNGVersion //compile instead of testCompile because it is needed for test infrastructure that needs to be packaged
+    testUtilsCompile 'org.apache.hadoop:hadoop-minicluster:' + hadoopVersion
+
+    testCompile sourceSets.testUtils.output
 
     testCompile "org.mockito:mockito-core:2.10.0"
     testCompile "com.google.jimfs:jimfs:1.1"
@@ -677,10 +694,11 @@ task sourcesJar(type: Jar) {
     classifier = 'sources'
 }
 
-tasks.withType(Javadoc) {
-    // do this for all javadoc tasks, including gatkDoc
-    options.addStringOption('Xdoclint:none')
+task testUtilsJar(type: Jar){
+    baseName = "$project.name-test-utils"
+    from sourceSets.testUtils.output
 }
+
 
 javadoc {
     // This is a hack to disable the java 8 default javadoc lint until we fix the html formatting
@@ -688,6 +706,34 @@ javadoc {
     options.addStringOption('Xdoclint:none', '-quiet')
     source = sourceSets.main.allJava + files(configurations.externalSourceConfiguration.collect { zipTree(it) })
     include '**/*.java'
+}
+
+
+task testUtilsJavadoc(type: Javadoc) {
+    // This is a hack to disable the java 8 default javadoc lint until we fix the html formatting
+    // We only want to do this for the javadoc task, not gatkDoc
+    options.addStringOption('Xdoclint:none', '-quiet')
+    source = sourceSets.testUtils.allJava
+    classpath = sourceSets.testUtils.runtimeClasspath
+    destinationDir = file("$docBuildDir/testUtilsJavadoc")
+    include '**/*.java'
+}
+
+task testUtilsJavadocJar(type: Jar, dependsOn: testUtilsJavadoc){
+    baseName = "$project.name-test-utils"
+    classifier = 'javadoc'
+    from "$docBuildDir/testUtilsJavadoc"
+}
+
+task testUtilsSourceJar(type: Jar){
+    baseName = "$project.name-test-utils"
+    classifier = 'source'
+    from sourceSets.testUtils.allSource
+}
+
+tasks.withType(Javadoc) {
+    // do this for all javadoc tasks, including gatkDoc
+    options.addStringOption('Xdoclint:none')
 }
 
 // Generate GATK Online Doc
@@ -782,6 +828,8 @@ task gatkTabComplete(type: Javadoc, dependsOn: classes) {
     options.addStringOption("caller-post-arg-max-occurs", "1 1 1 1 1 1 1 1 1 1")
 }
 
+
+
 /**
  *This specifies what artifacts will be built and uploaded when performing a maven upload.
  */
@@ -789,6 +837,9 @@ artifacts {
     archives jar
     archives javadocJar
     archives sourcesJar
+    archives testUtilsJar
+    archives testUtilsJavadocJar
+    archives testUtilsSourceJar
 
 }
 //remove zip and tar added by the application plugin
@@ -803,6 +854,19 @@ signing {
     sign configurations.archives
 }
 
+
+install {
+    install {
+        repositories.mavenInstaller {
+            addFilter('gatk') {artifact, file ->
+                artifact.name == 'gatk'
+            }
+            addFilter('gatk-test-utils') {artifact, file ->
+                artifact.name == 'gatk-test-utils'
+            }
+        }
+    }
+}
 /**
  * Upload a release to sonatype.  You must be an authorized uploader and have your sonatype
  * username and password information in your gradle properties file.  See the readme for more info.
@@ -823,6 +887,13 @@ uploadArchives {
 
             snapshotRepository(url: "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot-local/") {
                 authentication(userName: System.env.ARTIFACTORY_USERNAME, password: System.env.ARTIFACTORY_PASSWORD)
+            }
+
+            addFilter('gatk') {artifact, file ->
+                artifact.name == 'gatk'
+            }
+            addFilter('gatk-test-utils') {artifact, file ->
+                artifact.name == 'gatk-test-utils'
             }
 
             pom.project {

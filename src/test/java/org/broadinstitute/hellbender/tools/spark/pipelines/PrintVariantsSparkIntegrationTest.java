@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 

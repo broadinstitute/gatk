@@ -4,7 +4,7 @@ import htsjdk.samtools.DuplicateScoringStrategy;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.tools.walkers.markduplicates.MarkDuplicatesGATK;
-import org.broadinstitute.hellbender.utils.test.testers.AbstractMarkDuplicatesTester;
+import org.broadinstitute.hellbender.testutils.testers.AbstractMarkDuplicatesTester;
 
 /**
  * This class is an extension of AbstractMarkDuplicatesCommandLineProgramTester used to test MarkDuplicatesGATK with SAM files generated on the fly.

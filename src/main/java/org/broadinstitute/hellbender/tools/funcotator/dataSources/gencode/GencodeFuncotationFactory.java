@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.util.Locatable;
@@ -23,7 +24,6 @@ import org.broadinstitute.hellbender.utils.codecs.gencode.*;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
-import org.testng.collections.Sets;
 
 import java.nio.file.Path;
 import java.util.*;
@@ -108,16 +108,16 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      */
     private static final Set<GencodeFuncotation.VariantClassification> codingVariantClassifications =
             Sets.newHashSet(Arrays.asList(GencodeFuncotation.VariantClassification.MISSENSE,
-                            GencodeFuncotation.VariantClassification.NONSENSE,
-                            GencodeFuncotation.VariantClassification.NONSTOP,
-                            GencodeFuncotation.VariantClassification.SILENT,
-                            GencodeFuncotation.VariantClassification.IN_FRAME_DEL,
-                            GencodeFuncotation.VariantClassification.IN_FRAME_INS,
-                            GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS,
-                            GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL,
-                            GencodeFuncotation.VariantClassification.START_CODON_SNP,
-                            GencodeFuncotation.VariantClassification.START_CODON_INS,
-                            GencodeFuncotation.VariantClassification.START_CODON_DEL));
+                                          GencodeFuncotation.VariantClassification.NONSENSE,
+                                          GencodeFuncotation.VariantClassification.NONSTOP,
+                                          GencodeFuncotation.VariantClassification.SILENT,
+                                          GencodeFuncotation.VariantClassification.IN_FRAME_DEL,
+                                          GencodeFuncotation.VariantClassification.IN_FRAME_INS,
+                                          GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS,
+                                          GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL,
+                                          GencodeFuncotation.VariantClassification.START_CODON_SNP,
+                                          GencodeFuncotation.VariantClassification.START_CODON_INS,
+                                          GencodeFuncotation.VariantClassification.START_CODON_DEL));
 
 
     //==================================================================================================================

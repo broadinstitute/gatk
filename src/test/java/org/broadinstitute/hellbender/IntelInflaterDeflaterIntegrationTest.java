@@ -10,7 +10,7 @@ import htsjdk.samtools.util.zip.DeflaterFactory;
 import htsjdk.samtools.util.zip.InflaterFactory;
 import org.broadinstitute.hellbender.utils.NativeUtils;
 import org.broadinstitute.hellbender.utils.RandomDNA;
-import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
+import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.DataProvider;

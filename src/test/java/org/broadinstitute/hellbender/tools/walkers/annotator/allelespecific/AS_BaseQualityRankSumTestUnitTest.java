@@ -1,10 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
-import com.google.common.primitives.Doubles;
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
-import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
+import org.broadinstitute.hellbender.testutils.ArtificialAnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.BaseQualityRankSumTestUnitTest;
 import org.broadinstitute.hellbender.utils.MannWhitneyU;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;

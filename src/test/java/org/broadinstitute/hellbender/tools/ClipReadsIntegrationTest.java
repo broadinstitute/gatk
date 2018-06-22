@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
+import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;

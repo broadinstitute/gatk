@@ -8,6 +8,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
+
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.read.markduplicates.SerializableOpticalDuplicatesFinder;
 import org.testng.Assert;
@@ -15,6 +16,7 @@ import org.testng.annotations.Test;
 import scala.Tuple2;
 
 import java.io.IOException;
+
 import java.util.*;
 
 public class MarkDuplicatesSparkUtilsUnitTest extends GATKBaseTest {

@@ -21,7 +21,7 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotatedI
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotationSet;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.SimpleCount;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

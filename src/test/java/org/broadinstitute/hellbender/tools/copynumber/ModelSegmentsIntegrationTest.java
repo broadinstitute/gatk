@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.tools.copynumber.models.AlleleFractionParam
 import org.broadinstitute.hellbender.tools.copynumber.models.CopyRatioParameter;
 import org.broadinstitute.hellbender.tools.copynumber.models.MultidimensionalModellerUnitTest;
 import org.broadinstitute.hellbender.tools.copynumber.segmentation.MultidimensionalKernelSegmenterUnitTest;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

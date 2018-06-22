@@ -7,9 +7,11 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.runtime.*;
-import org.testng.Assert;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Future;
@@ -293,7 +295,9 @@ public class StreamingPythonScriptExecutor<T> extends PythonExecutorBase {
     public void terminate() {
         if (dataTransferFIFOWriter != null) {
             if (asyncWriter != null) {
-                Assert.assertTrue(asyncWriter.terminate());
+                if(!asyncWriter.terminate()){
+                    throw new GATKException("failed to close asynWriter");
+                }
             }
             spController.writeProcessInput(PYTHON_CLOSE_DATA_FIFO);
             sendAckRequest();
