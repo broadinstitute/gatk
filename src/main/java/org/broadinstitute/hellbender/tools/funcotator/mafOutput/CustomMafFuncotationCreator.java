@@ -27,7 +27,7 @@ import static org.broadinstitute.hellbender.tools.funcotator.mafOutput.MafOutput
  */
 public class CustomMafFuncotationCreator {
 
-    final static List<String> COUNT_FIELD_NAMES = Arrays.asList(
+    final public static List<String> COUNT_FIELD_NAMES = Arrays.asList(
             MafOutputRendererConstants.FieldName_t_alt_count,
             MafOutputRendererConstants.FieldName_t_ref_count,
             MafOutputRendererConstants.FieldName_n_alt_count,
