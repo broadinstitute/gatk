@@ -248,45 +248,12 @@ public class MafOutputRenderer extends OutputRenderer {
             for (final String txId : txToFuncotationMap.getTranscriptList()) {
 
                 final List<Funcotation> funcotations = txToFuncotationMap.get(txId);
-
-                // Create our output maps:
-                final LinkedHashMap<String, Object> outputMap = new LinkedHashMap<>(defaultMap);
-                final LinkedHashMap<String, Object> extraFieldOutputMap = new LinkedHashMap<>();
-
-                // Get our funcotations for this allele and add them to the output maps:
-                for (final Funcotation funcotation : funcotations) {
-                    if (funcotation.getAltAllele().equals(altAllele)) {
-                        // Add all the fields from the other funcotations into the extra field output:
-                        for (final String field : funcotation.getFieldNames()) {
-                            setField(extraFieldOutputMap, field, funcotation.getField(field));
-                        }
-                    }
-                }
-
-                // Now add in our annotation overrides so they can be aliased correctly with the outputFieldNameMap:
-                extraFieldOutputMap.putAll(overrideAnnotations);
-
-                // Go through all output fields and see if any of the names in the value list are in our extraFieldOutputMap.
-                // For any that match, we remove them from our extraFieldOutputMap and add them to the outputMap with the
-                // correct key.
-                for (final Map.Entry<String, List<String>> entry : outputFieldNameMap.entrySet()) {
-                    for (final String fieldName : entry.getValue()) {
-                        if (extraFieldOutputMap.containsKey(fieldName)) {
-                            outputMap.put(entry.getKey(), extraFieldOutputMap.remove(fieldName));
-                            break;
-                        }
-                    }
-                }
-
-                // Merge our output maps together:
-                outputMap.putAll(extraFieldOutputMap);
-
-                // Now translate fields to the field names that MAF likes:
-                final LinkedHashMap<String, String> mafCompliantOutputMap = replaceFuncotationValuesWithMafCompliantValues(outputMap);
+                final LinkedHashMap<String, String> mafCompliantOutputMap = createMafCompliantOutputMap(altAllele, funcotations);
 
                 // Write our header if we have to:
                 if (!hasWrittenHeader) {
-                    writeHeader(mafCompliantOutputMap);
+                    // Please note that we are implicitly using the ordering of a LinkedHashMap under the hood.
+                    writeHeader(new ArrayList<>(mafCompliantOutputMap.keySet()));
                 }
 
                 // Write the output (with manual annotations at the end):
@@ -297,6 +264,43 @@ public class MafOutputRenderer extends OutputRenderer {
                 writeLine(manualAnnotationSerializedString);
             }
         }
+    }
+
+    private LinkedHashMap<String, String> createMafCompliantOutputMap(final Allele altAllele, final List<Funcotation> funcotations) {
+        // Create our output maps:
+        final LinkedHashMap<String, Object> outputMap = new LinkedHashMap<>(defaultMap);
+        final LinkedHashMap<String, Object> extraFieldOutputMap = new LinkedHashMap<>();
+
+        // Get our funcotations for this allele and add them to the output maps:
+        for (final Funcotation funcotation : funcotations) {
+            if (funcotation.getAltAllele().equals(altAllele)) {
+                // Add all the fields from the other funcotations into the extra field output:
+                for (final String field : funcotation.getFieldNames()) {
+                    setField(extraFieldOutputMap, field, funcotation.getField(field));
+                }
+            }
+        }
+
+        // Now add in our annotation overrides so they can be aliased correctly with the outputFieldNameMap:
+        extraFieldOutputMap.putAll(overrideAnnotations);
+
+        // Go through all output fields and see if any of the names in the value list are in our extraFieldOutputMap.
+        // For any that match, we remove them from our extraFieldOutputMap and add them to the outputMap with the
+        // correct key.
+        for (final Map.Entry<String, List<String>> entry : outputFieldNameMap.entrySet()) {
+            for (final String fieldName : entry.getValue()) {
+                if (extraFieldOutputMap.containsKey(fieldName)) {
+                    outputMap.put(entry.getKey(), extraFieldOutputMap.remove(fieldName));
+                    break;
+                }
+            }
+        }
+
+        // Merge our output maps together:
+        outputMap.putAll(extraFieldOutputMap);
+
+        // Now translate fields to the field names that MAF likes:
+        return replaceFuncotationValuesWithMafCompliantValues(outputMap);
     }
 
     //==================================================================================================================
@@ -501,9 +505,9 @@ public class MafOutputRenderer extends OutputRenderer {
 
     /**
      * Write the header to the output file.
-     * @param outputMap A populated output map from which to derive the header columns.
+     * @param outputFields Ordered list of the header columns.  These will be written as presented.
      */
-    protected void writeHeader(final LinkedHashMap<String, String> outputMap) {
+    protected void writeHeader(final List<String> outputFields) {
         // Write out version:
         writeLine(MafOutputRendererConstants.COMMENT_STRING + "version " + VERSION);
         writeLine(MafOutputRendererConstants.COMMENT_STRING + MafOutputRendererConstants.COMMENT_STRING);
@@ -537,7 +541,7 @@ public class MafOutputRenderer extends OutputRenderer {
         writeLine("");
 
         // Write the column headers for our output set and our manual annotations:
-        printWriter.write( outputMap.keySet().stream().collect(Collectors.joining(MafOutputRendererConstants.FIELD_DELIMITER)) );
+        printWriter.write( outputFields.stream().collect(Collectors.joining(MafOutputRendererConstants.FIELD_DELIMITER)) );
         writeLine(MafOutputRendererConstants.FIELD_DELIMITER + manualAnnotations.keySet().stream().collect(Collectors.joining(MafOutputRendererConstants.FIELD_DELIMITER)));
 
         // Make sure we keep track of the fact that we've now written the header:
