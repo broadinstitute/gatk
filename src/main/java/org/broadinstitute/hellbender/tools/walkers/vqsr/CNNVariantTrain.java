@@ -103,7 +103,7 @@ public class CNNVariantTrain extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
-        final Resource pythonScriptResource = new Resource("training.py", FilterVariantTranches.class);
+        final Resource pythonScriptResource = new Resource("training.py", CNNVariantTrain.class);
         List<String> arguments = new ArrayList<>(Arrays.asList(
                 "--data_dir", inputTensorDir,
                 "--output_dir", outputDir,

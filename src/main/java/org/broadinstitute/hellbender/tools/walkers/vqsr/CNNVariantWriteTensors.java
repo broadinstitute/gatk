@@ -121,7 +121,7 @@ public class CNNVariantWriteTensors extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
-        final Resource pythonScriptResource = new Resource("training.py", FilterVariantTranches.class);
+        final Resource pythonScriptResource = new Resource("training.py", CNNVariantWriteTensors.class);
         List<String> arguments = new ArrayList<>(Arrays.asList(
                 "--reference_fasta", reference,
                 "--input_vcf", inputVcf,
