@@ -1076,6 +1076,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
         final AnnotatedIntervalCollection maf = AnnotatedIntervalCollection.create(outputFile.toPath(), null);
         Assert.assertEquals(maf.getRecords().size(),  0);
+        // TODO: Check for the custom Maf fields
     }
 }
 
