@@ -389,7 +389,7 @@ public class Funcotator extends VariantWalker {
         if ( forceB37ToHg19ContigNameConversion || referenceVersion.equals(FuncotatorArgumentDefinitions.HG19_REFERENCE_VERSION_STRING) ) {
             // NOTE AND WARNING:
             // hg19 is from ucsc. b37 is from the genome reference consortium.
-            // ucsc decided the grc version had crap in it, so they blocked out some of the bases, aka "masked" them
+            // ucsc decided the grc version had some bad data in it, so they blocked out some of the bases, aka "masked" them
             // so the lengths of the contigs are the same, the bases are just _slightly_ different.
             // ALSO, the contig naming convention is different between hg19 and hg38:
             //      hg19 uses contigs of the form "chr1"
@@ -398,7 +398,7 @@ public class Funcotator extends VariantWalker {
             inputReferenceIsB37 = forceB37ToHg19ContigNameConversion || FuncotatorUtils.isSequenceDictionaryUsingB37Reference(getSequenceDictionaryForDrivingVariants());
             if ( inputReferenceIsB37 ) {
                 logger.warn("WARNING: You are using B37 as a reference.  " +
-                        "Funcotator will convert your variants to GRCh37, and this will be fine in 99.9% of cases.  " +
+                        "Funcotator will convert your variants to GRCh37, and this will be fine in the vast majority of cases.  " +
                         "There MAY be some errors (e.g. in the Y chromosome, but possibly in other places as well) due to changes between the two references.");
 
                 mustConvertInputContigsToHg19 = forceB37ToHg19ContigNameConversion || referenceVersion.equals(FuncotatorArgumentDefinitions.HG19_REFERENCE_VERSION_STRING);
@@ -529,7 +529,8 @@ public class Funcotator extends VariantWalker {
     private void enqueueAndHandleVariant(final VariantContext variant, final ReferenceContext referenceContext, final FeatureContext featureContext) {
 
         //==============================================================================================================
-        // Get our feature inputs:
+        // Get our manually-specified feature inputs:
+
         final Map<String, List<Feature>> featureSourceMap = new HashMap<>();
 
         for ( final FeatureInput<? extends Feature> featureInput : manualLocatableFeatureInputs ) {
@@ -539,7 +540,8 @@ public class Funcotator extends VariantWalker {
         }
 
         //==============================================================================================================
-        // Create only the gencode funcotations.
+        // First create only the transcript (Gencode) funcotations:
+
         if (retrieveGencodeFuncotationFactoryStream().count() > 1) {
             logger.warn("Attempting to annotate with more than one GENCODE datasource.  If these have overlapping transcript IDs, errors may occur.");
         }
@@ -550,7 +552,7 @@ public class Funcotator extends VariantWalker {
                 .map(gf -> (GencodeFuncotation) gf).collect(Collectors.toList());
 
         //==============================================================================================================
-        // Create the rest of the funcotations:
+        // Create the funcotations for non-Gencode data sources:
 
         // Create a place to keep our funcotations:
         final FuncotationMap funcotationMap = FuncotationMap.createFromGencodeFuncotations(transcriptFuncotations);
@@ -570,6 +572,7 @@ public class Funcotator extends VariantWalker {
 
         //==============================================================================================================
         // Create the funcotations for the input and add to all txID mappings.
+
         final List<String> txIds = funcotationMap.getTranscriptList();
 
         for (final String txId: txIds) {
