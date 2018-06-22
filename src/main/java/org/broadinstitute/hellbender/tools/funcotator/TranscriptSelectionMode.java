@@ -160,7 +160,7 @@ public enum TranscriptSelectionMode {
      */
     CANONICAL {
         public Comparator<GencodeFuncotation> getComparator(final Set<String> userRequestedTranscripts) {
-            return new CannonicalGencodeFuncotationComparator(userRequestedTranscripts);
+            return new CanonicalGencodeFuncotationComparator(userRequestedTranscripts);
         }
     },
 
@@ -169,7 +169,7 @@ public enum TranscriptSelectionMode {
      */
     ALL {
         public Comparator<GencodeFuncotation> getComparator(final Set<String> userRequestedTranscripts) {
-            return new CannonicalGencodeFuncotationComparator(userRequestedTranscripts);
+            return new CanonicalGencodeFuncotationComparator(userRequestedTranscripts);
         }
     };
 
@@ -269,18 +269,17 @@ public enum TranscriptSelectionMode {
         @Override
         public int compare( final GencodeFuncotation a, final GencodeFuncotation b ) {
             // Check locus/curation levels:
-            // NOTE: For this field you want LOW, not high.  Therefore the final comparison starts with `b`, not `a`:
             if ( (a.getLocusLevel() != null) && (b.getLocusLevel() == null) ) {
                 return -1;
             }
             else if ( (a.getLocusLevel() == null ) && (b.getLocusLevel() != null) ) {
                 return 1;
             }
-            else if ( (a.getLocusLevel() != null) && (b.getLocusLevel() != null) && (!a.getLocusLevel().equals(b.getLocusLevel())) ) {
-                return b.getLocusLevel().compareTo( a.getLocusLevel() );
+            else if ( (a.getLocusLevel() == null ) && (b.getLocusLevel() == null) ) {
+                return 0;
             }
             else {
-                return 0;
+                return a.getLocusLevel().compareTo( b.getLocusLevel() );
             }
         }
     }
@@ -314,6 +313,7 @@ public enum TranscriptSelectionMode {
         @Override
         public int compare( final GencodeFuncotation a, final GencodeFuncotation b ) {
             // Check transcript sequence length:
+            // Note that since we want longer transcripts to be sorted earlier in the list, we reverse b and a in the last check.
             if ( (a.getTranscriptLength() != null) && (b.getTranscriptLength() == null) ) {
                 return -1;
             }
@@ -404,10 +404,10 @@ public enum TranscriptSelectionMode {
     }
 
     /**
-     * Comparator class for Cannonical order.
+     * Comparator class for Canonical order.
      * Complex enough that a Lambda would be utter madness.
      */
-    static class CannonicalGencodeFuncotationComparator implements Comparator<GencodeFuncotation> {
+    static class CanonicalGencodeFuncotationComparator implements Comparator<GencodeFuncotation> {
 
         private final Comparator<GencodeFuncotation> byUserTranscript;
         private final Comparator<GencodeFuncotation> byIgrStatus;
@@ -420,7 +420,7 @@ public enum TranscriptSelectionMode {
 
         private final Comparator<GencodeFuncotation> chainedComparator;
 
-        public CannonicalGencodeFuncotationComparator( final Set<String> userRequestedTranscripts ) {
+        public CanonicalGencodeFuncotationComparator(final Set<String> userRequestedTranscripts ) {
             byUserTranscript = new ComparatorByUserTranscript(userRequestedTranscripts);
             byIgrStatus = new ComparatorByIgrStatus();
             byVariantClassification = new ComparatorByVariantClassification();
