@@ -1971,7 +1971,8 @@ public final class FuncotatorUtils {
     public static boolean isFuncotationInTranscriptList( final GencodeFuncotation funcotation,
                                                   final Set<String> acceptableTranscripts ) {
         if ( funcotation.getAnnotationTranscript() != null ) {
-            return acceptableTranscripts.contains( getTranscriptIdWithoutVersionNumber(funcotation.getAnnotationTranscript()) );
+            final List<String> acceptableTranscriptsWithoutVersionNumbers = acceptableTranscripts.stream().map(tx -> getTranscriptIdWithoutVersionNumber(tx)).collect(Collectors.toList());
+            return acceptableTranscriptsWithoutVersionNumbers.contains( getTranscriptIdWithoutVersionNumber(funcotation.getAnnotationTranscript()) );
         }
         else {
             return false;
