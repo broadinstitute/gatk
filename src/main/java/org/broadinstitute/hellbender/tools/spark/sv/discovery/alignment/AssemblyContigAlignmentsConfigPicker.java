@@ -10,7 +10,6 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoverFromLocalAssemblyContigAlignmentsSpark;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.FermiLiteAssemblyHandler.ContigScore;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.Utils;

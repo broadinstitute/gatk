@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryT
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoverFromLocalAssemblyContigAlignmentsSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ContigScorer;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.FermiLiteAssemblyHandler.ContigScore;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.ContigScorer.ContigScore;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
@@ -119,7 +119,7 @@ public class AlignedContigGeneratorUnitTest extends GATKBaseTest {
         // test "failed" assembly doesn't produce anything
         final AlignedAssemblyOrExcuse excuse = new AlignedAssemblyOrExcuse(1, "justATest");
         final List<AlignedAssemblyOrExcuse> excuses = Collections.singletonList(excuse);
-        final ContigScorer excuseScorer = new ContigScorer(excuses);
+        final ContigScorer excuseScorer = new ContigScorer(excuses, 30);
         Assert.assertTrue(StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.filterAndConvertToAlignedContigDirect(excuses, excuseScorer, refNames, null).isEmpty());
 
         // produce test assembly and alignment
@@ -146,11 +146,11 @@ public class AlignedContigGeneratorUnitTest extends GATKBaseTest {
 
         final List<List<BwaMemAlignment>> allAlignments = Arrays.asList(Collections.singletonList(unmappedContigAlignment), Arrays.asList(firstAmbiguousMapping, secondAmbiguousMapping), Collections.singletonList(cleanAlignment), Collections.singletonList(gappedAlignment));
         final FermiLiteAssembly assembly = new FermiLiteAssembly(Arrays.asList(unmappedContig, contigWithAmbiguousMapping, cleanContig, contigWithGapInAlignment));
-        final ContigScore contigScore = new ContigScore();
+        final ContigScore contigScore = new ContigScore(0., 0.);
         final ContigScore[] scores = new ContigScore[assembly.getNContigs()];
         for ( int idx = 0; idx != scores.length; ++idx ) scores[idx] = contigScore;
         final AlignedAssemblyOrExcuse alignedAssembly = new AlignedAssemblyOrExcuse(1, assembly, scores, 0, 0, allAlignments);
-        final ContigScorer alignedAssemblyScorer = new ContigScorer(Collections.singletonList(alignedAssembly));
+        final ContigScorer alignedAssemblyScorer = new ContigScorer(Collections.singletonList(alignedAssembly), 30);
 
         // test contig extraction without unmapped and unambiguous filtering
         final Iterable<AlignedContig> alignedContigsIncludingUnmapped = StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.getAlignedContigsInOneAssembly(alignedAssembly, alignedAssemblyScorer, refNames, null);
@@ -170,7 +170,7 @@ public class AlignedContigGeneratorUnitTest extends GATKBaseTest {
 
         // test direct conversion (essentially the filtering step)
         final List<AlignedAssemblyOrExcuse> alignedAssemblies = Collections.singletonList(alignedAssembly);
-        final ContigScorer alignedAssembliesScorer = new ContigScorer(alignedAssemblies);
+        final ContigScorer alignedAssembliesScorer = new ContigScorer(alignedAssemblies, 30);
         final List<AlignedContig> parsedContigsViaDirectRoute
                 = StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.filterAndConvertToAlignedContigDirect(alignedAssemblies, alignedAssembliesScorer, refNames, null);
         Assert.assertEquals(parsedContigsViaDirectRoute.size(), 2);

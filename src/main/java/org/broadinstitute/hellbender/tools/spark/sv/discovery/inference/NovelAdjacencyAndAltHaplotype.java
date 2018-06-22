@@ -12,7 +12,6 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.BreakEndVariantTyp
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvType;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.FermiLiteAssemblyHandler.ContigScore;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import scala.Tuple2;
 

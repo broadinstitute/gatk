@@ -189,7 +189,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         alignedAssemblyOrExcuseList.sort(Comparator.comparingInt(AlignedAssemblyOrExcuse::getAssemblyId));
 
-        final ContigScorer contigScorer = new ContigScorer(alignedAssemblyOrExcuseList);
+        final ContigScorer contigScorer = new ContigScorer(alignedAssemblyOrExcuseList, readMetadata.getCoverage());
 
         // write alignments of the assembled contigs
         if ( outputAssemblyAlignments != null ) {

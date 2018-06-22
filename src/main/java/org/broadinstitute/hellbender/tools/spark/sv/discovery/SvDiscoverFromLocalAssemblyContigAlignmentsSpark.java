@@ -26,8 +26,6 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.CpxVaria
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SegmentedCpxVariantSimpleVariantExtractor;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleNovelAdjacencyInterpreter;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.FermiLiteAssemblyHandler;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.FermiLiteAssemblyHandler.ContigScore;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFileUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;

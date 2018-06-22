@@ -2,8 +2,6 @@ package org.broadinstitute.hellbender.utils.bwa;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.FermiLiteAssemblyHandler.ContigScore;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;

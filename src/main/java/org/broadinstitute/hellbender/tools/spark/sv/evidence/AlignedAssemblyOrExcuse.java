@@ -6,7 +6,7 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.FermiLiteAssemblyHandler.ContigScore;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.ContigScorer.ContigScore;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFileUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
@@ -84,7 +84,7 @@ public final class AlignedAssemblyOrExcuse {
     }
 
     public AlignedAssemblyOrExcuse(final int assemblyId, final FermiLiteAssembly assembly,
-                                   final FermiLiteAssemblyHandler.ContigScore[] contigScores,
+                                   final ContigScore[] contigScores,
                                    final int secondsInAssembly, final int readBases,
                                    final List<List<BwaMemAlignment>> contigAlignments ) {
         Utils.validate(assembly.getNContigs() == contigAlignments.size(),

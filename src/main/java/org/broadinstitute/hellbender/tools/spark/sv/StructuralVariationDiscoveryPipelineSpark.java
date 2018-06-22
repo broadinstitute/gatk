@@ -26,7 +26,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.Alignmen
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.ContigAlignmentsModifier;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ImpreciseVariantDetector;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.*;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.FermiLiteAssemblyHandler.ContigScore;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.ContigScorer.ContigScore;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -362,7 +362,8 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                                                 allAlignmentsOfThisAssembly.get(contigIdx),
                                                 cleanHeader, refNames)
                                         .map( rec -> {
-                                            final float contigScore = contigScorer.score(alignedAssemblyNoExcuse.getContigScore(contigIdx));
+                                            final float contigScore =
+                                                    contigScorer.score(alignedAssemblyNoExcuse.getContigScore(contigIdx));
                                             rec.setAttribute(AlignedAssemblyOrExcuse.CONTIG_QUALITY_TAG, contigScore);
                                             rec.setAttribute(SAMTag.RG.name(), SVUtils.GATKSV_CONTIG_ALIGNMENTS_READ_GROUP_ID);
                                             return rec;

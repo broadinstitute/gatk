@@ -10,6 +10,7 @@ import org.testng.annotations.Test;
 
 import java.util.*;
 
+import static org.broadinstitute.hellbender.tools.spark.sv.evidence.SoftClippingChecker.MIN_SOFT_CLIP_LEN;
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection;
 
 public class ReadClassifierTest extends GATKBaseTest {
@@ -37,9 +38,9 @@ public class ReadClassifierTest extends GATKBaseTest {
         final SVReadFilter filter = new SVReadFilter(params);
         final ReadClassifier classifier = new ReadClassifier(readMetadata, null, params.allowedShortFragmentOverhang, filter, null);
         checkClassification(classifier, read, Collections.emptyList());
-        read.setCigar(ReadClassifier.MIN_SOFT_CLIP_LEN+"S"+(readSize-ReadClassifier.MIN_SOFT_CLIP_LEN)+"M");
+        read.setCigar(MIN_SOFT_CLIP_LEN+"S"+(readSize-MIN_SOFT_CLIP_LEN)+"M");
         checkClassification(classifier, read, Collections.singletonList(new BreakpointEvidence.SplitRead(read, readMetadata, true)));
-        read.setCigar((readSize-ReadClassifier.MIN_SOFT_CLIP_LEN)+"M"+ReadClassifier.MIN_SOFT_CLIP_LEN+"S");
+        read.setCigar((readSize-MIN_SOFT_CLIP_LEN)+"M"+MIN_SOFT_CLIP_LEN+"S");
         checkClassification(classifier, read, Collections.singletonList(new BreakpointEvidence.SplitRead(read, readMetadata, false)));
         read.setCigar((readSize/2)+"M"+ReadClassifier.MIN_INDEL_LEN+"D"+((readSize+1)/2)+"M");
         final int locus = leftStart + readSize/2 + ReadClassifier.MIN_INDEL_LEN/2;

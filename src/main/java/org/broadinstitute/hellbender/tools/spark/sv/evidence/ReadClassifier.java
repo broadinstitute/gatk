@@ -14,11 +14,9 @@ import java.util.function.Function;
  * Figures out what kind of BreakpointEvidence, if any, a read represents.
  */
 public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvidence>> {
-    @VisibleForTesting static final int MIN_SOFT_CLIP_LEN = 30; // minimum length of an interesting soft clip
     @VisibleForTesting static final int MIN_INDEL_LEN = 40; // minimum length of an interesting indel
-    private static final byte MIN_QUALITY = 15; // minimum acceptable quality in a soft-clip window
-    private static final int MAX_LOW_QUALITY_SCORES = 3; // maximum # of low quality base calls in soft-clip window
     private static final float MAX_NON_OUTLIER_ZISH_SCORE = 6.f; // maximum fragment-length "z" score for a normal fragment
+
     private final ReadMetadata readMetadata;
     private final GATKRead sentinel;
     private final int allowedShortFragmentOverhang;
@@ -68,52 +66,14 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
 
     private void checkForSplitRead( final GATKRead read, final List<BreakpointEvidence> evidenceList ) {
         final List<CigarElement> cigarElements = read.getCigar().getCigarElements();
-        if ( hasInitialSoftClip(cigarElements, read) ) {
+        final byte[] quals = read.getBaseQualitiesNoCopy();
+        if ( SoftClippingChecker.hasInitialSoftClip(cigarElements, quals) ) {
             evidenceList.add(new BreakpointEvidence.SplitRead(read, readMetadata, true));
         }
-        if ( hasFinalSoftClip(cigarElements, read) ) {
+        if ( SoftClippingChecker.hasFinalSoftClip(cigarElements, quals) ) {
             evidenceList.add(new BreakpointEvidence.SplitRead(read, readMetadata, false));
         }
         checkBigIndel(cigarElements, read, evidenceList);
-    }
-
-    private static boolean hasInitialSoftClip( final List<CigarElement> cigarElements, final GATKRead read ) {
-        final ListIterator<CigarElement> itr = cigarElements.listIterator();
-        if ( !itr.hasNext() ) return false;
-
-        CigarElement firstEle = itr.next();
-        if ( firstEle.getOperator() == CigarOperator.HARD_CLIP && itr.hasNext() ) {
-            firstEle = itr.next();
-        }
-        final int clipStart = firstEle.getLength() - MIN_SOFT_CLIP_LEN;
-        return firstEle.getOperator() == CigarOperator.SOFT_CLIP &&
-                clipStart >= 0 &&
-                isHighQualityRegion(read.getBaseQualities(), clipStart);
-    }
-
-    private static boolean hasFinalSoftClip( final List<CigarElement> cigarElements, final GATKRead read ) {
-        final ListIterator<CigarElement> itr = cigarElements.listIterator(cigarElements.size());
-        if ( !itr.hasPrevious() ) return false;
-
-        CigarElement lastEle = itr.previous();
-        if ( lastEle.getOperator() == CigarOperator.HARD_CLIP && itr.hasPrevious() ) {
-            lastEle = itr.previous();
-        }
-        return lastEle.getOperator() == CigarOperator.SOFT_CLIP &&
-                lastEle.getLength() >= MIN_SOFT_CLIP_LEN &&
-                isHighQualityRegion(read.getBaseQualities(), read.getLength() - lastEle.getLength());
-    }
-
-    private static boolean isHighQualityRegion( final byte[] quals, int idx ) {
-        int lowQuals = 0;
-        for ( final int end = idx+MIN_SOFT_CLIP_LEN; idx != end; ++idx ) {
-            if ( quals[idx] < MIN_QUALITY ) {
-                lowQuals += 1;
-                if ( lowQuals > MAX_LOW_QUALITY_SCORES ) return false;
-            }
-   
-        }
-        return true;
     }
 
     private void checkBigIndel( final List<CigarElement> cigarElements,

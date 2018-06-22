@@ -1,13 +1,10 @@
 package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 
-import com.esotericsoftware.kryo.DefaultSerializer;
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.io.Input;
-import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.ContigScorer.ContigScore;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils.FastqRead;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchMultiMap;
@@ -620,46 +617,6 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
         }
     }
 
-    @DefaultSerializer(ContigScore.Serializer.class)
-    public static class ContigScore {
-        private final float meanAS;
-        private final float meanCoverage;
-
-        public ContigScore() {
-            this(0.f, 0.f);
-        }
-
-        public ContigScore( final float meanAS, final float meanCoverage ) {
-            this.meanAS = meanAS;
-            this.meanCoverage = meanCoverage;
-        }
-
-        public ContigScore( final Kryo kryo, final Input input ) {
-            meanAS = input.readFloat();
-            meanCoverage = input.readFloat();
-        }
-
-        public float getMeanAS() { return meanAS; }
-        public float getMeanCoverage() { return meanCoverage; }
-
-        public void serialize( final Kryo kryo, final Output output ) {
-            output.writeFloat(meanAS);
-            output.writeFloat(meanCoverage);
-        }
-
-        public static final class Serializer extends com.esotericsoftware.kryo.Serializer<ContigScore> {
-            @Override
-            public void write(final Kryo kryo, final Output output, final ContigScore contigScore ) {
-                contigScore.serialize(kryo, output);
-            }
-
-            @Override
-            public ContigScore read(final Kryo kryo, final Input input, final Class<ContigScore> klass ) {
-                return new ContigScore(kryo, input);
-            }
-        }
-    }
-
     private static ContigScore[] scoreAssembly(final List<FastqRead> readsList,
                                        final FermiLiteAssembly assembly,
                                        final String assemblyName,
@@ -735,31 +692,31 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
         final String bamFile = String.format("%s/%s.bam", fastqDir, assemblyName);
         SVFileUtils.writeSAMFile(bamFile, samReads.iterator(), header, true);
 
-        final int[] sumAS = new int[nContigs];
+        final int[] nSplits = new int[nContigs];
         final int[] nBases = new int[nContigs];
-        final int[] nScores = new int[nContigs];
-        for ( final List<BwaMemAlignment> readAlignments : alignments ) {
+        for ( int readIdx = 0; readIdx != nReads; ++readIdx ) {
+            final List<BwaMemAlignment> readAlignments = alignments.get(readIdx);
             if ( !readAlignments.isEmpty() ) {
                 BwaMemAlignment primaryLine = readAlignments.get(0);
                 final int contigId = primaryLine.getRefId();
                 if ( contigId >= 0 ) {
-                    sumAS[contigId] += primaryLine.getAlignerScore();
-                    nBases[contigId] += CigarUtils.countAlignedBases(TextCigarCodec.decode(primaryLine.getCigar()));
-                    nScores[contigId] += 1;
+                    final FastqRead read = readsList.get(readIdx);
+                    final byte[] quals = read.getQuals();
+                    final Cigar cigar = TextCigarCodec.decode(primaryLine.getCigar());
+                    if ( SoftClippingChecker.isClipped(cigar.getCigarElements(), quals) ) {
+                        nSplits[contigId] += 1;
+                    }
+                    nBases[contigId] += CigarUtils.countAlignedBases(cigar);
                 }
             }
         }
+
         final ContigScore[] contigScores = new ContigScore[nContigs];
         for ( int contigIdx = 0; contigIdx != nContigs; ++contigIdx ) {
-            final int scoreCount = nScores[contigIdx];
-            if ( scoreCount > 0 ) {
-                final int contigLength = contigs.get(contigIdx).getSequence().length;
-                contigScores[contigIdx] =
-                        new ContigScore((float)sumAS[contigIdx]/scoreCount,
-                                        (float)nBases[contigIdx]/contigLength);
-            } else {
-                contigScores[contigIdx] = new ContigScore(0.f, 0.f);
-            }
+            final int contigLength = contigs.get(contigIdx).getSequence().length;
+            final double splits = (double)nSplits[contigIdx]/contigLength;
+            final double coverage = (double)nBases[contigIdx]/contigLength;
+            contigScores[contigIdx] = new ContigScore(splits, coverage);
         }
         return contigScores;
     }
