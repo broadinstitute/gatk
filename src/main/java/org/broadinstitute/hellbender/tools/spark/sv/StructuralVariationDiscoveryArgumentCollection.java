@@ -239,12 +239,6 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         @Argument(doc = "Maximum size deletion to call based on imprecise evidence without corroborating read depth evidence",
                 fullName = "max-callable-imprecise-deletion-size", optional=true)
         public int maxCallableImpreciseVariantDeletionSize = DEFAULT_MAX_CALLABLE_IMPRECISE_DELETION_SIZE;
-
-        @Advanced
-        @Hidden
-        @Argument(doc = "output cpx variants in a format that is more human friendly, primarily for debugging purposes",
-                fullName = "cpx-for-human-eye", optional = true)
-        public boolean outputCpxResultsInHumanReadableFormat = false;
     }
 
 }

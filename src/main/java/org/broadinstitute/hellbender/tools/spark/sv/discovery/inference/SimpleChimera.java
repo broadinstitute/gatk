@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.Assembly
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
+import scala.Tuple2;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -58,12 +58,25 @@ public class SimpleChimera {
         goodNonCanonicalMappingSATag = input.readString();
     }
 
+    @VisibleForTesting
+    public SimpleChimera(final String sourceContigName,
+                         final AlignmentInterval regionWithLowerCoordOnContig, final AlignmentInterval regionWithHigherCoordOnContig,
+                         final StrandSwitch strandSwitch, final boolean isForwardStrandRepresentation,
+                         final List<String> insertionMappings, final String goodNonCanonicalMappingSATag) {
+        this.sourceContigName = sourceContigName;
+        this.regionWithLowerCoordOnContig = regionWithLowerCoordOnContig;
+        this.regionWithHigherCoordOnContig = regionWithHigherCoordOnContig;
+        this.strandSwitch = strandSwitch;
+        this.isForwardStrandRepresentation = isForwardStrandRepresentation;
+        this.insertionMappings = insertionMappings;
+        this.goodNonCanonicalMappingSATag = goodNonCanonicalMappingSATag;
+    }
+
     /**
      * Construct a new SimpleChimera from two alignment intervals.
      * Assumes {@code intervalWithLowerCoordOnContig} has a lower {@link AlignmentInterval#startInAssembledContig}
      * than {@code regionWithHigherCoordOnContig}.
      */
-    @VisibleForTesting
     public SimpleChimera(final AlignmentInterval intervalWithLowerCoordOnContig, final AlignmentInterval intervalWithHigherCoordOnContig,
                          final List<String> insertionMappings, final String sourceContigName, final String goodNonCanonicalMappingSATag,
                          final SAMSequenceDictionary referenceDictionary) {
@@ -164,6 +177,38 @@ public class SimpleChimera {
         }
     }
 
+
+    /**
+     * For the two alignments, test if the alignment that has lower coordinate on read/contig
+     * has a higher coordinate (as specified by {@code referenceDictionary}) on reference.
+     *
+     * This could happen for simple insertions/deletions when the evidence contig is
+     * <ul>
+     *     <li>a reverse strand representation of a simple event, or</li>
+     *     <li>a reverse strand representation of left breakpoint of inversion, or</li>
+     *     <li>a reverse strand representation of right breakpoint of inversion, or</li>
+     *     <li>a forward strand representation of a ref-order swap event (e.g. large tandem duplication breakpoint suspect)</li>
+     *     <li>a reverse strand representation of inter-chromosomal events, except one scenario
+     *          where the two forward strand mapping alignments jump from a higher ref coordinate to a lower coordinate
+     *          (see definition/convention of strand representation in
+     *          {@link #isForwardStrandRepresentation(AlignmentInterval, AlignmentInterval, StrandSwitch, SAMSequenceDictionary)}
+     *     </li>
+     * </ul>
+     */
+    boolean firstContigRegionRefSpanAfterSecond(final SAMSequenceDictionary referenceDictionary){
+        return IntervalUtils.compareLocatables(regionWithLowerCoordOnContig.referenceSpan, regionWithHigherCoordOnContig.referenceSpan,
+                                               referenceDictionary) > 0;
+    }
+
+    Tuple2<SimpleInterval, SimpleInterval> getCoordinateSortedRefSpans(final SAMSequenceDictionary referenceDictionary) {
+
+        if (firstContigRegionRefSpanAfterSecond(referenceDictionary)) {
+            return new Tuple2<>(regionWithHigherCoordOnContig.referenceSpan, regionWithLowerCoordOnContig.referenceSpan);
+        } else {
+            return new Tuple2<>(regionWithLowerCoordOnContig.referenceSpan, regionWithHigherCoordOnContig.referenceSpan);
+        }
+    }
+
     // =================================================================================================================
 
     /**
@@ -171,7 +216,7 @@ public class SimpleChimera {
      * alignments overlap or are distant from each other, infer the possible simple breakpoint type.
      * @throws IllegalArgumentException when the simple chimera indicates strand switch or simple translocation or incomplete picture.
      */
-    TypeInferredFromSimpleChimera inferType() {
+    TypeInferredFromSimpleChimera inferType(final SAMSequenceDictionary referenceDictionary) {
 
         if ( isCandidateSimpleTranslocation()) { // see {@link SimpleChimera.isCandidateSimpleTranslocation()} for definition
             final boolean sameChromosomeEvent =
@@ -180,16 +225,28 @@ public class SimpleChimera {
             if ( sameChromosomeEvent ) {
                 return TypeInferredFromSimpleChimera.INTRA_CHR_REF_ORDER_SWAP;
             } else {
-                return TypeInferredFromSimpleChimera.INTER_CHROMOSOME;
+                if (strandSwitch.equals(StrandSwitch.FORWARD_TO_REVERSE)) {
+                    return TypeInferredFromSimpleChimera.INTER_CHR_STRAND_SWITCH_55;
+                } else if (strandSwitch.equals(StrandSwitch.REVERSE_TO_FORWARD)) {
+                    return TypeInferredFromSimpleChimera.INTER_CHR_STRAND_SWITCH_33;
+                } else { // no switch, but still need to distinguish between cases of pair WX vs UV in Fig. 7 in Section 5.4 of VCF spec ver.4.2
+                    if (isForwardStrandRepresentation != firstContigRegionRefSpanAfterSecond(referenceDictionary) ){
+                        return TypeInferredFromSimpleChimera.INTER_CHR_NO_SS_WITH_LEFT_MATE_FIRST_IN_PARTNER;
+                    } else {
+                        return TypeInferredFromSimpleChimera.INTER_CHR_NO_SS_WITH_LEFT_MATE_SECOND_IN_PARTNER;
+                    }
+                }
             }
         } else {
-            if (strandSwitch != StrandSwitch.NO_SWITCH) {
+            if (strandSwitch.equals(StrandSwitch.FORWARD_TO_REVERSE)) {
                 // TODO: 9/9/17 the case involves an inversion, could be retired once same chr strand-switch BND calls are evaluated.
-                return TypeInferredFromSimpleChimera.INTRA_CHR_STRAND_SWITCH;
+                return TypeInferredFromSimpleChimera.INTRA_CHR_STRAND_SWITCH_55;
+            } else if (strandSwitch.equals(StrandSwitch.REVERSE_TO_FORWARD)) {
+                return TypeInferredFromSimpleChimera.INTRA_CHR_STRAND_SWITCH_33;
             } else {
                 final DistancesBetweenAlignmentsOnRefAndOnRead distances = getDistancesBetweenAlignmentsOnRefAndOnRead();
-                final int distBetweenAlignRegionsOnRef = distances.distBetweenAlignRegionsOnRef, // distance-1 between the two regions on reference, denoted as d1 in the comments below
-                        distBetweenAlignRegionsOnCtg = distances.distBetweenAlignRegionsOnCtg; // distance-1 between the two regions on contig, denoted as d2 in the comments below
+                final int distBetweenAlignRegionsOnRef = distances.gapBetweenAlignRegionsOnRef, // distance-1 between the two regions on reference, denoted as d1 in the comments below
+                          distBetweenAlignRegionsOnCtg = distances.gapBetweenAlignRegionsOnCtg; // distance-1 between the two regions on contig, denoted as d2 in the comments below
                 if (distBetweenAlignRegionsOnRef > 0) {        // Deletion:
                     if (distBetweenAlignRegionsOnCtg <= 0) {     // simple deletion when == 0; with homology when < 0
                         return TypeInferredFromSimpleChimera.SIMPLE_DEL;
@@ -206,13 +263,15 @@ public class SimpleChimera {
                         // the reference system with a shorter overlap (i.e. with less-negative distance between regions) has a higher repeat number
                         return TypeInferredFromSimpleChimera.SMALL_DUP_CPX;
                     }
-                } else {  // distBetweenAlignRegionsOnRef == 0
+                } else {  // gapBetweenAlignRegionsOnRef == 0
                     if (distBetweenAlignRegionsOnCtg > 0) { // Insertion: simple insertion, inserted sequence is the sequence [c1e+1, c2b-1] on the contig
                         return TypeInferredFromSimpleChimera.SIMPLE_INS;
                     } else if (distBetweenAlignRegionsOnCtg < 0) { // Tandem repeat contraction: reference has two copies but one copy was deleted on the contig; duplicated sequence on reference are [r1e-|d2|+1, r1e] and [r2b, r2b+|d2|-1]
                         return TypeInferredFromSimpleChimera.DEL_DUP_CONTRACTION;
                     } else { // both == 0 => SNP & indel
-                        throw new GATKException("Detected badly parsed chimeric alignment for identifying SV breakpoints; no rearrangement found: " + toString());
+                        throw new GATKException.ShouldNeverReachHereException(
+                                "Detected badly parsed chimeric alignment for identifying SV breakpoints; no rearrangement found: "
+                                        + toString());
                     }
                 }
             }
@@ -320,37 +379,79 @@ public class SimpleChimera {
      * {@link #isNeitherIncompleteNorSimpleTranslocation()} and
      * {@link #determineStrandSwitch(AlignmentInterval, AlignmentInterval)} == {@link StrandSwitch#NO_SWITCH}
      */
-    static final class DistancesBetweenAlignmentsOnRefAndOnRead {
-        final int distBetweenAlignRegionsOnRef; // distance-1 between the two regions on reference, denoted as d1 in the comments below
-        final int distBetweenAlignRegionsOnCtg; // distance-1 between the two regions on contig, denoted as d2 in the comments below
+    public static final class DistancesBetweenAlignmentsOnRefAndOnRead {
+        final int gapBetweenAlignRegionsOnRef; // size of the gap between the two regions on reference, could be negative
+        final int gapBetweenAlignRegionsOnCtg; // size of the gap between the two regions on contig, could be negative
 
         final int leftAlnRefEnd;
         final int rightAlnRefStart;
         final int firstAlnCtgEnd;
         final int secondAlnCtgStart;
 
-        DistancesBetweenAlignmentsOnRefAndOnRead(final int distBetweenAlignRegionsOnRef,
-                                                 final int distBetweenAlignRegionsOnCtg,
-                                                 final int leftAlnRefEnd,
-                                                 final int rightAlnRefStart,
-                                                 final int firstAlnCtgEnd,
-                                                 final int secondAlnCtgStart) {
-            this.distBetweenAlignRegionsOnRef = distBetweenAlignRegionsOnRef;
-            this.distBetweenAlignRegionsOnCtg = distBetweenAlignRegionsOnCtg;
+        public DistancesBetweenAlignmentsOnRefAndOnRead(final int gapBetweenAlignRegionsOnRef,
+                                                        final int gapBetweenAlignRegionsOnCtg,
+                                                        final int leftAlnRefEnd,
+                                                        final int rightAlnRefStart,
+                                                        final int firstAlnCtgEnd,
+                                                        final int secondAlnCtgStart) {
+            this.gapBetweenAlignRegionsOnRef = gapBetweenAlignRegionsOnRef;
+            this.gapBetweenAlignRegionsOnCtg = gapBetweenAlignRegionsOnCtg;
             this.leftAlnRefEnd = leftAlnRefEnd;
             this.rightAlnRefStart = rightAlnRefStart;
             this.firstAlnCtgEnd = firstAlnCtgEnd;
             this.secondAlnCtgStart = secondAlnCtgStart;
         }
+
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            final DistancesBetweenAlignmentsOnRefAndOnRead that = (DistancesBetweenAlignmentsOnRefAndOnRead) o;
+
+            if (gapBetweenAlignRegionsOnRef != that.gapBetweenAlignRegionsOnRef) return false;
+            if (gapBetweenAlignRegionsOnCtg != that.gapBetweenAlignRegionsOnCtg) return false;
+            if (leftAlnRefEnd != that.leftAlnRefEnd) return false;
+            if (rightAlnRefStart != that.rightAlnRefStart) return false;
+            if (firstAlnCtgEnd != that.firstAlnCtgEnd) return false;
+            return secondAlnCtgStart == that.secondAlnCtgStart;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = gapBetweenAlignRegionsOnRef;
+            result = 31 * result + gapBetweenAlignRegionsOnCtg;
+            result = 31 * result + leftAlnRefEnd;
+            result = 31 * result + rightAlnRefStart;
+            result = 31 * result + firstAlnCtgEnd;
+            result = 31 * result + secondAlnCtgStart;
+            return result;
+        }
+
+        @Override
+        public String toString() {
+            final StringBuilder sb = new StringBuilder("DistancesBetweenAlignmentsOnRefAndOnRead{");
+            sb.append("gapBetweenAlignRegionsOnRef=").append(gapBetweenAlignRegionsOnRef);
+            sb.append(", gapBetweenAlignRegionsOnCtg=").append(gapBetweenAlignRegionsOnCtg);
+            sb.append(", leftAlnRefEnd=").append(leftAlnRefEnd);
+            sb.append(", rightAlnRefStart=").append(rightAlnRefStart);
+            sb.append(", firstAlnCtgEnd=").append(firstAlnCtgEnd);
+            sb.append(", secondAlnCtgStart=").append(secondAlnCtgStart);
+            sb.append('}');
+            return sb.toString();
+        }
     }
 
+    /**
+     * @throws IllegalArgumentException when the simple chimera is either incomplete or simple translocation, or
+     *                                  when the chimera involves strand switch
+     */
     DistancesBetweenAlignmentsOnRefAndOnRead getDistancesBetweenAlignmentsOnRefAndOnRead() {
-        Utils.validateArg(isNeitherIncompleteNorSimpleTranslocation(),
-                "Assumption that the simple chimera is neither incomplete picture nor simple translocation is violated.\n" +
-                        toString());
-        Utils.validateArg(strandSwitch.equals(StrandSwitch.NO_SWITCH),
-                "Assumption that the simple chimera is neither incomplete picture nor simple translocation is violated.\n" +
-                        toString());
+        if ( ! (isNeitherIncompleteNorSimpleTranslocation() && strandSwitch.equals(StrandSwitch.NO_SWITCH)) ) {
+            throw new UnsupportedOperationException(
+                    "Assumption that the simple chimera is neither incomplete picture nor simple translocation is violated.\n" +
+                            toString());
+        }
         final AlignmentInterval firstContigRegion  = regionWithLowerCoordOnContig;
         final AlignmentInterval secondContigRegion = regionWithHigherCoordOnContig;
         final SimpleInterval leftReferenceSpan, rightReferenceSpan;

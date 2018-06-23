@@ -546,7 +546,7 @@ public class AssemblyContigAlignmentsConfigPicker {
      *  then this function returns all the original {@code differentRepresentationsForOneContig}
      */
     @VisibleForTesting
-    static List<GoodAndBadMappings> filterSecondaryConfigurationsByMappingQualityThreshold(
+    public static List<GoodAndBadMappings> filterSecondaryConfigurationsByMappingQualityThreshold(
             final List<GoodAndBadMappings> differentRepresentationsForOneContig,
             final int threshold) {
 

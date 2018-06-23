@@ -8,7 +8,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestUtilsAndCommonDataProvider;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
@@ -32,7 +32,7 @@ public class CpxVariantCanonicalRepresentationUnitTest extends GATKBaseTest {
     @DataProvider(name = "forSerialization")
     private Object[][] forSerialization() {
         final List<Object[]> data = new ArrayList<>(20);
-        for (final CpxSVInferenceTestUtils.PreprocessedAndAnalysisReadyContigWithExpectedResults x : CpxSVInferenceTestUtils.PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS) {
+        for (final TestUtilsCpxVariantInference.PreprocessedAndAnalysisReadyContigWithExpectedResults x : TestUtilsCpxVariantInference.PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS) {
             data.add(new Object[]{x.expectedCpxVariantCanonicalRepresentation});
         }
         return data.toArray(new Object[data.size()][]);
@@ -51,15 +51,16 @@ public class CpxVariantCanonicalRepresentationUnitTest extends GATKBaseTest {
         @SuppressWarnings("unchecked")
         final CpxVariantCanonicalRepresentation roundTrip = (CpxVariantCanonicalRepresentation) kryo.readClassAndObject(in);
         Assert.assertEquals(roundTrip, cpxVariantCanonicalRepresentation);
+        Assert.assertEquals(roundTrip.hashCode(), cpxVariantCanonicalRepresentation.hashCode());
     }
 
     // =================================================================================================================
 
     @Test
     public void testSpecialCtor() {
-        final AlignedContig alignedContig = SVDiscoveryTestUtilsAndCommonDataProvider.fromPrimarySAMRecordString("asm000308:tig00000\t0\tchr1\t14491391\t60\t1276M530S\t*\t0\t0\tTTGCTGCACCCATCAATCCGTCGTCTACATTAGGTATTTCTCCTAATGCTATCCCTCCCCTAGTCCCCTACCCGCCGACAGGTCCCGGTGTGTGATATTCCCCTCCCTGTGTCCATGTTACTCTTTTGATATTACCAGGGACACCTGGATTTCTACTGATTTTAATGAGAATACCTTCTGTATTCACCATTAAATATGATGGTAGTTGCTGGTTTTAGCTCGATATTATTTGTCATGCTGATTAAGTGGACTTGCATTCCTAGCTTTCAAAGAGGTTTTCTTTCCTTTTTAATAAGGAGTGGGTGTTGCATGTTATCTAATACATTGTCAGTGTGTGGCTATTTATAAGTTCTGTGTGATTATACCATTTATCTATATAAATGTCCCCTTTGTTCTATTTAATAATGCTTTTCCCCCTTCTGAATTCCACTTTGAATTTGAATTCTACTTTGTCTGAAATAGATCCTGCCACCCCTGCTTTTAAAAAGAAAAAAATCTTTTTGCTTGTATTATTTAACTTTTTTGCCTATCCCTCCCTTTTTAATCTTTTCATACCATTGCTTTTCAGTGTCTCGAGCAGTAAGACATTTAACAATTATCAGCCCCATGCTTACTTTGTGCCAGACACTGGATTAAACAAAAATGGAAAAAGAGGATAGAATGTGCTGGAAGGGGTACATTCAAACCCAGTCTGAACTGGCCACTGCTGTGAGCAGGTTTGGGGACAGCAGTAGATCCTAGAAGGGCCTGACCAGCTGGGGAAACTGGCCAGGCTGTCCAGAGGTGACAAGAGGATTGTCACCCAGACTTGCCCAAGAAGAGTGAATCTGAGTCTTGGAGAGAACAGGAGTTTGGGTTCTTCTGGGCCCAGATGGCCTCAGGGCTCCCTGGAATTTGGGGACCCCACAGTTGGTCGCCACCATGAATTGAGGAGCCTTGCTTCTCTCCACACTGTCTTTTCCCTGCCTCCTCGTGGCTTCTGCTTCACTCATTCACTCATTCTGTCAGTGAATGATTCTTCAGCACCTGCCCTGCATAGGATGCCATTGTAGGTGCTGGGAAATCAACGGGAAGAAGATGGAAAACGAGACTTCCCTTATGAAGCTTCTGTTCTACAGAGGTGGGCAGACATGGCCAGAAAAAGCACAAGGCCATTTCCAATGGTGGAAGGGCCAGGACTGCTGCCCTTTCTGATAGCTTCTCTTTACACTTAGGAGAAAATTCAGGGCCCCATAATCCCTAGGCCCTACATAACCACACATGCACACACCACAAACCACACACACACACCACACACACCACACACCACACGCTACACACACCATGCACATACCACAAACCACACACACACCACACACACACCACACATTACACACACCACACAGACACCACACACCACACAAACATCACACACCACAGACACATCACACACCACACACACACCACACATACACAGCACACAGCTCACGCATACACAGCACACACATCACACATACACATACCACATACACACCACACACACACCACAAACCACATATACACAGCACACACATCACACAAACACATACCACATACACACCACACACCGTACATACACAGCATACACATTACACATACACACACGACACACCACACACAGACCACACACCACACAGATACAGCACAGAGACACTACACATACCACATACACACTACACACCACACACACACCACACATACACAGCGCACATACACACACCACACACACCACATACAAACCACATACCACATACACACCACACATATACCACACAGACACCATACATA\t*\tSA:Z:chr1,14492666,+,1684S71M51S,60,0,71;chr4,8687087,-,422S46M1338S,60,1,41;\tMD:Z:144T1131\tRG:Z:GATKSVContigAlignments\tNM:i:1\tAS:i:1271\tXS:i:70", true);
+        final AlignedContig alignedContig = TestUtilsForAssemblyBasedSVDiscovery.fromPrimarySAMRecordString("asm000308:tig00000\t0\tchr1\t14491391\t60\t1276M530S\t*\t0\t0\tTTGCTGCACCCATCAATCCGTCGTCTACATTAGGTATTTCTCCTAATGCTATCCCTCCCCTAGTCCCCTACCCGCCGACAGGTCCCGGTGTGTGATATTCCCCTCCCTGTGTCCATGTTACTCTTTTGATATTACCAGGGACACCTGGATTTCTACTGATTTTAATGAGAATACCTTCTGTATTCACCATTAAATATGATGGTAGTTGCTGGTTTTAGCTCGATATTATTTGTCATGCTGATTAAGTGGACTTGCATTCCTAGCTTTCAAAGAGGTTTTCTTTCCTTTTTAATAAGGAGTGGGTGTTGCATGTTATCTAATACATTGTCAGTGTGTGGCTATTTATAAGTTCTGTGTGATTATACCATTTATCTATATAAATGTCCCCTTTGTTCTATTTAATAATGCTTTTCCCCCTTCTGAATTCCACTTTGAATTTGAATTCTACTTTGTCTGAAATAGATCCTGCCACCCCTGCTTTTAAAAAGAAAAAAATCTTTTTGCTTGTATTATTTAACTTTTTTGCCTATCCCTCCCTTTTTAATCTTTTCATACCATTGCTTTTCAGTGTCTCGAGCAGTAAGACATTTAACAATTATCAGCCCCATGCTTACTTTGTGCCAGACACTGGATTAAACAAAAATGGAAAAAGAGGATAGAATGTGCTGGAAGGGGTACATTCAAACCCAGTCTGAACTGGCCACTGCTGTGAGCAGGTTTGGGGACAGCAGTAGATCCTAGAAGGGCCTGACCAGCTGGGGAAACTGGCCAGGCTGTCCAGAGGTGACAAGAGGATTGTCACCCAGACTTGCCCAAGAAGAGTGAATCTGAGTCTTGGAGAGAACAGGAGTTTGGGTTCTTCTGGGCCCAGATGGCCTCAGGGCTCCCTGGAATTTGGGGACCCCACAGTTGGTCGCCACCATGAATTGAGGAGCCTTGCTTCTCTCCACACTGTCTTTTCCCTGCCTCCTCGTGGCTTCTGCTTCACTCATTCACTCATTCTGTCAGTGAATGATTCTTCAGCACCTGCCCTGCATAGGATGCCATTGTAGGTGCTGGGAAATCAACGGGAAGAAGATGGAAAACGAGACTTCCCTTATGAAGCTTCTGTTCTACAGAGGTGGGCAGACATGGCCAGAAAAAGCACAAGGCCATTTCCAATGGTGGAAGGGCCAGGACTGCTGCCCTTTCTGATAGCTTCTCTTTACACTTAGGAGAAAATTCAGGGCCCCATAATCCCTAGGCCCTACATAACCACACATGCACACACCACAAACCACACACACACACCACACACACCACACACCACACGCTACACACACCATGCACATACCACAAACCACACACACACCACACACACACCACACATTACACACACCACACAGACACCACACACCACACAAACATCACACACCACAGACACATCACACACCACACACACACCACACATACACAGCACACAGCTCACGCATACACAGCACACACATCACACATACACATACCACATACACACCACACACACACCACAAACCACATATACACAGCACACACATCACACAAACACATACCACATACACACCACACACCGTACATACACAGCATACACATTACACATACACACACGACACACCACACACAGACCACACACCACACAGATACAGCACAGAGACACTACACATACCACATACACACTACACACCACACACACACCACACATACACAGCGCACATACACACACCACACACACCACATACAAACCACATACCACATACACACCACACATATACCACACAGACACCATACATA\t*\tSA:Z:chr1,14492666,+,1684S71M51S,60,0,71;chr4,8687087,-,422S46M1338S,60,1,41;\tMD:Z:144T1131\tRG:Z:GATKSVContigAlignments\tNM:i:1\tAS:i:1271\tXS:i:70", true);
         final AssemblyContigWithFineTunedAlignments preprocessedTig = new AssemblyContigWithFineTunedAlignments(alignedContig);
-        final CpxVariantInducingAssemblyContig analysisReadyContig = new CpxVariantInducingAssemblyContig(preprocessedTig, CpxSVInferenceTestUtils.bareBoneHg38SAMSeqDict);
+        final CpxVariantInducingAssemblyContig analysisReadyContig = new CpxVariantInducingAssemblyContig(preprocessedTig, TestUtilsForAssemblyBasedSVDiscovery.bareBoneHg38SAMSeqDict);
         final SimpleInterval manuallyCalculatedAffectedRefRegion = new SimpleInterval("chr1", 14492666, 14492666);
         final byte[] manuallyCalculatedAltSeq = Arrays.copyOfRange(alignedContig.getContigSequence(), 1275, 1685);
         final List<String> manuallyCalculatedAltArrangements = Arrays.asList("1", "UINS-62", "-chr4:8687087-8687132", "UINS-300", "1");
@@ -100,7 +101,7 @@ public class CpxVariantCanonicalRepresentationUnitTest extends GATKBaseTest {
     @DataProvider(name = "forGeneralCtor")
     private Object[][] forGeneralCtor() {
         final List<Object[]> data = new ArrayList<>(20);
-        for (final CpxSVInferenceTestUtils.PreprocessedAndAnalysisReadyContigWithExpectedResults x : CpxSVInferenceTestUtils.PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS) {
+        for (final TestUtilsCpxVariantInference.PreprocessedAndAnalysisReadyContigWithExpectedResults x : TestUtilsCpxVariantInference.PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS) {
             data.add(new Object[]{x.expectedCpxVariantInducingAssemblyContig, x.expectedCpxVariantCanonicalRepresentation});
         }
         return data.toArray(new Object[data.size()][]);
@@ -115,7 +116,7 @@ public class CpxVariantCanonicalRepresentationUnitTest extends GATKBaseTest {
     @DataProvider(name = "forExtractRefSegments")
     private Object[][] forExtractRefSegments() {
         final List<Object[]> data = new ArrayList<>(20);
-        for (final CpxSVInferenceTestUtils.PreprocessedAndAnalysisReadyContigWithExpectedResults x : CpxSVInferenceTestUtils.PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS) {
+        for (final TestUtilsCpxVariantInference.PreprocessedAndAnalysisReadyContigWithExpectedResults x : TestUtilsCpxVariantInference.PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS) {
             data.add(new Object[]{x.expectedCpxVariantInducingAssemblyContig.getBasicInfo(),
                                   x.expectedCpxVariantInducingAssemblyContig.getEventPrimaryChromosomeSegmentingLocations(),
                                   x.expectedCpxVariantCanonicalRepresentation.getReferenceSegments(),
@@ -136,7 +137,7 @@ public class CpxVariantCanonicalRepresentationUnitTest extends GATKBaseTest {
     @DataProvider(name = "forExtractAltArrangements")
     private Object[][] forExtractAltArrangements() {
         final List<Object[]> data = new ArrayList<>(20);
-        for (final CpxSVInferenceTestUtils.PreprocessedAndAnalysisReadyContigWithExpectedResults x : CpxSVInferenceTestUtils.PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS) {
+        for (final TestUtilsCpxVariantInference.PreprocessedAndAnalysisReadyContigWithExpectedResults x : TestUtilsCpxVariantInference.PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS) {
             final CpxVariantInducingAssemblyContig cpxVariantInducingAssemblyContig = x.expectedCpxVariantInducingAssemblyContig;
             final CpxVariantInducingAssemblyContig.BasicInfo basicInfo = cpxVariantInducingAssemblyContig.getBasicInfo();
             final List<SimpleInterval> eventPrimaryChromosomeSegmentingLocations = cpxVariantInducingAssemblyContig.getEventPrimaryChromosomeSegmentingLocations();
@@ -164,7 +165,7 @@ public class CpxVariantCanonicalRepresentationUnitTest extends GATKBaseTest {
     @DataProvider(name = "forExtractAltHaplotypeSeq")
     private Object[][] forExtractAltHaplotypeSeq() {
         final List<Object[]> data = new ArrayList<>(20);
-        for (final CpxSVInferenceTestUtils.PreprocessedAndAnalysisReadyContigWithExpectedResults x : CpxSVInferenceTestUtils.PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS) {
+        for (final TestUtilsCpxVariantInference.PreprocessedAndAnalysisReadyContigWithExpectedResults x : TestUtilsCpxVariantInference.PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS) {
             final CpxVariantInducingAssemblyContig cpxVariantInducingAssemblyContig = x.expectedCpxVariantInducingAssemblyContig;
             final CpxVariantInducingAssemblyContig.BasicInfo basicInfo = cpxVariantInducingAssemblyContig.getBasicInfo();
             final List<SimpleInterval> eventPrimaryChromosomeSegmentingLocations = cpxVariantInducingAssemblyContig.getEventPrimaryChromosomeSegmentingLocations();
@@ -193,7 +194,7 @@ public class CpxVariantCanonicalRepresentationUnitTest extends GATKBaseTest {
     @DataProvider(name = "forGetAffectedReferenceRegion")
     private Object[][] forGetAffectedReferenceRegion() {
         final List<Object[]> data = new ArrayList<>(20);
-        for (final CpxSVInferenceTestUtils.PreprocessedAndAnalysisReadyContigWithExpectedResults x : CpxSVInferenceTestUtils.PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS) {
+        for (final TestUtilsCpxVariantInference.PreprocessedAndAnalysisReadyContigWithExpectedResults x : TestUtilsCpxVariantInference.PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS) {
 
             data.add(new Object[]{x.expectedCpxVariantInducingAssemblyContig.getEventPrimaryChromosomeSegmentingLocations(),
                                   x.expectedCpxVariantCanonicalRepresentation.getAffectedRefRegion()
@@ -212,7 +213,7 @@ public class CpxVariantCanonicalRepresentationUnitTest extends GATKBaseTest {
     @DataProvider(name = "forToVariantContext")
     private Object[][] forToVariantContext() {
         final List<Object[]> data = new ArrayList<>(20);
-        for (final CpxSVInferenceTestUtils.PreprocessedAndAnalysisReadyContigWithExpectedResults x : CpxSVInferenceTestUtils.PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS) {
+        for (final TestUtilsCpxVariantInference.PreprocessedAndAnalysisReadyContigWithExpectedResults x : TestUtilsCpxVariantInference.PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS) {
 
             data.add(new Object[]{x.expectedCpxVariantCanonicalRepresentation,
                                   x.assumedReferenceSequence,

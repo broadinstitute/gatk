@@ -7,9 +7,8 @@ import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestUtilsAndCommonDataProvider;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryTestDataProvider;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoverFromLocalAssemblyContigAlignmentsSpark;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -26,6 +25,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY;
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.AssemblyBasedSVDiscoveryTestDataProviderForInversionBreakpoints.LONG_CONTIG1;
 import static org.testng.Assert.assertEquals;
 
 public class AlignedContigGeneratorUnitTest extends GATKBaseTest {
@@ -72,7 +72,7 @@ public class AlignedContigGeneratorUnitTest extends GATKBaseTest {
 
         assertEquals(alignedContig.getAlignments().size(), 3);
 
-        final byte[] read4Bytes = SimpleSVDiscoveryTestDataProvider.LONG_CONTIG1.getBytes();
+        final byte[] read4Bytes = LONG_CONTIG1.getBytes();
         final String read4Seq = new String(read4Bytes);
         final byte[] read4Quals = new byte[read4Seq.length()];
         Arrays.fill(read4Quals, (byte)'A');
@@ -119,8 +119,8 @@ public class AlignedContigGeneratorUnitTest extends GATKBaseTest {
         Assert.assertTrue(StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.filterAndConvertToAlignedContigDirect(Collections.singletonList(excuse), refNames, null).isEmpty());
 
         // produce test assembly and alignment
-        final byte[] dummyContigSequence = SVDiscoveryTestUtilsAndCommonDataProvider.makeDummySequence(1000, (byte)'T');
-        final byte[] dummyContigSequenceQuals = SVDiscoveryTestUtilsAndCommonDataProvider.makeDummySequence(1000, (byte)'A');
+        final byte[] dummyContigSequence = TestUtilsForAssemblyBasedSVDiscovery.makeDummySequence(1000, (byte)'T');
+        final byte[] dummyContigSequenceQuals = TestUtilsForAssemblyBasedSVDiscovery.makeDummySequence(1000, (byte)'A');
         final List<FermiLiteAssembly.Connection> dummyConnections = Collections.emptyList();
 
         final FermiLiteAssembly.Contig unmappedContig = new FermiLiteAssembly.Contig(dummyContigSequence, dummyContigSequenceQuals, 100); // totally random 100 supporting reads
@@ -199,7 +199,7 @@ public class AlignedContigGeneratorUnitTest extends GATKBaseTest {
     private Object[][] forNullOrEmptyAlignments() {
         final List<Object[]> data = new ArrayList<>(20);
 
-        data.add(new Object[]{"dummy", SVDiscoveryTestUtilsAndCommonDataProvider.makeDummySequence(100, (byte) 'A'), null});
+        data.add(new Object[]{"dummy", TestUtilsForAssemblyBasedSVDiscovery.makeDummySequence(100, (byte) 'A'), null});
 
         return data.toArray(new Object[data.size()][]);
     }

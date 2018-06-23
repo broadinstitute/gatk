@@ -7,7 +7,7 @@ import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestUtilsAndCommonDataProvider;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -443,7 +443,7 @@ public class ContigAlignmentsModifierUnitTest extends GATKBaseTest {
 
         data.add(new Object[]{null, 10, true, null, IllegalArgumentException.class});
 
-        AlignmentInterval alignment = SVDiscoveryTestUtilsAndCommonDataProvider.fromSAMRecordString("asm004677:tig00000\t2064\tchr1\t202317371\t60\t1393H50M1085H\t*\t0\t0\tGTCTTGCTCTGTTGCCCAGGCTGGAGTGCAGTAGAGCAATCATAGCTCAC\t*\tSA:Z:chr3,15736242,-,1282M1246S,60,0;chr3,15737523,-,1425S377M1D726M,60,4;\tMD:Z:41T8\tRG:Z:GATKSVContigAlignments\tNM:i:1\tAS:i:45\tXS:i:0", true);
+        AlignmentInterval alignment = TestUtilsForAssemblyBasedSVDiscovery.fromSAMRecordString("asm004677:tig00000\t2064\tchr1\t202317371\t60\t1393H50M1085H\t*\t0\t0\tGTCTTGCTCTGTTGCCCAGGCTGGAGTGCAGTAGAGCAATCATAGCTCAC\t*\tSA:Z:chr3,15736242,-,1282M1246S,60,0;chr3,15737523,-,1425S377M1D726M,60,4;\tMD:Z:41T8\tRG:Z:GATKSVContigAlignments\tNM:i:1\tAS:i:45\tXS:i:0", true);
 
         data.add(new Object[]{alignment, -1, true, null, IllegalArgumentException.class});
 

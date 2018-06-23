@@ -11,11 +11,9 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
-import org.apache.commons.lang3.EnumUtils;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.BreakEndVariantType;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvType;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
@@ -50,25 +48,19 @@ public class SVVCFWriter {
 
     private static void logNumOfVarByTypes(final List<VariantContext> variants, final Logger logger) {
 
-        logger.info("Discovered " + variants.size() + " variants.");
+        logger.info("Discovered a total of " + variants.size() + " records: ");
 
         final Map<String, Long> variantsCountByType = variants.stream()
                 .collect(Collectors.groupingBy(vc -> (String) vc.getAttribute(GATKSVVCFConstants.SVTYPE), Collectors.counting()));
 
-        variantsCountByType.forEach((key, value) -> logger.info(key + ": " + value));
+        variantsCountByType.forEach((key, value) -> logger.info("  " + key + ": " + value));
 
-        final Set<String> knownTypes = new HashSet<>( EnumUtils.getEnumMap(SimpleSVType.TYPES.class).keySet() );
-        knownTypes.add(BreakEndVariantType.InvSuspectBND.INV33_BND);
-        knownTypes.add(BreakEndVariantType.InvSuspectBND.INV55_BND);
-        knownTypes.add(BreakEndVariantType.TransLocBND.STRANDSWITCHLESS_BND);
-        knownTypes.add(GATKSVVCFConstants.CPX_SV_SYB_ALT_ALLELE_STR);
-        Sets.difference(knownTypes, variantsCountByType.keySet()).forEach(key -> logger.info(key + ": " + 0));
+        logger.info("  And none of : " + Sets.difference(SvType.getKnownTypes(), variantsCountByType.keySet()).toString());
     }
 
-    // TODO: right now there's an edge case that the "same" inversion events would be called three times on a test sample
-    //       such that they have the same start, end and inversion evidence type but differ only in their inserted sequence,
-    //       sorting these variants must take into account of such complications.
-    // the solution below is hackish
+
+    // TODO: 5/31/18 it has been the case since we output VCF files that some records have exactly the same POS and END, yet with slight differences in annotations (e.g. inserted sequence, homology, etc.) pointing to difference variants;
+    //       this sort is to make sure such records are sorted. Ultimately we should decide on what to do (squash them into single records when possible?) with such records.
     @VisibleForTesting
     public static List<VariantContext> sortVariantsByCoordinate(final List<VariantContext> variants,
                                                                 final SAMSequenceDictionary referenceSequenceDictionary) {

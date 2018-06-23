@@ -42,7 +42,7 @@ public class ImpreciseVariantDetectorUnitTest extends GATKBaseTest {
                 .chr("20").start(1000).stop(2000)
                 .alleles("N", SimpleSVType.ImpreciseDeletion.createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL))
                 .attribute(VCFConstants.END_KEY, 2000)
-                .attribute(GATKSVVCFConstants.SVTYPE, SimpleSVType.TYPES.DEL.toString())
+                .attribute(GATKSVVCFConstants.SVTYPE, SimpleSVType.SupportedType.DEL.toString())
                 .attribute(GATKSVVCFConstants.READ_PAIR_SUPPORT, 7)
                 .attribute(GATKSVVCFConstants.SPLIT_READ_SUPPORT, 5)
                 .attribute(GATKSVVCFConstants.IMPRECISE, true)
