@@ -10,19 +10,17 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryInputMetaData;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.ContigAlignmentsModifier;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -51,11 +49,7 @@ public final class CpxVariantInterpreter {
                         .mapToPair(tig -> getOneVariantFromOneContig(tig, referenceSequenceDictionaryBroadcast.getValue()))
                         .groupByKey(); // two contigs could give the same variant
 
-        if (svDiscoveryInputMetaData.getDiscoverStageArgs().outputCpxResultsInHumanReadableFormat) {
-            writeResultsForHumanConsumption(svDiscoveryInputMetaData.getOutputPath(), interpretationAndAssemblyEvidence);
-        }
-
-        return interpretationAndAssemblyEvidence.map(pair -> turnIntoVariantContext(pair, referenceBroadcast)).collect();
+        return interpretationAndAssemblyEvidence.map(pair -> turnIntoVariantContext(pair, referenceBroadcast.getValue())).collect();
     }
 
     private static Tuple2<CpxVariantCanonicalRepresentation, CpxVariantInducingAssemblyContig> getOneVariantFromOneContig
@@ -221,7 +215,7 @@ public final class CpxVariantInterpreter {
      *                     b) when the two alignments' ref span do overlap,
      *                        we makes it so that the inverted duplicated reference span is minimized
      *                        (this avoids over detection of inverted duplications by
-     *                        {@link AssemblyContigAlignmentSignatureClassifier#isCandidateInvertedDuplication(AlignmentInterval, AlignmentInterval)}}
+     *                        {@link SimpleChimera#isCandidateInvertedDuplication()}}
      *                 </li>
      *             </ul>
      *         </li>
@@ -270,11 +264,11 @@ public final class CpxVariantInterpreter {
 
     @VisibleForTesting
     static VariantContext turnIntoVariantContext(final Tuple2<CpxVariantCanonicalRepresentation, Iterable<CpxVariantInducingAssemblyContig>> pair,
-                                                 final Broadcast<ReferenceMultiSource> referenceBroadcast)
+                                                 final ReferenceMultiSource reference)
             throws IOException {
 
         final CpxVariantCanonicalRepresentation cpxVariantCanonicalRepresentation = pair._1;
-        final byte[] refBases = referenceBroadcast.getValue().getReferenceBases(cpxVariantCanonicalRepresentation.getAffectedRefRegion()).getBases();
+        final byte[] refBases = getRefBases(reference, cpxVariantCanonicalRepresentation);
 
         final VariantContextBuilder rawVariantContextBuilder = cpxVariantCanonicalRepresentation.toVariantContext(refBases);
         final Iterable<CpxVariantInducingAssemblyContig> evidenceContigs = pair._2;
@@ -331,29 +325,16 @@ public final class CpxVariantInterpreter {
         return rawVariantContextBuilder.make();
     }
 
-    // =================================================================================================================
-
-    private static void writeResultsForHumanConsumption(final String outputPath,
-                                                        final JavaPairRDD<CpxVariantCanonicalRepresentation, Iterable<CpxVariantInducingAssemblyContig>> interpretationAndAssemblyEvidence) {
-        try {
-            // for easier view when debugging, will be taken out in the final commit.
-            Files.write(Paths.get(Paths.get(outputPath).getParent().toAbsolutePath().toString() + "/cpxEvents.txt"),
-                    () -> interpretationAndAssemblyEvidence
-                            .flatMap(pair -> Utils.stream(pair._2).map( tig -> new Tuple2<>(tig, pair._1)).iterator())
-                            .sortBy(pair  -> pair._1.getPreprocessedTig().getContigName(), true, 1)
-                            .map(pair -> {
-                                final CpxVariantInducingAssemblyContig cpxVariantInducingAssemblyContig = pair._1;
-                                final CpxVariantCanonicalRepresentation cpxVariantCanonicalRepresentation = pair._2;
-                                String s = cpxVariantInducingAssemblyContig.toString() + "\n";
-                                s += cpxVariantCanonicalRepresentation.toString();
-                                s += "\n";
-                                return (CharSequence) s;
-                            })
-                            .collect().iterator());
-        } catch (final IOException ioe) {
-            throw new UserException.CouldNotCreateOutputFile("Could not save filtering results to file", ioe);
-        }
+    // TODO: 6/22/18 this leads to unnecessarily large file size, next PR trim it down to a single base like the case for DEL
+    private static byte[] getRefBases(final ReferenceMultiSource reference, final CpxVariantCanonicalRepresentation cpxVariantCanonicalRepresentation)
+            throws IOException {
+        final SimpleInterval affectedRefRegion = cpxVariantCanonicalRepresentation.getAffectedRefRegion();
+        return reference
+                .getReferenceBases(affectedRefRegion)
+                .getBases();
     }
+
+    // =================================================================================================================
 
     static final class UnhandledCaseSeen extends GATKException.ShouldNeverReachHereException {
         private static final long serialVersionUID = 0L;

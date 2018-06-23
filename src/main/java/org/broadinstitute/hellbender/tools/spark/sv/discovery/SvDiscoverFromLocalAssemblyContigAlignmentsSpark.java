@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.CpxVariantInterpreter;
@@ -34,6 +35,8 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
 import java.io.Serializable;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -138,7 +141,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast =
                 StructuralVariationDiscoveryPipelineSpark.broadcastCNVCalls(ctx, getHeaderForReads(),
                         discoverStageArgs.cnvCallsFile);
-        final String outputPrefixWithSampleName = outputPrefix + SVUtils.getSampleId(getHeaderForReads()) + "_";
+        final String outputPrefixWithSampleName = getOutputPrefix();
         final SvDiscoveryInputMetaData svDiscoveryInputMetaData =
                 new SvDiscoveryInputMetaData(ctx, discoverStageArgs, nonCanonicalChromosomeNamesFile, outputPrefixWithSampleName,
                         null, null, null,
@@ -150,6 +153,20 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
                 preprocess(svDiscoveryInputMetaData, assemblyRawAlignments);
 
         dispatchJobs(ctx, contigsByPossibleRawTypes, svDiscoveryInputMetaData, assemblyRawAlignments, writeSAMFiles);
+    }
+
+    /**
+     * @return prefix of outputs, with {@link #outputPrefix} decorated with sample name and trailing underscore
+     */
+    private String getOutputPrefix() {
+        if ( Files.exists(Paths.get(outputPrefix)) ) {
+            if (Files.isDirectory(Paths.get(outputPrefix))) // existing directory
+                return outputPrefix + (outputPrefix.endsWith("/") ? "" : "/") + SVUtils.getSampleId(getHeaderForReads()) + "_";
+            else
+                throw new UserException("Provided prefix for output is pointing to an existing file: " + outputPrefix); // to avoid accidental override of a file
+        } else { // prefixForOutput doesn't point to an existing file or directory
+            return outputPrefix + (outputPrefix.endsWith("/") ? "" : "_") + SVUtils.getSampleId(getHeaderForReads()) + "_";
+        }
     }
 
     //==================================================================================================================

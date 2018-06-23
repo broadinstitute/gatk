@@ -3,22 +3,20 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery.inference;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.TextCigarCodec;
-import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestUtilsAndCommonDataProvider;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryTestDataProvider;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.ContigAlignmentsModifier;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import scala.Tuple3;
+import scala.Tuple2;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -26,282 +24,198 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVDiscoveryTestDataProvider.*;
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery.*;
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME;
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.AssemblyBasedSVDiscoveryTestDataProviderForSimpleSV.TestDataForSimpleSV;
 
-public class SimpleChimeraUnitTest extends GATKBaseTest {
+public class SimpleChimeraUnitTest extends AssemblyBasedSVDiscoveryBaseTest {
 
-    static List<Tuple3<AlignmentInterval, AlignmentInterval, SAMSequenceDictionary>> alignmentPairsForSimpleChimeraAndRefSeqDict() {
+    @DataProvider
+    private Object[][] forSplitPairStrongEnoughEvidenceForCA() {
+        final List<Object[]> data = new ArrayList<>(20);
 
-        final List<Tuple3<AlignmentInterval, AlignmentInterval, SAMSequenceDictionary>> result = new ArrayList<>(20);
+        String alignmentOneSAMString = "asm018495:tig00014\t16\tchr20\t29851171\t60\t72S582M\t*\t0\t0\tATCTGTAAGTGGATATTTGGAGCCCTTTGTGGCCTATGGTGGAAAAGGAAATATCTTCAAATAAAAAGTATGCAGAAGCATTCTGAGAAACTTTTTTGTGCTGTGTGCATTCATCTCACAGGGTTGAACCTATCTTATGATTGAGCAGTTTTGAATCACTCTTTATGTAGAATCTGCAAGTGGATATTTGGAGCGTTTTGAGACCTACCGTGGAAAAGCAATTATCTTCAGATAAAAACTACACAGAAGCATTCTGAGAAACTGCTTTATGATGTGTGCATTCATCTCACAGAGTTGAACCTTTCTTTTGATTGAGCAGCTTTGAAACACTCTTTTTGTAGAATCTGCAAGTGGATATTTCGTGTGCTTTGAGTCCTACCATGGAAAAGGAAATATCTTCACATAAAAAATACTCAGAGGAATTCTGAGAAACTTCTTTGTGATGTGTGCATTCAACTCACAGAATTGAACCTATCTTTAGATTGAGCAGTTTAGAATCTCTCTTTTTGCAGTATCTGCAAGTGGATATTTGGAGCCCTTTGCAGCCTGTGGTGGAAAAGAAAATATCTTCACACAAAAACTACTCGGAAGCATTCTTAGAAACTTCTTTTTGATGTGTGCATTCAAATCACAGAGTTGAACCTATATTTTCAT\t*\tSA:Z:chr20,28843254,-,141M513S,60,15;\tMD:Z:5T15C6A553\tRG:Z:GATKSVContigAlignments\tNM:i:3\tAS:i:567\tXS:i:282";
+        String alignmentTwoSAMString = "asm018495:tig00014\t2064\tchr20\t28843254\t60\t141M513H\t*\t0\t0\tATCTGTAAGTGGATATTTGGAGCCCTTTGTGGCCTATGGTGGAAAAGGAAATATCTTCAAATAAAAAGTATGCAGAAGCATTCTGAGAAACTTTTTTGTGCTGTGTGCATTCATCTCACAGGGTTGAACCTATCTTATGAT\t*\tSA:Z:chr20,29851171,-,72S582M,60,3;\tMD:Z:5C7A0G52C2C0A2A2A11G2A0C6A4G14A13A6\tRG:Z:GATKSVContigAlignments\tNM:i:15\tAS:i:66\tXS:i:0";
 
-        // simple inversion
-        TestDataForSimpleSVs testData = forSimpleInversionFromLongCtg1WithStrangeLeftBreakpoint;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
+        AlignmentInterval alignmentOne = fromSAMRecordString(alignmentOneSAMString, true);
+        AlignmentInterval alignmentTwo = fromSAMRecordString(alignmentTwoSAMString, true);
+        data.add(new Object[]{alignmentOne, alignmentTwo, SimpleNovelAdjacencyInterpreter.MORE_RELAXED_ALIGNMENT_MIN_MQ, SimpleNovelAdjacencyInterpreter.MORE_RELAXED_ALIGNMENT_MIN_LENGTH, true});
 
-        testData = forSimpleInversionWithHom_leftPlus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
+        alignmentOneSAMString = "asm018495:tig00014\t16\tchr20\t29851171\t19\t72S582M\t*\t0\t0\tATCTGTAAGTGGATATTTGGAGCCCTTTGTGGCCTATGGTGGAAAAGGAAATATCTTCAAATAAAAAGTATGCAGAAGCATTCTGAGAAACTTTTTTGTGCTGTGTGCATTCATCTCACAGGGTTGAACCTATCTTATGATTGAGCAGTTTTGAATCACTCTTTATGTAGAATCTGCAAGTGGATATTTGGAGCGTTTTGAGACCTACCGTGGAAAAGCAATTATCTTCAGATAAAAACTACACAGAAGCATTCTGAGAAACTGCTTTATGATGTGTGCATTCATCTCACAGAGTTGAACCTTTCTTTTGATTGAGCAGCTTTGAAACACTCTTTTTGTAGAATCTGCAAGTGGATATTTCGTGTGCTTTGAGTCCTACCATGGAAAAGGAAATATCTTCACATAAAAAATACTCAGAGGAATTCTGAGAAACTTCTTTGTGATGTGTGCATTCAACTCACAGAATTGAACCTATCTTTAGATTGAGCAGTTTAGAATCTCTCTTTTTGCAGTATCTGCAAGTGGATATTTGGAGCCCTTTGCAGCCTGTGGTGGAAAAGAAAATATCTTCACACAAAAACTACTCGGAAGCATTCTTAGAAACTTCTTTTTGATGTGTGCATTCAAATCACAGAGTTGAACCTATATTTTCAT\t*\tSA:Z:chr20,28843254,-,141M513S,60,15;\tMD:Z:5T15C6A553\tRG:Z:GATKSVContigAlignments\tNM:i:3\tAS:i:567\tXS:i:282";
+        alignmentTwoSAMString = "asm018495:tig00014\t2064\tchr20\t28843254\t60\t141M513H\t*\t0\t0\tATCTGTAAGTGGATATTTGGAGCCCTTTGTGGCCTATGGTGGAAAAGGAAATATCTTCAAATAAAAAGTATGCAGAAGCATTCTGAGAAACTTTTTTGTGCTGTGTGCATTCATCTCACAGGGTTGAACCTATCTTATGAT\t*\tSA:Z:chr20,29851171,-,72S582M,60,3;\tMD:Z:5C7A0G52C2C0A2A2A11G2A0C6A4G14A13A6\tRG:Z:GATKSVContigAlignments\tNM:i:15\tAS:i:66\tXS:i:0";
+        alignmentOne = fromSAMRecordString(alignmentOneSAMString, true);
+        alignmentTwo = fromSAMRecordString(alignmentTwoSAMString, true);
+        data.add(new Object[]{alignmentOne, alignmentTwo, SimpleNovelAdjacencyInterpreter.MORE_RELAXED_ALIGNMENT_MIN_MQ, SimpleNovelAdjacencyInterpreter.MORE_RELAXED_ALIGNMENT_MIN_LENGTH, false});
 
-        testData = forSimpleInversionWithHom_leftMinus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
+        alignmentOneSAMString = "asm018495:tig00014\t16\tchr20\t29851171\t60\t72S582M\t*\t0\t0\tATCTGTAAGTGGATATTTGGAGCCCTTTGTGGCCTATGGTGGAAAAGGAAATATCTTCAAATAAAAAGTATGCAGAAGCATTCTGAGAAACTTTTTTGTGCTGTGTGCATTCATCTCACAGGGTTGAACCTATCTTATGATTGAGCAGTTTTGAATCACTCTTTATGTAGAATCTGCAAGTGGATATTTGGAGCGTTTTGAGACCTACCGTGGAAAAGCAATTATCTTCAGATAAAAACTACACAGAAGCATTCTGAGAAACTGCTTTATGATGTGTGCATTCATCTCACAGAGTTGAACCTTTCTTTTGATTGAGCAGCTTTGAAACACTCTTTTTGTAGAATCTGCAAGTGGATATTTCGTGTGCTTTGAGTCCTACCATGGAAAAGGAAATATCTTCACATAAAAAATACTCAGAGGAATTCTGAGAAACTTCTTTGTGATGTGTGCATTCAACTCACAGAATTGAACCTATCTTTAGATTGAGCAGTTTAGAATCTCTCTTTTTGCAGTATCTGCAAGTGGATATTTGGAGCCCTTTGCAGCCTGTGGTGGAAAAGAAAATATCTTCACACAAAAACTACTCGGAAGCATTCTTAGAAACTTCTTTTTGATGTGTGCATTCAAATCACAGAGTTGAACCTATATTTTCAT\t*\tSA:Z:chr20,28843254,-,141M513S,60,15;\tMD:Z:5T15C6A553\tRG:Z:GATKSVContigAlignments\tNM:i:3\tAS:i:567\tXS:i:282";
+        alignmentTwoSAMString = "asm018495:tig00014\t2064\tchr20\t28843254\t19\t141M513H\t*\t0\t0\tATCTGTAAGTGGATATTTGGAGCCCTTTGTGGCCTATGGTGGAAAAGGAAATATCTTCAAATAAAAAGTATGCAGAAGCATTCTGAGAAACTTTTTTGTGCTGTGTGCATTCATCTCACAGGGTTGAACCTATCTTATGAT\t*\tSA:Z:chr20,29851171,-,72S582M,60,3;\tMD:Z:5C7A0G52C2C0A2A2A11G2A0C6A4G14A13A6\tRG:Z:GATKSVContigAlignments\tNM:i:15\tAS:i:66\tXS:i:0";
+        alignmentOne = fromSAMRecordString(alignmentOneSAMString, true);
+        alignmentTwo = fromSAMRecordString(alignmentTwoSAMString, true);
+        data.add(new Object[]{alignmentOne, alignmentTwo, SimpleNovelAdjacencyInterpreter.MORE_RELAXED_ALIGNMENT_MIN_MQ, SimpleNovelAdjacencyInterpreter.MORE_RELAXED_ALIGNMENT_MIN_LENGTH, false});
 
-        testData = forSimpleInversionWithHom_rightPlus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
+        alignmentOne = new AlignmentInterval(new SimpleInterval("chr1:10000-10028"), 1, 29, TextCigarCodec.decode("29M"), true, 60, 0, 29, ContigAlignmentsModifier.AlnModType.NONE);
+        alignmentTwo = new AlignmentInterval(new SimpleInterval("chr1:10201-10501"), 30, 330, TextCigarCodec.decode("301M"), true, 60, 6, 295, ContigAlignmentsModifier.AlnModType.NONE);
+        data.add(new Object[]{alignmentOne, alignmentTwo, SimpleNovelAdjacencyInterpreter.MORE_RELAXED_ALIGNMENT_MIN_MQ, SimpleNovelAdjacencyInterpreter.MORE_RELAXED_ALIGNMENT_MIN_LENGTH, false});
 
-        testData = forSimpleInversionWithHom_rightMinus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
-
-        // simple deletion
-        testData = SimpleSVDiscoveryTestDataProvider.forSimpleDeletion_plus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
-
-        testData = SimpleSVDiscoveryTestDataProvider.forSimpleDeletion_minus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
-
-        // simple insertion
-        testData = SimpleSVDiscoveryTestDataProvider.forSimpleInsertion_plus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
-
-        testData = SimpleSVDiscoveryTestDataProvider.forSimpleInsertion_minus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
-
-        // long range substitution
-        testData = SimpleSVDiscoveryTestDataProvider.forLongRangeSubstitution_fudgedDel_plus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
-
-        testData = SimpleSVDiscoveryTestDataProvider.forLongRangeSubstitution_fudgedDel_minus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
-
-        // simple deletion with homology
-        testData = SimpleSVDiscoveryTestDataProvider.forDeletionWithHomology_plus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
-
-        testData = SimpleSVDiscoveryTestDataProvider.forDeletionWithHomology_minus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
-
-        // tandem duplication simple contraction
-        testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupContraction_plus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
-
-        testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupContraction_minus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
-
-        // tandem duplication simple expansion
-        testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansion_ins_plus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
-
-        testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansion_ins_minus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
-
-        // tandem duplication simple expansion with novel insertion
-        testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_dup_plus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
-
-        testData = SimpleSVDiscoveryTestDataProvider.forSimpleTanDupExpansionWithNovelIns_dup_minus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
+        alignmentOne = new AlignmentInterval(new SimpleInterval("chr1:10201-10501"), 30, 330, TextCigarCodec.decode("301M"), false, 60, 6, 295, ContigAlignmentsModifier.AlnModType.NONE);
+        alignmentTwo = new AlignmentInterval(new SimpleInterval("chr1:10000-10028"), 1, 29, TextCigarCodec.decode("29M"), false, 60, 0, 29, ContigAlignmentsModifier.AlnModType.NONE);
+        data.add(new Object[]{alignmentOne, alignmentTwo, SimpleNovelAdjacencyInterpreter.MORE_RELAXED_ALIGNMENT_MIN_MQ, SimpleNovelAdjacencyInterpreter.MORE_RELAXED_ALIGNMENT_MIN_LENGTH, false});
 
 
-        // first test (the original observed event, but assigned to a different chromosome): expansion from 1 unit to 2 units with pseudo-homology
-        testData = SimpleSVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_plus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
+        return data.toArray(new Object[data.size()][]);
+    }
+    @Test(dataProvider = "forSplitPairStrongEnoughEvidenceForCA", groups = "sv")
+    public void testSplitPairStrongEnoughEvidenceForCA(final AlignmentInterval intervalOne,
+                                                       final AlignmentInterval intervalTwo,
+                                                       final int mapQThresholdInclusive,
+                                                       final int alignmentLengthThresholdInclusive,
+                                                       final boolean expected) {
+        Assert.assertEquals(SimpleChimera.splitPairStrongEnoughEvidenceForCA(intervalOne, intervalTwo, mapQThresholdInclusive, alignmentLengthThresholdInclusive),
+                expected);
+    }
 
-        testData = SimpleSVDiscoveryTestDataProvider.forComplexTanDup_1to2_pseudoHom_minus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
-
-
-        // second test: contraction from 2 units to 1 unit with pseudo-homology
-        testData = SimpleSVDiscoveryTestDataProvider.forComplexTanDup_2to1_pseudoHom_plus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
-
-        testData = SimpleSVDiscoveryTestDataProvider.forComplexTanDup_2to1_pseudoHom_minus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
-
-
-        // third test: contraction from 3 units to 2 units without pseudo-homology
-        testData = SimpleSVDiscoveryTestDataProvider.forComplexTanDup_3to2_noPseudoHom_plus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
-
-        testData = SimpleSVDiscoveryTestDataProvider.forComplexTanDup_3to2_noPseudoHom_minus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
+    @Test(expectedExceptions = GATKException.class)
+    public void testTypeInference_expectException() {
+        final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100100), 1 ,100, TextCigarCodec.decode("100M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
+        final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100101, 100200), 101 ,200, TextCigarCodec.decode("100M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
+        final SimpleChimera simpleChimera = new SimpleChimera(region1, region2, Collections.emptyList(), "1",
+                AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict);
+        simpleChimera.inferType(null);
+    }
 
 
-        // fourth test: expansion from 2 units to 3 units without pseudo-homology
-        testData = SimpleSVDiscoveryTestDataProvider.forComplexTanDup_2to3_noPseudoHom_plus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
+    private static final class TestData {
+        private final AlignmentInterval one;
+        private final AlignmentInterval two;
+        private final SAMSequenceDictionary refDict;
 
-        testData = SimpleSVDiscoveryTestDataProvider.forComplexTanDup_2to3_noPseudoHom_minus;
-        result.add(new Tuple3<>(testData.firstAlignment, testData.secondAlignment, SVDiscoveryTestUtilsAndCommonDataProvider.b37_seqDict_20_21));
+        private final SimpleChimera.DistancesBetweenAlignmentsOnRefAndOnRead expectedDistances;
+        private final StrandSwitch expectedStrandSwitch;
+        private final boolean expectedIsForwardStrandRepresentation;
+        private final boolean expectedFirstContigRegionHasLaterReferenceMapping;
 
+        private final boolean isSimpleTranslocation;
+        private final boolean isInversionOrInversionBreakpoint;
 
-        ////////// ABOVE ARE FOR SIMPLE VARIANTS: INS/DEL, DUP EXPANSION, DUP CONTRACTION, INVERSION, BELOW ARE FOR TRANSLOCATION SUSPECTS AND INV DUP
+        private final TypeInferredFromSimpleChimera typeInferred;
 
-        // inverted duplication
-        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(21, 1, 46709983);
-        SAMRecord one =
-                ArtificialReadUtils.createArtificialRead(header, "asm017968:tig00020", 20, 25625477,
-                        "CCTTTCTATTCTAACATTATTGACCCACTACAATAAAATTAAGTATACTTTAGGCTGGGCATGGTGGTTTACACCTGTAATCCCAACACTTTGGGAGGCCGAGGCGGGTGG".getBytes(),
-                        ArtificialReadUtils.createRandomReadQuals(111), "212H111M").convertToSAMRecord(header);
-        one.setSupplementaryAlignmentFlag(true);
-        one.setMappingQuality(60);
-        one.setReadNegativeStrandFlag(true);
-        one.setAttribute("NM", 0);
-        one.setAttribute("AS", 111);
+        TestData(final AlignmentInterval one, final AlignmentInterval two, final SAMSequenceDictionary refDict, final SimpleChimera.DistancesBetweenAlignmentsOnRefAndOnRead expectedDistances, final StrandSwitch expectedStrandSwitch, final boolean expectedIsForwardStrandRepresentation, final boolean expectedFirstContigRegionHasLaterReferenceMapping, final boolean isSimpleTranslocation, final boolean isInversionOrInversionBreakpoint, final TypeInferredFromSimpleChimera typeInferred) {
+            this.one = one;
+            this.two = two;
+            this.refDict = refDict;
+            this.expectedDistances = expectedDistances;
+            this.expectedStrandSwitch = expectedStrandSwitch;
+            this.expectedIsForwardStrandRepresentation = expectedIsForwardStrandRepresentation;
+            this.expectedFirstContigRegionHasLaterReferenceMapping = expectedFirstContigRegionHasLaterReferenceMapping;
+            this.isSimpleTranslocation = isSimpleTranslocation;
+            this.isInversionOrInversionBreakpoint = isInversionOrInversionBreakpoint;
+            this.typeInferred = typeInferred;
+        }
+    }
 
-        SAMRecord two = ArtificialReadUtils.createArtificialRead(header, "asm017968:tig00020", 20, 25625379,
-                "CCACCCGCCTCGGCCTCCCAAAGTGTTGGGATTACAGGTGTAAACCACCATGCCCAGCCTAAAGTATACTTAATTTTATTGTAGTGGGTCAATAATGTTAGAATAGAAAGGAGAATCAGAAGAGAGAAAAGAAACAGATGATCTTATGAATCCCCAATTTATATCCCCCAATTAAGGCATCTCTTTCTTCTGTCTCCCTATATCCCTTTCTATTCTAACATTATTGACCCACTACAATAAAATTAAGTATACTTTAGGCTGGGCATGGTGGTTTACACCTGTAATCCCAACACTTTGGGAGGCCGAGGCGGGTGGATCACTTG".getBytes(),
-                ArtificialReadUtils.createRandomReadQuals(323), "106S217M").convertToSAMRecord(header);
-        two.setMappingQuality(60);
-        two.setAttribute("NM", 0);
-        two.setAttribute("AS", 217);
+    private List<TestData> casesForSimpleSymbolicVariants() {
+        final List<TestData> result = new ArrayList<>(20);
+        for (final AssemblyBasedSVDiscoveryTestDataProvider.AssemblyBasedSVDiscoveryTestDataForSimpleChimera testDataForSimpleSV : forSimpleSV.getAllTestData()) {
+            result.add(new TestData(testDataForSimpleSV.firstAlignment, testDataForSimpleSV.secondAlignment, testDataForSimpleSV.getAppropriateDictionary(),
+                    ((TestDataForSimpleSV)testDataForSimpleSV).expectedDistances, testDataForSimpleSV.expectedSimpleChimera.strandSwitch,
+                    testDataForSimpleSV.expectedSimpleChimera.isForwardStrandRepresentation,
+                    testDataForSimpleSV.expectedFirstContigRegionHasLaterReferenceMapping,
+                    false, false,
+                    testDataForSimpleSV.expectedNovelAdjacencyAndAltSeq.getTypeInferredFromSimpleChimera()));
+        }
+        return result;
+    }
 
-        AlignmentInterval intervalOne = new AlignmentInterval(one);
-        AlignmentInterval intervalTwo = new AlignmentInterval(two);
-        result.add(new Tuple3<>(intervalOne, intervalTwo, SVDiscoveryTestUtilsAndCommonDataProvider.b38_seqDict_chr20_chr21));
+    private List<TestData> casesForInversion() {
 
-        intervalOne = new AlignmentInterval(new SimpleInterval("chr20", 48513458, 48513545), 1, 88, TextCigarCodec.decode("88M227H"), true, 39, 1, 83, ContigAlignmentsModifier.AlnModType.NONE);
-        intervalTwo = new AlignmentInterval(new SimpleInterval("chr20", 48513297, 48513578), 84, 365, TextCigarCodec.decode("83S282M"), false, 60, 0, 282, ContigAlignmentsModifier.AlnModType.NONE);
-        result.add(new Tuple3<>(intervalOne, intervalTwo, SVDiscoveryTestUtilsAndCommonDataProvider.b38_seqDict_chr20_chr21));
+        final List<TestData> result = new ArrayList<>(20);
 
-
-        // same-chr translocation suspect, forward and reverse representation
-        intervalOne = new AlignmentInterval(new SimpleInterval("chr20", 61015129, 61015272), 1, 144, TextCigarCodec.decode("144M148H"), true, 60, 1, 139, ContigAlignmentsModifier.AlnModType.NONE);
-        intervalTwo = new AlignmentInterval(new SimpleInterval("chr20", 60992732, 60992880), 144, 292, TextCigarCodec.decode("143S149M"), true, 60, 0, 149, ContigAlignmentsModifier.AlnModType.NONE);
-        result.add(new Tuple3<>(intervalOne, intervalTwo, SVDiscoveryTestUtilsAndCommonDataProvider.b38_seqDict_chr20_chr21));
-
-        intervalOne = new AlignmentInterval(new SimpleInterval("chr20", 28861368, 28861775), 1, 409, TextCigarCodec.decode("387M1I21M623H"), false, 60, 22, 286, ContigAlignmentsModifier.AlnModType.NONE);
-        intervalTwo = new AlignmentInterval(new SimpleInterval("chr20", 28896473, 28897229), 276, 1032, TextCigarCodec.decode("275S757M"), false, 60, 1, 752, ContigAlignmentsModifier.AlnModType.NONE);
-        result.add(new Tuple3<>(intervalOne, intervalTwo, SVDiscoveryTestUtilsAndCommonDataProvider.b38_seqDict_chr20_chr21));
-
-        // diff-chr translocation suspect without SS
-        intervalOne = new AlignmentInterval(new SimpleInterval("chr21", 24923683, 24923715), 1, 33, TextCigarCodec.decode("33M130H"), true, 60, 0, 33, ContigAlignmentsModifier.AlnModType.NONE);
-        intervalTwo = new AlignmentInterval(new SimpleInterval("chr20", 11590055, 11590197), 21, 163, TextCigarCodec.decode("20S143M"), true, 60, 3, 128, ContigAlignmentsModifier.AlnModType.NONE);
-        result.add(new Tuple3<>(intervalOne, intervalTwo, SVDiscoveryTestUtilsAndCommonDataProvider.b38_seqDict_chr20_chr21));
-
-        // diff-chr translocation suspect with SS
-        intervalOne = new AlignmentInterval(new SimpleInterval("chr21", 5374092, 5374747), 1, 656, TextCigarCodec.decode("656M322S"), true, 60, 14, 586, ContigAlignmentsModifier.AlnModType.NONE);
-        intervalTwo = new AlignmentInterval(new SimpleInterval("chr20", 28764673, 28765145), 506, 978, TextCigarCodec.decode("473M505H"), false, 60, 16, 393, ContigAlignmentsModifier.AlnModType.NONE);
-        result.add(new Tuple3<>(intervalOne, intervalTwo, SVDiscoveryTestUtilsAndCommonDataProvider.b38_seqDict_chr20_chr21));
-
-        // same-chr reference order switch, but overlaps (hence incomplete picture)
-        intervalOne = new AlignmentInterval(new SimpleInterval("20", 283, 651), 383, 751, TextCigarCodec.decode("382H369M274H"), true, 60, 23, 254, ContigAlignmentsModifier.AlnModType.NONE);
-        intervalTwo = new AlignmentInterval(new SimpleInterval("20", 1, 413), 613, 1025, TextCigarCodec.decode("612H413M"), true, 60, 0, 413, ContigAlignmentsModifier.AlnModType.NONE);
-        result.add(new Tuple3<>(intervalOne, intervalTwo, SVDiscoveryTestUtilsAndCommonDataProvider.b38_seqDict_chr20_chr21));
+        for (final AssemblyBasedSVDiscoveryTestDataProvider.AssemblyBasedSVDiscoveryTestDataForSimpleChimera testDataForSimpleSV : forInversionBreakpoints.getAllTestData()) {
+            result.add(new TestData(testDataForSimpleSV.firstAlignment, testDataForSimpleSV.secondAlignment, testDataForSimpleSV.getAppropriateDictionary(),
+                    null, testDataForSimpleSV.expectedSimpleChimera.strandSwitch,
+                    testDataForSimpleSV.expectedSimpleChimera.isForwardStrandRepresentation,
+                    testDataForSimpleSV.expectedFirstContigRegionHasLaterReferenceMapping, false, false,
+                    testDataForSimpleSV.expectedNovelAdjacencyAndAltSeq.getTypeInferredFromSimpleChimera()));
+        }
 
         return result;
     }
 
+    private List<TestData> casesForInvertedDuplication() {
+
+        final List<TestData> result = new ArrayList<>(20);
+
+        AlignmentInterval intervalOne = new AlignmentInterval(new SimpleInterval("chr21:25625477-25625587"), 1, 111, TextCigarCodec.decode("111M212H"), false, 60, 0, 111, ContigAlignmentsModifier.AlnModType.NONE);
+        AlignmentInterval intervalTwo = new AlignmentInterval(new SimpleInterval("chr21:25625379-25625595"), 107, 323, TextCigarCodec.decode("106S217M"), true, 60, 0, 127, ContigAlignmentsModifier.AlnModType.NONE);
+        result.add(new TestData(intervalOne, intervalTwo, bareBoneHg38SAMSeqDict, null,
+                StrandSwitch.REVERSE_TO_FORWARD, false, true,
+                false, true, TypeInferredFromSimpleChimera.INTRA_CHR_STRAND_SWITCH_33));
+
+        intervalOne = new AlignmentInterval(new SimpleInterval("chr20", 48513458, 48513545), 1, 88, TextCigarCodec.decode("88M227H"), true, 39, 1, 83, ContigAlignmentsModifier.AlnModType.NONE);
+        intervalTwo = new AlignmentInterval(new SimpleInterval("chr20", 48513297, 48513578), 84, 365, TextCigarCodec.decode("83S282M"), false, 60, 0, 282, ContigAlignmentsModifier.AlnModType.NONE);
+        result.add(new TestData(intervalOne, intervalTwo, TestUtilsForAssemblyBasedSVDiscovery.bareBoneHg38SAMSeqDict, null,
+                StrandSwitch.FORWARD_TO_REVERSE, true, true,
+                false, true, TypeInferredFromSimpleChimera.INTRA_CHR_STRAND_SWITCH_55));
+        return result;
+    }
+
+    private List<TestData> casesForBreakEndVariants() {
+
+        final List<TestData> result = new ArrayList<>(20);
+        for (final AssemblyBasedSVDiscoveryTestDataProvider.AssemblyBasedSVDiscoveryTestDataForSimpleChimera testDataForSimpleSV : forBreakEndVariants.getAllTestData()) {
+            result.add(new TestData(testDataForSimpleSV.firstAlignment, testDataForSimpleSV.secondAlignment, testDataForSimpleSV.getAppropriateDictionary(),
+                    null, testDataForSimpleSV.expectedSimpleChimera.strandSwitch,
+                    testDataForSimpleSV.expectedSimpleChimera.isForwardStrandRepresentation,
+                    testDataForSimpleSV.expectedFirstContigRegionHasLaterReferenceMapping,
+                    true, false,
+                    testDataForSimpleSV.expectedNovelAdjacencyAndAltSeq.getTypeInferredFromSimpleChimera()));
+        }
+
+        return result;
+    }
+
+
     @DataProvider(name = "testRepresentationAndSerialization")
     private Object[][] testRepresentationAndSerialization() {
-        final List<Tuple3<AlignmentInterval, AlignmentInterval, SAMSequenceDictionary>> tuple3s = alignmentPairsForSimpleChimeraAndRefSeqDict();
-        final List<Object[]> data = new ArrayList<>(tuple3s.size());
+        final List<Object[]> data = new ArrayList<>(50);
 
-        int i=0;
-        // simple inversion
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.REVERSE_TO_FORWARD, true}); ++i;
-
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.FORWARD_TO_REVERSE, true}); ++i;
-
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.FORWARD_TO_REVERSE, false}); ++i;
-
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.REVERSE_TO_FORWARD, true}); ++i;
-
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.REVERSE_TO_FORWARD, false}); ++i;
-
-        // simple deletion
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, true}); ++i;
-
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, false}); ++i;
-
-        // simple insertion
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, true}); ++i;
-
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, false}); ++i;
-
-        // long range substitution
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, true}); ++i;
-
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, false}); ++i;
-
-        // simple deletion with homology
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, true}); ++i;
-
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, false}); ++i;
-
-        // tandem duplication simple contraction
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, true}); ++i;
-
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, false}); ++i;
-
-        // tandem duplication simple expansion
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, true}); ++i;
-
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, false}); ++i;
-
-        // tandem duplication simple expansion with novel insertion
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, true}); ++i;
-
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, false}); ++i;
-
-
-
-        // first test (the original observed event, but assigned to a different chromosome): expansion from 1 unit to 2 units with pseudo-homology
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, true}); ++i;
-
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, false}); ++i;
-
-
-        // second test: contraction from 2 units to 1 unit with pseudo-homology
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, true}); ++i;
-
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, false}); ++i;
-
-
-        // third test: contraction from 3 units to 2 units without pseudo-homology
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, true}); ++i;
-
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, false}); ++i;
-
-
-        // fourth test: expansion from 2 units to 3 units without pseudo-homology
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, true}); ++i;
-
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, false}); ++i;
-
-
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.REVERSE_TO_FORWARD, false}); ++i;
-
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.FORWARD_TO_REVERSE, true}); ++i;
-
-
-        // same-chr translocation suspect, forward and reverse representation
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, true}); ++i;
-
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, false}); ++i;
-
-        // diff-chr translocation suspect without SS
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, true}); ++i;
-
-        // diff-chr translocation suspect with SS
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.FORWARD_TO_REVERSE, false}); ++i;
-
-        // same-chr reference order switch, but overlaps (hence incomplete picture)
-        data.add(new Object[]{tuple3s.get(i), StrandSwitch.NO_SWITCH, true}); ++i;
+        casesForSimpleSymbolicVariants().forEach(obj -> data.add(new Object[]{obj}));
+        casesForInversion().forEach(obj -> data.add(new Object[]{obj}));
+        casesForInvertedDuplication().forEach(obj -> data.add(new Object[]{obj}));
+        casesForBreakEndVariants().forEach(obj -> data.add(new Object[]{obj}));
 
         return data.toArray(new Object[data.size()][]);
     }
 
     @Test(dataProvider = "testRepresentationAndSerialization", groups = "sv")
-    public void testRepresentationAndSerialization(Tuple3<AlignmentInterval, AlignmentInterval, SAMSequenceDictionary> chimericPairsAndRefSeqDict,
-                                                   final StrandSwitch expectedStrandSwitch,
-                                                   final boolean expectedIsForwardStrandRepresentation) {
-        final AlignmentInterval region1 = chimericPairsAndRefSeqDict._1();
-        final AlignmentInterval region2 = chimericPairsAndRefSeqDict._2();
-        final SAMSequenceDictionary refDict = chimericPairsAndRefSeqDict._3();
+    public void testRepresentationAndSerialization(final TestData testData) {
 
-        Assert.assertEquals(SimpleChimera.determineStrandSwitch(region1, region2), expectedStrandSwitch);
-        Assert.assertEquals(SimpleChimera.isForwardStrandRepresentation(region1, region2, expectedStrandSwitch, refDict), expectedIsForwardStrandRepresentation);
+        final AlignmentInterval alignmentOne = testData.one;
+        final AlignmentInterval alignmentTwo = testData.two;
+        final SAMSequenceDictionary refDict = testData.refDict;
+        final StrandSwitch expectedStrandSwitch = testData.expectedStrandSwitch;
+        final boolean expectedIsForwardStrandRepresentation = testData.expectedIsForwardStrandRepresentation;
+        final boolean expectedFirstContigRegionHasLaterReferenceMapping = testData.expectedFirstContigRegionHasLaterReferenceMapping;
+        final SimpleChimera.DistancesBetweenAlignmentsOnRefAndOnRead expectedDistances = testData.expectedDistances;
+        final boolean expectedIsSimpleTranslocation = testData.isSimpleTranslocation;
 
-        final SimpleChimera simpleChimera = new SimpleChimera(region1, region2, Collections.emptyList(), "dummyName", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, refDict);
+        Assert.assertEquals(SimpleChimera.determineStrandSwitch(alignmentOne, alignmentTwo), expectedStrandSwitch);
+        Assert.assertEquals(SimpleChimera.isForwardStrandRepresentation(alignmentOne, alignmentTwo, expectedStrandSwitch, refDict),
+                            expectedIsForwardStrandRepresentation);
+
+        final SimpleChimera simpleChimera = new SimpleChimera(alignmentOne, alignmentTwo, Collections.emptyList(),
+                "dummyName", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, refDict);
+        Tuple2<SimpleInterval, SimpleInterval> coordinateSortedRefSpans = simpleChimera.getCoordinateSortedRefSpans(refDict);
+        Assert.assertTrue( IntervalUtils.compareLocatables(coordinateSortedRefSpans._1(), coordinateSortedRefSpans._2(), refDict) < 0 );
+        Assert.assertEquals(IntervalUtils.compareLocatables(alignmentOne.referenceSpan, alignmentTwo.referenceSpan, refDict) > 0,
+                            expectedFirstContigRegionHasLaterReferenceMapping);
+        if (testData.expectedDistances != null) {
+            Assert.assertEquals(simpleChimera.getDistancesBetweenAlignmentsOnRefAndOnRead(),
+                                expectedDistances);
+        }
+        Assert.assertEquals(simpleChimera.isCandidateSimpleTranslocation(), expectedIsSimpleTranslocation);
+        Assert.assertEquals(simpleChimera.inferType(testData.refDict), testData.typeInferred);
+
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
         final Output out = new Output(bos);
         final Kryo kryo = new Kryo();

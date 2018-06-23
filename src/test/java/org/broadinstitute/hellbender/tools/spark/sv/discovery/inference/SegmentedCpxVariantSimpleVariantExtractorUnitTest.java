@@ -21,8 +21,9 @@ import scala.Tuple3;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestUtilsAndCommonDataProvider.b38_reference_chr20_chr21;
-import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SVDiscoveryTestUtilsAndCommonDataProvider.b38_seqDict_chr20_chr21;
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery.b38_reference_chr20_chr21;
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery.b38_seqDict_chr20_chr21;
+import static org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery.bareBoneHg38SAMSeqDict;
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.CpxVariantCanonicalRepresentation.UNMAPPED_INSERTION;
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SegmentedCpxVariantSimpleVariantExtractor.*;
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SegmentedCpxVariantSimpleVariantExtractor.MultiSegmentsCpxVariantExtractor.compactifyMissingSegments;
@@ -588,7 +589,7 @@ public class SegmentedCpxVariantSimpleVariantExtractorUnitTest extends GATKBaseT
     public void testRemoveDuplicates(final List<VariantContext> sourceWithLessAnnotations, final List<VariantContext> sourceWithMoreAnnotations,
                                      final List<VariantContext> expected) {
         assertVariantsAreEqual(removeDuplicates(sourceWithLessAnnotations, sourceWithMoreAnnotations), expected,
-                Collections.emptyList(), CpxSVInferenceTestUtils.bareBoneHg38SAMSeqDict);
+                Collections.emptyList(), bareBoneHg38SAMSeqDict);
     }
 
     //==================================================================================================================

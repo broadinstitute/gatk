@@ -10,6 +10,11 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Simply a wrapper to link together
+ * {@link NovelAdjacencyAndAltHaplotype} and
+ * evidence {@link SimpleChimera}'s.
+ */
 @DefaultSerializer(SimpleNovelAdjacencyAndChimericAlignmentEvidence.Serializer.class)
 public final class SimpleNovelAdjacencyAndChimericAlignmentEvidence {
     private static final NovelAdjacencyAndAltHaplotype.Serializer narlSerializer = new NovelAdjacencyAndAltHaplotype.Serializer();
@@ -28,8 +33,8 @@ public final class SimpleNovelAdjacencyAndChimericAlignmentEvidence {
         return alignmentEvidence;
     }
 
-    SimpleNovelAdjacencyAndChimericAlignmentEvidence(final NovelAdjacencyAndAltHaplotype novelAdjacencyReferenceLocations,
-                                                     final Iterable<SimpleChimera> alignmentEvidence) {
+    public SimpleNovelAdjacencyAndChimericAlignmentEvidence(final NovelAdjacencyAndAltHaplotype novelAdjacencyReferenceLocations,
+                                                            final Iterable<SimpleChimera> alignmentEvidence) {
         this.novelAdjacencyAndAltHaplotype = Utils.nonNull( novelAdjacencyReferenceLocations );
         this.alignmentEvidence = Lists.newArrayList( Utils.nonNull(alignmentEvidence) );
     }

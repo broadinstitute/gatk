@@ -42,8 +42,8 @@ public class ImpreciseVariantDetector {
                                                                  final ReferenceMultiSource reference) {
         final int svLength = e.getPairedStrandedIntervals().getLeft().getInterval().midpoint() -
                              e.getPairedStrandedIntervals().getRight().getInterval().midpoint();
-        final SvType svType = new SimpleSVType.ImpreciseDeletion(e, svLength, metadata);
+        final SvType svType = new SimpleSVType.ImpreciseDeletion(e, svLength, metadata, reference);
         return AnnotatedVariantProducer
-                .produceAnnotatedVcFromEvidenceTargetLink(e, svType, metadata, reference);
+                .produceAnnotatedVcFromEvidenceTargetLink(e, svType);
     }
 }
