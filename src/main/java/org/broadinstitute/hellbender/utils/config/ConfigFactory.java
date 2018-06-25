@@ -436,30 +436,45 @@ public final class ConfigFactory {
         final String configFileName = getConfigFilenameFromArgs( argList, configFileOption );
 
         // Load the configuration from the given file:
-        final T configuration = getOrCreateConfigFromFile(configFileName, configClass);
+        final T configuration = getOrCreateConfigFromFile(configFileName, configClass, GATKConfig.CONFIG_FILE_VARIABLE_FILE_NAME);
 
         // To start with we inject our system properties to ensure they are defined for downstream components:
         injectSystemPropertiesFromConfig( configuration );
     }
 
-    @VisibleForTesting
-    synchronized <T extends Config> T getOrCreateConfigFromFile(final String configFileName, final Class<? extends T> configClass) {
+    /**
+     * Gets or creates a configuration file from the given file name of the given type.
+     * Will query the config cache for the specified config, and will return the cached version if possible.
+     * @param configFileName The {@link String} representation of the path to use for the configuration file.
+     * @param configClass The {@link Class} of the configuration object to create.
+     * @param configFileNameProperty The name of the property in the {@link org.aeonbits.owner.ConfigFactory} which is used for the path to the config file for the given {@code configClass}.
+     * @return An instance of {@code configClass} either from the config cache (if available) or initialized using {@code configFileName}.
+     */
+    public synchronized <T extends Config> T getOrCreateConfigFromFile(final String configFileName,
+                                                                       final Class<? extends T> configClass,
+                                                                       final String configFileNameProperty) {
 
         // Set the config path if we've specified it:
         if ( configFileName != null ){
-            org.aeonbits.owner.ConfigFactory.setProperty( GATKConfig.CONFIG_FILE_VARIABLE_FILE_NAME, configFileName );
+            org.aeonbits.owner.ConfigFactory.setProperty( configFileNameProperty, configFileName );
         }
 
         // Set the config file to be the one we want to use from the command-line:
         return ConfigFactory.getInstance().getOrCreate(configClass);
     }
 
-    @VisibleForTesting
-    synchronized <T extends Config> T createConfigFromFile(final String configFileName, final Class<? extends T> configClass) {
+    /**
+     * Creates a configuration file from the given file name of the given type.
+     * @param configFileName The {@link String} representation of the path to use for the configuration file.
+     * @param configClass The {@link Class} of the configuration object to create.
+     * @param configFileNameProperty The name of the property in the {@link org.aeonbits.owner.ConfigFactory} which is used for the path to the config file for the given {@code configClass}.
+     * @return An instance of {@code configClass} initialized using {@code configFileName} if possible.
+     */
+    public synchronized <T extends Config> T createConfigFromFile(final String configFileName, final Class<? extends T> configClass, final String configFileNameProperty) {
 
         // Set the config path if we've specified it:
         if ( configFileName != null ){
-            org.aeonbits.owner.ConfigFactory.setProperty( GATKConfig.CONFIG_FILE_VARIABLE_FILE_NAME, configFileName );
+            org.aeonbits.owner.ConfigFactory.setProperty( configFileNameProperty, configFileName );
         }
 
         // Set the config file to be the one we want to use from the command-line:

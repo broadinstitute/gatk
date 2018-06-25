@@ -626,7 +626,8 @@ public class ConfigUnitTest extends GATKBaseTest {
 
         final GATKConfig gatkConfig = ConfigFactory.getInstance().createConfigFromFile(
                 packageMainResourcesDir + "utils/config/" + "GATKConfig.properties",
-                GATKConfig.class
+                GATKConfig.class,
+                GATKConfig.CONFIG_FILE_VARIABLE_FILE_NAME
         );
 
         final LinkedHashMap<String, Object> configFileDefaultsMap = ConfigFactory.getConfigMap(gatkConfig, false);
