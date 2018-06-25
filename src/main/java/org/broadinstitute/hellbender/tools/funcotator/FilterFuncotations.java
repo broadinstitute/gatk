@@ -15,6 +15,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
@@ -29,9 +30,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Stream;
 
 @CommandLineProgramProperties(
@@ -79,18 +82,22 @@ public class FilterFuncotations extends VariantWalker {
     protected Sex gender;
 
     @Argument(
-            shortName = "A",
-            fullName = "ACMG59",
-            doc = "American College of Medical Genomics list.  https://www.ncbi.nlm.nih.gov/clinvar/docs/acmg/"
+            fullName = "acmg59-list",
+            doc = "American College of Medical Genomics list. https://www.ncbi.nlm.nih.gov/clinvar/docs/acmg/"
     )
     protected File acmg59ListFile;
 
     @Argument(
-            shortName = "F",
-            fullName = "loflist",
+            fullName = "lof-list",
             doc = "List of genes with LoF is disease mechanism."
     )
     protected File lofListFile;
+
+    @Argument(
+            fullName = "lmm-variants",
+            doc = "Path/LP variants from LMM which should always be flagged, if present."
+    )
+    protected FeatureDataSource<VariantContext> lmmVariants;
 
     private VariantContextWriter outputVcfWriter;
     private String[] funcotationKeys;
@@ -103,6 +110,7 @@ public class FilterFuncotations extends VariantWalker {
         try {
             acmg59Genes = Files.readAllLines(acmg59ListFile.toPath());
             lofGenes = Files.readAllLines(lofListFile.toPath());
+
             registerFilters();
             VCFHeader vcfHeader = getHeaderForVariants();
 
@@ -123,7 +131,7 @@ public class FilterFuncotations extends VariantWalker {
     private void registerFilters() {
         funcotationFilters.add(new ClinVarFilter(gender, acmg59Genes));
         funcotationFilters.add(new LofFilter(referenceVersion, lofGenes));
-        funcotationFilters.add(new LmmFilter());
+        funcotationFilters.add(new LmmFilter(lmmVariants));
     }
 
     @Override
@@ -296,7 +304,7 @@ class LofFilter extends FuncotationFilter {
         // 1) 1) Variant classification is FRAME_SHIFT_*, NONSENSE, START_CODON_DEL, and SPLICE_SITE
         // (within 2 bases on either side of exon or intron) on any transcript.
         // TODO
-        lofFiltrationRules.add(new FuncotationFiltrationRule("LOF-CLASS", classificationFuncotation) {
+        lofFiltrationRules.add(new FuncotationFiltrationRule("LOF-class", classificationFuncotation) {
 
             @Override
             boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
@@ -310,7 +318,7 @@ class LofFilter extends FuncotationFilter {
 
         // 2) LoF is disease mechanism (that is do not flag genes where LoF is not part of disease mechanism e.g. RyR1)
         // - create static list
-        lofFiltrationRules.add(new FuncotationFiltrationRule("Lof-mechanism", CLIN_VAR_VCF_GENEINFO) {
+        lofFiltrationRules.add(new FuncotationFiltrationRule("LOF-mechanism", CLIN_VAR_VCF_GENEINFO) {
             @Override
             boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
                 return fieldValueMap.get(CLIN_VAR_VCF_GENEINFO)
@@ -336,8 +344,11 @@ class LofFilter extends FuncotationFilter {
 
 class LmmFilter extends FuncotationFilter {
 
-    LmmFilter() {
+    private final Set<VariantContext> lmmVariants = new HashSet<>();
+
+    LmmFilter(FeatureDataSource<VariantContext> lmmVariantSource) {
         super("LMM");
+        lmmVariantSource.forEach(lmmVariants::add);
     }
 
     @Override
@@ -346,6 +357,12 @@ class LmmFilter extends FuncotationFilter {
 
         // 1) LMM gives us a list of all path/LP variants they have seen. We flag any variant that appears on this
         // list regardless of GnoMAD freq. (optional for Proof of Concept)
+        lmmFiltrationRules.add(new FuncotationFiltrationRule("LMM-path-LP") {
+            @Override
+            boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
+                return lmmVariants.contains(variant);
+            }
+        });
 
         return lmmFiltrationRules;
     }
