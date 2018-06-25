@@ -21,6 +21,8 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.samples.Sex;
+import org.broadinstitute.hellbender.utils.variant.GATKVariant;
+import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.File;
@@ -250,10 +252,8 @@ class ClinVarFilter extends FuncotationFilter {
             @Override
             boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
                 return fieldValueMap.get(CLIN_VAR_VCF_CLNSIG)
-                        .map(clinicalSignificance ->
-                                clinicalSignificance.contains("Pathogenic") || clinicalSignificance.contains("Likely_pathogenic"))
-                        .reduce(Boolean::logicalOr)
-                        .orElse(false);
+                        .anyMatch(clinicalSignificance ->
+                                clinicalSignificance.contains("Pathogenic") || clinicalSignificance.contains("Likely_pathogenic"));
             }
         });
 
@@ -262,9 +262,7 @@ class ClinVarFilter extends FuncotationFilter {
             @Override
             boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
                 return fieldValueMap.get(CLIN_VAR_VCF_AF_EXAC)
-                        .map(exacMaf -> Double.valueOf(exacMaf) <= 0.05)
-                        .reduce(Boolean::logicalOr)
-                        .orElse(false);
+                        .anyMatch(exacMaf -> Double.valueOf(exacMaf) <= 0.05);
             }
         });
 
@@ -274,9 +272,7 @@ class ClinVarFilter extends FuncotationFilter {
                 @Override
                 boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
                     return variant.getHetCount() > 0 && fieldValueMap.get(CLIN_VAR_VCF_GENEINFO)
-                            .map(geneInfo -> geneInfo.startsWith("GLA:"))
-                            .reduce(Boolean::logicalOr)
-                            .orElse(false);
+                            .anyMatch(geneInfo -> geneInfo.startsWith("GLA:"));
                 }
             });
         }
@@ -309,10 +305,8 @@ class LofFilter extends FuncotationFilter {
             @Override
             boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
                 return fieldValueMap.get(classificationFuncotation)
-                        .map(classification ->
-                                classification.startsWith(FRAME_SHIFT_PREFIX) || CONSTANT_LOF_CLASSIFICATIONS.contains(classification))
-                        .reduce(Boolean::logicalOr)
-                        .orElse(false);
+                        .anyMatch(classification ->
+                                classification.startsWith(FRAME_SHIFT_PREFIX) || CONSTANT_LOF_CLASSIFICATIONS.contains(classification));
             }
         });
 
@@ -322,9 +316,7 @@ class LofFilter extends FuncotationFilter {
             @Override
             boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
                 return fieldValueMap.get(CLIN_VAR_VCF_GENEINFO)
-                        .map(geneInfo -> lofGenes.contains(geneInfo.substring(0, geneInfo.indexOf(":"))))
-                        .reduce(Boolean::logicalOr)
-                        .orElse(false);
+                        .anyMatch(geneInfo -> lofGenes.contains(geneInfo.substring(0, geneInfo.indexOf(":"))));
             }
         });
 
@@ -333,9 +325,7 @@ class LofFilter extends FuncotationFilter {
             @Override
             boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
                 return fieldValueMap.get(CLIN_VAR_VCF_AF_EXAC)
-                        .map(exacMaf -> Double.valueOf(exacMaf) <= 0.01)
-                        .reduce(Boolean::logicalOr)
-                        .orElse(false);
+                        .anyMatch(exacMaf -> Double.valueOf(exacMaf) <= 0.01);
             }
         });
         return lofFiltrationRules;
@@ -344,11 +334,11 @@ class LofFilter extends FuncotationFilter {
 
 class LmmFilter extends FuncotationFilter {
 
-    private final Set<VariantContext> lmmVariants = new HashSet<>();
+    private final Set<GATKVariant> lmmVariants = new HashSet<>();
 
     LmmFilter(FeatureDataSource<VariantContext> lmmVariantSource) {
         super("LMM");
-        lmmVariantSource.forEach(lmmVariants::add);
+        lmmVariantSource.forEach(variantContext -> lmmVariants.add(new VariantContextVariantAdapter(variantContext)));
     }
 
     @Override
@@ -360,7 +350,7 @@ class LmmFilter extends FuncotationFilter {
         lmmFiltrationRules.add(new FuncotationFiltrationRule("LMM-path-LP") {
             @Override
             boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
-                return lmmVariants.contains(variant);
+                return lmmVariants.contains(new VariantContextVariantAdapter(variant));
             }
         });
 
