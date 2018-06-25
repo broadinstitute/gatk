@@ -43,6 +43,17 @@ import java.util.stream.Stream;
 @BetaFeature
 public class FilterFuncotations extends VariantWalker {
     private static Logger logger = LogManager.getLogger(FilterFuncotations.class);
+
+    enum ReferenceVersion {
+        hg19(19), hg38(27);
+
+        final int gencodeVersion;
+
+        ReferenceVersion(int gencodeVersion) {
+            this.gencodeVersion = gencodeVersion;
+        }
+    }
+
     //==================================================================================================================
     // Arguments:
 
@@ -54,6 +65,12 @@ public class FilterFuncotations extends VariantWalker {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             doc = "Output VCF file to which annotated variants should be written.")
     protected File outputFile;
+
+    @Argument(
+            fullName =  FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME,
+            doc = "The version of the Human Genome reference which was used to Funcotate the input VCF."
+    )
+    private ReferenceVersion referenceVersion;
 
     @Argument(
             shortName = "G",
@@ -105,7 +122,7 @@ public class FilterFuncotations extends VariantWalker {
 
     private void registerFilters() {
         funcotationFilters.add(new ClinVarFilter(gender, acmg59Genes));
-        funcotationFilters.add(new LofFilter(lofGenes));
+        funcotationFilters.add(new LofFilter(referenceVersion, lofGenes));
         funcotationFilters.add(new LmmFilter());
     }
 
@@ -142,15 +159,7 @@ abstract class FuncotationFiltrationRule {
     private final String[] fieldNames;
     private final String ruleName;
 
-    // Boolean flag denotes that this rule is optionally applied
-    // for example:
-    //  `If participant is female flag a het variant in the GLA gene`
-    // In this case we don't want to apply a logical and as the test will flag all males as false. We just want to
-    // optionally apply the filter to any variant matching this rule
-    private final boolean optional;
-
-    FuncotationFiltrationRule(String ruleName, boolean optional, String... fieldNames) {
-        this.optional = optional;
+    FuncotationFiltrationRule(String ruleName, String... fieldNames) {
         this.fieldNames = fieldNames;
         this.ruleName = ruleName;
     }
@@ -172,17 +181,32 @@ abstract class FuncotationFiltrationRule {
         return !fieldValuesMap.isEmpty() && optionallyLog(ruleFunction(variant, fieldValuesMap), variant);
     }
 
-    boolean optionallyLog(Boolean result, VariantContext variant) {
+    private boolean optionallyLog(Boolean result, VariantContext variant) {
         if (result) logger.warn(String.format("Matched Rule: %s For Variant %s", ruleName, variant));
         return result;
     }
+}
 
-    public boolean isOptional() {
-        return optional;
+abstract class FuncotationFilter {
+    static final String CLIN_VAR_VCF_AF_EXAC = "ClinVar_VCF_AF_EXAC";
+    static final String CLIN_VAR_VCF_GENEINFO = "ClinVar_VCF_GENEINFO";
+    private final String filterName;
+
+    FuncotationFilter(String filterName) {
+        this.filterName = filterName;
     }
 
-    public boolean notOptional() {
-        return !optional;
+    Boolean checkFilter(VariantContext variant, FuncotationMap funcotationMap) {
+        return getRules().stream()
+                .map(rule -> rule.applyRule(variant, funcotationMap))
+                .reduce(Boolean::logicalAnd)
+                .orElse(false);
+    }
+
+    abstract List<FuncotationFiltrationRule> getRules();
+
+    public String getFilterName() {
+        return filterName;
     }
 }
 
@@ -203,7 +227,7 @@ class ClinVarFilter extends FuncotationFilter {
         final List<FuncotationFiltrationRule> clinVarFiltrationRules = new ArrayList<>();
 
         // 1) The gene name must be on the ACMG59 list (American College of Medical Genomics).
-        clinVarFiltrationRules.add(new FuncotationFiltrationRule("ClinVar-ACMG59", false, CLIN_VAR_VCF_GENEINFO) {
+        clinVarFiltrationRules.add(new FuncotationFiltrationRule("ClinVar-ACMG59", CLIN_VAR_VCF_GENEINFO) {
             @Override
             boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
                 return fieldValueMap.get(CLIN_VAR_VCF_GENEINFO)
@@ -214,50 +238,55 @@ class ClinVarFilter extends FuncotationFilter {
         });
 
         // 2) ClinVar annotations specifies Pathogenicity or Likely pathogenic.
-        clinVarFiltrationRules.add(new FuncotationFiltrationRule("ClinVar-pathogenic", false, CLIN_VAR_VCF_CLNSIG) {
+        clinVarFiltrationRules.add(new FuncotationFiltrationRule("ClinVar-pathogenic", CLIN_VAR_VCF_CLNSIG) {
             @Override
             boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
                 return fieldValueMap.get(CLIN_VAR_VCF_CLNSIG)
                         .map(clinicalSignificance ->
-                                (clinicalSignificance.contains("Pathogenic") || clinicalSignificance.contains("Likely_pathogenic")))
+                                clinicalSignificance.contains("Pathogenic") || clinicalSignificance.contains("Likely_pathogenic"))
                         .reduce(Boolean::logicalOr)
                         .orElse(false);
             }
         });
 
         // 3) Frequency: Max Minor Allele Freq is ≤5% in GnoMAD (ExAC for Proof of Concept)
-        clinVarFiltrationRules.add(new FuncotationFiltrationRule("ClinVar-MAF", false, CLIN_VAR_VCF_AF_EXAC) {
+        clinVarFiltrationRules.add(new FuncotationFiltrationRule("ClinVar-MAF", CLIN_VAR_VCF_AF_EXAC) {
             @Override
             boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
                 return fieldValueMap.get(CLIN_VAR_VCF_AF_EXAC)
                         .map(exacMaf -> Double.valueOf(exacMaf) <= 0.05)
-                        .reduce(Boolean::logicalAnd)
+                        .reduce(Boolean::logicalOr)
                         .orElse(false);
             }
         });
 
         // 4) If participant is female flag a het variant in the GLA gene (x-linked) [edge case that needs more detail]
-        clinVarFiltrationRules.add(new FuncotationFiltrationRule("ClinVar-option-female-het-GAL", true, CLIN_VAR_VCF_GENEINFO) {
-            @Override
-            boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
-                return fieldValueMap.get(CLIN_VAR_VCF_GENEINFO)
-                        .map(geneInfo -> (gender == Sex.FEMALE
-                                && geneInfo.substring(0, geneInfo.indexOf(":")).equals("GLA")
-                                && variant.getHetCount() > 0))
-                        .reduce(Boolean::logicalOr)
-                        .orElse(false);
-            }
-        });
+        if (gender == Sex.FEMALE) {
+            clinVarFiltrationRules.add(new FuncotationFiltrationRule("ClinVar-option-female-het-GAL", CLIN_VAR_VCF_GENEINFO) {
+                @Override
+                boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
+                    return variant.getHetCount() > 0 && fieldValueMap.get(CLIN_VAR_VCF_GENEINFO)
+                            .map(geneInfo -> geneInfo.startsWith("GLA:"))
+                            .reduce(Boolean::logicalOr)
+                            .orElse(false);
+                }
+            });
+        }
         return clinVarFiltrationRules;
     }
 }
 
 class LofFilter extends FuncotationFilter {
 
+    private static final String FRAME_SHIFT_PREFIX = "FRAME_SHIFT_";
+    private static final List<String> CONSTANT_LOF_CLASSIFICATIONS = Arrays.asList("NONSENSE", "START_CODON_DEL", "SPLICE_SITE");
+
+    private final String classificationFuncotation;
     private final List<String> lofGenes;
 
-    LofFilter(List<String> lofGenes) {
+    LofFilter(FilterFuncotations.ReferenceVersion ref, List<String> lofGenes) {
         super("LOF");
+        this.classificationFuncotation = "Gencode_" + ref.gencodeVersion + "_variantClassification";
         this.lofGenes = lofGenes;
     }
 
@@ -267,16 +296,21 @@ class LofFilter extends FuncotationFilter {
         // 1) 1) Variant classification is FRAME_SHIFT_*, NONSENSE, START_CODON_DEL, and SPLICE_SITE
         // (within 2 bases on either side of exon or intron) on any transcript.
         // TODO
-        lofFiltrationRules.add(new FuncotationFiltrationRule("LOF-CLASS", false) {
+        lofFiltrationRules.add(new FuncotationFiltrationRule("LOF-CLASS", classificationFuncotation) {
+
             @Override
             boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
-                return false;
+                return fieldValueMap.get(classificationFuncotation)
+                        .map(classification ->
+                                classification.startsWith(FRAME_SHIFT_PREFIX) || CONSTANT_LOF_CLASSIFICATIONS.contains(classification))
+                        .reduce(Boolean::logicalOr)
+                        .orElse(false);
             }
         });
 
         // 2) LoF is disease mechanism (that is do not flag genes where LoF is not part of disease mechanism e.g. RyR1)
         // - create static list
-        lofFiltrationRules.add(new FuncotationFiltrationRule("Lof-mechanism", false, CLIN_VAR_VCF_GENEINFO) {
+        lofFiltrationRules.add(new FuncotationFiltrationRule("Lof-mechanism", CLIN_VAR_VCF_GENEINFO) {
             @Override
             boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
                 return fieldValueMap.get(CLIN_VAR_VCF_GENEINFO)
@@ -287,12 +321,12 @@ class LofFilter extends FuncotationFilter {
         });
 
         // 3) Frequency: Max Minor Allele Freq is ≤1% in GnoMAD (ExAC for Proof of Concept)
-        lofFiltrationRules.add(new FuncotationFiltrationRule("LOF-MAF", false, CLIN_VAR_VCF_AF_EXAC) {
+        lofFiltrationRules.add(new FuncotationFiltrationRule("LOF-MAF", CLIN_VAR_VCF_AF_EXAC) {
             @Override
             boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
                 return fieldValueMap.get(CLIN_VAR_VCF_AF_EXAC)
                         .map(exacMaf -> Double.valueOf(exacMaf) <= 0.01)
-                        .reduce(Boolean::logicalAnd)
+                        .reduce(Boolean::logicalOr)
                         .orElse(false);
             }
         });
@@ -314,31 +348,5 @@ class LmmFilter extends FuncotationFilter {
         // list regardless of GnoMAD freq. (optional for Proof of Concept)
 
         return lmmFiltrationRules;
-    }
-}
-
-abstract class FuncotationFilter {
-    static final String CLIN_VAR_VCF_AF_EXAC = "ClinVar_VCF_AF_EXAC";
-    static final String CLIN_VAR_VCF_GENEINFO = "ClinVar_VCF_GENEINFO";
-    private final String filterName;
-
-    FuncotationFilter(String filterName) {
-        this.filterName = filterName;
-    }
-
-    Boolean checkFilter(VariantContext variant, FuncotationMap funcotationMap) {
-        // apply non-optional rules first with a logical and
-        Boolean nonOptionalResult = getRules().stream().filter(FuncotationFiltrationRule::notOptional).map(rule ->
-                rule.applyRule(variant, funcotationMap)).reduce(Boolean::logicalAnd).orElse(false);
-
-        // apply optional rules with a logical or
-        return Boolean.logicalOr(nonOptionalResult, getRules().stream().filter(FuncotationFiltrationRule::isOptional).map(rule ->
-                rule.applyRule(variant, funcotationMap)).reduce(Boolean::logicalOr).orElse(false));
-    }
-
-    abstract List<FuncotationFiltrationRule> getRules();
-
-    public String getFilterName() {
-        return filterName;
     }
 }
