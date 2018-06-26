@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.CommonInfo;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -30,10 +29,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 @CommandLineProgramProperties(
         summary = "",
@@ -156,6 +160,10 @@ abstract class FuncotationFiltrationRule {
         AFR, AMR, EAS, FIN, NFE, OTH, SAS
     }
 
+    static String[] EXAC_MAF_FUNCOTATIONS = Arrays.stream(ExacSubPopulation.values())
+            .flatMap(subpop -> Stream.of("ExAC_AC_" + subpop.name(), "ExAC_AN_" + subpop.name()))
+            .toArray(String[]::new);
+
     private static Logger logger = LogManager.getLogger(ClinVarFilter.class);
     private final String[] fieldNames;
     private final String ruleName;
@@ -171,12 +179,12 @@ abstract class FuncotationFiltrationRule {
         Map<String, Stream<String>> fieldValuesMap = new HashMap<>();
 
         // get all funcotations for all transcripts
-        Stream<Funcotation> allTranscriptValues
-                = funcotationMap.getTranscriptList().stream().map(funcotationMap::get).flatMap(Collection::stream);
+        List<Funcotation> allTranscriptValues = funcotationMap.getTranscriptList().stream()
+                .map(funcotationMap::get).flatMap(Collection::stream).collect(Collectors.toList());
 
         // for each field name the filter cares about collect a list of values from the funcotationMap
         Arrays.stream(fieldNames).forEach(fieldName ->
-                fieldValuesMap.put(fieldName, allTranscriptValues.map(funcotation ->
+                fieldValuesMap.put(fieldName, allTranscriptValues.stream().map(funcotation ->
                         funcotation.getField(fieldName)).filter(fieldValue -> Objects.nonNull(fieldValue) && !fieldValue.isEmpty())));
 
         return !fieldValuesMap.isEmpty() && optionallyLog(ruleFunction(variant, fieldValuesMap), variant);
@@ -187,17 +195,29 @@ abstract class FuncotationFiltrationRule {
         return result;
     }
 
-    private double minorAlleleFreq(final VariantContext variant, final ExacSubPopulation subpop) {
-        final CommonInfo info = variant.getCommonInfo();
-        final double alleleCount = info.getAttributeAsDouble("AC_" + subpop.name(), 0);
-        final double chromosomeCount = info.getAttributeAsDouble("AN_" + subpop.name(), Double.POSITIVE_INFINITY);
+    private Stream<Double> minorAlleleFreqs(final Map<String, Stream<String>> fieldValueMap, final ExacSubPopulation subpop) {
+        final Iterator<String> alleleCounts = fieldValueMap.get("ExAC_AC_" + subpop.name()).iterator();
+        final Iterator<String> chromosomeCounts = fieldValueMap.get("ExAC_AN_" + subpop.name()).iterator();
+        final Iterator<Double> alleleFreqs = new Iterator<Double>() {
+            @Override
+            public boolean hasNext() {
+                return alleleCounts.hasNext() && chromosomeCounts.hasNext();
+            }
 
-        return alleleCount / chromosomeCount;
+            @Override
+            public Double next() {
+                return Double.valueOf(alleleCounts.next()) / Double.valueOf(chromosomeCounts.next());
+            }
+        };
+
+        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(alleleFreqs, Spliterator.ORDERED), false);
     }
 
-    double maxMinorAlleleFreq(final VariantContext variant) {
-        return Arrays.stream(ExacSubPopulation.values())
-                .map(subpop -> minorAlleleFreq(variant, subpop))
+    double maxMinorAlleleFreq(final Map<String, Stream<String>> fieldValueMap) {
+        final List<Double> minorFreqs = Arrays.stream(ExacSubPopulation.values())
+                .flatMap(subpop -> minorAlleleFreqs(fieldValueMap, subpop)).collect(Collectors.toList());
+
+        return minorFreqs.stream()
                 .max(Double::compare)
                 .orElse(Double.NaN);
     }
@@ -263,10 +283,10 @@ class ClinVarFilter extends FuncotationFilter {
         });
 
         // 3) Frequency: Max Minor Allele Freq is ≤5% in GnoMAD (ExAC for Proof of Concept)
-        clinVarFiltrationRules.add(new FuncotationFiltrationRule("ClinVar-MAF") {
+        clinVarFiltrationRules.add(new FuncotationFiltrationRule("ClinVar-MAF", FuncotationFiltrationRule.EXAC_MAF_FUNCOTATIONS) {
             @Override
             boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
-                return maxMinorAlleleFreq(variant) <= 0.05;
+                return maxMinorAlleleFreq(fieldValueMap) <= 0.05;
             }
         });
 
@@ -325,10 +345,10 @@ class LofFilter extends FuncotationFilter {
         });
 
         // 3) Frequency: Max Minor Allele Freq is ≤1% in GnoMAD (ExAC for Proof of Concept)
-        lofFiltrationRules.add(new FuncotationFiltrationRule("LOF-MAF") {
+        lofFiltrationRules.add(new FuncotationFiltrationRule("LOF-MAF", FuncotationFiltrationRule.EXAC_MAF_FUNCOTATIONS) {
             @Override
             boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
-                return maxMinorAlleleFreq(variant) <= 0.01;
+                return maxMinorAlleleFreq(fieldValueMap) <= 0.01;
             }
         });
         return lofFiltrationRules;
