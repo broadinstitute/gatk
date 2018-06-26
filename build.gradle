@@ -268,7 +268,6 @@ dependencies {
 
     compile 'it.unimi.dsi:fastutil:7.0.6'
 
-    compile 'com.github.wendykierp:JTransforms:3.1'
     compile 'org.broadinstitute:hdf5-java-bindings:1.1.0-hdf5_2.11.0'
     compile 'org.broadinstitute:gatk-native-bindings:1.0.0'
 
