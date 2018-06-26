@@ -29,7 +29,4 @@ public class SVIntegrationTestDataProvider extends CommandLineProgramTest {
     public static final String EXPECTED_SIMPLE_DEL_VCF = THIS_TEST_FOLDER + "/outputs/hg19_DEL.vcf";
     public static final String EXPECTED_SIMPLE_INV_VCF = THIS_TEST_FOLDER + "/outputs/hg19_INV.vcf";
     public static final String EXPECTED_ALIGNED_CONTIGS = THIS_TEST_FOLDER + "/outputs/hg19_DEL_actualContigAssemblies.sam";
-
-    public static final List<String> dummyExpectedFileNames = new ArrayList<>();
-
 }

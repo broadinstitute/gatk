@@ -326,12 +326,13 @@ public final class AlignedAssemblyOrExcuse {
         final SAMFileHeader cleanHeader = new SAMFileHeader(header.getSequenceDictionary());
         cleanHeader.addReadGroup(contigAlignmentsReadGroup);
         cleanHeader.setSortOrder(assemblyAlnSortOrder);
+        final SAMRecordComparator samRecordComparator = SVUtils.getSamRecordComparator(assemblyAlnSortOrder);
 
         final List<String> refNames = SequenceDictionaryUtils.getContigNamesList(cleanHeader.getSequenceDictionary());
         final Stream<SAMRecord> samRecordStream =
                 alignedAssemblyOrExcuseList.stream().filter(AlignedAssemblyOrExcuse::isNotFailure)
-                        .flatMap(aa -> aa.toSAMStreamForAlignmentsOfThisAssembly(cleanHeader, refNames, contigAlignmentsReadGroup));
-        SVFileUtils.writeSAMFile(outputAssembliesFile, samRecordStream.iterator(), cleanHeader,
-                assemblyAlnSortOrder == SAMFileHeader.SortOrder.queryname);
+                        .flatMap(aa -> aa.toSAMStreamForAlignmentsOfThisAssembly(cleanHeader, refNames, contigAlignmentsReadGroup))
+                .sorted(samRecordComparator);
+        SVFileUtils.writeSAMFile(outputAssembliesFile, samRecordStream.iterator(), cleanHeader, true);
     }
 }

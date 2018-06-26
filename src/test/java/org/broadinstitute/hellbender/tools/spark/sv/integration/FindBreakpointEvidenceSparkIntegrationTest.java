@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.integration;
 
 import org.apache.hadoop.fs.Path;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
@@ -22,6 +23,8 @@ import java.util.List;
  */
 public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgramTest {
 
+    private static final File expectedSAMfile = IOUtils.getPath(SVIntegrationTestDataProvider.EXPECTED_ALIGNED_CONTIGS).toFile();
+
     private static final class FindBreakpointEvidenceSparkIntegrationTestArgs {
         final String bamLoc;
         final String kmerIgnoreListLoc;
@@ -40,7 +43,7 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
 
         String getCommandLine() {
             return  " -I " + bamLoc +
-                    " -O "                    + "%s" +
+                    " -O "                    + outputDir + "/assemblies.sam" +
                     " --aligner-index-image " + alignerRefIndexImgLoc +
                     " --kmers-to-ignore " + kmerIgnoreListLoc +
                     " --breakpoint-intervals " + outputDir + "/intervals" +
@@ -76,12 +79,11 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
     @Test(dataProvider = "findBreakpointEvidenceSparkIntegrationTest", groups = "sv")
     public void testFindBreakpointRunnableLocal(final FindBreakpointEvidenceSparkIntegrationTestArgs params) throws IOException {
 
-        final ArrayList<String> expectedFiles = new ArrayList<>();
-        expectedFiles.add(SVIntegrationTestDataProvider.EXPECTED_ALIGNED_CONTIGS);
-        new IntegrationTestSpec(
-                new ArgumentsBuilder().add(params.getCommandLine()).getString(),
-                expectedFiles)
-                .executeTest("testFindBreakpointEvidenceSparkRunnableLocal-", this);
+        final List<String> args = Arrays.asList( new ArgumentsBuilder().add(params.getCommandLine()).getArgsArray() );
+        runCommandLine(args);
+
+        final File actualSAMfile = new File(params.outputDir, "assemblies.sam");
+        IntegrationTestSpec.assertEqualTextFiles(actualSAMfile, expectedSAMfile);
     }
 
     @Test(dataProvider = "findBreakpointEvidenceSparkIntegrationTest", groups = "sv")
@@ -119,8 +121,11 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
             path = new Path(workingDirectory, "fastq");
             argsToBeModified.set(idx+1, path.toUri().toString());
 
-            new IntegrationTestSpec(String.join(" ", argsToBeModified), SVIntegrationTestDataProvider.dummyExpectedFileNames)
-                    .executeTest("testFindBreakpointEvidenceSparkRunnableMiniCluster-", this);
+            runCommandLine(argsToBeModified);
+
+            final File actualSAMfile = BaseTest.createTempFile("assemblies", ".sam");
+            cluster.getFileSystem().copyToLocalFile(new Path(workingDirectory, "assemblies.sam"), new Path(actualSAMfile.toURI()));
+            IntegrationTestSpec.assertEqualTextFiles(actualSAMfile, expectedSAMfile);
         });
     }
 }

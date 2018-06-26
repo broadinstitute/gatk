@@ -120,6 +120,8 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
+        validateParams();
+
         final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast =
                 StructuralVariationDiscoveryPipelineSpark.broadcastCNVCalls(ctx, getHeaderForReads(),
                         discoverStageArgs.cnvCallsFile);
@@ -145,6 +147,11 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
 
         final SAMSequenceDictionary refSeqDictionary = svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast().getValue();
         SVVCFWriter.writeVCF(annotatedVariants, vcfOutputPath, refSeqDictionary, localLogger);
+    }
+
+
+    private void validateParams() {
+        discoverStageArgs.validate();
     }
 
     private String getVcfOutputPath() {

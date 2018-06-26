@@ -26,11 +26,11 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.CpxVariantInterpreter;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SegmentedCpxVariantSimpleVariantExtractor;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleNovelAdjacencyInterpreter;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFileUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
@@ -117,7 +117,8 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String outputPrefix;
 
-    @Argument(doc = "output SAM files", fullName = "write-sam", optional = true)
+    @Argument(doc = "output query-name sorted SAM files for local assembly contigs whose alignment signature could not be used for emitting un-ambiguous calls",
+            fullName = "write-sam", optional = true)
     private boolean writeSAMFiles;
 
     @Override
@@ -138,6 +139,8 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
+        validateParams();
+
         final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast =
                 StructuralVariationDiscoveryPipelineSpark.broadcastCNVCalls(ctx, getHeaderForReads(),
                         discoverStageArgs.cnvCallsFile);
@@ -153,6 +156,11 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
                 preprocess(svDiscoveryInputMetaData, assemblyRawAlignments);
 
         dispatchJobs(ctx, contigsByPossibleRawTypes, svDiscoveryInputMetaData, assemblyRawAlignments, writeSAMFiles);
+    }
+
+
+    private void validateParams() {
+        discoverStageArgs.validate();
     }
 
     /**
@@ -208,17 +216,22 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
 
             final List<GATKRead> contigRawAlignments = assemblyRawAlignments
                     .filter(read -> namesOfInterest.contains(read.getName())).collect();
+            contigRawAlignments.sort(Comparator.comparing(GATKRead::getName));
+            final SAMFileHeader clone = header.clone();
+            clone.setSortOrder(SAMFileHeader.SortOrder.queryname);
 
             final EnumMap<ReasonForAlignmentClassificationFailure, SAMFileWriter> writerForEachCase = new EnumMap<>(ReasonForAlignmentClassificationFailure.class);
+            final SAMFileWriterFactory factory = new SAMFileWriterFactory().setCreateIndex(true);
             writerForEachCase.put(ReasonForAlignmentClassificationFailure.AMBIGUOUS,
-                    SVFileUtils.getSAMFileWriter(outputPrefix + ReasonForAlignmentClassificationFailure.AMBIGUOUS.name() + ".bam",
-                            header, false));
+                    factory.makeSAMOrBAMWriter(clone, true, IOUtils.getPath(outputPrefix + ReasonForAlignmentClassificationFailure.AMBIGUOUS.name() + ".bam"))
+            );
             writerForEachCase.put(ReasonForAlignmentClassificationFailure.INCOMPLETE,
-                    SVFileUtils.getSAMFileWriter(outputPrefix + ReasonForAlignmentClassificationFailure.INCOMPLETE.name() + ".bam",
-                            header, false));
+                    factory.makeSAMOrBAMWriter(clone, true, IOUtils.getPath(outputPrefix + ReasonForAlignmentClassificationFailure.INCOMPLETE.name() + ".bam"))
+            );
             writerForEachCase.put(ReasonForAlignmentClassificationFailure.UNINFORMATIVE,
-                    SVFileUtils.getSAMFileWriter(outputPrefix + ReasonForAlignmentClassificationFailure.UNINFORMATIVE.name() + ".bam",
-                            header, false));
+                    factory.makeSAMOrBAMWriter(clone, true, IOUtils.getPath(outputPrefix + ReasonForAlignmentClassificationFailure.UNINFORMATIVE.name() + ".bam"))
+            );
+
             contigRawAlignments.forEach(read -> {
                 final ReasonForAlignmentClassificationFailure reason = tigNameToReason.get(read.getName());
                 writerForEachCase.get(reason).addAlignment(read.convertToSAMRecord(header));
