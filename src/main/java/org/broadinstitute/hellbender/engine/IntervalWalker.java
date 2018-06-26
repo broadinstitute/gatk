@@ -1,9 +1,8 @@
 package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-
-import java.nio.file.Path;
 
 /**
  * An IntervalWalker is a tool that processes a single interval at a time, with the ability to query
@@ -42,6 +41,21 @@ public abstract class IntervalWalker extends GATKTool {
         if ( features.isEmpty() ) {  // No available sources of Features for this tool
             features = null;
         }
+    }
+
+    @Override
+    final protected ReferenceDataSource getReferenceDataSource() {
+        throw new GATKException("Should never access ReferenceDataSource in child classes of IntervalWalker.");
+    }
+
+    @Override
+    final protected ReadsDataSource getReadsDataSource() {
+        throw new GATKException("Should never access ReadsDataSource in child classes of IntervalWalker.");
+    }
+
+    @Override
+    final protected FeatureManager getFeatureManager() {
+        throw new GATKException("Should never access FeatureManager in child classes of IntervalWalker.");
     }
 
     /**

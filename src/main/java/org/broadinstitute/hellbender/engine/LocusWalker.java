@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.locusiterator.AlignmentContextIteratorBuilder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -114,6 +115,21 @@ public abstract class LocusWalker extends GATKTool {
         defaultFilters.add(new WellformedReadFilter());
         defaultFilters.add(new ReadFilterLibrary.MappedReadFilter());
         return defaultFilters;
+    }
+
+    @Override
+    final protected ReferenceDataSource getReferenceDataSource() {
+        throw new GATKException("Should never access ReferenceDataSource in child classes of LocusWalker.");
+    }
+
+    @Override
+    final protected ReadsDataSource getReadsDataSource() {
+        throw new GATKException("Should never access ReadsDataSource in child classes of LocusWalker.");
+    }
+
+    @Override
+    final protected FeatureManager getFeatureManager() {
+        throw new GATKException("Should never access FeatureManager in child classes of LocusWalker.");
     }
 
     /** Returns the downsampling info using {@link #maxDepthPerSample} as target coverage. */

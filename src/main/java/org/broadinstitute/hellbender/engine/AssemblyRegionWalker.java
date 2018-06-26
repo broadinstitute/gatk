@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.engine;
 
-import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -8,17 +7,15 @@ import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IGVUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.downsampling.PositionalDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -147,7 +144,22 @@ public abstract class AssemblyRegionWalker extends GATKTool {
 
     @Override
     public String getProgressMeterRecordLabel() { return "regions"; }
-    
+
+    @Override
+    final protected ReferenceDataSource getReferenceDataSource() {
+        throw new GATKException("Should never access ReferenceDataSource in child classes of AssemblyRegionWalker.");
+    }
+
+    @Override
+    final protected ReadsDataSource getReadsDataSource() {
+        throw new GATKException("Should never access ReadsDataSource in child classes of AssemblyRegionWalker.");
+    }
+
+    @Override
+    final protected FeatureManager getFeatureManager() {
+        throw new GATKException("Should never access FeatureManager in child classes of AssemblyRegionWalker.");
+    }
+
     private List<MultiIntervalLocalReadShard> readShards;
 
     /**

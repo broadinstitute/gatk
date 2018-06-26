@@ -1,16 +1,12 @@
 package org.broadinstitute.hellbender.engine;
 
-import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
-import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
+import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
-import org.broadinstitute.hellbender.transformers.ReadTransformer;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 
@@ -55,6 +51,21 @@ public abstract class ReadWalker extends GATKTool {
         super.onStartup();
 
         setReadTraversalBounds();
+    }
+
+    @Override
+    final protected ReferenceDataSource getReferenceDataSource() {
+        throw new GATKException("Should never access ReferenceDataSource in child classes of ReadWalker.");
+    }
+
+    @Override
+    final protected ReadsDataSource getReadsDataSource() {
+        throw new GATKException("Should never access ReadsDataSource in child classes of ReadWalker.");
+    }
+
+    @Override
+    final protected FeatureManager getFeatureManager() {
+        throw new GATKException("Should never access FeatureManager in child classes of ReadWalker.");
     }
 
     /**

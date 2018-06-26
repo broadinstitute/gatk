@@ -138,17 +138,53 @@ public abstract class GATKTool extends CommandLineProgram {
     /**
      * Our source of reference data (null if no reference was provided)
      */
-    protected ReferenceDataSource reference;
+    ReferenceDataSource reference;
 
     /**
      * Our source of reads data (null if no source of reads was provided)
      */
-    protected ReadsDataSource reads;
+    ReadsDataSource reads;
 
     /**
      * Our source of Feature data (null if no source of Features was provided)
      */
-    protected FeatureManager features;
+    FeatureManager features;
+
+    /**
+     * Get the {@link ReferenceDataSource} for this {@link GATKTool}.
+     * Will throw a {@link GATKException} if the reference is null.
+     * @return the {@link ReferenceDataSource} for this {@link GATKTool}.  Never {@code null}.
+     */
+    protected ReferenceDataSource getReferenceDataSource() {
+        if ( reference == null ) {
+            throw new GATKException("Attempted to retrieve null reference!");
+        }
+        return reference;
+    }
+
+    /**
+     * Get the {@link ReadsDataSource} for this {@link GATKTool}.
+     * Will throw a {@link GATKException} if the reads are null.
+     * @return the {@link ReadsDataSource} for this {@link GATKTool}.  Never {@code null}.
+     */
+    protected ReadsDataSource getReadsDataSource() {
+        if ( reads == null ) {
+            throw new GATKException("Attempted to retrieve null reads!");
+        }
+        return reads;
+    }
+
+    /**
+     * Get the {@link FeatureManager} for this {@link GATKTool}.
+     * Will throw a {@link GATKException} if the features are null.
+     * @return the {@link FeatureManager} for this {@link GATKTool}.  Never {@code null}.
+     */
+    protected FeatureManager getFeatureManager() {
+        if ( features == null ) {
+            throw new GATKException("Attempted to retrieve null reference!");
+        }
+        return features;
+    }
 
     /**
      * Intervals to be used for traversal (null if no intervals were provided).

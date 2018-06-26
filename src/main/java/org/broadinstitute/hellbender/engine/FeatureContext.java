@@ -39,7 +39,7 @@ public class FeatureContext {
      * FeatureManager containing backing data sources for all discovered Feature arguments.
      * Null if there are no sources of Features.
      */
-    public final FeatureManager featureManager;
+    private final FeatureManager featureManager;
 
     /**
      * We will return Features overlapping this interval. Null if this context has no known location

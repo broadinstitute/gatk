@@ -40,7 +40,7 @@ public final class ReferenceContext implements Iterable<Byte> {
     /**
      * Interval representing our location on the reference. May be null if, eg., we're dealing with unmapped data.
      */
-    private final SimpleInterval interval;
+    private SimpleInterval interval;
 
     /**
      * Reference interval optionally expanded by a configurable amount to produce the true query interval.
@@ -249,6 +249,32 @@ public final class ReferenceContext implements Iterable<Byte> {
     }
 
     /**
+     * Set the location on the reference represented by this context, without including
+     * any extra bases of requested context around this interval.
+     *
+     * Will set the window around the given interval to be the same as the previous window.
+     * Will invalidate the cache.
+     *
+     * @param newInterval The new interval on which this reference will be based.
+     */
+    public void setInterval(final SimpleInterval newInterval) {
+
+        // Determine the previous window
+        // (This MUST be done first):
+        final int windowLeadingBases = interval.getStart() - window.getStart();
+        final int windowTrailingBases = window.getEnd() - interval.getEnd();
+
+        // Set the new interval:
+        this.interval = newInterval;
+
+        // Invalidate our cache:
+        this.cachedSequence = null;
+
+        // Set our window:
+        setWindow(windowLeadingBases, windowTrailingBases);
+    }
+
+    /**
      * Set expanded window boundaries, subject to cropping at contig boundaries
      *
      * Allows the client to request a specific number of extra reference bases to include before
@@ -352,7 +378,7 @@ public final class ReferenceContext implements Iterable<Byte> {
 
         final SAMSequenceRecord sequence = dataSource.getSequenceDictionary().getSequence(contig);
         if ( sequence == null ) {
-            throw new UserException.NoDataAtRequestedContig(contig);
+            throw new UserException("Given reference file does not have data at the requested contig(" + contig + ")!");
         }
 
         final int sequenceLength = dataSource.getSequenceDictionary().getSequence(contig).getSequenceLength();

@@ -54,7 +54,8 @@ public class FuncotatorArgumentDefinitions {
     public static final String LOOKAHEAD_CACHE_IN_BP_NAME = "lookahead-cache-bp";
     public static final int LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE = VariantWalkerBase.FEATURE_CACHE_LOOKAHEAD;
 
-    public static final String FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION = "force-b37-to-hg19-reference-contig-lookup";
+    public static final String FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION = "force-b37-to-hg19-reference-contig-conversion";
+    public static final String DISABLE_SEQUENCE_DICTIONARY_COMPARISON = "disable-sequence-dictionary-comparison";
 
     // ------------------------------------------------------------
     // Helper Types:

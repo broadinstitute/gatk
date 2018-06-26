@@ -6,10 +6,13 @@ import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.transformers.VariantTransformer;
 import org.broadinstitute.hellbender.utils.IndexUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.Spliterator;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
@@ -68,6 +71,21 @@ public abstract class VariantWalkerBase extends GATKTool {
         return super.getBestAvailableSequenceDictionary();
     }
 
+    @Override
+    final protected ReferenceDataSource getReferenceDataSource() {
+        throw new GATKException("Should never access ReferenceDataSource in child classes of VariantWalkerBase.");
+    }
+
+    @Override
+    final protected ReadsDataSource getReadsDataSource() {
+        throw new GATKException("Should never access ReadsDataSource in child classes of VariantWalkerBase.");
+    }
+
+    @Override
+    final protected FeatureManager getFeatureManager() {
+        throw new GATKException("Should never access FeatureManager in child classes of VariantWalkerBase.");
+    }
+
     /**
      * Process the feature inputs that represent the primary driving source(s) of variants for this tool, and
      * perform any necessary header and sequence dictionary validation. Called by the framework during feature
@@ -94,16 +112,56 @@ public abstract class VariantWalkerBase extends GATKTool {
     protected abstract Spliterator<VariantContext> getSpliteratorForDrivingVariants();
 
     /**
+     * Returns the pre-filter variant transformer (simple or composite) that will be applied to the variants before filtering.
+     * The default implementation uses the {@link VariantTransformer#identity()}.
+     * Default implementation of {@link #traverse()} calls this method once before iterating over the reads and reuses
+     * the transformer object to avoid object allocation.
+     *
+     * Subclasses can extend to provide own transformers (i.e. override and call super).
+     * Multiple transformers can be composed by using {@link VariantTransformer} composition methods.
+     */
+    public VariantTransformer makePreVariantFilterTransformer() {
+        return VariantTransformer.identity();
+    }
+
+    /**
+     * Returns the post-filter variant transformer (simple or composite) that will be applied to the reads after filtering.
+     * The default implementation uses the {@link VariantTransformer#identity()}.
+     * Default implementation of {@link #traverse()} calls this method once before iterating over the reads and reuses
+     * the transformer object to avoid object allocation.
+     *
+     * Subclasses can extend to provide own transformers (i.e. override and call super).
+     * Multiple transformers can be composed by using {@link VariantTransformer} composition methods.
+     */
+    public VariantTransformer makePostVariantFilterTransformer(){
+        return VariantTransformer.identity();
+    }
+
+    /**
+     * Returns a stream over the variants, which are:
+     *
+     * 1. Transformed with {@link #makePreVariantFilterTransformer()}.
+     * 2. Filtered with {@code filter}.
+     * 3. Transformed with {@link #makePostVariantFilterTransformer()}.
+     */
+    protected Stream<VariantContext> getTransformedVariantStream(final VariantFilter filter) {
+        final VariantTransformer preTransformer  = makePreVariantFilterTransformer();
+        final VariantTransformer postTransformer = makePostVariantFilterTransformer();
+        return StreamSupport.stream(getSpliteratorForDrivingVariants(), false)
+                .map(preTransformer)
+                .filter(filter)
+                .map(postTransformer);
+    }
+
+    /**
      * Implementation of variant-based traversal.
      * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
      */
     @Override
     public void traverse() {
-        final VariantFilter variantfilter = makeVariantFilter();
         final CountingReadFilter readFilter = makeReadFilter();
         // Process each variant in the input stream.
-        StreamSupport.stream(getSpliteratorForDrivingVariants(), false)
-                .filter(variantfilter)
+        getTransformedVariantStream( makeVariantFilter() )
                 .forEach(variant -> {
                     final SimpleInterval variantInterval = new SimpleInterval(variant);
                     apply(variant,

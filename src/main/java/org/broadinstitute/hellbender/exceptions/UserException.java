@@ -317,14 +317,6 @@ public class UserException extends RuntimeException {
         }
     }
 
-    public static class NoDataAtRequestedContig extends UserException {
-        private static final long serialVersionUID = 1L;
-        public NoDataAtRequestedContig(final String contig) {
-            super("Given reference file does not have data at the requested contig(" + contig + ")!");
-        }
-    }
-
-
     /**
      * <p/>
      * Class UserException.MalformedFile

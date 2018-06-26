@@ -14,7 +14,6 @@ import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceState;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.util.Iterator;
@@ -70,6 +69,21 @@ public abstract class AbstractConcordanceWalker extends GATKTool {
     public final SAMSequenceDictionary getBestAvailableSequenceDictionary() {
         initializeTruthVariantsIfNecessary();
         return truthVariants.getSequenceDictionary();
+    }
+
+    @Override
+    final protected ReferenceDataSource getReferenceDataSource() {
+        throw new GATKException("Should never access ReferenceDataSource in child classes of AbstractConcordanceWalker.");
+    }
+
+    @Override
+    final protected ReadsDataSource getReadsDataSource() {
+        throw new GATKException("Should never access ReadsDataSource in child classes of AbstractConcordanceWalker.");
+    }
+
+    @Override
+    final protected FeatureManager getFeatureManager() {
+        throw new GATKException("Should never access FeatureManager in child classes of AbstractConcordanceWalker.");
     }
 
     private void initializeTruthVariantsIfNecessary() {

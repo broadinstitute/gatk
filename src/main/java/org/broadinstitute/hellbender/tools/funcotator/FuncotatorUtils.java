@@ -1499,21 +1499,7 @@ public final class FuncotatorUtils {
         final String referenceBases;
 
         // Get the reference bases for this interval.
-        // This grossness is required for now as a fix for the hg19 vs b37 reference contig name issue:
-        byte[] bases;
-        try {
-            bases = referenceContext.getBases(referenceWindowInBases, endWindow);
-        }
-        catch (final UserException.MissingContigInSequenceDictionary | UserException.NoDataAtRequestedContig ex) {
-
-            final SimpleInterval otherPossibleRefInterval = new SimpleInterval(
-                    FuncotatorUtils.convertHG19ContigToB37Contig(referenceContext.getWindow().getContig()),
-                        Math.max(referenceContext.getWindow().getStart() - referenceWindowInBases, 1),
-                        referenceContext.getWindow().getEnd() + endWindow
-            );
-
-            bases = referenceContext.getBases(otherPossibleRefInterval);
-        }
+        final byte[] bases = referenceContext.getBases(referenceWindowInBases, endWindow);
 
         if ( strand == Strand.POSITIVE ) {
             // Get the reference sequence:
