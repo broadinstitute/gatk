@@ -76,6 +76,14 @@ import java.util.stream.IntStream;
  *     <li>A vcf file describing the discovered structural variants.</li>
  * </ul>
  *
+ * <h3>Optional Output</h3>
+ * Extra, optional output is generated when the experimental interpretation unit is run
+ * (note that they may change as features are still being experimented and added)
+ * <ul>
+ *     <li>several VCF files containing variants discovered via different code path (ultimately will be merged into a single VCF)</li>
+ *     <li>query name sorted SAM file of local assembly contigs from whose alignments we can not yet make un-ambiguous calls (intended for debugging and future developments)</li>
+ * </ul>
+ *
  * <h3>Usage example</h3>
  * <pre>
  *   gatk StructuralVariationDiscoveryPipelineSpark \
@@ -143,6 +151,8 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
     @Override
     protected void runTool( final JavaSparkContext ctx ) {
 
+        validateParams();
+
         Utils.validate(evidenceAndAssemblyArgs.externalEvidenceFile == null || discoverStageArgs.cnvCallsFile == null,
                 "Please only specify one of externalEvidenceFile or cnvCallsFile");
 
@@ -192,6 +202,11 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         if ( expInterpret != null ) {
             experimentalInterpretation(ctx, assembledEvidenceResults, svDiscoveryInputMetaData);
         }
+    }
+
+    private void validateParams() {
+        evidenceAndAssemblyArgs.validate();
+        discoverStageArgs.validate();
     }
 
     private SvDiscoveryInputMetaData getSvDiscoveryInputData(final JavaSparkContext ctx,

@@ -4,6 +4,8 @@ import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Hidden;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.Serializable;
 
@@ -194,11 +196,40 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         private static final String OUTPUT_ORDER_SHORT_NAME = "sort";
         private static final String OUTPUT_ORDER_FULL_NAME = "assembled-contigs-output-order";
 
-        @Argument(doc = "sorting order to be used for the output assembly alignments SAM/BAM file",
+        @Argument(doc = "sorting order to be used for the output assembly alignments SAM/BAM file (currently only coordinate or query name is supported)",
                 shortName = OUTPUT_ORDER_SHORT_NAME,
                 fullName = OUTPUT_ORDER_FULL_NAME,
                 optional = true)
         public SAMFileHeader.SortOrder assembliesSortOrder = SAMFileHeader.SortOrder.coordinate;
+
+        /**
+         * Explicit call this method.
+         */
+        public void validate() {
+            ParamUtils.isPositive(kSize, "invalid value provided to kSize: " + kSize);
+            ParamUtils.isPositive(maxDUSTScore, "invalid value provided to maxDUSTScore: " + maxDUSTScore);
+            ParamUtils.isPositiveOrZero(minEvidenceMapQ, "invalid value provided to minEvidenceMapQ: " + minEvidenceMapQ);
+            ParamUtils.isPositive(minEvidenceMatchLength, "invalid value provided to minEvidenceMatchLength: " + minEvidenceMatchLength);
+            ParamUtils.isPositiveOrZero(allowedShortFragmentOverhang, "invalid value provided to allowedShortFragmentOverhang: " + allowedShortFragmentOverhang);
+            ParamUtils.isPositive(maxTrackedFragmentLength, "invalid value provided to maxTrackedFragmentLength: " + maxTrackedFragmentLength);
+            ParamUtils.isPositive(highDepthCoveragePeakFactor, "invalid value provided to highDepthCoveragePeakFactor: " + highDepthCoveragePeakFactor);
+            ParamUtils.isPositive(minEvidenceWeight, "invalid value provided to minEvidenceWeight: " + minEvidenceWeight);
+            ParamUtils.isPositive(minCoherentEvidenceWeight, "invalid value provided to minCoherentEvidenceWeight: " + minCoherentEvidenceWeight);
+            ParamUtils.isPositive(minKmersPerInterval, "invalid value provided to minKmersPerInterval: " + minKmersPerInterval);
+            ParamUtils.isPositive(cleanerMaxIntervals, "invalid value provided to cleanerMaxIntervals: " + cleanerMaxIntervals);
+            ParamUtils.isPositive(cleanerMinKmerCount, "invalid value provided to cleanerMinKmerCount: " + cleanerMinKmerCount);
+            ParamUtils.isPositive(cleanerMaxCopyNumber, "invalid value provided to cleanerMaxCopyNumber: " + cleanerMaxCopyNumber);
+            ParamUtils.isPositive(assemblyToMappedSizeRatioGuess, "invalid value provided to assemblyToMappedSizeRatioGuess: " + assemblyToMappedSizeRatioGuess);
+            ParamUtils.isPositive(maxFASTQSize, "invalid value provided to maxFASTQSize: " + maxFASTQSize);
+            ParamUtils.isPositiveOrZero(exclusionIntervalPadding, "invalid value provided to exclusionIntervalPadding: " + exclusionIntervalPadding);
+            ParamUtils.isPositive(externalEvidenceWeight, "invalid value provided to externalEvidenceWeight: " + externalEvidenceWeight);
+            ParamUtils.isPositive(externalEvidenceUncertainty, "invalid value provided to externalEvidenceUncertainty: " + externalEvidenceUncertainty);
+            if ( !(assembliesSortOrder.equals(SAMFileHeader.SortOrder.coordinate)
+                    ||
+                    assembliesSortOrder.equals(SAMFileHeader.SortOrder.queryname)) )
+                throw new UserException("We currently support only coordinate or query name sort order for assembly alignment SAM output. " +
+                        "User provided sort order: " + assembliesSortOrder);
+        }
     }
 
     public static class DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection implements Serializable {
@@ -239,6 +270,17 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         @Argument(doc = "Maximum size deletion to call based on imprecise evidence without corroborating read depth evidence",
                 fullName = "max-callable-imprecise-deletion-size", optional=true)
         public int maxCallableImpreciseVariantDeletionSize = DEFAULT_MAX_CALLABLE_IMPRECISE_DELETION_SIZE;
+
+        /**
+         * Explicit call this method.
+         */
+        public void validate() {
+            ParamUtils.isPositive(minAlignLength, "invalid value provided to minAlignLength: " + minAlignLength);
+            ParamUtils.isPositive(assemblyImpreciseEvidenceOverlapUncertainty, "invalid value provided to assemblyImpreciseEvidenceOverlapUncertainty: " + assemblyImpreciseEvidenceOverlapUncertainty);
+            ParamUtils.isPositive(impreciseVariantEvidenceThreshold, "invalid value provided to impreciseVariantEvidenceThreshold: " + impreciseVariantEvidenceThreshold);
+            ParamUtils.isPositive(truthIntervalPadding, "invalid value provided to truthIntervalPadding: " + truthIntervalPadding);
+            ParamUtils.isPositive(maxCallableImpreciseVariantDeletionSize, "invalid value provided to maxCallableImpreciseVariantDeletionSize: " + maxCallableImpreciseVariantDeletionSize);
+        }
     }
 
 }

@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -57,7 +58,7 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
                     " -O " + outputDir + "/StructuralVariationDiscoveryPipelineSparkIntegrationTest/" +
             " --aligner-index-image " + alignerRefIndexImgLoc +
                     " --kmers-to-ignore " + kmerIgnoreListLoc +
-                    " --contig-sam-file "       + outputDir + "/assemblies.sam" +
+                    " --contig-sam-file "       + outputDir + "/assemblies.bam" +
                     " --breakpoint-intervals " + outputDir + "/intervals" +
                     " --fastq-dir "            + outputDir + "/fastq" +
                     (cnvCallsLoc == null ? "" : " --cnv-calls " + cnvCallsLoc) +
@@ -107,6 +108,8 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
                 SVIntegrationTestDataProvider.EXPECTED_SIMPLE_DEL_VCF,
                 args.get(args.indexOf("-O")+1).concat("sample_experimentalInterpretation_NonComplex.vcf"),
                 annotationsToIgnoreWhenComparingVariants, false);
+
+        Assert.assertTrue(Files.exists(IOUtils.getPath( args.get(args.indexOf("--contig-sam-file") + 1).replace(".bam", ".bai") )));
     }
 
     @Test(dataProvider = "svDiscoverPipelineSparkIntegrationTest", groups = "sv")
@@ -151,7 +154,7 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
             argsToBeModified.set(idx+1, path.toUri().toString());
 
             idx = argsToBeModified.indexOf("--contig-sam-file");
-            path = new Path(workingDirectory, "assemblies.sam");
+            path = new Path(workingDirectory, "assemblies.bam");
             argsToBeModified.set(idx+1, path.toUri().toString());
 
             idx = argsToBeModified.indexOf("--breakpoint-intervals");
@@ -168,6 +171,8 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
                     vcfOnHDFS.replace("_inv_del_ins.vcf", "_experimentalInterpretation_NonComplex.vcf"),
                     annotationsToIgnoreWhenComparingVariants,
                     true);
+
+            Assert.assertTrue(cluster.getFileSystem().exists(new Path(workingDirectory, "assemblies.bai")));
         });
     }
 
