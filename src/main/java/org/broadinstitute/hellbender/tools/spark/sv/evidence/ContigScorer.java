@@ -37,13 +37,12 @@ public class ContigScorer implements Serializable {
         }
 
         // cap coverage -- sometimes there are crazy high values
-        if ( maxCoverage > 3.*genomicCoverage ) {
-            maxCoverage = 3.*genomicCoverage;
-        }
+        maxCoverage = Math.min(maxCoverage, 3.*genomicCoverage);
+        maxSplits = Math.min(maxSplits, 3.*genomicCoverage);
 
         // an average of 20 counts per division, but no fewer than 2 nor more than 50
         nDivisions = Math.max(50, Math.min(2, nContigs / 20));
-        stepSplits = 2.*getStep(maxSplits, nDivisions);
+        stepSplits = getStep(maxSplits, nDivisions);
         stepCoverage = getStep(maxCoverage, nDivisions);
         // allocate an extra row for coverage overflow counts
         histogram = new IntHistogram(nDivisions *(nDivisions +1));
@@ -98,10 +97,7 @@ public class ContigScorer implements Serializable {
         if ( maxBin == 0. ) {
             throw new GATKException("there are no observations to score against");
         }
-        // we don't test for coverage being too high, because getBin has an overflow capability in that dimension
-        if ( contigScore.getSplitReadsPerBase() < 0. ||
-                contigScore.getSplitReadsPerBase()/ stepSplits >= nDivisions ||
-                contigScore.getMeanCoverage() < 0. ) {
+        if ( contigScore.getSplitReadsPerBase() < 0. || contigScore.getMeanCoverage() < 0. ) {
             throw new GATKException("contigScore out of bounds");
         }
         return (float)(histogram.getNObservations(getBin(contigScore))/maxBin);

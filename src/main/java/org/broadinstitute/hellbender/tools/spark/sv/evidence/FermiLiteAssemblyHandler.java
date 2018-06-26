@@ -714,7 +714,7 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
         final ContigScore[] contigScores = new ContigScore[nContigs];
         for ( int contigIdx = 0; contigIdx != nContigs; ++contigIdx ) {
             final int contigLength = contigs.get(contigIdx).getSequence().length;
-            final double splits = (double)nSplits[contigIdx]/contigLength;
+            final double splits = (double)nSplits[contigIdx];
             final double coverage = (double)nBases[contigIdx]/contigLength;
             contigScores[contigIdx] = new ContigScore(splits, coverage);
         }
