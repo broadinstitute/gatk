@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.CommonInfo;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -15,14 +16,11 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.samples.Sex;
-import org.broadinstitute.hellbender.utils.variant.GATKVariant;
-import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.File;
@@ -32,11 +30,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Stream;
 
 @CommandLineProgramProperties(
@@ -78,12 +74,6 @@ public class FilterFuncotations extends VariantWalker {
     private ReferenceVersion referenceVersion;
 
     @Argument(
-            shortName = "G",
-            fullName = "gender",
-            doc = "Sample gender for this vcf.")
-    protected Sex gender;
-
-    @Argument(
             fullName = "acmg59-list",
             doc = "American College of Medical Genomics list. https://www.ncbi.nlm.nih.gov/clinvar/docs/acmg/"
     )
@@ -95,17 +85,13 @@ public class FilterFuncotations extends VariantWalker {
     )
     protected File lofListFile;
 
-    @Argument(
-            fullName = "lmm-variants",
-            doc = "Path/LP variants from LMM which should always be flagged, if present."
-    )
-    protected FeatureDataSource<VariantContext> lmmVariants;
-
     private VariantContextWriter outputVcfWriter;
     private String[] funcotationKeys;
     private List<FuncotationFilter> funcotationFilters = new ArrayList<>();
     private List<String> acmg59Genes;
     private List<String> lofGenes;
+    // FIXME: Read from VCF header.
+    private Sex gender = Sex.UNKNOWN;
 
     @Override
     public void onTraversalStart() {
@@ -133,7 +119,7 @@ public class FilterFuncotations extends VariantWalker {
     private void registerFilters() {
         funcotationFilters.add(new ClinVarFilter(gender, acmg59Genes));
         funcotationFilters.add(new LofFilter(referenceVersion, lofGenes));
-        funcotationFilters.add(new LmmFilter(lmmVariants));
+        funcotationFilters.add(new LmmFilter());
     }
 
     @Override
@@ -165,6 +151,11 @@ public class FilterFuncotations extends VariantWalker {
 }
 
 abstract class FuncotationFiltrationRule {
+
+    enum ExacSubPopulation {
+        AFR, AMR, EAS, FIN, NFE, OTH, SAS
+    }
+
     private static Logger logger = LogManager.getLogger(ClinVarFilter.class);
     private final String[] fieldNames;
     private final String ruleName;
@@ -195,10 +186,24 @@ abstract class FuncotationFiltrationRule {
         if (result) logger.warn(String.format("Matched Rule: %s For Variant %s", ruleName, variant));
         return result;
     }
+
+    private double minorAlleleFreq(final VariantContext variant, final ExacSubPopulation subpop) {
+        final CommonInfo info = variant.getCommonInfo();
+        final double alleleCount = info.getAttributeAsDouble("AC_" + subpop.name(), 0);
+        final double chromosomeCount = info.getAttributeAsDouble("AN_" + subpop.name(), Double.POSITIVE_INFINITY);
+
+        return alleleCount / chromosomeCount;
+    }
+
+    double maxMinorAlleleFreq(final VariantContext variant) {
+        return Arrays.stream(ExacSubPopulation.values())
+                .map(subpop -> minorAlleleFreq(variant, subpop))
+                .max(Double::compare)
+                .orElse(Double.NaN);
+    }
 }
 
 abstract class FuncotationFilter {
-    static final String CLIN_VAR_VCF_AF_EXAC = "ClinVar_VCF_AF_EXAC";
     static final String CLIN_VAR_VCF_GENEINFO = "ClinVar_VCF_GENEINFO";
     private final String filterName;
 
@@ -258,11 +263,10 @@ class ClinVarFilter extends FuncotationFilter {
         });
 
         // 3) Frequency: Max Minor Allele Freq is ≤5% in GnoMAD (ExAC for Proof of Concept)
-        clinVarFiltrationRules.add(new FuncotationFiltrationRule("ClinVar-MAF", CLIN_VAR_VCF_AF_EXAC) {
+        clinVarFiltrationRules.add(new FuncotationFiltrationRule("ClinVar-MAF") {
             @Override
             boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
-                return fieldValueMap.get(CLIN_VAR_VCF_AF_EXAC)
-                        .anyMatch(exacMaf -> Double.valueOf(exacMaf) <= 0.05);
+                return maxMinorAlleleFreq(variant) <= 0.05;
             }
         });
 
@@ -321,11 +325,10 @@ class LofFilter extends FuncotationFilter {
         });
 
         // 3) Frequency: Max Minor Allele Freq is ≤1% in GnoMAD (ExAC for Proof of Concept)
-        lofFiltrationRules.add(new FuncotationFiltrationRule("LOF-MAF", CLIN_VAR_VCF_AF_EXAC) {
+        lofFiltrationRules.add(new FuncotationFiltrationRule("LOF-MAF") {
             @Override
             boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
-                return fieldValueMap.get(CLIN_VAR_VCF_AF_EXAC)
-                        .anyMatch(exacMaf -> Double.valueOf(exacMaf) <= 0.01);
+                return maxMinorAlleleFreq(variant) <= 0.01;
             }
         });
         return lofFiltrationRules;
@@ -334,11 +337,8 @@ class LofFilter extends FuncotationFilter {
 
 class LmmFilter extends FuncotationFilter {
 
-    private final Set<GATKVariant> lmmVariants = new HashSet<>();
-
-    LmmFilter(FeatureDataSource<VariantContext> lmmVariantSource) {
+    LmmFilter() {
         super("LMM");
-        lmmVariantSource.forEach(variantContext -> lmmVariants.add(new VariantContextVariantAdapter(variantContext)));
     }
 
     @Override
@@ -350,7 +350,8 @@ class LmmFilter extends FuncotationFilter {
         lmmFiltrationRules.add(new FuncotationFiltrationRule("LMM-path-LP") {
             @Override
             boolean ruleFunction(VariantContext variant, Map<String, Stream<String>> fieldValueMap) {
-                return lmmVariants.contains(new VariantContextVariantAdapter(variant));
+                // TODO
+                return false;
             }
         });
 
