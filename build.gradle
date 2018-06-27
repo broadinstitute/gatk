@@ -685,6 +685,10 @@ task jacocoTestReportOnShadowJar(type: JacocoReport) {
             }
         }
     }
+    jacoco {
+        reportsDir = file("$System.env.SOURCE_DIR/build/reports/")
+    }
+
     sourceDirectories = files(sourceFiles)
     classDirectories =  files("testClasses")
 
