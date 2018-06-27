@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMReadGroupRecord;
+import htsjdk.samtools.*;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSet;
 import org.broadinstitute.hellbender.tools.spark.utils.LongIterator;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -116,6 +116,26 @@ public final class SVUtils {
      */
     public static <T> Collector<T, ?, ArrayList<T>> arrayListCollector(final int size) {
         return Collectors.toCollection( () -> new ArrayList<>(size));
+    }
+
+    /**
+     * Given {@code sortOrder}, provide appropriate comparator.
+     * Currently only support coordinate or query-name order,
+     * and throws UserException if other values are specified.
+     */
+    public static SAMRecordComparator getSamRecordComparator(final SAMFileHeader.SortOrder sortOrder) {
+        final SAMRecordComparator samRecordComparator;
+        switch (sortOrder) {
+            case coordinate:
+                samRecordComparator = new SAMRecordCoordinateComparator();
+                break;
+            case queryname:
+                samRecordComparator = new SAMRecordQueryNameComparator();
+                break;
+            default:
+                throw new UserException("Unsupported assembly alignment sort order specified");
+        }
+        return samRecordComparator;
     }
 
     // =================================================================================================================
