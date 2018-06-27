@@ -45,13 +45,15 @@ RUN mkdir $DOWNLOAD_DIR && \
     wget -nv -O $DOWNLOAD_DIR/miniconda.sh $CONDA_URL && \
     test "`md5sum $DOWNLOAD_DIR/miniconda.sh | awk -v FS='  ' '{print $1}'` = $CONDA_MD5" && \
     bash $DOWNLOAD_DIR/miniconda.sh -p $CONDA_PATH -b && \
-    rm $DOWNLOAD_DIR/miniconda.sh
+    rm $DOWNLOAD_DIR/miniconda.sh && \
+    rm -r /root/.cache/pip
 WORKDIR /gatk
 RUN mv /gatk/gatkcondaenv.yml /gatk/scripts
 ENV PATH $CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH
 RUN conda env create -n gatk -f /gatk/scripts/gatkcondaenv.yml && \
     echo "source activate gatk" >> /gatk/gatkenv.rc && \
     conda clean -y -all
+    rm -r /root/.cache/pip
 
 CMD ["bash", "--init-file", "/gatk/gatkenv.rc"]
 
