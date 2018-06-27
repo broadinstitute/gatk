@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import com.google.common.primitives.Ints;
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -11,6 +14,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.List;
+import java.util.OptionalDouble;
 import java.util.OptionalInt;
 
 /**
@@ -43,15 +47,7 @@ public class ReadPosition extends PerAlleleAnnotation implements StandardMutectA
 
     @Override
     protected OptionalInt getValueForRead(final GATKRead read, final VariantContext vc) {
-        Utils.nonNull(read);
-        final int offset = ReadUtils.getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), vc.getStart(), ReadUtils.ClippingTail.RIGHT_TAIL, true);
-        if ( offset == ReadUtils.CLIPPING_GOAL_NOT_REACHED || AlignmentUtils.isInsideDeletion(read.getCigar(), offset)) {
-            return OptionalInt.empty();
-        }
-
-        int readPosition = AlignmentUtils.calcAlignmentByteArrayOffset(read.getCigar(), offset, false, 0, 0);
-        final int numAlignedBases = AlignmentUtils.getNumAlignedBasesCountingSoftClips( read );
-        final int distanceFromEnd = Math.min(readPosition, numAlignedBases - readPosition - 1);
-        return OptionalInt.of(distanceFromEnd);
+        final OptionalDouble valueAsDouble = ReadPosRankSumTest.getReadPosition(read, vc.getStart());
+        return valueAsDouble.isPresent() ? OptionalInt.of((int) valueAsDouble.getAsDouble()) : OptionalInt.empty();
     }
 }
