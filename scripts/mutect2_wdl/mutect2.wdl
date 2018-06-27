@@ -51,9 +51,6 @@
 ## funco_annotation_defaults:  Default values for annotations, when values are unspecified.  Specified as  <ANNOTATION>:<VALUE>.  For example:  "Center:Broad"
 ## funco_annotation_overrides:  Values for annotations, even when values are unspecified.  Specified as  <ANNOTATION>:<VALUE>.  For example:  "Center:Broad"
 ##
-
-## TODO: Merge with mutect2_nio.wdl
-
 ## Outputs :
 ## - One VCF file and its index with primary filtering applied; secondary filtering and functional annotation if requested; a bamout.bam
 ##   file of reassembled reads if requested
@@ -1077,7 +1074,7 @@ task FuncotateMaf {
 
      runtime {
          docker: gatk_docker
-         bootDiskSizeGb: 12
+         bootDiskSizeGb: 20
          memory: machine_mem + " MB"
          disks: "local-disk " + select_first([disk_space_gb, default_disk_space_gb]) + if use_ssd then " SSD" else " HDD"
          preemptible: select_first([preemptible_attempts, 3])

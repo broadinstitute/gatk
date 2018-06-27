@@ -1507,7 +1507,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     }
 
     /**
-     * Also, tests some basic sorting.
+     * Also, tests some basic sorting independent of the user defined list.
      */
     @Test(dataProvider = "provideSortingOfUserRequestedTranscripts")
     public void testSortingOfUserRequestedTranscripts(final List<GencodeFuncotation> gencodeFuncotations, final Set<String> userRequestedTranscripts, final String gtFirstTranscript) {
@@ -1538,7 +1538,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final SimpleInterval variantInterval = new SimpleInterval("chr3", 2944600, 2944600);
         final ReferenceContext referenceContext = new ReferenceContext(refDataSourceHg19Ch3, variantInterval);
         final VariantContext vc = new VariantContextBuilder()
-                .alleles(Arrays.asList(Allele.create("A", true), Allele.create("AT", false)))
+                .alleles(Arrays.asList(Allele.create("T", true), Allele.create("AT", false)))
                 .chr(variantInterval.getContig()).start(variantInterval.getStart()).stop(variantInterval.getEnd())
                 .make();
 
@@ -1591,6 +1591,5 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
             final List<Funcotation> gencodeFuncotations = funcotationFactory.createFuncotationsOnVariant(vc, referenceContext, gencodeFeatures);
             Assert.assertTrue(gencodeFuncotations.size() > 1);
         }
-
     }
 }
