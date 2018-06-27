@@ -37,6 +37,9 @@ public class BaseQuality extends PerAlleleAnnotation implements StandardMutectAn
     protected String getDescription() { return "median base quality"; }
 
     @Override
+    protected boolean includeRefAllele() { return true; }
+
+    @Override
     protected OptionalInt getValueForRead(final GATKRead read, final VariantContext vc) {
         Utils.nonNull(read);
 

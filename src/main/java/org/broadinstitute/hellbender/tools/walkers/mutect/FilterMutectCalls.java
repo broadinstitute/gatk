@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.io.File;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -98,7 +99,10 @@ public final class FilterMutectCalls extends VariantWalker {
         vcfWriter.writeHeader(vcfHeader);
 
         final String tumorSample = getHeaderForVariants().getMetaDataLine(Mutect2Engine.TUMOR_SAMPLE_KEY_IN_VCF_HEADER).getValue();
-        filteringEngine = new Mutect2FilteringEngine(MTFAC, tumorSample);
+        final VCFHeaderLine normalSampleHeaderLine = getHeaderForVariants().getMetaDataLine(Mutect2Engine.NORMAL_SAMPLE_KEY_IN_VCF_HEADER);
+        final Optional<String> normalSample = normalSampleHeaderLine == null ? Optional.empty() : Optional.of(normalSampleHeaderLine.getValue());
+
+        filteringEngine = new Mutect2FilteringEngine(MTFAC, tumorSample, normalSample);
     }
 
     @Override
