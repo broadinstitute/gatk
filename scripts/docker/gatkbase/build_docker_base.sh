@@ -6,7 +6,7 @@ set -e
 
 REPO=broadinstitute
 PROJECT=gatk
-VERSION=1.2.4
+VERSION=2.0.0
 FULL_PATH=${REPO}/${PROJECT}:gatkbase-${VERSION}
 
 #################################################
@@ -42,7 +42,7 @@ fi
 
 # Build
 echo "Building image to tag ${FULL_PATH}..."
-docker build -t ${FULL_PATH} . ##TODO THIS NEEDS SQUASH ADDED BACK IN
+docker build --squash -t ${FULL_PATH} .
 
 ## Push
 if [ -n "${IS_PUSH}" ]; then

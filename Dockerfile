@@ -1,5 +1,7 @@
 # Using OpenJDK 8
 FROM broadinstitute/gatk:gatkbase-1.2.3
+
+# Location of the unzipped gatk bundle files
 ARG ZIPPATH
 
 ADD $ZIPPATH /gatk
@@ -15,7 +17,7 @@ WORKDIR /root
 
  # Make sure we can see a help message
 RUN java -jar gatk.jar -h
-RUN mkdir /gatksrc
+RUN mkdir /gatkCloneMountPoint
 RUN mkdir /jars
 RUN mkdir .gradle
 
@@ -27,8 +29,10 @@ RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
     echo "export TEST_JAR=\$( find /jars -name \"gatk*test.jar\" )" >> /root/run_unit_tests.sh && \
     echo "export TEST_DEPENDENCY_JAR=\$( find /jars -name \"gatk*testDependencies.jar\" )" >> /root/run_unit_tests.sh && \
     echo "export GATK_JAR=$( find /gatk -name "gatk*local.jar" )" >> /root/run_unit_tests.sh && \
-    echo "export SOURCE_DIR=/gatksrc/src/main/java" >> /root/run_unit_tests.sh && \
-    echo "cd /gatk/ && /gatksrc/gradlew unpackJar jacocoTestReportOnShadowJar -a -p /gatksrc" >> /root/run_unit_tests.sh
+    echo "export SOURCE_DIR=/gatkCloneMountPoint/src/main/java" >> /root/run_unit_tests.sh && \
+    echo "ln -s /gatkCloneMountPoint/src/ /gatkCloneMountPoint/scripts/docker/src" >> /root/run_unit_tests.sh && \
+    echo "ln -s /gatkCloneMountPoint/build/ /gatkCloneMountPoint/scripts/docker/build" >> /root/run_unit_tests.sh && \
+    echo "cd /gatk/ && /gatkCloneMountPoint/gradlew testOnPackagedReleaseJar jacocoTestReportOnPackagedReleaseJar -g /root -a -p /gatkCloneMountPoint" >> /root/run_unit_tests.sh
 
 WORKDIR /root
 RUN cp -r /root/run_unit_tests.sh /gatk
@@ -47,12 +51,11 @@ RUN mkdir $DOWNLOAD_DIR && \
     bash $DOWNLOAD_DIR/miniconda.sh -p $CONDA_PATH -b && \
     rm $DOWNLOAD_DIR/miniconda.sh
 WORKDIR /gatk
-RUN mv /gatk/gatkcondaenv.yml /gatk/scripts
 ENV PATH $CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH
-RUN conda env create -n gatk -f /gatk/scripts/gatkcondaenv.yml && \
+RUN conda env create -n gatk -f /gatk/gatkcondaenv.yml && \
     echo "source activate gatk" >> /gatk/gatkenv.rc && \
     conda clean -y -all && \
-    rm -r /root/.cache/pip
+    rm -rf /root/.cache/pip
 
 CMD ["bash", "--init-file", "/gatk/gatkenv.rc"]
 

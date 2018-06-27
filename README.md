@@ -393,7 +393,7 @@ echo "source <PATH_TO>/gatk-completion.sh" >> ~/.bashrc
     * Test report is in `build/reports/tests/test/index.html`.
     * What will happen depends on the value of the `TEST_TYPE` environment variable: 
        * unset or any other value         : run non-cloud unit and integration tests, this is the default
-       * `cloud`, `unit`, `integration`, `spark`   : run only the cloud, unit, integration, or Spark tests
+       * `cloud`, `unit`, `integration`, `spark`, `python`   : run only the cloud, unit, integration, python, or Spark tests
        * `all`                            : run the entire test suite
     * Cloud tests require being logged into `gcloud` and authenticated with a project that has access
       to the cloud test data.  They also require setting several certain environment variables.
