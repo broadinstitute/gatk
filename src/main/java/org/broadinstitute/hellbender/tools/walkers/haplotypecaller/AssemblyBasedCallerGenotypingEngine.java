@@ -204,7 +204,7 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
         // Otherwise (else part) we need to do it again.
         if (configuration.useFilteredReadMapForAnnotations || !configuration.isSampleContaminationPresent()) {
             readAlleleLikelihoodsForAnnotations = readAlleleLikelihoodsForGenotyping;
-            readAlleleLikelihoodsForAnnotations.filterToOnlyOverlappingUnclippedReads(loc);
+            readAlleleLikelihoodsForAnnotations.filterToOnlyOverlappingReads(loc);
         } else {
             readAlleleLikelihoodsForAnnotations = readHaplotypeLikelihoods.marginalize(alleleMapper, loc);
             if (emitReferenceConfidence) {
@@ -235,7 +235,7 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
                 continue;
             }
             final List<GATKRead> newList = originalList.stream()
-                    .filter(read -> ReadLikelihoods.unclippedReadOverlapsRegion(read, loc))
+                    .filter(read -> read.overlaps(loc))
                     .collect(Collectors.toCollection(() -> new ArrayList<>(originalList.size())));
 
             if (!newList.isEmpty()) {
