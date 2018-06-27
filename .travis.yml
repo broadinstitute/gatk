@@ -56,7 +56,7 @@ cache:
 before_install:
 - REPORT_PATH=${TRAVIS_BRANCH}_${TRAVIS_JOB_NUMBER};
 - if [[ $TRAVIS_SECURE_ENV_VARS == true && $TRAVIS_EVENT_TYPE != cron ]]; then
-    echo "Test report will be written to  https://storage.googleapis.com${HELLBENDER_TEST_LOGS}${REPORT_PATH}/tests/test/index.html";
+    echo "Test report will be written to  https://storage.googleapis.com${HELLBENDER_TEST_LOGS}${REPORT_PATH}/tests/testOnShadowJar/index.html";
   fi
 #setup google cloud and github authentication
 - if [ $TRAVIS_SECURE_ENV_VARS == true ]; then
@@ -177,7 +177,7 @@ after_script:
 - if [[ $TRAVIS_SECURE_ENV_VARS == true && $TRAVIS_EVENT_TYPE != cron ]]; then
     $GCLOUD_HOME/gcloud components -q update gsutil;
     $GCLOUD_HOME/gsutil -m cp -z html -z js -z xml -z css -r build/reports/tests gs:/$HELLBENDER_TEST_LOGS$REPORT_PATH/;
-    echo "See the test report at https://storage.googleapis.com$HELLBENDER_TEST_LOGS$REPORT_PATH/tests/test/index.html";
+    echo "See the test report at https://storage.googleapis.com$HELLBENDER_TEST_LOGS$REPORT_PATH/tests/testOnShadowJar/index.html";
   fi
 
 
