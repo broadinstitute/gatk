@@ -99,7 +99,21 @@ public final class AlignmentUtils {
         final Cigar readToRefCigar = leftAlignIndel(readToRefCigarClean, refHaplotype.getBases(),
                                                     originalRead.getBases(), swPairwiseAlignment.getAlignmentOffset(), 0, true);
 
-        read.setCigar(readToRefCigar);
+
+        // the SW Cigar does not contain the hard clips of the original read
+        final Cigar originalCigar = originalRead.getCigar();
+        final CigarElement firstElement = originalCigar.getFirstCigarElement();
+        final CigarElement lastElement = originalCigar.getLastCigarElement();
+        final List<CigarElement> readToRefCigarElementsWithHardClips = new ArrayList<>();
+        if (firstElement.getOperator() == CigarOperator.HARD_CLIP) {
+            readToRefCigarElementsWithHardClips.add(firstElement);
+        }
+        readToRefCigarElementsWithHardClips.addAll(readToRefCigar.getCigarElements());
+        if (lastElement.getOperator() == CigarOperator.HARD_CLIP) {
+            readToRefCigarElementsWithHardClips.add(lastElement);
+        }
+
+        read.setCigar(new Cigar(readToRefCigarElementsWithHardClips));
 
         if ( readToRefCigar.getReadLength() != read.getLength() ) {
             throw new GATKException("Cigar " + readToRefCigar + " with read length " + readToRefCigar.getReadLength()
