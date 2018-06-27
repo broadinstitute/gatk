@@ -52,7 +52,7 @@ RUN mv /gatk/gatkcondaenv.yml /gatk/scripts
 ENV PATH $CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH
 RUN conda env create -n gatk -f /gatk/scripts/gatkcondaenv.yml && \
     echo "source activate gatk" >> /gatk/gatkenv.rc && \
-    conda clean -y -all
+    conda clean -y -all && \
     rm -r /root/.cache/pip
 
 CMD ["bash", "--init-file", "/gatk/gatkenv.rc"]
