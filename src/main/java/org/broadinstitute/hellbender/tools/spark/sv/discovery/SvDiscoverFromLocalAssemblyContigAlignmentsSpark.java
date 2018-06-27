@@ -214,8 +214,8 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
 
             final Set<String> namesOfInterest = new HashSet<>(tigNameToReason.keySet());
 
-            final List<GATKRead> contigRawAlignments = assemblyRawAlignments
-                    .filter(read -> namesOfInterest.contains(read.getName())).collect();
+            final List<GATKRead> contigRawAlignments = new ArrayList<>(assemblyRawAlignments
+                    .filter(read -> namesOfInterest.contains(read.getName())).collect());
             contigRawAlignments.sort(Comparator.comparing(GATKRead::getName));
             final SAMFileHeader clone = header.clone();
             clone.setSortOrder(SAMFileHeader.SortOrder.queryname);
@@ -236,6 +236,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
                 final ReasonForAlignmentClassificationFailure reason = tigNameToReason.get(read.getName());
                 writerForEachCase.get(reason).addAlignment(read.convertToSAMRecord(header));
             });
+            writerForEachCase.values().forEach(SAMFileWriter::close);
         }
     }
 
