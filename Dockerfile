@@ -45,8 +45,7 @@ RUN mkdir $DOWNLOAD_DIR && \
     wget -nv -O $DOWNLOAD_DIR/miniconda.sh $CONDA_URL && \
     test "`md5sum $DOWNLOAD_DIR/miniconda.sh | awk -v FS='  ' '{print $1}'` = $CONDA_MD5" && \
     bash $DOWNLOAD_DIR/miniconda.sh -p $CONDA_PATH -b && \
-    rm $DOWNLOAD_DIR/miniconda.sh && \
-    rm -r /root/.cache/pip
+    rm $DOWNLOAD_DIR/miniconda.sh
 WORKDIR /gatk
 RUN mv /gatk/gatkcondaenv.yml /gatk/scripts
 ENV PATH $CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH
