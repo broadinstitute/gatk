@@ -227,6 +227,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
                 //TODO remove the -AX here when https://github.com/broadinstitute/gatk/issues/3944 is resolved
                 Arrays.asList("--"+ StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS, "-AX", "ReferenceBases", "-L", "20:10000000-10100000", "-I", NA12878_20_21_WGS_bam),
                  b37_reference_20_21);
+        int j = 3;
     }
 
     @Test
