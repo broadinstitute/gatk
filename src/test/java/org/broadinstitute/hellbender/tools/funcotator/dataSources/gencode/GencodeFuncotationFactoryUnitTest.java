@@ -9,6 +9,7 @@ import htsjdk.tribble.CloseableTribbleIterator;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureReader;
 import htsjdk.tribble.annotation.Strand;
+import htsjdk.tribble.readers.LineIterator;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -29,7 +30,9 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -39,6 +42,9 @@ import java.util.stream.Collectors;
  * Created by jonn on 9/1/17.
  */
 public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
+    // Gencode v19
+    private static final String CNTN4_GENCODE_ANNOTATIONS_FILE_NAME = toolsTestDir + "funcotator/gencode.v19.CNTN4.annotation.gtf";
+    private static final String CNTN4_GENCODE_TRANSCRIPT_FASTA_FILE = toolsTestDir + "funcotator/gencode.v19.CNTN4.pc_transcripts.fasta";
 
     //==================================================================================================================
     // Multi-Test Static Variables:
@@ -1512,5 +1518,79 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
             gencodeFuncotations.sort(comparator);
             Assert.assertEquals(gencodeFuncotations.get(0).getAnnotationTranscript(), gtFirstTranscript, " Failed on " + transcriptSelectionMode.toString());
         }
+    }
+
+
+    /**
+     * This test (of {@link GencodeFuncotationFactory#createFuncotationsOnVariant}) makes sure that if multiple gene features are detected, there is still only one transcript returned
+     *  when in the BEST_EFFECT or CANONICAL selection mode.  And tests that ALL has multiple transcripts returned.
+     *  The selected test data will ensure that ALL returns more than one transcript.
+     * @throws IOException
+     */
+    @Test
+    public void testMultipleGeneFeaturesOnlyProduceOneTranscript() throws IOException {
+        final GencodeGtfCodec gencodeGtfCodec = new GencodeGtfCodec();
+        Assert.assertTrue(gencodeGtfCodec.canDecode(CNTN4_GENCODE_ANNOTATIONS_FILE_NAME));
+
+        final List<Feature> gencodeFeatures = new ArrayList<>();
+
+        // Note the "chr" here to make this work.
+        final SimpleInterval variantInterval = new SimpleInterval("chr3", 2944600, 2944600);
+        final ReferenceContext referenceContext = new ReferenceContext(refDataSourceHg19Ch3, variantInterval);
+        final VariantContext vc = new VariantContextBuilder()
+                .alleles(Arrays.asList(Allele.create("A", true), Allele.create("AT", false)))
+                .chr(variantInterval.getContig()).start(variantInterval.getStart()).stop(variantInterval.getEnd())
+                .make();
+
+        try (BufferedInputStream bufferedInputStream =
+                     new BufferedInputStream(
+                             new FileInputStream(CNTN4_GENCODE_ANNOTATIONS_FILE_NAME)
+                     )
+        ) {
+            // Get the line iterator:
+            final LineIterator lineIterator = gencodeGtfCodec.makeSourceFromStream(bufferedInputStream);
+
+            // Get the header (required for the read to work correctly):
+            gencodeGtfCodec.readHeader(lineIterator);
+
+            while (lineIterator.hasNext()) {
+                gencodeFeatures.add(gencodeGtfCodec.decode(lineIterator));
+            }
+            Assert.assertTrue(gencodeFeatures.size() > 1);
+        }
+
+        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(
+                IOUtils.getPath(CNTN4_GENCODE_TRANSCRIPT_FASTA_FILE),
+                "VERSION",
+                GencodeFuncotationFactory.DEFAULT_NAME,
+                TranscriptSelectionMode.CANONICAL,
+                Collections.emptySet(),
+                new LinkedHashMap<>(), true)) {
+            final List<Funcotation> gencodeFuncotations = funcotationFactory.createFuncotationsOnVariant(vc, referenceContext, gencodeFeatures);
+            Assert.assertEquals(gencodeFuncotations.size(), 1);
+        }
+
+        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(
+                IOUtils.getPath(CNTN4_GENCODE_TRANSCRIPT_FASTA_FILE),
+                "VERSION",
+                GencodeFuncotationFactory.DEFAULT_NAME,
+                TranscriptSelectionMode.BEST_EFFECT,
+                Collections.emptySet(),
+                new LinkedHashMap<>(), true)) {
+            final List<Funcotation> gencodeFuncotations = funcotationFactory.createFuncotationsOnVariant(vc, referenceContext, gencodeFeatures);
+            Assert.assertEquals(gencodeFuncotations.size(), 1);
+        }
+
+        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(
+                IOUtils.getPath(CNTN4_GENCODE_TRANSCRIPT_FASTA_FILE),
+                "VERSION",
+                GencodeFuncotationFactory.DEFAULT_NAME,
+                TranscriptSelectionMode.ALL,
+                Collections.emptySet(),
+                new LinkedHashMap<>(), true)) {
+            final List<Funcotation> gencodeFuncotations = funcotationFactory.createFuncotationsOnVariant(vc, referenceContext, gencodeFeatures);
+            Assert.assertTrue(gencodeFuncotations.size() > 1);
+        }
+
     }
 }
