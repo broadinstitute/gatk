@@ -504,22 +504,9 @@ final class TestUtilsCpxVariantInference {
     private static AssemblyContigWithFineTunedAlignments makeContigAnalysisReadyForCpxBranch(final String primarySAMRecord,
                                                                                              final Set<String> canonicalChromosomes,
                                                                                              final SAMSequenceDictionary refSeqDict) {
-        final AlignedContig alignedContig =
-                TestUtilsForAssemblyBasedSVDiscovery.fromPrimarySAMRecordString(primarySAMRecord, true);
-
-        final AssemblyContigWithFineTunedAlignments intermediate =
-                AssemblyContigAlignmentsConfigPicker.reConstructContigFromPickedConfiguration(
-                        new Tuple2<>(new Tuple2<>(alignedContig.getContigName(), alignedContig.getContigSequence()),
-                                AssemblyContigAlignmentsConfigPicker.pickBestConfigurations(alignedContig, canonicalChromosomes,
-                                        0.0)))
-                        .next();
-
-        final AssemblyContigWithFineTunedAlignments result =
-                AssemblyContigAlignmentsConfigPicker.removeNonUniqueMappings(
-                        intermediate,
-                        AssemblyContigAlignmentsConfigPicker.ALIGNMENT_LOW_REF_UNIQUENESS_THRESHOLD,
-                        AssemblyContigAlignmentsConfigPicker.ALIGNMENT_LOW_READ_UNIQUENESS_THRESHOLD);
-        return CpxVariantInterpreter.furtherPreprocess(result, refSeqDict);
+        return CpxVariantInterpreter.furtherPreprocess(
+                TestUtilsForAssemblyBasedSVDiscovery.makeContigAnalysisReady(primarySAMRecord, canonicalChromosomes),
+                refSeqDict);
     }
 
 }
