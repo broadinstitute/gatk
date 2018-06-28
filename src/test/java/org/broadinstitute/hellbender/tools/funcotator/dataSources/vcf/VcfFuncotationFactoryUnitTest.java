@@ -322,9 +322,9 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
     public void testQueryIntoMultiallelic(final SimpleInterval variantInterval, final List<String> alleles,
                                           final Map<String, String> gtAttributes) {
         // Note that AC Het is of type=., so we should test that we return the entire string.
-        // 3	69521	.	T	A,C    AC_AMR=2,0; AC_Het=0,3,0 AC=2,3
-        // TODO: Test 3	324682	.	ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT	TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT,A  AC=7,2; AC_AMR=0,0 ;AC_Het=1,0,0
+        // 3	69521	.	T	A,C    AC_AMR=2,0; AC_Het=0,3,0; AC=2,3
         // TODO: Add GQ_HIST for type=R test
+        // TODO: Test multiallelics in the query
 
 
         // Make the factory

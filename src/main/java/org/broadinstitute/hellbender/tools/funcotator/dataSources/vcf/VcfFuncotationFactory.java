@@ -4,7 +4,9 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.*;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
@@ -16,6 +18,7 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotati
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.VcfFuncotationMetadata;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.nio.file.Path;
 import java.util.*;
@@ -186,57 +189,30 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
             // We'll use this to determine if the alt allele has been annotated.
             final Set<Allele> annotatedAltAlleles = new HashSet<>(queryAlternateAlleles.size());
 
-            if ( !featureList.isEmpty() ) {
-                for ( final Feature feature : featureList ) {
+            // Get rid of any null features.
+            // By this point we know the feature type is correct, so we cast it:
+            final List<VariantContext> funcotationFactoryVariants = featureList.stream().filter(f -> f != null)
+                    .map(f -> (VariantContext) f).collect(Collectors.toList());
 
-                    if ( feature != null ) {
+            if ( !funcotationFactoryVariants.isEmpty() ) {
+                for ( final VariantContext variantFeature : funcotationFactoryVariants ) {
 
-                        // By this point we know the feature type is correct, so we cast it:
-                        final VariantContext variantFeature = (VariantContext) feature;
+                    // Now we create one funcotation for each Alternate allele in the query variant
+                    //  (if it exists in the datasource variant list):
+                    for ( final Allele altAllele : queryAlternateAlleles ) {
 
-                        // Now we create one funcotation for each Alternate allele in the query variant
-                        //  (if it exists in the datasource variant list):
-                        for ( final Allele altAllele : queryAlternateAlleles ) {
-
-                            if (!(variantFeature.hasAlternateAllele(altAllele) && variantFeature.getReference().equals(variant.getReference()))) {
-                                continue;
-                            }
-                            // Add all Info keys/values to a copy of our default map:
-                            final LinkedHashMap<String, Object> annotations = new LinkedHashMap<>(supportedFieldNamesAndDefaults);
-                            for ( final Map.Entry<String, Object> entry : variantFeature.getAttributes().entrySet() ) {
-
-                                final String valueString;
-
-                                // Handle collections a little differently:
-                                if (entry.getValue() instanceof Collection<?>) {
-                                    @SuppressWarnings("unchecked") final Collection<Object> objectList = ((Collection<Object>) entry.getValue());
-                                    final VCFHeaderLineCount countType = supportedFieldMetadata.retrieveHeaderInfo(createFinalFieldName(this.name, entry.getKey())).getCountType();
-
-                                    if (countType.equals(VCFHeaderLineCount.A) || countType.equals(VCFHeaderLineCount.R)) {
-
-                                        // TODO: What about "R"?  Do we want to drop the reference number?
-                                        int idx = 1;
-                                        if (variantFeature.getAlternateAlleles().size() != 1) {
-                                            idx = variantFeature.getAlleleIndex(altAllele);
-                                            if (countType.equals(VCFHeaderLineCount.A)) {
-                                                idx--;
-                                            }
-                                        }
-                                        valueString = objectList.toArray()[idx].toString();
-                                    } else {
-                                        valueString = objectList.stream().map(Object::toString).collect(Collectors.joining(","));
-                                    }
-                                } else {
-                                    valueString = entry.getValue().toString();
-                                }
-
-                                annotations.put(createFinalFieldName(name, entry.getKey()), valueString);
-                            }
-
-                            // Add our funcotation to the funcotation list:
-                            outputFuncotations.add(TableFuncotation.create(annotations, altAllele, name, supportedFieldMetadata));
-                            annotatedAltAlleles.add(altAllele);
+                        if (!(variantFeature.hasAlternateAllele(altAllele) && variantFeature.getReference().equals(variant.getReference()))) {
+                            continue;
                         }
+                        // Add all Info keys/values to a copy of our default map:
+                        final LinkedHashMap<String, Object> annotations = new LinkedHashMap<>(supportedFieldNamesAndDefaults);
+                        for ( final Map.Entry<String, Object> entry : variantFeature.getAttributes().entrySet() ) {
+                            populateAnnotationMap(variantFeature, variant, altAllele, annotations, entry);
+                        }
+
+                        // Add our funcotation to the funcotation list:
+                        outputFuncotations.add(TableFuncotation.create(annotations, altAllele, name, supportedFieldMetadata));
+                        annotatedAltAlleles.add(altAllele);
                     }
                 }
             }
@@ -249,6 +225,85 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
         }
 
         return outputFuncotations;
+    }
+
+    private void populateAnnotationMap(final VariantContext funcotationFactoryVariant, final VariantContext queryVariant, final Allele altAllele, final LinkedHashMap<String, Object> annotations, final Map.Entry<String, Object> attributeEntry) {
+        final String valueString;
+        final String attributeName = attributeEntry.getKey();
+
+        // Handle collections a little differently:
+        if (attributeEntry.getValue() instanceof Collection<?>) {
+            @SuppressWarnings("unchecked") final Collection<Object> objectList = ((Collection<Object>) attributeEntry.getValue());
+            final VCFHeaderLineCount countType = supportedFieldMetadata.retrieveHeaderInfo(createFinalFieldName(this.name, attributeName)).getCountType();
+
+            if (isBiallelic(funcotationFactoryVariant) && (isBiallelic(queryVariant))) {
+                valueString = objectList.stream().map(Object::toString).collect(Collectors.joining(","));
+            } else {
+                valueString = determineValueStringFromMultiallelicAttributeList(funcotationFactoryVariant, altAllele, objectList, countType);
+            }
+        } else {
+            valueString = attributeEntry.getValue().toString();
+        }
+
+        annotations.put(createFinalFieldName(name, attributeName), valueString);
+    }
+
+    private boolean isBiallelic(final VariantContext funcotationFactoryVariant) {
+        return funcotationFactoryVariant.getAlternateAlleles().size() == 1;
+    }
+
+    private String determineValueStringFromMultiallelicAttributeList(final VariantContext funcotationFactoryVariantContext, final Allele altAllele, final Collection<Object> objectList, final VCFHeaderLineCount countType) {
+        String result;
+        if (countType.equals(VCFHeaderLineCount.A) || countType.equals(VCFHeaderLineCount.R)) {
+
+            // TODO: What about "R"?  Do we want to drop the reference number?
+            int idx = 1;
+            if (funcotationFactoryVariantContext.getAlternateAlleles().size() != 1) {
+                idx = funcotationFactoryVariantContext.getAlleleIndex(altAllele);
+                if (countType.equals(VCFHeaderLineCount.A)) {
+                    idx--;
+                }
+            }
+            result = objectList.toArray()[idx].toString();
+        } else {
+            result = objectList.stream().map(Object::toString).collect(Collectors.joining(","));
+        }
+        return result;
+    }
+
+    private List<Pair<Integer, Integer>> matchAlleles(final List<VariantContext> variants1, final List<VariantContext> variants2) {
+        // First split (and trim) all variant contexts into biallelics.  We are only going ot be interested in the alleles.
+        final List<VariantContext> splitVariants1 = variants1.stream().map(vc -> simpleSplitIntoBiallelics(vc))
+                .flatMap(List::stream).collect(Collectors.toList());
+        final List<VariantContext> splitVariants2 = variants2.stream().map(vc -> simpleSplitIntoBiallelics(vc))
+                .flatMap(List::stream).collect(Collectors.toList());
+
+        // Second, match on ref and alt.  If match occurs add it to the output list.
+
+
+        return null;
+    }
+
+    /**
+     * TODO: Docs, since this requires some explanation.
+     * Ignores the INFO field and genotype fields.  These will not be present.  This method is trying to be a bit fast.
+     * @param vc
+     * @return
+     */
+    private List<VariantContext> simpleSplitIntoBiallelics(final VariantContext vc) {
+
+        final List<VariantContext> result = new ArrayList<>();
+
+        for (final Allele allele : vc.getAlternateAlleles()) {
+            result.add(GATKVariantContextUtils.trimAlleles(
+                    new VariantContextBuilder("SimpleSplit", vc.getContig(), vc.getStart(), vc.getEnd(),
+                            Arrays.asList(vc.getReference(), allele))
+                            .make(), true, true)
+            );
+        }
+
+        return result;
+
     }
 
     @Override
