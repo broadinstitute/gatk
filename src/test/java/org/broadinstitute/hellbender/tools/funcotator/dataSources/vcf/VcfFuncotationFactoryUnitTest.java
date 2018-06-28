@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.vcf;
 
+import com.google.common.collect.ImmutableMap;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -25,6 +26,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -39,6 +41,7 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
 
     private static final String FACTORY_NAME = "TestFactory";
     private static final String FACTORY_VERSION = "TEST_VERSION";
+    private static final String EXAC_SNIPPET = toolsTestDir + "funcotator/test_exac.vcf";
 
     //==================================================================================================================
     // Private Members:
@@ -285,5 +288,72 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
         Assert.assertEquals(metadataFields, headerInfoLines);
         Assert.assertEquals(metadataFields, vcfFuncotationFactory.getSupportedFuncotationFields());
         Assert.assertEquals(funcotations.get(0).getMetadata().retrieveAllHeaderInfo(), gtOutputVcfInfoHeaderLines);
+    }
+
+    @DataProvider
+    public Object[][] provideMultiallelicTest() {
+        // These were chosen to correspond to test cases in the test exac datasource VCF.
+        return new Object[][] {
+                // 3	69521	.	T	A,C AC_AMR=2,0; AC_Het=0,3,0 AC=2,3 --
+                //  Note that AC Het is of type=., so we should test that we return the entire string.
+                {new SimpleInterval("3", 69521, 69521), Arrays.asList("T", "C"),
+                        ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "0,3,0", "_AC", "3")},
+                {new SimpleInterval("3", 69521, 69521), Arrays.asList("T", "A"),
+                        ImmutableMap.of("_AC_AMR", "2", "_AC_Het", "0,3,0", "_AC", "2")},
+                // 3	69552	rs55874132	G	T,A,C  AC_AMR=3,0,0 AC_Het=1,1,0,0,0,0 AC=3,3,5
+                {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "A"),
+                        ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,1,0,0,0,0", "_AC", "3")},
+                {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "T"),
+                        ImmutableMap.of("_AC_AMR", "3", "_AC_Het", "1,1,0,0,0,0", "_AC", "3")},
+                {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "C"),
+                        ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,1,0,0,0,0", "_AC", "5")},
+                // 3	324682	.	ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT	TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT,A  AC=7,2; AC_AMR=0,0 ;AC_Het=1,0,0
+                {new SimpleInterval("3", 324682, 324714), Arrays.asList("ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "A"),
+                        ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,0,0", "_AC", "2")},
+                {new SimpleInterval("3", 324682, 324714), Arrays.asList("ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT"),
+                        ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,0,0", "_AC", "7")},
+                //HARD!!  Same as the previous test
+                {new SimpleInterval("3", 324682, 324682), Arrays.asList("A", "T"),
+                        ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,0,0", "_AC", "7")},
+        };
+    }
+
+    @Test(dataProvider = "provideMultiallelicTest")
+    public void testQueryIntoMultiallelic(final SimpleInterval variantInterval, final List<String> alleles,
+                                          final Map<String, String> gtAttributes) {
+        // Note that AC Het is of type=., so we should test that we return the entire string.
+        // 3	69521	.	T	A,C    AC_AMR=2,0; AC_Het=0,3,0 AC=2,3
+        // TODO: Test 3	324682	.	ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT	TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT,A  AC=7,2; AC_AMR=0,0 ;AC_Het=1,0,0
+        // TODO: Add GQ_HIST for type=R test
+
+
+        // Make the factory
+        final VcfFuncotationFactory vcfFuncotationFactory =
+                new VcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(EXAC_SNIPPET));
+
+        final ReferenceContext referenceContext = new ReferenceContext(ReferenceDataSource.of(Paths.get(FuncotatorReferenceTestUtils.retrieveB37Chr3Ref())), variantInterval);
+
+        final List<Feature> vcfFeatures;
+        try (final VCFFileReader vcfReader = new VCFFileReader(IOUtils.getPath(EXAC_SNIPPET))) {
+            vcfFeatures = vcfReader.query(variantInterval.getContig(), variantInterval.getStart(), variantInterval.getEnd()).stream().collect(Collectors.toList());
+        }
+
+        final VariantContext variant = new VariantContextBuilder()
+                .chr(variantInterval.getContig()).start(variantInterval.getStart()).stop(variantInterval.getEnd())
+                .alleles(alleles)
+                .make();
+
+        final List<Funcotation> funcotations = vcfFuncotationFactory.createFuncotationsOnVariant(
+                variant,
+                referenceContext,
+                vcfFeatures,
+                Collections.emptyList()
+        );
+
+        gtAttributes.keySet().stream()
+                .forEach(k ->
+                        Assert.assertEquals(funcotations.get(0).getField(vcfFuncotationFactory.getName() + k), gtAttributes.get(k), "Mismatch with " + k)
+                );
+
     }
 }
