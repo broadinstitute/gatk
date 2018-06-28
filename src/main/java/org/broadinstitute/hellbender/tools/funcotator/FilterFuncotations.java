@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.VCFFilterHeaderLine;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
@@ -42,8 +43,11 @@ import java.util.stream.Stream;
 @DocumentedFeature
 @BetaFeature
 public class FilterFuncotations extends VariantWalker {
-    public static final String CLINSIG = "CLINSIG";
+
     private static Logger logger = LogManager.getLogger(FilterFuncotations.class);
+
+    private static final String CLINSIG_RULE_KEY = "CLINSIG";
+    private static final String NOT_CLINSIG_FILTER = "NOT_" + CLINSIG_RULE_KEY;
 
     enum ReferenceVersion {
         hg19(19), hg38(27);
@@ -86,8 +90,9 @@ public class FilterFuncotations extends VariantWalker {
         if (funcotationHeaderLine != null) {
             funcotationKeys = FuncotatorUtils.extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription());
             outputVcfWriter = createVCFWriter(outputFile);
-            vcfHeader.addMetaDataLine(new VCFInfoHeaderLine(CLINSIG, 1, VCFHeaderLineType.String,
-                    "The name of the filter that caused this annotation to be flagged as clinically significant."));
+            vcfHeader.addMetaDataLine(new VCFFilterHeaderLine(NOT_CLINSIG_FILTER, "Filter for clinically insignificant variants."));
+            vcfHeader.addMetaDataLine(new VCFInfoHeaderLine(CLINSIG_RULE_KEY, 1, VCFHeaderLineType.String,
+                    "Rule(s) which caused this annotation to be flagged as clinically significant."));
             outputVcfWriter.writeHeader(vcfHeader);
         } else {
             logger.error("Input VCF does not have Funcotator annotations.");
@@ -121,10 +126,13 @@ public class FilterFuncotations extends VariantWalker {
                 }));
 
         String clinicalSignificance = matchingFilters.isEmpty() ? "NONE" : String.join(",", matchingFilters);
-        String clinicalFilter = matchingFilters.isEmpty() ? "PASS" : "NOT_" + CLINSIG;
+        variantContextBuilder.attribute(CLINSIG_RULE_KEY, clinicalSignificance);
 
-        variantContextBuilder.attribute(CLINSIG, clinicalSignificance);
-        variantContextBuilder.filter(clinicalFilter);
+        if (matchingFilters.isEmpty()) {
+            variantContextBuilder.passFilters();
+        } else {
+            variantContextBuilder.filter(NOT_CLINSIG_FILTER);
+        }
         return variantContextBuilder.make();
     }
 
@@ -177,7 +185,7 @@ abstract class FuncotationFiltrationRule {
     Stream<Double> getMaxMinorAlleleFreqs(int alleleCount, final Map<String, String> funcotations) {
         final double[] maxMafsByAllele = new double[alleleCount];
         for (int i = 0; i < alleleCount; i++) {
-            maxMafsByAllele[i] = Double.NaN;
+            maxMafsByAllele[i] = 0;
         }
 
         Arrays.stream(ExacSubPopulation.values()).forEach(subpop -> {
