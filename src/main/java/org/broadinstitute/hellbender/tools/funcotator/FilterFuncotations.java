@@ -6,6 +6,8 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFFilterHeaderLine;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -29,9 +31,11 @@ import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -43,6 +47,7 @@ import java.util.stream.Stream;
 @DocumentedFeature
 @BetaFeature
 public class FilterFuncotations extends VariantWalker {
+    public static final String CLINSIG = "CLINSIG";
     private static Logger logger = LogManager.getLogger(FilterFuncotations.class);
 
     enum ReferenceVersion {
@@ -106,7 +111,8 @@ public class FilterFuncotations extends VariantWalker {
             if (funcotationHeaderLine != null) {
                 funcotationKeys = FuncotatorUtils.extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription());
                 outputVcfWriter = createVCFWriter(outputFile);
-                funcotationFilters.forEach(filter -> vcfHeader.addMetaDataLine(new VCFFilterHeaderLine(filter.getFilterName())));
+                vcfHeader.addMetaDataLine(new VCFInfoHeaderLine(CLINSIG, 1, VCFHeaderLineType.String,
+                        "The name of the filter that caused this annotation to be flagged as clinically significant."));
                 outputVcfWriter.writeHeader(vcfHeader);
             } else {
                 logger.error("Input VCF does not have Funcotator annotations.");
@@ -135,12 +141,15 @@ public class FilterFuncotations extends VariantWalker {
                 funcotationKeys, variant, "Gencode_" + referenceVersion.gencodeVersion + "_annotationTranscript", "FILTER"
         );
         VariantContextBuilder variantContextBuilder = new VariantContextBuilder(variant);
+        Set<String> matchingFilters = new HashSet<>();
         funcs.values().forEach(funcotationMap ->
                 funcotationFilters.forEach(filter -> {
                     if (filter.checkFilter(variant, funcotationMap)) {
-                        variantContextBuilder.filter(filter.getFilterName());
+                        matchingFilters.add(filter.getFilterName());
                     }
                 }));
+        String clinicalSignificance = matchingFilters.isEmpty() ? "NONE" : String.join(",", matchingFilters);
+        variantContextBuilder.attribute(CLINSIG, clinicalSignificance);
         return variantContextBuilder.make();
     }
 
