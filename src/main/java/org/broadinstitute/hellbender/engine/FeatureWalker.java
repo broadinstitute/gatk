@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -67,22 +66,6 @@ public abstract class FeatureWalker<F extends Feature> extends GATKTool {
         } else {
             throw new UserException("File " + drivingFile + " contains features of the wrong type.");
         }
-    }
-
-
-    @Override
-    final protected ReferenceDataSource getReferenceDataSource() {
-        throw new GATKException("Should never access ReferenceDataSource in child classes of FeatureWalker.");
-    }
-
-    @Override
-    final protected ReadsDataSource getReadsDataSource() {
-        throw new GATKException("Should never access ReadsDataSource in child classes of FeatureWalker.");
-    }
-
-    @Override
-    final protected FeatureManager getFeatureManager() {
-        throw new GATKException("Should never access FeatureManager in child classes of FeatureWalker.");
     }
 
     /**

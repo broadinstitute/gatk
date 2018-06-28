@@ -60,7 +60,7 @@ public final class ReferenceContext implements Iterable<Byte> {
      * empty arrays/iterators in response to queries.
      */
     public ReferenceContext() {
-        this(null, null);
+        this(null, null, 0, 0);
     }
 
     /**
@@ -89,6 +89,27 @@ public final class ReferenceContext implements Iterable<Byte> {
         this.dataSource = dataSource;
         this.cachedSequence = null;
         this.interval = interval;
+        setWindow(windowLeadingBases, windowTrailingBases);
+    }
+
+    /**
+     * Create a windowed ReferenceContext set up to lazily query the provided interval,
+     * expanded by the specified number of bases in each direction.
+     *
+     * Window is preserved from {@code thatReferenceContext}.
+     *
+     * @param thatContext An existing {@link ReferenceContext} on which to base this new one.
+     * @param interval our location on the reference (may be null if our location is unknown)
+     */
+    public ReferenceContext( final ReferenceContext thatContext, final SimpleInterval interval ) {
+        this.dataSource = thatContext.dataSource;
+        this.cachedSequence = null;
+        this.interval = interval;
+
+        // Determine the window:
+        final int windowLeadingBases = thatContext.interval.getStart() - thatContext.window.getStart();
+        final int windowTrailingBases = thatContext.window.getEnd() - thatContext.interval.getEnd();
+
         setWindow(windowLeadingBases, windowTrailingBases);
     }
 
@@ -246,32 +267,6 @@ public final class ReferenceContext implements Iterable<Byte> {
      */
     public SimpleInterval getWindow() {
         return window;
-    }
-
-    /**
-     * Set the location on the reference represented by this context, without including
-     * any extra bases of requested context around this interval.
-     *
-     * Will set the window around the given interval to be the same as the previous window.
-     * Will invalidate the cache.
-     *
-     * @param newInterval The new interval on which this reference will be based.
-     */
-    public void setInterval(final SimpleInterval newInterval) {
-
-        // Determine the previous window
-        // (This MUST be done first):
-        final int windowLeadingBases = interval.getStart() - window.getStart();
-        final int windowTrailingBases = window.getEnd() - interval.getEnd();
-
-        // Set the new interval:
-        this.interval = newInterval;
-
-        // Invalidate our cache:
-        this.cachedSequence = null;
-
-        // Set our window:
-        setWindow(windowLeadingBases, windowTrailingBases);
     }
 
     /**

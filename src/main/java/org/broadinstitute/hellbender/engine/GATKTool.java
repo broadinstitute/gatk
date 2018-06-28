@@ -70,7 +70,7 @@ public abstract class GATKTool extends CommandLineProgram {
     private double secondsBetweenProgressUpdates = ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES;
 
     @ArgumentCollection
-    private SequenceDictionaryValidationArgumentCollection seqValidationArguments = getSequenceDictionaryValidationArgumentCollection();
+    protected SequenceDictionaryValidationArgumentCollection seqValidationArguments = getSequenceDictionaryValidationArgumentCollection();
 
     @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME,
             shortName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_SHORT_NAME,
@@ -151,42 +151,7 @@ public abstract class GATKTool extends CommandLineProgram {
     FeatureManager features;
 
     /**
-     * Get the {@link ReferenceDataSource} for this {@link GATKTool}.
-     * Will throw a {@link GATKException} if the reference is null.
-     * @return the {@link ReferenceDataSource} for this {@link GATKTool}.  Never {@code null}.
-     */
-    protected ReferenceDataSource getReferenceDataSource() {
-        if ( reference == null ) {
-            throw new GATKException("Attempted to retrieve null reference!");
-        }
-        return reference;
-    }
-
-    /**
-     * Get the {@link ReadsDataSource} for this {@link GATKTool}.
-     * Will throw a {@link GATKException} if the reads are null.
-     * @return the {@link ReadsDataSource} for this {@link GATKTool}.  Never {@code null}.
-     */
-    protected ReadsDataSource getReadsDataSource() {
-        if ( reads == null ) {
-            throw new GATKException("Attempted to retrieve null reads!");
-        }
-        return reads;
-    }
-
-    /**
-     * Get the {@link FeatureManager} for this {@link GATKTool}.
-     * Will throw a {@link GATKException} if the features are null.
-     * @return the {@link FeatureManager} for this {@link GATKTool}.  Never {@code null}.
-     */
-    protected FeatureManager getFeatureManager() {
-        if ( features == null ) {
-            throw new GATKException("Attempted to retrieve null reference!");
-        }
-        return features;
-    }
-
-    /**
+     *
      * Intervals to be used for traversal (null if no intervals were provided).
      *
      * Walker base classes (ReadWalker, etc.) are responsible for hooking these intervals up to

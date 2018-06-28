@@ -23,8 +23,8 @@ public final class ReferenceContextUnitTest extends GATKBaseTest {
         // and/or null intervals should behave as empty context objects.
         return new Object[][] {
                 { new ReferenceContext() },
-                { new ReferenceContext(null, null) },
-                { new ReferenceContext(null, new SimpleInterval("1", 1, 1) ) },
+                { new ReferenceContext(null, null, 0, 0) },
+                { new ReferenceContext(null, new SimpleInterval("1", 1, 1), 0, 0 ) },
                 { new ReferenceContext(new ReferenceFileSource(TEST_REFERENCE), null) }
         };
     }
@@ -211,7 +211,7 @@ public final class ReferenceContextUnitTest extends GATKBaseTest {
     }
 
     @DataProvider
-    private Object[][] provideForSetInterval() {
+    private Object[][] provideForTestCopyConstructor() {
         return new Object[][] {
                 {
                         new SimpleInterval("1", 11210, 11220),
@@ -264,17 +264,17 @@ public final class ReferenceContextUnitTest extends GATKBaseTest {
         };
     }
 
-    @Test(dataProvider = "provideForSetInterval")
-    public void testSetInterval(final SimpleInterval originalInterval, final SimpleInterval newInterval, final int leadingBases, final int trailingBases) {
+    @Test(dataProvider = "provideForTestCopyConstructor")
+    public void testCopyConstructor(final SimpleInterval originalInterval, final SimpleInterval newInterval, final int leadingBases, final int trailingBases) {
         try (final ReferenceDataSource reference = new ReferenceFileSource(TEST_REFERENCE)) {
 
             final ReferenceContext refContext = new ReferenceContext(reference, originalInterval, leadingBases, trailingBases);
             Assert.assertEquals(refContext.getInterval(), originalInterval, "Set interval is different from expected interval!");
 
-            refContext.setInterval(newInterval);
-            Assert.assertEquals(refContext.getInterval(), newInterval, "Set interval is different from expected interval!");
+            final ReferenceContext newRefContext = new ReferenceContext(refContext, newInterval);
+            Assert.assertEquals(newRefContext.getInterval(), newInterval, "Set interval is different from expected interval!");
 
-            final SimpleInterval newWindow = refContext.getWindow();
+            final SimpleInterval newWindow = newRefContext.getWindow();
 
             final int newLeadingBases = newInterval.getStart() - newWindow.getStart();
             final int newTrailingBases = newWindow.getEnd() - newInterval.getEnd();

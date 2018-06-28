@@ -6,7 +6,6 @@ import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.transformers.VariantTransformer;
 import org.broadinstitute.hellbender.utils.IndexUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -71,21 +70,6 @@ public abstract class VariantWalkerBase extends GATKTool {
         return super.getBestAvailableSequenceDictionary();
     }
 
-    @Override
-    final protected ReferenceDataSource getReferenceDataSource() {
-        throw new GATKException("Should never access ReferenceDataSource in child classes of VariantWalkerBase.");
-    }
-
-    @Override
-    final protected ReadsDataSource getReadsDataSource() {
-        throw new GATKException("Should never access ReadsDataSource in child classes of VariantWalkerBase.");
-    }
-
-    @Override
-    final protected FeatureManager getFeatureManager() {
-        throw new GATKException("Should never access FeatureManager in child classes of VariantWalkerBase.");
-    }
-
     /**
      * Process the feature inputs that represent the primary driving source(s) of variants for this tool, and
      * perform any necessary header and sequence dictionary validation. Called by the framework during feature
@@ -114,7 +98,7 @@ public abstract class VariantWalkerBase extends GATKTool {
     /**
      * Returns the pre-filter variant transformer (simple or composite) that will be applied to the variants before filtering.
      * The default implementation uses the {@link VariantTransformer#identity()}.
-     * Default implementation of {@link #traverse()} calls this method once before iterating over the reads and reuses
+     * Default implementation of {@link #traverse()} calls this method once before iterating over the variants and reuses
      * the transformer object to avoid object allocation.
      *
      * Subclasses can extend to provide own transformers (i.e. override and call super).
@@ -125,9 +109,9 @@ public abstract class VariantWalkerBase extends GATKTool {
     }
 
     /**
-     * Returns the post-filter variant transformer (simple or composite) that will be applied to the reads after filtering.
+     * Returns the post-filter variant transformer (simple or composite) that will be applied to the variants after filtering.
      * The default implementation uses the {@link VariantTransformer#identity()}.
-     * Default implementation of {@link #traverse()} calls this method once before iterating over the reads and reuses
+     * Default implementation of {@link #traverse()} calls this method once before iterating over the variants and reuses
      * the transformer object to avoid object allocation.
      *
      * Subclasses can extend to provide own transformers (i.e. override and call super).

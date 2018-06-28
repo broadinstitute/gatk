@@ -302,15 +302,6 @@ public class Funcotator extends VariantWalker {
     )
     private boolean forceB37ToHg19ContigNameConversion = false;
 
-    @Advanced
-    @Hidden
-    @Argument(
-            fullName = FuncotatorArgumentDefinitions.DISABLE_SEQUENCE_DICTIONARY_COMPARISON,
-            optional = true,
-            doc = "(Advanced / DO NOT USE*) If you select this flag, Funcotator will not perform a comparison between the sequence dictionary of the input VCF and the sequence dictionary of the given Reference FASTA.  *This option is useful in integration tests (written by devs) only."
-    )
-    private boolean disableSequenceDictionaryComparison = false;
-
     //==================================================================================================================
 
     private OutputRenderer outputRenderer;
@@ -342,9 +333,9 @@ public class Funcotator extends VariantWalker {
     @Override
     public void onTraversalStart() {
 
-        if (!disableSequenceDictionaryComparison) {
-            // Check that the VCF and the Reference file have compatible sequence dictionaries:
-            checkVcfAndReferenceHaveSameSequenceDictionaries();
+        if (seqValidationArguments.performSequenceDictionaryValidation()) {
+            // Ensure that the reference dictionary is a superset of the variant dictionary:
+            checkReferenceDictionaryIsSupersetOfVariantDictionary();
         }
 
         // Next set up our transcript list:
@@ -398,7 +389,13 @@ public class Funcotator extends VariantWalker {
         determineReferenceAndDatasourceCompatibility();
     }
 
-    private void checkVcfAndReferenceHaveSameSequenceDictionaries() {
+    /**
+     * Checks to see that the given reference's sequence dictionary is a
+     * superset of the given variant file's dictionary.
+     *
+     * This is a more strict check than the one found in {@link GATKTool#validateSequenceDictionaries()}.
+     */
+    private void checkReferenceDictionaryIsSupersetOfVariantDictionary() {
 
         final SAMSequenceDictionary referenceDictionary = getReferenceDictionary();
         final SAMSequenceDictionary variantDictionary = getSequenceDictionaryForDrivingVariants();
@@ -408,7 +405,7 @@ public class Funcotator extends VariantWalker {
         }
 
         if ( variantDictionary == null ) {
-            throw new UserException.BadInput("Variant input file sequence dictionary is null!");
+            throw new UserException.BadInput("Funcotator by default requires that the variant input have a sequence dictionary in its header. To disable this safety check, use argument --" + StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME);
         }
 
         SequenceDictionaryUtils.validateDictionaries(
@@ -471,6 +468,8 @@ public class Funcotator extends VariantWalker {
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
 
+        final ReferenceContext correctReferenceContext;
+
         // Check to see if we need to revert the ReferenceContext's interval to the original variant interval
         // (This would only happen in the case where we were given b37 variants with hg19 data sources):
         if ( mustConvertInputContigsToHg19 ) {
@@ -479,11 +478,15 @@ public class Funcotator extends VariantWalker {
             final SimpleInterval interval = new SimpleInterval(
                     FuncotatorUtils.convertHG19ContigToB37Contig(variant.getContig()), variant.getStart(), variant.getEnd()
             );
-            referenceContext.setInterval(interval);
+
+            correctReferenceContext = new ReferenceContext(referenceContext, interval);
+        }
+        else {
+            correctReferenceContext = referenceContext;
         }
 
         // Place the variant on our queue to be funcotated:
-        enqueueAndHandleVariant(variant, referenceContext, featureContext);
+        enqueueAndHandleVariant(variant, correctReferenceContext, featureContext);
     }
 
     @Override

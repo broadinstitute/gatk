@@ -7,7 +7,6 @@ import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IGVUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -144,21 +143,6 @@ public abstract class AssemblyRegionWalker extends GATKTool {
 
     @Override
     public String getProgressMeterRecordLabel() { return "regions"; }
-
-    @Override
-    final protected ReferenceDataSource getReferenceDataSource() {
-        throw new GATKException("Should never access ReferenceDataSource in child classes of AssemblyRegionWalker.");
-    }
-
-    @Override
-    final protected ReadsDataSource getReadsDataSource() {
-        throw new GATKException("Should never access ReadsDataSource in child classes of AssemblyRegionWalker.");
-    }
-
-    @Override
-    final protected FeatureManager getFeatureManager() {
-        throw new GATKException("Should never access FeatureManager in child classes of AssemblyRegionWalker.");
-    }
 
     private List<MultiIntervalLocalReadShard> readShards;
 

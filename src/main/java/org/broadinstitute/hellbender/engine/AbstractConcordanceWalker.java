@@ -71,21 +71,6 @@ public abstract class AbstractConcordanceWalker extends GATKTool {
         return truthVariants.getSequenceDictionary();
     }
 
-    @Override
-    final protected ReferenceDataSource getReferenceDataSource() {
-        throw new GATKException("Should never access ReferenceDataSource in child classes of AbstractConcordanceWalker.");
-    }
-
-    @Override
-    final protected ReadsDataSource getReadsDataSource() {
-        throw new GATKException("Should never access ReadsDataSource in child classes of AbstractConcordanceWalker.");
-    }
-
-    @Override
-    final protected FeatureManager getFeatureManager() {
-        throw new GATKException("Should never access FeatureManager in child classes of AbstractConcordanceWalker.");
-    }
-
     private void initializeTruthVariantsIfNecessary() {
         if (! BucketUtils.fileExists(truthVariantsFile)) {
             throw new IllegalArgumentException("Truth variants file " + truthVariantsFile + " does not exist or is not readable.");
