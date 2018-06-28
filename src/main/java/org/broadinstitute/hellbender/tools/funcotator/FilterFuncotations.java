@@ -28,6 +28,7 @@ import java.nio.file.Files;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -115,7 +116,10 @@ public class FilterFuncotations extends VariantWalker {
     }
 
     private void registerFilters() {
-        funcotationFilters.add(new ClinVarFilter(gender, acmg59Genes));
+        funcotationFilters.add(new ClinVarFilter(acmg59Genes));
+        if (gender == Sex.FEMALE) {
+            funcotationFilters.add(new ClinVarFemaleFilter());
+        }
         funcotationFilters.add(new LofFilter(referenceVersion, lofGenes));
         funcotationFilters.add(new LmmFilter());
     }
@@ -127,7 +131,7 @@ public class FilterFuncotations extends VariantWalker {
 
     private VariantContext applyFilters(VariantContext variant) {
         Map<Allele, FuncotationMap> funcs = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(
-                funcotationKeys, variant, "FilterFuncs", "FilterFuncs"
+                funcotationKeys, variant, "Gencode_" + referenceVersion.gencodeVersion + "_annotationTranscript", "FILTER"
         );
         VariantContextBuilder variantContextBuilder = new VariantContextBuilder(variant);
         funcs.values().forEach(funcotationMap ->
@@ -166,7 +170,6 @@ abstract class FuncotationFiltrationRule {
     boolean applyRule(VariantContext variant, FuncotationMap funcotationMap) {
 
         final Stream<Map<String, String>> funcotationsByTranscript = funcotationMap.getTranscriptList().stream()
-                .filter(name -> !name.equals(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY))
                 .map(funcotationMap::get)
                 .map(funcotations ->
                         funcotations.stream()
@@ -212,7 +215,9 @@ abstract class FuncotationFiltrationRule {
 }
 
 abstract class FuncotationFilter {
+    static final String CLIN_VAR_VCF_CLNSIG = "ClinVar_VCF_CLNSIG";
     static final String CLIN_VAR_VCF_GENEINFO = "ClinVar_VCF_GENEINFO";
+
     private final String filterName;
 
     FuncotationFilter(String filterName) {
@@ -233,15 +238,12 @@ abstract class FuncotationFilter {
     }
 }
 
-//A
+
 class ClinVarFilter extends FuncotationFilter {
-    private static final String CLIN_VAR_VCF_CLNSIG = "ClinVar_VCF_CLNSIG";
-    private final Sex gender;
     private final List<String> acmg59Genes;
 
-    ClinVarFilter(Sex gender, List<String> acmg59Genes) {
+    ClinVarFilter(List<String> acmg59Genes) {
         super("CLINVAR");
-        this.gender = gender;
         this.acmg59Genes = acmg59Genes;
     }
 
@@ -275,18 +277,27 @@ class ClinVarFilter extends FuncotationFilter {
                         .anyMatch(d -> d <= 0.05);
             }
         });
-
-        // 4) If participant is female flag a het variant in the GLA gene (x-linked) [edge case that needs more detail]
-        if (gender == Sex.FEMALE) {
-            clinVarFiltrationRules.add(new FuncotationFiltrationRule("ClinVar-option-female-het-GAL") {
-                @Override
-                boolean ruleFunction(VariantContext variant, Map<String, String> fieldValueMap) {
-                    return variant.getHetCount() > 0 &&
-                            fieldValueMap.getOrDefault(CLIN_VAR_VCF_GENEINFO, "").startsWith("GLA:");
-                }
-            });
-        }
         return clinVarFiltrationRules;
+    }
+}
+
+class ClinVarFemaleFilter extends FuncotationFilter {
+
+    ClinVarFemaleFilter() {
+        super("CLINVAR");
+    }
+
+    @Override
+    List<FuncotationFiltrationRule> getRules() {
+        // 4) If participant is female flag a het variant in the GLA gene (x-linked) [edge case that needs more detail]
+        final FuncotationFiltrationRule rule = new FuncotationFiltrationRule("ClinVar-option-female-het-GAL") {
+            @Override
+            boolean ruleFunction(VariantContext variant, Map<String, String> fieldValueMap) {
+                return variant.getHetCount() > 0 &&
+                        fieldValueMap.getOrDefault(CLIN_VAR_VCF_GENEINFO, "").startsWith("GLA:");
+            }
+        };
+        return Collections.singletonList(rule);
     }
 }
 
@@ -343,24 +354,22 @@ class LofFilter extends FuncotationFilter {
 
 class LmmFilter extends FuncotationFilter {
 
+    static final String LMM_FLAGGED = "LMMKnown_LMM_Flagged";
+
     LmmFilter() {
         super("LMM");
     }
 
     @Override
     List<FuncotationFiltrationRule> getRules() {
-        List<FuncotationFiltrationRule> lmmFiltrationRules = new ArrayList<>();
-
         // 1) LMM gives us a list of all path/LP variants they have seen. We flag any variant that appears on this
         // list regardless of GnoMAD freq. (optional for Proof of Concept)
-        lmmFiltrationRules.add(new FuncotationFiltrationRule("LMM-path-LP") {
+        final FuncotationFiltrationRule rule = new FuncotationFiltrationRule("LMM-path-LP") {
             @Override
             boolean ruleFunction(VariantContext variant, Map<String, String> fieldValueMap) {
-                // TODO
-                return false;
+                return Boolean.valueOf(fieldValueMap.getOrDefault(LMM_FLAGGED, "false"));
             }
-        });
-
-        return lmmFiltrationRules;
+        };
+        return Collections.singletonList(rule);
     }
 }
