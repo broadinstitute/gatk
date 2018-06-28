@@ -39,7 +39,7 @@ import java.util.List;
  * Internally, the reads are loaded in chunks called read shards, which are then subdivided into active/inactive regions
  * for processing by the tool implementation. One read shard is created per contig.
  */
-public abstract class AssemblyRegionWalker extends GATKTool {
+public abstract class AssemblyRegionWalker extends Walker {
 
     //NOTE: these argument names are referenced by HaplotypeCallerSpark
     public static final String MIN_ASSEMBLY_LONG_NAME = "min-assembly-region-size";

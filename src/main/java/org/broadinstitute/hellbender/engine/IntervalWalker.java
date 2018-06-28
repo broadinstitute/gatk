@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
  * onTraversalStart() and/or onTraversalSuccess(). See the {@link org.broadinstitute.hellbender.tools.examples.ExampleIntervalWalker}
  * tool for an example.
  */
-public abstract class IntervalWalker extends GATKTool {
+public abstract class IntervalWalker extends Walker {
 
     @Override
     public boolean requiresIntervals() {
@@ -54,7 +54,7 @@ public abstract class IntervalWalker extends GATKTool {
     }
 
     @Override
-    public void traverse() {
+    public final void traverse() {
         final ReadFilter readFilter = makeReadFilter();
         for ( final SimpleInterval interval : userIntervals ) {
             apply(interval,

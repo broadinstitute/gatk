@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.locusiterator.AlignmentContextIteratorBuilder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.locusiterator.AlignmentContextIteratorBuilder;
 import org.broadinstitute.hellbender.utils.locusiterator.LIBSDownsamplingInfo;
@@ -37,7 +38,7 @@ import java.util.stream.Collectors;
  *
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
-public abstract class LocusWalker extends GATKTool {
+public abstract class LocusWalker extends Walker {
     public static final String MAX_DEPTH_PER_SAMPLE_NAME = "max-depth-per-sample";
 
     @Argument(fullName = MAX_DEPTH_PER_SAMPLE_NAME, shortName = MAX_DEPTH_PER_SAMPLE_NAME, doc = "Maximum number of reads to retain per sample per locus. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
@@ -148,7 +149,7 @@ public abstract class LocusWalker extends GATKTool {
      * and including deletions only if {@link #includeDeletions()} returns {@code true}.
      */
     @Override
-    public void traverse() {
+    public final void traverse() {
         final SAMFileHeader header = getHeaderForReads();
         // get the samples from the read groups
         final Set<String> samples = header.getReadGroups().stream()

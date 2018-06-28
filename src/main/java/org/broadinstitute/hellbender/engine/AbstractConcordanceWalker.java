@@ -33,7 +33,7 @@ import java.util.stream.StreamSupport;
  * Created by Takuto Sato 1/30/17, abstractified by David Benjamin on 2/22/17.
  * {@link #onTraversalStart}, {@link #onTraversalSuccess} and/or {@link #closeTool}.
  */
-public abstract class AbstractConcordanceWalker extends GATKTool {
+public abstract class AbstractConcordanceWalker extends Walker {
 
     public static final String TRUTH_VARIANTS_LONG_NAME = "truth";
     public static final String EVAL_VARIANTS_SHORT_NAME = "eval";

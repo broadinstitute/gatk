@@ -24,7 +24,7 @@ import java.util.List;
  * ReadWalker authors must implement the apply() method to process each read, and may optionally implement
  * onTraversalStart() and/or onTraversalSuccess(). See the PrintReadsWithReference walker for an example.
  */
-public abstract class ReadWalker extends GATKTool {
+public abstract class ReadWalker extends Walker {
 
     @Override
     public boolean requiresReads() {

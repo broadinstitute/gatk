@@ -20,7 +20,7 @@ import java.io.File;
  *
  * @param <F> the driving feature type.
  */
-public abstract class FeatureWalker<F extends Feature> extends GATKTool {
+public abstract class FeatureWalker<F extends Feature> extends Walker {
 
     private FeatureDataSource<F> drivingFeatures;
 
@@ -78,7 +78,7 @@ public abstract class FeatureWalker<F extends Feature> extends GATKTool {
      * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
      */
     @Override
-    public void traverse() {
+    public final void traverse() {
         CountingReadFilter readFilter = makeReadFilter();
         // Process each feature in the input stream.
         Utils.stream(drivingFeatures).forEach(feature -> {
