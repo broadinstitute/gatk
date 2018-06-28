@@ -179,11 +179,12 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
         // Only create annotations if we have data to annotate:
         if ( supportedFieldNames.size() != 0 ) {
 
-            final List<Allele> alternateAlleles = variant.getAlternateAlleles();
+            // Alternate alleles in the query variant.
+            final List<Allele> queryAlternateAlleles = variant.getAlternateAlleles();
 
             // Create a set to put our annotated Alternate alleles in.
             // We'll use this to determine if the alt allele has been annotated.
-            final Set<Allele> annotatedAltAlleles = new HashSet<>(alternateAlleles.size());
+            final Set<Allele> annotatedAltAlleles = new HashSet<>(queryAlternateAlleles.size());
 
             if ( !featureList.isEmpty() ) {
                 for ( final Feature feature : featureList ) {
@@ -193,8 +194,10 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
                         // By this point we know the feature type is correct, so we cast it:
                         final VariantContext variantFeature = (VariantContext) feature;
 
-                        // Now we create one funcotation for each Alternate allele:
-                        for ( final Allele altAllele : alternateAlleles ) {
+                        // Now we create one funcotation for each Alternate allele in the query variant
+                        //  (if it exists in the datasource variant list):
+                        for ( final Allele altAllele : queryAlternateAlleles ) {
+
                             if (!(variantFeature.hasAlternateAllele(altAllele) && variantFeature.getReference().equals(variant.getReference()))) {
                                 continue;
                             }
@@ -207,7 +210,22 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
                                 // Handle collections a little differently:
                                 if (entry.getValue() instanceof Collection<?>) {
                                     @SuppressWarnings("unchecked") final Collection<Object> objectList = ((Collection<Object>) entry.getValue());
-                                    valueString = objectList.stream().map(Object::toString).collect(Collectors.joining(","));
+                                    final VCFHeaderLineCount countType = supportedFieldMetadata.retrieveHeaderInfo(createFinalFieldName(this.name, entry.getKey())).getCountType();
+
+                                    if (countType.equals(VCFHeaderLineCount.A) || countType.equals(VCFHeaderLineCount.R)) {
+
+                                        // TODO: What about "R"?  Do we want to drop the reference number?
+                                        int idx = 1;
+                                        if (variantFeature.getAlternateAlleles().size() != 1) {
+                                            idx = variantFeature.getAlleleIndex(altAllele);
+                                            if (countType.equals(VCFHeaderLineCount.A)) {
+                                                idx--;
+                                            }
+                                        }
+                                        valueString = objectList.toArray()[idx].toString();
+                                    } else {
+                                        valueString = objectList.stream().map(Object::toString).collect(Collectors.joining(","));
+                                    }
                                 } else {
                                     valueString = entry.getValue().toString();
                                 }
@@ -225,7 +243,7 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
 
             // If we didn't add funcotations for an allele, we should add in blank funcotations to that allele for each field that can be produced
             // by this VcfFuncotationFactory:
-            if ( annotatedAltAlleles.size() != alternateAlleles.size() ) {
+            if ( annotatedAltAlleles.size() != queryAlternateAlleles.size() ) {
                 outputFuncotations.addAll( createDefaultFuncotationsOnVariantHelper(variant, referenceContext, annotatedAltAlleles) );
             }
         }
