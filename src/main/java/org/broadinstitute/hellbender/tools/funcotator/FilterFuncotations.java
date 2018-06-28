@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -70,7 +71,7 @@ public class FilterFuncotations extends VariantWalker {
             fullName =  FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME,
             doc = "The version of the Human Genome reference which was used to Funcotate the input VCF."
     )
-    private ReferenceVersion referenceVersion;
+    protected ReferenceVersion referenceVersion;
 
     @Argument(
             fullName = "acmg59-list",
@@ -170,15 +171,13 @@ abstract class FuncotationFiltrationRule {
     boolean applyRule(VariantContext variant, FuncotationMap funcotationMap) {
 
         final Stream<Map<String, String>> funcotationsByTranscript = funcotationMap.getTranscriptList().stream()
-                .map(funcotationMap::get)
-                .map(funcotations ->
+                .map(funcotationMap::get).map(funcotations ->
                         funcotations.stream()
                                 .flatMap(this::extractFuncotationFields)
                                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
 
-        return funcotationsByTranscript
-                .anyMatch(funcotationValues ->
-                        !funcotationValues.isEmpty() && optionallyLog(ruleFunction(variant, funcotationValues), variant));
+        return funcotationsByTranscript.anyMatch(funcotationValues ->
+                !funcotationValues.isEmpty() && optionallyLog(ruleFunction(variant, funcotationValues), variant));
     }
 
     private Stream<Map.Entry<String, String>> extractFuncotationFields(final Funcotation funcotation) {
@@ -198,16 +197,18 @@ abstract class FuncotationFiltrationRule {
         }
 
         Arrays.stream(ExacSubPopulation.values()).forEach(subpop -> {
-            final String alleleCountsString = funcotations.getOrDefault("ExAC_AC_" + subpop.name(), "");
-            final String[] alleleCounts = alleleCountsString.split("_[^_]+_");
-            final int chromCount = Integer.valueOf(funcotations.getOrDefault("ExAC_AN_" + subpop.name(), "0"));
+            final Optional<String> alleleCountsString = Optional.ofNullable(funcotations.get("ExAC_AC_" + subpop.name()));
+            alleleCountsString.ifPresent(countsString -> {
+                final String[] alleleCounts = countsString.split("_[^_]+_");
+                final int chromCount = Integer.valueOf(funcotations.getOrDefault("ExAC_AN_" + subpop.name(), "0"));
 
-            for (int i = 0; i < alleleCount; i++) {
-                final double maf = Double.valueOf(alleleCounts[i]) / chromCount;
-                if (maxMafsByAllele[i] < maf) {
-                    maxMafsByAllele[i] = maf;
+                for (int i = 0; i < alleleCount; i++) {
+                    final double maf = Double.valueOf(alleleCounts[i]) / chromCount;
+                    if (maxMafsByAllele[i] < maf) {
+                        maxMafsByAllele[i] = maf;
+                    }
                 }
-            }
+            });
         });
 
         return Arrays.stream(maxMafsByAllele).boxed();
@@ -354,7 +355,7 @@ class LofFilter extends FuncotationFilter {
 
 class LmmFilter extends FuncotationFilter {
 
-    static final String LMM_FLAGGED = "LMMKnown_LMM_Flagged";
+    private static final String LMM_FLAGGED = "LMMKnown_LMM_Flagged";
 
     LmmFilter() {
         super("LMM");
