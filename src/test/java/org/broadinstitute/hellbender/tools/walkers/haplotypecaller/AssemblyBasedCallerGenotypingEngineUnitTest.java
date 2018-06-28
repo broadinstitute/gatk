@@ -78,12 +78,12 @@ public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
         final VariantContext sameLocDelVc2 = new VariantContextBuilder("a", "20", 10093568, 10093569, sameLocDelAlleles2).make();
         sameLocDelHap2.setEventMap(new EventMap(Arrays.asList(sameLocDelVc2)));
 
-        final Haplotype sameLocDelHap3 = new Haplotype("AAAAAAAGTTTAAA".getBytes());
-        final List<Allele> sameLocDelAlleles3 = Arrays.asList(Allele.create("G", true), Allele.create("GT"));
-        final VariantContext sameLocDelVc3 = new VariantContextBuilder("a", "20", 10093568, 10093568, sameLocDelAlleles3).make();
-        sameLocDelHap3.setEventMap(new EventMap(Arrays.asList(sameLocDelVc3)));
+        final Haplotype sameLocInsHap1 = new Haplotype("AAAAAAAGTTTAAA".getBytes());
+        final List<Allele> sameLocInsAlleles1 = Arrays.asList(Allele.create("G", true), Allele.create("GT"));
+        final VariantContext sameLocInsVc1 = new VariantContextBuilder("a", "20", 10093568, 10093568, sameLocInsAlleles1).make();
+        sameLocInsHap1.setEventMap(new EventMap(Arrays.asList(sameLocInsVc1)));
 
-        tests.add(new Object[]{Arrays.asList(sameLocDelHap1, sameLocDelHap2, sameLocDelHap3), 10093568, new ArrayList<>(), Arrays.asList(sameLocDelVc1, sameLocDelVc2, sameLocDelVc3)});
+        tests.add(new Object[]{Arrays.asList(sameLocDelHap1, sameLocDelHap2, sameLocInsHap1), 10093568, new ArrayList<>(), Arrays.asList(sameLocDelVc1, sameLocDelVc2, sameLocInsVc1)});
 
         tests.add(new Object[]{new ArrayList<>(), 1000, Arrays.asList(snpVc), Arrays.asList(snpVCBuilder.source("Comp0Allele0").make())});
         tests.add(new Object[]{new ArrayList<>(), 995, Arrays.asList(deletionVc), Arrays.asList(deletionVCBuilder.source("Comp0Allele0").make())});

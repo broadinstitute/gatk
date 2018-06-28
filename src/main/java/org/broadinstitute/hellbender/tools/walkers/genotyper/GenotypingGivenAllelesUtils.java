@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -23,7 +23,6 @@ public final class GenotypingGivenAllelesUtils {
      * @param loc the query location.
      * @param snpsOnly whether we only should consider SNP variation.
      * @param keepFiltered whether to include filtered variants
-     * @param logger where to output warnings.
      * @param allelesBinding the target variation context binding containing the given alleles.
      * @return never {@code null}
      */
@@ -31,13 +30,18 @@ public final class GenotypingGivenAllelesUtils {
                                                                           final Locatable loc,
                                                                           final boolean snpsOnly,
                                                                           final boolean keepFiltered,
-                                                                          final Logger logger,
                                                                           final FeatureInput<VariantContext> allelesBinding) {
         Utils.nonNull(tracker, "tracker may not be null");
         Utils.nonNull(loc, "location may not be null");
         Utils.nonNull(allelesBinding, "alleles binding may not be null");
 
-        final List<VariantContext> rodVcsAtLoc = tracker.getValues(allelesBinding, new SimpleInterval(loc))
+        final List<VariantContext> variantContextsInFeatureContext = tracker.getValues(allelesBinding, new SimpleInterval(loc));
+        return composeGivenAllelesVariantContextFromVariantList(variantContextsInFeatureContext, loc, snpsOnly, keepFiltered);
+    }
+
+    @VisibleForTesting
+    protected static VariantContext composeGivenAllelesVariantContextFromVariantList(final List<VariantContext> variantContextsInFeatureContext, final Locatable loc, final boolean snpsOnly, final boolean keepFiltered) {
+        final List<VariantContext> rodVcsAtLoc = variantContextsInFeatureContext
                 .stream()
                 .filter(vc -> vc.getStart() == loc.getStart() &&
                         (keepFiltered || vc.isNotFiltered()) &&
