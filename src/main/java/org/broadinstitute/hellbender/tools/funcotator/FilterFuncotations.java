@@ -129,9 +129,9 @@ public class FilterFuncotations extends VariantWalker {
         variantContextBuilder.attribute(CLINSIG_RULE_KEY, clinicalSignificance);
 
         if (matchingFilters.isEmpty()) {
-            variantContextBuilder.passFilters();
-        } else {
             variantContextBuilder.filter(NOT_CLINSIG_FILTER);
+        } else {
+            variantContextBuilder.passFilters();
         }
         return variantContextBuilder.make();
     }
