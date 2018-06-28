@@ -166,7 +166,7 @@ public final class AssemblyContigWithFineTunedAlignments {
             return ReasonForAlignmentClassificationFailure.AMBIGUOUS;
         } else if ( hasIncompletePicture() ) {
             return ReasonForAlignmentClassificationFailure.INCOMPLETE;
-        } else if ( ! hasChimericAlignments() ) { // un-informative contig, mis-assembly suspect
+        } else if ( ! (insertionMappings.isEmpty() || hasChimericAlignments()) ) { // initially has split alignments, but no more than 1 good alignment
             return ReasonForAlignmentClassificationFailure.UNINFORMATIVE;
         } else {
             throw new UnsupportedOperationException(
