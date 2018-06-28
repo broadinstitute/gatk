@@ -4,9 +4,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.VCFFilterHeaderLine;
 import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.log4j.LogManager;
@@ -21,12 +19,9 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
-import org.broadinstitute.hellbender.utils.samples.Sex;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -78,56 +73,30 @@ public class FilterFuncotations extends VariantWalker {
     )
     protected ReferenceVersion referenceVersion;
 
-    @Argument(
-            fullName = "acmg59-list",
-            doc = "American College of Medical Genomics list. https://www.ncbi.nlm.nih.gov/clinvar/docs/acmg/"
-    )
-    protected File acmg59ListFile;
-
-    @Argument(
-            fullName = "lof-list",
-            doc = "List of genes with LoF is disease mechanism."
-    )
-    protected File lofListFile;
-
     private VariantContextWriter outputVcfWriter;
     private String[] funcotationKeys;
     private List<FuncotationFilter> funcotationFilters = new ArrayList<>();
-    private List<String> acmg59Genes;
-    private List<String> lofGenes;
-    // FIXME: Read from VCF header.
-    private Sex gender = Sex.UNKNOWN;
 
     @Override
     public void onTraversalStart() {
-        try {
-            acmg59Genes = Files.readAllLines(acmg59ListFile.toPath());
-            lofGenes = Files.readAllLines(lofListFile.toPath());
+        registerFilters();
+        VCFHeader vcfHeader = getHeaderForVariants();
 
-            registerFilters();
-            VCFHeader vcfHeader = getHeaderForVariants();
-
-            final VCFInfoHeaderLine funcotationHeaderLine = vcfHeader.getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
-            if (funcotationHeaderLine != null) {
-                funcotationKeys = FuncotatorUtils.extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription());
-                outputVcfWriter = createVCFWriter(outputFile);
-                vcfHeader.addMetaDataLine(new VCFInfoHeaderLine(CLINSIG, 1, VCFHeaderLineType.String,
-                        "The name of the filter that caused this annotation to be flagged as clinically significant."));
-                outputVcfWriter.writeHeader(vcfHeader);
-            } else {
-                logger.error("Input VCF does not have Funcotator annotations.");
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
+        final VCFInfoHeaderLine funcotationHeaderLine = vcfHeader.getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
+        if (funcotationHeaderLine != null) {
+            funcotationKeys = FuncotatorUtils.extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription());
+            outputVcfWriter = createVCFWriter(outputFile);
+            vcfHeader.addMetaDataLine(new VCFInfoHeaderLine(CLINSIG, 1, VCFHeaderLineType.String,
+                    "The name of the filter that caused this annotation to be flagged as clinically significant."));
+            outputVcfWriter.writeHeader(vcfHeader);
+        } else {
+            logger.error("Input VCF does not have Funcotator annotations.");
         }
     }
 
     private void registerFilters() {
-        funcotationFilters.add(new ClinVarFilter(acmg59Genes));
-        if (gender == Sex.FEMALE) {
-            funcotationFilters.add(new ClinVarFemaleFilter());
-        }
-        funcotationFilters.add(new LofFilter(referenceVersion, lofGenes));
+        funcotationFilters.add(new ClinVarFilter());
+        funcotationFilters.add(new LofFilter(referenceVersion));
         funcotationFilters.add(new LmmFilter());
     }
 
@@ -137,19 +106,25 @@ public class FilterFuncotations extends VariantWalker {
     }
 
     private VariantContext applyFilters(VariantContext variant) {
+
+        Set<String> matchingFilters = new HashSet<>();
+        VariantContextBuilder variantContextBuilder = new VariantContextBuilder(variant);
+
         Map<Allele, FuncotationMap> funcs = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(
                 funcotationKeys, variant, "Gencode_" + referenceVersion.gencodeVersion + "_annotationTranscript", "FILTER"
         );
-        VariantContextBuilder variantContextBuilder = new VariantContextBuilder(variant);
-        Set<String> matchingFilters = new HashSet<>();
         funcs.values().forEach(funcotationMap ->
                 funcotationFilters.forEach(filter -> {
                     if (filter.checkFilter(variant, funcotationMap)) {
                         matchingFilters.add(filter.getFilterName());
                     }
                 }));
+
         String clinicalSignificance = matchingFilters.isEmpty() ? "NONE" : String.join(",", matchingFilters);
+        String clinicalFilter = matchingFilters.isEmpty() ? "PASS" : "NOT_" + CLINSIG;
+
         variantContextBuilder.attribute(CLINSIG, clinicalSignificance);
+        variantContextBuilder.filter(clinicalFilter);
         return variantContextBuilder.make();
     }
 
@@ -226,7 +201,6 @@ abstract class FuncotationFiltrationRule {
 
 abstract class FuncotationFilter {
     static final String CLIN_VAR_VCF_CLNSIG = "ClinVar_VCF_CLNSIG";
-    static final String CLIN_VAR_VCF_GENEINFO = "ClinVar_VCF_GENEINFO";
 
     private final String filterName;
 
@@ -250,11 +224,11 @@ abstract class FuncotationFilter {
 
 
 class ClinVarFilter extends FuncotationFilter {
-    private final List<String> acmg59Genes;
 
-    ClinVarFilter(List<String> acmg59Genes) {
+    private static final String ACMG_DISEASE_FUNCOTATION = "ACMG_recommendation_Disease_Name";
+
+    ClinVarFilter() {
         super("CLINVAR");
-        this.acmg59Genes = acmg59Genes;
     }
 
     @Override
@@ -265,8 +239,7 @@ class ClinVarFilter extends FuncotationFilter {
         clinVarFiltrationRules.add(new FuncotationFiltrationRule("ClinVar-ACMG59") {
             @Override
             boolean ruleFunction(VariantContext variant, Map<String, String> fieldValueMap) {
-                final String geneInfo = fieldValueMap.getOrDefault(CLIN_VAR_VCF_GENEINFO, "");
-                return acmg59Genes.contains(geneInfo.substring(0, geneInfo.indexOf(":")));
+                return fieldValueMap.containsKey(ACMG_DISEASE_FUNCOTATION);
             }
         });
 
@@ -291,38 +264,17 @@ class ClinVarFilter extends FuncotationFilter {
     }
 }
 
-class ClinVarFemaleFilter extends FuncotationFilter {
-
-    ClinVarFemaleFilter() {
-        super("CLINVAR");
-    }
-
-    @Override
-    List<FuncotationFiltrationRule> getRules() {
-        // 4) If participant is female flag a het variant in the GLA gene (x-linked) [edge case that needs more detail]
-        final FuncotationFiltrationRule rule = new FuncotationFiltrationRule("ClinVar-option-female-het-GAL") {
-            @Override
-            boolean ruleFunction(VariantContext variant, Map<String, String> fieldValueMap) {
-                return variant.getHetCount() > 0 &&
-                        fieldValueMap.getOrDefault(CLIN_VAR_VCF_GENEINFO, "").startsWith("GLA:");
-            }
-        };
-        return Collections.singletonList(rule);
-    }
-}
-
 class LofFilter extends FuncotationFilter {
 
+    private static final String LOF_GENE_FUNCOTATION = "ACMGLMMLof_LOF_Mechanism";
     private static final String FRAME_SHIFT_PREFIX = "FRAME_SHIFT_";
     private static final List<String> CONSTANT_LOF_CLASSIFICATIONS = Arrays.asList("NONSENSE", "START_CODON_DEL", "SPLICE_SITE");
 
     private final String classificationFuncotation;
-    private final List<String> lofGenes;
 
-    LofFilter(FilterFuncotations.ReferenceVersion ref, List<String> lofGenes) {
+    LofFilter(FilterFuncotations.ReferenceVersion ref) {
         super("LOF");
         this.classificationFuncotation = "Gencode_" + ref.gencodeVersion + "_variantClassification";
-        this.lofGenes = lofGenes;
     }
 
     @Override
@@ -345,8 +297,7 @@ class LofFilter extends FuncotationFilter {
         lofFiltrationRules.add(new FuncotationFiltrationRule("LOF-mechanism") {
             @Override
             boolean ruleFunction(VariantContext variant, Map<String, String> fieldValueMap) {
-                final String geneInfo = fieldValueMap.getOrDefault(CLIN_VAR_VCF_GENEINFO, "");
-                return lofGenes.contains(geneInfo.substring(0, geneInfo.indexOf(":")));
+                return fieldValueMap.getOrDefault(LOF_GENE_FUNCOTATION, "NO").equals("YES");
             }
         });
 
