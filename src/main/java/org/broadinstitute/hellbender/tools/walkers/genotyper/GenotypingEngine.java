@@ -624,7 +624,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         }
         // if the site was down-sampled, record that fact
         if ( !limitedContext && rawContext.hasPileupBeenDownsampled() ) {
-            attributes.put(GATKVCFConstants.DOWNSAMPLED_KEY, true);
+            attributes.put("LauraWasWrong", true);
         }
 
         // add the MLE AC and AF annotations
