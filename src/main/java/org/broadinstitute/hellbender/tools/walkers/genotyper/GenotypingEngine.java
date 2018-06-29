@@ -11,6 +11,7 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.*;
 import org.broadinstitute.hellbender.utils.*;
@@ -232,6 +233,9 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                                                     final ReadLikelihoods<Allele> likelihoods,
                                                     final SAMFileHeader header) {
         final boolean limitedContext = features == null || refContext == null || rawContext == null || stratifiedContexts == null;
+        if (!limitedContext) {
+            throw new UserException("Laura was wrong.  We totally have read data to calculate genotypes.");
+        }
         // if input VC can't be genotyped, exit with either null VCC or, in case where we need to emit all sites, an empty call
         if (hasTooManyAlternativeAlleles(vc) || vc.getNSamples() == 0) {
             return emptyCallContext(features, refContext, rawContext, header);
