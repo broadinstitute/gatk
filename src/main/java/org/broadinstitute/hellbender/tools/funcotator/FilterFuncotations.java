@@ -324,7 +324,7 @@ class LofFilter extends FuncotationFilter {
 
 class LmmFilter extends FuncotationFilter {
 
-    private static final String LMM_FLAGGED = "LMMKnown_LMM_Flagged";
+    private static final String LMM_FLAGGED = "LMMKnown_LMM_FLAGGED";
 
     LmmFilter() {
         super("LMM");
