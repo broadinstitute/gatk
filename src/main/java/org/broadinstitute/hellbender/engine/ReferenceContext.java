@@ -60,7 +60,7 @@ public final class ReferenceContext implements Iterable<Byte> {
      * empty arrays/iterators in response to queries.
      */
     public ReferenceContext() {
-        this(null, null);
+        this(null, null, 0, 0);
     }
 
     /**
@@ -89,6 +89,26 @@ public final class ReferenceContext implements Iterable<Byte> {
         this.dataSource = dataSource;
         this.cachedSequence = null;
         this.interval = interval;
+        setWindow(windowLeadingBases, windowTrailingBases);
+    }
+
+    /**
+     * Create a windowed ReferenceContext set up to lazily query the provided interval.
+     *
+     * Window is preserved from {@code thatReferenceContext}.
+     *
+     * @param thatContext An existing {@link ReferenceContext} on which to base this new one.
+     * @param interval our location on the reference (may be null if our location is unknown)
+     */
+    public ReferenceContext( final ReferenceContext thatContext, final SimpleInterval interval ) {
+        this.dataSource = thatContext.dataSource;
+        this.cachedSequence = null;
+        this.interval = interval;
+
+        // Determine the window:
+        final int windowLeadingBases = thatContext.numWindowLeadingBases();
+        final int windowTrailingBases = thatContext.numWindowTrailingBases();
+
         setWindow(windowLeadingBases, windowTrailingBases);
     }
 

@@ -8,7 +8,6 @@ import htsjdk.tribble.Feature;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -149,13 +148,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     private final TranscriptSelectionMode transcriptSelectionMode;
 
     /**
-     * Whether this factory will disregard the string "chr" in matching contig names.
-     *
-     * Setting this to true is useful in cases of b37 variants (e.g. contig 3) matching to gencode (e.g. contig chr3)
-     */
-    private boolean isAllowingNoChrMatches = false;
-
-    /**
      * {@link List} of Transcript IDs that the user has requested that we annotate.
      * If this list is empty, will default to keeping ALL transcripts.
      * Otherwise, only transcripts on this list will be annotated.
@@ -187,8 +179,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                      final String name,
                                      final TranscriptSelectionMode transcriptSelectionMode,
                                      final Set<String> userRequestedTranscripts,
-                                     final LinkedHashMap<String, String> annotationOverrides,
-                                     final boolean isAllowingNoChrMatches) {
+                                     final LinkedHashMap<String, String> annotationOverrides) {
 
         this.gencodeTranscriptFastaFile = gencodeTranscriptFastaFile;
 
@@ -212,8 +203,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Initialize overrides / defaults:
         initializeAnnotationOverrides( annotationOverrides );
-
-        this.isAllowingNoChrMatches = isAllowingNoChrMatches;
     }
 
     //==================================================================================================================
@@ -626,18 +615,10 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // TODO: check for complex INDEL and warn and skip.
 
-        VariantContext variantToUse = variant;
+        final VariantContext variantToUse = variant;
 
         // Find the sub-feature of transcript that contains our variant:
-        GencodeGtfFeature containingSubfeature = getContainingGtfSubfeature(variantToUse, transcript);
-
-        // If we got no hits, let's check as if this contig was translated to hg19
-        if (isAllowingNoChrMatches && containingSubfeature == null) {
-            final VariantContextBuilder vcb = new VariantContextBuilder(variant);
-            vcb.chr(FuncotatorUtils.convertB37ContigToHg19Contig(variant.getContig()));
-            variantToUse = vcb.make();
-            containingSubfeature = getContainingGtfSubfeature(variantToUse, transcript);
-        }
+        final GencodeGtfFeature containingSubfeature = getContainingGtfSubfeature(variantToUse, transcript);
 
         // Make sure the sub-regions in the transcript actually contain the variant:
         // TODO: this is slow, and repeats work that is done later in the process (we call getSortedCdsAndStartStopPositions when creating the sequence comparison)
@@ -1288,6 +1269,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     @VisibleForTesting
     static String getReferenceBases(final Allele refAllele, final Allele altAllele, final ReferenceContext reference, final Strand strand ) {
 
+        // TODO: this seems to be the same as FuncotatorUtils::getBasesInWindowAroundReferenceAllele - should this method call into that?
+
         final int indelAdjustment;
         if ( altAllele.length() > refAllele.length() ) {
             indelAdjustment = altAllele.length() - refAllele.length();
@@ -1302,12 +1285,15 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                     reference.getWindow().getStart() - referenceWindow,
                     reference.getWindow().getEnd() + referenceWindow + indelAdjustment);
 
+        // Get the reference bases for this interval.
+        byte[] referenceBases = reference.getBases(refBasesInterval);
+
         // Get the bases in the correct direction:
         if ( strand == Strand.POSITIVE ) {
-            return new String(reference.getBases(refBasesInterval));
+            return new String(referenceBases);
         }
         else {
-            return ReadUtils.getBasesReverseComplement(reference.getBases(refBasesInterval));
+            return ReadUtils.getBasesReverseComplement(referenceBases);
         }
     }
 
@@ -1580,9 +1566,10 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                              final ReferenceContext referenceContext,
                                              final int windowSize ) {
 
+        // TODO: this seems to do something similar to FuncotatorUtils::getBasesInWindowAroundReferenceAllele - should this method call into that?
+
         Utils.nonNull( referenceContext );
         ParamUtils.isPositive( windowSize, "Window size must be >= 1." );
-
 
         final int leadingWindowSize;
         final int trailingWindowSize = windowSize;
@@ -1605,11 +1592,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             leadingWindowSize = windowSize;
         }
 
-        // Create a placeholder for the bases:
-        final byte[] bases;
-
         // Get the bases:
-        bases = referenceContext.getBases(leadingWindowSize, trailingWindowSize);
+        byte[] bases = referenceContext.getBases(leadingWindowSize, trailingWindowSize);
 
         // Get the gcCount:
         long gcCount = 0;

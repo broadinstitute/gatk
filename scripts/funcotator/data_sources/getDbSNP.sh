@@ -49,6 +49,7 @@ function usage()
   echo -e "  3  UNKNOWN ARGUMENT"
   echo -e "  4  BAD CHECKSUM"
   echo -e "  5  OUTPUT DIRECTORY ALREADY EXISTS"
+  echo -e "  6  COULD NOT FIND BGZIP UTILITY"
   echo -e ""
 }
 
@@ -160,42 +161,48 @@ function downloadAndVerifyVcfFiles() {
     echo "${indentSpace}Retrieving MD5 sum file: ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/${md5File} ... "
     wget ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/${md5File}
 
+    # Get the VCF file, then make sure that the contig names are correct for HG19 (if applicable)
     echo "${indentSpace}Retrieving VCF file: ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/${vcfFile} ... "
-    wget ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/${vcfFile}
-
-    echo "${indentSpace}Retrieving VCF Index file: ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/${tbiFile} ... "
-    wget ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/${tbiFile}
-
-    echo "${indentSpace}Verifying VCF checksum ..."
-    if [[ "$(uname)" == "Darwin" ]] ; then
-        which md5sum-lite &> /dev/null
-        r=$?
-        if [ $r == 0 ] ; then
-            checksum=$( md5sum-lite ${vcfFile} | awk '{print $1}' | sed -e 's#^[ \t]*##g' -e 's#[ \t]*$##g' )
-            expected=$( head -n1 ${md5File} | awk '{print $1}' | sed -e 's#^[ \t]*##g' -e 's#[ \t]*$##g' )
-
-            if [[ "${checksum}" != "${expected}" ]] ; then
-                error "DOWNLOADED FILE IS CORRUPT!  (${checksum} != ${expected})"
-                error "FAILING"
-                exit 4
-            fi
-        else
-            error "Unable to validate md5sum of file: cannot locate 'md5sum-lite'.  Use these data with caution."
-        fi
+    if [[ "${filePrefix}" == "hg19" ]] ; then
+        curl ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/${vcfFile} | gunzip | sed -e 's#^\([0-9][0-9]*\)#chr\1#' -e 's#^MT#chrM#' -e 's#^X#chrX#' -e 's#^Y#chrY#' | bgzip > ${vcfFile}
     else
-        which md5sum &> /dev/null
-        r=$?
-        if [ $r == 0 ] ; then
-            checksum=$( md5sum ${vcfFile} | awk '{print $1}' | sed -e 's#^[ \t]*##g' -e 's#[ \t]*$##g' )
-            expected=$( head -n1 ${md5File} | awk '{print $1}' | sed -e 's#^[ \t]*##g' -e 's#[ \t]*$##g' )
+        wget ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/${vcfFile}
 
-            if [[ "${checksum}" != "${expected}" ]] ; then
-                error "DOWNLOADED FILE IS CORRUPT!  (${checksum} != ${expected})"
-                error "FAILING"
-                exit 4
+        echo "${indentSpace}Retrieving VCF Index file: ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/${tbiFile} ... "
+        wget ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/${tbiFile}
+
+        # We can only verify the checksum with hg38 because we modify the hg19 file as we stream it in:
+        echo "${indentSpace}Verifying VCF checksum ..."
+        if [[ "$(uname)" == "Darwin" ]] ; then
+            which md5sum-lite &> /dev/null
+            r=$?
+            if [ $r == 0 ] ; then
+                checksum=$( md5sum-lite ${vcfFile} | awk '{print $1}' | sed -e 's#^[ \t]*##g' -e 's#[ \t]*$##g' )
+                expected=$( head -n1 ${md5File} | awk '{print $1}' | sed -e 's#^[ \t]*##g' -e 's#[ \t]*$##g' )
+
+                if [[ "${checksum}" != "${expected}" ]] ; then
+                    error "DOWNLOADED FILE IS CORRUPT!  (${checksum} != ${expected})"
+                    error "FAILING"
+                    exit 4
+                fi
+            else
+                error "Unable to validate md5sum of file: cannot locate 'md5sum-lite'.  Use these data with caution."
             fi
         else
-            error "Unable to validate md5sum of file: cannot locate 'md5sum'.  Use these data with caution."
+            which md5sum &> /dev/null
+            r=$?
+            if [ $r == 0 ] ; then
+                checksum=$( md5sum ${vcfFile} | awk '{print $1}' | sed -e 's#^[ \t]*##g' -e 's#[ \t]*$##g' )
+                expected=$( head -n1 ${md5File} | awk '{print $1}' | sed -e 's#^[ \t]*##g' -e 's#[ \t]*$##g' )
+
+                if [[ "${checksum}" != "${expected}" ]] ; then
+                    error "DOWNLOADED FILE IS CORRUPT!  (${checksum} != ${expected})"
+                    error "FAILING"
+                    exit 4
+                fi
+            else
+                error "Unable to validate md5sum of file: cannot locate 'md5sum'.  Use these data with caution."
+            fi
         fi
     fi
 
@@ -205,8 +212,10 @@ function downloadAndVerifyVcfFiles() {
 
     echo "${indentSpace}Moving files to output directory ..."
     mv ${vcfFile} ${outputFolder}/${filePrefix}_${vcfFile}
-    mv ${tbiFile} ${outputFolder}/${filePrefix}_${tbiFile}
-    rm ${md5File}
+    if [[ ! "${filePrefix}" == "hg19" ]] ; then
+        mv ${tbiFile} ${outputFolder}/${filePrefix}_${tbiFile}
+        rm ${md5File}
+    fi
 
     echo "${indentSpace}Creating Config File ... "
     createConfigFile "${DATA_SOURCE_NAME}" "${version}" ${filePrefix}_${vcfFile} "ftp://ftp.ncbi.nih.gov/snp/organisms/${remoteFolder}/VCF/${vcfFile}" > ${outputFolder}/${DATA_SOURCE_NAME}.config
@@ -258,6 +267,14 @@ if [[ -d ${OUT_DIR_NAME} ]] ; then
     exit 5
 fi
 
+# Make sure bgzip exists:
+which bgzip > /dev/null
+r=$?
+if [[ $r -ne 0 ]] ; then
+    error "bgzip utility not found on path.  You must have bgzip installed to get the dbSNP resource.  Please install bgzip and try again. - aborting!"
+    exit 6
+fi
+
 echo "Querying NCBI listing..."
 tmpListing="$( makeTemp )"
 curl ftp://ftp.ncbi.nih.gov/snp/organisms/ 2>/dev/null > ${tmpListing}
@@ -274,5 +291,14 @@ echo "Processing HG38 ..."
 hg38Version=$( cat ${tmpListing} | awk '{print $9}' | grep 'human' | grep 'GRCh38' | grep "b${BUILD_NUMBER}" )
 
 downloadAndVerifyVcfFiles ${hg38Version} ${OUT_DIR_NAME}/hg38 "hg38"
+
+echo -e "\033[1;33;40m##################################################################################\033[0;0m"
+echo -e "\033[1;33;40m#                                                                                #\033[0;0m"
+echo -e "\033[1;33;40m# \033[1;5;37;41mWARNING\033[0;0m: You \033[4;37;40mMUST\033[0;0m index the VCF files for \033[4;37;40mHG19\033[0;0m #\033[0;0m"
+echo -e "\033[1;33;40m#             before using this data source.                                     #\033[0;0m"
+echo -e "\033[1;33;40m#                                                                                #\033[0;0m"
+echo -e "\033[1;33;40m#             Use gatk IndexFeatureFile <GTF_FILE>                               #\033[0;0m"
+echo -e "\033[1;33;40m#                                                                                #\033[0;0m"
+echo -e "\033[1;33;40m##################################################################################\033[0;0m"
 
 exit 0

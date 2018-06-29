@@ -8,7 +8,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
-import java.nio.file.Path;
 
 /**
  * A FeatureWalker is a tool that processes a {@link Feature} at a time from a source of Features, with

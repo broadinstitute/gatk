@@ -85,6 +85,7 @@ if __name__ == '__main__':
     print 'Writing dataset ...',
     FLUSH()
     for row in clinvarHgmd:
+        row[2] = "chr" + row[2]
         out_tsv_writer.writerow(row)
     print 'DONE!'
     FLUSH()

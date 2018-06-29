@@ -3,8 +3,6 @@ package org.broadinstitute.hellbender.engine;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
-import java.nio.file.Path;
-
 /**
  * An IntervalWalker is a tool that processes a single interval at a time, with the ability to query
  * optional overlapping sources of reads, reference data, and/or variants/features.

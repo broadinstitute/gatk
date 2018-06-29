@@ -59,13 +59,13 @@ final public class DataSourceUtils {
     @VisibleForTesting
     static final int MIN_MAJOR_VERSION_NUMBER = 1;
     @VisibleForTesting
-    static final int MIN_MINOR_VERSION_NUMBER = 2;
+    static final int MIN_MINOR_VERSION_NUMBER = 4;
     @VisibleForTesting
     static final int MIN_YEAR_RELEASED        = 2018;
     @VisibleForTesting
-    static final int MIN_MONTH_RELEASED       = 3;
+    static final int MIN_MONTH_RELEASED       = 6;
     @VisibleForTesting
-    static final int MIN_DAY_RELEASED         = 29;
+    static final int MIN_DAY_RELEASED         = 15;
 
     //==================================================================================================================
     // Public Static Members:
@@ -230,10 +230,9 @@ final public class DataSourceUtils {
      * @return A {@link List} of {@link DataSourceFuncotationFactory} given the data source metadata, overrides, and transcript reporting priority information.
      */
     public static List<DataSourceFuncotationFactory> createDataSourceFuncotationFactoriesForDataSources(final Map<Path, Properties> dataSourceMetaData,
-                                                                                               final LinkedHashMap<String, String> annotationOverridesMap,
-                                                                                               final TranscriptSelectionMode transcriptSelectionMode,
-                                                                                               final Set<String> userTranscriptIdSet,
-                                                                                                        final boolean isAllowingNoChrMatchesForTranscripts) {
+                                                                                                        final LinkedHashMap<String, String> annotationOverridesMap,
+                                                                                                        final TranscriptSelectionMode transcriptSelectionMode,
+                                                                                                        final Set<String> userTranscriptIdSet) {
 
         Utils.nonNull(dataSourceMetaData);
         Utils.nonNull(annotationOverridesMap);
@@ -266,7 +265,7 @@ final public class DataSourceUtils {
                     funcotationFactory = DataSourceUtils.createCosmicDataSource(path, properties, annotationOverridesMap);
                     break;
                 case GENCODE:
-                    funcotationFactory = DataSourceUtils.createGencodeDataSource(path, properties, annotationOverridesMap, transcriptSelectionMode, userTranscriptIdSet, isAllowingNoChrMatchesForTranscripts);
+                    funcotationFactory = DataSourceUtils.createGencodeDataSource(path, properties, annotationOverridesMap, transcriptSelectionMode, userTranscriptIdSet);
                     break;
                 case VCF:
                     funcotationFactory = DataSourceUtils.createVcfDataSource(path, properties, annotationOverridesMap, transcriptSelectionMode, userTranscriptIdSet);
@@ -376,14 +375,13 @@ final public class DataSourceUtils {
      * @param annotationOverridesMap {@link LinkedHashMap}{@code <String->String>} containing any annotation overrides to be included in the resulting data source.  Must not be {@code null}.
      * @param transcriptSelectionMode {@link TranscriptSelectionMode} to use when choosing the transcript for detailed reporting.  Must not be {@code null}.
      * @param userTranscriptIdSet {@link Set} of {@link String}s containing transcript IDs of interest to be selected for first.  Must not be {@code null}.
-     * @param isAllowingNoChrMatchesForTranscripts Whether the datasource should disregard chr for a contig match.
      * @return A new {@link GencodeFuncotationFactory} based on the given data source file information, field overrides map, and transcript information.
      */
     public static GencodeFuncotationFactory createGencodeDataSource(final Path dataSourceFile,
                                                                  final Properties dataSourceProperties,
                                                                  final LinkedHashMap<String, String> annotationOverridesMap,
                                                                  final TranscriptSelectionMode transcriptSelectionMode,
-                                                                 final Set<String> userTranscriptIdSet, final boolean isAllowingNoChrMatchesForTranscripts) {
+                                                                 final Set<String> userTranscriptIdSet) {
 
         Utils.nonNull(dataSourceFile);
         Utils.nonNull(dataSourceProperties);
@@ -402,8 +400,7 @@ final public class DataSourceUtils {
                         name,
                         transcriptSelectionMode,
                         userTranscriptIdSet,
-                        annotationOverridesMap,
-                        isAllowingNoChrMatchesForTranscripts
+                        annotationOverridesMap
                 );
     }
 
@@ -573,9 +570,12 @@ final public class DataSourceUtils {
 
         // Warn the user if they need newer stuff.
         if ( !dataSourcesPathIsAcceptable ) {
-            logger.error("ERROR: Given data source path is too old!  Minimum required version is: " + CURRENT_MINIMUM_DATA_SOURCE_VERSION + " (yours: " + version + ")");
-            logger.error("       You must download a newer version of the data sources from the Broad Institute FTP site: " + DATA_SOURCES_FTP_PATH);
-            logger.error("       or the Broad Institute Google Bucket: " + DATA_SOURCES_BUCKET_PATH);
+
+            String message = "";
+            message = message + "ERROR: Given data source path is too old!  Minimum required version is: " + CURRENT_MINIMUM_DATA_SOURCE_VERSION + " (yours: " + version + ")\n";
+            message = message + "       You must download a newer version of the data sources from the Broad Institute FTP site: " + DATA_SOURCES_FTP_PATH + "\n";
+            message = message + "       or the Broad Institute Google Bucket: " + DATA_SOURCES_BUCKET_PATH + "\n";
+            throw new UserException( message );
         }
 
         return dataSourcesPathIsAcceptable;
