@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.tools.walkers.contamination.MinorAlleleFrac
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -21,17 +22,21 @@ import java.util.stream.Collectors;
  */
 public class Mutect2FilteringEngine {
     public static final double MIN_ALLELE_FRACTION_FOR_GERMLINE_HOM_ALT = 0.9;
+    private static final int IMPUTED_NORMAL_BASE_QUALITY = 30;  // only used if normal base quality annotation fails somehow
+    private static final double MIN_NORMAL_ARTIFACT_RATIO = 0.1;    // don't call normal artifact if allele fraction in normal is much smaller than allele fraction in tumor
     private M2FiltersArgumentCollection MTFAC;
     private final double contamination;
     private final double somaticPriorProb;
     private final String tumorSample;
+    private final Optional<String> normalSample;
     final OverlapDetector<MinorAlleleFractionRecord> tumorSegments;
     public static final String FILTERING_STATUS_VCF_KEY = "filtering_status";
 
-    public Mutect2FilteringEngine(final M2FiltersArgumentCollection MTFAC, final String tumorSample) {
+    public Mutect2FilteringEngine(final M2FiltersArgumentCollection MTFAC, final String tumorSample, final Optional<String> normalSample) {
         this.MTFAC = MTFAC;
         contamination = MTFAC.contaminationTable == null ? 0.0 : ContaminationRecord.readFromFile(MTFAC.contaminationTable).get(0).getContamination();
         this.tumorSample = tumorSample;
+        this.normalSample = normalSample;
         somaticPriorProb = Math.pow(10, MTFAC.log10PriorProbOfSomaticEvent);
 
         final List<MinorAlleleFractionRecord> tumorMinorAlleleFractionRecords = MTFAC.tumorSegmentationTable == null ?
@@ -107,14 +112,17 @@ public class Mutect2FilteringEngine {
         }
     }
 
-    private void applyMedianBaseQualityDifferenceFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final VariantContextBuilder vcb) {
+    private void applyBaseQualityFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final VariantContextBuilder vcb) {
         final int[] baseQualityByAllele = getIntArrayTumorField(vc, BaseQuality.KEY);
-        if (baseQualityByAllele != null && baseQualityByAllele[0] < MTFAC.minMedianBaseQuality) {
+        final double[] tumorLods = getDoubleArrayAttribute(vc, GATKVCFConstants.TUMOR_LOD_KEY);
+        final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
+
+        if (baseQualityByAllele != null && baseQualityByAllele[indexOfMaxTumorLod + 1] < MTFAC.minMedianBaseQuality) {
             vcb.filter(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME);
         }
     }
 
-    private void applyMedianMappingQualityDifferenceFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final VariantContextBuilder vcb) {
+    private void applyMappingQualityFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final VariantContextBuilder vcb) {
         final int[] mappingQualityByAllele = getIntArrayTumorField(vc, MappingQuality.KEY);
         if (mappingQualityByAllele != null && mappingQualityByAllele[0] < MTFAC.minMedianMappingQuality) {
             vcb.filter(GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME);
@@ -196,17 +204,49 @@ public class Mutect2FilteringEngine {
 
     // filter out anything called in tumor that would also be called in the normal if it were treated as a tumor.
     // this handles shared artifacts, such as ones due to alignment and any shared aspects of sequencing
-    private static void applyArtifactInNormalFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final VariantContextBuilder vcb) {
+    private void applyArtifactInNormalFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final VariantContextBuilder vcb) {
         if (!( vc.hasAttribute(GATKVCFConstants.NORMAL_ARTIFACT_LOD_ATTRIBUTE)
                 && vc.hasAttribute(GATKVCFConstants.TUMOR_LOD_KEY))) {
             return;
         }
 
-        final double[] normalArtifactLods = getDoubleArrayAttribute(vc, GATKVCFConstants.NORMAL_ARTIFACT_LOD_ATTRIBUTE);
         final double[] tumorLods = getDoubleArrayAttribute(vc, GATKVCFConstants.TUMOR_LOD_KEY);
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
 
+        Genotype tumorGenotype = vc.getGenotype(tumorSample);
+        final int[] tumorAlleleDepths = tumorGenotype.getAD();
+        final int tumorDepth = (int) MathUtils.sum(tumorAlleleDepths);
+        final int tumorAltDepth = tumorAlleleDepths[indexOfMaxTumorLod + 1];
+
+        Genotype normalGenotype = vc.getGenotype(normalSample.get());
+        final int[] normalAlleleDepths = normalGenotype.getAD();
+        final int normalDepth = (int) MathUtils.sum(normalAlleleDepths);
+        final int normalAltDepth = normalAlleleDepths[indexOfMaxTumorLod + 1];
+
+        // if normal AF << tumor AF, don't filter regardless of LOD
+        final double tumorAlleleFraction = (double) tumorAltDepth / tumorDepth;
+        final double normalAlleleFraction = normalDepth == 0 ? 0 : (double) normalAltDepth / normalDepth;
+
+        if (normalAlleleFraction < MIN_NORMAL_ARTIFACT_RATIO * tumorAlleleFraction)  {
+            return;
+        }
+
+        final double[] normalArtifactLods = getDoubleArrayAttribute(vc, GATKVCFConstants.NORMAL_ARTIFACT_LOD_ATTRIBUTE);
         if (normalArtifactLods[indexOfMaxTumorLod] > MTFAC.NORMAL_ARTIFACT_LOD_THRESHOLD) {
+            vcb.filter(GATKVCFConstants.ARTIFACT_IN_NORMAL_FILTER_NAME);
+            return;
+        }
+
+        // the above filter misses artifacts whose support in the normal consists entirely of low base quality reads
+        // Since a lot of low-BQ reads is itself evidence of an artifact, we filter these by hand via an estimated LOD
+        // that uses the average base quality of *ref* reads in the normal
+
+        final int normalMedianRefBaseQuality = GATKProtectedVariantContextUtils.getAttributeAsIntArray(
+                normalGenotype, BaseQuality.KEY, () -> new int[] {IMPUTED_NORMAL_BASE_QUALITY}, IMPUTED_NORMAL_BASE_QUALITY)[0];
+        final double normalPValue = 1 - new BinomialDistribution(null, normalDepth, QualityUtils.qualToErrorProb(normalMedianRefBaseQuality))
+                .cumulativeProbability(normalAltDepth - 1);
+
+        if (normalPValue < M2FiltersArgumentCollection.normalPileupPValueThreshold) {
             vcb.filter(GATKVCFConstants.ARTIFACT_IN_NORMAL_FILTER_NAME);
         }
     }
@@ -273,8 +313,8 @@ public class Mutect2FilteringEngine {
         applyStrandArtifactFilter(MTFAC, vc, vcb);
         applySTRFilter(vc, vcb);
         applyContaminationFilter(MTFAC, vc, vcb);
-        applyMedianBaseQualityDifferenceFilter(MTFAC, vc, vcb);
-        applyMedianMappingQualityDifferenceFilter(MTFAC, vc, vcb);
+        applyBaseQualityFilter(MTFAC, vc, vcb);
+        applyMappingQualityFilter(MTFAC, vc, vcb);
         applyMedianFragmentLengthDifferenceFilter(MTFAC, vc, vcb);
         applyReadPositionFilter(MTFAC, vc, vcb);
     }

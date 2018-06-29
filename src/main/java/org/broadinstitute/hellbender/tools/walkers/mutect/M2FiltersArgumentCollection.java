@@ -10,6 +10,7 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
     public static final String LOG_SOMATIC_PRIOR_LONG_NAME = "log-somatic-prior";
     public static final String TUMOR_LOD_LONG_NAME = "tumor-lod";
     public static final String NORMAL_ARTIFACT_LOD_LONG_NAME = "normal-artifact-lod";
+    public static final String NORMAL_P_VALUE_THRESHOLD_LONG_NAME = "normal-p-value-threshold";
     public static final String MAX_GERMLINE_POSTERIOR_LONG_NAME = "max-germline-posterior";
     public static final String MAX_ALT_ALLELE_COUNT_LONG_NAME = "max-alt-allele-count";
     public static final String MIN_BASES_TO_SUSPECT_PCR_SLIPPAGE_LONG_NAME = "min-pcr-slippage-size";
@@ -60,6 +61,9 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
      */
     @Argument(fullName = NORMAL_ARTIFACT_LOD_LONG_NAME, optional = true, doc = "LOD threshold for calling normal artifacts")
     public double NORMAL_ARTIFACT_LOD_THRESHOLD = 0.0;
+
+    @Argument(fullName = NORMAL_P_VALUE_THRESHOLD_LONG_NAME, optional = true, doc = "P value threshold for normal artifact filter")
+    public static final double normalPileupPValueThreshold = 0.001;
 
     @Argument(fullName = MAX_GERMLINE_POSTERIOR_LONG_NAME, optional = true, doc = "Maximum posterior probability that an allele is a germline variant")
     public double maxGermlinePosterior = 0.1;

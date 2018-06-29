@@ -68,6 +68,6 @@ public class BaseQualityUnitTest {
 
         final int[] medianAltQuals = (int[]) g.getExtendedAttribute(BaseQuality.KEY);
 
-        Assert.assertEquals(medianAltQuals[0], 25);
+        Assert.assertEquals(medianAltQuals[1], 25);
     }
 }
