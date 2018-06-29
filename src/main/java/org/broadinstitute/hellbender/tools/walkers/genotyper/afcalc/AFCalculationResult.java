@@ -21,6 +21,12 @@ public final class AFCalculationResult {
     private static final int AF1p = 1;
     private static final int LOG_10_ARRAY_SIZES = 2;
 
+    // In GVCF mode the STANDARD_CONFIDENCE_FOR_CALLING is 0 by default, and it's nice having this easily-interpretable
+    // threshold that says "call anything with any evidence at all."  The problem is that *everything* has at least some evidence,
+    // so this would end up putting every site, or at least too many sites, in the gvcf.  Thus this parameter is in place to say
+    // that "0" really means "epsilon."
+    private static final double EPSILON = 1.0e-10;
+
     private final double[] log10LikelihoodsOfAC;
     private final double[] log10PriorsOfAC;
     private final double[] log10PosteriorsOfAC;
@@ -206,7 +212,7 @@ public final class AFCalculationResult {
      */
     public boolean isPolymorphic(final Allele allele, final double log10minPNonRef) {
         Utils.nonNull(allele);
-        return getLog10PosteriorOfAFEq0ForAllele(allele) < log10minPNonRef;
+        return getLog10PosteriorOfAFEq0ForAllele(allele) + EPSILON < log10minPNonRef;
     }
 
     /**
