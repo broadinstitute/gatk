@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import com.google.common.primitives.Ints;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.commons.math.util.FastMath;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -11,6 +12,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.List;
+import java.util.OptionalDouble;
 import java.util.OptionalInt;
 
 /**
@@ -41,10 +43,7 @@ public class BaseQuality extends PerAlleleAnnotation implements StandardMutectAn
 
     @Override
     protected OptionalInt getValueForRead(final GATKRead read, final VariantContext vc) {
-        Utils.nonNull(read);
-
-        final int offset = ReadUtils.getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), vc.getStart(), ReadUtils.ClippingTail.RIGHT_TAIL, true);
-        return offset == ReadUtils.CLIPPING_GOAL_NOT_REACHED || AlignmentUtils.isInsideDeletion(read.getCigar(), offset) ?
-                OptionalInt.empty() : OptionalInt.of(read.getBaseQuality(offset));
+        final OptionalDouble result = BaseQualityRankSumTest.getReadBaseQuality(read, vc.getStart());
+        return result.isPresent() ? OptionalInt.of((int) FastMath.round(result.getAsDouble())) : OptionalInt.empty();
     }
 }
