@@ -40,7 +40,7 @@ public final class ReferenceContext implements Iterable<Byte> {
     /**
      * Interval representing our location on the reference. May be null if, eg., we're dealing with unmapped data.
      */
-    private SimpleInterval interval;
+    private final SimpleInterval interval;
 
     /**
      * Reference interval optionally expanded by a configurable amount to produce the true query interval.
@@ -93,8 +93,7 @@ public final class ReferenceContext implements Iterable<Byte> {
     }
 
     /**
-     * Create a windowed ReferenceContext set up to lazily query the provided interval,
-     * expanded by the specified number of bases in each direction.
+     * Create a windowed ReferenceContext set up to lazily query the provided interval.
      *
      * Window is preserved from {@code thatReferenceContext}.
      *
@@ -107,8 +106,8 @@ public final class ReferenceContext implements Iterable<Byte> {
         this.interval = interval;
 
         // Determine the window:
-        final int windowLeadingBases = thatContext.interval.getStart() - thatContext.window.getStart();
-        final int windowTrailingBases = thatContext.window.getEnd() - thatContext.interval.getEnd();
+        final int windowLeadingBases = thatContext.numWindowLeadingBases();
+        final int windowTrailingBases = thatContext.numWindowTrailingBases();
 
         setWindow(windowLeadingBases, windowTrailingBases);
     }
