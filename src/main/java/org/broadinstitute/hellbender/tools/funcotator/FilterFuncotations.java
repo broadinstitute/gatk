@@ -166,6 +166,7 @@ abstract class FuncotationFiltrationRule {
                 .map(funcotationMap::get).map(funcotations ->
                         funcotations.stream()
                                 .flatMap(this::extractFuncotationFields)
+                                .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
                                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
 
         return funcotationsByTranscript.anyMatch(funcotationValues ->
