@@ -14,9 +14,8 @@ public class PrintBaseQualitiesIntegrationTest extends CommandLineProgramTest {
     @Test
     public void test(){
         final List<String> args = Arrays.asList(
-                "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_reference_20_21,
-                "-L", "20");
+                "-I", NA12878_chr17_1k_BAM,
+                "-R", v37_chr17_1Mb_Reference);
         runCommandLine(args);
         final int d = 3;
     }
