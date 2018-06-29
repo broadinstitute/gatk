@@ -20,7 +20,7 @@ env:
   #gradle needs this
   - TERM=dumb
   #limit gradle jvm memory and disable daemon
-  - GRADLE_OPTS="-Xmx2048m -Dorg.gradle.daemon=false -Dorg.gradle.caching=true"
+  - GRADLE_OPTS="-Xmx2048m -Dorg.gradle.daemon=false"
   - GRADLE_USER_HOME=$HOME
   #google cloud stuff
   - CLOUDSDK_CORE_DISABLE_PROMPTS=1
