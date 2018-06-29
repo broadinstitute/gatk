@@ -29,6 +29,7 @@ import java.io.File;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Class to test the {@link VcfFuncotationFactory}.
@@ -297,30 +298,31 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
                 // 3	69521	.	T	A,C AC_AMR=2,0; AC_Het=0,3,0 AC=2,3 --
                 //  Note that AC Het is of type=., so we should test that we return the entire string.
                 {new SimpleInterval("3", 69521, 69521), Arrays.asList("T", "C"),
-                        ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "0,3,0", "_AC", "3")},
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "0,3,0", "_AC", "3"))},
                 {new SimpleInterval("3", 69521, 69521), Arrays.asList("T", "A"),
-                        ImmutableMap.of("_AC_AMR", "2", "_AC_Het", "0,3,0", "_AC", "2")},
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "2", "_AC_Het", "0,3,0", "_AC", "2"))},
                 // 3	69552	rs55874132	G	T,A,C  AC_AMR=3,0,0 AC_Het=1,1,0,0,0,0 AC=3,3,5
                 {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "A"),
-                        ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,1,0,0,0,0", "_AC", "3")},
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,1,0,0,0,0", "_AC", "3"))},
                 {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "T"),
-                        ImmutableMap.of("_AC_AMR", "3", "_AC_Het", "1,1,0,0,0,0", "_AC", "3")},
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "3", "_AC_Het", "1,1,0,0,0,0", "_AC", "3"))},
                 {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "C"),
-                        ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,1,0,0,0,0", "_AC", "5")},
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,1,0,0,0,0", "_AC", "5"))},
                 // 3	324682	.	ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT	TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT,A  AC=7,2; AC_AMR=0,0 ;AC_Het=1,0,0
                 {new SimpleInterval("3", 324682, 324714), Arrays.asList("ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "A"),
-                        ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,0,0", "_AC", "2")},
-                {new SimpleInterval("3", 324682, 324714), Arrays.asList("ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT"),
-                        ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,0,0", "_AC", "7")},
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,0,0", "_AC", "2"))},
+                {new SimpleInterval("3", 324682, 324714), Arrays.asList("ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "A"),
+                        Arrays.asList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,0,0", "_AC", "7"),
+                                ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,0,0", "_AC", "2"))},
                 //HARD!!  Same as the previous test
                 {new SimpleInterval("3", 324682, 324682), Arrays.asList("A", "T"),
-                        ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,0,0", "_AC", "7")},
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,0,0", "_AC", "7"))},
         };
     }
 
     @Test(dataProvider = "provideMultiallelicTest")
     public void testQueryIntoMultiallelic(final SimpleInterval variantInterval, final List<String> alleles,
-                                          final Map<String, String> gtAttributes) {
+                                          final List<Map<String, String>> gtAttributes) {
         // Note that AC Het is of type=., so we should test that we return the entire string.
         // 3	69521	.	T	A,C    AC_AMR=2,0; AC_Het=0,3,0; AC=2,3
         // TODO: Add GQ_HIST for type=R test
@@ -349,11 +351,13 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
                 vcfFeatures,
                 Collections.emptyList()
         );
+        Assert.assertEquals(funcotations.size(), alleles.size() - 1);
+        Assert.assertEquals(funcotations.size(), gtAttributes.size());
 
-        gtAttributes.keySet().stream()
-                .forEach(k ->
-                        Assert.assertEquals(funcotations.get(0).getField(vcfFuncotationFactory.getName() + k), gtAttributes.get(k), "Mismatch with " + k)
-                );
-
+        IntStream.range(0, funcotations.size()).forEach( j ->
+                gtAttributes.get(j).keySet().forEach(k ->
+                        Assert.assertEquals(funcotations.get(j).getField(vcfFuncotationFactory.getName() + k), gtAttributes.get(j).get(k), "Mismatch with " + k)
+            )
+        );
     }
 }

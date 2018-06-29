@@ -7,6 +7,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
@@ -67,6 +68,10 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
      * Should contain metadata only for the fields in supportedFieldNames.
      */
     private final FuncotationMetadata supportedFieldMetadata;
+
+    private final LRUCache<Triple<VariantContext, ReferenceContext, List<Feature>>, List<Funcotation>> cache = new LRUCache<>();
+    private int cacheHits = 0;
+    private int cacheMisses = 0;
 
     //==================================================================================================================
     // Constructors:
@@ -173,11 +178,21 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
     @Override
     /**
      * {@inheritDoc}
+     *
+     * This is really the only entry point for the Vcf FuncotationFactory.
+     *
      * {@link VcfFuncotationFactory} can be used with or without Gencode annotations.
      */
     protected List<Funcotation> createFuncotationsOnVariant(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList) {
 
         final List<Funcotation> outputFuncotations = new ArrayList<>();
+
+        final Triple<VariantContext, ReferenceContext, List<Feature>> cacheKey = createCacheKey(variant, referenceContext, featureList);
+        final List<Funcotation> cacheResult = cache.get(cacheKey);
+        if (cacheResult != null) {
+            cacheHits++;
+            return cacheResult;
+        }
 
         // Only create annotations if we have data to annotate:
         if ( supportedFieldNames.size() != 0 ) {
@@ -194,26 +209,22 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
             final List<VariantContext> funcotationFactoryVariants = featureList.stream().filter(f -> f != null)
                     .map(f -> (VariantContext) f).collect(Collectors.toList());
 
-            if ( !funcotationFactoryVariants.isEmpty() ) {
-                for ( final VariantContext variantFeature : funcotationFactoryVariants ) {
+            for ( final VariantContext funcotationFactoryVariant : funcotationFactoryVariants ) {
+                final List<Pair<Integer, Integer>> matchIndices = matchAlleles(variant, funcotationFactoryVariant);
 
-                    // Now we create one funcotation for each Alternate allele in the query variant
-                    //  (if it exists in the datasource variant list):
-                    for ( final Allele altAllele : queryAlternateAlleles ) {
+                for (final Pair<Integer, Integer> matchIndex : matchIndices) {
 
-                        if (!(variantFeature.hasAlternateAllele(altAllele) && variantFeature.getReference().equals(variant.getReference()))) {
-                            continue;
-                        }
-                        // Add all Info keys/values to a copy of our default map:
-                        final LinkedHashMap<String, Object> annotations = new LinkedHashMap<>(supportedFieldNamesAndDefaults);
-                        for ( final Map.Entry<String, Object> entry : variantFeature.getAttributes().entrySet() ) {
-                            populateAnnotationMap(variantFeature, variant, altAllele, annotations, entry);
-                        }
+                    final Allele queryAllele = variant.getAlternateAllele(matchIndex.getLeft());
+                    final Allele funcotationFactoryAllele = funcotationFactoryVariant.getAlternateAllele(matchIndex.getRight());
 
-                        // Add our funcotation to the funcotation list:
-                        outputFuncotations.add(TableFuncotation.create(annotations, altAllele, name, supportedFieldMetadata));
-                        annotatedAltAlleles.add(altAllele);
+                    final LinkedHashMap<String, Object> annotations = new LinkedHashMap<>(supportedFieldNamesAndDefaults);
+
+                    for ( final Map.Entry<String, Object> entry : funcotationFactoryVariant.getAttributes().entrySet() ) {
+                        populateAnnotationMap(funcotationFactoryVariant, variant, matchIndex.getRight(), annotations, entry);
                     }
+
+                    outputFuncotations.add(TableFuncotation.create(annotations, queryAllele, name, supportedFieldMetadata));
+                    annotatedAltAlleles.add(funcotationFactoryAllele);
                 }
             }
 
@@ -223,11 +234,12 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
                 outputFuncotations.addAll( createDefaultFuncotationsOnVariantHelper(variant, referenceContext, annotatedAltAlleles) );
             }
         }
-
+        cacheMisses++;
+        cache.put(cacheKey, outputFuncotations);
         return outputFuncotations;
     }
 
-    private void populateAnnotationMap(final VariantContext funcotationFactoryVariant, final VariantContext queryVariant, final Allele altAllele, final LinkedHashMap<String, Object> annotations, final Map.Entry<String, Object> attributeEntry) {
+    private void populateAnnotationMap(final VariantContext funcotationFactoryVariant, final VariantContext queryVariant, final int funcotationFactoryAltAlleleIndex, final LinkedHashMap<String, Object> annotations, final Map.Entry<String, Object> attributeEntry) {
         final String valueString;
         final String attributeName = attributeEntry.getKey();
 
@@ -239,7 +251,7 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
             if (isBiallelic(funcotationFactoryVariant) && (isBiallelic(queryVariant))) {
                 valueString = objectList.stream().map(Object::toString).collect(Collectors.joining(","));
             } else {
-                valueString = determineValueStringFromMultiallelicAttributeList(funcotationFactoryVariant, altAllele, objectList, countType);
+                valueString = determineValueStringFromMultiallelicAttributeList(funcotationFactoryVariant, funcotationFactoryAltAlleleIndex, objectList, countType);
             }
         } else {
             valueString = attributeEntry.getValue().toString();
@@ -252,17 +264,15 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
         return funcotationFactoryVariant.getAlternateAlleles().size() == 1;
     }
 
-    private String determineValueStringFromMultiallelicAttributeList(final VariantContext funcotationFactoryVariantContext, final Allele altAllele, final Collection<Object> objectList, final VCFHeaderLineCount countType) {
+    private String determineValueStringFromMultiallelicAttributeList(final VariantContext funcotationFactoryVariantContext, final int funcotationFactoryAltAlleleIndex, final Collection<Object> objectList, final VCFHeaderLineCount countType) {
         String result;
+        //TODO: Refactor to a switch
         if (countType.equals(VCFHeaderLineCount.A) || countType.equals(VCFHeaderLineCount.R)) {
 
             // TODO: What about "R"?  Do we want to drop the reference number?
-            int idx = 1;
-            if (funcotationFactoryVariantContext.getAlternateAlleles().size() != 1) {
-                idx = funcotationFactoryVariantContext.getAlleleIndex(altAllele);
-                if (countType.equals(VCFHeaderLineCount.A)) {
-                    idx--;
-                }
+            int idx = funcotationFactoryAltAlleleIndex;
+            if (countType.equals(VCFHeaderLineCount.R)) {
+                idx++;
             }
             result = objectList.toArray()[idx].toString();
         } else {
@@ -271,17 +281,40 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
         return result;
     }
 
-    private List<Pair<Integer, Integer>> matchAlleles(final List<VariantContext> variants1, final List<VariantContext> variants2) {
+    // Returns indexes into the alternate alleles.  Note that this method assumes that (when biallelic) the variant
+    //  contexts are already trimmed.
+    private List<Pair<Integer, Integer>> matchAlleles(final VariantContext variant1, VariantContext variant2) {
+
+        // Grab the trivial case:
+        if (isBiallelic(variant1) && isBiallelic(variant2)) {
+            if (variant1.getAlternateAllele(0).equals(variant2.getAlternateAllele(0)) &&
+                    (variant1.getReference().equals(variant2.getReference()))) {
+                return Collections.singletonList(Pair.of(0,0));
+            } else {
+                return Collections.emptyList();
+            }
+        }
+
+        // Handle the case where one or both of the input VCs are not biallelic.
+        final List<Pair<Integer,Integer>> result = new ArrayList<>();
+
         // First split (and trim) all variant contexts into biallelics.  We are only going ot be interested in the alleles.
-        final List<VariantContext> splitVariants1 = variants1.stream().map(vc -> simpleSplitIntoBiallelics(vc))
-                .flatMap(List::stream).collect(Collectors.toList());
-        final List<VariantContext> splitVariants2 = variants2.stream().map(vc -> simpleSplitIntoBiallelics(vc))
-                .flatMap(List::stream).collect(Collectors.toList());
+        final List<VariantContext> splitVariants1 = simpleSplitIntoBiallelics(variant1);
+        final List<VariantContext> splitVariants2 = simpleSplitIntoBiallelics(variant2);
 
         // Second, match on ref and alt.  If match occurs add it to the output list.
+        for (int i = 0; i < splitVariants1.size(); i++) {
+            for (int j = 0; j < splitVariants2.size(); j++) {
+                final VariantContext splitVariant1 = splitVariants1.get(i);
+                final VariantContext splitVariant2 = splitVariants2.get(j);
+                if (splitVariant1.getAlternateAllele(0).equals(splitVariant2.getAlternateAllele(0))
+                        && splitVariant1.getReference().equals(splitVariant2.getReference())) {
+                    result.add(Pair.of(i,j));
+                }
+            }
+        }
 
-
-        return null;
+        return result;
     }
 
     /**
@@ -295,15 +328,16 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
         final List<VariantContext> result = new ArrayList<>();
 
         for (final Allele allele : vc.getAlternateAlleles()) {
-            result.add(GATKVariantContextUtils.trimAlleles(
-                    new VariantContextBuilder("SimpleSplit", vc.getContig(), vc.getStart(), vc.getEnd(),
+            result.add(
+                    isBiallelic(vc) ? vc :
+                    GATKVariantContextUtils.trimAlleles(
+                        new VariantContextBuilder("SimpleSplit", vc.getContig(), vc.getStart(), vc.getEnd(),
                             Arrays.asList(vc.getReference(), allele))
                             .make(), true, true)
             );
         }
 
         return result;
-
     }
 
     @Override
@@ -374,7 +408,30 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
         return funcotationFactoryName + "_" + fieldName;
     }
 
+    private Triple<VariantContext, ReferenceContext, List<Feature>> createCacheKey(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList) {
+        return Triple.of(variant, referenceContext, featureList);
+    }
+
+    @Override
+    public void close() {
+        super.close();
+        logger.info(getName() + " " + getVersion() + " cache hits/total: " + cacheHits + "/" + (cacheMisses + cacheHits));
+    }
+
     //==================================================================================================================
     // Helper Data Types:
 
+    // Modifed from https://docs.oracle.com/javase/7/docs/api/java/util/LinkedHashMap.html#removeEldestEntry(java.util.Map.Entry)
+    private class LRUCache<K, V> extends LinkedHashMap<K, V> {
+        static final long serialVersionUID = 55337L;
+        private static final int MAX_ENTRIES = 20;
+        public LRUCache() {
+            super(MAX_ENTRIES);
+        }
+
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
+            return size() >= MAX_ENTRIES;
+        }
+    }
 }
