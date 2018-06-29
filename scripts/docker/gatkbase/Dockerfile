@@ -9,18 +9,10 @@ RUN apt-get update && \
     apt-get install -y wget \
     curl \
     unzip \
-#    gcc \
-#    python-dev \
-#    python-setuptools \
     less \
-#    aufs-tools \
-#    automake \
     bedtools \
-#    btrfs-tools \
-#    build-essential \
-#    dpkg-sig \
     samtools \
-    openjdk-8-jre \
+    openjdk-8-jdk \
     software-properties-common && \
     apt-get -y clean  && \
     apt-get -y autoclean  && \
