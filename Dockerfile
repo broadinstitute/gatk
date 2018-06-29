@@ -1,5 +1,5 @@
 # Using OpenJDK 8
-FROM broadinstitute/gatk:gatkbase-1.2.3
+FROM us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:gatkbase-2.0.0 
 
 # Location of the unzipped gatk bundle files
 ARG ZIPPATH
