@@ -10,18 +10,16 @@ public abstract class Walker extends GATKTool {
 
     @Override
     final protected ReferenceDataSource getReferenceDataSource() {
-        throw new GATKException("Should never access ReferenceDataSource in child classes of AssemblyRegionWalker.");
+        throw new GATKException("Should never access ReferenceDataSource in child classes of Walker.");
     }
 
     @Override
     final protected ReadsDataSource getReadsDataSource() {
-        throw new GATKException("Should never access ReadsDataSource in child classes of AssemblyRegionWalker.");
+        throw new GATKException("Should never access ReadsDataSource in child classes of Walker.");
     }
 
     @Override
     final protected FeatureManager getFeatureManager() {
-        throw new GATKException("Should never access FeatureManager in child classes of AssemblyRegionWalker.");
+        throw new GATKException("Should never access FeatureManager in child classes of Walker.");
     }
-
-
 }
