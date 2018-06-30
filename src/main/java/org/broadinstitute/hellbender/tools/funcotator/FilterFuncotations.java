@@ -30,7 +30,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -155,7 +154,6 @@ public class FilterFuncotations extends VariantWalker {
                 .map(name -> new AbstractMap.SimpleEntry<>(name, funcotation.getField(name)));
     }
 
-
     @Override
     public void closeTool() {
         if (outputVcfWriter != null) {
@@ -185,18 +183,26 @@ abstract class FuncotationFiltrationRule {
     abstract boolean applyRule(final VariantContext variant, final Map<String, String> prunedTranscriptFuncotations);
 
     private boolean optionallyLog(final boolean result, final VariantContext variant) {
-        if (result) logger.warn(String.format("Matched Rule: %s For Variant %s", ruleName, variant));
+        if (result) logger.debug(String.format("Matched Rule: %s For Variant %s", ruleName, variant));
         return result;
     }
 
-    Stream<Double> getMaxMinorAlleleFreqs(final Map<String, String> funcotations) {
-        return Arrays.stream(ExacSubPopulation.values()).map(subpop -> {
-            final Optional<String> alleleCount = Optional.ofNullable(funcotations.get("ExAC_AC_" + subpop.name()));
-            return alleleCount.map(ac -> {
-                final int chromCount = Integer.valueOf(funcotations.getOrDefault("ExAC_AN_" + subpop.name(), "0"));
-                return Double.valueOf(ac) / chromCount;
-            }).orElse(0d);
-        });
+    double getMaxMinorAlleleFreq(final Map<String, String> funcotations) {
+        return Arrays.stream(ExacSubPopulation.values())
+                .filter(subpop -> funcotations.containsKey("ExAC_AC_" + subpop.name()))
+                .map(subpop -> {
+                    final Double ac = Double.valueOf(funcotations.get("ExAC_AC_" + subpop.name()));
+                    final Integer an = Integer.valueOf(funcotations.get("ExAC_AN_" + subpop.name()));
+
+                    if (an == 0) {
+                        // If a variant has never been seen in ExAC, report it as 0% MAF.
+                        return 0d;
+                    } else {
+                        return ac / an;
+                    }
+                })
+                .max(Double::compareTo)
+                .orElse(0d);
     }
 }
 
@@ -257,7 +263,7 @@ class ClinVarFilter extends FuncotationFilter {
         clinVarFiltrationRules.add(new FuncotationFiltrationRule("ClinVar-MAF") {
             @Override
             boolean applyRule(final VariantContext variant, final Map<String, String> prunedTranscriptFuncotations) {
-                return getMaxMinorAlleleFreqs(prunedTranscriptFuncotations).anyMatch(d -> d <= 0.05);
+                return getMaxMinorAlleleFreq(prunedTranscriptFuncotations) <= 0.05;
             }
         });
         return clinVarFiltrationRules;
@@ -305,7 +311,7 @@ class LofFilter extends FuncotationFilter {
         lofFiltrationRules.add(new FuncotationFiltrationRule("LOF-MAF") {
             @Override
             boolean applyRule(final VariantContext variant, final Map<String, String> prunedTranscriptFuncotations) {
-                return getMaxMinorAlleleFreqs(prunedTranscriptFuncotations).anyMatch(d -> d <= 0.01);
+                return getMaxMinorAlleleFreq(prunedTranscriptFuncotations) <= 0.01;
             }
         });
         return lofFiltrationRules;
