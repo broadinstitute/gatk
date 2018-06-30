@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotati
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.VcfFuncotationMetadata;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.nio.file.Path;
@@ -186,12 +187,11 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
 
         final List<Funcotation> outputFuncotations = new ArrayList<>();
 
+        //TODO: Test Caching
         final Triple<VariantContext, ReferenceContext, List<Feature>> cacheKey = createCacheKey(variant, referenceContext, featureList);
         final List<Funcotation> cacheResult = cache.get(cacheKey);
         if (cacheResult != null) {
             cacheHits++;
-            //TODO: Delete this next line
-            logger.info("Cache hit");
             return cacheResult;
         }
 
@@ -206,7 +206,7 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
             final Map<Allele, Funcotation> outputOrderedMap = new LinkedHashMap<>();
             variant.getAlternateAlleles().forEach(a -> outputOrderedMap.put(a, createDefaultFuncotation(a)));
 
-            // TODO: What happens if there is a duplicate pos,ref,alt in the datasource?  File an issue for this.
+            // TODO: What happens if there is a duplicate pos,ref,alt in the datasource?  See (https://github.com/broadinstitute/gatk/issues/4972)
             for ( final VariantContext funcotationFactoryVariant : funcotationFactoryVariants ) {
                 final int[] matchIndices = matchAlleles(variant, funcotationFactoryVariant);
 
@@ -259,25 +259,45 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
         return funcotationFactoryVariant.getAlternateAlleles().size() == 1;
     }
 
-    private String determineValueStringFromMultiallelicAttributeList(final int funcotationFactoryAltAlleleIndex, final Collection<Object> objectList, final VCFHeaderLineCount countType) {
+    /**
+     * Given a (possibly) multiallelic attribute value, convert it into a string that (if applicable) can be used for
+     *  one alternate allele.
+     *
+     * @param funcotationFactoryAltAlleleIndex index of the alt allele in the variant from this funcotation factory.
+     * @param attributeEntryValues the list of values for an attribute
+     * @param countType the count type for the attribute.
+     * @return string that can be used in a funcotation.  If the count type is R, then it will have two comma-separated
+     *  values.  One for the ref and one for the alt allele being indexed.
+     */
+    private String determineValueStringFromMultiallelicAttributeList(final int funcotationFactoryAltAlleleIndex, final Collection<Object> attributeEntryValues, final VCFHeaderLineCount countType) {
 
         switch (countType) {
             case A:
-                return objectList.toArray()[funcotationFactoryAltAlleleIndex].toString();
+                return attributeEntryValues.toArray()[funcotationFactoryAltAlleleIndex].toString();
 
             case R:
-                final Object referenceAlleleValue = objectList.toArray()[0];
-                return referenceAlleleValue.toString() + "," + objectList.toArray()[funcotationFactoryAltAlleleIndex+1].toString();
+                final Object referenceAlleleValue = attributeEntryValues.toArray()[0];
+                return referenceAlleleValue.toString() + "," + attributeEntryValues.toArray()[funcotationFactoryAltAlleleIndex+1].toString();
 
             default:
-                return objectList.stream().map(Object::toString).collect(Collectors.joining(","));
+                return attributeEntryValues.stream().map(Object::toString).collect(Collectors.joining(","));
         }
     }
 
-    // Returns indexes into the alternate alleles.  Note that this method assumes that (when biallelic) the variant
-    //  contexts are already trimmed.
-    private int[] matchAlleles(final VariantContext variant1, VariantContext variant2) {
 
+    /**
+     * Attempt to match allele ref/alt pairs, even if the allele pairs in the given variant contexts are equivalent and not exact.
+     *
+     * @param variant1 Never {@code null}
+     * @param variant2 Never {@code null}
+     * @return Returns indexes into the alternate alleles of variant2.  Note that this method assumes that (when biallelic) the variant
+     *  contexts are already trimmed.  See {@link GATKVariantContextUtils#trimAlleles(VariantContext, boolean, boolean)}
+     *  Never {@code null}.  And the length will be equal to the number of alternate alleles in variant1.  -1 indicates
+     *  no match in variant2.
+     */
+    private int[] matchAlleles(final VariantContext variant1, VariantContext variant2) {
+        Utils.nonNull(variant1);
+        Utils.nonNull(variant2);
         // Grab the trivial case:
         if (isBiallelic(variant1) && isBiallelic(variant2)) {
             if (variant1.getAlternateAllele(0).equals(variant2.getAlternateAllele(0)) &&
@@ -312,13 +332,15 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /** TODO: File an issue for the tool that will do a proper split.
-     * TODO: Docs, since this requires some explanation.
-     * Ignores the INFO field and genotype fields.  These will not be present.  This method is trying to be a bit fast.
-     * @param vc
-     * @return
+     * This method is trying to be a bit fast.
+     *
+     * @param vc variant context to split into simple biallelics..  Never {@code null}
+     * @return a list of variant contexts.  Each will be biallelic.  Length will be the number of alt alleles in the input vc.
+     * Note that the variant contexts are usually stripped of attributes and genotypes.  Never {@code null}.  Empty list
+     * if variant context has no alt alleles.
      */
     private List<VariantContext> simpleSplitIntoBiallelics(final VariantContext vc) {
-
+        Utils.nonNull(vc);
         final List<VariantContext> result = new ArrayList<>();
 
         for (final Allele allele : vc.getAlternateAlleles()) {
