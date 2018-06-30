@@ -295,39 +295,50 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
     public Object[][] provideMultiallelicTest() {
         // These were chosen to correspond to test cases in the test exac datasource VCF.
         return new Object[][] {
-                // 3	69521	.	T	A,C AC_AMR=2,0; AC_Het=0,3,0 AC=2,3 --
+                // 3	69521	.	T	A,C AC_AMR=2,0; AC_Het=0,3,0 AC=2,3 -- DP_HIST=4891|699|176|41|7229|10522|4675|4512|4936|3378|1833|885|500|250|131|64|34|24|15|139,0|0|0|0|0|0|0|0|0|1|0|0|0|0|0|0|0|0|0|0,0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|3;
                 //  Note that AC Het is of type=., so we should test that we return the entire string.
                 {new SimpleInterval("3", 69521, 69521), Arrays.asList("T", "C"),
-                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "0,3,0", "_AC", "3"))},
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "0,3,0", "_AC", "3", "_DP_HIST", "4891|699|176|41|7229|10522|4675|4512|4936|3378|1833|885|500|250|131|64|34|24|15|139,0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|3"))},
                 {new SimpleInterval("3", 69521, 69521), Arrays.asList("T", "A"),
-                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "2", "_AC_Het", "0,3,0", "_AC", "2"))},
-                // 3	69552	rs55874132	G	T,A,C  AC_AMR=3,0,0 AC_Het=1,1,0,0,0,0 AC=3,3,5
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "2", "_AC_Het", "0,3,0", "_AC", "2","_DP_HIST", "4891|699|176|41|7229|10522|4675|4512|4936|3378|1833|885|500|250|131|64|34|24|15|139,0|0|0|0|0|0|0|0|0|1|0|0|0|0|0|0|0|0|0|0"))},
+                // 3	69552	rs55874132	G	T,A,C  AC_AMR=3,0,0 AC_Het=1,1,0,0,0,0 AC=3,3,5  4764|1048|70|7|7472|10605|4702|4511|4937|3377|1835|886|500|250|128|63|35|22|13|117,0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|1|0|0|1,0|0|0|0|0|0|0|0|0|0|0|1|0|0|0|0|0|0|0|1,3|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0
                 {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "A"),
-                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,1,0,0,0,0", "_AC", "3"))},
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,1,0,0,0,0", "_AC", "3","_DP_HIST", "4764|1048|70|7|7472|10605|4702|4511|4937|3377|1835|886|500|250|128|63|35|22|13|117,0|0|0|0|0|0|0|0|0|0|0|1|0|0|0|0|0|0|0|1"))},
                 {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "T"),
-                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "3", "_AC_Het", "1,1,0,0,0,0", "_AC", "3"))},
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "3", "_AC_Het", "1,1,0,0,0,0", "_AC", "3","_DP_HIST", "4764|1048|70|7|7472|10605|4702|4511|4937|3377|1835|886|500|250|128|63|35|22|13|117,0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|1|0|0|1"))},
                 {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "C"),
-                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,1,0,0,0,0", "_AC", "5"))},
-                // 3	324682	.	ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT	TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT,A  AC=7,2; AC_AMR=0,0 ;AC_Het=1,0,0
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,1,0,0,0,0", "_AC", "5","_DP_HIST", "4764|1048|70|7|7472|10605|4702|4511|4937|3377|1835|886|500|250|128|63|35|22|13|117,3|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0"))},
+                // 3	324682	.	ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT	TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT,A  AC=7,2; AC_AMR=0,0 ;AC_Het=1,0,0  DP_HIST=428|427|186|183|1953|705|127|19|1|2|1|0|0|0|0|0|0|0|0|0,0|0|1|0|1|1|0|1|0|0|0|0|0|0|0|0|0|0|0|0,0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0;
                 {new SimpleInterval("3", 324682, 324714), Arrays.asList("ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "A"),
-                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,0,0", "_AC", "2"))},
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,0,0", "_AC", "2","_DP_HIST", "428|427|186|183|1953|705|127|19|1|2|1|0|0|0|0|0|0|0|0|0,0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0"))},
                 {new SimpleInterval("3", 324682, 324714), Arrays.asList("ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "A"),
-                        Arrays.asList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,0,0", "_AC", "7"),
-                                ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,0,0", "_AC", "2"))},
+                        Arrays.asList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,0,0", "_AC", "7","_DP_HIST", "428|427|186|183|1953|705|127|19|1|2|1|0|0|0|0|0|0|0|0|0,0|0|1|0|1|1|0|1|0|0|0|0|0|0|0|0|0|0|0|0"),
+                                ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,0,0", "_AC", "2","_DP_HIST", "428|427|186|183|1953|705|127|19|1|2|1|0|0|0|0|0|0|0|0|0,0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0"))},
                 //HARD!!  Same as the previous test
                 {new SimpleInterval("3", 324682, 324682), Arrays.asList("A", "T"),
-                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,0,0", "_AC", "7"))},
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,0,0", "_AC", "7","_DP_HIST", "428|427|186|183|1953|705|127|19|1|2|1|0|0|0|0|0|0|0|0|0,0|0|1|0|1|1|0|1|0|0|0|0|0|0|0|0|0|0|0|0"))},
+
+                // Control case (no multiallelics)
+                //3	13372	.	G	C AC=3; AC_AMR=0 AC_Het=0 DP_HIST=14728|2455|2120|518|121|499|534|314|111|21|10|2|2|0|0|0|0|0|0|0,1|0|0|0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0
+                {new SimpleInterval("3", 13372, 13372), Arrays.asList("G", "C"),
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "0", "_AC", "3","_DP_HIST", "14728|2455|2120|518|121|499|534|314|111|21|10|2|2|0|0|0|0|0|0|0,1|0|0|0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0"))},
+
+                // Control case (no multiallelics in datasource, but multiallelic query) -- Should produce a funcotation for both alleles, but second one should be blank
+                //3	13372	.	G	C AC=3; AC_AMR=0 AC_Het=0 DP_HIST=14728|2455|2120|518|121|499|534|314|111|21|10|2|2|0|0|0|0|0|0|0,1|0|0|0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0
+                {new SimpleInterval("3", 13372, 13372), Arrays.asList("G", "C", "T"),
+                        Arrays.asList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "0", "_AC", "3","_DP_HIST", "14728|2455|2120|518|121|499|534|314|111|21|10|2|2|0|0|0|0|0|0|0,1|0|0|0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0"),
+                                ImmutableMap.of("_AC_AMR", "", "_AC_Het", "", "_AC", "","_DP_HIST", ""))},
+                // Control case (no multiallelics in datasource, but multiallelic query) -- Should produce a funcotation for both alleles, but first one should be blank
+                //3	13372	.	G	C AC=3; AC_AMR=0 AC_Het=0 DP_HIST=14728|2455|2120|518|121|499|534|314|111|21|10|2|2|0|0|0|0|0|0|0,1|0|0|0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0
+                {new SimpleInterval("3", 13372, 13372), Arrays.asList("G", "T", "C"),
+                        Arrays.asList(ImmutableMap.of("_AC_AMR", "", "_AC_Het", "", "_AC", "","_DP_HIST", ""),
+                                ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "0", "_AC", "3","_DP_HIST", "14728|2455|2120|518|121|499|534|314|111|21|10|2|2|0|0|0|0|0|0|0,1|0|0|0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0"))},
         };
     }
 
     @Test(dataProvider = "provideMultiallelicTest")
     public void testQueryIntoMultiallelic(final SimpleInterval variantInterval, final List<String> alleles,
                                           final List<Map<String, String>> gtAttributes) {
-        // Note that AC Het is of type=., so we should test that we return the entire string.
-        // 3	69521	.	T	A,C    AC_AMR=2,0; AC_Het=0,3,0; AC=2,3
-        // TODO: Add GQ_HIST for type=R test
-        // TODO: Test multiallelics in the query
-
 
         // Make the factory
         final VcfFuncotationFactory vcfFuncotationFactory =

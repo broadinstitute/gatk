@@ -6,7 +6,6 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.*;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -191,51 +190,47 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
         final List<Funcotation> cacheResult = cache.get(cacheKey);
         if (cacheResult != null) {
             cacheHits++;
+            //TODO: Delete this next line
+            logger.info("Cache hit");
             return cacheResult;
         }
 
         // Only create annotations if we have data to annotate:
         if ( supportedFieldNames.size() != 0 ) {
 
-            // Alternate alleles in the query variant.
-            final List<Allele> queryAlternateAlleles = variant.getAlternateAlleles();
-
-            // Create a set to put our annotated Alternate alleles in.
-            // We'll use this to determine if the alt allele has been annotated.
-            final Set<Allele> annotatedAltAlleles = new HashSet<>(queryAlternateAlleles.size());
-
             // Get rid of any null features.
             // By this point we know the feature type is correct, so we cast it:
             final List<VariantContext> funcotationFactoryVariants = featureList.stream().filter(f -> f != null)
                     .map(f -> (VariantContext) f).collect(Collectors.toList());
 
+            final Map<Allele, Funcotation> outputOrderedMap = new LinkedHashMap<>();
+            variant.getAlternateAlleles().forEach(a -> outputOrderedMap.put(a, createDefaultFuncotation(a)));
+
+            // TODO: What happens if there is a duplicate pos,ref,alt in the datasource?  File an issue for this.
             for ( final VariantContext funcotationFactoryVariant : funcotationFactoryVariants ) {
-                final List<Pair<Integer, Integer>> matchIndices = matchAlleles(variant, funcotationFactoryVariant);
+                final int[] matchIndices = matchAlleles(variant, funcotationFactoryVariant);
 
-                for (final Pair<Integer, Integer> matchIndex : matchIndices) {
+                for (int i = 0; i < matchIndices.length; i++) {
+                    final int matchIndex = matchIndices[i];
+                    final Allele queryAltAllele = variant.getAlternateAllele(i);
+                    if (matchIndex != -1) {
 
-                    final Allele queryAllele = variant.getAlternateAllele(matchIndex.getLeft());
-                    final Allele funcotationFactoryAllele = funcotationFactoryVariant.getAlternateAllele(matchIndex.getRight());
+                        final LinkedHashMap<String, Object> annotations = new LinkedHashMap<>(supportedFieldNamesAndDefaults);
 
-                    final LinkedHashMap<String, Object> annotations = new LinkedHashMap<>(supportedFieldNamesAndDefaults);
+                        for (final Map.Entry<String, Object> entry : funcotationFactoryVariant.getAttributes().entrySet()) {
+                            populateAnnotationMap(funcotationFactoryVariant, variant, matchIndex, annotations, entry);
+                        }
 
-                    for ( final Map.Entry<String, Object> entry : funcotationFactoryVariant.getAttributes().entrySet() ) {
-                        populateAnnotationMap(funcotationFactoryVariant, variant, matchIndex.getRight(), annotations, entry);
+                        outputOrderedMap.put(queryAltAllele, TableFuncotation.create(annotations, queryAltAllele, name, supportedFieldMetadata));
                     }
-
-                    outputFuncotations.add(TableFuncotation.create(annotations, queryAllele, name, supportedFieldMetadata));
-                    annotatedAltAlleles.add(funcotationFactoryAllele);
                 }
             }
-
-            // If we didn't add funcotations for an allele, we should add in blank funcotations to that allele for each field that can be produced
-            // by this VcfFuncotationFactory:
-            if ( annotatedAltAlleles.size() != queryAlternateAlleles.size() ) {
-                outputFuncotations.addAll( createDefaultFuncotationsOnVariantHelper(variant, referenceContext, annotatedAltAlleles) );
-            }
+            outputOrderedMap.keySet().forEach(f -> outputFuncotations.add(outputOrderedMap.get(f)));
         }
         cacheMisses++;
         cache.put(cacheKey, outputFuncotations);
+
+        // The output number of funcotations should equal to the variant.getAlternateAlleles().size()
         return outputFuncotations;
     }
 
@@ -251,7 +246,7 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
             if (isBiallelic(funcotationFactoryVariant) && (isBiallelic(queryVariant))) {
                 valueString = objectList.stream().map(Object::toString).collect(Collectors.joining(","));
             } else {
-                valueString = determineValueStringFromMultiallelicAttributeList(funcotationFactoryVariant, funcotationFactoryAltAlleleIndex, objectList, countType);
+                valueString = determineValueStringFromMultiallelicAttributeList(funcotationFactoryAltAlleleIndex, objectList, countType);
             }
         } else {
             valueString = attributeEntry.getValue().toString();
@@ -264,39 +259,37 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
         return funcotationFactoryVariant.getAlternateAlleles().size() == 1;
     }
 
-    private String determineValueStringFromMultiallelicAttributeList(final VariantContext funcotationFactoryVariantContext, final int funcotationFactoryAltAlleleIndex, final Collection<Object> objectList, final VCFHeaderLineCount countType) {
-        String result;
-        //TODO: Refactor to a switch
-        if (countType.equals(VCFHeaderLineCount.A) || countType.equals(VCFHeaderLineCount.R)) {
+    private String determineValueStringFromMultiallelicAttributeList(final int funcotationFactoryAltAlleleIndex, final Collection<Object> objectList, final VCFHeaderLineCount countType) {
 
-            // TODO: What about "R"?  Do we want to drop the reference number?
-            int idx = funcotationFactoryAltAlleleIndex;
-            if (countType.equals(VCFHeaderLineCount.R)) {
-                idx++;
-            }
-            result = objectList.toArray()[idx].toString();
-        } else {
-            result = objectList.stream().map(Object::toString).collect(Collectors.joining(","));
+        switch (countType) {
+            case A:
+                return objectList.toArray()[funcotationFactoryAltAlleleIndex].toString();
+
+            case R:
+                final Object referenceAlleleValue = objectList.toArray()[0];
+                return referenceAlleleValue.toString() + "," + objectList.toArray()[funcotationFactoryAltAlleleIndex+1].toString();
+
+            default:
+                return objectList.stream().map(Object::toString).collect(Collectors.joining(","));
         }
-        return result;
     }
 
     // Returns indexes into the alternate alleles.  Note that this method assumes that (when biallelic) the variant
     //  contexts are already trimmed.
-    private List<Pair<Integer, Integer>> matchAlleles(final VariantContext variant1, VariantContext variant2) {
+    private int[] matchAlleles(final VariantContext variant1, VariantContext variant2) {
 
         // Grab the trivial case:
         if (isBiallelic(variant1) && isBiallelic(variant2)) {
             if (variant1.getAlternateAllele(0).equals(variant2.getAlternateAllele(0)) &&
                     (variant1.getReference().equals(variant2.getReference()))) {
-                return Collections.singletonList(Pair.of(0,0));
+                return new int[]{0};
             } else {
-                return Collections.emptyList();
+                return new int[]{-1};
             }
         }
 
         // Handle the case where one or both of the input VCs are not biallelic.
-        final List<Pair<Integer,Integer>> result = new ArrayList<>();
+        final int[] result = new int[variant1.getAlternateAlleles().size()];
 
         // First split (and trim) all variant contexts into biallelics.  We are only going ot be interested in the alleles.
         final List<VariantContext> splitVariants1 = simpleSplitIntoBiallelics(variant1);
@@ -304,12 +297,13 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Second, match on ref and alt.  If match occurs add it to the output list.
         for (int i = 0; i < splitVariants1.size(); i++) {
+            result[i] = -1;
             for (int j = 0; j < splitVariants2.size(); j++) {
                 final VariantContext splitVariant1 = splitVariants1.get(i);
                 final VariantContext splitVariant2 = splitVariants2.get(j);
                 if (splitVariant1.getAlternateAllele(0).equals(splitVariant2.getAlternateAllele(0))
                         && splitVariant1.getReference().equals(splitVariant2.getReference())) {
-                    result.add(Pair.of(i,j));
+                    result[i] = j;
                 }
             }
         }
@@ -317,7 +311,7 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
         return result;
     }
 
-    /**
+    /** TODO: File an issue for the tool that will do a proper split.
      * TODO: Docs, since this requires some explanation.
      * Ignores the INFO field and genotype fields.  These will not be present.  This method is trying to be a bit fast.
      * @param vc
@@ -366,12 +360,16 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
 
             for ( final Allele altAllele : alternateAlleles ) {
                 if ( !annotatedAltAlleles.contains(altAllele) ) {
-                    funcotationList.add(TableFuncotation.create(supportedFieldNamesAndDefaults, altAllele, name, supportedFieldMetadata));
+                    funcotationList.add(createDefaultFuncotation(altAllele));
                 }
             }
         }
 
         return funcotationList;
+    }
+
+    private TableFuncotation createDefaultFuncotation(final Allele altAllele) {
+        return TableFuncotation.create(supportedFieldNamesAndDefaults, altAllele, name, supportedFieldMetadata);
     }
 
     /**
@@ -414,7 +412,6 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
 
     @Override
     public void close() {
-        super.close();
         logger.info(getName() + " " + getVersion() + " cache hits/total: " + cacheHits + "/" + (cacheMisses + cacheHits));
     }
 
