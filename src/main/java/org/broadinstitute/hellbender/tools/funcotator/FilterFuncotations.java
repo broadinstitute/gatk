@@ -11,8 +11,8 @@ import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -36,15 +36,19 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @CommandLineProgramProperties(
-        summary = "",
-        oneLineSummary = "Functional Annotation Filtration",
+        summary = FilterFuncotations.SUMMARY,
+        oneLineSummary = FilterFuncotations.ONE_LINE_SUMMARY,
         programGroup = VariantEvaluationProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
+@ExperimentalFeature
 public class FilterFuncotations extends VariantWalker {
 
-    private static Logger logger = LogManager.getLogger(FilterFuncotations.class);
+    static final String ONE_LINE_SUMMARY = "Filter variants based on clinically-significant Funcotations.";
+    static final String SUMMARY = ONE_LINE_SUMMARY +
+            " Proof-of-concept hard-coded to look for specific Funcotations from ClinVar, ExAC, and LMM.";
+
+    private static Logger LOG = LogManager.getLogger(FilterFuncotations.class);
 
     private static final String CLINSIG_RULE_KEY = "CLINSIG";
     private static final String NOT_CLINSIG_FILTER = "NOT_" + CLINSIG_RULE_KEY;
@@ -84,7 +88,7 @@ public class FilterFuncotations extends VariantWalker {
     @Override
     public void onTraversalStart() {
         registerFilters();
-        VCFHeader vcfHeader = getHeaderForVariants();
+        final VCFHeader vcfHeader = getHeaderForVariants();
 
         final VCFInfoHeaderLine funcotationHeaderLine = vcfHeader.getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
         if (funcotationHeaderLine != null) {
@@ -95,7 +99,7 @@ public class FilterFuncotations extends VariantWalker {
                     "Rule(s) which caused this annotation to be flagged as clinically significant."));
             outputVcfWriter.writeHeader(vcfHeader);
         } else {
-            logger.error("Input VCF does not have Funcotator annotations.");
+            LOG.error("Input VCF does not have Funcotator annotations.");
         }
     }
 
@@ -112,18 +116,28 @@ public class FilterFuncotations extends VariantWalker {
 
     private VariantContext applyFilters(VariantContext variant) {
 
-        Set<String> matchingFilters = new HashSet<>();
-        VariantContextBuilder variantContextBuilder = new VariantContextBuilder(variant);
+        final Set<String> matchingFilters = new HashSet<>();
+        final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(variant);
 
-        Map<Allele, FuncotationMap> funcs = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(
-                funcotationKeys, variant, "Gencode_" + referenceVersion.gencodeVersion + "_annotationTranscript", "FILTER"
-        );
-        funcs.values().forEach(funcotationMap ->
-                funcotationFilters.forEach(filter -> {
-                    if (filter.checkFilter(variant, funcotationMap)) {
-                        matchingFilters.add(filter.getFilterName());
-                    }
-                }));
+        final Map<Allele, FuncotationMap> funcs = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(
+                funcotationKeys, variant, "Gencode_" + referenceVersion.gencodeVersion + "_annotationTranscript", "FILTER");
+
+        funcs.values().forEach(funcotationMap -> {
+            final Stream<Map<String, String>> transcriptFuncotations = funcotationMap.getTranscriptList().stream()
+                    .map(funcotationMap::get)
+                    .map(funcotations -> funcotations.stream()
+                            .flatMap(this::extractFuncotationFields)
+                            .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
+                            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+
+            transcriptFuncotations.forEach(funcotations -> {
+                final Set<String> matches = funcotationFilters.stream()
+                        .filter(f -> f.checkFilter(variant, funcotations))
+                        .map(FuncotationFilter::getFilterName)
+                        .collect(Collectors.toSet());
+                matchingFilters.addAll(matches);
+            });
+        });
 
         String clinicalSignificance = matchingFilters.isEmpty() ? "NONE" : String.join(",", matchingFilters);
         variantContextBuilder.attribute(CLINSIG_RULE_KEY, clinicalSignificance);
@@ -134,6 +148,11 @@ public class FilterFuncotations extends VariantWalker {
             variantContextBuilder.passFilters();
         }
         return variantContextBuilder.make();
+    }
+
+    private Stream<Map.Entry<String, String>> extractFuncotationFields(final Funcotation funcotation) {
+        return funcotation.getFieldNames().stream()
+                .map(name -> new AbstractMap.SimpleEntry<>(name, funcotation.getField(name)));
     }
 
 
@@ -154,57 +173,30 @@ abstract class FuncotationFiltrationRule {
     private static Logger logger = LogManager.getLogger(ClinVarFilter.class);
     private final String ruleName;
 
-    FuncotationFiltrationRule(String ruleName) {
+    FuncotationFiltrationRule(final String ruleName) {
         this.ruleName = ruleName;
     }
 
-    abstract boolean ruleFunction(VariantContext variant, Map<String, String> fieldValueMap);
-
-    boolean applyRule(VariantContext variant, FuncotationMap funcotationMap) {
-
-        final Stream<Map<String, String>> funcotationsByTranscript = funcotationMap.getTranscriptList().stream()
-                .map(funcotationMap::get).map(funcotations ->
-                        funcotations.stream()
-                                .flatMap(this::extractFuncotationFields)
-                                .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
-                                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
-
-        return funcotationsByTranscript.anyMatch(funcotationValues ->
-                !funcotationValues.isEmpty() && optionallyLog(ruleFunction(variant, funcotationValues), variant));
+    boolean checkRule(final VariantContext variant,final Map<String, String> prunedTranscriptFuncotations) {
+        return !prunedTranscriptFuncotations.isEmpty() &&
+                optionallyLog(applyRule(variant, prunedTranscriptFuncotations), variant);
     }
 
-    private Stream<Map.Entry<String, String>> extractFuncotationFields(final Funcotation funcotation) {
-        return funcotation.getFieldNames().stream()
-                .map(name -> new AbstractMap.SimpleEntry<>(name, funcotation.getField(name)));
-    }
+    abstract boolean applyRule(final VariantContext variant, final Map<String, String> prunedTranscriptFuncotations);
 
-    private boolean optionallyLog(Boolean result, VariantContext variant) {
+    private boolean optionallyLog(final boolean result, final VariantContext variant) {
         if (result) logger.warn(String.format("Matched Rule: %s For Variant %s", ruleName, variant));
         return result;
     }
 
-    Stream<Double> getMaxMinorAlleleFreqs(int alleleCount, final Map<String, String> funcotations) {
-        final double[] maxMafsByAllele = new double[alleleCount];
-        for (int i = 0; i < alleleCount; i++) {
-            maxMafsByAllele[i] = 0;
-        }
-
-        Arrays.stream(ExacSubPopulation.values()).forEach(subpop -> {
-            final Optional<String> alleleCountsString = Optional.ofNullable(funcotations.get("ExAC_AC_" + subpop.name()));
-            alleleCountsString.ifPresent(countsString -> {
-                final String[] alleleCounts = countsString.split("_[^_]+_");
+    Stream<Double> getMaxMinorAlleleFreqs(final Map<String, String> funcotations) {
+        return Arrays.stream(ExacSubPopulation.values()).map(subpop -> {
+            final Optional<String> alleleCount = Optional.ofNullable(funcotations.get("ExAC_AC_" + subpop.name()));
+            return alleleCount.map(ac -> {
                 final int chromCount = Integer.valueOf(funcotations.getOrDefault("ExAC_AN_" + subpop.name(), "0"));
-
-                for (int i = 0; i < alleleCount; i++) {
-                    final double maf = Double.valueOf(alleleCounts[i]) / chromCount;
-                    if (maxMafsByAllele[i] < maf) {
-                        maxMafsByAllele[i] = maf;
-                    }
-                }
-            });
+                return Double.valueOf(ac) / chromCount;
+            }).orElse(0d);
         });
-
-        return Arrays.stream(maxMafsByAllele).boxed();
     }
 }
 
@@ -213,13 +205,13 @@ abstract class FuncotationFilter {
 
     private final String filterName;
 
-    FuncotationFilter(String filterName) {
+    FuncotationFilter(final String filterName) {
         this.filterName = filterName;
     }
 
-    Boolean checkFilter(VariantContext variant, FuncotationMap funcotationMap) {
+    Boolean checkFilter(final VariantContext variant, final Map<String, String> prunedTranscriptFuncotations) {
         return getRules().stream()
-                .map(rule -> rule.applyRule(variant, funcotationMap))
+                .map(rule -> rule.checkRule(variant, prunedTranscriptFuncotations))
                 .reduce(Boolean::logicalAnd)
                 .orElse(false);
     }
@@ -247,16 +239,16 @@ class ClinVarFilter extends FuncotationFilter {
         // 1) The gene name must be on the ACMG59 list (American College of Medical Genomics).
         clinVarFiltrationRules.add(new FuncotationFiltrationRule("ClinVar-ACMG59") {
             @Override
-            boolean ruleFunction(VariantContext variant, Map<String, String> fieldValueMap) {
-                return fieldValueMap.containsKey(ACMG_DISEASE_FUNCOTATION);
+            boolean applyRule(final VariantContext variant, final Map<String, String> prunedTranscriptFuncotations) {
+                return prunedTranscriptFuncotations.containsKey(ACMG_DISEASE_FUNCOTATION);
             }
         });
 
         // 2) ClinVar annotations specifies Pathogenicity or Likely pathogenic.
         clinVarFiltrationRules.add(new FuncotationFiltrationRule("ClinVar-pathogenic") {
             @Override
-            boolean ruleFunction(VariantContext variant, Map<String, String> fieldValueMap) {
-                final String significance = fieldValueMap.getOrDefault(CLIN_VAR_VCF_CLNSIG, "");
+            boolean applyRule(final VariantContext variant, final Map<String, String> prunedTranscriptFuncotations) {
+                final String significance = prunedTranscriptFuncotations.getOrDefault(CLIN_VAR_VCF_CLNSIG, "");
                 return significance.contains("Pathogenic") || significance.contains("Likely_pathogenic");
             }
         });
@@ -264,9 +256,8 @@ class ClinVarFilter extends FuncotationFilter {
         // 3) Frequency: Max Minor Allele Freq is ≤5% in GnoMAD (ExAC for Proof of Concept)
         clinVarFiltrationRules.add(new FuncotationFiltrationRule("ClinVar-MAF") {
             @Override
-            boolean ruleFunction(VariantContext variant, Map<String, String> fieldValueMap) {
-                return getMaxMinorAlleleFreqs(variant.getAlternateAlleles().size(), fieldValueMap)
-                        .anyMatch(d -> d <= 0.05);
+            boolean applyRule(final VariantContext variant, final Map<String, String> prunedTranscriptFuncotations) {
+                return getMaxMinorAlleleFreqs(prunedTranscriptFuncotations).anyMatch(d -> d <= 0.05);
             }
         });
         return clinVarFiltrationRules;
@@ -281,7 +272,7 @@ class LofFilter extends FuncotationFilter {
 
     private final String classificationFuncotation;
 
-    LofFilter(FilterFuncotations.ReferenceVersion ref) {
+    LofFilter(final FilterFuncotations.ReferenceVersion ref) {
         super("LOF");
         this.classificationFuncotation = "Gencode_" + ref.gencodeVersion + "_variantClassification";
     }
@@ -295,8 +286,8 @@ class LofFilter extends FuncotationFilter {
         lofFiltrationRules.add(new FuncotationFiltrationRule("LOF-class") {
 
             @Override
-            boolean ruleFunction(VariantContext variant, Map<String, String> fieldValueMap) {
-                final String classification = fieldValueMap.getOrDefault(classificationFuncotation, "");
+            boolean applyRule(final VariantContext variant, final Map<String, String> prunedTranscriptFuncotations) {
+                final String classification = prunedTranscriptFuncotations.getOrDefault(classificationFuncotation, "");
                 return classification.startsWith(FRAME_SHIFT_PREFIX) || CONSTANT_LOF_CLASSIFICATIONS.contains(classification);
             }
         });
@@ -305,17 +296,16 @@ class LofFilter extends FuncotationFilter {
         // - create static list
         lofFiltrationRules.add(new FuncotationFiltrationRule("LOF-mechanism") {
             @Override
-            boolean ruleFunction(VariantContext variant, Map<String, String> fieldValueMap) {
-                return fieldValueMap.getOrDefault(LOF_GENE_FUNCOTATION, "NO").equals("YES");
+            boolean applyRule(final VariantContext variant, final Map<String, String> prunedTranscriptFuncotations) {
+                return prunedTranscriptFuncotations.getOrDefault(LOF_GENE_FUNCOTATION, "NO").equals("YES");
             }
         });
 
         // 3) Frequency: Max Minor Allele Freq is ≤1% in GnoMAD (ExAC for Proof of Concept)
         lofFiltrationRules.add(new FuncotationFiltrationRule("LOF-MAF") {
             @Override
-            boolean ruleFunction(VariantContext variant, Map<String, String> fieldValueMap) {
-                return getMaxMinorAlleleFreqs(variant.getAlternateAlleles().size(), fieldValueMap)
-                        .anyMatch(d -> d <= 0.01);
+            boolean applyRule(final VariantContext variant, final Map<String, String> prunedTranscriptFuncotations) {
+                return getMaxMinorAlleleFreqs(prunedTranscriptFuncotations).anyMatch(d -> d <= 0.01);
             }
         });
         return lofFiltrationRules;
@@ -336,8 +326,8 @@ class LmmFilter extends FuncotationFilter {
         // list regardless of GnoMAD freq. (optional for Proof of Concept)
         final FuncotationFiltrationRule rule = new FuncotationFiltrationRule("LMM-path-LP") {
             @Override
-            boolean ruleFunction(VariantContext variant, Map<String, String> fieldValueMap) {
-                return Boolean.valueOf(fieldValueMap.getOrDefault(LMM_FLAGGED, "false"));
+            boolean applyRule(final VariantContext variant, final Map<String, String> prunedTranscriptFuncotations) {
+                return Boolean.valueOf(prunedTranscriptFuncotations.getOrDefault(LMM_FLAGGED, "false"));
             }
         };
         return Collections.singletonList(rule);
