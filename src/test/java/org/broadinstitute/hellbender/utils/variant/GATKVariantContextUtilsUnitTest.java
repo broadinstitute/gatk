@@ -2204,8 +2204,6 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     public Object[][] provideMatchAlleles() {
         // These were chosen to correspond to test cases in the test exac datasource VCF.
         return new Object[][] {
-                // 3	69521	.	T	A,C AC_AMR=2,0; AC_Het=0,3,0 AC=2,3 -- DP_HIST=4891|699|176|41|7229|10522|4675|4512|4936|3378|1833|885|500|250|131|64|34|24|15|139,0|0|0|0|0|0|0|0|0|1|0|0|0|0|0|0|0|0|0|0,0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|3;
-                //  Note that AC Het is of type=., so we should test that we return the entire string.
                 {new SimpleInterval("3", 69521, 69521), Arrays.asList("T", "C"),
                         new SimpleInterval("3", 69521, 69521), Arrays.asList("T", "A", "C"),
                         new int[]{1}},
@@ -2218,8 +2216,6 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
                 {new SimpleInterval("3", 69521, 69521), Arrays.asList("T", "C", "A", "G"),
                         new SimpleInterval("3", 69521, 69521), Arrays.asList("T", "A", "C"),
                         new int[]{1, 0, -1}},
-
-                // 3	69552	rs55874132	G	T,A,C  AC_AMR=3,0,0 AC_Het=1,1,0,0,0,0 AC=3,3,5  4764|1048|70|7|7472|10605|4702|4511|4937|3377|1835|886|500|250|128|63|35|22|13|117,0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|1|0|0|1,0|0|0|0|0|0|0|0|0|0|0|1|0|0|0|0|0|0|0|1,3|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0
                 {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "A"),
                         new SimpleInterval("3", 69521, 69521), Arrays.asList("G", "T", "A", "C"),
                         new int[]{1}},
@@ -2229,8 +2225,6 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
                 {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "C"),
                         new SimpleInterval("3", 69521, 69521), Arrays.asList("G", "T", "A", "C"),
                         new int[]{2}},
-
-                // 3	324682	.	ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT	TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT,A  AC=7,2; AC_AMR=0,0 ;AC_Het=1,0,0  DP_HIST=428|427|186|183|1953|705|127|19|1|2|1|0|0|0|0|0|0|0|0|0,0|0|1|0|1|1|0|1|0|0|0|0|0|0|0|0|0|0|0|0,0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0;
                 {new SimpleInterval("3", 324682, 324714), Arrays.asList("ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "A"),
                         new SimpleInterval("3", 324682, 324714), Arrays.asList("ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "A"),
                         new int[]{1}},
@@ -2244,21 +2238,18 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
                 {new SimpleInterval("3", 324683, 324683), Arrays.asList("C", "T"), //(See second base in ref and alt)
                         new SimpleInterval("3", 324682, 324714), Arrays.asList("TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "TTCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "A"),
                         new int[]{0}},
-
-                // Control case (no multiallelics)
                 {new SimpleInterval("3", 13372, 13372), Arrays.asList("G", "C"),
                         new SimpleInterval("3", 13372, 13372), Arrays.asList("G", "C"),
                         new int[]{0}},
-
-                // Control case (no multiallelics in datasource, but multiallelic query)
                 {new SimpleInterval("3", 13372, 13372), Arrays.asList("G", "C", "T"),
                         new SimpleInterval("3", 13372, 13372), Arrays.asList("G", "C"),
                         new int[]{0, -1}},
-
-                // Control case (no multiallelics in datasource, but multiallelic query)
                 {new SimpleInterval("3", 13372, 13372), Arrays.asList("G", "T", "C"),
                         new SimpleInterval("3", 13372, 13372), Arrays.asList("G", "C"),
                         new int[]{-1, 0}},
+                {new SimpleInterval("3", 13372, 13372), Arrays.asList("G", "GTT", "GT"),
+                        new SimpleInterval("3", 13371, 13372), Arrays.asList("AG", "AC", "AGTT"),
+                        new int[]{1, -1}},
 
         };
     }
@@ -2276,7 +2267,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
                 .alleles(variant2Alleles)
                 .make();
 
-        final int[] matches = GATKVariantContextUtils.matchAlleles(variant1, variant2);
+        final int[] matches = GATKVariantContextUtils.matchAllelesOnly(variant1, variant2);
         Assert.assertTrue(Arrays.equals(matches, gtMatch), "Failed");
     }
 }

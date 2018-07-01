@@ -1679,12 +1679,10 @@ public final class GATKVariantContextUtils {
     }
 
     /**
-     * TODO: Tests (variant1 as indels), (the same tests as in VCF funcotation factory), (use position)
      *
      * Attempt to match allele ref/alt pairs, even if the allele pairs in the given variant contexts are equivalent,
      *  but not exact.
      *
-     *  IMPORTANT: Position is not factored into the matching.
      *
      * For example, if variant 1 and variant2 have the same position, but
      * Variant 1: "A", T", "C"
@@ -1702,7 +1700,7 @@ public final class GATKVariantContextUtils {
      *  indicates no match in variant2.  If the reference alleles do not match, the output array will be populated
      *  exclusively with -1.
      */
-    public static int[] matchAlleles(final VariantContext variant1, VariantContext variant2) {
+    public static int[] matchAllelesOnly(final VariantContext variant1, VariantContext variant2) {
         Utils.nonNull(variant1);
         Utils.nonNull(variant2);
         // Grab the trivial case:

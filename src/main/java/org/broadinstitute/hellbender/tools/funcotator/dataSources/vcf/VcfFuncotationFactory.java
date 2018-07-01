@@ -208,7 +208,7 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
 
             // TODO: What happens if there is a duplicate pos,ref,alt in the datasource?  See (https://github.com/broadinstitute/gatk/issues/4972)
             for ( final VariantContext funcotationFactoryVariant : funcotationFactoryVariants ) {
-                final int[] matchIndices = GATKVariantContextUtils.matchAlleles(variant, funcotationFactoryVariant);
+                final int[] matchIndices = GATKVariantContextUtils.matchAllelesOnly(variant, funcotationFactoryVariant);
 
                 for (int i = 0; i < matchIndices.length; i++) {
                     final int matchIndex = matchIndices[i];
